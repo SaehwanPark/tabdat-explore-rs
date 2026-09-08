@@ -19,10 +19,11 @@ domain checks.
 - Python oracle checkout and exact revision, authoritative behavior docs, reusable
   fixtures, and any recorded intentional deviations.
 
-Read [AGENTS.md](../../../AGENTS.md), proposal §§9–10, and the relevant roadmap
-phase via its linked documents. The Python location/revision is not supplied by
-this repository yet: discover an explicitly identified source or request it.
-Without it, local design/prototyping can proceed if in scope, but parity is blocked.
+Read [AGENTS.md](../../../AGENTS.md), proposal §§9–10, the relevant roadmap
+phase via its linked documents, and [the pinned migration authority](../../../docs/migration/README.md).
+Recover the exact revision and verify the checkout, tree, lock digest, and relevant
+paths before recording oracle output. Without a verified checkout or required
+fixtures, local design/prototyping can proceed if in scope, but parity is blocked.
 
 ## Workflow
 

@@ -24,6 +24,7 @@ The core scaffold requires neither Python nor R. See
 - [Roadmap and acceptance gates](docs/TABDAT_RUST_PORT_ROADMAP.md)
 - [Agent rules](AGENTS.md)
 
-The Python migration baseline is not pinned yet. Build checks do not establish
-behavioral or statistical parity. Licensing and redistribution decisions must be
+The initial Python migration baseline is pinned in
+[docs/migration/](docs/migration/). Build checks and the recorded parser/script
+oracle run do not establish Rust behavioral or statistical parity. Licensing and redistribution decisions must be
 resolved before publication; the proposal's AGPL intent is not a release license.
