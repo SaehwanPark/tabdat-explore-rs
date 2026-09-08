@@ -29,3 +29,20 @@ jobs:
         run: cargo test --locked --workspace --all-targets
       - name: Clippy
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
+
+  security:
+    name: Dependency and unsafe-code policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install pinned policy tools
+        run: |
+          cargo install cargo-deny --version 0.20.2 --locked
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo install cargo-geiger --version 0.13.0 --locked
+      - name: Check dependency policy
+        run: cargo deny check
+      - name: Audit advisories and yanked crates
+        run: cargo audit -D warnings
+      - name: Report unsafe code
+        run: cargo geiger --all-dependencies --all-targets --locked

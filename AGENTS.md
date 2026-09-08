@@ -52,9 +52,11 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 ```
 
 These do not establish command or statistical parity. Differential/reference
-fixtures, security tooling configuration, and performance harnesses are
-roadmap work; do not claim they ran merely because Cargo passed. For documentation
-changes, validate links, skill frontmatter, scenario coverage, and `git diff --check`.
+fixtures and performance harnesses remain roadmap work; do not claim they ran merely
+because Cargo passed. The pinned dependency/advisory/unsafe-code commands in
+`CONTRIBUTING.md` are separate policy checks and cover only the Rust workspace.
+For documentation changes, validate links, skill frontmatter, scenario coverage,
+and `git diff --check`.
 Update only roadmap items supported by evidence, not entire phases by inference.
 Preserve unrelated work. Commit/push only when authorized; do not force-push.
 

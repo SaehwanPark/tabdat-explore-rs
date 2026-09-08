@@ -46,8 +46,8 @@ inputs; select independent work only when it does not bypass the blocked contrac
 - [ ] Wrap owned native handles with RAII.
 - [ ] Ensure Rust panics never unwind across FFI boundaries.
 - [ ] Do not mark foreign handles `Send` or `Sync` without documented upstream guarantees.
-- [ ] Track project and dependency unsafe usage with `cargo geiger`.
-- [ ] Run `cargo audit` and `cargo deny` in CI.
+- [x] Track project and dependency unsafe usage with `cargo geiger` ([PR #4 CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34187594609)).
+- [x] Run `cargo audit` and `cargo deny` in CI ([PR #4 CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34187594609)).
 - [ ] Prohibit speculative unsafe micro-optimizations without profiling and dedicated benchmarks.
 
 ### 1.2 Architecture
@@ -109,9 +109,9 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [x] Configure `rustfmt`.
 - [x] Configure Clippy (warnings-as-errors in CI).
 - [ ] Configure `cargo-nextest` if adopted.
-- [ ] Configure `cargo deny`.
-- [ ] Configure `cargo audit`.
-- [ ] Configure `cargo geiger`.
+- [x] Configure `cargo deny` (`deny.toml`, pinned CI install).
+- [x] Configure `cargo audit` (pinned CI install and `-D warnings`).
+- [x] Configure `cargo geiger` (pinned CI install and all-target/dependency scan).
 - [x] Configure basic GitHub Actions CI ([PR #2 build evidence](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34186271522)).
 
 ### 2.2 Migration authority
@@ -127,7 +127,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 ### Exit gate
 
 - [x] Rust workspace builds in CI (scaffold only; see PR #2 evidence above).
-- [ ] Safety and lint tooling run in CI.
+- [x] Safety and lint tooling run in CI (policy job in the linked PR #4 run).
 - [x] Migration baseline revision is recorded (initial pin and verification in `docs/migration/README.md`).
 - [x] Architecture and documentation ownership rules are explicit (ADR 0001 and migration authority policy).
 
