@@ -1,0 +1,29 @@
+repository = "https://github.com/SaehwanPark/tabdat-explore.git"
+revision = "16b45d9b66b0d80f32d4d220e84d81bc5180bdbe"
+tree = "601b236788872323af9277d2276a236154a0f129"
+package_version = "0.25.0"
+lockfile = "uv.lock"
+lockfile_sha256 = "0f0e1dedbff49b4c77b470a75510b8809436c7c3dc77d1eac372ab9c7264d239"
+
+behavior_documents = [
+  "docs/language-semantics.md",
+  "docs/commands",
+  "src/tabdat/help/topics",
+  "docs/user-guide/scripting-and-json.md",
+  "docs/user-guide/configuration.md",
+  "docs/mcp-server.md",
+]
+
+contract_entry_points = [
+  "src/tabdat/parser.py",
+  "src/tabdat/models.py",
+  "src/tabdat/script.py",
+  "src/tabdat/cli.py",
+  "tests/test_parser.py",
+  "tests/test_script.py",
+  "tests/test_cli.py",
+  "tests/test_reference_validation.py",
+  "docs/reference-validation-matrix.md",
+  "docs/reference_validation_matrix.json",
+  "integrated_testing/README.md",
+]
