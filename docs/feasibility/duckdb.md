@@ -68,7 +68,7 @@ blanket native redistribution approval.
 | Platform | Toolchain | Result | Scope |
 | --- | --- | --- | --- |
 | macOS Apple Silicon | Rust 1.97.1, DuckDB candidate above | Pass | `cargo fmt`, locked test, locked release build, benchmark; local only |
-| Linux x86_64 | Repository-pinned toolchain | Pending hosted spike CI | Prototype test/build workflow must pass before claiming this target |
+| Linux x86_64 | Repository-pinned toolchain | Pending hosted spike CI | Prototype test/build workflow must pass before claiming this target; audit/unsafe inventory was local-only in this slice |
 | Other targets | — | Not tested | Out of scope for this slice |
 
 Remote HTTP Parquet, S3, and system-vs-bundled linkage are intentionally deferred;

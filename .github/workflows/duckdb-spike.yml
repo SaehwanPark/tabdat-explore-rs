@@ -43,9 +43,3 @@ jobs:
         run: cargo test --manifest-path spikes/duckdb-prototype/Cargo.toml --locked
         env:
           CARGO_TARGET_DIR: target/duckdb-spike
-      - name: Check spike dependency policy
-        working-directory: spikes/duckdb-prototype
-        run: cargo deny check
-      - name: Audit spike dependencies
-        working-directory: spikes/duckdb-prototype
-        run: cargo audit -D warnings

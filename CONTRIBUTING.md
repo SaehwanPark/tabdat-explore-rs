@@ -75,6 +75,7 @@ CARGO_TARGET_DIR=target/duckdb-spike cargo build --manifest-path spikes/duckdb-p
 target/duckdb-spike/release/measure
 ```
 
-The path-scoped `DuckDB feasibility spike` workflow covers Linux build/test/audit;
-macOS Apple Silicon evidence and native unsafe inventory remain explicitly recorded
-in `docs/feasibility/duckdb.md`, not presented as a product-support guarantee.
+The path-scoped `DuckDB feasibility spike` workflow covers the Linux build/test;
+macOS Apple Silicon evidence, dependency audit, and native unsafe inventory remain
+explicitly recorded in `docs/feasibility/duckdb.md`, not presented as a
+product-support guarantee.

@@ -29,8 +29,8 @@ labels, second engines, and production session integration are deferred.
 ## Evidence and risks
 
 The macOS Apple Silicon run passed two tests and a release build; Linux x86_64 is
-validated by the path-scoped spike workflow. `cargo audit` passed the 168-package
-lockfile. `cargo deny` passed advisories, licenses, bans, and sources but warned on
+awaiting a passing path-scoped spike workflow. `cargo audit` passed the 168-package
+lockfile locally. `cargo deny` passed advisories, licenses, bans, and sources but warned on
 several duplicate versions. `cargo geiger` found no unsafe code in the spike and
 reported unsafe usage in the DuckDB dependency subtree; its nonzero exit is an
 expected inventory signal, not a safety approval. The bundled stack includes
