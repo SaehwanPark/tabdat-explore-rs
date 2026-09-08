@@ -41,10 +41,7 @@ not proof of FFI safety or a substitute for unsafe-boundary review.
 
 CI is slower because tools compile on a clean runner; explicit versions and locked
 installations make that cost visible. The current no-dependency graph passes locally
-with all three tools. The isolated DuckDB spike also required
-`CDLA-Permissive-2.0` for `webpki-roots`; that license is explicitly listed for
-feasibility evaluation and is not a blanket native-redistribution approval. Geiger
-reports the scaffold's `#![forbid(unsafe_code)]`
+with all three tools, while geiger reports the scaffold's `#![forbid(unsafe_code)]`
 coverage. [PR #4 CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34187594609)
 passed both the Rust baseline and policy jobs. Future dependencies can fail CI until
 their license/source/advisory and unsafe implications are reviewed. Revisit versions
