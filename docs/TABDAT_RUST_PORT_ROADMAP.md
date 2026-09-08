@@ -7,6 +7,31 @@
 
 ---
 
+## Execution cadence and evidence
+
+This roadmap is a backlog, not a requirement to implement a whole phase in one PR.
+One development loop selects one bounded target slice, records its contract and
+acceptance evidence, implements/tests it, reviews it, and merges one PR only after
+applicable checks pass. Then recover `main` and choose the next unmet dependency.
+Use the workflow in [AGENTS.md](../AGENTS.md), including two-space indentation,
+functional-first design, specification-driven development, and test-first behavior
+changes. Revise future tasks when evidence improves the plan; record major changes
+in an ADR rather than silently changing migration semantics.
+
+Initial sequencing:
+
+1. Land repo-local guidance and development-loop rules (documentation-only bootstrap).
+2. Establish reproducible Rust formatting, toolchain, scaffold checks, and hosted CI.
+3. Recover and pin the Python oracle; define authority and deviation tracking before
+   claiming behavioral parity. Repository/build setup does not depend on that recovery.
+4. Add security/license tooling and architecture decisions, then undertake bounded
+   feasibility spikes with explicit acceptance evidence before product integration.
+
+Check off only the individual tasks demonstrated by source, tests, decisions, or CI.
+Passing scaffold checks is not statistical validation, and a merged PR alone does
+not satisfy a phase exit gate. Blocked slices retain their evidence and missing
+inputs; select independent work only when it does not bypass the blocked contract.
+
 ## 1. Always-On Engineering Invariants
 
 ### 1.1 Safety
@@ -77,7 +102,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [ ] Create this `ROADMAP.md`.
 - [ ] Create `ARCHITECTURE.md`.
 - [ ] Create `CONTRIBUTING.md`.
-- [ ] Create `AGENTS.md`.
+- [x] Create [`AGENTS.md`](../AGENTS.md) and [repo-local domain skills](harness/tabdat/team-spec.md).
 - [ ] Add ADR directory and ADR template.
 - [ ] Configure 2-space formatting conventions where applicable.
 - [ ] Configure Rust toolchain version policy.
