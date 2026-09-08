@@ -28,9 +28,10 @@ labels, second engines, and production session integration are deferred.
 
 ## Evidence and risks
 
-The macOS Apple Silicon run passed two tests and a release build; Linux x86_64 is
-awaiting a passing path-scoped spike workflow. `cargo audit` passed the 168-package
-lockfile locally. `cargo deny` passed advisories, licenses, bans, and sources but warned on
+The macOS Apple Silicon run passed two tests and a release build; Linux x86_64
+passed the path-scoped [PR #6 spike workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34194987287)
+for the debug test/build path. `cargo audit` passed the 168-package lockfile
+locally. `cargo deny` passed advisories, licenses, bans, and sources but warned on
 several duplicate versions. `cargo geiger` found no unsafe code in the spike and
 reported unsafe usage in the DuckDB dependency subtree; its nonzero exit is an
 expected inventory signal, not a safety approval. The bundled stack includes

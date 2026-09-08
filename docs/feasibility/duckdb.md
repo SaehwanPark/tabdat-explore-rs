@@ -68,7 +68,7 @@ blanket native redistribution approval.
 | Platform | Toolchain | Result | Scope |
 | --- | --- | --- | --- |
 | macOS Apple Silicon | Rust 1.97.1, DuckDB candidate above | Pass | `cargo fmt`, locked test, locked release build, benchmark; local only |
-| Linux x86_64 | Repository-pinned toolchain | Pending hosted spike CI | Prototype test/build workflow must pass before claiming this target; audit/unsafe inventory was local-only in this slice |
+| Linux x86_64 | Repository-pinned toolchain | Pass ([PR #6 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34194987287)) | Debug test/build path passed; release performance and audit/unsafe inventory remain local-only in this slice |
 | Other targets | — | Not tested | Out of scope for this slice |
 
 Remote HTTP Parquet, S3, and system-vs-bundled linkage are intentionally deferred;
@@ -98,7 +98,7 @@ fixtures before adopting latency targets.
 adoption.** The candidate can load local CSV/Parquet and produce Arrow batches through
 a safe-facing API with small owned results. Adoption remains blocked on:
 
-- Linux build evidence and a supported target/linkage decision;
+- a supported target/linkage decision beyond the tested Linux/macOS configurations;
 - upstream thread/concurrency and allocator/teardown review;
 - representative schema, null/missingness, ordering, and large-result semantics;
 - remote/HTTPFS/S3 requirements if initial parity needs them;

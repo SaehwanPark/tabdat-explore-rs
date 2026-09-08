@@ -61,14 +61,15 @@ it names current scaffold evidence and explicit exclusions; it introduces no cra
 command, backend, or parity claim. Documentation-only change; no code or dependency
 change.
 
-## Active slice: DuckDB feasibility prototype
+## Verified slice: DuckDB feasibility prototype
 
 Evaluate an isolated `duckdb-rs` candidate for local CSV/Parquet loading, repeated
 active-relation inspection, and Arrow result batches. Measure release orientation
 costs and record ownership/unsafe/license/platform evidence without adding DuckDB to
-the root runtime. Acceptance: tiny inspectable tests and Linux path-scoped CI pass;
-local macOS evidence is recorded; remote/S3, production session integration, and
-parity remain explicitly deferred.
+the root runtime. Evidence: tiny inspectable tests passed locally and in the Linux path-scoped
+[PR #6 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34194987287);
+local macOS release evidence is recorded. Remote/S3, production session integration,
+and parity remain explicitly deferred.
 
 ## Next
 
