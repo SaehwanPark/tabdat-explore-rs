@@ -97,22 +97,22 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 ### 2.1 Repository setup
 
 - [ ] Decide whether the Rust port lives in a new repository or a clearly isolated workspace during migration.
-- [ ] Create `README.md`.
-- [ ] Create `PROJECT_PROPOSAL.md`.
-- [ ] Create this `ROADMAP.md`.
+- [x] Create [`README.md`](../README.md).
+- [x] Create the [project proposal](TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) (existing canonical filename).
+- [x] Create this roadmap (existing canonical filename).
 - [ ] Create `ARCHITECTURE.md`.
-- [ ] Create `CONTRIBUTING.md`.
+- [x] Create [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - [x] Create [`AGENTS.md`](../AGENTS.md) and [repo-local domain skills](harness/tabdat/team-spec.md).
 - [ ] Add ADR directory and ADR template.
-- [ ] Configure 2-space formatting conventions where applicable.
-- [ ] Configure Rust toolchain version policy.
-- [ ] Configure `rustfmt`.
-- [ ] Configure Clippy.
+- [x] Configure 2-space formatting conventions where applicable (`.editorconfig`, `rustfmt.toml`).
+- [x] Configure Rust toolchain version policy (`rust-toolchain.toml`, `CONTRIBUTING.md`).
+- [x] Configure `rustfmt`.
+- [x] Configure Clippy (warnings-as-errors in CI).
 - [ ] Configure `cargo-nextest` if adopted.
 - [ ] Configure `cargo deny`.
 - [ ] Configure `cargo audit`.
 - [ ] Configure `cargo geiger`.
-- [ ] Configure basic GitHub Actions CI.
+- [x] Configure basic GitHub Actions CI ([PR #2 build evidence](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34186271522)).
 
 ### 2.2 Migration authority
 
@@ -126,7 +126,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 
 ### Exit gate
 
-- [ ] Rust workspace builds in CI.
+- [x] Rust workspace builds in CI (scaffold only; see PR #2 evidence above).
 - [ ] Safety and lint tooling run in CI.
 - [ ] Migration baseline revision is recorded.
 - [ ] Architecture and documentation ownership rules are explicit.

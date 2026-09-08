@@ -5,7 +5,9 @@
 TabDat is a terminal-first statistical/EDA environment with a Stata-inspired
 language. This repository is its Rust-native successor. Today it contains a
 single Rust 2024 binary scaffold (`Cargo.toml`, `src/main.rs`), not a working
-TabDat CLI. Do not describe proposed commands, crates, backends, or CI as present.
+TabDat CLI. Build tooling and the scaffold smoke test are described in
+[SPEC.md](SPEC.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Do not describe proposed
+commands, crates, or backends as present.
 
 Read the relevant sections of:
 - [Project proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md): product intent,
@@ -43,13 +45,13 @@ From the repository root, the baseline Rust checks are:
 
 ```sh
 cargo fmt --all -- --check
-cargo check --workspace --all-targets
-cargo test --workspace --all-targets
-cargo clippy --workspace --all-targets -- -D warnings
+cargo check --locked --workspace --all-targets
+cargo test --locked --workspace --all-targets
+cargo clippy --locked --workspace --all-targets -- -D warnings
 ```
 
 These do not establish command or statistical parity. Differential/reference
-fixtures, CI, security tooling configuration, and performance harnesses are
+fixtures, security tooling configuration, and performance harnesses are
 roadmap work; do not claim they ran merely because Cargo passed. For documentation
 changes, validate links, skill frontmatter, scenario coverage, and `git diff --check`.
 Update only roadmap items supported by evidence, not entire phases by inference.
