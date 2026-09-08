@@ -41,7 +41,8 @@ owned boundary is clear. Do not load every skill or create every proposed crate.
    indefinitely changing implementation or acceptance tolerances.
 4. **Synthesis:** the task owner reconciles evidence, updates only proven roadmap
    items/decisions, and reports `complete`, `partial`, or `blocked`. Output: final
-   summary plus authorized commit/push status. No automatic merge or release.
+   summary plus authorized commit/push/PR status. The active roadmap loop permits
+   automatic merge only under the review/check gates in AGENTS.md; no automatic release.
 
 Delegation is optional and shallow (owner → worker). Use it only for independent
 research/review or clearly isolated implementation. The owner retains integration

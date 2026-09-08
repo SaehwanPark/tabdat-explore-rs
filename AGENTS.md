@@ -55,6 +55,32 @@ changes, validate links, skill frontmatter, scenario coverage, and `git diff --c
 Update only roadmap items supported by evidence, not entire phases by inference.
 Preserve unrelated work. Commit/push only when authorized; do not force-push.
 
+## Roadmap development loop
+
+- One loop is one bounded target slice, one meaningful development unit, and one
+  PR. Recover branch/PR state before selecting the next unmet roadmap gate.
+- Use two spaces for indentation throughout (no hard tabs), except formats that
+  require otherwise. Configure editors and formatters rather than relying on memory.
+- Use functional-first design: pure domain transformations, explicit state and
+  typed failures, effects at adapter boundaries; avoid speculative abstractions.
+- Use specification-driven development: record scope and observable acceptance
+  before implementation; keep specs, architecture, and history aligned with evidence.
+- Use TDD for behavior changes: add a focused test, observe the intended failure,
+  implement the smallest correct change, then rerun checks. For documentation and
+  configuration, validate their actual contracts rather than inventing product tests.
+- Delegate bounded research, implementation, or independent review when useful;
+  retain one integration owner and serialize overlapping writes. Unavailable agents
+  are a reason to work serially, not to invent review results.
+- The active roadmap request authorizes commits, pushes, PR creation, and autonomous
+  merging into `main`. Before merge, inspect the diff, resolve blocking review
+  findings, and require applicable local checks and hosted CI to pass on the latest
+  revision. Absence of CI is not evidence of a passing CI run: record the bootstrap
+  exception for guidance-only work, and establish CI in the next setup slice.
+- After merge, update the clean local `main`, choose the next slice, and repeat.
+  Do not force-push, bypass protections, silently waive failed checks, or mark the
+  whole roadmap complete after a single slice. Stop with evidence and needed input
+  when access, authority, missing contracts, or unexplained failures block progress.
+
 ## Repo-local skills
 
 Use [the routing and handoff guide](docs/harness/tabdat/team-spec.md) to select
