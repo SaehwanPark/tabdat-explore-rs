@@ -43,12 +43,6 @@ jobs:
         run: cargo test --manifest-path spikes/duckdb-prototype/Cargo.toml --locked
         env:
           CARGO_TARGET_DIR: target/duckdb-spike
-      - name: Build release spike
-        run: cargo build --manifest-path spikes/duckdb-prototype/Cargo.toml --release --locked
-        env:
-          CARGO_TARGET_DIR: target/duckdb-spike
-      - name: Run release orientation measurement
-        run: target/duckdb-spike/release/measure
       - name: Check spike dependency policy
         working-directory: spikes/duckdb-prototype
         run: cargo deny check
