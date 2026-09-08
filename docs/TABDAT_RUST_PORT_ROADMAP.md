@@ -77,7 +77,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [ ] Create this `ROADMAP.md`.
 - [ ] Create `ARCHITECTURE.md`.
 - [ ] Create `CONTRIBUTING.md`.
-- [ ] Create `AGENTS.md`.
+- [x] Create [`AGENTS.md`](../AGENTS.md) and [repo-local domain skills](harness/tabdat/team-spec.md).
 - [ ] Add ADR directory and ADR template.
 - [ ] Configure 2-space formatting conventions where applicable.
 - [ ] Configure Rust toolchain version policy.
