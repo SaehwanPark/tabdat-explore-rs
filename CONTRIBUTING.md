@@ -34,10 +34,28 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
 
-Use `cargo fmt --all` to apply formatting. The GitHub Actions `Rust baseline` job
-runs the four Cargo checks on Linux for every PR and pushes to `main` (no path
-filters). Inspect the latest revision's checks before merging; local success is
-not a substitute for hosted CI. No branch protection is configured by this PR.
+For the dependency and unsafe-code policy slice, install the pinned tools and run:
+
+```sh
+cargo install cargo-deny --version 0.20.2 --locked
+cargo install cargo-audit --version 0.22.2 --locked
+cargo install cargo-geiger --version 0.13.0 --locked
+cargo deny check
+cargo audit -D warnings
+cargo geiger --all-dependencies --all-targets --locked
+```
+
+`deny.toml` rejects unknown sources, disallowed licenses, wildcard dependencies,
+and advisories are checked without local ignores. The current unpublished scaffold
+is explicitly excluded from dependency-license resolution until release licensing
+is decided; external crates are not. `cargo geiger` reports current workspace and
+transitive unsafe usage; it does not prove FFI safety or replace review.
+
+The GitHub Actions `Rust baseline` job runs the four Cargo checks and the
+`Dependency and unsafe-code policy` job runs these three policy checks on Linux for
+every PR and pushes to `main` (no path filters). Inspect the latest revision's
+checks before merging; local success is not a substitute for hosted CI. No branch
+protection is configured by this PR.
 
 For docs, also validate relative links, skill frontmatter where affected, and
 normal/blocked guidance scenarios. The one scaffold integration test only checks

@@ -28,7 +28,7 @@ This build slice excluded parser/runtime/backend implementation, Python oracle
 recovery, statistical parity, security auditing, benchmarks, packaging, and a
 minimum-supported-Rust claim.
 
-## Active slice: Python migration authority
+## Verified slice: Python migration authority
 
 Pin an upstream-identifiable Python commit/tree, inventory behavioral authority and
 fixture entry points, and define conflict/deviation and baseline-update rules.
@@ -38,6 +38,19 @@ path exists at that revision; bounded parser/script oracle checks are recorded
 without implying full-suite or Rust parity; guidance has no stale missing-pin claim.
 No Python source edits, dependency installation, backend work, or migrated commands.
 
+## Active slice: dependency and unsafe-code checks
+
+Pin the security-tool versions used by CI, configure dependency license/advisory
+policy for the current scaffold, run `cargo deny`, `cargo audit`, and `cargo geiger`
+in CI, and document that these checks cover the Rust workspace rather than Python
+or future native backends. Keep runtime dependencies unchanged.
+
+Acceptance: each tool has an explicit version and locked installation; local runs
+pass on the pinned toolchain; a PR CI job runs all three checks on the latest
+revision; policy scope and expected future review are recorded. No dependency,
+backend, FFI, or product-command implementation.
+
 ## Next
 
-Complete Phase 0 security tooling before backend feasibility and integration.
+Create the Rust architecture ownership document, then choose a bounded backend
+feasibility spike.

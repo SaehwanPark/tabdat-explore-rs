@@ -1,0 +1,39 @@
+# Dependency policy for the Rust workspace. Add a reviewed exception with a reason;
+# do not weaken these defaults just to make a future dependency pass.
+
+[graph]
+all-features = true
+
+[advisories]
+ignore = []
+
+[licenses]
+confidence-threshold = 0.8
+unused-allowed-license = "allow"
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CC0-1.0",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+]
+
+[licenses.private]
+# The scaffold is not published yet; resolve release licensing before packaging.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
