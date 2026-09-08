@@ -26,5 +26,6 @@ The core scaffold requires neither Python nor R. See
 
 The initial Python migration baseline is pinned in
 [docs/migration/](docs/migration/). Build checks and the recorded parser/script
-oracle run do not establish Rust behavioral or statistical parity. Licensing and redistribution decisions must be
-resolved before publication; the proposal's AGPL intent is not a release license.
+oracle run do not establish Rust behavioral or statistical parity. Licensing and
+redistribution decisions must be resolved before publication; the proposal's AGPL
+intent is not a release license.
