@@ -1,0 +1,8 @@
+[package]
+name = "tabdat-duckdb-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
