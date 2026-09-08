@@ -85,8 +85,22 @@ and [ADR 0004](docs/adr/0004-readstat-feasibility.md); the path-scoped [PR #7
 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34197952522)
 built the pinned source and passed all four upstream tests on Linux.
 
+## Verified slice: libgretl feasibility reconnaissance
+
+Evaluate a pinned gretl/libgretl release as a native estimator-backend candidate
+without adding a Rust binding or statistical product support. Verify the source
+archive, record macOS Apple Silicon library/NIST evidence and hosted Linux
+build/link/test evidence, and document initialization, native-handle ownership,
+thread/dependency, and GPLv3 licensing constraints. Do not claim estimator parity,
+FFI safety, or accepted backend status from native tests.
+
+Evidence is recorded in [the libgretl feasibility report](docs/feasibility/libgretl.md)
+and [ADR 0005](docs/adr/0005-libgretl-feasibility.md); the path-scoped [PR #8
+workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201655560)
+built the pinned source and passed all 11 NIST tests on Linux.
+
 ## Next
 
 Resolve the DuckDB prototype's remaining platform/ownership/semantic gaps before
-any production backend integration, or continue ReadStat only through a fixture-backed
-low-level adapter contract.
+any production backend integration, or continue ReadStat/libgretl only through
+fixture-backed low-level adapter contracts.

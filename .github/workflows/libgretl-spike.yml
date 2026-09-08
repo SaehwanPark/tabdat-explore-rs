@@ -1,0 +1,76 @@
+name: libgretl feasibility spike
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/libgretl-spike.yml"
+      - "SPEC.md"
+      - "docs/TABDAT_RUST_PORT_ROADMAP.md"
+      - "docs/adr/0005-libgretl-feasibility.md"
+      - "docs/feasibility/libgretl.md"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/libgretl-spike.yml"
+      - "SPEC.md"
+      - "docs/TABDAT_RUST_PORT_ROADMAP.md"
+      - "docs/adr/0005-libgretl-feasibility.md"
+      - "docs/feasibility/libgretl.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: libgretl-spike-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: libgretl spike on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install libgretl build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libcurl4-openssl-dev \
+            libfftw3-dev \
+            libgmp-dev \
+            libglib2.0-dev \
+            liblapack-dev \
+            libmpfr-dev \
+            libreadline-dev \
+            libxml2-dev \
+            pkg-config
+      - name: Fetch and verify gretl source release
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://downloads.sourceforge.net/project/gretl/gretl/2026b/gretl-2026b.tar.xz"
+          sha256="fb57f4922da546067c8be542aafc5a26be77faf2668b40e651ee8c90b702563d"
+          curl --fail --silent --show-error --location "$url" --output /tmp/gretl.tar.xz
+          echo "$sha256  /tmp/gretl.tar.xz" | sha256sum --check --status
+          rm -rf /tmp/gretl
+          mkdir -p /tmp/gretl
+          tar --extract --xz --file /tmp/gretl.tar.xz --strip-components=1 --directory /tmp/gretl
+      - name: Build libgretl and run NIST smoke tests
+        working-directory: /tmp/gretl
+        run: |
+          ./configure \
+            --disable-gui \
+            --disable-json \
+            --disable-nls \
+            --disable-build-addons \
+            --disable-xdg-utils \
+            --disable-gnuplot-checks \
+            --disable-sse2 \
+            --disable-avx
+          make buildstamp
+          make -C lib -j2
+          make -C tests -j2
+          make -C tests check
