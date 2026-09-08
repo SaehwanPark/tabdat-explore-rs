@@ -168,8 +168,8 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 ### 3.3 libgretl spike
 
-- [ ] Build/link libgretl on macOS Apple Silicon.
-- [ ] Build/link libgretl on Linux x86_64.
+- [x] Build/link libgretl on macOS Apple Silicon ([report](feasibility/libgretl.md)).
+- [x] Build/link libgretl on Linux x86_64 ([PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201353211); [report](feasibility/libgretl.md)).
 - [ ] Create low-level binding crate.
 - [ ] Create safe wrapper crate.
 - [ ] Define Rust-owned `EstimationProblem`.
