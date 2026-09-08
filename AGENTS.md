@@ -15,9 +15,10 @@ Read the relevant sections of:
 - [Roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md): phased work and acceptance gates.
 
 Both documents are proposed plans. Source/tests establish implemented behavior;
-unchecked tasks are not evidence of support. No Python oracle location/revision
-is recorded yet. Recover and pin it before claiming migration parity; record
-conflicts or intentional deviations rather than silently choosing a behavior.
+unchecked tasks are not evidence of support. The initial Python oracle revision and
+authority policy are recorded in [docs/migration/](docs/migration/); recover the
+pinned checkout and slice-specific evidence before claiming migration parity.
+Record conflicts or intentional deviations rather than silently choosing a behavior.
 
 ## Engineering boundaries
 

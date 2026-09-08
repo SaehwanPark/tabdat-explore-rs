@@ -5,8 +5,10 @@
 This is a small **expert pool**, normally used by one engineer/agent. Select only
 skills needed for a bounded task; there is no required worker service, model,
 plugin, or runtime adapter. The repository began with a Rust binary scaffold and
-two proposed planning documents, with no existing agent guidance or Python oracle
-revision. The proposed crate tree is not an installed architecture.
+two proposed planning documents. Repo guidance is now present, and the initial
+Python oracle revision is recorded in [docs/migration/](../../migration/); individual
+slices still require their own contract and comparison evidence. The proposed crate
+tree is not an installed architecture.
 
 [AGENTS.md](../../../AGENTS.md) contains repo-wide rules and checks. The
 [proposal](../../TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) supplies domain intent; the

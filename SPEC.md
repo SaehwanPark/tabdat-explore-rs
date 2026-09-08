@@ -24,10 +24,20 @@ on the initial implementation revision. Every subsequent revision must also pass
 CI before merge. The smoke test characterizes the scaffold, not a migrated public
 CLI contract.
 
-Excluded: parser/runtime/backend implementation, Python oracle recovery, statistical
-parity, security auditing, benchmarks, packaging, and a minimum-supported-Rust claim.
+This build slice excluded parser/runtime/backend implementation, Python oracle
+recovery, statistical parity, security auditing, benchmarks, packaging, and a
+minimum-supported-Rust claim.
+
+## Active slice: Python migration authority
+
+Pin an upstream-identifiable Python commit/tree, inventory behavioral authority and
+fixture entry points, and define conflict/deviation and baseline-update rules.
+Record the separate Rust repository decision and current/proposed architecture.
+Acceptance: local clean checkout and GitHub commit/tree agree; every inventoried
+path exists at that revision; bounded parser/script oracle checks are recorded
+without implying full-suite or Rust parity; guidance has no stale missing-pin claim.
+No Python source edits, dependency installation, backend work, or migrated commands.
 
 ## Next
 
-Pin the Python migration baseline and authority/deviation policy, then complete
-Phase 0 security tooling and architecture decisions before backend integration.
+Complete Phase 0 security tooling before backend feasibility and integration.

@@ -96,14 +96,14 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 
 ### 2.1 Repository setup
 
-- [ ] Decide whether the Rust port lives in a new repository or a clearly isolated workspace during migration.
+- [x] Decide whether the Rust port lives in a new repository or a clearly isolated workspace during migration (ADR 0001).
 - [x] Create [`README.md`](../README.md).
 - [x] Create the [project proposal](TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) (existing canonical filename).
 - [x] Create this roadmap (existing canonical filename).
 - [ ] Create `ARCHITECTURE.md`.
 - [x] Create [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - [x] Create [`AGENTS.md`](../AGENTS.md) and [repo-local domain skills](harness/tabdat/team-spec.md).
-- [ ] Add ADR directory and ADR template.
+- [x] Add ADR directory and ADR template (`docs/adr/`).
 - [x] Configure 2-space formatting conventions where applicable (`.editorconfig`, `rustfmt.toml`).
 - [x] Configure Rust toolchain version policy (`rust-toolchain.toml`, `CONTRIBUTING.md`).
 - [x] Configure `rustfmt`.
@@ -116,11 +116,11 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 
 ### 2.2 Migration authority
 
-- [ ] Record the current Python repository revision used as the migration baseline.
-- [ ] Define which Python documents are authoritative for user-facing behavior.
-- [ ] Define precedence between Python docs and Rust docs during migration.
-- [ ] Define a process for recording intentional Rust deviations.
-- [ ] Add a migration decision log.
+- [x] Record the current Python repository revision used as the migration baseline (`docs/migration/python-baseline.toml`).
+- [x] Define which Python documents are authoritative for user-facing behavior (`docs/migration/README.md`).
+- [x] Define precedence between Python docs and Rust docs during migration (`docs/migration/README.md`).
+- [x] Define a process for recording intentional Rust deviations (`docs/migration/README.md` and `decisions.md`).
+- [x] Add a migration decision log (`docs/migration/decisions.md`).
 - [ ] Freeze major new Python estimator breadth unless required for production maintenance.
 - [ ] Continue Python correctness fixes when they affect canonical behavior.
 
@@ -128,8 +128,8 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 
 - [x] Rust workspace builds in CI (scaffold only; see PR #2 evidence above).
 - [ ] Safety and lint tooling run in CI.
-- [ ] Migration baseline revision is recorded.
-- [ ] Architecture and documentation ownership rules are explicit.
+- [x] Migration baseline revision is recorded (initial pin and verification in `docs/migration/README.md`).
+- [x] Architecture and documentation ownership rules are explicit (ADR 0001 and migration authority policy).
 
 ---
 
