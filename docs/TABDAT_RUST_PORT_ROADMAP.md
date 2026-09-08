@@ -141,17 +141,17 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 ### 3.1 DuckDB spike
 
-- [ ] Create a minimal `duckdb-rs` prototype.
-- [ ] Load Parquet.
-- [ ] Load CSV.
-- [ ] Query Arrow-compatible results.
-- [ ] Test remote HTTP Parquet.
-- [ ] Test S3 support if intended for initial parity.
-- [ ] Implement active-relation lifecycle prototype.
-- [ ] Measure startup cost.
-- [ ] Measure first-query cost.
-- [ ] Measure repeated-query overhead.
-- [ ] Document ownership/copy behavior.
+- [x] Create a minimal `duckdb-rs` prototype (`spikes/duckdb-prototype/`; [report](feasibility/duckdb.md)).
+- [x] Load Parquet (local fixture; [report](feasibility/duckdb.md)).
+- [x] Load CSV (local fixture; [report](feasibility/duckdb.md)).
+- [x] Query Arrow-compatible results (local `RecordBatch` rows; [report](feasibility/duckdb.md)).
+- [ ] Test remote HTTP Parquet (deferred; no authorized endpoint in this slice).
+- [ ] Test S3 support if intended for initial parity (deferred pending scope decision).
+- [x] Implement active-relation lifecycle prototype (owned in-memory connection/view).
+- [x] Measure startup cost (release orientation measurement; not a release gate).
+- [x] Measure first-query cost (release orientation measurement; not a release gate).
+- [x] Measure repeated-query overhead (release orientation measurement; not a release gate).
+- [x] Document ownership/copy behavior ([report](feasibility/duckdb.md)); production adapter remains deferred.
 
 ### 3.2 ReadStat spike
 

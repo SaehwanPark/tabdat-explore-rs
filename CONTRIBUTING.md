@@ -63,3 +63,19 @@ successful exit, exact greeting, and empty stderr. None of these checks validate
 TabDat semantics, statistical accuracy, dependency security, or native packaging.
 Those need separate roadmap evidence. The binary and integration test forbid
 unsafe code; future ordinary crates must do the same.
+
+The isolated DuckDB feasibility prototype is not part of the root workspace. When
+working on `spikes/duckdb-prototype/`, use its committed lockfile and keep build
+artifacts under the ignored root target directory:
+
+```sh
+cargo fmt --manifest-path spikes/duckdb-prototype/Cargo.toml -- --check
+CARGO_TARGET_DIR=target/duckdb-spike cargo test --manifest-path spikes/duckdb-prototype/Cargo.toml --locked
+CARGO_TARGET_DIR=target/duckdb-spike cargo build --manifest-path spikes/duckdb-prototype/Cargo.toml --release --locked
+target/duckdb-spike/release/measure
+```
+
+The path-scoped `DuckDB feasibility spike` workflow covers the Linux build/test;
+macOS Apple Silicon evidence, dependency audit, and native unsafe inventory remain
+explicitly recorded in `docs/feasibility/duckdb.md`, not presented as a
+product-support guarantee.

@@ -1,0 +1,45 @@
+name: DuckDB feasibility spike
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "spikes/duckdb-prototype/**"
+      - "docs/adr/0003-duckdb-feasibility-spike.md"
+      - "docs/feasibility/duckdb.md"
+      - ".github/workflows/duckdb-spike.yml"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
+  pull_request:
+    paths:
+      - "spikes/duckdb-prototype/**"
+      - "docs/adr/0003-duckdb-feasibility-spike.md"
+      - "docs/feasibility/duckdb.md"
+      - ".github/workflows/duckdb-spike.yml"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: duckdb-spike-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: DuckDB spike on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install repository-pinned toolchain
+        run: rustup show active-toolchain
+      - name: Check spike formatting
+        run: cargo fmt --manifest-path spikes/duckdb-prototype/Cargo.toml -- --check
+      - name: Run spike tests
+        run: cargo test --manifest-path spikes/duckdb-prototype/Cargo.toml --locked
+        env:
+          CARGO_TARGET_DIR: target/duckdb-spike
