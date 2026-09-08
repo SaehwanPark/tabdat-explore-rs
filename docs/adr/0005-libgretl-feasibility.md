@@ -45,7 +45,7 @@ findings are preserved rather than presented as product support.
 
 The macOS NIST smoke program initialized and cleaned up libgretl and passed 11
 reference datasets with zero unexpected errors and zero poor/unacceptable results.
-Hosted Linux verification passed in [PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201353211)
+Hosted Linux verification passed in [PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201655560)
 before marking the two roadmap build/link items complete. Neither result
 establishes ABI stability, thread safety, plugin safety, GPLv3 redistribution
 compatibility, or statistical parity. Supersede this ADR if libgretl is rejected or

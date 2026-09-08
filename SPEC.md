@@ -96,7 +96,7 @@ FFI safety, or accepted backend status from native tests.
 
 Evidence is recorded in [the libgretl feasibility report](docs/feasibility/libgretl.md)
 and [ADR 0005](docs/adr/0005-libgretl-feasibility.md); the path-scoped [PR #8
-workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201353211)
+workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201655560)
 built the pinned source and passed all 11 NIST tests on Linux.
 
 ## Next

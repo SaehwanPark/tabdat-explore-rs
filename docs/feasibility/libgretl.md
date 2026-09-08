@@ -30,7 +30,7 @@ state.
 | Platform | Result | Exact scope |
 | --- | --- | --- |
 | macOS Apple Silicon | Pass, local | gretl `2026b` static `libgretl-1.0` build with Homebrew dependencies and explicit Apple Clang/libomp flags; manually linked `tests/nistcheck.c`; 11 NIST datasets reported zero unexpected errors and zero poor/unacceptable libgretl results |
-| Linux x86_64 | Pass ([PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201353211)) | Pinned archive, static library, `make -C tests check`, and 11 NIST datasets; the workflow passed with zero unexpected errors and zero poor/unacceptable libgretl results |
+| Linux x86_64 | Pass ([PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201655560)) | Pinned archive, static library, `make -C tests check`, and 11 NIST datasets; the workflow passed with zero unexpected errors and zero poor/unacceptable libgretl results |
 
 The macOS library build used the following bounded configuration choices:
 `--disable-gui --disable-json --disable-nls --disable-build-addons
