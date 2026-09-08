@@ -100,7 +100,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [x] Create [`README.md`](../README.md).
 - [x] Create the [project proposal](TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) (existing canonical filename).
 - [x] Create this roadmap (existing canonical filename).
-- [ ] Create `ARCHITECTURE.md`.
+- [x] Create [`ARCHITECTURE.md`](../ARCHITECTURE.md) as current-versus-proposed architecture authority.
 - [x] Create [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - [x] Create [`AGENTS.md`](../AGENTS.md) and [repo-local domain skills](harness/tabdat/team-spec.md).
 - [x] Add ADR directory and ADR template (`docs/adr/`).
@@ -129,7 +129,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [x] Rust workspace builds in CI (scaffold only; see PR #2 evidence above).
 - [x] Safety and lint tooling run in CI (policy job in the linked PR #4 run).
 - [x] Migration baseline revision is recorded (initial pin and verification in `docs/migration/README.md`).
-- [x] Architecture and documentation ownership rules are explicit (ADR 0001 and migration authority policy).
+- [x] Architecture and documentation ownership rules are explicit ([`ARCHITECTURE.md`](../ARCHITECTURE.md), ADR 0001, and migration authority policy).
 
 ---
 

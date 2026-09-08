@@ -51,7 +51,17 @@ ran all three policy checks and the Rust baseline successfully on the latest
 revision. Policy scope and expected future review are recorded in ADR 0002. No
 dependency, backend, FFI, or product-command implementation was added.
 
+## Verified slice: architecture ownership
+
+Create `ARCHITECTURE.md` as the current-state and target-boundary authority. Distinguish
+the implemented scaffold from proposed modules, define language → execution → backend
+direction, typed state/effect boundaries, lazy capabilities, and unsafe/FFI ownership.
+Evidence: `ARCHITECTURE.md` links the proposal, roadmap, ADRs, and migration policy;
+it names current scaffold evidence and explicit exclusions; it introduces no crate,
+command, backend, or parity claim. Documentation-only change; no code or dependency
+change.
+
 ## Next
 
-Create the Rust architecture ownership document, then choose a bounded backend
-feasibility spike.
+Choose a bounded backend feasibility spike only after the architecture boundary is
+reviewed against the relevant native-backend acceptance criteria.

@@ -20,6 +20,7 @@ The core scaffold requires neither Python nor R. See
 ## Project state
 
 - [Implemented state and active scope](SPEC.md)
+- [Current and proposed architecture](ARCHITECTURE.md)
 - [Proposed project design](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md)
 - [Roadmap and acceptance gates](docs/TABDAT_RUST_PORT_ROADMAP.md)
 - [Agent rules](AGENTS.md)
