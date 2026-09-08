@@ -155,8 +155,8 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 ### 3.2 ReadStat spike
 
-- [ ] Build ReadStat on macOS Apple Silicon.
-- [ ] Build ReadStat on Linux x86_64.
+- [x] Build ReadStat on macOS Apple Silicon ([report](feasibility/readstat.md)).
+- [x] Build ReadStat on Linux x86_64 ([PR #7 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34197952522); [report](feasibility/readstat.md)).
 - [ ] Create `readstat-sys`-style low-level bindings.
 - [ ] Create safe Rust facade prototype.
 - [ ] Read representative Stata `.dta` files.

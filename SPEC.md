@@ -71,7 +71,22 @@ the root runtime. Evidence: tiny inspectable tests passed locally and in the Lin
 local macOS release evidence is recorded. Remote/S3, production session integration,
 and parity remain explicitly deferred.
 
+## Verified slice: ReadStat feasibility reconnaissance
+
+Evaluate the pinned ReadStat `v1.0.0` release as a native DTA-ingestion candidate
+without adding a Rust binding or product support. Verify the release archive,
+record the macOS Apple Silicon build/test evidence and hosted Linux build/test
+result, and document callback ownership, label/missingness surfaces, licensing,
+and explicit adapter prerequisites. Do not claim DTA ingestion, labels,
+missingness parity, or FFI safety from the native upstream test suite.
+
+Evidence is recorded in [the ReadStat feasibility report](docs/feasibility/readstat.md)
+and [ADR 0004](docs/adr/0004-readstat-feasibility.md); the path-scoped [PR #7
+workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34197952522)
+built the pinned source and passed all four upstream tests on Linux.
+
 ## Next
 
 Resolve the DuckDB prototype's remaining platform/ownership/semantic gaps before
-any production backend integration.
+any production backend integration, or continue ReadStat only through a fixture-backed
+low-level adapter contract.
