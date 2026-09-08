@@ -12,6 +12,8 @@ commands, crates, or backends as present.
 Read the relevant sections of:
 - [Project proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md): product intent,
   architecture, migration method, and constraints.
+- [Architecture](ARCHITECTURE.md): current-versus-proposed Rust boundaries,
+  ownership, state/effect rules, and explicit deferrals.
 - [Roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md): phased work and acceptance gates.
 
 Both documents are proposed plans. Source/tests establish implemented behavior;

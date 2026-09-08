@@ -11,9 +11,10 @@ slices still require their own contract and comparison evidence. The proposed cr
 tree is not an installed architecture.
 
 [AGENTS.md](../../../AGENTS.md) contains repo-wide rules and checks. The
-[proposal](../../TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) supplies domain intent; the
-[roadmap](../../TABDAT_RUST_PORT_ROADMAP.md) supplies phased gates. Skills translate
-those documents into repeatable work, not a second feature-status tracker.
+[architecture](../../../ARCHITECTURE.md) owns current-versus-proposed Rust boundaries;
+the [proposal](../../TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) supplies domain intent;
+the [roadmap](../../TABDAT_RUST_PORT_ROADMAP.md) supplies phased gates. Skills
+translate those documents into repeatable work, not a second feature-status tracker.
 Update guidance when its linked contracts change; do not copy the roadmap here.
 
 ## Routing
