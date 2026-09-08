@@ -71,11 +71,15 @@ Preserve unrelated work. Commit/push only when authorized; do not force-push.
 - Delegate bounded research, implementation, or independent review when useful;
   retain one integration owner and serialize overlapping writes. Unavailable agents
   are a reason to work serially, not to invent review results.
-- The active roadmap request authorizes commits, pushes, PR creation, and autonomous
-  merging into `main`. Before merge, inspect the diff, resolve blocking review
+- While executing the user's active autonomous roadmap request, commits, pushes,
+  PR creation, and merging into `main` are authorized for its bounded slices only.
+  This is not standing permission for unrelated tasks or later sessions without
+  that request; a newer user restriction (such as local-only work) takes precedence.
+  Before merge, inspect the diff, resolve blocking review
   findings, and require applicable local checks and hosted CI to pass on the latest
   revision. Absence of CI is not evidence of a passing CI run: record the bootstrap
-  exception for guidance-only work, and establish CI in the next setup slice.
+  exception only for the initial guidance PR (#1), and establish CI in the next
+  setup slice. Do not reuse that exception for subsequent documentation PRs.
 - After merge, update the clean local `main`, choose the next slice, and repeat.
   Do not force-push, bypass protections, silently waive failed checks, or mark the
   whole roadmap complete after a single slice. Stop with evidence and needed input
