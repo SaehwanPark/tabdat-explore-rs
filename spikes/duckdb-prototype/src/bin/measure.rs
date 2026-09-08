@@ -28,6 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   println!("first_query_us={}", first_query.as_micros());
   println!("repeated_100_queries_us={}", repeated_query.as_micros());
 
+  drop(relation);
   fs::remove_dir_all(root)?;
   Ok(())
 }

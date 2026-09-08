@@ -82,9 +82,9 @@ CSV fixture, one in-memory connection:
 ```text
 duckdb_version=v1.5.5
 rows=2
-cold_open_us=14415
-first_query_us=2142
-repeated_100_queries_us=93573
+cold_open_us=16146
+first_query_us=2824
+repeated_100_queries_us=95325
 ```
 
 These are orientation measurements, not release gates: they include local filesystem
