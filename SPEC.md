@@ -38,17 +38,18 @@ path exists at that revision; bounded parser/script oracle checks are recorded
 without implying full-suite or Rust parity; guidance has no stale missing-pin claim.
 No Python source edits, dependency installation, backend work, or migrated commands.
 
-## Active slice: dependency and unsafe-code checks
+## Verified slice: dependency and unsafe-code checks
 
 Pin the security-tool versions used by CI, configure dependency license/advisory
 policy for the current scaffold, run `cargo deny`, `cargo audit`, and `cargo geiger`
 in CI, and document that these checks cover the Rust workspace rather than Python
 or future native backends. Keep runtime dependencies unchanged.
 
-Acceptance: each tool has an explicit version and locked installation; local runs
-pass on the pinned toolchain; a PR CI job runs all three checks on the latest
-revision; policy scope and expected future review are recorded. No dependency,
-backend, FFI, or product-command implementation.
+Evidence: each tool has an explicit version and locked installation; local runs
+passed on the pinned toolchain; [PR #4 CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34187594609)
+ran all three policy checks and the Rust baseline successfully on the latest
+revision. Policy scope and expected future review are recorded in ADR 0002. No
+dependency, backend, FFI, or product-command implementation was added.
 
 ## Next
 
