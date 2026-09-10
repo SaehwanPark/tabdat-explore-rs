@@ -157,14 +157,14 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 - [x] Build ReadStat on macOS Apple Silicon ([report](feasibility/readstat.md)).
 - [x] Build ReadStat on Linux x86_64 ([PR #7 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34197952522); [report](feasibility/readstat.md)).
-- [ ] Create `readstat-sys`-style low-level bindings.
-- [ ] Create safe Rust facade prototype.
-- [ ] Read representative Stata `.dta` files.
-- [ ] Preserve variable labels.
-- [ ] Preserve value labels.
-- [ ] Validate missing-value behavior.
-- [ ] Convert data without pandas.
-- [ ] Confirm all unsafe code is confined to the low-level adapter.
+- [x] Create `readstat-sys`-style low-level bindings ([spike](../spikes/readstat-prototype/readstat-sys/src/lib.rs); [report](feasibility/readstat.md)).
+- [x] Create safe Rust facade prototype (`#![forbid(unsafe_code)]` crate root; [spike](../spikes/readstat-prototype/src/lib.rs)).
+- [x] Read representative Stata `.dta` files ([tests](../spikes/readstat-prototype/tests/dta_ingestion.rs)).
+- [x] Preserve variable labels ([tests](../spikes/readstat-prototype/tests/dta_ingestion.rs)).
+- [x] Preserve value labels (numeric sets fully; string value-label keys are not preserved by ReadStat — [report](feasibility/readstat.md)).
+- [x] Validate missing-value behavior (system/tagged preserved; missing strings arrive as empty strings — [report](feasibility/readstat.md)).
+- [x] Convert data without pandas ([tests](../spikes/readstat-prototype/tests/dta_ingestion.rs)).
+- [x] Confirm all unsafe code is confined to the low-level adapter (`forbid(unsafe_code)` facade; [report](feasibility/readstat.md)).
 
 ### 3.3 libgretl spike
 

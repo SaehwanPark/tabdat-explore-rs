@@ -1,0 +1,9 @@
+[package]
+name = "readstat-sys"
+version = "0.0.0"
+edition = "2024"
+publish = false
+build = "build.rs"
+description = "Low-level ReadStat v1.0.0 FFI adapter for the TabDat DTA ingestion spike"
+
+[dependencies]
