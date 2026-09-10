@@ -62,36 +62,6 @@ and `git diff --check`.
 Update only roadmap items supported by evidence, not entire phases by inference.
 Preserve unrelated work. Commit/push only when authorized; do not force-push.
 
-## Roadmap development loop
-
-- One loop is one bounded target slice, one meaningful development unit, and one
-  PR. Recover branch/PR state before selecting the next unmet roadmap gate.
-- Use two spaces for indentation throughout (no hard tabs), except formats that
-  require otherwise. Configure editors and formatters rather than relying on memory.
-- Use functional-first design: pure domain transformations, explicit state and
-  typed failures, effects at adapter boundaries; avoid speculative abstractions.
-- Use specification-driven development: record scope and observable acceptance
-  before implementation; keep specs, architecture, and history aligned with evidence.
-- Use TDD for behavior changes: add a focused test, observe the intended failure,
-  implement the smallest correct change, then rerun checks. For documentation and
-  configuration, validate their actual contracts rather than inventing product tests.
-- Delegate bounded research, implementation, or independent review when useful;
-  retain one integration owner and serialize overlapping writes. Unavailable agents
-  are a reason to work serially, not to invent review results.
-- While executing the user's active autonomous roadmap request, commits, pushes,
-  PR creation, and merging into `main` are authorized for its bounded slices only.
-  This is not standing permission for unrelated tasks or later sessions without
-  that request; a newer user restriction (such as local-only work) takes precedence.
-  Before merge, inspect the diff, resolve blocking review
-  findings, and require applicable local checks and hosted CI to pass on the latest
-  revision. Absence of CI is not evidence of a passing CI run: record the bootstrap
-  exception only for the initial guidance PR (#1), and establish CI in the next
-  setup slice. Do not reuse that exception for subsequent documentation PRs.
-- After merge, update the clean local `main`, choose the next slice, and repeat.
-  Do not force-push, bypass protections, silently waive failed checks, or mark the
-  whole roadmap complete after a single slice. Stop with evidence and needed input
-  when access, authority, missing contracts, or unexplained failures block progress.
-
 ## Repo-local skills
 
 Use [the routing and handoff guide](docs/harness/tabdat/team-spec.md) to select
@@ -107,3 +77,48 @@ only the relevant skills:
   spikes, FFI safety, native dependency decisions, and capability costs.
 
 Skills are portable markdown; no particular agent runtime or delegation is required.
+
+## Subagents
+
+Use subagents proactively to reduce main-context growth.
+
+* Delegate bounded, self-contained investigation or implementation tasks when the parent mainly needs the result, not the working process.
+* Prefer subagents for work that requires reading many files, logs, tests, documentation, or other large intermediate context.
+* Give subagents only the context and scope needed for their task; avoid copying the full parent conversation unless necessary.
+* Ask subagents to return concise findings, evidence/references, risks, and recommended actions rather than raw working context.
+* Keep architectural decisions, cross-component integration, and final verification with the parent agent.
+* Avoid redundant subagents inspecting the same scope unless independent review is intentional.
+* If a subagent's scope expands substantially, it should escalate back to the parent rather than absorbing unrelated work.
+* Use the main context for decisions; use subagent contexts for discovery.
+
+See `docs/subagents_policy.md` for detailed delegation patterns and guidance.
+
+## Asynchronous GitHub Communication
+
+Use GitHub proactively as the durable communication channel when human collaborators are unavailable or work may continue across sessions.
+
+* Prefer remote branches, commits, PRs, and GitHub discussions/comments over keeping important state only in local context.
+* Push meaningful work to a remote branch regularly when it is safe and useful to preserve progress.
+* Open a draft PR early for non-trivial work when it provides a useful place for status, design notes, review, and human steering.
+* Keep PR descriptions and comments updated with current status, key decisions, unresolved questions, risks, and next steps.
+* Use commits and PRs to leave a durable trail that another human or agent can resume without reconstructing the full conversation.
+* When blocked on a human decision, record the question and relevant context in the PR or issue rather than leaving it only in transient agent context.
+* Prefer small, reviewable commits and branches with clear scope.
+* Do not merge, close, force-push shared work, or perform other irreversible repository actions unless explicitly authorized or clearly permitted by project policy.
+* Never commit secrets, credentials, private data, or machine-specific sensitive artifacts.
+
+Use local context for active reasoning; use GitHub for durable project state and asynchronous human communication.
+
+## Agentic Loop
+
+Use agentic loops for long-running tasks or when pursuing goals.
+
+One loop is defined by
+
+1. Select target slice (what to implement/examine/do)
+2. Design a plan
+3. Execute the plan
+4. Test and verify
+5. Update documents if necessary
+6. PR handoff and merge autonomously
+7. Move on to the next task or slice
