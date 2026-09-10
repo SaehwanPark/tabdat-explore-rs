@@ -170,12 +170,12 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 - [x] Build/link libgretl on macOS Apple Silicon ([report](feasibility/libgretl.md)).
 - [x] Build/link libgretl on Linux x86_64 ([PR #8 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34201655560); [report](feasibility/libgretl.md)).
-- [ ] Create low-level binding crate.
-- [ ] Create safe wrapper crate.
-- [ ] Define Rust-owned `EstimationProblem`.
-- [ ] Define Rust-owned `EstimationResult`.
-- [ ] Prevent `MODEL`, `DATASET`, or raw handles from escaping the adapter.
-- [ ] Implement OLS fixture.
+- [x] Create low-level binding crate ([`gretl-sys`](../spikes/gretl-prototype/gretl-sys/src/lib.rs) + C ownership shim; [ADR 0006](adr/0006-libgretl-ffi-adapter-and-ols-fixture.md)).
+- [x] Create safe wrapper crate ([`tabdat-gretl-spike`](../spikes/gretl-prototype/src/lib.rs), `forbid(unsafe_code)`; [ADR 0006](adr/0006-libgretl-ffi-adapter-and-ols-fixture.md)).
+- [x] Define Rust-owned `EstimationProblem` ([spike](../spikes/gretl-prototype/src/lib.rs)).
+- [x] Define Rust-owned `EstimationResult` ([spike](../spikes/gretl-prototype/src/lib.rs)).
+- [x] Prevent `MODEL`, `DATASET`, or raw handles from escaping the adapter (RAII wrappers; `forbid(unsafe_code)` facade; [ADR 0006](adr/0006-libgretl-ffi-adapter-and-ols-fixture.md)).
+- [x] Implement OLS fixture ([test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [ ] Implement robust OLS fixture.
 - [ ] Implement clustered OLS fixture.
 - [ ] Implement logit fixture.
@@ -190,8 +190,8 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [ ] Implement dynamic-panel fixture.
 - [ ] Implement Heckman fixture.
 - [ ] Implement survival fixture.
-- [ ] Compare results against Python TabDat.
-- [ ] Compare results against trusted reference outputs.
+- [x] Compare results against Python TabDat (NIST Longley; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
+- [x] Compare results against trusted reference outputs (NIST/ITL certified; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [ ] Document semantic mismatches.
 - [ ] Benchmark first-use initialization.
 - [ ] Benchmark repeated-model overhead.

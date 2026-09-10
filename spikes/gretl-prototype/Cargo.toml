@@ -1,0 +1,12 @@
+[package]
+name = "tabdat-gretl-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Safe facade over libgretl OLS for the TabDat estimator-backend feasibility spike"
+
+[dependencies]
+gretl-sys = { path = "gretl-sys" }
+
+[lib]
+path = "src/lib.rs"

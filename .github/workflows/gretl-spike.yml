@@ -1,0 +1,65 @@
+name: libgretl OLS Rust spike
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gretl-spike.yml"
+      - "SPEC.md"
+      - "docs/TABDAT_RUST_PORT_ROADMAP.md"
+      - "docs/adr/0006-libgretl-ffi-adapter-and-ols-fixture.md"
+      - "docs/feasibility/libgretl.md"
+      - "spikes/gretl-prototype/**"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/gretl-spike.yml"
+      - "SPEC.md"
+      - "docs/TABDAT_RUST_PORT_ROADMAP.md"
+      - "docs/adr/0006-libgretl-ffi-adapter-and-ols-fixture.md"
+      - "docs/feasibility/libgretl.md"
+      - "spikes/gretl-prototype/**"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gretl-spike-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-spike:
+    name: libgretl OLS Rust spike on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install libgretl build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libcurl4-openssl-dev \
+            libfftw3-dev \
+            libgmp-dev \
+            libglib2.0-dev \
+            liblapack-dev \
+            libmpfr-dev \
+            libreadline-dev \
+            libxml2-dev \
+            pkg-config
+      - name: Install repository-pinned toolchain
+        run: rustup show active-toolchain
+      - name: Check spike formatting
+        run: cargo fmt --manifest-path spikes/gretl-prototype/Cargo.toml -- --check
+      - name: Run spike tests (builds libgretl from source via build.rs)
+        run: cargo test --manifest-path spikes/gretl-prototype/Cargo.toml --locked
+        env:
+          CARGO_TARGET_DIR: target/gretl-spike
