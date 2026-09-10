@@ -1,0 +1,9 @@
+[package]
+name = "tabdat-readstat-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Safe facade over the ReadStat DTA reader for the TabDat ingestion spike"
+
+[dependencies]
+readstat-sys = { path = "readstat-sys" }

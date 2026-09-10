@@ -8,6 +8,10 @@ on:
       - "docs/TABDAT_RUST_PORT_ROADMAP.md"
       - "docs/adr/0004-readstat-feasibility.md"
       - "docs/feasibility/readstat.md"
+      - "spikes/readstat-prototype/**"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
   push:
     branches:
       - main
@@ -17,6 +21,10 @@ on:
       - "docs/TABDAT_RUST_PORT_ROADMAP.md"
       - "docs/adr/0004-readstat-feasibility.md"
       - "docs/feasibility/readstat.md"
+      - "spikes/readstat-prototype/**"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "deny.toml"
   workflow_dispatch:
 
 permissions:
@@ -52,3 +60,18 @@ jobs:
           cflags='-Wno-error=stringop-truncation -Wno-error=use-after-free -Wno-error=format-truncation'
           make -j2 libreadstat.la CFLAGS="$cflags"
           make check CFLAGS="$cflags"
+  rust-spike:
+    name: ReadStat Rust spike on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install repository-pinned toolchain
+        run: rustup show active-toolchain
+      - name: Check spike formatting
+        run: cargo fmt --manifest-path spikes/readstat-prototype/Cargo.toml -- --check
+      - name: Run spike tests (builds vendored ReadStat via build.rs)
+        run: cargo test --manifest-path spikes/readstat-prototype/Cargo.toml --locked
+        env:
+          CARGO_TARGET_DIR: target/readstat-spike
