@@ -221,6 +221,11 @@ fn make_lib(src: &Path, is_macos: bool) {
 }
 
 /// Compile the C ownership shim into a static archive (libshim.a).
+///
+/// The shim includes `libgretl.h`, which pulls in glib, libxml2, and other
+/// dependency headers. Those live in platform-specific subdirectories, so the
+/// include flags are obtained from `pkg-config` (the same mechanism gretl's
+/// configure uses) rather than hard-coded paths.
 fn build_shim(manifest_dir: &Path, out_dir: &Path, is_macos: bool) -> PathBuf {
   let shim_c = manifest_dir.join("shim.c");
   let shim_obj = out_dir.join("shim.o");
@@ -242,29 +247,62 @@ fn build_shim(manifest_dir: &Path, out_dir: &Path, is_macos: bool) -> PathBuf {
     "-I",
     gretl_root_s,
   ];
+
+  // Dependency include flags via pkg-config (glib, libxml2, fftw, gmp, mpfr).
+  let dep_cflags = pkg_config_cflags(
+    &["glib-2.0", "libxml-2.0", "fftw3", "gmp", "mpfr"],
+    is_macos,
+  );
+  for flag in dep_cflags.split_whitespace() {
+    args.push(flag);
+  }
+
   if is_macos {
     args.extend([
       "-I/opt/homebrew/include",
       "-I/opt/homebrew/opt/libomp/include",
-      "-I/opt/homebrew/opt/libxml2/include/libxml2",
-      "-I/opt/homebrew/opt/glib/include/glib-2.0",
-      "-I/opt/homebrew/opt/glib/lib/glib-2.0/include",
-      "-I/opt/homebrew/opt/gettext/include",
-      "-I/opt/homebrew/opt/pcre2/include",
-      "-I/opt/homebrew/opt/fftw/include",
-      "-I/opt/homebrew/opt/r/lib/R/include",
     ]);
   } else {
-    args.extend(["-I/usr/include", "-fopenmp"]);
+    args.push("-fopenmp");
   }
   run("cc", &args, manifest_dir);
 
   // Archive the shim object so it links as a standard static library.
   let shim_a = out_dir.join("libshim.a");
   let shim_a_s = shim_a.to_str().unwrap();
-  let shim_obj_s = shim_obj.to_str().unwrap();
-  run("ar", &["cru", shim_a_s, shim_obj_s], out_dir);
+  let shim_obj_s2 = shim_obj.to_str().unwrap();
+  run("ar", &["cru", shim_a_s, shim_obj_s2], out_dir);
   shim_a
+}
+
+/// Run `pkg-config --cflags` for the given packages, returning the flags.
+///
+/// On macOS, Homebrew's pkgconfig files are not on the default search path, so
+/// `PKG_CONFIG_PATH` is set to the Homebrew opt directories.
+fn pkg_config_cflags(packages: &[&str], is_macos: bool) -> String {
+  let mut command = Command::new("pkg-config");
+  command.arg("--cflags");
+  for p in packages {
+    command.arg(p);
+  }
+  if is_macos {
+    command.env(
+      "PKG_CONFIG_PATH",
+      "/opt/homebrew/opt/glib/lib/pkgconfig:/opt/homebrew/opt/libxml2/lib/pkgconfig:/opt/homebrew/opt/fftw/lib/pkgconfig:/opt/homebrew/opt/gmp/lib/pkgconfig:/opt/homebrew/opt/mpfr/lib/pkgconfig:/opt/homebrew/lib/pkgconfig",
+    );
+  }
+  let out = command
+    .output()
+    .unwrap_or_else(|e| panic!("failed to run pkg-config: {e}"));
+  let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+  if !out.status.success() {
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    panic!(
+      "pkg-config --cflags {} failed: {stderr}",
+      packages.join(" ")
+    );
+  }
+  stdout
 }
 
 fn emit_dependency_flags(is_macos: bool) {
