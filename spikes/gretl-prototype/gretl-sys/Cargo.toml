@@ -1,0 +1,10 @@
+[package]
+name = "gretl-sys"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Low-level FFI bindings to libgretl (gretl 2026b) for the TabDat estimator-backend spike"
+build = "build.rs"
+
+[lib]
+path = "src/lib.rs"
