@@ -38,7 +38,8 @@ The contract cites the pinned model, parser, test, and command documentation
 paths, records the parser/docs `by:` discrepancy, and keeps SHA-256 and data
 semantics deferred. The parity fixes update the contract's precedence and
 unsupported-argument rows; full condition-expression tokenization remains
-explicitly deferred. Final independent review is pending.
+explicitly deferred. Final independent reviews at `79ba1d9` and `28bcf2f`
+reported no remaining contract or evidence finding.
 
 ### Workspace/policy pass
 
@@ -57,7 +58,7 @@ scope changed. Baseline policy scans and hosted checks remain required.
 
 ## Disposition
 
-No in-scope finding is currently open. Do not claim signature computation,
+No in-scope finding is open. Do not claim signature computation,
 active-dataset behavior, result serialization, `by:` wrappers, or complete
 tokenizer parity from this syntax-only slice. Mark the PR ready only after the
 independent reviews and all hosted checks are green.

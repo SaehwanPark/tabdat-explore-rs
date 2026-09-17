@@ -1,7 +1,7 @@
 # `datasignature` syntax evidence
 
-Status: partial; implementation is pushed in draft PR #16 and awaits review
-and hosted verification.
+Status: partial; implementation is pushed in draft PR #16, independent reviews
+are complete, and hosted verification is pending.
 
 Producer: task owner
 
