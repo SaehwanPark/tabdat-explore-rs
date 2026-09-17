@@ -71,6 +71,12 @@ fn summarize_is_a_public_syntax_only_command() {
     parse_command("summarize").unwrap(),
     Command::Summarize { variables: vec![] }
   );
+  assert_eq!(
+    parse_command("summarize `x``y` \"report\"").unwrap(),
+    Command::Summarize {
+      variables: vec!["x`y".to_owned(), "report".to_owned()],
+    }
+  );
 }
 
 #[test]

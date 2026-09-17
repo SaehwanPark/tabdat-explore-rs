@@ -1423,6 +1423,12 @@ mod tests {
       }
     );
     assert_eq!(
+      parse_command("summarize `x``y` \"report\"").unwrap(),
+      Command::Summarize {
+        variables: vec!["x`y".to_owned(), "report".to_owned()],
+      }
+    );
+    assert_eq!(
       parse_command("summarize age age").unwrap(),
       Command::Summarize {
         variables: vec!["age".to_owned(), "age".to_owned()],
