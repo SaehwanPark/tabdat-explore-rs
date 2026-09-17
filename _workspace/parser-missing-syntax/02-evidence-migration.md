@@ -56,6 +56,7 @@ quoted/backtick variable names, condition/option/assignment rejection, missing
   exact-diagnostic coverage;
 - `_workspace/parser-missing-syntax/01-contract.md`: recovered migration
   boundary;
+- `_workspace/parser-missing-syntax/03-review.md`: independent review record;
 - this file: verification and deferral record.
 
 No active relation, schema lookup, filesystem access, session mutation,
