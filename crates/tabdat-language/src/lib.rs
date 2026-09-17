@@ -218,31 +218,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       }
     }
-    "datasignature" => {
-      if body.is_empty() {
-        Ok(Command::Datasignature)
-      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
-        Err(ParseError::new(
-          "comma must be followed by at least one option",
-        ))
-      } else if body.starts_with('=') && !body.starts_with("==") {
-        Err(ParseError::new(
-          "datasignature assignment requires a target before =",
-        ))
-      } else if body.starts_with("==") {
-        Err(ParseError::new("unsupported token in command: =="))
-      } else if body.starts_with('-') {
-        Err(ParseError::new("unsupported token in command: -"))
-      } else if body.starts_with('+') {
-        Err(ParseError::new("unsupported token in command: +"))
-      } else if body.eq_ignore_ascii_case("if") {
-        Err(ParseError::new("missing expression after if"))
-      } else {
-        Err(ParseError::new(
-          "datasignature does not accept arguments, if clauses, options, or assignment syntax",
-        ))
-      }
-    }
+    "datasignature" => parse_datasignature_command(body),
     "set" => parse_set_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
@@ -360,6 +336,28 @@ fn parse_set_command(body: &str) -> Result<Command, ParseError> {
     name,
     value: parts.arguments[1].text.clone(),
   })
+}
+
+fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "datasignature assignment requires a target before =",
+    ));
+  }
+  if parts.arguments.is_empty()
+    && !parts.has_options
+    && !parts.has_assignment
+    && !parts.has_condition
+  {
+    return Ok(Command::Datasignature);
+  }
+  Err(ParseError::new(
+    "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+  ))
 }
 
 fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
@@ -1008,6 +1006,9 @@ mod tests {
         "datasignature if age > 0",
         "datasignature does not accept arguments, if clauses, options, or assignment syntax",
       ),
+      ("datasignature age if", "missing expression after if"),
+      ("datasignature if, fast", "missing expression after if"),
+      ("datasignature if,", "missing expression after if"),
       (
         "datasignature, fast",
         "datasignature does not accept arguments, if clauses, options, or assignment syntax",
@@ -1032,6 +1033,10 @@ mod tests {
       ("datasignature == now", "unsupported token in command: =="),
       ("datasignature -1", "unsupported token in command: -"),
       ("datasignature +1", "unsupported token in command: +"),
+      ("datasignature age==x", "unsupported token in command: =="),
+      ("datasignature age-1", "unsupported token in command: -"),
+      ("datasignature age+1", "unsupported token in command: +"),
+      ("datasignature age!x", "unsupported token in command: !"),
     ];
     for (input, expected) in cases {
       assert_eq!(
