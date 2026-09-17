@@ -16,6 +16,8 @@ pub enum Command {
   Describe,
   /// Inspect environment and capability health (execution is deferred).
   Doctor,
+  /// Compute a signature for the active dataset (execution is deferred).
+  Datasignature,
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Count rows in the active dataset (execution is deferred).
@@ -216,6 +218,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       }
     }
+    "datasignature" => parse_datasignature_command(body),
     "set" => parse_set_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
@@ -333,6 +336,28 @@ fn parse_set_command(body: &str) -> Result<Command, ParseError> {
     name,
     value: parts.arguments[1].text.clone(),
   })
+}
+
+fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "datasignature assignment requires a target before =",
+    ));
+  }
+  if parts.arguments.is_empty()
+    && !parts.has_options
+    && !parts.has_assignment
+    && !parts.has_condition
+  {
+    return Ok(Command::Datasignature);
+  }
+  Err(ParseError::new(
+    "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+  ))
 }
 
 fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
@@ -671,6 +696,18 @@ mod tests {
   }
 
   #[test]
+  fn parses_datasignature_with_case_and_whitespace_normalization() {
+    assert_eq!(
+      parse_command("datasignature").unwrap(),
+      Command::Datasignature
+    );
+    assert_eq!(
+      parse_command("\tDATASIGNATURE\u{1c}").unwrap(),
+      Command::Datasignature
+    );
+  }
+
+  #[test]
   fn parses_set_values_without_executing_configuration() {
     assert_eq!(
       parse_command(" SET GRAPH_FORMAT PnG ").unwrap(),
@@ -948,6 +985,70 @@ mod tests {
       ("doctor == now", "unsupported token in command: =="),
       ("doctor -1", "unsupported token in command: -"),
       ("doctor +1", "unsupported token in command: +"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_datasignature_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "datasignature age",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age > 0",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age==x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age+x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age-x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      ("datasignature age if", "missing expression after if"),
+      ("datasignature if, fast", "missing expression after if"),
+      ("datasignature if,", "missing expression after if"),
+      (
+        "datasignature, fast",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      ("datasignature if", "missing expression after if"),
+      (
+        "datasignature,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "datasignature age,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "datasignature = value",
+        "datasignature assignment requires a target before =",
+      ),
+      (
+        "datasignature=value",
+        "datasignature assignment requires a target before =",
+      ),
+      ("datasignature == now", "unsupported token in command: =="),
+      ("datasignature -1", "unsupported token in command: -"),
+      ("datasignature +1", "unsupported token in command: +"),
+      ("datasignature age==x", "unsupported token in command: =="),
+      ("datasignature age-1", "unsupported token in command: -"),
+      ("datasignature age+1", "unsupported token in command: +"),
+      ("datasignature age!x", "unsupported token in command: !"),
     ];
     for (input, expected) in cases {
       assert_eq!(

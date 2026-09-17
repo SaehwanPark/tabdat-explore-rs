@@ -5,8 +5,9 @@
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
-`exit`/`quit`, `describe`, `doctor`, `set`, `count`, `head`, and `tail`. There is still
-no usable TabDat CLI, data runtime, or statistical model implementation.
+`exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`, and
+`tail`. There is still no usable TabDat CLI, data runtime, or statistical model
+implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -146,6 +147,28 @@ parser/script oracle passed with `516 passed in 0.43s` at revision
 This slice leaves typed configuration state, value validation, runtime effects,
 persistence, reporting/serialization, prefixed commands, and the complete
 tokenizer/option grammar to later roadmap work.
+
+## Verified slice: syntax-only `datasignature` command
+
+Add the direct, zero-argument `datasignature` form to `tabdat-language` as a
+typed, backend-independent command. Case/whitespace normalization and the
+pinned Python diagnostics for arguments, conditions, options, assignments,
+unsupported argument tokens (`==`/`-`/`+`/`!`), missing `if` expressions, and
+trailing commas are covered by focused tests. This slice does not hash data,
+access an active relation, mutate session state, execute a command, or
+initialize a backend.
+
+Evidence: `_workspace/parser-datasignature-syntax/01-contract.md`,
+`_workspace/parser-datasignature-syntax/02-evidence-migration.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
+`datasignature` parser test passed with `1 passed, 10 deselected`; the full
+parser/script oracle remains `516 passed` at revision
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
+
+This slice leaves SHA-256/signature semantics, active-dataset preconditions,
+schema/row-order and missingness rules, result/reporting/serialization,
+prefixed commands, and the full tokenizer/command inventory to later roadmap
+work.
 
 ## Verified slice: dependency and unsafe-code checks
 
