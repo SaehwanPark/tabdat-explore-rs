@@ -11,9 +11,10 @@ Consumer: reviewers and the next maintainer
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `5b7b2ee` (contract), `e0bcde1` (typed command,
-bounded parser, runtime rejection, and tests), and `abfa95f` (isid-specific
-duplicate-key and doubled-backtick regression coverage). The documentation/
-evidence revisions complete this record. The final squash commit will be recorded
+bounded parser, runtime rejection, and tests), `abfa95f` (isid-specific
+duplicate-key and doubled-backtick regression coverage), and `12da61b`
+(empty-assignment diagnostic parity). The documentation/evidence revisions
+complete this record. The final squash commit will be recorded
 here after PR #23 merges.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
