@@ -440,6 +440,10 @@ fn select_preserves_exact_public_diagnostics() {
     ("select age = x", "select only accepts a variable list"),
     ("select = x", "select assignment requires a target before ="),
     (
+      "select age =",
+      "select assignment requires an expression after =",
+    ),
+    (
       "select age,",
       "comma must be followed by at least one option",
     ),

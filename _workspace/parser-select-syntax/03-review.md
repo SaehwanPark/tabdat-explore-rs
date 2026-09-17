@@ -1,6 +1,7 @@
 # `select` syntax slice review
 
-Status: review requested; hosted acceptance and merge are pending.
+Status: review requested; corrected implementation, hosted acceptance, and
+merge are pending.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 

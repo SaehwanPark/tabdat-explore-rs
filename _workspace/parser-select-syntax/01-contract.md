@@ -58,6 +58,7 @@ Exact observed diagnostics:
 | `select` | `select expects at least one variable` |
 | `select age if age > 0`, `select age, stable`, or `select age = x` | `select only accepts a variable list` |
 | `select = x` | `select assignment requires a target before =` |
+| `select age =` | `select assignment requires an expression after =` |
 | `select age,` | `comma must be followed by at least one option` |
 | `select if` | `missing expression after if` |
 | `select age==x` | `unsupported token in command: ==` |
@@ -76,7 +77,7 @@ cd ../tabdat-explore
 PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
 from tabdat.parser import parse_command, ParseError
 
-cases = ("select age sex", "SELECT   age   sex", "select `a,b`", 'select "old name" age', "select age age", "select", "select age if age > 0", "select age, stable", "select age = x", "select = x", "select age,", "select if", "select age==x", "select age-1", "select age+1", "select age!x", "select age@x", "select age sex now")
+cases = ("select age sex", "SELECT   age   sex", "select `a,b`", 'select "old name" age', "select age age", "select", "select age if age > 0", "select age, stable", "select age = x", "select = x", "select age =", "select age,", "select if", "select age==x", "select age-1", "select age+1", "select age!x", "select age@x", "select age sex now")
 for text in cases:
     try:
         print(f"{text!r} -> {parse_command(text)!r}")
@@ -98,6 +99,7 @@ At the pinned revision it prints:
 'select age, stable' -> select only accepts a variable list
 'select age = x' -> select only accepts a variable list
 'select = x' -> select assignment requires a target before =
+'select age =' -> select assignment requires an expression after =
 'select age,' -> comma must be followed by at least one option
 'select if' -> missing expression after if
 'select age==x' -> unsupported token in command: ==

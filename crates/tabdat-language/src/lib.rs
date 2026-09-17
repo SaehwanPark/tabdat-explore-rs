@@ -681,6 +681,11 @@ fn parse_select_command(body: &str) -> Result<Command, ParseError> {
       "select assignment requires a target before =",
     ));
   }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "select assignment requires an expression after =",
+    ));
+  }
   if parts.has_options || parts.has_assignment || parts.has_condition {
     return Err(ParseError::new("select only accepts a variable list"));
   }
@@ -1990,6 +1995,10 @@ mod tests {
       ("select age, stable", "select only accepts a variable list"),
       ("select age = x", "select only accepts a variable list"),
       ("select = x", "select assignment requires a target before ="),
+      (
+        "select age =",
+        "select assignment requires an expression after =",
+      ),
       (
         "select age,",
         "comma must be followed by at least one option",

@@ -87,6 +87,7 @@ results:
 'select age, stable' -> select only accepts a variable list
 'select age = x' -> select only accepts a variable list
 'select = x' -> select assignment requires a target before =
+'select age =' -> select assignment requires an expression after =
 'select age,' -> comma must be followed by at least one option
 'select if' -> missing expression after if
 'select age==x' -> unsupported token in command: ==
@@ -97,10 +98,41 @@ results:
 'select age sex now' -> SelectCommand(variables=('age', 'sex', 'now'))
 ```
 
-Additional boundary probes covered `select:age`, attached punctuation,
-leading punctuation, comma-only forms, and separator control characters; they
-matched the generic parser diagnostics or preserved variable tokens as recorded
-in `01-contract.md`.
+The reproducible boundary-probe command was:
+
+```sh
+cd ../tabdat-explore
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
+from tabdat.parser import parse_command, ParseError
+
+cases = ('select:age', 'select=age', 'select==age', 'select age:sex', 'select age/sex', 'select age.age', 'select +age', 'select -age', 'select !age', 'select @age', 'select age,', 'select,', 'select if x > 0', 'select AGE\x1cSEX', 'select  age\x1dsex')
+for text in cases:
+    try:
+        print(f'{text!r} -> {parse_command(text)!r}')
+    except ParseError as exc:
+        print(f'{text!r} -> {exc}')
+PY
+```
+
+At the pinned revision it prints:
+
+```text
+'select:age' -> unsupported token in command: :
+'select=age' -> select assignment requires a target before =
+'select==age' -> unsupported token in command: ==
+'select age:sex' -> unsupported token in command: :
+'select age/sex' -> unsupported token in command: /
+'select age.age' -> unsupported token in command: .
+'select +age' -> unsupported token in command: +
+'select -age' -> unsupported token in command: -
+'select !age' -> unsupported token in command: !
+'select @age' -> unsupported token in command: @
+'select age,' -> comma must be followed by at least one option
+'select,' -> comma must be followed by at least one option
+'select if x > 0' -> select only accepts a variable list
+'select AGE\\x1cSEX' -> SelectCommand(variables=('AGE', 'SEX'))
+'select  age\\x1dsex' -> SelectCommand(variables=('age', 'sex'))
+```
 
 ## Rust checks
 
