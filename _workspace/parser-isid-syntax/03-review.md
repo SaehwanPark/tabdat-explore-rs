@@ -1,8 +1,8 @@
 # `isid` syntax review
 
-Status: draft pending the final hosted checks and PR #23 acceptance. The
-bounded parser contract is otherwise review-approved after the fixes recorded
-below.
+Status: parser, contract, and workspace review approved; the implementation
+head `eee32f2` passed all hosted checks. PR #23 remains draft until the final
+documentation-head check set passes and the merge is completed.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -52,10 +52,9 @@ The focused/full pinned Python oracle results, locked Rust checks, dependency
 and advisory scans, metadata-driven unsafe inventory, and targeted Rust tests
 are recorded in `02-evidence-migration.md`. The complete local baseline and
 policy run passed on `cd5bc47`; the subsequent `4b2dc99` change only corrected
-the geiger report wording. Hosted checks for PR #23 are currently pending:
-Rust baseline, dependency/unsafe policy, and the `tabdat-runtime` Linux job.
-Their final job links and the squash merge commit will be added here before
-the PR is marked ready.
+the geiger report wording. The implementation head `eee32f2` passed the full
+hosted set linked in `02-evidence-migration.md`; the final documentation-head
+set and squash merge commit will be added after the next check cycle.
 
 ## Disposition
 

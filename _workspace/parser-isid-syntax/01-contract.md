@@ -1,6 +1,7 @@
 # Contract: syntax-only `isid`
 
-Status: bounded contract proposed for review; execution and full tokenizer
+Status: bounded contract accepted for review; PR #23 still requires the final
+documentation-head hosted checks before merge. Execution and full tokenizer
 parity remain deferred.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`

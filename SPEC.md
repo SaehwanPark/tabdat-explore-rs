@@ -309,9 +309,9 @@ behavior, conditions/options, prefixed commands, full tokenizer/varlist/
 expression grammar, execution/results, reporting/serialization, and backend
 capability initialization to later roadmap work.
 
-## In-progress slice: syntax-only `isid` command
+## Verified slice: syntax-only `isid` command
 
-PR #23 is adding direct, backend-independent `isid [varlist] [, missok]` syntax to
+PR #23 adds direct, backend-independent `isid [varlist] [, missok]` syntax to
 `tabdat-language`. The parser returns an owned ordered key-variable list and an
 exact-lowercase `missok` flag, preserving the bounded pinned-Python diagnostics
 for missing keys, unsupported conditions/options/assignments, option values,

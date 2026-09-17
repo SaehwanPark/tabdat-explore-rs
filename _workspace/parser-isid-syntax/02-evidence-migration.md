@@ -1,8 +1,9 @@
 # `isid` syntax evidence
 
-Status: draft pending independent review and hosted checks. The bounded slice
-is accepted only when PR #23 is squash-merged; the Phase 4 `isid` execution
-item remains unchecked.
+Status: acceptance checks passed on implementation head `eee32f2`; this
+evidence-only follow-up must pass the same hosted checks before PR #23 is
+promoted and squash-merged. The Phase 4 `isid` execution item remains
+unchecked.
 
 Producer: task owner
 
@@ -128,9 +129,17 @@ dependency inventory, the expected bundled-DuckDB warning described by ADR
 0007. The geiger process completed successfully and did not identify
 first-party unsafe usage. These scans do not prove native FFI safety.
 
-Hosted checks for the final PR head and the post-merge main commit will be
+The implementation head `eee32f2` passed every hosted workflow required for
+this change: [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029423/jobs/105293564089),
+[dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029423/jobs/105293563893),
+[tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029348/jobs/105293433534),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029704/jobs/105293098572),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029704/jobs/105293098745),
+[libgretl](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029361/jobs/105293097338),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029360/jobs/105293098147).
+The final documentation-head check set and post-merge main checks will be
 recorded after GitHub completes them. Local evidence is not a substitute for
-those hosted checks.
+hosted checks.
 
 ## Supported and deferred behavior
 
