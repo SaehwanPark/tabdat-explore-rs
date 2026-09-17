@@ -2,7 +2,7 @@
 
 Status: partial until hosted checks pass on the final revision
 Reviewer: task owner with three independent read-only review passes
-Revision reviewed: `f9f225e`
+Revision reviewed: `7c91f22`
 
 ## Original acceptance checks
 
@@ -29,8 +29,8 @@ Revision reviewed: `f9f225e`
 4. Follow-up parser pass found only later malformed quote tokens and punctuation
    diagnostics outside the intentionally deferred full-tokenizer boundary. The
    contract and evidence explicitly defer those cases; they do not affect accepted
-   scoped commands. A final follow-up review is pending on the latest documentation
-   and workspace-isolation commit.
+   scoped commands. The final follow-up on `7c91f22` found no new actionable code or
+   CI defects.
 
 ## Verification reviewed
 
