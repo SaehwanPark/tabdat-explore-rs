@@ -31,6 +31,8 @@ pub enum Command {
     variables: Vec<String>,
     missok: bool,
   },
+  /// Execute a script file (script execution is deferred).
+  Run { path: String },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Select a dataset source and loading options (execution is deferred).
@@ -180,6 +182,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"run"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
@@ -201,6 +211,23 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       return Err(ParseError::new("unsupported token in command: =="));
     }
     return Err(ParseError::new("use assignment requires a target before ="));
+  }
+  if name.eq_ignore_ascii_case("run") && delimiter == ',' {
+    if command[command_end + 1..]
+      .trim_matches(is_command_whitespace)
+      .is_empty()
+    {
+      return Err(ParseError::new(
+        "comma must be followed by at least one option",
+      ));
+    }
+    return Err(ParseError::new("unknown command: run"));
+  }
+  if name.eq_ignore_ascii_case("run") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("run assignment requires a target before ="));
   }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
@@ -285,6 +312,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
+    "run" => parse_run_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
@@ -618,6 +646,26 @@ fn parse_isid_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
     missok: options.iter().any(|option| option.name == "missok"),
+  })
+}
+
+fn parse_run_command(body: &str) -> Result<Command, ParseError> {
+  let mut path_parts = body
+    .trim_matches(is_command_whitespace)
+    .split(is_command_whitespace)
+    .filter(|part| !part.is_empty());
+  let Some(path) = path_parts.next() else {
+    return Err(ParseError::new(
+      "run expects exactly one path: run <script>",
+    ));
+  };
+  if path_parts.next().is_some() {
+    return Err(ParseError::new(
+      "run expects exactly one path: run <script>",
+    ));
+  }
+  Ok(Command::Run {
+    path: path.to_owned(),
   })
 }
 
@@ -1824,6 +1872,72 @@ mod tests {
       ("isid patient_id!x", "unsupported token in command: !"),
       ("isid patient_id@x", "unsupported token in command: @"),
       ("isid patient_id, MISSOK", "isid unsupported option: MISSOK"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_run_path_without_execution() {
+    assert_eq!(
+      parse_command(" run analysis.td ").unwrap(),
+      Command::Run {
+        path: "analysis.td".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("RUN\u{1c}analysis.td").unwrap(),
+      Command::Run {
+        path: "analysis.td".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("run \"analysis.td\"").unwrap(),
+      Command::Run {
+        path: "\"analysis.td\"".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("run `analysis.td`").unwrap(),
+      Command::Run {
+        path: "`analysis.td`".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("run analysis.td,").unwrap(),
+      Command::Run {
+        path: "analysis.td,".to_owned(),
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_run_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("run", "run expects exactly one path: run <script>"),
+      ("run   ", "run expects exactly one path: run <script>"),
+      (
+        "run a.td b.td",
+        "run expects exactly one path: run <script>",
+      ),
+      (
+        "run \"a b.td\"",
+        "run expects exactly one path: run <script>",
+      ),
+      (
+        "run a.td if x > 0",
+        "run expects exactly one path: run <script>",
+      ),
+      ("run,", "comma must be followed by at least one option"),
+      ("run,foo", "unknown command: run"),
+      ("run=foo", "run assignment requires a target before ="),
+      ("run==foo", "unsupported token in command: =="),
+      ("run:foo", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(

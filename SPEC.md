@@ -6,7 +6,7 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-and `tail`, plus the verified direct `use`, `codebook [varlist]`,
+`tail`, `run <script-path>`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 and `isid [varlist] [, missok]` forms. Merged PR #22 (`26dba2b`) accepted a separate library-only
 `tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
@@ -332,6 +332,24 @@ null-key and duplicate-key semantics, active-relation/schema behavior, key
 scans, result/reporting/serialization, full tokenizer/varlist/option and
 expression grammar, scripts, CLI/JSON/MCP surfaces, and backend capability
 initialization to later roadmap work.
+
+## Pending slice: syntax-only `run <script-path>`
+
+PR #24 adds a direct, backend-independent `run <script-path>` parser form.
+The parser returns the exact non-empty path token as an owned string and
+preserves the pinned Python arity and command-boundary diagnostics. Runtime
+execution remains an explicit typed unsupported-command error; no script file
+is read, no command is executed, and no session or backend state changes.
+
+Evidence and final acceptance are tracked in
+`_workspace/parser-run-syntax/{01-contract,02-evidence-migration,03-review}.md`.
+The focused/full oracle, locked Rust, and policy checks are recorded as passed;
+independent review, hosted checks, and the merge result remain pending.
+
+This bounded form leaves path normalization, line-oriented script execution,
+comments, multiline SQL, macros, control flow, nested/recursive scripts,
+file/line diagnostics, full tokenizer parity, CLI/JSON/MCP surfaces, and
+backend capability initialization to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 

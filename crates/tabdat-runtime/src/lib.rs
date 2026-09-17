@@ -216,6 +216,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Missing { .. } => "missing",
     Command::Duplicates { .. } => "duplicates",
     Command::Isid { .. } => "isid",
+    Command::Run { .. } => "run",
     Command::Set { .. } => "set",
     Command::Use { .. } => "use",
     Command::Count => "count",
