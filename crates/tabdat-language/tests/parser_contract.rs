@@ -316,6 +316,79 @@ fn duplicates_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn isid_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" ISID patient_id visit ").unwrap(),
+    Command::Isid {
+      variables: vec!["patient_id".to_owned(), "visit".to_owned()],
+      missok: false,
+    }
+  );
+  assert_eq!(
+    parse_command("isid `patient_id` visit, missok").unwrap(),
+    Command::Isid {
+      variables: vec!["patient_id".to_owned(), "visit".to_owned()],
+      missok: true,
+    }
+  );
+  assert_eq!(
+    parse_command("isid `a,b`, missok").unwrap(),
+    Command::Isid {
+      variables: vec!["a,b".to_owned()],
+      missok: true,
+    }
+  );
+}
+
+#[test]
+fn isid_preserves_exact_public_diagnostics() {
+  let cases = [
+    ("isid", "isid expects at least one key variable"),
+    ("isid, missok", "isid expects at least one key variable"),
+    ("isid,", "comma must be followed by at least one option"),
+    (
+      "isid patient_id if visit > 0",
+      "isid only accepts a variable list and missok option",
+    ),
+    (
+      "isid patient_id = other",
+      "isid only accepts a variable list and missok option",
+    ),
+    (
+      "isid = patient_id",
+      "isid assignment requires a target before =",
+    ),
+    ("isid patient_id, report", "isid unsupported option: report"),
+    (
+      "isid patient_id, foo bar",
+      "isid unsupported option: bar, foo",
+    ),
+    (
+      "isid patient_id, missok(true)",
+      "isid option missok does not accept a value",
+    ),
+    (
+      "isid patient_id, missok 1",
+      "option missok value must use option=value syntax",
+    ),
+    ("isid patient_id if", "missing expression after if"),
+    ("isid patient_id==x", "unsupported token in command: =="),
+    ("isid patient_id-x", "unsupported token in command: -"),
+    ("isid patient_id+x", "unsupported token in command: +"),
+    ("isid patient_id!x", "unsupported token in command: !"),
+    ("isid patient_id@x", "unsupported token in command: @"),
+    ("isid patient_id, MISSOK", "isid unsupported option: MISSOK"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),

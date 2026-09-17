@@ -26,6 +26,11 @@ pub enum Command {
   Missing { variables: Vec<String> },
   /// Report duplicate key groups (execution is deferred).
   Duplicates { variables: Vec<String> },
+  /// Assert key uniqueness for selected variables (execution is deferred).
+  Isid {
+    variables: Vec<String>,
+    missok: bool,
+  },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Select a dataset source and loading options (execution is deferred).
@@ -279,6 +284,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "codebook" => parse_codebook_command(body),
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
+    "isid" => parse_isid_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
@@ -539,6 +545,96 @@ fn parse_duplicates_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
   })
+}
+
+fn parse_isid_command(body: &str) -> Result<Command, ParseError> {
+  let (variable_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(variable_body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "isid assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment || parts.has_condition {
+    return Err(ParseError::new(
+      "isid only accepts a variable list and missok option",
+    ));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("isid expects at least one key variable"));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| option.name != "missok")
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "isid unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  if options
+    .iter()
+    .any(|option| option.name == "missok" && option.value != UseOptionValue::Flag)
+  {
+    return Err(ParseError::new(
+      "isid option missok does not accept a value",
+    ));
+  }
+
+  Ok(Command::Isid {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+    missok: options.iter().any(|option| option.name == "missok"),
+  })
+}
+
+fn first_unquoted_comma(text: &str) -> Option<usize> {
+  let bytes = text.as_bytes();
+  let mut quote = None;
+  let mut index = 0;
+  while index < bytes.len() {
+    let character = bytes[index];
+    if let Some(active_quote) = quote {
+      if character == active_quote {
+        if active_quote == b'`' && bytes.get(index + 1) == Some(&active_quote) {
+          index += 2;
+          continue;
+        }
+        quote = None;
+      }
+      index += 1;
+      continue;
+    }
+    match character {
+      b'\'' | b'"' | b'`' => {
+        quote = Some(character);
+        index += 1;
+      }
+      b',' => return Some(index),
+      _ => index += 1,
+    }
+  }
+  None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1624,6 +1720,79 @@ mod tests {
       ("duplicates id+1", "unsupported token in command: +"),
       ("duplicates id!x", "unsupported token in command: !"),
       ("duplicates id@x", "unsupported token in command: @"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_isid_variables_and_missok_without_execution() {
+    assert_eq!(
+      parse_command(" ISID patient_id visit ").unwrap(),
+      Command::Isid {
+        variables: vec!["patient_id".to_owned(), "visit".to_owned()],
+        missok: false,
+      }
+    );
+    assert_eq!(
+      parse_command("isid\u{1c}`a,b`\u{1d}visit, missok missok").unwrap(),
+      Command::Isid {
+        variables: vec!["a,b".to_owned(), "visit".to_owned()],
+        missok: true,
+      }
+    );
+    assert_eq!(
+      parse_command("isid \"\"").unwrap(),
+      Command::Isid {
+        variables: vec![String::new()],
+        missok: false,
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_isid_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("isid", "isid expects at least one key variable"),
+      ("isid, missok", "isid expects at least one key variable"),
+      ("isid,", "comma must be followed by at least one option"),
+      (
+        "isid patient_id if visit > 0",
+        "isid only accepts a variable list and missok option",
+      ),
+      (
+        "isid patient_id = other",
+        "isid only accepts a variable list and missok option",
+      ),
+      (
+        "isid = patient_id",
+        "isid assignment requires a target before =",
+      ),
+      ("isid patient_id, report", "isid unsupported option: report"),
+      (
+        "isid patient_id, foo bar",
+        "isid unsupported option: bar, foo",
+      ),
+      (
+        "isid patient_id, missok(true)",
+        "isid option missok does not accept a value",
+      ),
+      (
+        "isid patient_id, missok 1",
+        "option missok value must use option=value syntax",
+      ),
+      ("isid patient_id if", "missing expression after if"),
+      ("isid patient_id==x", "unsupported token in command: =="),
+      ("isid patient_id-x", "unsupported token in command: -"),
+      ("isid patient_id+x", "unsupported token in command: +"),
+      ("isid patient_id!x", "unsupported token in command: !"),
+      ("isid patient_id@x", "unsupported token in command: @"),
+      ("isid patient_id, MISSOK", "isid unsupported option: MISSOK"),
     ];
     for (input, expected) in cases {
       assert_eq!(
