@@ -6,7 +6,7 @@ currently prints `Hello, world!`. The workspace has begun a safe language layer 
 a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
 `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `isid`,
-`rename`, `run`, `count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
+`select`, `rename`, `run`, `count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
 direct `summarize [varlist]`, and direct `isid [varlist] [, missok]` forms are
 syntax-only; no data engine or statistical
 backend is installed as a supported product surface. Merged PR #22 (`26dba2b`) accepted a bounded
@@ -27,6 +27,10 @@ file/line diagnostics remain deferred to the roadmap's script-engine work.
 Merged PR #25 (`89f6c14`) adds the owned syntax-only `rename <old> <new>` form.
 Schema lookup, collision checks, relation mutation, and execution remain
 deferred.
+
+Draft PR #26 adds the owned syntax-only `select <varlist>` form. Active-schema
+lookup, wildcard/range expansion, relation mutation, and execution remain
+deferred pending review and hosted verification.
 
 ## Development
 

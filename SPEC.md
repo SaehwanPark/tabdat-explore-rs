@@ -9,7 +9,9 @@ crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `tail`, `run <script-path>`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 and `isid [varlist] [, missok]` forms. Merged PR #25 (`89f6c14`) adds the
-verified direct `rename <old> <new>` form. Merged PR #22 (`26dba2b`) accepted a separate library-only
+verified direct `rename <old> <new>` form. Draft PR #26 adds a direct
+syntax-only `select <varlist>` form; it is not accepted until review and
+hosted verification complete. Merged PR #22 (`26dba2b`) accepted a separate library-only
 `tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
 the binary and does not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
@@ -369,6 +371,20 @@ Evidence and independent review are recorded in
 `_workspace/parser-rename-syntax/`. The focused/full oracle, local locked and
 policy checks, seven PR-head hosted jobs, squash merge, branch cleanup, and
 post-merge `main` verification are recorded there as passed.
+
+## Draft slice: syntax-only `select` command
+
+Draft PR #26 adds direct `select <varlist>` syntax to `tabdat-language` using
+the existing pure simple-body argument path. The parser returns one or more
+owned names, preserves their order and duplicates, reuses quote/backtick
+unwrapping, and preserves the pinned condition, option, assignment, trailing
+comma, and punctuation diagnostics. Runtime execution remains an explicit
+unsupported-command result; active-schema lookup, wildcard/range expansion,
+relation mutation, and execution are deferred.
+
+The contract and migration evidence are in
+`_workspace/parser-select-syntax/`; independent review and hosted acceptance
+are pending. This draft wording is not evidence of accepted support.
 
 ## Verified slice: dependency and unsafe-code checks
 

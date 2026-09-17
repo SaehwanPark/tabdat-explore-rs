@@ -28,13 +28,13 @@ and `uv.lock` SHA-256
 Authoritative paths:
 
 - `src/tabdat/models.py:256-259`: `SelectCommand(variables)`;
-- `src/tabdat/parser.py:127,629-634,3036-3123,3327-3395`: command inventory,
+- `src/tabdat/parser.py:126,629-634,3036-3123,3327-3395`: command inventory,
   specialized direct branch, and generic token/boundary handling;
 - `tests/test_parser.py:254-272,1334-1343,1490-1495`: positive, quoted-name,
   and invalid-command coverage;
 - `docs/commands/select.md:1-24` and `src/tabdat/help/topics/select.md:1-14`:
   public syntax and intent;
-- `src/tabdat/cli.py:35,126,329`: catalog/effect metadata.
+- `src/tabdat/cli.py:133,308-313`: catalog/effect metadata.
 
 Accepted direct forms preserve argument order and spelling while normalizing the
 case-insensitive command name and separator whitespace:
@@ -65,10 +65,48 @@ Exact observed diagnostics:
 | `select age+1` | `unsupported token in command: +` |
 | `select age!x` | `unsupported token in command: !` |
 | `select age@x` | `unsupported token in command: @` |
-```
 
 The generic parser accepts additional variable tokens (for example,
 `select age sex now`); this is a varlist, not an exact-arity command.
+
+A reproducible pinned-oracle probe is:
+
+```sh
+cd ../tabdat-explore
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
+from tabdat.parser import parse_command, ParseError
+
+cases = ("select age sex", "SELECT   age   sex", "select `a,b`", 'select "old name" age', "select age age", "select", "select age if age > 0", "select age, stable", "select age = x", "select = x", "select age,", "select if", "select age==x", "select age-1", "select age+1", "select age!x", "select age@x", "select age sex now")
+for text in cases:
+    try:
+        print(f"{text!r} -> {parse_command(text)!r}")
+    except ParseError as exc:
+        print(f"{text!r} -> {exc}")
+PY
+```
+
+At the pinned revision it prints:
+
+```text
+'select age sex' -> SelectCommand(variables=('age', 'sex'))
+'SELECT   age   sex' -> SelectCommand(variables=('age', 'sex'))
+'select `a,b`' -> SelectCommand(variables=('a,b',))
+'select "old name" age' -> SelectCommand(variables=('old name', 'age'))
+'select age age' -> SelectCommand(variables=('age', 'age'))
+'select' -> select expects at least one variable
+'select age if age > 0' -> select only accepts a variable list
+'select age, stable' -> select only accepts a variable list
+'select age = x' -> select only accepts a variable list
+'select = x' -> select assignment requires a target before =
+'select age,' -> comma must be followed by at least one option
+'select if' -> missing expression after if
+'select age==x' -> unsupported token in command: ==
+'select age-1' -> unsupported token in command: -
+'select age+1' -> unsupported token in command: +
+'select age!x' -> unsupported token in command: !
+'select age@x' -> unsupported token in command: @
+'select age sex now' -> SelectCommand(variables=('age', 'sex', 'now'))
+```
 
 ## Rust contract
 
