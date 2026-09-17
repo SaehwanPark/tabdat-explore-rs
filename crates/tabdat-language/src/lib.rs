@@ -455,6 +455,9 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             return Err(ParseError::new("unsupported token in command: ."));
           }
           if matches!(characters[index], '\'' | '"' | '`') {
+            if allow_symbols && !text.is_empty() {
+              break;
+            }
             let quote = characters[index];
             quoted = true;
             backtick_quoted = backtick_quoted || quote == '`';
@@ -979,6 +982,10 @@ mod tests {
       ),
       (
         "set graph_format 'a''b'",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format foo\"bar\"",
         "set expects syntax: set name value",
       ),
     ];
