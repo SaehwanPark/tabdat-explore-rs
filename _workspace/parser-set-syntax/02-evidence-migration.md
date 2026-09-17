@@ -10,7 +10,8 @@ Consumer: reviewer and next maintainer
 Boundary: Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `47a58c8` (contract), `627591b`, `58426aa`,
-`a54e55f`, and `8fcd522` (parser, parity fixes, quote boundaries, and tests)
+`a54e55f`, `8fcd522`, and `2d51ed8` (parser, parity fixes, quote/`if`
+boundaries, and tests)
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
