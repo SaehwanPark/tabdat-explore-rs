@@ -180,6 +180,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   let name = &command[..command_end];
   let body = command[command_end..].trim_matches(is_command_whitespace);
   if name.eq_ignore_ascii_case("use") && delimiter == ',' {
+    parse_use_options(command[command_end + 1..].trim_matches(is_command_whitespace))?;
     return Err(ParseError::new("unknown command: use"));
   }
   if name.eq_ignore_ascii_case("use") && delimiter == '=' {
@@ -1422,6 +1423,8 @@ mod tests {
         "option names must be identifiers",
       ),
       ("use, lazy", "unknown command: use"),
+      ("use,", "comma must be followed by at least one option"),
+      ("use,,", "option names must be identifiers"),
       ("use=data", "use assignment requires a target before ="),
       ("use==data", "unsupported token in command: =="),
       ("use:data", "unsupported token in command: :"),

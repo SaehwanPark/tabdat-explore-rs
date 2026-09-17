@@ -10,9 +10,9 @@ Consumer: reviewers and the next maintainer
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `860a534` (contract), `9086fa9` (typed command,
-option tokenizer, diagnostics, and tests), and `4eaa5d7` (attached `use:data`
-command-boundary diagnostic fix). Documentation/evidence updates are on the same
-draft branch.
+option tokenizer, diagnostics, and tests), `4eaa5d7` (attached `use:data`
+command-boundary diagnostic fix), and `a0b842a` (Unicode numeric option-token
+classification). Documentation/evidence updates are on the same draft branch.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
