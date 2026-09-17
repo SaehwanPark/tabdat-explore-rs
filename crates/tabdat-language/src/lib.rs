@@ -762,16 +762,15 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
       });
       continue;
     }
-    if character.is_ascii_digit()
+    if character.is_numeric()
       || (character == '.'
         && characters
           .get(index + 1)
-          .is_some_and(|next| next.is_ascii_digit()))
+          .is_some_and(|next| next.is_numeric()))
     {
       let start = index;
       index += 1;
-      while index < characters.len()
-        && (characters[index].is_ascii_digit() || characters[index] == '.')
+      while index < characters.len() && (characters[index].is_numeric() || characters[index] == '.')
       {
         index += 1;
       }
@@ -1379,6 +1378,10 @@ mod tests {
       ),
       (
         "use data.parquet, engine",
+        "use engine option expects a string value",
+      ),
+      (
+        "use data.parquet, engine=١",
         "use engine option expects a string value",
       ),
       (
