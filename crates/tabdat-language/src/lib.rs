@@ -1099,7 +1099,7 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             }
           }
           if matches!(characters[index], '\'' | '"' | '`') {
-            if !text.is_empty() && characters[index] != '`' {
+            if (!text.is_empty() || quoted) && characters[index] != '`' {
               break;
             }
             let quote = characters[index];
@@ -1350,6 +1350,12 @@ mod tests {
       parse_command("codebook \"foo\"\"bar\"").unwrap(),
       Command::Codebook {
         variables: vec!["foo".to_owned(), "bar".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("codebook \"\"\"\"").unwrap(),
+      Command::Codebook {
+        variables: vec![String::new(), String::new()],
       }
     );
   }
