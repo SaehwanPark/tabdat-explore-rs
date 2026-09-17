@@ -1,6 +1,6 @@
 # Contract: syntax-only `set`
 
-Status: proposed for the next bounded parser slice.
+Status: accepted and merged in PR #15 (`bdc1433`).
 
 ## Python contract
 

@@ -1,7 +1,7 @@
 # Set-command syntax review
 
-Status: partial; PR #15 is still draft pending final current-head review and
-hosted checks.
+Status: accepted; PR #15 merged as `bdc1433` after final review and green hosted
+checks.
 
 Reviewer: task owner with three independent read-only review passes
 Contract reviewed: `01-contract.md`
@@ -64,12 +64,12 @@ path-scoped and do not become product dependencies.
   smoke test, 16 language unit tests, six integration tests).
 - Local `cargo deny check`, `cargo audit -D warnings`, and both workspace-package
   Geiger scans: passed with zero unsafe usage.
-- The latest pushed PR head remains the merge authority for the queued baseline,
-  policy, ReadStat, and libgretl workflows.
+- The final pushed PR head was `0457e75`; baseline, policy, ReadStat, and libgretl
+  workflows all passed before merge.
 
 ## Disposition
 
-All identified findings are fixed in the branch and covered by tests. Do not
-claim configuration execution, value validation, persistence, plotting, or
-general tokenizer/option parity from this syntax-only slice. The PR may be marked
-ready only after current-head reviews and hosted checks are green.
+All identified findings are fixed and covered by tests. Do not claim
+configuration execution, value validation, persistence, plotting, or general
+tokenizer/option parity from this syntax-only slice. The merged PR leaves those
+runtime and broader grammar concerns explicitly deferred.

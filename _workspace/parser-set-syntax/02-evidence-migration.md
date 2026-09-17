@@ -1,7 +1,7 @@
 # Set-command syntax evidence
 
-Status: partial; implementation is pushed in PR #15 and awaits review and
-hosted verification.
+Status: accepted and merged in PR #15 as `bdc1433`; all required hosted checks
+passed and the temporary branch was deleted.
 
 Producer: task owner
 
@@ -11,7 +11,8 @@ Boundary: Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `47a58c8` (contract), `627591b`, `58426aa`,
 `a54e55f`, `8fcd522`, and `2d51ed8` (parser, parity fixes, quote/`if`
-boundaries, and tests)
+boundaries, and tests). Review/evidence revisions are `d5a7b62` and
+`0457e75`; the squash merge is `bdc1433`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -83,8 +84,9 @@ per-package cargo geiger metadata loop
   root and tabdat-language: 0 unsafe usage, `#![forbid(unsafe_code)]`
 ```
 
-PR #15 is the hosted-check authority; native ReadStat/libgretl workflows remain
-isolated from this language-only change.
+PR #15 was the hosted-check authority; all baseline, policy, ReadStat, and
+libgretl workflows passed, and the native workflows remain isolated from this
+language-only change.
 
 ## Supported and deferred behavior
 
