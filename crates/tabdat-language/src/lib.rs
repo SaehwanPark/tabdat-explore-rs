@@ -24,6 +24,33 @@ fn is_command_whitespace(character: char) -> bool {
   character.is_whitespace() || matches!(character, '\u{1c}'..='\u{1f}')
 }
 
+fn leading_quote_error(command: &str, quote: u8) -> &'static str {
+  let identifier = quote == b'`';
+  let mut index = 1;
+  let mut content_nonempty = false;
+  let bytes = command.as_bytes();
+  while index < bytes.len() {
+    if bytes[index] == quote {
+      if bytes.get(index + 1) == Some(&quote) {
+        content_nonempty = true;
+        index += 2;
+        continue;
+      }
+      if identifier && !content_nonempty {
+        return "quoted identifier cannot be empty";
+      }
+      return "command must start with an unquoted command name";
+    }
+    content_nonempty = true;
+    index += 1;
+  }
+  if identifier {
+    "unterminated quoted identifier"
+  } else {
+    "unterminated quoted string"
+  }
+}
+
 impl ParseError {
   fn new(message: impl Into<String>) -> Self {
     Self {
@@ -52,19 +79,8 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("empty command"));
   }
 
-  match command.as_bytes().first() {
-    Some(b'`') if !command[1..].contains('`') => {
-      return Err(ParseError::new("unterminated quoted identifier"));
-    }
-    Some(b'\'' | b'"') if !command[1..].contains(command.as_bytes()[0] as char) => {
-      return Err(ParseError::new("unterminated quoted string"));
-    }
-    Some(b'`' | b'\'' | b'"') => {
-      return Err(ParseError::new(
-        "command must start with an unquoted command name",
-      ));
-    }
-    _ => {}
+  if let Some(quote @ (b'`' | b'\'' | b'"')) = command.as_bytes().first().copied() {
+    return Err(ParseError::new(leading_quote_error(command, quote)));
   }
 
   if let Some(help_body) = command.strip_prefix('?') {
@@ -82,7 +98,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     .expect("command_end always points to a character");
   let name = &command[..command_end];
   let body = command[command_end..].trim_matches(is_command_whitespace);
-  if name.eq_ignore_ascii_case("help") && !delimiter.is_whitespace() {
+  if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
   parse_named_command(name, body)
@@ -276,6 +292,12 @@ mod tests {
       "status does not accept arguments, if clauses, options, or assignment syntax"
     );
     assert_eq!(
+      parse_command("help\u{1c},foo").unwrap(),
+      Command::Help {
+        topic: Some(",foo".to_owned()),
+      }
+    );
+    assert_eq!(
       parse_command("\"").unwrap_err().to_string(),
       "unterminated quoted string"
     );
@@ -286,6 +308,18 @@ mod tests {
     assert_eq!(
       parse_command("`").unwrap_err().to_string(),
       "unterminated quoted identifier"
+    );
+    assert_eq!(
+      parse_command("``").unwrap_err().to_string(),
+      "quoted identifier cannot be empty"
+    );
+    assert_eq!(
+      parse_command("`foo``").unwrap_err().to_string(),
+      "unterminated quoted identifier"
+    );
+    assert_eq!(
+      parse_command("\"foo\"\"").unwrap_err().to_string(),
+      "unterminated quoted string"
     );
   }
 }

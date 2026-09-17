@@ -57,7 +57,9 @@ normal syntax and is preserved as literal topic text only when the parser's simp
 topic form receives it; malformed leading quotes retain the oracle's
 `unterminated quoted string`/`unterminated quoted identifier` diagnostics. The
 parser also treats Python's four ASCII information separators (`U+001C`–`U+001F`)
-as whitespace. No general tokenizer or expression grammar is introduced here.
+as whitespace. Empty quoted identifiers and doubled-quote unterminated forms use
+the corresponding Python diagnostics; no general tokenizer or expression grammar
+is introduced here.
 
 ## Rust contract
 
