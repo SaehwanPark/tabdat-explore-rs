@@ -3,8 +3,9 @@
 Rust-native successor to TabDat's terminal-first statistical/EDA environment.
 **This repository is a scaffold, not a usable TabDat CLI.** Running the root binary
 currently prints `Hello, world!`. The workspace has begun a safe language layer with
-a syntax-only parser for a few control/status commands; no data engine or statistical
-backend is installed.
+a syntax-only parser for a few control, status, and inspection commands (`help`,
+`status`, `exit`, `count`, `head`, and `tail`); no data engine or statistical backend
+is installed.
 
 ## Development
 

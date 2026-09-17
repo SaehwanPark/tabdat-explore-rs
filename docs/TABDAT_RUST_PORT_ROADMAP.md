@@ -232,7 +232,7 @@ Build the domain model before substantial runtime implementation.
 
 ### 4.1 Workspace topology
 
-- [x] Create `tabdat-language` (bounded syntax-only parser foundation; PR #11).
+- [x] Create `tabdat-language` (bounded syntax-only parser foundations; PRs #11 and #12).
 - [ ] Create `tabdat-domain`.
 - [ ] Create `tabdat-execution`.
 - [ ] Create `tabdat-data`.
@@ -288,6 +288,8 @@ Port TabDat's language before implementing most execution.
 
 ### 5.1 Parser
 
+- [x] Port bounded syntax-only control/status/inspection forms (`help`, `status`,
+  `exit`, `count`, `head`, and `tail`; PRs #11 and #12).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
