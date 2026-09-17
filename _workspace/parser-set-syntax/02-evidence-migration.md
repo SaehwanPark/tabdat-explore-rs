@@ -9,8 +9,8 @@ Consumer: reviewer and next maintainer
 
 Boundary: Python parser contract → Rust syntax-only parser
 
-Rust implementation revisions: `47a58c8` (contract), `627591b`, `58426aa`, and
-`a54e55f` (parser, parity fixes, and tests)
+Rust implementation revisions: `47a58c8` (contract), `627591b`, `58426aa`,
+`a54e55f`, and `8fcd522` (parser, parity fixes, quote boundaries, and tests)
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -66,19 +66,24 @@ execution, result, serialization, CLI, or runtime dependency changed.
 The implementation currently passes locally:
 
 ```text
-cargo fmt --all
+cargo fmt --all -- --check
+cargo check --locked --workspace --all-targets
 cargo test --locked --workspace --all-targets
   root smoke: 1 passed
   tabdat-language unit tests: 16 passed
   tabdat-language integration tests: 6 passed
 cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
+cargo deny check
+  advisories ok, bans ok, licenses ok, sources ok
+cargo audit -D warnings
+  exit 0; Cargo.lock scanned with the pinned advisory database
+per-package cargo geiger metadata loop
+  root and tabdat-language: 0 unsafe usage, `#![forbid(unsafe_code)]`
 ```
 
-Locked workspace `cargo check` and the dependency/unsafe policy commands remain
-part of the pre-merge verification. PR #15 is the hosted-check authority; native
-ReadStat/libgretl workflows are expected to remain isolated from this language-
-only change.
+PR #15 is the hosted-check authority; native ReadStat/libgretl workflows remain
+isolated from this language-only change.
 
 ## Supported and deferred behavior
 
