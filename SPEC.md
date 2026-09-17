@@ -252,8 +252,8 @@ inspect an active relation or schema, group rows, count duplicates, validate
 variable names, expand wildcards/ranges, execute a command, or initialize a
 backend.
 
-Evidence: `_workspace/parser-duplicates-syntax/01-contract.md`; the draft PR
-and implementation evidence will be linked when available.
+Evidence: `_workspace/parser-duplicates-syntax/{01-contract,02-evidence-migration,03-review}.md`;
+the implementation and tests are on draft PR #20.
 
 This slice leaves duplicate-group and null-key semantics, active-relation/schema
 behavior, conditions/options, prefixed commands, full tokenizer/varlist/
