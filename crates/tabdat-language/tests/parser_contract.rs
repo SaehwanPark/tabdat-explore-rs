@@ -182,6 +182,76 @@ fn missing_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn duplicates_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" DUPLICATES report id label ").unwrap(),
+    Command::Duplicates {
+      variables: vec!["id".to_owned(), "label".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("duplicates id label").unwrap(),
+    Command::Duplicates {
+      variables: vec!["id".to_owned(), "label".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("duplicates `report`").unwrap(),
+    Command::Duplicates {
+      variables: vec!["report".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("duplicates \"report\"").unwrap(),
+    Command::Duplicates { variables: vec![] }
+  );
+}
+
+#[test]
+fn duplicates_preserves_exact_public_diagnostics() {
+  let cases = [
+    (
+      "duplicates id if id > 0",
+      "duplicates does not accept if clauses or options",
+    ),
+    (
+      "duplicates id, missing",
+      "duplicates does not accept if clauses or options",
+    ),
+    (
+      "duplicates id = other",
+      "duplicates does not accept assignment syntax",
+    ),
+    (
+      "duplicates = id",
+      "duplicates assignment requires a target before =",
+    ),
+    (
+      "duplicates id,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "duplicates,",
+      "comma must be followed by at least one option",
+    ),
+    ("duplicates if", "missing expression after if"),
+    ("duplicates id if", "missing expression after if"),
+    ("duplicates id==x", "unsupported token in command: =="),
+    ("duplicates id-1", "unsupported token in command: -"),
+    ("duplicates id+1", "unsupported token in command: +"),
+    ("duplicates id!x", "unsupported token in command: !"),
+    ("duplicates id@x", "unsupported token in command: @"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),
