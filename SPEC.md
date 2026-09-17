@@ -6,8 +6,9 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-and `tail`, plus the in-progress direct `use` syntax slice. There is still no
-usable TabDat CLI, data runtime, or statistical model implementation.
+and `tail`, plus the verified direct `use` form and the in-progress direct
+`codebook [varlist]` syntax slice. There is still no usable TabDat CLI, data
+runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -190,6 +191,27 @@ passed before PR #17 was marked ready and merged.
 This slice leaves data loading, format inference, named-table/session behavior,
 lazy planning, execution/results, reporting/serialization, wrappers, and full
 tokenizer parity to later roadmap work.
+
+## In-progress slice: syntax-only `codebook` command
+
+PR #18 adds direct, backend-independent `codebook [varlist]` syntax to
+`tabdat-language`. The parser returns an owned ordered variable list, supports
+the pinned quote and backtick forms, and preserves the recovered diagnostics for
+conditions, options, assignments, missing `if` expressions, trailing commas,
+and unsupported punctuation. It does not inspect an active dataset or schema,
+validate variable names, expand wildcards/ranges, execute a command, or
+initialize a backend.
+
+Evidence: `_workspace/parser-codebook-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. Focused and
+full pinned Python parser/script checks pass; local Rust and policy checks pass.
+Independent parser/contract/workspace review is complete; the hosted policy job
+remains required before this slice is accepted and merged.
+
+This slice leaves active-dataset/schema semantics, wildcard/range expansion,
+conditions/options, prefixed commands, full tokenizer/varlist/expression
+grammar, execution/results, reporting/serialization, and backend capability
+initialization to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 

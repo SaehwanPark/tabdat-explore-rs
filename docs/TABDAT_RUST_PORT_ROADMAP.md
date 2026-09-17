@@ -291,6 +291,8 @@ Port TabDat's language before implementing most execution.
 - [x] Port bounded syntax-only control/status/inspection/diagnostic/configuration forms
   (`help`, `status`, `exit`, `describe`, `doctor`, `set`, `datasignature`, `count`,
   `head`, `tail`, and direct `use` syntax; PRs #11–#17).
+- [ ] Add the bounded direct `codebook [varlist]` syntax slice (PR #18 in
+  progress; execution and full varlist semantics remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
