@@ -1,7 +1,7 @@
 # Eager local-Parquet runtime evidence
 
-Status: accepted for bounded evaluation; broad `use` parity and production
-DuckDB integration remain deferred after PR #22's green hosted matrix.
+Status: accepted for bounded evaluation and merged on `main`; broad `use` parity
+and production DuckDB integration remain deferred.
 
 Producer: task owner
 
@@ -17,7 +17,10 @@ suffix validation order, parser-to-session wiring, and rejection coverage).
 Commit `cb0e8c3` adds the first-party unsafe-code CI gate, Linux runtime workflow,
 and current-state/evidence corrections. Commit `559f293` fixes the workspace
 manifest/package mapping in that gate, retains geiger reports for review, and
-adds the reproducible eager-failure probe and migration-decision entry.
+adds the reproducible eager-failure probe and migration-decision entry. Commit
+`c7a685d` completes the locked metadata enumeration, probe assertions, and
+acceptance handoff; PR #22 is squash merged on `main` as
+`26dba2b6709e2a5bd16ea5e7f98463bf6d39d4e2`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -266,6 +269,5 @@ all eight required checks passed on implementation head `559f293`:
   plus [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676817)
   (jobs `105240552368` and `105240551819`).
 
-The documentation-only acceptance follow-up is kept separate from this
-implementation evidence; merge and post-merge checks are recorded in
-`04-summary.md`.
+The squash merge and post-merge checks are recorded in
+[`04-summary.md`](04-summary.md); all six workflows triggered by `26dba2b` passed.

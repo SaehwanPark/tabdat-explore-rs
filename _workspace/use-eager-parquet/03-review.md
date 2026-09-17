@@ -1,7 +1,7 @@
 # Eager local-Parquet runtime review
 
-Status: accepted for bounded evaluation; broad runtime parity and production
-DuckDB integration remain deferred.
+Status: accepted for bounded evaluation and merged on `main`; broad runtime
+parity and production DuckDB integration remain deferred.
 
 Reviewer set: independent runtime/parser, contract, and workspace/native review
 agents
@@ -63,7 +63,8 @@ baseline, dependency/advisory scans, metadata-driven geiger inventory, and
 
 ## Disposition
 
-PR #22's bounded contract is accepted for squash merge after the recorded green
-matrix. The merge follow-up must add the squash SHA and post-merge links to
-`04-summary.md`. Do not claim broad Phase 4 `use` support or blanket DuckDB
-production adoption from this slice.
+PR #22's bounded contract was squash merged as
+[`26dba2b`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/26dba2b6709e2a5bd16ea5e7f98463bf6d39d4e2).
+All post-merge workflows passed; their run and job links are recorded in
+[`04-summary.md`](04-summary.md). Do not claim broad Phase 4 `use` support or
+blanket DuckDB production adoption from this slice.

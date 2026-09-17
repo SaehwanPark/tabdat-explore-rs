@@ -7,7 +7,7 @@ successfully. The workspace also contains a backend-independent `tabdat-language
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
 and `tail`, plus the verified direct `use`, `codebook [varlist]`, and
-`missing [varlist]` forms. PR #22 accepted a separate library-only
+`missing [varlist]` forms. Merged PR #22 (`26dba2b`) accepted a separate library-only
 `tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
 the binary and does not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
@@ -196,7 +196,7 @@ tokenizer parity to later roadmap work.
 
 ## Verified slice: eager local-Parquet runtime boundary
 
-PR #22 accepted a Rust-owned `tabdat-runtime` session for one bounded path:
+Merged PR #22 (`26dba2b`) accepted a Rust-owned `tabdat-runtime` session for one bounded path:
 `Command::Use` with an existing local `.parquet` source in eager mode. The private
 DuckDB adapter stages the file, reports ordered owned schema and row-count metadata,
 and transactionally replaces active state only after a successful read. It rejects

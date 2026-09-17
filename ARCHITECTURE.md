@@ -5,7 +5,7 @@
 This document separates repository truth from the target architecture. The Rust
 repository currently contains an unpublished binary scaffold, a small
 `tabdat-language` crate, and the accepted bounded `tabdat-runtime` evaluation
-from PR #22. The language crate remains a syntax-only parser; the runtime crate
+from PR #22, merged as `26dba2b`. The language crate remains a syntax-only parser; the runtime crate
 is a library-only eager local-Parquet boundary and not a usable TabDat command
 runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
