@@ -4,7 +4,8 @@ Status: partial pending hosted checks
 Producer: task owner with three independent review passes  
 Consumer: merge gate and next maintainer  
 Contract reviewed: `01-contract.md`  
-Evidence reviewed: `02-evidence-migration.md` at `8492187`
+Evidence reviewed: `02-evidence-migration.md` at `8492187`; current review
+documentation revision: `b3f9294`
 
 ## Acceptance reviewed
 
@@ -53,7 +54,7 @@ packages.
 
 ## Required follow-up
 
-Keep PR #12 draft until all checks for current head `8492187` are green. Then mark
+Keep PR #12 draft until all checks for current head `b3f9294` are green. Then mark
 it ready, verify the merge state is clean, merge to `main`, and delete the local
 and remote feature branch. Do not check the broad parser, execution, or Phase 4
 roadmap items from this syntax-only evidence.
