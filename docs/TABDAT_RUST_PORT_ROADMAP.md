@@ -307,9 +307,9 @@ Port TabDat's language before implementing most execution.
   as `77f4754`;
   script loading, line-oriented execution, nested/recursive scripts, and
   file/line diagnostics remain deferred).
-- [ ] Add the bounded direct `rename <old> <new>` syntax slice (PR #25 draft;
-  schema lookup, collision checks, relation mutation, and execution remain
-  deferred until a later data-runtime slice).
+- [x] Add the bounded direct `rename <old> <new>` syntax slice (PR #25, merged
+  as `89f6c14`; schema lookup, collision checks, relation mutation, and
+  execution remain deferred until a later data-runtime slice).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

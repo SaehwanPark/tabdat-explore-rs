@@ -1,9 +1,10 @@
 # `rename` syntax slice review
 
-Status: independent reviews complete; PR #25 remains draft pending final
-ready/merge/branch-cleanup gates.
+Status: accepted; independent reviews, hosted checks, readiness, merge, branch
+cleanup, and post-merge verification are complete or recorded below.
 
-Accepted review source will be the final PR #25 head after evidence updates.
+Accepted review source: final PR #25 head `6db4d2f`; merge commit on `main`:
+`89f6c14`.
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
 ## Scope to review
@@ -49,10 +50,13 @@ Verification recorded by the reviewers and task owner:
 - local locked workspace, formatting, clippy, diff, dependency, advisory, and
   unsafe-code policy checks: passed;
 - seven hosted checks at `f376c84`: passed (links in `02-evidence-migration.md`).
+- seven current-head hosted checks at `6db4d2f`: passed;
+- seven merge-triggered `main` checks at `89f6c14`: passed (links in
+  `02-evidence-migration.md`).
 
 ## Disposition
 
-Approved for PR readiness and squash merge once the current draft head's
-required checks pass. Final acceptance still requires marking PR #25 ready,
-merging it, deleting the temporary branch locally/remotely, and recording
-post-merge `main` checks.
+Accepted bounded slice. PR #25 was marked ready after all current-head checks
+passed, squash-merged as `89f6c14`, and its temporary branch was deleted both
+locally and remotely. The merge-triggered `main` checks are recorded in the
+evidence artifact and passed before this handoff closeout.

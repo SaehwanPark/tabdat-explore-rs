@@ -1,12 +1,14 @@
 # Contract: syntax-only `rename <old> <new>`
 
-Status: draft bounded contract; implementation and acceptance evidence are
-pending.
+Status: accepted bounded contract; implementation, review, merge, and hosted
+acceptance evidence are complete.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
 Rust base: `dad2636` (`main` after the accepted `run` syntax slice and its
-post-merge documentation-only CI run).
+post-merge documentation-only CI run). The implementation/evidence head was
+`f376c84`, the final review/docs head was `6db4d2f`, and PR #25 was squash-merged
+to `main` as `89f6c14`.
 
 ## Scope
 

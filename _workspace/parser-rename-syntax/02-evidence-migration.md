@@ -1,7 +1,7 @@
 # `rename` syntax migration evidence
 
-Status: implementation and independent review complete; current-head hosted
-acceptance and ready/merge/cleanup gates are pending.
+Status: accepted; implementation, independent review, hosted checks, merge,
+branch cleanup, and post-merge verification are complete.
 
 Producer: task owner
 
@@ -142,9 +142,9 @@ metadata-driven cargo geiger
 
 ## Hosted acceptance
 
-PR #25 (`https://github.com/SaehwanPark/tabdat-explore-rs/pull/25`) is open as
-a draft from `feat/parser-rename-syntax`. The code-bearing evidence head is
-`f376c84`; its complete hosted set passed:
+PR #25 (`https://github.com/SaehwanPark/tabdat-explore-rs/pull/25`) was
+squash-merged from `feat/parser-rename-syntax` as `89f6c14`. The code-bearing
+evidence head was `f376c84`; its complete hosted set passed:
 
 - [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514214/jobs/105375258694) (passed, 19m49s);
 - [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514214/jobs/105375258289) (passed, 21m16s);
@@ -154,15 +154,33 @@ a draft from `feat/parser-rename-syntax`. The code-bearing evidence head is
 - [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514225/jobs/105375066463) (passed, 1m10s);
 - [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514149/jobs/105375066433) (passed, 1m1s).
 
-The later review/evidence closeout is documentation-only and does not change
-the code-bearing revision or these seven results. Its current-head CI status
-is tracked in the PR and review record; path-filtered native checks remain
-anchored to `f376c84`.
+The final review/evidence head was `6db4d2f`, a documentation-only revision
+after `f376c84`; its complete current-head hosted set also passed:
 
-The branch must not be marked ready until the independent parser, contract, and
-workspace reviews approve the current head, all required hosted checks pass,
-the PR is squash-merged, the temporary branch is deleted locally/remotely, and
-the post-merge `main` checks pass.
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276843979/jobs/105389412673) (passed, 19m48s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276843979/jobs/105389412646) (passed, 17m11s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276843959/jobs/105389412326) (passed, 21m2s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276844014/jobs/105389412801) (passed, 15s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276844014/jobs/105389412287) (passed, 35s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276844009/jobs/105389412483) (passed, 1m14s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35276843908/jobs/105389412663) (passed, 1m2s).
+
+The temporary branch was deleted locally and remotely. The merge-triggered
+`main` checks for `89f6c14` all passed:
+
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863413/jobs/105395905407) (passed);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863413/jobs/105395905140) (passed);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863448/jobs/105395905482) (passed);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863468/jobs/105395905511) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863468/jobs/105395905746) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863595/jobs/105395906047) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35278863499/jobs/105395905782) (passed).
+
+The independent parser, contract, and workspace reviews approved the final
+head before readiness. All required hosted checks passed before the PR was
+marked ready and squash-merged; the temporary branch was deleted
+locally/remotely. The merge-triggered `main` checks were the final gate and
+passed.
 
 ## Supported and deferred behavior
 

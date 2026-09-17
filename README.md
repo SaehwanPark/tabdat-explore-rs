@@ -24,9 +24,9 @@ Merged PR #24 (`77f4754`) adds the owned syntax-only `run <script-path>` form.
 Script loading, line-oriented execution, nested/recursive scripts, and
 file/line diagnostics remain deferred to the roadmap's script-engine work.
 
-Draft PR #25 adds the owned syntax-only `rename <old> <new>` form. Schema
-lookup, collision checks, relation mutation, and execution remain deferred;
-this draft is not accepted until its review and hosted gates pass.
+Merged PR #25 (`89f6c14`) adds the owned syntax-only `rename <old> <new>` form.
+Schema lookup, collision checks, relation mutation, and execution remain
+deferred.
 
 ## Development
 
