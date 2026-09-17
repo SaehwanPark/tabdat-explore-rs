@@ -46,9 +46,9 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 ```
 
 Targeted probes also confirmed raw local/URI classification, exact one-token
-paths, eager/lazy defaults, engine constraints, option ordering, strict
-`has_header`, delimiter forms, duplicate/unknown options, generic tokenizer
-errors, and command-boundary behavior for attached comma/equal forms.
+paths, eager/lazy defaults, engine constraints, option ordering, bare and
+parenthesized `has_header`, delimiter forms, duplicate/unknown options, generic
+tokenizer errors, and command-boundary behavior for attached comma/equal forms.
 
 ## Changed paths
 

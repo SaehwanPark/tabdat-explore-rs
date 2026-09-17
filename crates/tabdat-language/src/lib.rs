@@ -511,6 +511,7 @@ fn parse_use_command(body: &str) -> Result<Command, ParseError> {
       },
       "has_header" => match option.value {
         UseOptionValue::Boolean(value) => has_header = Some(value),
+        UseOptionValue::Flag => has_header = Some(true),
         _ => {
           return Err(ParseError::new(
             "use has_header option expects a boolean value",
@@ -660,6 +661,75 @@ fn parse_use_parenthesized_value(
     };
   }
 
+  if matches!(name, "saving" | "weights") {
+    return Ok(UseOptionValue::String(
+      tokens.into_iter().map(|token| token.text).collect(),
+    ));
+  }
+
+  if matches!(
+    name,
+    "alpha"
+      | "ll"
+      | "ul"
+      | "quantile"
+      | "lags"
+      | "instlag"
+      | "n_iter"
+      | "tol"
+      | "knn"
+      | "cv"
+      | "bootstrap"
+      | "seed"
+      | "rseed"
+      | "folds"
+      | "level"
+      | "draws"
+      | "burnin"
+      | "tune"
+      | "chains"
+      | "thin"
+  ) {
+    let numeric_text: String = tokens.iter().map(|token| token.text.as_str()).collect();
+    if numeric_text.parse::<f64>().is_ok() {
+      return Ok(UseOptionValue::Number);
+    }
+    return Err(ParseError::new(format!(
+      "option {name} expects a numeric value"
+    )));
+  }
+
+  if name == "prior" {
+    let comma_index = tokens
+      .iter()
+      .position(|token| token.kind == UseTokenKind::Symbol && token.text == ",");
+    let Some(comma_index) = comma_index else {
+      return Err(ParseError::new(
+        "prior option expects prior(variable, distribution) syntax",
+      ));
+    };
+    if comma_index == 0 || comma_index + 1 == tokens.len() {
+      return Err(ParseError::new(
+        "prior option expects prior(variable, distribution) syntax",
+      ));
+    }
+    return Ok(UseOptionValue::Identifiers(Vec::new()));
+  }
+
+  if name == "l1_ratio" {
+    if !use_numeric_list_is_valid(&tokens) {
+      return Err(ParseError::new("option l1_ratio values must be numeric"));
+    }
+    return Ok(UseOptionValue::Number);
+  }
+
+  if name == "start" {
+    if !use_numeric_list_is_valid(&tokens) {
+      return Err(ParseError::new("option start values must be numeric"));
+    }
+    return Ok(UseOptionValue::Number);
+  }
+
   if tokens
     .iter()
     .all(|token| matches!(token.kind, UseTokenKind::Identifier { .. }))
@@ -671,6 +741,27 @@ fn parse_use_parenthesized_value(
   Err(ParseError::new(format!(
     "option {name} values must be identifiers"
   )))
+}
+
+fn use_numeric_list_is_valid(tokens: &[UseToken]) -> bool {
+  let mut index = 0;
+  while index < tokens.len() {
+    if tokens[index].kind == UseTokenKind::Number {
+      index += 1;
+      continue;
+    }
+    if tokens[index].kind == UseTokenKind::Symbol
+      && matches!(tokens[index].text.as_str(), "-" | "+")
+      && tokens
+        .get(index + 1)
+        .is_some_and(|token| token.kind == UseTokenKind::Number)
+    {
+      index += 2;
+      continue;
+    }
+    return false;
+  }
+  true
 }
 
 #[derive(Debug)]
@@ -1347,6 +1438,16 @@ mod tests {
         has_header: Some(true),
       }
     );
+    assert_eq!(
+      parse_command("use file.csv, has_header").unwrap(),
+      Command::Use {
+        source: DataSource::LocalPath("file.csv".to_owned()),
+        execution_mode: ExecutionMode::Eager,
+        lazy_engine: None,
+        delimiter: None,
+        has_header: Some(true),
+      }
+    );
   }
 
   #[test]
@@ -1390,10 +1491,6 @@ mod tests {
         "use delimiter option expects a string value",
       ),
       (
-        "use data.parquet, has_header",
-        "use has_header option expects a boolean value",
-      ),
-      (
         "use data.parquet, has_header(1)",
         "option has_header expects true or false",
       ),
@@ -1413,6 +1510,28 @@ mod tests {
       (
         "use data.parquet, delimiter(,)",
         "option delimiter expects a single string or identifier value",
+      ),
+      ("use data.parquet, alpha(1)", "unknown use option: alpha"),
+      (
+        "use data.parquet, alpha(foo)",
+        "option alpha expects a numeric value",
+      ),
+      ("use data.parquet, saving(1)", "unknown use option: saving"),
+      (
+        "use data.parquet, prior(x)",
+        "prior option expects prior(variable, distribution) syntax",
+      ),
+      (
+        "use data.parquet, prior(x,normal)",
+        "unknown use option: prior",
+      ),
+      (
+        "use data.parquet, l1_ratio(foo)",
+        "option l1_ratio values must be numeric",
+      ),
+      (
+        "use data.parquet, unknown(1)",
+        "option unknown values must be identifiers",
       ),
       (
         "use data.parquet, delimiter=;",

@@ -148,4 +148,14 @@ fn use_is_a_public_syntax_only_command() {
       has_header: Some(true),
     }
   );
+  assert_eq!(
+    parse_command("use survey.csv, has_header").unwrap(),
+    Command::Use {
+      source: DataSource::LocalPath("survey.csv".to_owned()),
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+      delimiter: None,
+      has_header: Some(true),
+    }
+  );
 }

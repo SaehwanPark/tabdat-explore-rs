@@ -15,7 +15,8 @@ Evidence reviewed: `02-evidence-migration.md`
   separator whitespace.
 - Local paths remain raw local strings; any `://` substring is a raw URI string.
 - Eager/lazy defaults, duckdb/polars engine constraints, delimiter/header option
-  types, option order, duplicates, unknown names, and exact diagnostics match
+  types (including the bare `has_header` true flag), option order, duplicates,
+  unknown names, and exact diagnostics match
   the pinned parser contract.
 - No path/URI I/O, relation/session mutation, execution, result rendering,
   statistics, backend dependency, or unsafe code is added.

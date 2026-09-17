@@ -55,8 +55,9 @@ The result has `execution_mode = eager` and no lazy engine by default. A bare
 explicit `engine=duckdb` or `engine=polars` is permitted only with `lazy` and
 is compared case-insensitively. `delimiter` accepts either a parenthesized
 single string/identifier or an `option=value` string and preserves its value,
-including an empty string. `has_header` accepts only one unquoted,
-case-insensitive `true`/`false` identifier inside parentheses. Option names are
+including an empty string. `has_header` accepts a bare flag (which means
+`true`) or one unquoted, case-insensitive `true`/`false` identifier inside
+parentheses. Option names are
 lowercase-sensitive: `LAZY`, `Engine`, and `HAS_HEADER` are unknown options.
 Each recognized option may occur at most once. Options may appear in any order.
 
@@ -74,7 +75,7 @@ The exact direct-command diagnostics are:
 | `engine` string other than `duckdb`/`polars` | `use engine must be duckdb or polars` |
 | `engine` supplied without `lazy` | `use engine option requires lazy mode` |
 | `delimiter` not yielding a string | `use delimiter option expects a string value` |
-| `has_header` not yielding a boolean | `use has_header option expects a boolean value` |
+| `has_header` supplied with a non-boolean value (for example `has_header=foo`) | `use has_header option expects a boolean value` |
 | unsupported punctuation while tokenizing options | `unsupported token in command: <token>` |
 
 Command-boundary oddities such as `use, lazy`, `use:data`, and `use==x` are
@@ -82,7 +83,10 @@ preserved as explicit parser-boundary cases rather than broadening the slice;
 the Python dispatcher reports `unknown command: use` for the first, and its
 structured parser reports the command-boundary diagnostics for the latter two.
 Full general tokenizer parity, quoted/escaped path syntax, option expressions,
-and `by ...: use ...` are deferred.
+and `by ...: use ...` are deferred. Generic parenthesized option families that
+belong to other commands (for example `alpha`, `prior`, or `l1_ratio`) are not
+part of the recognized `use` option set; only their generic tokenization needed
+to reach `unknown use option` is in scope.
 
 ## Rust contract
 
