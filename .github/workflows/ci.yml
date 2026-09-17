@@ -45,14 +45,64 @@ jobs:
       - name: Audit advisories and yanked crates
         run: cargo audit -D warnings
       - name: Report unsafe code
+        shell: bash
         run: |
           set -euo pipefail
-          cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[].manifest_path' \
+          reports_dir="${RUNNER_TEMP}/tabdat-geiger-reports"
+          mkdir -p "$reports_dir"
+          metadata_file="${RUNNER_TEMP}/tabdat-cargo-metadata.json"
+          cargo metadata --no-deps --format-version 1 --locked >"$metadata_file"
+          jq -r '.packages[].manifest_path' "$metadata_file" \
             | while IFS= read -r manifest; do
+                package_name="$(jq -er --arg manifest "$manifest" \
+                  '.packages[] | select(.manifest_path == $manifest) | .name' \
+                  "$metadata_file")"
+                report="$reports_dir/$package_name.json"
+                set +e
                 cargo geiger \
                   --manifest-path "$manifest" \
                   --all-dependencies \
                   --all-targets \
-                  --locked
+                  --locked \
+                  --output-format Json >"$report"
+                geiger_status=$?
+                set -e
+
+                owned_count="$(jq --arg package "$package_name" \
+                  '[.packages[] | select(.package.id.name == $package)] | length' "$report")"
+                if [[ "$owned_count" != "1" ]]; then
+                  echo "::error::cargo geiger did not report exactly one first-party package: $package_name"
+                  jq -r '[.packages[]?.package.id.name] | "reported packages: " + (join(", "))' "$report" \
+                    | tee -a "$GITHUB_STEP_SUMMARY"
+                  exit 1
+                fi
+                if ! jq -e --arg package "$package_name" '
+                  [.packages[] | select(.package.id.name == $package)][0]
+                  | (.unsafety.forbids_unsafe == true)
+                    and ([(.unsafety.used | to_entries[] | .value.unsafe_ // 0)] | all(. == 0))
+                ' "$report" >/dev/null; then
+                  echo "::error::first-party unsafe code detected in $package_name"
+                  jq --arg package "$package_name" \
+                    '[.packages[] | select(.package.id.name == $package)]' "$report"
+                  exit 1
+                fi
+                jq -r --arg package "$package_name" '
+                  ([.packages[] | select(.package.id.name == $package)][0]) as $owned
+                  | ([.packages[] | select(.package.id.name != $package)]
+                     | map(.unsafety.used.functions.unsafe_ // 0)
+                     | add // 0) as $dependency_functions
+                  | ([.packages[] | select(.package.id.name != $package)]
+                     | map(.unsafety.used.exprs.unsafe_ // 0)
+                     | add // 0) as $dependency_exprs
+                  | (.used_but_not_scanned_files | length) as $unscanned
+                  | "- `\($package)`: first-party forbids_unsafe=\($owned.unsafety.forbids_unsafe), "
+                    + "unsafe functions=\($owned.unsafety.used.functions.unsafe_ // 0), "
+                    + "unsafe expressions=\($owned.unsafety.used.exprs.unsafe_ // 0); "
+                    + "transitive unsafe functions=\($dependency_functions), "
+                    + "expressions=\($dependency_exprs), unscanned files=\($unscanned)"
+                ' "$report" | tee -a "$GITHUB_STEP_SUMMARY"
+                if [[ "$geiger_status" -ne 0 ]]; then
+                  echo "::warning::cargo geiger reported unsafe dependency inventory for $package_name (exit $geiger_status); first-party package is clean"
+                fi
               done
+          echo "Reports retained in $reports_dir for this job; the step summary lists the inventory totals." >>"$GITHUB_STEP_SUMMARY"

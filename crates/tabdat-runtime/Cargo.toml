@@ -1,0 +1,9 @@
+[package]
+name = "tabdat-runtime"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
+tabdat-language = { path = "../tabdat-language" }

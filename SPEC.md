@@ -7,7 +7,9 @@ successfully. The workspace also contains a backend-independent `tabdat-language
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
 and `tail`, plus the verified direct `use`, `codebook [varlist]`, and
-`missing [varlist]` forms. There is still no usable TabDat CLI, data runtime, or
+`missing [varlist]` forms. PR #22 accepted a separate library-only
+`tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
+the binary and does not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
@@ -191,6 +193,20 @@ passed before PR #17 was marked ready and merged.
 This slice leaves data loading, format inference, named-table/session behavior,
 lazy planning, execution/results, reporting/serialization, wrappers, and full
 tokenizer parity to later roadmap work.
+
+## Verified slice: eager local-Parquet runtime boundary
+
+PR #22 accepted a Rust-owned `tabdat-runtime` session for one bounded path:
+`Command::Use` with an existing local `.parquet` source in eager mode. The private
+DuckDB adapter stages the file, reports ordered owned schema and row-count metadata,
+and transactionally replaces active state only after a successful read. It rejects
+lazy/URI/CSV-option forms and does not change the root scaffold binary.
+
+The contract, pinned Python execution evidence, local checks, native
+ownership/platform/license review, and hosted acceptance state are recorded in
+`_workspace/use-eager-parquet/` and ADR 0007. This remains a bounded evaluation
+rather than a supported product runtime; all broad Phase 4 session, relation,
+load, inspect, transform, and reporting items remain unchecked.
 
 ## Verified slice: syntax-only `codebook` command
 
