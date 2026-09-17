@@ -4,9 +4,9 @@
 
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
-crate with a deliberately small syntax-only parser for `help`/`?`, `status`, and
-`exit`/`quit`. There is still no usable TabDat CLI, data runtime, or statistical
-model implementation.
+crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
+`exit`/`quit`, `count`, `head`, and `tail`. There is still no usable TabDat CLI,
+data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -61,6 +61,28 @@ locally on the branch; hosted CI and review remain required before merge.
 
 This slice does not execute commands, load data, provide the full tokenizer or
 expression grammar, or establish parser/CLI/script parity beyond the listed forms.
+
+## Verified slice: syntax-only inspection commands
+
+Extend `tabdat-language` with typed, backend-independent syntax for `count`,
+`head [n]`, and `tail [n]`. `head` and `tail` default to five rows and preserve a
+canonical ASCII decimal `RowLimit`, including zero, leading-zero normalization,
+quoted numeric arguments, values larger than `u64`, and substantially larger
+values. Exact invalid-limit, unsupported-token, option, condition, assignment,
+and trailing-comma diagnostics are covered by focused tests. No command executes,
+reads session state, initializes DuckDB, or claims data-runtime support.
+
+Evidence: `_workspace/parser-inspection-syntax/01-contract.md`,
+`_workspace/parser-inspection-syntax/02-evidence-migration.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
+Python parser/script oracle suite again passed with `516 passed in 0.45s` using
+`PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider
+tests/test_parser.py tests/test_script.py` from the clean sibling checkout at
+revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
+
+This slice leaves `count`/`head`/`tail` execution, active-dataset preconditions,
+row-order and missingness guarantees, backend range conversion, results, and
+reporting to the data-runtime work in the roadmap.
 
 ## Verified slice: dependency and unsafe-code checks
 
