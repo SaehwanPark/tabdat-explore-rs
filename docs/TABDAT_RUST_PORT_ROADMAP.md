@@ -303,7 +303,8 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `isid [varlist] [, missok]` syntax slice (PR #23;
   active-dataset key semantics, execution, and full tokenizer/varlist parity
   remain deferred).
-- [ ] Add the bounded direct `run <script-path>` syntax slice (PR #24;
+- [x] Add the bounded direct `run <script-path>` syntax slice (PR #24, merged
+  as `77f4754`;
   script loading, line-oriented execution, nested/recursive scripts, and
   file/line diagnostics remain deferred).
 - [ ] Port tokenizer behavior.

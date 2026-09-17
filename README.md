@@ -20,9 +20,9 @@ PR #23 adds the owned syntax-only `isid` command. Key uniqueness checks,
 missing-key handling, active-dataset access, and all execution/reporting remain
 deferred to the roadmap's data-runtime work.
 
-PR #24 adds the owned syntax-only `run <script-path>` form. Script loading,
-line-oriented execution, nested/recursive scripts, and file/line diagnostics
-remain deferred to the roadmap's script-engine work.
+Merged PR #24 (`77f4754`) adds the owned syntax-only `run <script-path>` form.
+Script loading, line-oriented execution, nested/recursive scripts, and
+file/line diagnostics remain deferred to the roadmap's script-engine work.
 
 ## Development
 

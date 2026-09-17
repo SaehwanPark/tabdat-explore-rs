@@ -333,18 +333,21 @@ scans, result/reporting/serialization, full tokenizer/varlist/option and
 expression grammar, scripts, CLI/JSON/MCP surfaces, and backend capability
 initialization to later roadmap work.
 
-## Pending slice: syntax-only `run <script-path>`
+## Verified slice: syntax-only `run <script-path>`
 
-PR #24 adds a direct, backend-independent `run <script-path>` parser form.
+Merged PR #24 (`77f4754`) adds a direct, backend-independent `run <script-path>`
+parser form.
 The parser returns the exact non-empty path token as an owned string and
 preserves the pinned Python arity and command-boundary diagnostics. Runtime
 execution remains an explicit typed unsupported-command error; no script file
 is read, no command is executed, and no session or backend state changes.
 
-Evidence and final acceptance are tracked in
+Evidence and acceptance are tracked in
 `_workspace/parser-run-syntax/{01-contract,02-evidence-migration,03-review}.md`.
-The focused/full oracle, locked Rust, and policy checks are recorded as passed;
-independent review, hosted checks, and the merge result remain pending.
+The focused/full oracle, locked Rust, policy checks, independent parser/
+contract/workspace review, all seven PR-head hosted jobs, the squash merge, and
+all seven post-merge `main` jobs are recorded as passed. The temporary branch
+was deleted locally and remotely.
 
 This bounded form leaves path normalization, line-oriented script execution,
 comments, multiline SQL, macros, control flow, nested/recursive scripts,

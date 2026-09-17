@@ -1,7 +1,7 @@
 # `run` syntax migration evidence
 
-Status: draft; implementation is pushed in PR #24, while independent review
-and hosted acceptance remain pending.
+Status: accepted bounded slice; PR #24 is merged and its independent review,
+hosted checks, branch cleanup, and post-merge evidence are recorded below.
 
 Producer: task owner
 
@@ -49,8 +49,10 @@ existence, and script loading are deferred effects rather than parser behavior.
   review;
 - `ea112b1`: strengthened the generic dispatch/tokenizer citations, recorded
   the reproducible boundary probe, and corrected the revision/provenance
-  wording. This is the current implementation/evidence head under hosted
-  review.
+  wording; this is the source revision used for the final review.
+- `2857af6`: recorded the complete passing PR-head hosted set and readiness
+  evidence; PR #24 was then marked ready and squash-merged as
+  `77f4754b4b0875b5e22e32c09d4b4854bb3427bb`.
 
 Changed implementation paths:
 
@@ -192,9 +194,32 @@ the same seven workflows, and all seven passed:
 - [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502465/jobs/105334724465) (passed);
 - [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502633/jobs/105334725947) (passed).
 
-The final head, all hosted results, ready transition, squash merge, and
-post-merge main checks must be appended before this artifact changes to
-accepted.
+The final PR head, ready transition, squash merge, deleted-branch verification,
+and post-merge `main` checks are recorded below; all required jobs passed.
+
+Final PR head `2857af6` (all seven jobs passed):
+
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741549/jobs/105342236031) (passed);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741549/jobs/105342236642) (passed);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741298/jobs/105342235136) (passed);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741652/jobs/105342236266) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741652/jobs/105342236655) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741520/jobs/105342236030) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35262741521/jobs/105342236085) (passed).
+
+Post-merge `main` commit `77f4754b4b0875b5e22e32c09d4b4854bb3427bb` (all seven
+jobs passed):
+
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950502/jobs/105349674847) (passed);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950502/jobs/105349674597) (passed);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950528/jobs/105349674756) (passed);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950617/jobs/105349675094) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950617/jobs/105349674755) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950587/jobs/105349674990) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35264950477/jobs/105349674804) (passed).
+
+`feat/parser-run-syntax` was deleted locally and from `origin` after the
+squash merge; `main` is synchronized at the merge SHA.
 
 ## Supported and deferred behavior
 

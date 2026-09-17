@@ -1,11 +1,15 @@
 # Contract: syntax-only `run <script-path>`
 
-Status: draft contract; implementation and acceptance evidence are pending.
+Status: accepted bounded contract; implementation and acceptance evidence are
+recorded below.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
 Rust base: `81812e0` (`main` after the accepted `isid` syntax slice and its
 post-merge documentation-only CI run).
+
+Implementation/evidence head: `2857af6` (PR #24), squash-merged to `main` as
+`77f4754b4b0875b5e22e32c09d4b4854bb3427bb`.
 
 ## Scope
 
@@ -155,7 +159,9 @@ is relevant to this syntax-only slice.
   recursion rejection, file/line diagnostics, CLI/JSON/MCP output, and all
   filesystem/path normalization semantics.
 
-Acceptance requires the focused/full oracle results, Rust fmt/check/test/
-Clippy, policy scans, `git diff --check`, independent parser/contract/workspace
-review, and all hosted CI checks. The completion state is `partial` until
-those artifacts and checks are recorded.
+Acceptance evidence includes the focused/full oracle results, Rust
+fmt/check/test/Clippy, policy scans, `git diff --check`, independent
+parser/contract/workspace approval, all seven hosted PR-head checks, the
+squash merge, deleted-branch verification, and all seven post-merge `main`
+checks. The completion state is `accepted` for this bounded syntax-only
+contract; script execution and path/file effects remain deferred.
