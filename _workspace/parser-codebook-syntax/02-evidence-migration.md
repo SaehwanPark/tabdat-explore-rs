@@ -9,8 +9,9 @@ Consumer: reviewers and the next maintainer
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `982c3c5` (contract), `f105d27` (typed command,
-dispatch, bounded argument tests), and `0816828` (reject unsupported punctuation
-in the simple argument path).
+dispatch, bounded argument tests), `0816828` (reject unsupported punctuation in
+the simple argument path), and `7a87dfb` (Python-compatible quote boundaries).
+The in-progress current-state documentation is `88ad285`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
