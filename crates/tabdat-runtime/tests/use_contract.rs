@@ -90,6 +90,13 @@ fn loads_existing_local_parquet_and_reports_owned_metadata() {
     ]
   );
   assert_eq!(session.active_dataset(), Some(&load.dataset));
+
+  let replacement = session
+    .execute(fixture.command())
+    .expect("a second eager local Parquet load should replace the active relation");
+  let ExecutionResult::Load(replacement) = replacement;
+  assert_eq!(replacement.dataset, load.dataset);
+  assert_eq!(session.active_dataset(), Some(&replacement.dataset));
 }
 
 #[test]
