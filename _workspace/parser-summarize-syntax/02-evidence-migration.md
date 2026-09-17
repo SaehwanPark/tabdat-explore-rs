@@ -1,6 +1,7 @@
 # `summarize` syntax evidence
 
-Status: draft; implementation and verification are in progress on PR #21.
+Status: draft; implementation, local verification, and review are complete;
+hosted acceptance checks are pending on PR #21.
 
 Producer: task owner
 

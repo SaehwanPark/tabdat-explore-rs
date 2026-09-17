@@ -1,7 +1,6 @@
 # `summarize` syntax review
 
-Status: review complete; PR #21 remains draft pending the final evidence push
-and hosted checks.
+Status: review complete; PR #21 remains draft pending the final hosted checks.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -39,8 +38,8 @@ finding after the required evidence and review artifacts are present.
 Focused/full pinned Python parser-script checks and locked Rust baseline checks
 are recorded in `02-evidence-migration.md`. Local dependency/unsafe policy scans
 also pass. Hosted Rust baseline, ReadStat, and libgretl jobs are acceptance gates
-for the final evidence revision; their results remain pending until this record
-is pushed.
+for the final evidence revision; their results are the remaining acceptance
+condition.
 
 ## Disposition
 
