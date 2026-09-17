@@ -58,6 +58,20 @@ fn doctor_is_a_public_syntax_only_command() {
 }
 
 #[test]
+fn datasignature_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" DATASIGNATURE ").unwrap(),
+    Command::Datasignature
+  );
+  assert_eq!(
+    parse_command("datasignature if age > 0")
+      .unwrap_err()
+      .message(),
+    "datasignature does not accept arguments, if clauses, options, or assignment syntax"
+  );
+}
+
+#[test]
 fn set_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command("set graph_format png").unwrap(),
