@@ -85,6 +85,12 @@ fn codebook_is_a_public_syntax_only_command() {
     parse_command("codebook").unwrap(),
     Command::Codebook { variables: vec![] }
   );
+  assert_eq!(
+    parse_command("codebook foo\"bar\"").unwrap(),
+    Command::Codebook {
+      variables: vec!["foo".to_owned(), "bar".to_owned()],
+    }
+  );
 }
 
 #[test]

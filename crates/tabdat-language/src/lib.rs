@@ -1099,13 +1099,13 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             }
           }
           if matches!(characters[index], '\'' | '"' | '`') {
-            if allow_symbols && !text.is_empty() && characters[index] != '`' {
+            if !text.is_empty() && characters[index] != '`' {
               break;
             }
             let quote = characters[index];
             quoted = true;
             backtick_quoted = backtick_quoted || quote == '`';
-            let piece = parse_quoted_piece(&characters, &mut index, quote, allow_symbols)?;
+            let piece = parse_quoted_piece(&characters, &mut index, quote)?;
             text.push_str(&piece);
             if allow_symbols
               && quote != '`'
@@ -1187,14 +1187,13 @@ fn parse_quoted_piece(
   characters: &[char],
   index: &mut usize,
   quote: char,
-  allow_symbols: bool,
 ) -> Result<String, ParseError> {
   *index += 1;
   let mut text = String::new();
   let mut content_nonempty = false;
   while *index < characters.len() {
     if characters[*index] == quote {
-      if characters.get(*index + 1) == Some(&quote) && (quote == '`' || !allow_symbols) {
+      if characters.get(*index + 1) == Some(&quote) && quote == '`' {
         if quote == '`' && !content_nonempty && *index + 2 == characters.len() {
           return Err(ParseError::new("quoted identifier cannot be empty"));
         }
@@ -1339,6 +1338,18 @@ mod tests {
       parse_command("codebook\u{1c}`x y`\u{1d}sex").unwrap(),
       Command::Codebook {
         variables: vec!["x y".to_owned(), "sex".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("codebook foo\"bar\"").unwrap(),
+      Command::Codebook {
+        variables: vec!["foo".to_owned(), "bar".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("codebook \"foo\"\"bar\"").unwrap(),
+      Command::Codebook {
+        variables: vec!["foo".to_owned(), "bar".to_owned()],
       }
     );
   }
