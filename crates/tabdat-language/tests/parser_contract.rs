@@ -38,3 +38,12 @@ fn inspection_commands_are_public_syntax_only_values() {
     other => panic!("unexpected command: {other:?}"),
   }
 }
+
+#[test]
+fn describe_is_a_public_syntax_only_command() {
+  assert_eq!(parse_command(" DESCRIBE ").unwrap(), Command::Describe);
+  assert_eq!(
+    parse_command("describe age").unwrap_err().message(),
+    "describe does not accept arguments, if clauses, or options"
+  );
+}
