@@ -3,7 +3,7 @@
 Status: partial until hosted CI and review/merge gates complete
 Producer: task owner
 Consumer: reviewer/next maintainer
-Rust revision: `2d4ef57` on `feat/parser-syntax-foundation`
+Rust revision: `3245765` on `feat/parser-syntax-foundation`
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`
 
 ## Python contract
@@ -32,7 +32,7 @@ initialization. The root `Hello, world!` binary and its smoke test remain unchan
 
 ## Test contract
 
-Local results at `2d4ef57`:
+Local results at `3245765`:
 
 ```text
 cargo fmt --all -- --check
@@ -49,8 +49,10 @@ RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --no-deps
 All commands passed locally. Rust tests cover positive aliases/case/whitespace,
 stable error messages, unknown and quoted commands, malformed quotes,
 information-separator whitespace, argument, option, assignment, and unsupported
-`==` forms. Hosted CI for PR #11 is still the authoritative merge gate and must be
-green on this revision.
+`==` forms. The three independent spike checks also pass locally after the root
+workspace explicitly excludes their intentionally isolated manifests and each
+spike declares its own empty workspace. Hosted CI for PR #11 is still the
+authoritative merge gate and must be green on this revision.
 
 ## Implementation mapping
 
