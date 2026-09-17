@@ -14,6 +14,8 @@ Rust implementation revisions: `d2e0b7c` (contract and ADR), `bddb87d` (test
 contract and fixture), `57753b5` (runtime implementation), `8ba52f3` (lazy-init,
 relation-atomicity, and repeated-load tests), and `aea6728` (Python-compatible
 suffix validation order, parser-to-session wiring, and rejection coverage).
+Commit `cb0e8c3` adds the first-party unsafe-code CI gate, Linux runtime workflow,
+and current-state/evidence corrections.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -109,9 +111,8 @@ parity or full DuckDB product adoption.
 
 ## Local Rust and policy verification
 
-The targeted runtime checks passed on `aea6728`; the full workspace forms of the
-baseline and policy gates must be rerun on the final evidence commit before
-promotion. Record the final exact output for all of these gates:
+The targeted runtime checks passed on `aea6728`, and the full workspace gates
+passed on the current evidence head `cb0e8c3`:
 
 ```text
 cargo fmt --all -- --check
@@ -123,10 +124,25 @@ cargo deny check
 cargo audit -D warnings
 ```
 
+Observed results:
+
+```text
+cargo fmt --all -- --check                                  passed
+cargo check --locked --workspace --all-targets              passed
+cargo test --locked --workspace --all-targets                passed
+  root scaffold: 1; tabdat-language: 28 unit + 17 integration;
+  tabdat-runtime: 2 unit + 5 integration
+cargo clippy --locked --workspace --all-targets -- -D warnings passed
+git diff --check                                            passed
+cargo deny check                                            passed
+cargo audit -D warnings                                     passed
+```
+
 The metadata-driven geiger policy loop was run with JSON output for the root
 package, `tabdat-language`, and `tabdat-runtime`; all three local scans completed
-successfully. The runtime JSON scan contained 169 packages, no packages without
-metrics, and no first-party unsafe usage. The first hosted attempt at
+successfully at the implementation head before the documentation-only follow-up.
+The runtime JSON scan contained 169 packages, no packages without metrics, and no
+first-party unsafe usage. The first hosted attempt at
 `Report unsafe code` failed because plain `cargo geiger` returned nonzero for 33
 unscanned dependency assets even though first-party code was clean; this is
 tracked as a workflow policy bug, not hidden as a passing gate. CI now captures
@@ -163,7 +179,8 @@ required before the ADR is accepted and the PR is merged.
 
 Draft PR: [#22](https://github.com/SaehwanPark/tabdat-explore-rs/pull/22).
 The final head must have the Rust baseline, dependency/unsafe policy, and the
-new Linux runtime-boundary workflow green. Existing ReadStat/libgretl workflows
-remain path-scoped feasibility checks and are not triggered by this runtime-only
-change. Their final run links and the squash-merge SHA will be added here before
-this artifact changes to `Status: accepted`.
+new Linux runtime-boundary workflow green. Because this PR also touches shared
+policy/current-state paths, the current run set includes the path-scoped DuckDB,
+ReadStat, and libgretl feasibility workflows as well. Their final run links and
+the squash-merge SHA will be added here before this artifact changes to
+`Status: accepted`.

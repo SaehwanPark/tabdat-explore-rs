@@ -41,10 +41,10 @@ The workspace/native pass found a high-severity CI policy defect at the earlier
 head `57753b5`: the unchanged plain `cargo geiger` step failed the required
 hosted security job on dependency asset warnings even though first-party crates
 had zero unsafe usage ([failed run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35225665696)).
-The CI step is being changed to parse JSON, assert `forbid(unsafe_code)` and zero
-first-party unsafe counts, and surface transitive inventory as a warning. The
-same pass found no runtime-specific hosted build workflow; `.github/workflows/runtime.yml`
-now adds a Linux x86_64 runtime check path.
+Commit `cb0e8c3` changes the CI step to parse JSON, assert `forbid(unsafe_code)`
+and zero first-party unsafe counts, and surface transitive inventory as a warning.
+The same pass found no runtime-specific hosted build workflow;
+`.github/workflows/runtime.yml` now adds a Linux x86_64 runtime check path.
 
 The remaining review pass will record final severity-ranked findings, fixes and
 commit references, and the disposition for any unresolved ownership,
@@ -56,7 +56,8 @@ closed merely because local Cargo checks pass.
 The evidence artifact records the focused/full pinned Python checks, Rust
 baseline, dependency/advisory scans, metadata-driven geiger inventory, and
 `git diff --check`. Before promotion, rerun the final head and attach links for
-the Rust baseline, dependency/unsafe policy, and Linux runtime-boundary workflow.
+the Rust baseline, dependency/unsafe policy, Linux runtime-boundary workflow,
+and every path-scoped native workflow triggered by the final diff.
 
 ## Disposition
 
