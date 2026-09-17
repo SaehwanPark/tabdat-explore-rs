@@ -22,8 +22,9 @@ performed.
 The contract and implementation cite these pinned paths:
 
 - `src/tabdat/models.py:438-440` (`RunCommand(path: Path)`);
-- `src/tabdat/parser.py:146-147,303-304,518-523,1002-1009` (command
-  inventory, dispatch, and `_parse_run`);
+- `src/tabdat/parser.py:146-147,252-306,303-304,518-523,1002-1009,3036-3123,3327-3395`
+  (command inventory, generic dispatch/tokenization, direct routing,
+  `_parse_run`, and the generic boundary-diagnostic paths);
 - `tests/test_parser.py:370-371,1539-1544` (positive and invalid forms);
 - `docs/commands/run.md:1-25` and `src/tabdat/help/topics/run.md:1-25`
   (public syntax and execution description).
@@ -42,8 +43,11 @@ existence, and script loading are deferred effects rather than parser behavior.
 - `173a4ee`: added `Command::Run { path: String }`, direct one-token parsing,
   the frozen command-boundary diagnostics, runtime command-name mapping, and
   unit/public/runtime deferral tests;
-- documentation/evidence revisions are pending in this branch before PR #24
-  is marked ready.
+- `030842d`: recorded the initial migration evidence and current-state notes;
+- `7a9d9b5`: corrected hosted-workflow enumeration and SPEC wording;
+- `fc61dfa`: added the independent review artifact and requested current-head
+  review. This file is the next evidence revision; its working tree is clean
+  before the commit.
 
 Changed implementation paths:
 
@@ -95,6 +99,27 @@ run==foo                                 -> unsupported token in command: ==
 run:foo                                  -> unsupported token in command: :
 ```
 
+The boundary rows were reproduced independently from the pinned checkout with:
+
+```sh
+cd ../tabdat-explore
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python -c 'from tabdat.parser import parse_command, ParseError
+for text in ("run,foo", "run=foo", "run==foo", "run:foo"):
+    try:
+        print(f"{text!r} -> {parse_command(text)!r}")
+    except ParseError as exc:
+        print(f"{text!r} -> {exc}")'
+```
+
+Output:
+
+```text
+'run,foo' -> unknown command: run
+'run=foo' -> run assignment requires a target before =
+'run==foo' -> unsupported token in command: ==
+'run:foo' -> unsupported token in command: :
+```
+
 ## Rust checks
 
 The changed language/runtime tests passed before the implementation commit:
@@ -139,9 +164,11 @@ first-party unsafe expressions. Its report totals were:
 
 ## Hosted acceptance
 
-At the current documentation/evidence head `030842d`, PR #24 triggered seven
-hosted jobs. The two native feasibility jobs and their Rust checks have already
-passed; the baseline, policy, and runtime jobs are still pending:
+At the documentation/evidence head `030842d`, PR #24 triggered seven hosted
+jobs. The two native feasibility jobs and their Rust checks had already passed;
+the baseline, policy, and runtime jobs were superseded by later documentation
+revisions. Those historical links are retained below only to show the original
+workflow coverage:
 
 - [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439157) (pending);
 - [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439687) (pending);

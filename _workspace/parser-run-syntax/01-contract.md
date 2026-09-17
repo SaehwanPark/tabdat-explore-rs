@@ -27,8 +27,10 @@ The pinned clean oracle is the sibling checkout `../tabdat-explore` at commit
 worktree is clean. Authoritative paths are:
 
 - `src/tabdat/models.py:438-440`: `RunCommand(path: Path)`;
-- `src/tabdat/parser.py:146-147,303-304,518-523,1002-1009`: executable
-  command inventory, direct routing, and the specialized parser;
+- `src/tabdat/parser.py:146-147,252-306,303-304,518-523,1002-1009,3036-3123,3327-3395`:
+  executable command inventory, generic command-name dispatch/tokenization,
+  direct routing, the specialized parser, and the generic argument/assignment
+  diagnostic paths used at the command boundary;
 - `tests/test_parser.py:370-371,1539-1544`: the positive form and invalid
   command matrix;
 - `docs/commands/run.md:1-25` and `src/tabdat/help/topics/run.md:1-25`:
@@ -72,9 +74,27 @@ Exact diagnostics frozen for direct and command-boundary cases are:
 
 `run == foo` is routed to the specialized parser and produces the same
 `run expects exactly one path: run <script>` arity diagnostic because the
-remainder has two whitespace-delimited tokens. Attached punctuation outside
-these cases, generalized tokenizer parity, and prefixed command behavior are
-not broadened by this slice.
+remainder has two whitespace-delimited tokens. The attached-boundary rows are
+also grounded in the generic dispatcher and tokenizer: the dispatcher takes
+the first whitespace-delimited token as the command name, while the generic
+argument parser recognizes comma/equal boundaries and the tokenizer recognizes
+`==` and `:` as symbols (see `parser.py:252-306,3036-3123,3327-3395`). A
+reproducible pinned-oracle probe is:
+
+```sh
+cd ../tabdat-explore
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python -c 'from tabdat.parser import parse_command, ParseError
+for text in ("run,foo", "run=foo", "run==foo", "run:foo"):
+    try:
+        print(f"{text!r} -> {parse_command(text)!r}")
+    except ParseError as exc:
+        print(f"{text!r} -> {exc}")'
+```
+
+It prints `unknown command: run`, `run assignment requires a target before =`,
+`unsupported token in command: ==`, and `unsupported token in command: :`,
+respectively. Attached punctuation outside these cases, generalized tokenizer
+parity, and prefixed command behavior are not broadened by this slice.
 
 ## Rust contract
 

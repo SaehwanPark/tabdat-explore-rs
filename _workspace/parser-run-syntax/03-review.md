@@ -1,7 +1,11 @@
 # `run` syntax slice review
 
-Status: draft; parser review is approved, while contract/workspace review and
-the current hosted check set remain pending.
+Status: draft; parser review is approved, while the contract/workspace
+confirmation and the current hosted check set remain pending.
+
+Review/evidence revision under review: `fc61dfa` plus the documentation fixes
+in this working tree. Producer: task owner. Consumers: the contract,
+workspace, and hosted-check gates before PR #24 readiness.
 
 ## Scope reviewed
 
@@ -33,20 +37,23 @@ execution are outside this slice and are recorded as deferred.
 
 ### Contract/evidence review — pending
 
-The contract review was requested against the current head after the evidence
-correction. The previous review pass found no scope or authority defect after
-the implementation choice was documented: Rust owns the exact raw token as a
-`String`, while Python’s `Path` normalization and all path/file effects remain
-deferred.
+The contract review was requested against `fc61dfa`. It found no scope or
+authority defect after the implementation choice was documented: Rust owns the
+exact raw token as a `String`, while Python’s `Path` normalization and all
+path/file effects remain deferred. It requested two evidence improvements,
+now addressed in this revision: citations for the generic dispatch/tokenizer
+paths behind the attached-boundary diagnostics, plus a reproducible pinned
+oracle probe and a non-pending revision ledger.
 
 ### Workspace review — prior findings resolved; confirmation pending
 
 The workspace review initially identified two documentation issues:
 
-1. Hosted evidence listed only the first three jobs and incorrectly said native
-   workflows were not expected. Commit `7a9d9b5` updates `02-evidence-migration.md`
-   to the current `030842d` check set and enumerates all seven jobs, including
-   the passing ReadStat and libgretl jobs.
+1. Hosted evidence initially listed only the first three jobs and incorrectly
+   said native workflows were not expected. Commit `7a9d9b5` corrected the
+   wording and enumerated all seven jobs; the current evidence revision now
+   retains those links as historical and will replace them with the final
+   current-head set after the hosted checks pass.
 2. `03-review.md` was missing. This artifact resolves that completeness blocker.
 
 The initial SPEC wording also said local/oracle checks were pending even though
@@ -67,10 +74,11 @@ Local verification at implementation/docs revisions passed:
 - `git diff --check`.
 
 At documentation head `030842d`, all seven required hosted jobs were recorded;
-the subsequent evidence correction is at `7a9d9b5` and restarts that set. The
-current baseline/policy/runtime statuses must all pass before the PR is marked
-ready. No script execution, filesystem access, session mutation, or backend
-capability was added.
+the subsequent corrections are `7a9d9b5` and `fc61dfa`, and the current
+baseline/policy/runtime set must all pass before the PR is marked ready. The
+boundary probe and generic parser citations are recorded in the contract and
+evidence artifacts. No script execution, filesystem access, session mutation,
+or backend capability was added.
 
 ## Disposition
 
