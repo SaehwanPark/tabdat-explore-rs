@@ -656,6 +656,27 @@ mod tests {
         value: "svg".to_owned(),
       }
     );
+    assert_eq!(
+      parse_command("set artifact_dir \"\"").unwrap(),
+      Command::Set {
+        name: SettingName::ArtifactDir,
+        value: String::new(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_open maybe").unwrap(),
+      Command::Set {
+        name: SettingName::GraphOpen,
+        value: "maybe".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_format foo==bar").unwrap(),
+      Command::Set {
+        name: SettingName::GraphFormat,
+        value: "foo==bar".to_owned(),
+      }
+    );
   }
 
   #[test]
