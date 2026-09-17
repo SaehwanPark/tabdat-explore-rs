@@ -1,7 +1,7 @@
 # `rename` syntax slice review
 
-Status: review requested; final disposition is pending independent parser,
-contract, and workspace review plus hosted acceptance.
+Status: independent reviews complete; PR #25 remains draft pending final
+ready/merge/branch-cleanup gates.
 
 Accepted review source will be the final PR #25 head after evidence updates.
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
@@ -32,10 +32,27 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
 ## Independent findings
 
-Pending reviewer responses. Findings and resolutions will be recorded here
-before PR #25 is marked ready.
+- Parser review: approved at `f376c84`; no findings. The direct two-argument
+  parser, quote handling, exact diagnostics, and explicit colon boundary stay
+  within the bounded syntax-only scope; execution remains deferred.
+- Contract review: approved after the `parser.py:127` inventory citation and
+  heredoc probe were corrected. The pinned authority, observed outputs, Rust
+  mapping, and deferred behavior have no remaining parity or scope defects.
+- Workspace review: approved after the current-state notes and all three
+  artifacts were tracked. The code-bearing hosted set at `f376c84` is green;
+  the review/evidence closeout is documentation-only.
+
+Verification recorded by the reviewers and task owner:
+
+- pinned oracle focused selection: `419 passed, 70 deselected`;
+- pinned parser/script suite: `516 passed`;
+- local locked workspace, formatting, clippy, diff, dependency, advisory, and
+  unsafe-code policy checks: passed;
+- seven hosted checks at `f376c84`: passed (links in `02-evidence-migration.md`).
 
 ## Disposition
 
-Pending. The bounded slice is not accepted until parser, contract, and
-workspace reviewers approve it and the hosted/merge/post-merge gates pass.
+Approved for PR readiness and squash merge once the current draft head's
+required checks pass. Final acceptance still requires marking PR #25 ready,
+merging it, deleting the temporary branch locally/remotely, and recording
+post-merge `main` checks.

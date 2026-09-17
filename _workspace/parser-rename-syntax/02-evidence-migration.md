@@ -143,19 +143,21 @@ metadata-driven cargo geiger
 ## Hosted acceptance
 
 PR #25 (`https://github.com/SaehwanPark/tabdat-explore-rs/pull/25`) is open as
-a draft from `feat/parser-rename-syntax`. At evidence head `95db86c`, the
-current hosted set is:
+a draft from `feat/parser-rename-syntax`. The code-bearing evidence head is
+`f376c84`; its complete hosted set passed:
 
-- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843691/jobs/105373213068) (pending);
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843691/jobs/105373213279) (pending);
-- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843859/jobs/105372993104) (pending);
-- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843790/jobs/105372874837) (passed);
-- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843790/jobs/105372875046) (passed);
-- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843697/jobs/105372874961) (passed);
-- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843796/jobs/105372874715) (passed).
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514214/jobs/105375258694) (passed, 19m49s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514214/jobs/105375258289) (passed, 21m16s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514305/jobs/105375164796) (passed, 20m35s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514171/jobs/105375066782) (passed, 47s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514171/jobs/105375067197) (passed, 24s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514225/jobs/105375066463) (passed, 1m10s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35272514149/jobs/105375066433) (passed, 1m1s).
 
-The pending jobs must pass at the final review head; if a later evidence
-revision changes the head, the complete current-head set will be replaced here.
+The later review/evidence closeout is documentation-only and does not change
+the code-bearing revision or these seven results. Its current-head CI status
+is tracked in the PR and review record; path-filtered native checks remain
+anchored to `f376c84`.
 
 The branch must not be marked ready until the independent parser, contract, and
 workspace reviews approve the current head, all required hosted checks pass,
