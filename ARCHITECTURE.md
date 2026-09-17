@@ -24,10 +24,11 @@ silently invent parity.
   empty stderr.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
-  `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `head`,
-  and `tail`, plus owned command/error types and focused tests. The `missing
-  [varlist]`, `duplicates [report] [varlist]`, and direct `summarize [varlist]`
-  forms perform no execution or I/O; structured conditions/options and summary
+  `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
+  `isid`, `head`, and `tail`, plus owned command/error types and focused tests.
+  The `missing [varlist]`, `duplicates [report] [varlist]`, direct
+  `summarize [varlist]`, and direct `isid [varlist] [, missok]` forms perform no
+  execution or I/O; structured conditions/options, key semantics, and summary
   execution remain deferred.
 - `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
   evaluation that accepts only an existing local `.parquet` through

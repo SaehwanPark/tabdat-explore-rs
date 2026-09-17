@@ -5,15 +5,20 @@ Rust-native successor to TabDat's terminal-first statistical/EDA environment.
 currently prints `Hello, world!`. The workspace has begun a safe language layer with
 a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
-`datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `count`,
-`head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`, and
-direct `summarize [varlist]` forms are syntax-only; no data engine or statistical
+`datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `isid`,
+`count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
+direct `summarize [varlist]`, and direct `isid [varlist] [, missok]` forms are
+syntax-only; no data engine or statistical
 backend is installed as a supported product surface. Merged PR #22 (`26dba2b`) accepted a bounded
 `tabdat-runtime` evaluation that can load an existing local Parquet file eagerly
 through its library API; it is not wired into the root binary, does not provide a
 general data engine, and is not a supported CLI or statistical backend. The
 accepted runtime boundary is documented as an evaluation result, not broad
 `use` or DuckDB product support.
+
+PR #23 adds the owned syntax-only `isid` command. Key uniqueness checks,
+missing-key handling, active-dataset access, and all execution/reporting remain
+deferred to the roadmap's data-runtime work.
 
 ## Development
 

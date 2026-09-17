@@ -300,6 +300,9 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `summarize [varlist]` syntax slice (PR #21;
   structured conditions/options, execution, and full varlist semantics remain
   deferred).
+- [ ] Add the bounded direct `isid [varlist] [, missok]` syntax slice (PR #23
+  in progress; active-dataset key semantics, execution, and full
+  tokenizer/varlist parity remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
