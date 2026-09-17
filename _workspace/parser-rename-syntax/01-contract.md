@@ -30,7 +30,7 @@ worktree is clean.
 Authoritative paths are:
 
 - `src/tabdat/models.py:262-265`: `RenameCommand(old_name, new_name)`;
-- `src/tabdat/parser.py:146-147,252-306,3036-3123,3327-3395,646-651`:
+- `src/tabdat/parser.py:127,252-306,3036-3123,3327-3395,646-651`:
   executable-command inventory, generic dispatch/tokenization, and the
   specialized `rename` branch;
 - `tests/test_parser.py:254-273,1490-1497`: positive transformation coverage
@@ -81,17 +81,42 @@ A reproducible pinned-oracle probe is:
 
 ```sh
 cd ../tabdat-explore
-PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python -c 'from tabdat.parser import parse_command, ParseError
-cases = ("rename sex gender", "RENAME   sex   gender", "rename `old-name` `new-name`", "rename \\\"old\\\" \\\"new\\\"", "rename old old", "rename", "rename old", "rename old new now", "rename old if x > 0", "rename old new if x > 0", "rename old new, replace", "rename old new,", "rename=old new", "rename==old new", "rename:old new", "rename old-new new")
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
+from tabdat.parser import parse_command, ParseError
+
+cases = ("rename sex gender", "RENAME   sex   gender", 'rename `old-name` `new-name`', 'rename "old" "new"', "rename old old", "rename", "rename old", "rename old new now", "rename if", "rename old if", "rename old new if", "rename old if x > 0", "rename old new if x > 0", "rename old new, replace", "rename old new,", "rename=old new", "rename = old", "rename==old new", "rename:old new", "rename old-new new")
 for text in cases:
     try:
         print(f"{text!r} -> {parse_command(text)!r}")
     except ParseError as exc:
-        print(f"{text!r} -> {exc}")'
+        print(f"{text!r} -> {exc}")
+PY
 ```
 
-At the pinned revision it prints the accepted commands and the exact
-diagnostics in the table above.
+At the pinned revision it prints:
+
+```text
+'rename sex gender' -> RenameCommand(old_name='sex', new_name='gender')
+'RENAME   sex   gender' -> RenameCommand(old_name='sex', new_name='gender')
+'rename `old-name` `new-name`' -> RenameCommand(old_name='old-name', new_name='new-name')
+'rename "old" "new"' -> RenameCommand(old_name='old', new_name='new')
+'rename old old' -> RenameCommand(old_name='old', new_name='old')
+'rename' -> rename expects exactly two variables: rename old new
+'rename old' -> rename expects exactly two variables: rename old new
+'rename old new now' -> rename expects exactly two variables: rename old new
+'rename if' -> missing expression after if
+'rename old if' -> missing expression after if
+'rename old new if' -> missing expression after if
+'rename old if x > 0' -> rename expects exactly two variables: rename old new
+'rename old new if x > 0' -> rename expects exactly two variables: rename old new
+'rename old new, replace' -> rename expects exactly two variables: rename old new
+'rename old new,' -> comma must be followed by at least one option
+'rename=old new' -> rename assignment requires a target before =
+'rename = old' -> rename assignment requires a target before =
+'rename==old new' -> unsupported token in command: ==
+'rename:old new' -> unsupported token in command: :
+'rename old-new new' -> unsupported token in command: -
+```
 
 ## Rust contract
 

@@ -22,7 +22,7 @@ performed.
 The contract and implementation cite these pinned paths:
 
 - `src/tabdat/models.py:262-265` (`RenameCommand(old_name, new_name)`);
-- `src/tabdat/parser.py:146-147,252-306,646-651,3036-3123,3327-3395`
+- `src/tabdat/parser.py:127,252-306,646-651,3036-3123,3327-3395`
   (command inventory, generic dispatch, the specialized branch, and generic
   token/boundary diagnostics);
 - `tests/test_parser.py:254-273,1490-1497` (positive and invalid forms);
@@ -74,12 +74,36 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 516 passed in 0.45s
 ```
 
-The independent pinned probe produced the contract's accepted commands and
-diagnostics, including `rename if`/`rename old if`/`rename old new if` as
-`missing expression after if`, the exact two-variable diagnostic for attached
+The independent pinned probe used the same heredoc command recorded in
+`01-contract.md` and produced the exact accepted values and diagnostics listed
+there, including `rename if`/`rename old if`/`rename old new if` as `missing
+expression after if`, the exact two-variable diagnostic for attached
 conditions/options, `rename=old new` as an assignment-target diagnostic,
 `rename:old new` as an unsupported colon, and `rename old-new new` as an
-unsupported hyphen.
+unsupported hyphen:
+
+```text
+'rename sex gender' -> RenameCommand(old_name='sex', new_name='gender')
+'RENAME   sex   gender' -> RenameCommand(old_name='sex', new_name='gender')
+'rename `old-name` `new-name`' -> RenameCommand(old_name='old-name', new_name='new-name')
+'rename "old" "new"' -> RenameCommand(old_name='old', new_name='new')
+'rename old old' -> RenameCommand(old_name='old', new_name='old')
+'rename' -> rename expects exactly two variables: rename old new
+'rename old' -> rename expects exactly two variables: rename old new
+'rename old new now' -> rename expects exactly two variables: rename old new
+'rename if' -> missing expression after if
+'rename old if' -> missing expression after if
+'rename old new if' -> missing expression after if
+'rename old if x > 0' -> rename expects exactly two variables: rename old new
+'rename old new if x > 0' -> rename expects exactly two variables: rename old new
+'rename old new, replace' -> rename expects exactly two variables: rename old new
+'rename old new,' -> comma must be followed by at least one option
+'rename=old new' -> rename assignment requires a target before =
+'rename = old' -> rename assignment requires a target before =
+'rename==old new' -> unsupported token in command: ==
+'rename:old new' -> unsupported token in command: :
+'rename old-new new' -> unsupported token in command: -
+```
 
 ## Rust checks
 
@@ -119,12 +143,19 @@ metadata-driven cargo geiger
 ## Hosted acceptance
 
 PR #25 (`https://github.com/SaehwanPark/tabdat-explore-rs/pull/25`) is open as
-a draft from `feat/parser-rename-syntax`. At implementation head `7e7320e`,
-the required Rust baseline, dependency/unsafe policy, and Linux runtime
-workflow checks were running; their final job links and conclusions will be
-recorded here after the evidence/review head is pushed. Native feasibility
-workflows are path-scoped and are not triggered by this language/runtime-only
-change unless GitHub reports otherwise.
+a draft from `feat/parser-rename-syntax`. At evidence head `95db86c`, the
+current hosted set is:
+
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843691/jobs/105373213068) (pending);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843691/jobs/105373213279) (pending);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843859/jobs/105372993104) (pending);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843790/jobs/105372874837) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843790/jobs/105372875046) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843697/jobs/105372874961) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35271843796/jobs/105372874715) (passed).
+
+The pending jobs must pass at the final review head; if a later evidence
+revision changes the head, the complete current-head set will be replaced here.
 
 The branch must not be marked ready until the independent parser, contract, and
 workspace reviews approve the current head, all required hosted checks pass,
