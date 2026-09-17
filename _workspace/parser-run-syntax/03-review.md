@@ -3,9 +3,9 @@
 Status: draft; parser review is approved, while the contract/workspace
 confirmation and the current hosted check set remain pending.
 
-Review/evidence revision under review: `fc61dfa` plus the documentation fixes
-in this working tree. Producer: task owner. Consumers: the contract,
-workspace, and hosted-check gates before PR #24 readiness.
+Review/evidence revision under review: `ea112b1`. Producer: task owner.
+Consumers: the contract, workspace, and hosted-check gates before PR #24
+readiness.
 
 ## Scope reviewed
 
@@ -35,25 +35,26 @@ text, and handles the frozen `run,`, `run,foo`, `run=foo`, `run==foo`, and
 Residual full-tokenizer behavior, path normalization/expansion, and script
 execution are outside this slice and are recorded as deferred.
 
-### Contract/evidence review — pending
+### Contract/evidence review — confirmation pending
 
-The contract review was requested against `fc61dfa`. It found no scope or
+The contract review was requested against `ea112b1`. It found no scope or
 authority defect after the implementation choice was documented: Rust owns the
 exact raw token as a `String`, while Python’s `Path` normalization and all
 path/file effects remain deferred. It requested two evidence improvements,
-now addressed in this revision: citations for the generic dispatch/tokenizer
-paths behind the attached-boundary diagnostics, plus a reproducible pinned
-oracle probe and a non-pending revision ledger.
+addressed in the `ea112b1` evidence revision: citations for the generic
+dispatch/tokenizer paths behind the attached-boundary diagnostics, plus a
+reproducible pinned oracle probe and a non-pending revision ledger. Final
+contract confirmation is still pending on this corrected artifact.
 
-### Workspace review — prior findings resolved; confirmation pending
+### Workspace review — conditional approval
 
 The workspace review initially identified two documentation issues:
 
 1. Hosted evidence initially listed only the first three jobs and incorrectly
    said native workflows were not expected. Commit `7a9d9b5` corrected the
-   wording and enumerated all seven jobs; the current evidence revision now
-   retains those links as historical and will replace them with the final
-   current-head set after the hosted checks pass.
+   wording and enumerated all seven jobs; the current evidence revision retains
+   those links as historical and records the complete passing `ea112b1` set in
+   `02-evidence-migration.md`.
 2. `03-review.md` was missing. This artifact resolves that completeness blocker.
 
 The initial SPEC wording also said local/oracle checks were pending even though
@@ -74,8 +75,9 @@ Local verification at implementation/docs revisions passed:
 - `git diff --check`.
 
 At documentation head `030842d`, all seven required hosted jobs were recorded;
-the subsequent corrections are `7a9d9b5` and `fc61dfa`, and the current
-baseline/policy/runtime set must all pass before the PR is marked ready. The
+the subsequent corrections are `7a9d9b5`, `fc61dfa`, and `ea112b1`. The
+complete `ea112b1` baseline/policy/runtime/native set passed; this evidence
+handoff commit will trigger one fresh set before the PR is marked ready. The
 boundary probe and generic parser citations are recorded in the contract and
 evidence artifacts. No script execution, filesystem access, session mutation,
 or backend capability was added.

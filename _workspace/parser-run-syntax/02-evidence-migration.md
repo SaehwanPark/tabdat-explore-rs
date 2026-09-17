@@ -46,8 +46,11 @@ existence, and script loading are deferred effects rather than parser behavior.
 - `030842d`: recorded the initial migration evidence and current-state notes;
 - `7a9d9b5`: corrected hosted-workflow enumeration and SPEC wording;
 - `fc61dfa`: added the independent review artifact and requested current-head
-  review. This file is the next evidence revision; its working tree is clean
-  before the commit.
+  review;
+- `ea112b1`: strengthened the generic dispatch/tokenizer citations, recorded
+  the reproducible boundary probe, and corrected the revision/provenance
+  wording. This is the current implementation/evidence head under hosted
+  review.
 
 Changed implementation paths:
 
@@ -170,13 +173,24 @@ the baseline, policy, and runtime jobs were superseded by later documentation
 revisions. Those historical links are retained below only to show the original
 workflow coverage:
 
-- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439157) (pending);
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439687) (pending);
-- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128204/jobs/105330217820) (pending);
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439157) (cancelled/superseded);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439687) (cancelled/superseded);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128204/jobs/105330217820) (cancelled/superseded);
 - [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128214/jobs/105330126436) (passed);
 - [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128214/jobs/105330126736) (passed);
 - [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128229/jobs/105330126269) (passed);
 - [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128224/jobs/105330126491) (passed).
+
+The current implementation/evidence head `ea112b1` triggered a fresh set of
+the same seven workflows, and all seven passed:
+
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502595/jobs/105335000437) (passed);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502595/jobs/105335000028) (passed);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502772/jobs/105334893584) (passed);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502718/jobs/105334725169) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502718/jobs/105334725502) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502465/jobs/105334724465) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35260502633/jobs/105334725947) (passed).
 
 The final head, all hosted results, ready transition, squash merge, and
 post-merge main checks must be appended before this artifact changes to
