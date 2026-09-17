@@ -409,6 +409,11 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
               index += 2;
               continue;
             }
+            if allow_symbols && matches!(text.chars().last(), Some('<' | '>')) {
+              text.push('=');
+              index += 1;
+              continue;
+            }
             break;
           }
           if characters[index] == '!' && allow_symbols && characters.get(index + 1) == Some(&'=') {
@@ -453,8 +458,16 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             let quote = characters[index];
             quoted = true;
             backtick_quoted = backtick_quoted || quote == '`';
-            let piece = parse_quoted_piece(&characters, &mut index, quote)?;
+            let piece = parse_quoted_piece(&characters, &mut index, quote, allow_symbols)?;
             text.push_str(&piece);
+            if allow_symbols
+              && quote != '`'
+              && characters
+                .get(index)
+                .is_some_and(|next| matches!(next, '\'' | '"' | '`'))
+            {
+              break;
+            }
           } else {
             text.push(characters[index]);
             index += 1;
@@ -488,6 +501,18 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
 }
 
 fn is_unsupported_simple_symbol(character: char, allow_symbols: bool) -> bool {
+  if allow_symbols
+    && !character.is_alphanumeric()
+    && character != '_'
+    && character != '.'
+    && !matches!(character, '\'' | '"' | '`' | ',' | '=')
+    && !matches!(
+      character,
+      '+' | '-' | ':' | '/' | '(' | ')' | '*' | '<' | '>' | '!'
+    )
+  {
+    return true;
+  }
   let always_unsupported = matches!(
     character,
     '?' | '[' | ']' | '{' | '}' | '%' | '&' | '|' | '^' | '~' | '#'
@@ -509,13 +534,14 @@ fn parse_quoted_piece(
   characters: &[char],
   index: &mut usize,
   quote: char,
+  allow_symbols: bool,
 ) -> Result<String, ParseError> {
   *index += 1;
   let mut text = String::new();
   let mut content_nonempty = false;
   while *index < characters.len() {
     if characters[*index] == quote {
-      if characters.get(*index + 1) == Some(&quote) {
+      if characters.get(*index + 1) == Some(&quote) && (quote == '`' || !allow_symbols) {
         if quote == '`' && !content_nonempty && *index + 2 == characters.len() {
           return Err(ParseError::new("quoted identifier cannot be empty"));
         }
@@ -677,6 +703,16 @@ mod tests {
         value: "foo==bar".to_owned(),
       }
     );
+    for value in ["foo<=bar", "foo>=bar", "<=foo", ">=foo"] {
+      assert_eq!(
+        parse_command(&format!("set graph_format {value}")).unwrap(),
+        Command::Set {
+          name: SettingName::GraphFormat,
+          value: value.to_owned(),
+        },
+        "{value:?}"
+      );
+    }
   }
 
   #[test]
@@ -916,6 +952,34 @@ mod tests {
       (
         "set graph_format foo?bar",
         "unsupported token in command: ?",
+      ),
+      (
+        "set graph_format foo\\bar",
+        "unsupported token in command: \\",
+      ),
+      (
+        "set graph_format foo;bar",
+        "unsupported token in command: ;",
+      ),
+      (
+        "set graph_format foo@bar",
+        "unsupported token in command: @",
+      ),
+      (
+        "set graph_format foo$bar",
+        "unsupported token in command: $",
+      ),
+      (
+        "set graph_format foo😀bar",
+        "unsupported token in command: 😀",
+      ),
+      (
+        "set graph_format \"a\"\"b\"",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format 'a''b'",
+        "set expects syntax: set name value",
       ),
     ];
     for (input, expected) in cases {

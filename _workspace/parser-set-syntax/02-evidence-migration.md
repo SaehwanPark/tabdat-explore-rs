@@ -9,7 +9,8 @@ Consumer: reviewer and next maintainer
 
 Boundary: Python parser contract → Rust syntax-only parser
 
-Rust implementation revisions: `47a58c8` (contract), `627591b` (parser and tests)
+Rust implementation revisions: `47a58c8` (contract), `627591b` and `58426aa`
+(parser, parity fixes, and tests)
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -42,10 +43,12 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 
 Targeted probes confirmed case-insensitive command and setting names,
 case-preserving values, local paths containing `/`, quoted values containing
-spaces, the accepted-but-not-yet-validated value domain, backtick-quoted-name
-rejection, missing/extra arguments, conditions, options, assignments, and
-trailing-comma handling. The Rust contract intentionally covers only the direct
-command; configuration execution and prefixed-command behavior remain deferred.
+spaces, preserved symbol-bearing values including `<=`/`>=`, the
+accepted-but-not-yet-validated value domain, backtick-quoted-name rejection,
+unsupported non-tokenizer punctuation, adjacent quoted fragments, missing/extra
+arguments, conditions, options, assignments, and trailing-comma handling. The
+Rust contract intentionally covers only the direct command; configuration
+execution and prefixed-command behavior remain deferred.
 
 ## Changed paths
 
