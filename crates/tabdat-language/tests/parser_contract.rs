@@ -1,4 +1,4 @@
-use tabdat_language::{Command, RowLimit, parse_command};
+use tabdat_language::{Command, RowLimit, SettingName, parse_command};
 
 #[test]
 fn public_parser_returns_owned_typed_commands() {
@@ -54,5 +54,23 @@ fn doctor_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command("doctor if age > 18").unwrap_err().message(),
     "doctor does not accept arguments, if clauses, options, or assignment syntax"
+  );
+}
+
+#[test]
+fn set_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command("set graph_format png").unwrap(),
+    Command::Set {
+      name: SettingName::GraphFormat,
+      value: "png".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("set artifact_dir \"my plots\"").unwrap(),
+    Command::Set {
+      name: SettingName::ArtifactDir,
+      value: "my plots".to_owned(),
+    }
   );
 }
