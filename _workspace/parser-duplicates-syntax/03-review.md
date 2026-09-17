@@ -1,6 +1,7 @@
 # `duplicates` syntax review
 
-Status: review complete; PR #20 remains draft pending the final hosted checks.
+Status: accepted; PR #20 was marked ready and squash-merged as
+`5460c7b64ba852a969bafbd1551e893d40a31ac4`; the temporary branch was deleted.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -35,14 +36,15 @@ scope, or parity finding.
 
 Focused/full pinned Python parser-script checks and locked Rust baseline checks
 are recorded in `02-evidence-migration.md`. Local dependency/unsafe policy scans
-also pass. Hosted Rust baseline, ReadStat, and libgretl jobs are acceptance gates
-for the current PR head; the final hosted run set is still pending after the
-latest evidence and review revision.
+also pass. All six hosted checks passed before merge: [Rust baseline and policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042159),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042320),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042170),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042215).
 
 ## Disposition
 
 Do not claim active-relation duplicate counts, null-key semantics, execution,
 full varlist or tokenizer parity, prefixed-command support, CLI/script support,
-or backend integration from this syntax-only slice. Mark accepted only after
-all hosted checks report no finding and the PR is merged with its temporary
-branch deleted.
+or backend integration from this syntax-only slice. The slice is accepted only
+for the bounded syntax contract above; those execution and parity claims remain
+deferred.

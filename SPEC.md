@@ -241,19 +241,26 @@ rules, wildcard/range expansion, conditions/options, prefixed commands, full
 tokenizer/varlist/expression grammar, execution/results, reporting/serialization,
 and backend capability initialization to later roadmap work.
 
-## In-progress slice: syntax-only `duplicates` command
+## Verified slice: syntax-only `duplicates` command
 
-The next bounded slice is recovering direct, backend-independent
+PR #20 (`5460c7b`) adds direct, backend-independent
 `duplicates [report] [varlist]` syntax in `tabdat-language`. It will return an
-owned ordered variable list, strip only a leading unquoted `report` alias, and
+owned ordered variable list, strip a leading `report` alias according to the
+pinned quote behavior, and
 preserve the pinned diagnostics for conditions, options, assignments, missing
 `if` expressions, trailing commas, and unsupported punctuation. It will not
 inspect an active relation or schema, group rows, count duplicates, validate
 variable names, expand wildcards/ranges, execute a command, or initialize a
 backend.
 
-Evidence: `_workspace/parser-duplicates-syntax/{01-contract,02-evidence-migration,03-review}.md`;
-the implementation and tests are on draft PR #20.
+Evidence: `_workspace/parser-duplicates-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. Focused/full pinned Python
+parser/script checks, locked Rust checks, policy scans, and independent review
+all pass. All six required hosted checks passed before PR #20 was marked ready
+and merged: [Rust baseline and policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042159),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042320),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042170),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042215).
 
 This slice leaves duplicate-group and null-key semantics, active-relation/schema
 behavior, conditions/options, prefixed commands, full tokenizer/varlist/

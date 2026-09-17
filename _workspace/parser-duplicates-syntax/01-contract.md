@@ -1,11 +1,13 @@
 # Contract: syntax-only `duplicates`
 
-Status: draft; contract recovery for the next bounded parser slice.
+Status: accepted; merged in PR #20 (`5460c7b64ba852a969bafbd1551e893d40a31ac4`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
 Rust base: `main` at `d5ebf94` (the merged `missing` syntax slice with green
-hosted checks).
+hosted checks). Implementation and evidence revisions were merged as the
+single squash commit above after all hosted gates passed; the temporary branch
+was deleted.
 
 ## Scope
 

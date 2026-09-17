@@ -1,6 +1,7 @@
 # `duplicates` syntax evidence
 
-Status: draft; implementation and verification are in progress on PR #20.
+Status: accepted; PR #20 was squash-merged as
+`5460c7b64ba852a969bafbd1551e893d40a31ac4` and its temporary branch was deleted.
 
 Producer: task owner
 
@@ -9,8 +10,9 @@ Consumer: reviewers and the next maintainer
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `62c9270` (contract and in-progress state
-documentation) and `a70bba0` (typed command, dispatch, bounded diagnostics,
-quote tracking, and tests).
+documentation), `a70bba0` (typed command, dispatch, bounded diagnostics, quote
+tracking, and tests), and `028e410` (evidence and review completion). These
+revisions were squash-merged by PR #20 as the commit recorded above.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -62,7 +64,7 @@ rejection, missing `if` expressions, trailing commas, and unsupported
   record;
 - this file: verification and deferral record;
 - `README.md`, `ARCHITECTURE.md`, `SPEC.md`, and
-  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current in-progress slice references.
+  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current verified-slice references.
 
 No active relation, schema lookup, filesystem access, session mutation,
 execution, result serialization, CLI, script engine, statistics, or backend
@@ -87,10 +89,11 @@ metadata-driven cargo geiger (root and tabdat-language): no unsafe usage
 ```
 
 Independent parser, contract, and workspace reviews report no actionable
-finding at the current implementation head. The hosted Rust baseline, ReadStat,
-and libgretl workflows are acceptance gates for the current PR head; their
-final results remain pending after the evidence and review artifacts are
-pushed.
+finding at the implementation head. All six hosted checks passed before the PR
+was marked ready and merged: [Rust baseline and policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042159),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042320),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042170),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35218042215).
 
 ## Supported and deferred behavior
 
