@@ -47,3 +47,12 @@ fn describe_is_a_public_syntax_only_command() {
     "describe does not accept arguments, if clauses, or options"
   );
 }
+
+#[test]
+fn doctor_is_a_public_syntax_only_command() {
+  assert_eq!(parse_command(" DOCTOR ").unwrap(), Command::Doctor);
+  assert_eq!(
+    parse_command("doctor if age > 18").unwrap_err().message(),
+    "doctor does not accept arguments, if clauses, options, or assignment syntax"
+  );
+}

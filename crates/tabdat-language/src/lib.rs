@@ -14,6 +14,8 @@ pub enum Command {
   Exit,
   /// Inspect the active dataset schema (execution is deferred).
   Describe,
+  /// Inspect environment and capability health (execution is deferred).
+  Doctor,
   /// Count rows in the active dataset (execution is deferred).
   Count,
   /// Preview the first `limit` rows (execution is deferred).
@@ -173,6 +175,31 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
       } else {
         Err(ParseError::new(
           "describe does not accept arguments, if clauses, or options",
+        ))
+      }
+    }
+    "doctor" => {
+      if body.is_empty() {
+        Ok(Command::Doctor)
+      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
+        Err(ParseError::new(
+          "comma must be followed by at least one option",
+        ))
+      } else if body.starts_with('=') && !body.starts_with("==") {
+        Err(ParseError::new(
+          "doctor assignment requires a target before =",
+        ))
+      } else if body.starts_with("==") {
+        Err(ParseError::new("unsupported token in command: =="))
+      } else if body.starts_with('-') {
+        Err(ParseError::new("unsupported token in command: -"))
+      } else if body.starts_with('+') {
+        Err(ParseError::new("unsupported token in command: +"))
+      } else if body.eq_ignore_ascii_case("if") {
+        Err(ParseError::new("missing expression after if"))
+      } else {
+        Err(ParseError::new(
+          "doctor does not accept arguments, if clauses, options, or assignment syntax",
         ))
       }
     }
@@ -511,6 +538,12 @@ mod tests {
   }
 
   #[test]
+  fn parses_doctor_with_case_and_whitespace_normalization() {
+    assert_eq!(parse_command("doctor").unwrap(), Command::Doctor);
+    assert_eq!(parse_command("\tDOCTOR\u{1c}").unwrap(), Command::Doctor);
+  }
+
+  #[test]
   fn parses_inspection_commands_and_canonical_limits() {
     assert_eq!(parse_command("count").unwrap(), Command::Count);
     assert_eq!(parse_command(" COUNT ").unwrap(), Command::Count);
@@ -668,6 +701,41 @@ mod tests {
       ),
       ("describe == now", "unsupported token in command: =="),
       ("describe -1", "unsupported token in command: -"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_doctor_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "doctor foo",
+        "doctor does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "doctor if age > 18",
+        "doctor does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "doctor, detail",
+        "doctor does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      ("doctor if", "missing expression after if"),
+      ("doctor,", "comma must be followed by at least one option"),
+      (
+        "doctor foo,",
+        "comma must be followed by at least one option",
+      ),
+      ("doctor=now", "doctor assignment requires a target before ="),
+      ("doctor == now", "unsupported token in command: =="),
+      ("doctor -1", "unsupported token in command: -"),
+      ("doctor +1", "unsupported token in command: +"),
     ];
     for (input, expected) in cases {
       assert_eq!(
