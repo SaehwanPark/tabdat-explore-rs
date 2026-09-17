@@ -246,9 +246,9 @@ and backend capability initialization to later roadmap work.
 PR #20 (`5460c7b`) adds direct, backend-independent
 `duplicates [report] [varlist]` syntax in `tabdat-language`. It returns an
 owned ordered variable list, strips a leading `report` alias according to the
-pinned quote behavior, and
-preserve the pinned diagnostics for conditions, options, assignments, missing
-`if` expressions, trailing commas, and unsupported punctuation. It will not
+pinned quote behavior, and preserves the pinned diagnostics for conditions,
+options, assignments, missing `if` expressions, trailing commas, and unsupported
+punctuation. It does not
 inspect an active relation or schema, group rows, count duplicates, validate
 variable names, expand wildcards/ranges, execute a command, or initialize a
 backend.
@@ -267,18 +267,25 @@ behavior, conditions/options, prefixed commands, full tokenizer/varlist/
 expression grammar, execution/results, reporting/serialization, and backend
 capability initialization to later roadmap work.
 
-## In-progress slice: syntax-only `summarize` command
+## Verified slice: syntax-only `summarize` command
 
-The next bounded slice is recovering direct, backend-independent
-`summarize [varlist]` syntax in `tabdat-language`. It will return an owned
-ordered variable list and preserve the pinned diagnostics for assignments,
-conditions, options, missing `if` expressions, trailing commas, and unsupported
-punctuation. It will not inspect an active relation or schema, validate numeric
-columns, compute summary statistics, parse structured expression/option forms,
-execute a command, or initialize a backend.
+PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax
+to `tabdat-language`. It returns an owned ordered variable list and preserves the
+pinned diagnostics for assignments, conditions, options, missing `if` expressions,
+trailing commas, and unsupported punctuation. It does not inspect an active
+relation or schema, validate numeric columns, compute summary statistics, parse
+structured expression/option forms, execute a command, or initialize a backend.
 
-Evidence: `_workspace/parser-summarize-syntax/{01-contract,02-evidence-migration,03-review}.md`;
-the implementation and tests will be linked after the draft PR is complete.
+Evidence: `_workspace/parser-summarize-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. Focused/full pinned Python
+parser/script checks, locked Rust checks, policy scans, and independent review
+all pass. All six required hosted checks passed before PR #21 was marked ready
+and merged: [dependency policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821398),
+[Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821628),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725376),
+[ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725692),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567602/jobs/105202724326),
+and [libgretl OLS Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567621/jobs/105202724462).
 
 This slice leaves numeric-type and missingness semantics, active-relation/schema
 behavior, conditions/options, prefixed commands, full tokenizer/varlist/

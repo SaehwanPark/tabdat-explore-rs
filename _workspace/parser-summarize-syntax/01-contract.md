@@ -1,11 +1,13 @@
 # Contract: syntax-only `summarize`
 
-Status: draft; contract recovery for the next bounded parser slice.
+Status: accepted; merged in PR #21 (`ae12a65cd3b5d0aea6def4d2592e20926168da93`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
 Rust base: `main` at `1a5eaf0` (the merged `duplicates` syntax slice and
-roadmap-history correction with green hosted checks).
+roadmap-history correction with green hosted checks). Implementation and
+evidence revisions were squash-merged by PR #21 as the commit recorded above
+after all hosted gates passed; the temporary branch was deleted.
 
 ## Scope
 

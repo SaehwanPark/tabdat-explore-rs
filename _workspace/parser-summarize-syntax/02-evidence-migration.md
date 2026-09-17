@@ -1,7 +1,7 @@
 # `summarize` syntax evidence
 
-Status: draft; implementation, local verification, and review are complete;
-hosted acceptance checks are pending on PR #21.
+Status: accepted; PR #21 was squash-merged as
+`ae12a65cd3b5d0aea6def4d2592e20926168da93` and its temporary branch was deleted.
 
 Producer: task owner
 
@@ -9,9 +9,11 @@ Consumer: reviewers and the next maintainer
 
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
-Rust implementation revisions: `9b1bedb` (contract and in-progress state
+Rust implementation revisions: `9b1bedb` (contract and initial state
 documentation), `e100c79` (typed command, dispatch, bounded diagnostics, and
-tests), and `2c1aaa2` (quote-boundary tests).
+tests), `2c1aaa2` (quote-boundary tests), `d34ba01` (evidence and review
+completion), and `4f03f37` (final review-status correction). These revisions
+were squash-merged by PR #21 as the commit recorded above.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -72,7 +74,7 @@ This is an explicit scope deviation, not a claim of full summarize parity.
   record;
 - this file: verification and deferral record;
 - `README.md`, `ARCHITECTURE.md`, `SPEC.md`, and
-  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current in-progress slice references.
+  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current verified-slice references.
 
 No active relation, schema lookup, filesystem access, session mutation,
 execution, result serialization, CLI, script engine, statistics, or backend
@@ -98,9 +100,13 @@ metadata-driven cargo geiger (root and tabdat-language): no unsafe usage
 
 The independent parser, contract, and workspace review records report no
 actionable implementation finding; the contract pass's missing-artifact finding
-is resolved by this file and `03-review.md`. Hosted Rust baseline, ReadStat, and
-libgretl workflows are acceptance gates for the final evidence revision and
-remain pending until this record is pushed.
+is resolved by this file and `03-review.md`. All six hosted checks passed on the
+final head `4f03f37e944ff234f48cfb639b96639766988bb2`: [dependency policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821398),
+[Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821628),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725376),
+[ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725692),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567602/jobs/105202724326),
+and [libgretl OLS Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567621/jobs/105202724462).
 
 ## Supported and deferred behavior
 

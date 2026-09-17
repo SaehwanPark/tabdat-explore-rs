@@ -5,12 +5,10 @@ Rust-native successor to TabDat's terminal-first statistical/EDA environment.
 currently prints `Hello, world!`. The workspace has begun a safe language layer with
 a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
-`datasignature`, `use`, `codebook`, `missing`, `duplicates`, `count`, `head`, and
-`tail`). The `missing [varlist]` and `duplicates [report] [varlist]` forms are
-syntax-only; no data engine or statistical backend is installed.
-The next bounded `summarize [varlist]` syntax slice is being recovered on a
-draft branch; structured conditions/options and summary execution remain
-deferred.
+`datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `count`,
+`head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`, and
+direct `summarize [varlist]` forms are syntax-only; no data engine or statistical
+backend is installed.
 
 ## Development
 

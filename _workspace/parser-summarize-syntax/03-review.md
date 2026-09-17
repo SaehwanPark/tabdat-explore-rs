@@ -1,6 +1,7 @@
 # `summarize` syntax review
 
-Status: review complete; PR #21 remains draft pending the final hosted checks.
+Status: accepted; PR #21 was marked ready and squash-merged as
+`ae12a65cd3b5d0aea6def4d2592e20926168da93`; the temporary branch was deleted.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -37,14 +38,18 @@ finding after the required evidence and review artifacts are present.
 
 Focused/full pinned Python parser-script checks and locked Rust baseline checks
 are recorded in `02-evidence-migration.md`. Local dependency/unsafe policy scans
-also pass. Hosted Rust baseline, ReadStat, and libgretl jobs are acceptance gates
-for the final evidence revision; their results are the remaining acceptance
-condition.
+also pass. All six hosted checks passed on final head
+`4f03f37e944ff234f48cfb639b96639766988bb2`: [dependency policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821398),
+[Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567690/jobs/105202821628),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725376),
+[ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567716/jobs/105202725692),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567602/jobs/105202724326),
+and [libgretl OLS Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35221567621/jobs/105202724462).
 
 ## Disposition
 
 Do not claim active-relation summary statistics, numeric-type or missingness
 semantics, execution, structured `if`/option parity, full varlist or tokenizer
 parity, prefixed-command support, CLI/script support, or backend integration from
-this syntax-only slice. Mark accepted only after all hosted checks report no
-finding and the PR is merged with its temporary branch deleted.
+this syntax-only slice. The slice is accepted only for the bounded syntax
+contract above; those execution and parity claims remain deferred.

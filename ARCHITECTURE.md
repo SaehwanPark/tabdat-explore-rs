@@ -21,11 +21,11 @@ silently invent parity.
   empty stderr.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
-  `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `head`, and `tail`,
-  plus owned command/error types and focused tests. The `missing [varlist]` and
-  `duplicates [report] [varlist]` forms perform no execution or I/O. The next
-  bounded `summarize [varlist]` syntax slice is being recovered on a draft
-  branch; structured conditions/options and summary execution remain deferred.
+  `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `head`,
+  and `tail`, plus owned command/error types and focused tests. The `missing
+  [varlist]`, `duplicates [report] [varlist]`, and direct `summarize [varlist]`
+  forms perform no execution or I/O; structured conditions/options and summary
+  execution remain deferred.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no session model, data engine, statistical backend, REPL, MCP server,
