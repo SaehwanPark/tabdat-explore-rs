@@ -1,7 +1,7 @@
 # `datasignature` syntax evidence
 
-Status: partial; implementation is pushed in draft PR #16, independent reviews
-are complete, and hosted verification is pending.
+Status: accepted and merged in PR #16 as `b56a845`; all required hosted checks
+passed and the temporary branch was deleted.
 
 Producer: task owner
 
@@ -12,7 +12,8 @@ Boundary: Python parser contract → Rust syntax-only parser
 Rust implementation revisions: `3cc79a0` (contract), `a22248e` (typed variant,
 dispatch, diagnostics, and tests), `41f26dc` (tokenizer-boundary parity fixes),
 and `79ba1d9` (condition contract/tests). Public diagnostic coverage is in
-`a33b9b4`.
+`a33b9b4`; review/evidence updates are `28bcf2f`, `7001b7e`, and the squash
+merge is `b56a845`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -84,8 +85,8 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
 
-Draft PR #16 is the hosted-check authority; baseline, dependency/unsafe policy,
-ReadStat, and libgretl workflows remain required before merge.
+PR #16 was the hosted-check authority; baseline, dependency/unsafe policy,
+ReadStat, and libgretl workflows all passed before merge.
 
 ## Supported and deferred behavior
 

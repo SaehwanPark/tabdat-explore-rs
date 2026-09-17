@@ -1,6 +1,6 @@
 # Contract: syntax-only `datasignature`
 
-Status: proposed for the next bounded parser slice.
+Status: accepted and merged in PR #16 (`b56a845`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

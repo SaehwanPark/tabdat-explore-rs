@@ -1,6 +1,7 @@
 # `datasignature` syntax review
 
-Status: partial; draft PR #16 awaits final review and green hosted checks.
+Status: accepted; PR #16 merged as `b56a845` after final review and green hosted
+checks.
 
 Reviewer: task owner with independent parser, contract, and workspace passes
 
@@ -45,7 +46,7 @@ reported no remaining contract or evidence finding.
 
 The change is limited to the language crate, tests, current-state docs, and
 workspace evidence. No manifest, lockfile, unsafe, native-spike, or workflow
-scope changed. Baseline policy scans and hosted checks remain required.
+scope changed. Baseline policy scans and hosted checks passed before merge.
 
 ## Verification reviewed
 
@@ -53,12 +54,12 @@ scope changed. Baseline policy scans and hosted checks remain required.
 - Full pinned parser/script suite: 516 passed.
 - Rust fmt, locked check/test, Clippy, and `git diff --check`: passed locally
   (one root smoke test, 18 language unit tests, eight integration tests).
-- Draft PR #16 hosted baseline, policy, ReadStat, and libgretl checks: pending
-  or in progress at the latest pushed head.
+- PR #16 hosted baseline, policy, ReadStat, and libgretl checks: all passed at
+  final head `7001b7e`.
 
 ## Disposition
 
 No in-scope finding is open. Do not claim signature computation,
 active-dataset behavior, result serialization, `by:` wrappers, or complete
-tokenizer parity from this syntax-only slice. Mark the PR ready only after the
-independent reviews and all hosted checks are green.
+tokenizer parity from this syntax-only slice. The merged PR leaves those runtime
+and broader grammar concerns explicitly deferred.
