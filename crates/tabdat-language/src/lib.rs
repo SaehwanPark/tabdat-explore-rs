@@ -20,12 +20,41 @@ pub enum Command {
   Datasignature,
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
+  /// Select a dataset source and loading options (execution is deferred).
+  Use {
+    source: DataSource,
+    execution_mode: ExecutionMode,
+    lazy_engine: Option<LazyEngine>,
+    delimiter: Option<String>,
+    has_header: Option<bool>,
+  },
   /// Count rows in the active dataset (execution is deferred).
   Count,
   /// Preview the first `limit` rows (execution is deferred).
   Head { limit: RowLimit },
   /// Preview the last `limit` rows (execution is deferred).
   Tail { limit: RowLimit },
+}
+
+/// A local path or an unvalidated remote URI supplied to `use`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DataSource {
+  LocalPath(String),
+  Uri(String),
+}
+
+/// Whether a `use` request should load eagerly or build a lazy plan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionMode {
+  Eager,
+  Lazy,
+}
+
+/// The lazy engine named by a `use` request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LazyEngine {
+  DuckDb,
+  Polars,
 }
 
 /// The finite setting names accepted by the syntax-only `set` command.
@@ -130,6 +159,15 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return parse_help(help_body.trim());
   }
 
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"use"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
@@ -141,6 +179,16 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     .expect("command_end always points to a character");
   let name = &command[..command_end];
   let body = command[command_end..].trim_matches(is_command_whitespace);
+  if name.eq_ignore_ascii_case("use") && delimiter == ',' {
+    parse_use_options(command[command_end + 1..].trim_matches(is_command_whitespace))?;
+    return Err(ParseError::new("unknown command: use"));
+  }
+  if name.eq_ignore_ascii_case("use") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("use assignment requires a target before ="));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -220,6 +268,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     }
     "datasignature" => parse_datasignature_command(body),
     "set" => parse_set_command(body),
+    "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -358,6 +407,518 @@ fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
   Err(ParseError::new(
     "datasignature does not accept arguments, if clauses, options, or assignment syntax",
   ))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum UseTokenKind {
+  Identifier { quoted: bool },
+  String,
+  Number,
+  Symbol,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct UseToken {
+  kind: UseTokenKind,
+  text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum UseOptionValue {
+  Flag,
+  String(String),
+  Number,
+  Boolean(bool),
+  Identifiers(Vec<String>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct UseOption {
+  name: String,
+  value: UseOptionValue,
+}
+
+fn parse_use_command(body: &str) -> Result<Command, ParseError> {
+  let body = body.trim_matches(is_command_whitespace);
+  if body.is_empty() {
+    return Err(ParseError::new("use expects exactly one path: use <path>"));
+  }
+
+  let (path_text, option_text) = match body.split_once(',') {
+    Some((path, options)) => (path, Some(options)),
+    None => (body, None),
+  };
+  let path_parts: Vec<&str> = path_text
+    .split(is_command_whitespace)
+    .filter(|part| !part.is_empty())
+    .collect();
+  if path_parts.len() != 1 {
+    return Err(ParseError::new("use expects exactly one path: use <path>"));
+  }
+
+  let source_text = path_parts[0].to_owned();
+  let source = if source_text.contains("://") {
+    DataSource::Uri(source_text)
+  } else {
+    DataSource::LocalPath(source_text)
+  };
+
+  let Some(option_text) = option_text else {
+    return Ok(Command::Use {
+      source,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+      delimiter: None,
+      has_header: None,
+    });
+  };
+
+  let options = parse_use_options(option_text)?;
+  let mut names: Vec<&str> = Vec::with_capacity(options.len());
+  for option in &options {
+    if names.contains(&option.name.as_str()) {
+      return Err(ParseError::new("use option specified more than once"));
+    }
+    names.push(option.name.as_str());
+  }
+
+  let mut is_lazy = false;
+  let mut engine: Option<String> = None;
+  let mut delimiter: Option<String> = None;
+  let mut has_header: Option<bool> = None;
+
+  for option in options {
+    match option.name.as_str() {
+      "lazy" => {
+        if option.value != UseOptionValue::Flag {
+          return Err(ParseError::new("use lazy option does not accept a value"));
+        }
+        is_lazy = true;
+      }
+      "engine" => match option.value {
+        UseOptionValue::String(value) => engine = Some(value.to_lowercase()),
+        _ => {
+          return Err(ParseError::new("use engine option expects a string value"));
+        }
+      },
+      "delimiter" => match option.value {
+        UseOptionValue::String(value) => delimiter = Some(value),
+        _ => {
+          return Err(ParseError::new(
+            "use delimiter option expects a string value",
+          ));
+        }
+      },
+      "has_header" => match option.value {
+        UseOptionValue::Boolean(value) => has_header = Some(value),
+        UseOptionValue::Flag => has_header = Some(true),
+        _ => {
+          return Err(ParseError::new(
+            "use has_header option expects a boolean value",
+          ));
+        }
+      },
+      name => return Err(ParseError::new(format!("unknown use option: {name}"))),
+    }
+  }
+
+  let lazy_engine = if let Some(engine) = engine {
+    let engine = match engine.as_str() {
+      "duckdb" => LazyEngine::DuckDb,
+      "polars" => LazyEngine::Polars,
+      _ => return Err(ParseError::new("use engine must be duckdb or polars")),
+    };
+    if !is_lazy {
+      return Err(ParseError::new("use engine option requires lazy mode"));
+    }
+    Some(engine)
+  } else if is_lazy {
+    Some(LazyEngine::DuckDb)
+  } else {
+    None
+  };
+
+  Ok(Command::Use {
+    source,
+    execution_mode: if is_lazy {
+      ExecutionMode::Lazy
+    } else {
+      ExecutionMode::Eager
+    },
+    lazy_engine,
+    delimiter,
+    has_header,
+  })
+}
+
+fn parse_use_options(text: &str) -> Result<Vec<UseOption>, ParseError> {
+  let tokens = tokenize_use_options(text)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "comma must be followed by at least one option",
+    ));
+  }
+
+  let mut stream = UseTokenStream { tokens, index: 0 };
+  let mut options = Vec::new();
+  while !stream.at_end() {
+    let token = stream.consume().expect("stream is not at end");
+    let UseTokenKind::Identifier { quoted: false } = token.kind else {
+      return Err(ParseError::new("option names must be identifiers"));
+    };
+    let name = token.text;
+    let mut value = UseOptionValue::Flag;
+
+    if stream.peek_is_symbol("(") {
+      stream.consume();
+      let mut value_tokens = Vec::new();
+      let mut depth = 1;
+      while !stream.at_end() && depth > 0 {
+        let token = stream.consume().expect("stream is not at end");
+        if token.kind == UseTokenKind::Symbol && token.text == "(" {
+          depth += 1;
+        } else if token.kind == UseTokenKind::Symbol && token.text == ")" {
+          depth -= 1;
+          if depth == 0 {
+            break;
+          }
+        }
+        value_tokens.push(token);
+      }
+      if depth > 0 {
+        return Err(ParseError::new(format!(
+          "option {name} is missing closing )"
+        )));
+      }
+      if value_tokens.is_empty() {
+        return Err(ParseError::new(format!(
+          "option {name} expects at least one value"
+        )));
+      }
+      value = parse_use_parenthesized_value(&name, value_tokens)?;
+    }
+
+    if stream.peek_is_symbol("=") {
+      stream.consume();
+      let Some(value_token) = stream.consume() else {
+        return Err(ParseError::new(format!(
+          "option {name} requires a value after ="
+        )));
+      };
+      if value_token.kind == UseTokenKind::Symbol
+        && matches!(value_token.text.as_str(), "," | "=" | "(" | ")")
+      {
+        return Err(ParseError::new(format!(
+          "option {name} has malformed value"
+        )));
+      }
+      value = match value_token.kind {
+        UseTokenKind::Number => UseOptionValue::Number,
+        _ => UseOptionValue::String(value_token.text),
+      };
+    } else if stream.peek_is_kind(&UseTokenKind::Number)
+      || stream.peek_is_kind(&UseTokenKind::String)
+    {
+      return Err(ParseError::new(format!(
+        "option {name} value must use option=value syntax"
+      )));
+    }
+
+    options.push(UseOption { name, value });
+  }
+  Ok(options)
+}
+
+fn parse_use_parenthesized_value(
+  name: &str,
+  tokens: Vec<UseToken>,
+) -> Result<UseOptionValue, ParseError> {
+  if name == "delimiter" {
+    if tokens.len() != 1
+      || !matches!(
+        tokens[0].kind,
+        UseTokenKind::String | UseTokenKind::Identifier { .. }
+      )
+    {
+      return Err(ParseError::new(
+        "option delimiter expects a single string or identifier value",
+      ));
+    }
+    return Ok(UseOptionValue::String(tokens[0].text.clone()));
+  }
+
+  if name == "has_header" {
+    if tokens.len() != 1 {
+      return Err(ParseError::new("option has_header expects true or false"));
+    }
+    let UseTokenKind::Identifier { quoted: false } = tokens[0].kind else {
+      return Err(ParseError::new("option has_header expects true or false"));
+    };
+    return match tokens[0].text.to_lowercase().as_str() {
+      "true" => Ok(UseOptionValue::Boolean(true)),
+      "false" => Ok(UseOptionValue::Boolean(false)),
+      _ => Err(ParseError::new("option has_header expects true or false")),
+    };
+  }
+
+  if matches!(name, "saving" | "weights") {
+    return Ok(UseOptionValue::String(
+      tokens.into_iter().map(|token| token.text).collect(),
+    ));
+  }
+
+  if matches!(
+    name,
+    "alpha"
+      | "ll"
+      | "ul"
+      | "quantile"
+      | "lags"
+      | "instlag"
+      | "n_iter"
+      | "tol"
+      | "knn"
+      | "cv"
+      | "bootstrap"
+      | "seed"
+      | "rseed"
+      | "folds"
+      | "level"
+      | "draws"
+      | "burnin"
+      | "tune"
+      | "chains"
+      | "thin"
+  ) {
+    let numeric_text: String = tokens.iter().map(|token| token.text.as_str()).collect();
+    if numeric_text.parse::<f64>().is_ok() {
+      return Ok(UseOptionValue::Number);
+    }
+    return Err(ParseError::new(format!(
+      "option {name} expects a numeric value"
+    )));
+  }
+
+  if name == "prior" {
+    let comma_index = tokens
+      .iter()
+      .position(|token| token.kind == UseTokenKind::Symbol && token.text == ",");
+    let Some(comma_index) = comma_index else {
+      return Err(ParseError::new(
+        "prior option expects prior(variable, distribution) syntax",
+      ));
+    };
+    if comma_index == 0 || comma_index + 1 == tokens.len() {
+      return Err(ParseError::new(
+        "prior option expects prior(variable, distribution) syntax",
+      ));
+    }
+    return Ok(UseOptionValue::Identifiers(Vec::new()));
+  }
+
+  if name == "l1_ratio" {
+    if !use_numeric_list_is_valid(&tokens) {
+      return Err(ParseError::new("option l1_ratio values must be numeric"));
+    }
+    return Ok(UseOptionValue::Number);
+  }
+
+  if name == "start" {
+    if !use_numeric_list_is_valid(&tokens) {
+      return Err(ParseError::new("option start values must be numeric"));
+    }
+    return Ok(UseOptionValue::Number);
+  }
+
+  if tokens
+    .iter()
+    .all(|token| matches!(token.kind, UseTokenKind::Identifier { .. }))
+  {
+    return Ok(UseOptionValue::Identifiers(
+      tokens.into_iter().map(|token| token.text).collect(),
+    ));
+  }
+  Err(ParseError::new(format!(
+    "option {name} values must be identifiers"
+  )))
+}
+
+fn use_numeric_list_is_valid(tokens: &[UseToken]) -> bool {
+  let mut index = 0;
+  while index < tokens.len() {
+    if tokens[index].kind == UseTokenKind::Number {
+      index += 1;
+      continue;
+    }
+    if tokens[index].kind == UseTokenKind::Symbol
+      && matches!(tokens[index].text.as_str(), "-" | "+")
+      && tokens
+        .get(index + 1)
+        .is_some_and(|token| token.kind == UseTokenKind::Number)
+    {
+      index += 2;
+      continue;
+    }
+    return false;
+  }
+  true
+}
+
+#[derive(Debug)]
+struct UseTokenStream {
+  tokens: Vec<UseToken>,
+  index: usize,
+}
+
+impl UseTokenStream {
+  fn at_end(&self) -> bool {
+    self.index >= self.tokens.len()
+  }
+
+  fn peek_is_symbol(&self, symbol: &str) -> bool {
+    self
+      .tokens
+      .get(self.index)
+      .is_some_and(|token| token.kind == UseTokenKind::Symbol && token.text == symbol)
+  }
+
+  fn peek_is_kind(&self, kind: &UseTokenKind) -> bool {
+    self
+      .tokens
+      .get(self.index)
+      .is_some_and(|token| &token.kind == kind)
+  }
+
+  fn consume(&mut self) -> Option<UseToken> {
+    let token = self.tokens.get(self.index).cloned();
+    self.index += usize::from(token.is_some());
+    token
+  }
+}
+
+fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
+  let characters: Vec<char> = text.chars().collect();
+  let mut tokens = Vec::new();
+  let mut index = 0;
+  while index < characters.len() {
+    let character = characters[index];
+    if is_command_whitespace(character) {
+      index += 1;
+      continue;
+    }
+    if character.is_alphabetic() || character == '_' {
+      let start = index;
+      index += 1;
+      while index < characters.len()
+        && (characters[index].is_alphanumeric() || characters[index] == '_')
+      {
+        index += 1;
+      }
+      tokens.push(UseToken {
+        kind: UseTokenKind::Identifier { quoted: false },
+        text: characters[start..index].iter().collect(),
+      });
+      continue;
+    }
+    if character == '`' {
+      index += 1;
+      let mut value = String::new();
+      let mut content_nonempty = false;
+      let mut closed = false;
+      while index < characters.len() {
+        if characters[index] != '`' {
+          value.push(characters[index]);
+          content_nonempty = true;
+          index += 1;
+          continue;
+        }
+        if characters.get(index + 1) == Some(&'`') {
+          value.push('`');
+          content_nonempty = true;
+          index += 2;
+          continue;
+        }
+        index += 1;
+        closed = true;
+        break;
+      }
+      if !closed {
+        return Err(ParseError::new("unterminated quoted identifier"));
+      }
+      if !content_nonempty {
+        return Err(ParseError::new("quoted identifier cannot be empty"));
+      }
+      tokens.push(UseToken {
+        kind: UseTokenKind::Identifier { quoted: true },
+        text: value,
+      });
+      continue;
+    }
+    if character.is_numeric()
+      || (character == '.'
+        && characters
+          .get(index + 1)
+          .is_some_and(|next| next.is_numeric()))
+    {
+      let start = index;
+      index += 1;
+      while index < characters.len() && (characters[index].is_numeric() || characters[index] == '.')
+      {
+        index += 1;
+      }
+      let text: String = characters[start..index].iter().collect();
+      if text.chars().filter(|character| *character == '.').count() > 1 {
+        return Err(ParseError::new(format!("malformed number: {text}")));
+      }
+      tokens.push(UseToken {
+        kind: UseTokenKind::Number,
+        text,
+      });
+      continue;
+    }
+    if matches!(character, '\'' | '"') {
+      let quote = character;
+      index += 1;
+      let start = index;
+      while index < characters.len() && characters[index] != quote {
+        index += 1;
+      }
+      if index >= characters.len() {
+        return Err(ParseError::new("unterminated quoted string"));
+      }
+      let text: String = characters[start..index].iter().collect();
+      index += 1;
+      tokens.push(UseToken {
+        kind: UseTokenKind::String,
+        text,
+      });
+      continue;
+    }
+    let two_char: String = characters[index..].iter().take(2).collect();
+    if matches!(two_char.as_str(), "==" | "!=" | "<=" | ">=") {
+      tokens.push(UseToken {
+        kind: UseTokenKind::Symbol,
+        text: two_char,
+      });
+      index += 2;
+      continue;
+    }
+    if matches!(
+      character,
+      ',' | '=' | '<' | '>' | '+' | '-' | '*' | '/' | '(' | ')' | ':' | '.'
+    ) {
+      tokens.push(UseToken {
+        kind: UseTokenKind::Symbol,
+        text: character.to_string(),
+      });
+      index += 1;
+      continue;
+    }
+    return Err(ParseError::new(format!(
+      "unsupported token in command: {character}"
+    )));
+  }
+  Ok(tokens)
 }
 
 fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
@@ -632,7 +1193,10 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Command, ParseError, RowLimit, SettingName, parse_command};
+  use super::{
+    Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName,
+    parse_command,
+  };
 
   #[test]
   fn parses_help_aliases_and_topics() {
@@ -830,6 +1394,167 @@ mod tests {
       },
       "7"
     );
+  }
+
+  #[test]
+  fn parses_use_sources_modes_and_options() {
+    assert_eq!(
+      parse_command("use data.parquet").unwrap(),
+      Command::Use {
+        source: DataSource::LocalPath("data.parquet".to_owned()),
+        execution_mode: ExecutionMode::Eager,
+        lazy_engine: None,
+        delimiter: None,
+        has_header: None,
+      }
+    );
+    assert_eq!(
+      parse_command("  USE\u{1c}s3://bucket/data.parquet, lazy  ").unwrap(),
+      Command::Use {
+        source: DataSource::Uri("s3://bucket/data.parquet".to_owned()),
+        execution_mode: ExecutionMode::Lazy,
+        lazy_engine: Some(LazyEngine::DuckDb),
+        delimiter: None,
+        has_header: None,
+      }
+    );
+    assert_eq!(
+      parse_command("use file.csv, lazy engine=POLARS delimiter=\";\" has_header(false)").unwrap(),
+      Command::Use {
+        source: DataSource::LocalPath("file.csv".to_owned()),
+        execution_mode: ExecutionMode::Lazy,
+        lazy_engine: Some(LazyEngine::Polars),
+        delimiter: Some(";".to_owned()),
+        has_header: Some(false),
+      }
+    );
+    assert_eq!(
+      parse_command("use file.csv, has_header(TRUE) delimiter(\"\")").unwrap(),
+      Command::Use {
+        source: DataSource::LocalPath("file.csv".to_owned()),
+        execution_mode: ExecutionMode::Eager,
+        lazy_engine: None,
+        delimiter: Some(String::new()),
+        has_header: Some(true),
+      }
+    );
+    assert_eq!(
+      parse_command("use file.csv, has_header").unwrap(),
+      Command::Use {
+        source: DataSource::LocalPath("file.csv".to_owned()),
+        execution_mode: ExecutionMode::Eager,
+        lazy_engine: None,
+        delimiter: None,
+        has_header: Some(true),
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_use_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("use", "use expects exactly one path: use <path>"),
+      (
+        "use one.parquet two.parquet",
+        "use expects exactly one path: use <path>",
+      ),
+      (
+        "use data.parquet,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "use data.parquet, lazy=true",
+        "use lazy option does not accept a value",
+      ),
+      (
+        "use data.parquet, lazy lazy",
+        "use option specified more than once",
+      ),
+      (
+        "use data.parquet, engine=duckdb",
+        "use engine option requires lazy mode",
+      ),
+      (
+        "use data.parquet, lazy engine=spark",
+        "use engine must be duckdb or polars",
+      ),
+      (
+        "use data.parquet, engine",
+        "use engine option expects a string value",
+      ),
+      (
+        "use data.parquet, engine=١",
+        "use engine option expects a string value",
+      ),
+      (
+        "use data.parquet, delimiter",
+        "use delimiter option expects a string value",
+      ),
+      (
+        "use data.parquet, has_header(1)",
+        "option has_header expects true or false",
+      ),
+      ("use data.parquet, unknown", "unknown use option: unknown"),
+      (
+        "use data.parquet, delimiter()",
+        "option delimiter expects at least one value",
+      ),
+      (
+        "use data.parquet, engine()",
+        "option engine expects at least one value",
+      ),
+      (
+        "use data.parquet, has_header=",
+        "option has_header requires a value after =",
+      ),
+      (
+        "use data.parquet, delimiter(,)",
+        "option delimiter expects a single string or identifier value",
+      ),
+      ("use data.parquet, alpha(1)", "unknown use option: alpha"),
+      (
+        "use data.parquet, alpha(foo)",
+        "option alpha expects a numeric value",
+      ),
+      ("use data.parquet, saving(1)", "unknown use option: saving"),
+      (
+        "use data.parquet, prior(x)",
+        "prior option expects prior(variable, distribution) syntax",
+      ),
+      (
+        "use data.parquet, prior(x,normal)",
+        "unknown use option: prior",
+      ),
+      (
+        "use data.parquet, l1_ratio(foo)",
+        "option l1_ratio values must be numeric",
+      ),
+      (
+        "use data.parquet, unknown(1)",
+        "option unknown values must be identifiers",
+      ),
+      (
+        "use data.parquet, delimiter=;",
+        "unsupported token in command: ;",
+      ),
+      (
+        "use data.parquet, lazy,",
+        "option names must be identifiers",
+      ),
+      ("use, lazy", "unknown command: use"),
+      ("use,", "comma must be followed by at least one option"),
+      ("use,,", "option names must be identifiers"),
+      ("use=data", "use assignment requires a target before ="),
+      ("use==data", "unsupported token in command: =="),
+      ("use:data", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
   }
 
   #[test]
