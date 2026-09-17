@@ -22,6 +22,8 @@ pub enum Command {
   Codebook { variables: Vec<String> },
   /// Report explicit-null missingness (execution is deferred).
   Missing { variables: Vec<String> },
+  /// Report duplicate key groups (execution is deferred).
+  Duplicates { variables: Vec<String> },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Select a dataset source and loading options (execution is deferred).
@@ -273,6 +275,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "datasignature" => parse_datasignature_command(body),
     "codebook" => parse_codebook_command(body),
     "missing" => parse_missing_command(body),
+    "duplicates" => parse_duplicates_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
@@ -465,6 +468,41 @@ fn parse_missing_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Missing {
     variables: parts
       .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
+}
+
+fn parse_duplicates_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "duplicates assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment {
+    return Err(ParseError::new(
+      "duplicates does not accept assignment syntax",
+    ));
+  }
+  if parts.has_condition || parts.has_options {
+    return Err(ParseError::new(
+      "duplicates does not accept if clauses or options",
+    ));
+  }
+
+  let mut arguments = parts.arguments;
+  if arguments.first().is_some_and(|argument| {
+    !argument.backtick_quoted && argument.text.eq_ignore_ascii_case("report")
+  }) {
+    arguments.remove(0);
+  }
+  Ok(Command::Duplicates {
+    variables: arguments
       .into_iter()
       .map(|argument| argument.text)
       .collect(),
@@ -1412,6 +1450,80 @@ mod tests {
         variables: vec!["bmi-zscore".to_owned(), "value col".to_owned()],
       }
     );
+  }
+
+  #[test]
+  fn parses_duplicates_variables_without_execution() {
+    assert_eq!(
+      parse_command(" DUPLICATES ").unwrap(),
+      Command::Duplicates { variables: vec![] }
+    );
+    assert_eq!(
+      parse_command("duplicates report id label").unwrap(),
+      Command::Duplicates {
+        variables: vec!["id".to_owned(), "label".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("duplicates id label").unwrap(),
+      Command::Duplicates {
+        variables: vec!["id".to_owned(), "label".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("duplicates \"report\"").unwrap(),
+      Command::Duplicates { variables: vec![] }
+    );
+    assert_eq!(
+      parse_command("duplicates\u{1c}`report`\u{1d}cost").unwrap(),
+      Command::Duplicates {
+        variables: vec!["report".to_owned(), "cost".to_owned()],
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_duplicates_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "duplicates id if id > 0",
+        "duplicates does not accept if clauses or options",
+      ),
+      (
+        "duplicates id, missing",
+        "duplicates does not accept if clauses or options",
+      ),
+      (
+        "duplicates id = other",
+        "duplicates does not accept assignment syntax",
+      ),
+      (
+        "duplicates = id",
+        "duplicates assignment requires a target before =",
+      ),
+      (
+        "duplicates id,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "duplicates,",
+        "comma must be followed by at least one option",
+      ),
+      ("duplicates if", "missing expression after if"),
+      ("duplicates id if", "missing expression after if"),
+      ("duplicates id==x", "unsupported token in command: =="),
+      ("duplicates id-1", "unsupported token in command: -"),
+      ("duplicates id+1", "unsupported token in command: +"),
+      ("duplicates id!x", "unsupported token in command: !"),
+      ("duplicates id@x", "unsupported token in command: @"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
   }
 
   #[test]

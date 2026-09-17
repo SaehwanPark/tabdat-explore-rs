@@ -36,9 +36,10 @@ The direct command is case-insensitive (`duplicates`/`DUPLICATES`) and accepts
 surrounding Python-compatible separator whitespace, including TabDat control
 whitespace. With no variables it returns an empty variable tuple. Otherwise
 each whitespace-separated argument is retained in order, except a first
-unquoted `report` token, which is stripped. Quoted strings and backtick
-identifiers are unwrapped; a quoted `` `report` `` remains a variable because
-the alias is only unquoted. For example:
+unquoted `report` token, which is stripped. Quoted strings are unwrapped and
+also participate in this alias stripping; backtick identifiers are unwrapped
+but a quoted `` `report` `` remains a variable because Python marks only
+backtick identifiers as quoted for this command. For example:
 
 ```text
 duplicates
@@ -46,6 +47,7 @@ duplicates report
 duplicates id
 duplicates report id label
 duplicates id label
+duplicates "report"
 duplicates `report`
 ```
 
