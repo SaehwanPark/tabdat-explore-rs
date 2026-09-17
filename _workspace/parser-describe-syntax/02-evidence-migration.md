@@ -1,6 +1,6 @@
 # Describe-command syntax evidence
 
-Status: partial pending review and hosted CI  
+Status: partial pending hosted CI
 Producer: task owner  
 Consumer: reviewer and next maintainer  
 Boundary: Python parser contract → Rust syntax-only parser  
@@ -33,7 +33,9 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 
 Targeted probes confirmed case/whitespace normalization, the bare command,
 argument/condition/option rejection, assignment and `==` diagnostics, the
-unsupported-minus diagnostic, and trailing-comma handling.
+unsupported-minus diagnostic, and trailing-comma handling. A follow-up
+regression probe also confirms that the pre-existing `status -1` and `status +1`
+diagnostics remain unchanged by this slice.
 
 ## Changed paths
 
@@ -61,6 +63,10 @@ cargo test --locked --workspace --all-targets
 cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
+
+The follow-up local run after the review fix passed the same locked checks;
+Rust totals remain one root smoke test, 12 language unit tests, and four
+language integration tests.
 
 The merged `main` revision `79ae1d9` had green dependency/unsafe-policy,
 ReadStat, DuckDB, and libgretl hosted checks immediately before this branch.

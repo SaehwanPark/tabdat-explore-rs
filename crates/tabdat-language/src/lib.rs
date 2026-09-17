@@ -147,10 +147,6 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       } else if body.starts_with("==") {
         Err(ParseError::new("unsupported token in command: =="))
-      } else if body.starts_with('-') {
-        Err(ParseError::new("unsupported token in command: -"))
-      } else if body.starts_with('+') {
-        Err(ParseError::new("unsupported token in command: +"))
       } else {
         Err(ParseError::new(
           "status does not accept arguments, if clauses, options, or assignment syntax",
@@ -726,6 +722,14 @@ mod tests {
     );
     assert_eq!(
       parse_command("status, verbose").unwrap_err().to_string(),
+      "status does not accept arguments, if clauses, options, or assignment syntax"
+    );
+    assert_eq!(
+      parse_command("status -1").unwrap_err().to_string(),
+      "status does not accept arguments, if clauses, options, or assignment syntax"
+    );
+    assert_eq!(
+      parse_command("status +1").unwrap_err().to_string(),
       "status does not accept arguments, if clauses, options, or assignment syntax"
     );
     assert_eq!(
