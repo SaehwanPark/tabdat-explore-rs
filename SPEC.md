@@ -5,9 +5,9 @@
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
-`exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`, and
-`tail`. There is still no usable TabDat CLI, data runtime, or statistical model
-implementation.
+`exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
+and `tail`, plus the in-progress direct `use` syntax slice. There is still no
+usable TabDat CLI, data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -169,6 +169,26 @@ This slice leaves SHA-256/signature semantics, active-dataset preconditions,
 schema/row-order and missingness rules, result/reporting/serialization,
 prefixed commands, and the full tokenizer/command inventory to later roadmap
 work.
+
+## In-progress slice: syntax-only `use` command
+
+PR #17 adds direct, backend-independent `use` syntax to `tabdat-language`:
+local-path or raw-URI source classification, eager/lazy mode, lazy-engine
+selection, and CSV delimiter/header options. The parser returns owned typed
+values and deterministic diagnostics but does not inspect a path or URI, load a
+file, resolve a named table, mutate session state, or initialize DuckDB/Polars.
+
+Evidence: `_workspace/parser-use-syntax/01-contract.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The focused
+Python parser subset passed with `419 passed, 70 deselected`, and the full
+parser/script oracle passed with `516 passed in 0.46s` at the pinned baseline.
+Locked Rust checks and policy scans pass locally on the draft branch; hosted CI,
+independent review, and merge remain required before this becomes a verified
+slice on `main`.
+
+This slice leaves data loading, format inference, named-table/session behavior,
+lazy planning, execution/results, reporting/serialization, wrappers, and full
+tokenizer parity to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 
