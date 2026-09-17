@@ -227,9 +227,10 @@ and unsupported punctuation. It does not inspect an active relation or schema,
 count nulls, validate variable names, expand wildcards/ranges, execute a command,
 or initialize a backend.
 
-Evidence: `_workspace/parser-missing-syntax/01-contract.md` and the implementation
-and tests to be added on PR #19. Focused/full pinned Python parser/script checks,
-local Rust checks, independent review, and hosted checks remain acceptance gates.
+Evidence: `_workspace/parser-missing-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. Focused/full pinned Python
+parser/script checks, local Rust checks, independent review, and hosted checks
+remain acceptance gates.
 
 This slice leaves active-relation/schema semantics, null-count and percentage
 rules, wildcard/range expansion, conditions/options, prefixed commands, full
