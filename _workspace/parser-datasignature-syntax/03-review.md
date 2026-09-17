@@ -23,17 +23,20 @@ Evidence reviewed: `02-evidence-migration.md`
 
 ### Parser/parity pass
 
-The current direct-command implementation follows the pinned zero-argument
-contract. Focused Rust and Python tests cover the accepted form and each listed
-diagnostic. Prefixed `by:` handling and full tokenizer behavior remain outside
+The first pass found two medium parity gaps: missing-`if` diagnostics after
+arguments or before commas, and unsupported symbols after an argument. Commit
+`41f26dc` routes the body through the shared tokenizer, preserves Python's
+diagnostic precedence, and adds regression cases for both findings plus `!`.
+The current direct-command implementation now follows the pinned zero-argument
+contract. Prefixed `by:` handling and full tokenizer behavior remain outside
 the contract.
 
 ### Contract/scope pass
 
 The contract cites the pinned model, parser, test, and command documentation
 paths, records the parser/docs `by:` discrepancy, and keeps SHA-256 and data
-semantics deferred. No unresolved in-scope contract issue is known; final
-independent review is pending.
+semantics deferred. The parity fixes update the contract's precedence and
+unsupported-token rows; final independent review is pending.
 
 ### Workspace/policy pass
 

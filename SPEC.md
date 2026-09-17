@@ -158,6 +158,7 @@ are covered by focused tests. This slice does not hash data, access an active
 relation, mutate session state, execute a command, or initialize a backend.
 
 Evidence: `_workspace/parser-datasignature-syntax/01-contract.md`,
+`_workspace/parser-datasignature-syntax/02-evidence-migration.md`,
 `crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
 `datasignature` parser test passed with `1 passed, 10 deselected`; the full
 parser/script oracle remains `516 passed` at revision

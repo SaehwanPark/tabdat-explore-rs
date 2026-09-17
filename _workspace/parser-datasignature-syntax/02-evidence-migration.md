@@ -9,8 +9,9 @@ Consumer: reviewer and next maintainer
 
 Boundary: Python parser contract → Rust syntax-only parser
 
-Rust implementation revisions: `3cc79a0` (contract) and `a22248e` (typed
-variant, dispatch, diagnostics, and tests)
+Rust implementation revisions: `3cc79a0` (contract), `a22248e` (typed variant,
+dispatch, diagnostics, and tests), and `41f26dc` (tokenizer-boundary parity
+fixes for conditions and unsupported symbols).
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -44,8 +45,9 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 
 Targeted probes confirmed case-insensitive command names, surrounding and
 U+001C separator whitespace, the empty typed command, argument/condition/option
-rejection, missing-`if` handling, assignment, unsupported `==`/`-`/`+`, and
-trailing-comma diagnostics. The pinned parser accepts `by id: datasignature`
+rejection, missing-`if` handling after arguments and before commas, assignment,
+unsupported `==`/`-`/`+`/`!` tokens anywhere in the body, and trailing-comma
+diagnostics. The pinned parser accepts `by id: datasignature`
 despite the command docs excluding `by:`; that wrapper and its execution
 behavior remain explicitly deferred.
 

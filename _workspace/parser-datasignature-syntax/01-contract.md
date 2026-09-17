@@ -34,10 +34,10 @@ command and does not compute a signature. The direct command diagnostics are:
 | Input shape | Diagnostic |
 | --- | --- |
 | arguments, `if` with an expression, options, or assignment syntax | `datasignature does not accept arguments, if clauses, options, or assignment syntax` |
-| `if` without an expression | `missing expression after if` |
-| trailing comma | `comma must be followed by at least one option` |
+| `if` without an expression, including after an argument or before a comma | `missing expression after if` |
+| trailing comma without a missing `if` expression | `comma must be followed by at least one option` |
 | `= value` or `=value` | `datasignature assignment requires a target before =` |
-| `==`, `-`, or `+` tokens | `unsupported token in command: <token>` |
+| `==`, `-`, `+`, or `!` tokens anywhere in the body | `unsupported token in command: <token>` |
 
 The Python parser currently accepts `by id: datasignature` even though the
 command documentation excludes `by:`; prefixed-command parsing and that
