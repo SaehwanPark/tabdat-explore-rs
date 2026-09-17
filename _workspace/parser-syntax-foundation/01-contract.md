@@ -49,11 +49,15 @@ Observed oracle behavior (Python 3.13.3, existing pinned environment):
 | `exit foo` or `quit, now` | command-specific `does not accept arguments, if clauses, or options` error |
 | `status=now` | `ParseError("status assignment requires a target before =")` |
 | `exit=now` or `quit=now` | command-specific `assignment requires a target before =` error |
+| `status == now` or `exit == now` | `ParseError("unsupported token in command: ==")` |
 | `help,verbose` | `ParseError("unknown command: help")` |
 
 Quoted command names are rejected. Quoting a help topic is outside this slice's
 normal syntax and is preserved as literal topic text only when the parser's simple
-topic form receives it; no tokenizer or expression grammar is introduced here.
+topic form receives it; malformed leading quotes retain the oracle's
+`unterminated quoted string`/`unterminated quoted identifier` diagnostics. The
+parser also treats Python's four ASCII information separators (`U+001C`–`U+001F`)
+as whitespace. No general tokenizer or expression grammar is introduced here.
 
 ## Rust contract
 

@@ -20,6 +20,10 @@ pub struct ParseError {
   message: String,
 }
 
+fn is_command_whitespace(character: char) -> bool {
+  character.is_whitespace() || matches!(character, '\u{1c}'..='\u{1f}')
+}
+
 impl ParseError {
   fn new(message: impl Into<String>) -> Self {
     Self {
@@ -43,23 +47,32 @@ impl Error for ParseError {}
 
 /// Parse one syntax-only command without executing it or initializing a backend.
 pub fn parse_command(input: &str) -> Result<Command, ParseError> {
-  let command = input.trim();
+  let command = input.trim_matches(is_command_whitespace);
   if command.is_empty() {
     return Err(ParseError::new("empty command"));
   }
 
-  if matches!(command.as_bytes().first(), Some(b'`' | b'\'' | b'"')) {
-    return Err(ParseError::new(
-      "command must start with an unquoted command name",
-    ));
+  match command.as_bytes().first() {
+    Some(b'`') if !command[1..].contains('`') => {
+      return Err(ParseError::new("unterminated quoted identifier"));
+    }
+    Some(b'\'' | b'"') if !command[1..].contains(command.as_bytes()[0] as char) => {
+      return Err(ParseError::new("unterminated quoted string"));
+    }
+    Some(b'`' | b'\'' | b'"') => {
+      return Err(ParseError::new(
+        "command must start with an unquoted command name",
+      ));
+    }
+    _ => {}
   }
 
   if let Some(help_body) = command.strip_prefix('?') {
     return parse_help(help_body.trim());
   }
 
-  let Some(command_end) =
-    command.find(|character: char| character.is_whitespace() || matches!(character, ',' | '='))
+  let Some(command_end) = command
+    .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
     return parse_named_command(command, "");
   };
@@ -68,7 +81,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     .next()
     .expect("command_end always points to a character");
   let name = &command[..command_end];
-  let body = command[command_end..].trim();
+  let body = command[command_end..].trim_matches(is_command_whitespace);
   if name.eq_ignore_ascii_case("help") && !delimiter.is_whitespace() {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -82,10 +95,12 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "status" => {
       if body.is_empty() {
         Ok(Command::Status)
-      } else if body.starts_with('=') {
+      } else if body.starts_with('=') && !body.starts_with("==") {
         Err(ParseError::new(
           "status assignment requires a target before =",
         ))
+      } else if body.starts_with("==") {
+        Err(ParseError::new("unsupported token in command: =="))
       } else {
         Err(ParseError::new(
           "status does not accept arguments, if clauses, options, or assignment syntax",
@@ -95,10 +110,12 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
-      } else if body.starts_with('=') {
+      } else if body.starts_with('=') && !body.starts_with("==") {
         Err(ParseError::new(format!(
           "{normalized_name} assignment requires a target before ="
         )))
+      } else if body.starts_with("==") {
+        Err(ParseError::new("unsupported token in command: =="))
       } else {
         Err(ParseError::new(format!(
           "{normalized_name} does not accept arguments, if clauses, or options"
@@ -110,7 +127,9 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_help(body: &str) -> Result<Command, ParseError> {
-  let mut words = body.split_whitespace();
+  let mut words = body
+    .split(is_command_whitespace)
+    .filter(|word| !word.is_empty());
   let topic = words.next().map(str::to_lowercase);
   if words.next().is_some() {
     return Err(ParseError::new(
@@ -133,6 +152,12 @@ mod tests {
     assert_eq!(parse_command("?").unwrap(), Command::Help { topic: None });
     assert_eq!(
       parse_command("help summarize").unwrap(),
+      Command::Help {
+        topic: Some("summarize".to_owned()),
+      }
+    );
+    assert_eq!(
+      parse_command("? SUMMARIZE").unwrap(),
       Command::Help {
         topic: Some("summarize".to_owned()),
       }
@@ -219,12 +244,48 @@ mod tests {
       "exit assignment requires a target before ="
     );
     assert_eq!(
+      parse_command("quit=now").unwrap_err().to_string(),
+      "quit assignment requires a target before ="
+    );
+    assert_eq!(
+      parse_command("status == now").unwrap_err().to_string(),
+      "unsupported token in command: =="
+    );
+    assert_eq!(
+      parse_command("exit == now").unwrap_err().to_string(),
+      "unsupported token in command: =="
+    );
+    assert_eq!(
       parse_command("help,verbose").unwrap_err().to_string(),
       "unknown command: help"
     );
     assert_eq!(
       parse_command("help , verbose").unwrap_err().to_string(),
       "help expects at most one command name: help <command>"
+    );
+  }
+
+  #[test]
+  fn matches_python_whitespace_and_malformed_quote_diagnostics() {
+    assert_eq!(
+      parse_command("\u{1c}").unwrap_err().to_string(),
+      "empty command"
+    );
+    assert_eq!(
+      parse_command("status\u{1c}now").unwrap_err().to_string(),
+      "status does not accept arguments, if clauses, options, or assignment syntax"
+    );
+    assert_eq!(
+      parse_command("\"").unwrap_err().to_string(),
+      "unterminated quoted string"
+    );
+    assert_eq!(
+      parse_command("'").unwrap_err().to_string(),
+      "unterminated quoted string"
+    );
+    assert_eq!(
+      parse_command("`").unwrap_err().to_string(),
+      "unterminated quoted identifier"
     );
   }
 }
