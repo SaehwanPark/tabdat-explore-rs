@@ -11,8 +11,9 @@ Boundary: pinned Python parser contract → Rust syntax-only parser
 Rust implementation revisions: `982c3c5` (contract), `f105d27` (typed command,
 dispatch, bounded argument tests), `0816828` (reject unsupported punctuation in
 the simple argument path), `7a87dfb` (Python-compatible quote boundaries), and
-`a2ddc72` (empty adjacent quote fragments).
-The in-progress current-state documentation is `88ad285`.
+`a2ddc72` (empty adjacent quote fragments), and `1ec1347` (unquoted `if`
+boundary before a backtick fragment). The in-progress current-state and review
+documentation revisions are `88ad285` and `021477a`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -68,7 +69,8 @@ dependency changed.
 
 ## Rust verification
 
-The current branch passed the local checks below after `0816828`:
+The current branch passed the local checks below after `1ec1347` (with the
+documentation commits through `021477a`):
 
 ```text
 cargo fmt --all -- --check
