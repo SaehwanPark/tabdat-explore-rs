@@ -9,8 +9,8 @@ Consumer: reviewers and the next maintainer
 Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `e342b75` (contract and in-progress state
-documentation) and `3635131` (typed command, dispatch, bounded diagnostics, and
-tests).
+documentation), `3635131` (typed command, dispatch, bounded diagnostics, and
+tests), and `95745aa` (review record and evidence-path update).
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling

@@ -1,7 +1,6 @@
 # `missing` syntax review
 
-Status: review in progress; PR #19 remains draft pending the contract pass,
-policy scan confirmation, and final hosted checks.
+Status: review complete; PR #19 remains draft pending the final hosted checks.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -29,15 +28,17 @@ The independent parser pass reports no actionable in-scope finding at head
 `265eb69`; direct accepted forms, quoted/backtick names, diagnostics, and the
 documented tokenizer deferrals match the pinned oracle. The workspace pass
 reports no build, dependency, unsafe-code, public API, topology, or CI
-configuration finding. The contract pass and final hosted checks remain
-pending; this record will be updated before merge.
+configuration finding. The contract pass reports no authority, typed-API,
+scope, or parity finding. Documentation-only revision `95745aa` adds this
+review record and resolves the evidence-path finding.
 
 ## Verification reviewed
 
 Focused/full pinned Python parser-script checks and locked Rust baseline checks
 are recorded in `02-evidence-migration.md`. Local dependency/unsafe policy scans
 also pass. Hosted Rust baseline, ReadStat, and libgretl jobs are acceptance gates
-for the current PR head; the dependency/unsafe policy job is still running.
+for the current PR head; the final hosted run set is still pending after the
+latest documentation revision.
 
 ## Disposition
 
