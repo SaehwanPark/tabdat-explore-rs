@@ -1099,7 +1099,11 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             }
           }
           if matches!(characters[index], '\'' | '"' | '`') {
-            if (!text.is_empty() || quoted) && characters[index] != '`' {
+            let if_boundary_before_backtick =
+              characters[index] == '`' && !quoted && text.eq_ignore_ascii_case("if");
+            if ((!text.is_empty() || quoted) && characters[index] != '`')
+              || if_boundary_before_backtick
+            {
               break;
             }
             let quote = characters[index];
@@ -1902,6 +1906,10 @@ mod tests {
       ("codebook .", "unsupported token in command: ."),
       ("codebook age@x", "unsupported token in command: @"),
       ("codebook age#x", "unsupported token in command: #"),
+      (
+        "codebook if`foo`",
+        "codebook does not accept if clauses or options",
+      ),
       ("codebook age==x", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
