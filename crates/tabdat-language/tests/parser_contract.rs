@@ -1,4 +1,6 @@
-use tabdat_language::{Command, RowLimit, SettingName, parse_command};
+use tabdat_language::{
+  Command, DataSource, ExecutionMode, LazyEngine, RowLimit, SettingName, parse_command,
+};
 
 #[test]
 fn public_parser_returns_owned_typed_commands() {
@@ -110,6 +112,40 @@ fn set_is_a_public_syntax_only_command() {
     Command::Set {
       name: SettingName::ArtifactDir,
       value: "my plots".to_owned(),
+    }
+  );
+}
+
+#[test]
+fn use_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command("use data.parquet").unwrap(),
+    Command::Use {
+      source: DataSource::LocalPath("data.parquet".to_owned()),
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+      delimiter: None,
+      has_header: None,
+    }
+  );
+  assert_eq!(
+    parse_command("USE s3://bucket/data.parquet, lazy engine=polars").unwrap(),
+    Command::Use {
+      source: DataSource::Uri("s3://bucket/data.parquet".to_owned()),
+      execution_mode: ExecutionMode::Lazy,
+      lazy_engine: Some(LazyEngine::Polars),
+      delimiter: None,
+      has_header: None,
+    }
+  );
+  assert_eq!(
+    parse_command("use survey.csv, delimiter(\",\") has_header(true)").unwrap(),
+    Command::Use {
+      source: DataSource::LocalPath("survey.csv".to_owned()),
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+      delimiter: Some(",".to_owned()),
+      has_header: Some(true),
     }
   );
 }
