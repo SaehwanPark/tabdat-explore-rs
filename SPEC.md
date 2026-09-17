@@ -153,9 +153,10 @@ tokenizer/option grammar to later roadmap work.
 Add the direct, zero-argument `datasignature` form to `tabdat-language` as a
 typed, backend-independent command. Case/whitespace normalization and the
 pinned Python diagnostics for arguments, conditions, options, assignments,
-unsupported `==`/`-`/`+` tokens, missing `if` expressions, and trailing commas
-are covered by focused tests. This slice does not hash data, access an active
-relation, mutate session state, execute a command, or initialize a backend.
+unsupported argument tokens (`==`/`-`/`+`/`!`), missing `if` expressions, and
+trailing commas are covered by focused tests. This slice does not hash data,
+access an active relation, mutate session state, execute a command, or
+initialize a backend.
 
 Evidence: `_workspace/parser-datasignature-syntax/01-contract.md`,
 `_workspace/parser-datasignature-syntax/02-evidence-migration.md`,

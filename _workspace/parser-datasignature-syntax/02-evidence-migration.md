@@ -10,8 +10,9 @@ Consumer: reviewer and next maintainer
 Boundary: Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `3cc79a0` (contract), `a22248e` (typed variant,
-dispatch, diagnostics, and tests), and `41f26dc` (tokenizer-boundary parity
-fixes for conditions and unsupported symbols).
+dispatch, diagnostics, and tests), `41f26dc` (tokenizer-boundary parity fixes),
+and `79ba1d9` (condition contract/tests). Public diagnostic coverage is in
+`a33b9b4`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -78,7 +79,7 @@ cargo check --locked --workspace --all-targets
 cargo test --locked --workspace --all-targets
   root smoke: 1 passed
   tabdat-language unit tests: 18 passed
-  tabdat-language integration tests: 7 passed
+  tabdat-language integration tests: 8 passed
 cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```

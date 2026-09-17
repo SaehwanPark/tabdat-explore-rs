@@ -13,7 +13,8 @@ Evidence reviewed: `02-evidence-migration.md`
 - Direct bare `datasignature` produces an owned fieldless
   `Command::Datasignature` and normalizes command case/whitespace.
 - Exact pinned diagnostics cover arguments, conditions, options, assignments,
-  missing `if` expressions, unsupported `==`/`-`/`+` tokens, and trailing commas.
+  missing `if` expressions, unsupported argument tokens (`==`/`-`/`+`/`!`), and
+  trailing commas.
 - Existing parser commands and the unresolved `status -/+` deviation remain
   unchanged.
 - No hashing, active-relation access, session mutation, execution, result
@@ -50,7 +51,7 @@ scope changed. Baseline policy scans and hosted checks remain required.
 - Focused pinned `datasignature` parser test: 1 passed, 10 deselected.
 - Full pinned parser/script suite: 516 passed.
 - Rust fmt, locked check/test, Clippy, and `git diff --check`: passed locally
-  (one root smoke test, 18 language unit tests, seven integration tests).
+  (one root smoke test, 18 language unit tests, eight integration tests).
 - Draft PR #16 hosted baseline, policy, ReadStat, and libgretl checks: pending
   or in progress at the latest pushed head.
 
