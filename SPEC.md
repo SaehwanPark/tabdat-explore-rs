@@ -8,7 +8,8 @@ crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
 `tail`, `run <script-path>`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
-and `isid [varlist] [, missok]` forms. Merged PR #22 (`26dba2b`) accepted a separate library-only
+and `isid [varlist] [, missok]` forms. Draft PR #25 also contains a pending
+direct `rename <old> <new>` form. Merged PR #22 (`26dba2b`) accepted a separate library-only
 `tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
 the binary and does not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
@@ -353,6 +354,21 @@ This bounded form leaves path normalization, line-oriented script execution,
 comments, multiline SQL, macros, control flow, nested/recursive scripts,
 file/line diagnostics, full tokenizer parity, CLI/JSON/MCP surfaces, and
 backend capability initialization to later roadmap work.
+
+## Draft slice: syntax-only `rename` command
+
+Draft PR #25 adds direct `rename <old> <new>` syntax to `tabdat-language` using
+the existing pure simple-body argument path. The parser captures two owned names,
+normalizes command case and separator whitespace, unwraps the established quoted
+and backtick identifier forms, and preserves the pinned arity, condition,
+option, assignment, and punctuation diagnostics. Runtime execution remains an
+explicit unsupported-command result; schema lookup, collision checks, relation
+mutation, session effects, and all CLI/JSON/MCP surfaces are deferred.
+
+Evidence is being assembled in `_workspace/parser-rename-syntax/`. This draft
+section is not an acceptance claim; it becomes a verified slice only after
+independent review, hosted checks, squash merge, branch cleanup, and post-merge
+`main` verification.
 
 ## Verified slice: dependency and unsafe-code checks
 

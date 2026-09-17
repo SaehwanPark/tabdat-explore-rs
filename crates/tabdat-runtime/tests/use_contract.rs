@@ -285,3 +285,17 @@ fn leaves_run_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "run" }
   );
 }
+
+#[test]
+fn leaves_rename_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Rename {
+    old_name: "old_name".to_owned(),
+    new_name: "new_name".to_owned(),
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "rename" }
+  );
+}

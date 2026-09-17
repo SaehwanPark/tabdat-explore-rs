@@ -473,6 +473,88 @@ fn run_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn rename_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" rename sex gender ").unwrap(),
+    Command::Rename {
+      old_name: "sex".to_owned(),
+      new_name: "gender".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("RENAME\u{1c}  `old-name`\u{1d}\"new name\"").unwrap(),
+    Command::Rename {
+      old_name: "old-name".to_owned(),
+      new_name: "new name".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("rename old old").unwrap(),
+    Command::Rename {
+      old_name: "old".to_owned(),
+      new_name: "old".to_owned(),
+    }
+  );
+}
+
+#[test]
+fn rename_preserves_exact_public_diagnostics() {
+  let cases = [
+    (
+      "rename",
+      "rename expects exactly two variables: rename old new",
+    ),
+    (
+      "rename old",
+      "rename expects exactly two variables: rename old new",
+    ),
+    (
+      "rename old new now",
+      "rename expects exactly two variables: rename old new",
+    ),
+    ("rename if", "missing expression after if"),
+    ("rename old if", "missing expression after if"),
+    ("rename old new if", "missing expression after if"),
+    (
+      "rename old if x > 0",
+      "rename expects exactly two variables: rename old new",
+    ),
+    (
+      "rename old new if x > 0",
+      "rename expects exactly two variables: rename old new",
+    ),
+    (
+      "rename old new, replace",
+      "rename expects exactly two variables: rename old new",
+    ),
+    (
+      "rename old new,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "rename=old new",
+      "rename assignment requires a target before =",
+    ),
+    (
+      "rename = old",
+      "rename assignment requires a target before =",
+    ),
+    ("rename==old new", "unsupported token in command: =="),
+    ("rename:old new", "unsupported token in command: :"),
+    ("rename old-new new", "unsupported token in command: -"),
+    ("rename old+new new", "unsupported token in command: +"),
+    ("rename old@new new", "unsupported token in command: @"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),
