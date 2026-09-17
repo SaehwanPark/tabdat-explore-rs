@@ -338,6 +338,20 @@ fn isid_is_a_public_syntax_only_command() {
       missok: true,
     }
   );
+  assert_eq!(
+    parse_command("isid a a").unwrap(),
+    Command::Isid {
+      variables: vec!["a".to_owned(), "a".to_owned()],
+      missok: false,
+    }
+  );
+  assert_eq!(
+    parse_command("isid `a``b`").unwrap(),
+    Command::Isid {
+      variables: vec!["a`b".to_owned()],
+      missok: false,
+    }
+  );
 }
 
 #[test]

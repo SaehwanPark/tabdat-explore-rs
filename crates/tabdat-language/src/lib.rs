@@ -1747,6 +1747,20 @@ mod tests {
       }
     );
     assert_eq!(
+      parse_command("isid a a").unwrap(),
+      Command::Isid {
+        variables: vec!["a".to_owned(), "a".to_owned()],
+        missok: false,
+      }
+    );
+    assert_eq!(
+      parse_command("isid `a``b`").unwrap(),
+      Command::Isid {
+        variables: vec!["a`b".to_owned()],
+        missok: false,
+      }
+    );
+    assert_eq!(
       parse_command("isid \"\"").unwrap(),
       Command::Isid {
         variables: vec![String::new()],
