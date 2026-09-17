@@ -258,3 +258,17 @@ fn corrupt_load_preserves_the_prior_active_dataset() {
   );
   assert_eq!(session.active_dataset(), Some(&before));
 }
+
+#[test]
+fn leaves_isid_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Isid {
+    variables: vec!["patient_id".to_owned()],
+    missok: false,
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "isid" }
+  );
+}

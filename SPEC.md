@@ -6,8 +6,9 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-and `tail`, plus the verified direct `use`, `codebook [varlist]`, and
-`missing [varlist]` forms. Merged PR #22 (`26dba2b`) accepted a separate library-only
+and `tail`, plus the verified direct `use`, `codebook [varlist]`,
+`missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
+and `isid [varlist] [, missok]` forms. Merged PR #22 (`26dba2b`) accepted a separate library-only
 `tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
 the binary and does not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
@@ -307,6 +308,30 @@ This slice leaves numeric-type and missingness semantics, active-relation/schema
 behavior, conditions/options, prefixed commands, full tokenizer/varlist/
 expression grammar, execution/results, reporting/serialization, and backend
 capability initialization to later roadmap work.
+
+## Verified slice: syntax-only `isid` command
+
+PR #23 adds direct, backend-independent `isid [varlist] [, missok]` syntax to
+`tabdat-language`. The parser returns an owned ordered key-variable list and an
+exact-lowercase `missok` flag, preserving the bounded pinned-Python diagnostics
+for missing keys, unsupported conditions/options/assignments, option values,
+trailing commas, and unsupported punctuation. Runtime execution remains an
+explicit typed unsupported-command error; no active dataset or backend is
+accessed.
+
+Evidence: `_workspace/parser-isid-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. The focused `isid` oracle
+check passed with `1 passed, 19 deselected`, and the full pinned parser/script
+oracle passed with `516 passed` at Python revision
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`. Locked Rust checks, policy scans,
+and independent review are being recorded in the evidence files; hosted checks
+and the eventual merge commit will be recorded there after acceptance.
+
+This slice leaves wildcard/range expansion, unknown-variable validation,
+null-key and duplicate-key semantics, active-relation/schema behavior, key
+scans, result/reporting/serialization, full tokenizer/varlist/option and
+expression grammar, scripts, CLI/JSON/MCP surfaces, and backend capability
+initialization to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 
