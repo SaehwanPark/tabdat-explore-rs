@@ -407,6 +407,72 @@ fn isid_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn run_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" RUN analysis.td ").unwrap(),
+    Command::Run {
+      path: "analysis.td".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("run\u{1c}analysis.td").unwrap(),
+    Command::Run {
+      path: "analysis.td".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("run \"analysis.td\"").unwrap(),
+    Command::Run {
+      path: "\"analysis.td\"".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("run `analysis.td`").unwrap(),
+    Command::Run {
+      path: "`analysis.td`".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("run analysis.td,").unwrap(),
+    Command::Run {
+      path: "analysis.td,".to_owned(),
+    }
+  );
+}
+
+#[test]
+fn run_preserves_exact_public_diagnostics() {
+  let cases = [
+    ("run", "run expects exactly one path: run <script>"),
+    ("run   ", "run expects exactly one path: run <script>"),
+    (
+      "run a.td b.td",
+      "run expects exactly one path: run <script>",
+    ),
+    (
+      "run \"a b.td\"",
+      "run expects exactly one path: run <script>",
+    ),
+    (
+      "run a.td if x > 0",
+      "run expects exactly one path: run <script>",
+    ),
+    ("run,", "comma must be followed by at least one option"),
+    ("run,foo", "unknown command: run"),
+    ("run=foo", "run assignment requires a target before ="),
+    ("run==foo", "unsupported token in command: =="),
+    ("run:foo", "unsupported token in command: :"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),

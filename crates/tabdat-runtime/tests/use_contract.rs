@@ -272,3 +272,16 @@ fn leaves_isid_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "isid" }
   );
 }
+
+#[test]
+fn leaves_run_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Run {
+    path: "analysis.td".to_owned(),
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "run" }
+  );
+}
