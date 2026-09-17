@@ -26,7 +26,7 @@ Evidence reviewed: `02-evidence-migration.md`
 
 ### Parser/parity pass
 
-The first pass found three parity gaps, all fixed before finalization:
+The first pass found four parity gaps, all fixed before finalization:
 
 1. `<=` and `>=` were initially mistaken for assignment separators in setting
    values; `a54e55f` preserves those contiguous tokenizer symbols.
