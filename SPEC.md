@@ -5,8 +5,8 @@
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
-`exit`/`quit`, `describe`, `count`, `head`, and `tail`. There is still no usable
-TabDat CLI, data runtime, or statistical model implementation.
+`exit`/`quit`, `describe`, `doctor`, `count`, `head`, and `tail`. There is still
+no usable TabDat CLI, data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -103,6 +103,26 @@ parser/script oracle again passed with `516 passed in 0.44s` at revision
 This slice leaves schema inspection results, active-dataset preconditions,
 execution, reporting, serialization, and the full tokenizer/command inventory
 to later roadmap slices.
+
+## Verified slice: syntax-only doctor command
+
+Add the zero-argument `doctor` form to `tabdat-language` as a typed,
+backend-independent command. Case normalization, surrounding whitespace, and
+the pinned Python diagnostics for arguments, conditions, options, assignments,
+unsupported `==`/`-`/`+` tokens, missing `if` expressions, and trailing commas
+are covered by focused tests. This does not probe the environment, inspect a
+dataset, access session state, execute a command, or initialize a backend.
+
+Evidence: `_workspace/parser-doctor-syntax/01-contract.md`,
+`_workspace/parser-doctor-syntax/02-evidence-migration.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
+doctor parser subset passed with `6 passed, 8 deselected`, and the full
+parser/script oracle again passed with `516 passed in 0.45s` at revision
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
+
+This slice leaves environment/capability inspection results, active-dataset
+preconditions, execution, reporting, serialization, prefixed commands, and
+the full tokenizer/command inventory to later roadmap slices.
 
 ## Verified slice: dependency and unsafe-code checks
 

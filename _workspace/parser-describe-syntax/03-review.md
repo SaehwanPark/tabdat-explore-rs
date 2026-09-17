@@ -1,6 +1,6 @@
 # Describe-command syntax review
 
-Status: partial until hosted checks pass on the final revision
+Status: accepted; PR #13 merged as `f6525b3`
 Reviewer: task owner with three independent read-only review passes
 Contract reviewed: `01-contract.md`
 Evidence reviewed: `02-evidence-migration.md`
@@ -55,9 +55,8 @@ metadata-driven policy checks continue to cover every workspace package.
 - Hosted ReadStat and the pre-branch main checks were green; the latest PR
   head remains the merge authority for the queued CI and libgretl checks.
 
-## Required follow-up
+## Disposition
 
-Keep PR #13 draft until every check for the latest pushed head is successful.
-Then mark it ready, verify the merge state is clean, merge to `main`, and delete
-the local and remote feature branch. Do not check broad parser, execution, or
-Phase 4 roadmap items from this syntax-only evidence.
+All current-head checks passed, PR #13 was marked ready and squash-merged as
+`f6525b3`, and the local and remote feature branches were deleted. Do not check
+broad parser, execution, or Phase 4 roadmap items from this syntax-only evidence.
