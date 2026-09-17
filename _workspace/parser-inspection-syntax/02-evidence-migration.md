@@ -4,8 +4,8 @@ Status: partial pending review and hosted CI
 Producer: task owner  
 Consumer: reviewer and next maintainer  
 Boundary: Python parser contract → Rust syntax-only parser  
-Rust implementation revision: `7264dae` (working tree also contains the
-documentation updates for this slice)  
+Rust implementation revision: `8492187` (implementation `7264dae` plus the
+recorded documentation/evidence updates for this slice)
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
 
