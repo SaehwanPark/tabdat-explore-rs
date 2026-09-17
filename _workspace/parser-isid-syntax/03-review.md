@@ -50,11 +50,12 @@ remains open before hosted verification.
 
 The focused/full pinned Python oracle results, locked Rust checks, dependency
 and advisory scans, metadata-driven unsafe inventory, and targeted Rust tests
-are recorded in `02-evidence-migration.md`. The final full local baseline must
-be rerun after the last source/docs revision. Hosted checks for PR #23 are
-currently pending: Rust baseline, dependency/unsafe policy, and the
-`tabdat-runtime` Linux job. Their final job links and the squash merge commit
-will be added here before the PR is marked ready.
+are recorded in `02-evidence-migration.md`. The complete local baseline and
+policy run passed on `cd5bc47`; the subsequent `4b2dc99` change only corrected
+the geiger report wording. Hosted checks for PR #23 are currently pending:
+Rust baseline, dependency/unsafe policy, and the `tabdat-runtime` Linux job.
+Their final job links and the squash merge commit will be added here before
+the PR is marked ready.
 
 ## Disposition
 
