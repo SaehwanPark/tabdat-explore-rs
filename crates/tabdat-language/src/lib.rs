@@ -12,6 +12,30 @@ pub enum Command {
   Status,
   /// Request termination of the interactive session.
   Exit,
+  /// Count rows in the active dataset (execution is deferred).
+  Count,
+  /// Preview the first `limit` rows (execution is deferred).
+  Head { limit: RowLimit },
+  /// Preview the last `limit` rows (execution is deferred).
+  Tail { limit: RowLimit },
+}
+
+/// A validated, canonical non-negative decimal row limit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RowLimit(Box<str>);
+
+impl RowLimit {
+  /// Return the canonical ASCII decimal representation without parsing it into
+  /// a bounded machine integer.
+  pub fn as_decimal(&self) -> &str {
+    &self.0
+  }
+}
+
+impl Default for RowLimit {
+  fn default() -> Self {
+    Self("5".into())
+  }
 }
 
 /// A deterministic error produced while parsing a command line.
@@ -127,6 +151,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       }
     }
+    "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
@@ -150,6 +175,244 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
   }
 }
 
+#[derive(Debug)]
+struct SimpleArgument {
+  text: String,
+}
+
+#[derive(Debug, Default)]
+struct SimpleBody {
+  arguments: Vec<SimpleArgument>,
+  has_options: bool,
+  has_assignment: bool,
+  assignment_target_missing: bool,
+  has_condition: bool,
+  missing_condition_expression: bool,
+}
+
+fn parse_inspection_command(name: &str, body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(format!(
+      "{name} assignment requires a target before ="
+    )));
+  }
+
+  if name == "count" {
+    if parts.arguments.is_empty()
+      && !parts.has_options
+      && !parts.has_assignment
+      && !parts.has_condition
+    {
+      return Ok(Command::Count);
+    }
+    return Err(ParseError::new(
+      "count does not accept arguments, if clauses, options, or assignment syntax",
+    ));
+  }
+
+  if parts.has_options || parts.has_assignment || parts.has_condition {
+    return Err(ParseError::new(format!(
+      "{name} does not accept if clauses, options, or assignment syntax"
+    )));
+  }
+  if parts.arguments.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{name} accepts at most one row limit"
+    )));
+  }
+  let limit = parts
+    .arguments
+    .first()
+    .map(|argument| parse_row_limit(&argument.text, name))
+    .transpose()?
+    .unwrap_or_default();
+  Ok(match name {
+    "head" => Command::Head { limit },
+    "tail" => Command::Tail { limit },
+    _ => unreachable!("parse_inspection_command only handles inspection names"),
+  })
+}
+
+fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
+  if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
+    return Err(ParseError::new(format!(
+      "{name} row limit must be a non-negative integer"
+    )));
+  }
+  let canonical = text.trim_start_matches('0');
+  let canonical = if canonical.is_empty() { "0" } else { canonical };
+  Ok(RowLimit(canonical.into()))
+}
+
+fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
+  let characters: Vec<char> = body.chars().collect();
+  let mut parts = SimpleBody::default();
+  let mut index = 0;
+  while index < characters.len() {
+    while characters
+      .get(index)
+      .is_some_and(|character| is_command_whitespace(*character))
+    {
+      index += 1;
+    }
+    if index >= characters.len() {
+      break;
+    }
+
+    match characters[index] {
+      ',' => {
+        index += 1;
+        while characters
+          .get(index)
+          .is_some_and(|character| is_command_whitespace(*character))
+        {
+          index += 1;
+        }
+        if index >= characters.len() {
+          return Err(ParseError::new(
+            "comma must be followed by at least one option",
+          ));
+        }
+        parts.has_options = true;
+        break;
+      }
+      '=' => {
+        if characters.get(index + 1) == Some(&'=') {
+          return Err(ParseError::new("unsupported token in command: =="));
+        }
+        parts.has_assignment = true;
+        parts.assignment_target_missing = parts.arguments.is_empty();
+        break;
+      }
+      '+' | '-' | ':' | '/' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '*' | '%' | '&' | '|'
+      | '!' | '<' | '>' | '^' | '~' | '#' => {
+        return Err(ParseError::new(format!(
+          "unsupported token in command: {}",
+          characters[index]
+        )));
+      }
+      _ => {
+        let mut text = String::new();
+        let mut quoted = false;
+        loop {
+          if index >= characters.len()
+            || is_command_whitespace(characters[index])
+            || matches!(characters[index], ',' | '=')
+          {
+            break;
+          }
+          if matches!(
+            characters[index],
+            '+'
+              | '-'
+              | ':'
+              | '/'
+              | '?'
+              | '('
+              | ')'
+              | '['
+              | ']'
+              | '{'
+              | '}'
+              | '*'
+              | '%'
+              | '&'
+              | '|'
+              | '!'
+              | '<'
+              | '>'
+              | '^'
+              | '~'
+              | '#'
+          ) {
+            return Err(ParseError::new(format!(
+              "unsupported token in command: {}",
+              characters[index]
+            )));
+          }
+          if characters[index] == '.'
+            && !text.is_empty()
+            && !text
+              .chars()
+              .next()
+              .is_some_and(|character| character.is_ascii_digit())
+          {
+            return Err(ParseError::new("unsupported token in command: ."));
+          }
+          if matches!(characters[index], '\'' | '"' | '`') {
+            let quote = characters[index];
+            quoted = true;
+            let piece = parse_quoted_piece(&characters, &mut index, quote)?;
+            text.push_str(&piece);
+          } else {
+            text.push(characters[index]);
+            index += 1;
+          }
+        }
+        if !text.is_empty() || quoted {
+          let is_if = !quoted && text.eq_ignore_ascii_case("if");
+          if is_if {
+            parts.has_condition = true;
+            let mut lookahead = index;
+            while characters
+              .get(lookahead)
+              .is_some_and(|character| is_command_whitespace(*character))
+            {
+              lookahead += 1;
+            }
+            parts.missing_condition_expression = characters
+              .get(lookahead)
+              .is_none_or(|character| matches!(character, ',' | '='));
+            break;
+          }
+          parts.arguments.push(SimpleArgument { text });
+        }
+      }
+    }
+  }
+  Ok(parts)
+}
+
+fn parse_quoted_piece(
+  characters: &[char],
+  index: &mut usize,
+  quote: char,
+) -> Result<String, ParseError> {
+  *index += 1;
+  let mut text = String::new();
+  let mut content_nonempty = false;
+  while *index < characters.len() {
+    if characters[*index] == quote {
+      if characters.get(*index + 1) == Some(&quote) {
+        if quote == '`' && !content_nonempty && *index + 2 == characters.len() {
+          return Err(ParseError::new("quoted identifier cannot be empty"));
+        }
+        text.push(quote);
+        content_nonempty = true;
+        *index += 2;
+        continue;
+      }
+      *index += 1;
+      if quote == '`' && !content_nonempty {
+        return Err(ParseError::new("quoted identifier cannot be empty"));
+      }
+      return Ok(text);
+    }
+    text.push(characters[*index]);
+    content_nonempty = true;
+    *index += 1;
+  }
+  Err(ParseError::new(if quote == '`' {
+    "unterminated quoted identifier"
+  } else {
+    "unterminated quoted string"
+  }))
+}
+
 fn parse_help(body: &str) -> Result<Command, ParseError> {
   let mut words = body
     .split(is_command_whitespace)
@@ -165,7 +428,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Command, ParseError, parse_command};
+  use super::{Command, ParseError, RowLimit, parse_command};
 
   #[test]
   fn parses_help_aliases_and_topics() {
@@ -211,6 +474,138 @@ mod tests {
     assert_eq!(parse_command("status").unwrap(), Command::Status);
     assert_eq!(parse_command("exit").unwrap(), Command::Exit);
     assert_eq!(parse_command("quit").unwrap(), Command::Exit);
+  }
+
+  #[test]
+  fn parses_inspection_commands_and_canonical_limits() {
+    assert_eq!(parse_command("count").unwrap(), Command::Count);
+    assert_eq!(parse_command(" COUNT ").unwrap(), Command::Count);
+    assert_eq!(
+      parse_command("head").unwrap(),
+      Command::Head {
+        limit: RowLimit::default(),
+      }
+    );
+    assert_eq!(
+      parse_command("TAIL 000").unwrap(),
+      Command::Tail {
+        limit: RowLimit("0".into()),
+      }
+    );
+    let head = parse_command("head 00018446744073709551616").unwrap();
+    assert_eq!(
+      head,
+      Command::Head {
+        limit: RowLimit("18446744073709551616".into()),
+      }
+    );
+    let huge = "9".repeat(100);
+    let tail = parse_command(&format!("tail {huge}")).unwrap();
+    assert_eq!(
+      tail,
+      Command::Tail {
+        limit: RowLimit(huge.into_boxed_str()),
+      }
+    );
+    assert_eq!(
+      match parse_command("head 0007").unwrap() {
+        Command::Head { limit } => limit.as_decimal().to_owned(),
+        other => panic!("unexpected command: {other:?}"),
+      },
+      "7"
+    );
+  }
+
+  #[test]
+  fn accepts_quoted_numeric_limits() {
+    for (input, expected) in [
+      ("head \"10\"", "10"),
+      ("tail '0010'", "10"),
+      ("head `0`", "0"),
+    ] {
+      let command = parse_command(input).unwrap();
+      let actual = match command {
+        Command::Head { limit } | Command::Tail { limit } => limit.as_decimal().to_owned(),
+        other => panic!("unexpected command: {other:?}"),
+      };
+      assert_eq!(actual, expected);
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_inspection_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "count 1",
+        "count does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "count if x",
+        "count does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "count, detail",
+        "count does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      ("count = 1", "count assignment requires a target before ="),
+      ("count == 1", "unsupported token in command: =="),
+      ("count -1", "unsupported token in command: -"),
+      ("head 5 6", "head accepts at most one row limit"),
+      ("head 1.0", "head row limit must be a non-negative integer"),
+      ("head 1e2", "head row limit must be a non-negative integer"),
+      ("head foo", "head row limit must be a non-negative integer"),
+      ("head ١", "head row limit must be a non-negative integer"),
+      ("head -1", "unsupported token in command: -"),
+      ("head +1", "unsupported token in command: +"),
+      (
+        "head 1 if x",
+        "head does not accept if clauses, options, or assignment syntax",
+      ),
+      (
+        "head 1, detail",
+        "head does not accept if clauses, options, or assignment syntax",
+      ),
+      ("head = 1", "head assignment requires a target before ="),
+      ("head == 1", "unsupported token in command: =="),
+      ("head,", "comma must be followed by at least one option"),
+      ("head 5,", "comma must be followed by at least one option"),
+      ("tail 5 6", "tail accepts at most one row limit"),
+      ("tail 1.0", "tail row limit must be a non-negative integer"),
+      ("tail -1", "unsupported token in command: -"),
+      ("tail +1", "unsupported token in command: +"),
+      (
+        "tail 1 if x",
+        "tail does not accept if clauses, options, or assignment syntax",
+      ),
+      (
+        "tail 1, detail",
+        "tail does not accept if clauses, options, or assignment syntax",
+      ),
+      ("tail = 1", "tail assignment requires a target before ="),
+      ("tail == 1", "unsupported token in command: =="),
+      ("tail,", "comma must be followed by at least one option"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+    assert_eq!(
+      parse_command("head \"\"").unwrap_err().to_string(),
+      "head row limit must be a non-negative integer"
+    );
+    assert_eq!(
+      parse_command("head ``").unwrap_err().to_string(),
+      "quoted identifier cannot be empty"
+    );
+    assert_eq!(
+      parse_command("head \"unterminated")
+        .unwrap_err()
+        .to_string(),
+      "unterminated quoted string"
+    );
   }
 
   #[test]
