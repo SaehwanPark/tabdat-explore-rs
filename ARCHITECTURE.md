@@ -23,7 +23,9 @@ silently invent parity.
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `head`, and `tail`,
   plus owned command/error types and focused tests. The `missing [varlist]` and
-  `duplicates [report] [varlist]` forms perform no execution or I/O.
+  `duplicates [report] [varlist]` forms perform no execution or I/O. The next
+  bounded `summarize [varlist]` syntax slice is being recovered on a draft
+  branch; structured conditions/options and summary execution remain deferred.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no session model, data engine, statistical backend, REPL, MCP server,
