@@ -1,10 +1,11 @@
 # Describe-command syntax evidence
 
-Status: partial pending hosted CI
-Producer: task owner  
-Consumer: reviewer and next maintainer  
-Boundary: Python parser contract → Rust syntax-only parser  
-Rust implementation revision: `a1d2276`  
+Status: accepted and merged in PR #13
+Producer: task owner
+Consumer: reviewer and next maintainer
+Boundary: Python parser contract → Rust syntax-only parser
+Rust implementation revisions: `a1d2276`, follow-up fix `622e100`; merged as
+`f6525b3`
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
 
@@ -68,10 +69,11 @@ The follow-up local run after the review fix passed the same locked checks;
 Rust totals remain one root smoke test, 12 language unit tests, and four
 language integration tests.
 
-The merged `main` revision `79ae1d9` had green dependency/unsafe-policy,
-ReadStat, DuckDB, and libgretl hosted checks immediately before this branch.
-PR #13 hosted checks for the current implementation/docs revision remain
-pending; the PR will not be merged until every current-head check is green.
+The pre-branch `main` revision `79ae1d9` and PR #13 current head `622e100` had
+green dependency/unsafe-policy, ReadStat, DuckDB, and libgretl hosted checks.
+The post-merge `main` revision `f6525b3` reran CI, policy, ReadStat, and both
+libgretl workflows successfully. The feature branch was deleted locally and
+remotely after the merge.
 
 ## Supported and deferred behavior
 

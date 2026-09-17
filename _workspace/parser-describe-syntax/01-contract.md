@@ -1,10 +1,10 @@
 # Describe-command syntax contract
 
-Status: bounded implementation slice, pending validation  
-Producer: task owner  
-Consumer: implementer/reviewer  
-Selected skills: `tabdat-migration`, `simple-code-writer`  
-Rust base: `main` at `79ae1d947e58f8017c2409172f48a7892dda98c3`  
+Status: accepted and merged in PR #13
+Producer: task owner
+Consumer: implementer/reviewer
+Selected skills: `tabdat-migration`, `simple-code-writer`
+Rust base: `main` at `79ae1d947e58f8017c2409172f48a7892dda98c3`
 Python oracle: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
 
@@ -77,3 +77,6 @@ oracle requires execution/runtime code or a general tokenizer.
 
 Implement exactly this contract. Do not broaden the parser into varlists,
 options, expressions, or `describe` execution.
+
+PR #13 disposition: implemented and merged as `f6525b3`; the feature branch was
+deleted locally and remotely after all current-head checks passed.
