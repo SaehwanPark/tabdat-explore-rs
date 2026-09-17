@@ -1,9 +1,8 @@
 # `isid` syntax evidence
 
-Status: acceptance checks passed on implementation head `eee32f2`; this
-evidence-only follow-up must pass the same hosted checks before PR #23 is
-promoted and squash-merged. The Phase 4 `isid` execution item remains
-unchecked.
+Status: accepted; PR #23 squash-merged as
+`a2f4bbb6d4a7cd11bbdbfd2864099a8c98ceac07`. The Phase 4 `isid` execution item
+remains unchecked.
 
 Producer: task owner
 
@@ -15,8 +14,8 @@ Rust implementation revisions: `5b7b2ee` (contract), `e0bcde1` (typed command,
 bounded parser, runtime rejection, and tests), `abfa95f` (isid-specific
 duplicate-key and doubled-backtick regression coverage), and `12da61b`
 (empty-assignment diagnostic parity). The documentation/evidence revisions
-complete this record. The final squash commit will be recorded
-here after PR #23 merges.
+complete this record; PR #23 squash-merged them as
+`a2f4bbb6d4a7cd11bbdbfd2864099a8c98ceac07`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -137,9 +136,23 @@ this change: [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/ac
 [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029704/jobs/105293098745),
 [libgretl](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029361/jobs/105293097338),
 and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35248029360/jobs/105293098147).
-The final documentation-head check set and post-merge main checks will be
-recorded after GitHub completes them. Local evidence is not a substitute for
-hosted checks.
+The final documentation-head `88af2ee` also passed every required hosted
+workflow: [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641105/jobs/105301837449),
+[dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641105/jobs/105301837008),
+[tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641071/jobs/105301836799),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641111/jobs/105301837058),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641111/jobs/105301837726),
+[libgretl](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641084/jobs/105301836728),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35250641123/jobs/105301837410).
+Post-merge main commit `a2f4bbb` also passed every workflow: [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932087/jobs/105309425301),
+[dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932087/jobs/105309425121),
+[tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932111/jobs/105309425835),
+[ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932124/jobs/105309425110),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932124/jobs/105309424997),
+[libgretl](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932082/jobs/105309424488),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35252932178/jobs/105309425389).
+The final documentation-only main push is monitored separately; local evidence
+is not a substitute for hosted checks.
 
 ## Supported and deferred behavior
 

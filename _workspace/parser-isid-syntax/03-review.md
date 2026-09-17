@@ -1,8 +1,8 @@
 # `isid` syntax review
 
-Status: parser, contract, and workspace review approved; the implementation
-head `eee32f2` passed all hosted checks. PR #23 remains draft until the final
-documentation-head check set passes and the merge is completed.
+Status: accepted; parser, contract, and workspace review approved. PR #23
+squash-merged as `a2f4bbb6d4a7cd11bbdbfd2864099a8c98ceac07` after the final
+documentation-head checks passed.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -38,8 +38,8 @@ The contract pass identified that the empty-assignment form
 `isid assignment requires an expression after =` diagnostic rather than the
 generic direct-form rejection. Commit `12da61b` aligns the parser, contract,
 and both test blocks. It also confirmed that the in-progress status and missing
-review artifact were the only acceptance blockers; the docs remain marked
-in-progress until hosted checks complete.
+review artifact were the only acceptance blockers; both were resolved before
+the final hosted check set and merge.
 
 The workspace pass found no manifest, dependency, unsafe-code, public API,
 topology, or workflow defect. Its documentation/evidence omissions are
@@ -53,13 +53,14 @@ and advisory scans, metadata-driven unsafe inventory, and targeted Rust tests
 are recorded in `02-evidence-migration.md`. The complete local baseline and
 policy run passed on `cd5bc47`; the subsequent `4b2dc99` change only corrected
 the geiger report wording. The implementation head `eee32f2` passed the full
-hosted set linked in `02-evidence-migration.md`; the final documentation-head
-set and squash merge commit will be added after the next check cycle.
+hosted set, and final documentation-head `88af2ee` passed the full hosted set
+linked in `02-evidence-migration.md` before merge. Post-merge main commit
+`a2f4bbb` also passed all workflows linked in that evidence record.
 
 ## Disposition
 
-Approve the bounded syntax-only slice once the final local baseline and the
-three required hosted checks pass. Do not claim active-dataset uniqueness,
+The bounded syntax-only slice is accepted after the final local baseline and
+all required hosted checks passed. Do not claim active-dataset uniqueness,
 missing-key or duplicate-key semantics, schema/variable validation, execution,
 CLI/script/JSON/MCP support, full tokenizer/varlist/option/expression parity,
 or backend integration from this slice.

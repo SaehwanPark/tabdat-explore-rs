@@ -1,7 +1,7 @@
 # Contract: syntax-only `isid`
 
-Status: bounded contract accepted for review; PR #23 still requires the final
-documentation-head hosted checks before merge. Execution and full tokenizer
+Status: accepted; PR #23 squash-merged as
+`a2f4bbb6d4a7cd11bbdbfd2864099a8c98ceac07`. Execution and full tokenizer
 parity remain deferred.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
