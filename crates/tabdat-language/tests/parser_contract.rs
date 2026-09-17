@@ -60,6 +60,70 @@ fn doctor_is_a_public_syntax_only_command() {
 }
 
 #[test]
+fn summarize_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" SUMMARIZE `bmi-zscore` \"value col\" ").unwrap(),
+    Command::Summarize {
+      variables: vec!["bmi-zscore".to_owned(), "value col".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("summarize").unwrap(),
+    Command::Summarize { variables: vec![] }
+  );
+  assert_eq!(
+    parse_command("summarize `x``y` \"report\"").unwrap(),
+    Command::Summarize {
+      variables: vec!["x`y".to_owned(), "report".to_owned()],
+    }
+  );
+}
+
+#[test]
+fn summarize_preserves_exact_public_diagnostics() {
+  let cases = [
+    (
+      "summarize age if age > 18",
+      "summarize does not accept if clauses or options",
+    ),
+    (
+      "summarize age, detail",
+      "summarize does not accept if clauses or options",
+    ),
+    (
+      "summarize age = other",
+      "summarize does not accept assignment syntax",
+    ),
+    (
+      "summarize = age",
+      "summarize assignment requires a target before =",
+    ),
+    (
+      "summarize age,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "summarize,",
+      "comma must be followed by at least one option",
+    ),
+    ("summarize if", "missing expression after if"),
+    ("summarize age if", "missing expression after if"),
+    ("summarize age==x", "unsupported token in command: =="),
+    ("summarize age-1", "unsupported token in command: -"),
+    ("summarize age+1", "unsupported token in command: +"),
+    ("summarize age!x", "unsupported token in command: !"),
+    ("summarize age@x", "unsupported token in command: @"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" DATASIGNATURE ").unwrap(),

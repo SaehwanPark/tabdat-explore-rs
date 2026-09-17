@@ -267,6 +267,24 @@ behavior, conditions/options, prefixed commands, full tokenizer/varlist/
 expression grammar, execution/results, reporting/serialization, and backend
 capability initialization to later roadmap work.
 
+## In-progress slice: syntax-only `summarize` command
+
+The next bounded slice is recovering direct, backend-independent
+`summarize [varlist]` syntax in `tabdat-language`. It will return an owned
+ordered variable list and preserve the pinned diagnostics for assignments,
+conditions, options, missing `if` expressions, trailing commas, and unsupported
+punctuation. It will not inspect an active relation or schema, validate numeric
+columns, compute summary statistics, parse structured expression/option forms,
+execute a command, or initialize a backend.
+
+Evidence: `_workspace/parser-summarize-syntax/{01-contract,02-evidence-migration,03-review}.md`;
+the implementation and tests will be linked after the draft PR is complete.
+
+This slice leaves numeric-type and missingness semantics, active-relation/schema
+behavior, conditions/options, prefixed commands, full tokenizer/varlist/
+expression grammar, execution/results, reporting/serialization, and backend
+capability initialization to later roadmap work.
+
 ## Verified slice: dependency and unsafe-code checks
 
 Pin the security-tool versions used by CI, configure dependency license/advisory
