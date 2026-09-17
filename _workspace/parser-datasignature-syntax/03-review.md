@@ -36,7 +36,8 @@ the contract.
 The contract cites the pinned model, parser, test, and command documentation
 paths, records the parser/docs `by:` discrepancy, and keeps SHA-256 and data
 semantics deferred. The parity fixes update the contract's precedence and
-unsupported-token rows; final independent review is pending.
+unsupported-argument rows; full condition-expression tokenization remains
+explicitly deferred. Final independent review is pending.
 
 ### Workspace/policy pass
 

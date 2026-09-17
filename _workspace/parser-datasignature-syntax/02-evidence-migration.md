@@ -46,8 +46,11 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 Targeted probes confirmed case-insensitive command names, surrounding and
 U+001C separator whitespace, the empty typed command, argument/condition/option
 rejection, missing-`if` handling after arguments and before commas, assignment,
-unsupported `==`/`-`/`+`/`!` tokens anywhere in the body, and trailing-comma
-diagnostics. The pinned parser accepts `by id: datasignature`
+unsupported `==`/`-`/`+`/`!` tokens in argument text before an `if` clause, and
+trailing-comma diagnostics. Valid condition expressions such as `if age==x`,
+`if age+x`, and `if age-x` retain the generic no-argument diagnostic; malformed
+condition punctuation remains outside this bounded tokenizer contract. The
+pinned parser accepts `by id: datasignature`
 despite the command docs excluding `by:`; that wrapper and its execution
 behavior remain explicitly deferred.
 

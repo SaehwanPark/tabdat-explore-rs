@@ -1006,6 +1006,18 @@ mod tests {
         "datasignature if age > 0",
         "datasignature does not accept arguments, if clauses, options, or assignment syntax",
       ),
+      (
+        "datasignature if age==x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age+x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+      (
+        "datasignature if age-x",
+        "datasignature does not accept arguments, if clauses, options, or assignment syntax",
+      ),
       ("datasignature age if", "missing expression after if"),
       ("datasignature if, fast", "missing expression after if"),
       ("datasignature if,", "missing expression after if"),

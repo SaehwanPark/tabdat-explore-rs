@@ -33,15 +33,17 @@ command and does not compute a signature. The direct command diagnostics are:
 
 | Input shape | Diagnostic |
 | --- | --- |
-| arguments, `if` with an expression, options, or assignment syntax | `datasignature does not accept arguments, if clauses, options, or assignment syntax` |
+| arguments, valid `if` with an expression, options, or assignment syntax | `datasignature does not accept arguments, if clauses, options, or assignment syntax` |
 | `if` without an expression, including after an argument or before a comma | `missing expression after if` |
 | trailing comma without a missing `if` expression | `comma must be followed by at least one option` |
 | `= value` or `=value` | `datasignature assignment requires a target before =` |
-| `==`, `-`, `+`, or `!` tokens anywhere in the body | `unsupported token in command: <token>` |
+| `==`, `-`, `+`, or `!` tokens in an argument before an `if` clause | `unsupported token in command: <token>` |
 
 The Python parser currently accepts `by id: datasignature` even though the
 command documentation excludes `by:`; prefixed-command parsing and that
-execution boundary remain outside this direct slice.
+execution boundary remain outside this direct slice. Full condition-expression
+tokenization is also deferred; valid expressions are rejected generically, while
+malformed punctuation inside an expression is not part of this bounded contract.
 
 ## Rust contract
 
