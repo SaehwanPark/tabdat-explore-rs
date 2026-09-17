@@ -244,8 +244,8 @@ and backend capability initialization to later roadmap work.
 ## Verified slice: syntax-only `duplicates` command
 
 PR #20 (`5460c7b`) adds direct, backend-independent
-`duplicates [report] [varlist]` syntax in `tabdat-language`. It will return an
-owned ordered variable list, strip a leading `report` alias according to the
+`duplicates [report] [varlist]` syntax in `tabdat-language`. It returns an
+owned ordered variable list, strips a leading `report` alias according to the
 pinned quote behavior, and
 preserve the pinned diagnostics for conditions, options, assignments, missing
 `if` expressions, trailing commas, and unsupported punctuation. It will not
