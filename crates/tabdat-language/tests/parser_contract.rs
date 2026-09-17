@@ -407,6 +407,60 @@ fn isid_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn select_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" SELECT age sex ").unwrap(),
+    Command::Select {
+      variables: vec!["age".to_owned(), "sex".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("select\u{1c}`a,b`\u{1d}\"old name\"").unwrap(),
+    Command::Select {
+      variables: vec!["a,b".to_owned(), "old name".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("select age age").unwrap(),
+    Command::Select {
+      variables: vec!["age".to_owned(), "age".to_owned()],
+    }
+  );
+}
+
+#[test]
+fn select_preserves_exact_public_diagnostics() {
+  let cases = [
+    ("select", "select expects at least one variable"),
+    (
+      "select age if age > 0",
+      "select only accepts a variable list",
+    ),
+    ("select age, stable", "select only accepts a variable list"),
+    ("select age = x", "select only accepts a variable list"),
+    ("select = x", "select assignment requires a target before ="),
+    (
+      "select age,",
+      "comma must be followed by at least one option",
+    ),
+    ("select if", "missing expression after if"),
+    ("select age==x", "unsupported token in command: =="),
+    ("select age-1", "unsupported token in command: -"),
+    ("select age+1", "unsupported token in command: +"),
+    ("select age!x", "unsupported token in command: !"),
+    ("select age@x", "unsupported token in command: @"),
+    ("select:age", "unsupported token in command: :"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn run_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" RUN analysis.td ").unwrap(),

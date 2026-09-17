@@ -299,3 +299,16 @@ fn leaves_rename_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "rename" }
   );
 }
+
+#[test]
+fn leaves_select_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Select {
+    variables: vec!["age".to_owned(), "sex".to_owned()],
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "select" }
+  );
+}

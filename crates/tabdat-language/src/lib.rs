@@ -31,6 +31,8 @@ pub enum Command {
     variables: Vec<String>,
     missok: bool,
   },
+  /// Keep only listed columns (relation execution is deferred).
+  Select { variables: Vec<String> },
   /// Rename one column to another (relation execution is deferred).
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -194,6 +196,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   }
   if command
     .as_bytes()
+    .get(..6)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"select"))
+    && command.as_bytes().get(6) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
     .get(..3)
     .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"run"))
     && command.as_bytes().get(3) == Some(&b':')
@@ -322,6 +332,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
+    "select" => parse_select_command(body),
     "rename" => parse_rename_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
@@ -657,6 +668,31 @@ fn parse_isid_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
     missok: options.iter().any(|option| option.name == "missok"),
+  })
+}
+
+fn parse_select_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "select assignment requires a target before =",
+    ));
+  }
+  if parts.has_options || parts.has_assignment || parts.has_condition {
+    return Err(ParseError::new("select only accepts a variable list"));
+  }
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("select expects at least one variable"));
+  }
+  Ok(Command::Select {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
   })
 }
 
@@ -1911,6 +1947,60 @@ mod tests {
       ("isid patient_id!x", "unsupported token in command: !"),
       ("isid patient_id@x", "unsupported token in command: @"),
       ("isid patient_id, MISSOK", "isid unsupported option: MISSOK"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_select_variables_without_execution() {
+    assert_eq!(
+      parse_command(" SELECT age sex ").unwrap(),
+      Command::Select {
+        variables: vec!["age".to_owned(), "sex".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("select\u{1c}`a,b`\u{1d}\"old name\"").unwrap(),
+      Command::Select {
+        variables: vec!["a,b".to_owned(), "old name".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("select age age").unwrap(),
+      Command::Select {
+        variables: vec!["age".to_owned(), "age".to_owned()],
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_select_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("select", "select expects at least one variable"),
+      (
+        "select age if age > 0",
+        "select only accepts a variable list",
+      ),
+      ("select age, stable", "select only accepts a variable list"),
+      ("select age = x", "select only accepts a variable list"),
+      ("select = x", "select assignment requires a target before ="),
+      (
+        "select age,",
+        "comma must be followed by at least one option",
+      ),
+      ("select if", "missing expression after if"),
+      ("select age==x", "unsupported token in command: =="),
+      ("select age-1", "unsupported token in command: -"),
+      ("select age+1", "unsupported token in command: +"),
+      ("select age!x", "unsupported token in command: !"),
+      ("select age@x", "unsupported token in command: @"),
+      ("select:age", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
