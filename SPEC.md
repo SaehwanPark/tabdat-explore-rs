@@ -241,6 +241,25 @@ rules, wildcard/range expansion, conditions/options, prefixed commands, full
 tokenizer/varlist/expression grammar, execution/results, reporting/serialization,
 and backend capability initialization to later roadmap work.
 
+## In-progress slice: syntax-only `duplicates` command
+
+The next bounded slice is recovering direct, backend-independent
+`duplicates [report] [varlist]` syntax in `tabdat-language`. It will return an
+owned ordered variable list, strip only a leading unquoted `report` alias, and
+preserve the pinned diagnostics for conditions, options, assignments, missing
+`if` expressions, trailing commas, and unsupported punctuation. It will not
+inspect an active relation or schema, group rows, count duplicates, validate
+variable names, expand wildcards/ranges, execute a command, or initialize a
+backend.
+
+Evidence: `_workspace/parser-duplicates-syntax/01-contract.md`; the draft PR
+and implementation evidence will be linked when available.
+
+This slice leaves duplicate-group and null-key semantics, active-relation/schema
+behavior, conditions/options, prefixed commands, full tokenizer/varlist/
+expression grammar, execution/results, reporting/serialization, and backend
+capability initialization to later roadmap work.
+
 ## Verified slice: dependency and unsafe-code checks
 
 Pin the security-tool versions used by CI, configure dependency license/advisory

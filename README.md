@@ -7,7 +7,8 @@ a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
 `datasignature`, `use`, `codebook`, `missing`, `count`, `head`, and `tail`). The
 `missing [varlist]` form is syntax-only; no data engine or statistical backend is
-installed.
+installed. The next bounded `duplicates [report] [varlist]` syntax slice is
+being recovered on a draft branch.
 
 ## Development
 

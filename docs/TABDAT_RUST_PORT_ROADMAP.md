@@ -295,6 +295,9 @@ Port TabDat's language before implementing most execution.
   and full varlist semantics remain deferred).
 - [x] Add the bounded direct `missing [varlist]` syntax slice (PR #19; execution
   and full varlist semantics remain deferred).
+- [ ] Add the bounded direct `duplicates [report] [varlist]` syntax slice
+  (contract recovery in progress; execution and full varlist semantics remain
+  deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
