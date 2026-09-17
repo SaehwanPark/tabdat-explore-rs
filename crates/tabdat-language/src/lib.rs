@@ -1084,15 +1084,19 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
               characters[index]
             )));
           }
-          if characters[index] == '.'
-            && !allow_symbols
-            && !text.is_empty()
-            && !text
-              .chars()
-              .next()
-              .is_some_and(|character| character.is_ascii_digit())
-          {
-            return Err(ParseError::new("unsupported token in command: ."));
+          if characters[index] == '.' && !allow_symbols {
+            let numeric_start = text.is_empty()
+              && characters
+                .get(index + 1)
+                .is_some_and(|character| character.is_numeric());
+            let numeric_continuation = !text.is_empty()
+              && text
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_numeric());
+            if !numeric_start && !numeric_continuation {
+              return Err(ParseError::new("unsupported token in command: ."));
+            }
           }
           if matches!(characters[index], '\'' | '"' | '`') {
             if allow_symbols && !text.is_empty() && characters[index] != '`' {
@@ -1144,6 +1148,12 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
 }
 
 fn is_unsupported_simple_symbol(character: char, allow_symbols: bool) -> bool {
+  if !allow_symbols {
+    return !character.is_alphanumeric()
+      && character != '_'
+      && character != '.'
+      && !matches!(character, '\'' | '"' | '`' | ',' | '=');
+  }
   if allow_symbols
     && !character.is_alphanumeric()
     && character != '_'
@@ -1871,6 +1881,10 @@ mod tests {
       ),
       ("codebook if", "missing expression after if"),
       ("codebook -1", "unsupported token in command: -"),
+      ("codebook +1", "unsupported token in command: +"),
+      ("codebook .", "unsupported token in command: ."),
+      ("codebook age@x", "unsupported token in command: @"),
+      ("codebook age#x", "unsupported token in command: #"),
       ("codebook age==x", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
