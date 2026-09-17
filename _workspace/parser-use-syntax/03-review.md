@@ -27,7 +27,7 @@ Evidence reviewed: `02-evidence-migration.md`
 The workspace pass found one low-severity command-boundary parity gap: attached
 `use:data` was initially reported as `unknown command: use:data` rather than the
 Python tokenizer diagnostic `unsupported token in command: :`. Revision
-`<pending-fix>` adds a safe ASCII-prefix guard and an exact regression test. No
+`4eaa5d7` adds a safe ASCII-prefix guard and an exact regression test. No
 hosted check is treated as evidence of semantic parity by itself.
 
 ## Verification reviewed
