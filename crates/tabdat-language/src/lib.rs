@@ -16,12 +16,25 @@ pub enum Command {
   Describe,
   /// Inspect environment and capability health (execution is deferred).
   Doctor,
+  /// Change a runtime setting (configuration execution is deferred).
+  Set { name: SettingName, value: String },
   /// Count rows in the active dataset (execution is deferred).
   Count,
   /// Preview the first `limit` rows (execution is deferred).
   Head { limit: RowLimit },
   /// Preview the last `limit` rows (execution is deferred).
   Tail { limit: RowLimit },
+}
+
+/// The finite setting names accepted by the syntax-only `set` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingName {
+  /// Select the artifact image format (value validation is deferred).
+  GraphFormat,
+  /// Select the directory used for generated artifacts (validation is deferred).
+  ArtifactDir,
+  /// Select whether generated graphs open automatically (validation is deferred).
+  GraphOpen,
 }
 
 /// A validated, canonical non-negative decimal row limit.
@@ -203,6 +216,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       }
     }
+    "set" => parse_set_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -230,6 +244,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
 #[derive(Debug)]
 struct SimpleArgument {
   text: String,
+  backtick_quoted: bool,
 }
 
 #[derive(Debug, Default)]
@@ -243,7 +258,7 @@ struct SimpleBody {
 }
 
 fn parse_inspection_command(name: &str, body: &str) -> Result<Command, ParseError> {
-  let parts = parse_simple_body(body)?;
+  let parts = parse_simple_body(body, false)?;
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
   }
@@ -289,6 +304,37 @@ fn parse_inspection_command(name: &str, body: &str) -> Result<Command, ParseErro
   })
 }
 
+fn parse_set_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, true)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new("set assignment requires a target before ="));
+  }
+  if parts.has_options || parts.has_assignment || parts.has_condition || parts.arguments.len() != 2
+  {
+    return Err(ParseError::new("set expects syntax: set name value"));
+  }
+
+  let setting_name = parts.arguments[0].text.to_lowercase();
+  let name = match (setting_name.as_str(), parts.arguments[0].backtick_quoted) {
+    ("graph_format", false) => SettingName::GraphFormat,
+    ("artifact_dir", false) => SettingName::ArtifactDir,
+    ("graph_open", false) => SettingName::GraphOpen,
+    _ => {
+      return Err(ParseError::new(format!(
+        "unknown setting: {}",
+        parts.arguments[0].text
+      )));
+    }
+  };
+  Ok(Command::Set {
+    name,
+    value: parts.arguments[1].text.clone(),
+  })
+}
+
 fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
   if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
     return Err(ParseError::new(format!(
@@ -300,7 +346,7 @@ fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
   Ok(RowLimit(canonical.into()))
 }
 
-fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
+fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, ParseError> {
   let characters: Vec<char> = body.chars().collect();
   let mut parts = SimpleBody::default();
   let mut index = 0;
@@ -332,7 +378,7 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
         parts.has_options = true;
         break;
       }
-      '=' => {
+      '=' if !(allow_symbols && characters.get(index + 1) == Some(&'=')) => {
         if characters.get(index + 1) == Some(&'=') {
           return Err(ParseError::new("unsupported token in command: =="));
         }
@@ -340,8 +386,7 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
         parts.assignment_target_missing = parts.arguments.is_empty();
         break;
       }
-      '+' | '-' | ':' | '/' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '*' | '%' | '&' | '|'
-      | '!' | '<' | '>' | '^' | '~' | '#' => {
+      _ if is_unsupported_simple_symbol(characters[index], allow_symbols) => {
         return Err(ParseError::new(format!(
           "unsupported token in command: {}",
           characters[index]
@@ -350,43 +395,79 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
       _ => {
         let mut text = String::new();
         let mut quoted = false;
+        let mut backtick_quoted = false;
         loop {
-          if index >= characters.len()
-            || is_command_whitespace(characters[index])
-            || matches!(characters[index], ',' | '=')
-          {
+          if index >= characters.len() || is_command_whitespace(characters[index]) {
             break;
+          }
+          if characters[index] == ',' {
+            break;
+          }
+          if characters[index] == '=' {
+            if allow_symbols && characters.get(index + 1) == Some(&'=') {
+              text.push_str("==");
+              index += 2;
+              continue;
+            }
+            if allow_symbols && matches!(text.chars().last(), Some('<' | '>')) {
+              text.push('=');
+              index += 1;
+              continue;
+            }
+            break;
+          }
+          if characters[index] == '!' && allow_symbols && characters.get(index + 1) == Some(&'=') {
+            text.push_str("!=");
+            index += 2;
+            continue;
+          }
+          if characters[index] == '!' {
+            return Err(ParseError::new("unsupported token in command: !"));
+          }
+          if characters[index].is_alphabetic() || characters[index] == '_' {
+            let identifier_start = index;
+            index += 1;
+            while index < characters.len()
+              && (characters[index].is_alphanumeric() || characters[index] == '_')
+            {
+              index += 1;
+            }
+            let identifier_is_if = index - identifier_start == 2
+              && characters[identifier_start].eq_ignore_ascii_case(&'i')
+              && characters[identifier_start + 1].eq_ignore_ascii_case(&'f');
+            if identifier_is_if {
+              if !text.is_empty() || quoted {
+                index = identifier_start;
+                break;
+              }
+              text.push_str("if");
+              continue;
+            }
+            text.extend(&characters[identifier_start..index]);
+            continue;
+          }
+          if is_unsupported_simple_symbol(characters[index], allow_symbols) {
+            return Err(ParseError::new(format!(
+              "unsupported token in command: {}",
+              characters[index]
+            )));
           }
           if matches!(
             characters[index],
-            '+'
-              | '-'
-              | ':'
-              | '/'
-              | '?'
-              | '('
-              | ')'
-              | '['
-              | ']'
-              | '{'
-              | '}'
-              | '*'
-              | '%'
-              | '&'
-              | '|'
-              | '!'
-              | '<'
-              | '>'
-              | '^'
-              | '~'
-              | '#'
+            '+' | '-' | ':' | '/' | '(' | ')' | '*' | '<' | '>'
           ) {
+            if allow_symbols {
+              text.push(characters[index]);
+              index += 1;
+              continue;
+            }
             return Err(ParseError::new(format!(
               "unsupported token in command: {}",
               characters[index]
             )));
           }
           if characters[index] == '.'
+            && !allow_symbols
             && !text.is_empty()
             && !text
               .chars()
@@ -396,10 +477,22 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
             return Err(ParseError::new("unsupported token in command: ."));
           }
           if matches!(characters[index], '\'' | '"' | '`') {
+            if allow_symbols && !text.is_empty() && characters[index] != '`' {
+              break;
+            }
             let quote = characters[index];
             quoted = true;
-            let piece = parse_quoted_piece(&characters, &mut index, quote)?;
+            backtick_quoted = backtick_quoted || quote == '`';
+            let piece = parse_quoted_piece(&characters, &mut index, quote, allow_symbols)?;
             text.push_str(&piece);
+            if allow_symbols
+              && quote != '`'
+              && characters
+                .get(index)
+                .is_some_and(|next| matches!(next, '\'' | '"'))
+            {
+              break;
+            }
           } else {
             text.push(characters[index]);
             index += 1;
@@ -421,7 +514,10 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
               .is_none_or(|character| matches!(character, ',' | '='));
             break;
           }
-          parts.arguments.push(SimpleArgument { text });
+          parts.arguments.push(SimpleArgument {
+            text,
+            backtick_quoted,
+          });
         }
       }
     }
@@ -429,17 +525,48 @@ fn parse_simple_body(body: &str) -> Result<SimpleBody, ParseError> {
   Ok(parts)
 }
 
+fn is_unsupported_simple_symbol(character: char, allow_symbols: bool) -> bool {
+  if allow_symbols
+    && !character.is_alphanumeric()
+    && character != '_'
+    && character != '.'
+    && !matches!(character, '\'' | '"' | '`' | ',' | '=')
+    && !matches!(
+      character,
+      '+' | '-' | ':' | '/' | '(' | ')' | '*' | '<' | '>' | '!'
+    )
+  {
+    return true;
+  }
+  let always_unsupported = matches!(
+    character,
+    '?' | '[' | ']' | '{' | '}' | '%' | '&' | '|' | '^' | '~' | '#'
+  );
+  let symbol_allowed_for_set = matches!(
+    character,
+    '+' | '-' | ':' | '/' | '(' | ')' | '*' | '<' | '>'
+  );
+  let unsupported_known_symbol = matches!(
+    character,
+    '+' | '-' | ':' | '/' | '(' | ')' | '*' | '<' | '>' | '='
+  );
+  always_unsupported
+    || (unsupported_known_symbol && character != '=' && !(allow_symbols && symbol_allowed_for_set))
+    || (character == '=' && !allow_symbols)
+}
+
 fn parse_quoted_piece(
   characters: &[char],
   index: &mut usize,
   quote: char,
+  allow_symbols: bool,
 ) -> Result<String, ParseError> {
   *index += 1;
   let mut text = String::new();
   let mut content_nonempty = false;
   while *index < characters.len() {
     if characters[*index] == quote {
-      if characters.get(*index + 1) == Some(&quote) {
+      if characters.get(*index + 1) == Some(&quote) && (quote == '`' || !allow_symbols) {
         if quote == '`' && !content_nonempty && *index + 2 == characters.len() {
           return Err(ParseError::new("quoted identifier cannot be empty"));
         }
@@ -480,7 +607,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 
 #[cfg(test)]
 mod tests {
-  use super::{Command, ParseError, RowLimit, parse_command};
+  use super::{Command, ParseError, RowLimit, SettingName, parse_command};
 
   #[test]
   fn parses_help_aliases_and_topics() {
@@ -541,6 +668,91 @@ mod tests {
   fn parses_doctor_with_case_and_whitespace_normalization() {
     assert_eq!(parse_command("doctor").unwrap(), Command::Doctor);
     assert_eq!(parse_command("\tDOCTOR\u{1c}").unwrap(), Command::Doctor);
+  }
+
+  #[test]
+  fn parses_set_values_without_executing_configuration() {
+    assert_eq!(
+      parse_command(" SET GRAPH_FORMAT PnG ").unwrap(),
+      Command::Set {
+        name: SettingName::GraphFormat,
+        value: "PnG".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set artifact_dir artifacts/custom").unwrap(),
+      Command::Set {
+        name: SettingName::ArtifactDir,
+        value: "artifacts/custom".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_open \"Off\"").unwrap(),
+      Command::Set {
+        name: SettingName::GraphOpen,
+        value: "Off".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set artifact_dir 'my plots'").unwrap(),
+      Command::Set {
+        name: SettingName::ArtifactDir,
+        value: "my plots".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_format `svg`").unwrap(),
+      Command::Set {
+        name: SettingName::GraphFormat,
+        value: "svg".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set artifact_dir \"\"").unwrap(),
+      Command::Set {
+        name: SettingName::ArtifactDir,
+        value: String::new(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_open maybe").unwrap(),
+      Command::Set {
+        name: SettingName::GraphOpen,
+        value: "maybe".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("set graph_format foo==bar").unwrap(),
+      Command::Set {
+        name: SettingName::GraphFormat,
+        value: "foo==bar".to_owned(),
+      }
+    );
+    for value in ["foo<=bar", "foo>=bar", "<=foo", ">=foo"] {
+      assert_eq!(
+        parse_command(&format!("set graph_format {value}")).unwrap(),
+        Command::Set {
+          name: SettingName::GraphFormat,
+          value: value.to_owned(),
+        },
+        "{value:?}"
+      );
+    }
+    for (input, value) in [
+      ("set graph_format foo`bar`", "foobar"),
+      ("set graph_format \"a\"`b`", "ab"),
+      ("set graph_format foo`bar`+x", "foobar+x"),
+      ("set graph_format `foo`bar`baz`", "foobarbaz"),
+    ] {
+      assert_eq!(
+        parse_command(input).unwrap(),
+        Command::Set {
+          name: SettingName::GraphFormat,
+          value: value.to_owned(),
+        },
+        "{input:?}"
+      );
+    }
   }
 
   #[test]
@@ -736,6 +948,87 @@ mod tests {
       ("doctor == now", "unsupported token in command: =="),
       ("doctor -1", "unsupported token in command: -"),
       ("doctor +1", "unsupported token in command: +"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_set_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("set", "set expects syntax: set name value"),
+      ("set graph_format", "set expects syntax: set name value"),
+      (
+        "set graph_format png extra",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format png, detail",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format, detail",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format png,",
+        "comma must be followed by at least one option",
+      ),
+      ("set unknown on", "unknown setting: unknown"),
+      ("set `graph_format` png", "unknown setting: graph_format"),
+      ("set = png", "set assignment requires a target before ="),
+      ("set=png", "set assignment requires a target before ="),
+      (
+        "set graph_format = png",
+        "set expects syntax: set name value",
+      ),
+      ("set if", "missing expression after if"),
+      ("set graph_format if", "missing expression after if"),
+      (
+        "set graph_format foo?bar",
+        "unsupported token in command: ?",
+      ),
+      (
+        "set graph_format foo\\bar",
+        "unsupported token in command: \\",
+      ),
+      (
+        "set graph_format foo;bar",
+        "unsupported token in command: ;",
+      ),
+      (
+        "set graph_format foo@bar",
+        "unsupported token in command: @",
+      ),
+      (
+        "set graph_format foo$bar",
+        "unsupported token in command: $",
+      ),
+      (
+        "set graph_format foo😀bar",
+        "unsupported token in command: 😀",
+      ),
+      (
+        "set graph_format \"a\"\"b\"",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format 'a''b'",
+        "set expects syntax: set name value",
+      ),
+      (
+        "set graph_format foo\"bar\"",
+        "set expects syntax: set name value",
+      ),
+      ("set graph_format foo-if", "missing expression after if"),
+      ("set graph_format foo.if", "missing expression after if"),
+      ("set graph_format \"foo\"if", "missing expression after if"),
+      ("set graph_format `foo`if", "missing expression after if"),
     ];
     for (input, expected) in cases {
       assert_eq!(

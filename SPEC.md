@@ -5,7 +5,7 @@
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
-`exit`/`quit`, `describe`, `doctor`, `count`, `head`, and `tail`. There is still
+`exit`/`quit`, `describe`, `doctor`, `set`, `count`, `head`, and `tail`. There is still
 no usable TabDat CLI, data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
@@ -123,6 +123,29 @@ parser/script oracle again passed with `516 passed in 0.45s` at revision
 This slice leaves environment/capability inspection results, active-dataset
 preconditions, execution, reporting, serialization, prefixed commands, and
 the full tokenizer/command inventory to later roadmap slices.
+
+## Verified slice: syntax-only set command
+
+Add the typed, backend-independent `set` form for the three currently
+recognized setting names: `graph_format`, `artifact_dir`, and `graph_open`.
+Setting names normalize case-insensitively; values remain owned strings with
+quoted text unwrapped and spelling preserved. Exact diagnostics for missing or
+extra arguments, unknown/backtick-quoted names, conditions, options,
+assignments, unsupported punctuation, and trailing commas are covered by tests.
+This slice parses commands only; it does not validate values, mutate
+configuration/session state, inspect paths, open graphs, or initialize a
+backend.
+
+Evidence: `_workspace/parser-set-syntax/01-contract.md`,
+`_workspace/parser-set-syntax/02-evidence-migration.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
+configuration parser test passed with `1 passed, 488 deselected`, and the full
+parser/script oracle passed with `516 passed in 0.43s` at revision
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
+
+This slice leaves typed configuration state, value validation, runtime effects,
+persistence, reporting/serialization, prefixed commands, and the complete
+tokenizer/option grammar to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 
