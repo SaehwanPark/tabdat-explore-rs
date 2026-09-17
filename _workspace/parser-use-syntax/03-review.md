@@ -33,7 +33,11 @@ contract pass found no additional scope or authority issue. The workspace pass
 then found the same class of gap for bare attached `use,`, which initially
 returned `unknown command: use` instead of Python's trailing-comma diagnostic;
 revision `b43feff` routes attached comma text through option parsing and covers
-`use,`/`use,,`. No in-scope finding remains open.
+`use,`/`use,,`. The contract pass then identified that Python accepts bare
+`has_header` as a true flag and that generic numeric/special option families
+must parse far enough to report unknown names. Revision `18e6f4a` accepts the
+bare flag, adds the bounded generic branches, and expands regression coverage.
+No in-scope finding remains open.
 
 ## Verification reviewed
 
