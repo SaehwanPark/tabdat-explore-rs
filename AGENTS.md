@@ -41,6 +41,9 @@ Record conflicts or intentional deviations rather than silently choosing a behav
 - Record major backend, FFI, packaging, or dependency decisions in ADRs (create
   `docs/adr/` when the first decision is needed). Review native dependency license
   compatibility and redistribution obligations against the proposal's AGPL intent.
+- Be aware of AI subscription usage limits and reset windows. The parent/current
+  agent checks limits directly per `docs/codexbar.md`; never spawn a model-backed
+  subagent solely to monitor usage.
 
 ## Checks and change discipline
 
