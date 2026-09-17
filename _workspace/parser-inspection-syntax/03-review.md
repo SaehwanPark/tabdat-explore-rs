@@ -4,8 +4,8 @@ Status: partial pending hosted checks
 Producer: task owner with three independent review passes  
 Consumer: merge gate and next maintainer  
 Contract reviewed: `01-contract.md`  
-Evidence reviewed: `02-evidence-migration.md` at `8492187`; current review
-documentation revision: `b3f9294`
+Evidence reviewed: `02-evidence-migration.md` at implementation/evidence
+revision `8492187`; review analysis includes the later documentation-only commits.
 
 ## Acceptance reviewed
 
@@ -27,8 +27,10 @@ The parser review exercised the contract matrix and inspected the `RowLimit`
 representation. The explicit contract cases match the pinned Python oracle. A
 second probe corrected an initial review hypothesis about adjacent quoted
 fragments: at the pinned revision `head "1""0"` and `head '1''0'` both produce
-Python's `accepts at most one row limit`, so the bounded implementation's
-deferred quote-token edge is not a contract regression.
+Python's `accepts at most one row limit`. The bounded implementation currently
+returns its row-limit diagnostic for these adjacent quoted tokens; this is a
+real but intentionally deferred tokenizer-boundary difference, not an accepted
+contract case.
 
 Residual differences for malformed later quote tokens, attached punctuation,
 compound symbols such as `!=`, multi-point number diagnostics, expression errors,
@@ -54,7 +56,7 @@ packages.
 
 ## Required follow-up
 
-Keep PR #12 draft until all checks for current head `b3f9294` are green. Then mark
+Keep PR #12 draft until all checks for the latest pushed head are green. Then mark
 it ready, verify the merge state is clean, merge to `main`, and delete the local
 and remote feature branch. Do not check the broad parser, execution, or Phase 4
 roadmap items from this syntax-only evidence.
