@@ -369,6 +369,10 @@ fn isid_preserves_exact_public_diagnostics() {
       "isid only accepts a variable list and missok option",
     ),
     (
+      "isid patient_id =",
+      "isid assignment requires an expression after =",
+    ),
+    (
       "isid = patient_id",
       "isid assignment requires a target before =",
     ),

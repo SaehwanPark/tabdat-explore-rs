@@ -561,7 +561,20 @@ fn parse_isid_command(body: &str) -> Result<Command, ParseError> {
       "isid assignment requires a target before =",
     ));
   }
-  if parts.has_assignment || parts.has_condition {
+  if parts.has_assignment {
+    if variable_body
+      .trim_matches(is_command_whitespace)
+      .ends_with('=')
+    {
+      return Err(ParseError::new(
+        "isid assignment requires an expression after =",
+      ));
+    }
+    return Err(ParseError::new(
+      "isid only accepts a variable list and missok option",
+    ));
+  }
+  if parts.has_condition {
     return Err(ParseError::new(
       "isid only accepts a variable list and missok option",
     ));
@@ -1782,6 +1795,10 @@ mod tests {
       (
         "isid patient_id = other",
         "isid only accepts a variable list and missok option",
+      ),
+      (
+        "isid patient_id =",
+        "isid assignment requires an expression after =",
       ),
       (
         "isid = patient_id",

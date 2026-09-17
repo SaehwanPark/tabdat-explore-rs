@@ -60,6 +60,7 @@ The frozen diagnostics for this bounded parser include:
 | `isid,` | `comma must be followed by at least one option` |
 | `isid patient_id if visit > 0` | `isid only accepts a variable list and missok option` |
 | `isid patient_id = other` | `isid only accepts a variable list and missok option` |
+| `isid patient_id =` | `isid assignment requires an expression after =` |
 | `isid patient_id, report` | `isid unsupported option: report` |
 | `isid patient_id, foo bar` | `isid unsupported option: bar, foo` |
 | `isid patient_id, missok(true)` | `isid option missok does not accept a value` |
