@@ -1,7 +1,7 @@
 # `codebook` syntax review
 
-Status: review complete; PR #18 remains draft pending the hosted policy check
-and the final all-checks gate.
+Status: accepted and merged in PR #18 (`1efc991`); all required hosted checks
+passed and the temporary branch was deleted.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -44,13 +44,13 @@ authority, typed-API, scope, or parity finding.
 
 Focused/full pinned Python parser-script checks, locked Rust baseline checks,
 policy scans, and `git diff --check` are recorded in `02-evidence-migration.md`.
-The latest hosted Rust baseline, ReadStat, and both libgretl workflows have
-passed; the dependency/unsafe policy job remains an acceptance gate for the
-current PR head.
+All six required hosted checks passed on the PR head before merge: the Rust
+baseline and dependency/unsafe policy workflow, the ReadStat feasibility
+workflow, and both libgretl workflows. The run links are recorded in
+`02-evidence-migration.md`.
 
 ## Disposition
 
 Do not claim dataset/schema inspection, execution, full varlist or tokenizer
-parity, prefixed-command support, CLI/script support, or backend integration from
-this syntax-only slice. Mark accepted only after the current PR head’s hosted
-policy check joins the other five required checks.
+parity, prefixed-command support, CLI/script support, or backend integration
+from this syntax-only slice.

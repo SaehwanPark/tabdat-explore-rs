@@ -1,11 +1,11 @@
 # Contract: syntax-only `codebook`
 
-Status: draft; contract recovery for the next bounded parser slice.
+Status: accepted; implemented and merged in PR #18 (`1efc991`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
-Rust base: `main` at `bd0d54a` (the merged `use` syntax slice with its
-post-merge documentation update and green hosted checks).
+Rust base: `main` at `1efc991` (the merged `codebook` syntax slice with its
+green hosted checks).
 
 ## Scope
 

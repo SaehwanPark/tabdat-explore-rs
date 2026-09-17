@@ -21,10 +21,8 @@ silently invent parity.
   empty stderr.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
-  `datasignature`, `use`, `head`, and `tail`; PR #18 adds the in-progress direct
-  `codebook [varlist]` form,
-  plus owned command/error types and focused tests. It performs no execution or
-  I/O.
+  `datasignature`, `use`, `codebook`, `head`, and `tail`, plus owned command/error
+  types and focused tests. It performs no execution or I/O.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no session model, data engine, statistical backend, REPL, MCP server,

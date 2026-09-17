@@ -5,8 +5,7 @@ Rust-native successor to TabDat's terminal-first statistical/EDA environment.
 currently prints `Hello, world!`. The workspace has begun a safe language layer with
 a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
-`datasignature`, `use`, `count`, `head`, and `tail`). PR #18 carries the
-in-progress direct `codebook [varlist]` syntax slice; no data engine or
+`datasignature`, `use`, `codebook`, `count`, `head`, and `tail`). No data engine or
 statistical backend is installed.
 
 ## Development

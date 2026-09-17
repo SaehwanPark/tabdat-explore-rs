@@ -6,9 +6,8 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-and `tail`, plus the verified direct `use` form and the in-progress direct
-`codebook [varlist]` syntax slice. There is still no usable TabDat CLI, data
-runtime, or statistical model implementation.
+and `tail`, plus the verified direct `use` and `codebook [varlist]` forms. There
+is still no usable TabDat CLI, data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -192,9 +191,9 @@ This slice leaves data loading, format inference, named-table/session behavior,
 lazy planning, execution/results, reporting/serialization, wrappers, and full
 tokenizer parity to later roadmap work.
 
-## In-progress slice: syntax-only `codebook` command
+## Verified slice: syntax-only `codebook` command
 
-PR #18 adds direct, backend-independent `codebook [varlist]` syntax to
+PR #18 (`1efc991`) adds direct, backend-independent `codebook [varlist]` syntax to
 `tabdat-language`. The parser returns an owned ordered variable list, supports
 the pinned quote and backtick forms, and preserves the recovered diagnostics for
 conditions, options, assignments, missing `if` expressions, trailing commas,
@@ -204,9 +203,13 @@ initialize a backend.
 
 Evidence: `_workspace/parser-codebook-syntax/{01-contract,02-evidence-migration,03-review}.md`,
 `crates/tabdat-language/src/lib.rs`, and its unit/integration tests. Focused and
-full pinned Python parser/script checks pass; local Rust and policy checks pass.
-Independent parser/contract/workspace review is complete; the hosted policy job
-remains required before this slice is accepted and merged.
+full pinned Python parser/script checks pass; local Rust and policy checks pass
+(root smoke 1, language unit 22, integration 11). Independent
+parser/contract/workspace review is complete. All six required hosted checks
+passed before the PR was marked ready and merged: [Rust baseline and policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530397),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530584),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530363),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530418).
 
 This slice leaves active-dataset/schema semantics, wildcard/range expansion,
 conditions/options, prefixed commands, full tokenizer/varlist/expression

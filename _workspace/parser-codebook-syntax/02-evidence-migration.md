@@ -1,6 +1,7 @@
 # `codebook` syntax evidence
 
-Status: draft; implementation and verification are in progress on PR #18.
+Status: accepted and merged in PR #18 (`1efc991`); all required hosted checks
+passed and the temporary branch was deleted.
 
 Producer: task owner
 
@@ -10,10 +11,10 @@ Boundary: pinned Python parser contract → Rust syntax-only parser
 
 Rust implementation revisions: `982c3c5` (contract), `f105d27` (typed command,
 dispatch, bounded argument tests), `0816828` (reject unsupported punctuation in
-the simple argument path), `7a87dfb` (Python-compatible quote boundaries), and
+the simple argument path), `7a87dfb` (Python-compatible quote boundaries),
 `a2ddc72` (empty adjacent quote fragments), and `1ec1347` (unquoted `if`
-boundary before a backtick fragment). The in-progress current-state and review
-documentation revisions are `88ad285` and `021477a`.
+boundary before a backtick fragment). The implementation and documentation
+were squash-merged as PR #18 at `1efc991`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -69,8 +70,8 @@ dependency changed.
 
 ## Rust verification
 
-The current branch passed the local checks below after `1ec1347` (with the
-documentation commits through `021477a`):
+The merged implementation passed the local checks below before PR #18 was marked
+ready:
 
 ```text
 cargo fmt --all -- --check
@@ -86,9 +87,14 @@ cargo audit -D warnings
 metadata-driven cargo geiger (root and tabdat-language): no unsafe usage
 ```
 
-Hosted CI and the independent parser/contract/workspace review are pending on
-the current PR head. They are acceptance gates; local success alone does not
-close this migration slice.
+The final hosted checks passed on the PR head before merge:
+
+- [Rust baseline and dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530397);
+- [ReadStat feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530584);
+- [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530363);
+- [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35212530418).
+
+Independent parser, contract, and workspace reviews reported no open findings.
 
 ## Supported and deferred behavior
 
