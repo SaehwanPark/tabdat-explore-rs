@@ -12,6 +12,8 @@ pub enum Command {
   Status,
   /// Request termination of the interactive session.
   Exit,
+  /// Inspect the active dataset schema (execution is deferred).
+  Describe,
   /// Count rows in the active dataset (execution is deferred).
   Count,
   /// Preview the first `limit` rows (execution is deferred).
@@ -145,9 +147,36 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       } else if body.starts_with("==") {
         Err(ParseError::new("unsupported token in command: =="))
+      } else if body.starts_with('-') {
+        Err(ParseError::new("unsupported token in command: -"))
+      } else if body.starts_with('+') {
+        Err(ParseError::new("unsupported token in command: +"))
       } else {
         Err(ParseError::new(
           "status does not accept arguments, if clauses, options, or assignment syntax",
+        ))
+      }
+    }
+    "describe" => {
+      if body.is_empty() {
+        Ok(Command::Describe)
+      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
+        Err(ParseError::new(
+          "comma must be followed by at least one option",
+        ))
+      } else if body.starts_with('=') && !body.starts_with("==") {
+        Err(ParseError::new(
+          "describe assignment requires a target before =",
+        ))
+      } else if body.starts_with("==") {
+        Err(ParseError::new("unsupported token in command: =="))
+      } else if body.starts_with('-') {
+        Err(ParseError::new("unsupported token in command: -"))
+      } else if body.starts_with('+') {
+        Err(ParseError::new("unsupported token in command: +"))
+      } else {
+        Err(ParseError::new(
+          "describe does not accept arguments, if clauses, or options",
         ))
       }
     }
@@ -477,6 +506,15 @@ mod tests {
   }
 
   #[test]
+  fn parses_describe_with_case_and_whitespace_normalization() {
+    assert_eq!(parse_command("describe").unwrap(), Command::Describe);
+    assert_eq!(
+      parse_command("  DESCRIBE\u{1c}").unwrap(),
+      Command::Describe
+    );
+  }
+
+  #[test]
   fn parses_inspection_commands_and_canonical_limits() {
     assert_eq!(parse_command("count").unwrap(), Command::Count);
     assert_eq!(parse_command(" COUNT ").unwrap(), Command::Count);
@@ -606,6 +644,42 @@ mod tests {
         .to_string(),
       "unterminated quoted string"
     );
+  }
+
+  #[test]
+  fn rejects_invalid_describe_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "describe age",
+        "describe does not accept arguments, if clauses, or options",
+      ),
+      (
+        "describe if age > 18",
+        "describe does not accept arguments, if clauses, or options",
+      ),
+      (
+        "describe, detail",
+        "describe does not accept arguments, if clauses, or options",
+      ),
+      ("describe,", "comma must be followed by at least one option"),
+      (
+        "describe age,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "describe=now",
+        "describe assignment requires a target before =",
+      ),
+      ("describe == now", "unsupported token in command: =="),
+      ("describe -1", "unsupported token in command: -"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
   }
 
   #[test]
