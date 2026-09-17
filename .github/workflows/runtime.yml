@@ -1,0 +1,54 @@
+name: TabDat runtime boundary
+
+on:
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/tabdat-language/**"
+      - "crates/tabdat-runtime/**"
+      - "_workspace/use-eager-parquet/**"
+      - "docs/adr/0007-eager-parquet-duckdb-runtime-boundary.md"
+      - "deny.toml"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - ".github/workflows/runtime.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/tabdat-language/**"
+      - "crates/tabdat-runtime/**"
+      - "_workspace/use-eager-parquet/**"
+      - "docs/adr/0007-eager-parquet-duckdb-runtime-boundary.md"
+      - "deny.toml"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - ".github/workflows/runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: tabdat-runtime on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install repository-pinned toolchain
+        run: rustup show active-toolchain
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Check runtime targets
+        run: cargo check --locked -p tabdat-runtime --all-targets
+      - name: Test runtime targets
+        run: cargo test --locked -p tabdat-runtime --all-targets
+      - name: Clippy runtime targets
+        run: cargo clippy --locked -p tabdat-runtime --all-targets -- -D warnings

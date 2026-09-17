@@ -45,14 +45,44 @@ jobs:
       - name: Audit advisories and yanked crates
         run: cargo audit -D warnings
       - name: Report unsafe code
+        shell: bash
         run: |
           set -euo pipefail
+          reports_dir="$(mktemp -d)"
+          trap 'rm -rf "$reports_dir"' EXIT
           cargo metadata --no-deps --format-version 1 \
             | jq -r '.packages[].manifest_path' \
             | while IFS= read -r manifest; do
+                package_name="$(cargo metadata --no-deps --format-version 1 \
+                  --manifest-path "$manifest" | jq -r '.packages[0].name')"
+                report="$reports_dir/$package_name.json"
+                set +e
                 cargo geiger \
                   --manifest-path "$manifest" \
                   --all-dependencies \
                   --all-targets \
-                  --locked
+                  --locked \
+                  --output-format Json >"$report"
+                geiger_status=$?
+                set -e
+
+                owned_count="$(jq --arg package "$package_name" \
+                  '[.packages[] | select(.package.id.name == $package)] | length' "$report")"
+                if [[ "$owned_count" != "1" ]]; then
+                  echo "::error::cargo geiger did not report exactly one first-party package: $package_name"
+                  exit 1
+                fi
+                if ! jq -e --arg package "$package_name" '
+                  [.packages[] | select(.package.id.name == $package)][0]
+                  | (.unsafety.forbids_unsafe == true)
+                    and ([(.unsafety.used | to_entries[] | .value.unsafe_ // 0)] | all(. == 0))
+                ' "$report" >/dev/null; then
+                  echo "::error::first-party unsafe code detected in $package_name"
+                  jq --arg package "$package_name" \
+                    '[.packages[] | select(.package.id.name == $package)]' "$report"
+                  exit 1
+                fi
+                if [[ "$geiger_status" -ne 0 ]]; then
+                  echo "::warning::cargo geiger reported unsafe dependency inventory for $package_name (exit $geiger_status); first-party package is clean"
+                fi
               done

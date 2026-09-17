@@ -59,7 +59,11 @@ and advisories are checked without local ignores. The current unpublished scaffo
 is explicitly excluded from dependency-license resolution until release licensing
 is decided; external crates are not. The metadata loop runs `cargo geiger` once for
 every workspace package, so the report covers current workspace and transitive
-unsafe usage. It does not prove FFI safety or replace review.
+unsafe usage. When a dependency subtree contains unsafe code, `cargo geiger` may
+return a nonzero inventory status even though the first-party package is clean;
+CI captures its JSON report and fails only when a workspace package lacks
+`forbid(unsafe_code)` or reports first-party unsafe usage. This does not prove FFI
+safety or replace review.
 
 The GitHub Actions `Rust baseline` job runs the four Cargo checks and the
 `Dependency and unsafe-code policy` job runs these three policy checks on Linux for

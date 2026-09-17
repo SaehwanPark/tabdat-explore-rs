@@ -8,7 +8,11 @@ configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
 `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `count`,
 `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`, and
 direct `summarize [varlist]` forms are syntax-only; no data engine or statistical
-backend is installed.
+backend is installed as a supported product surface. The current PR #22 branch
+also contains an in-progress `tabdat-runtime` evaluation that can load an existing
+local Parquet file eagerly through its library API; it is not wired into the root
+binary, does not provide a general data engine, and is not a supported CLI or
+statistical backend.
 
 ## Development
 

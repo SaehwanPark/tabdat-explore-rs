@@ -3,9 +3,10 @@
 **Status:** current scaffold plus bounded language-layer slice and proposed ownership boundaries
 
 This document separates repository truth from the target architecture. The Rust
-repository currently contains one binary crate and a small `tabdat-language` crate;
-the latter implements only a syntax-only parser slice, not a usable TabDat command
-runtime.
+repository currently contains an unpublished binary scaffold, a small
+`tabdat-language` crate, and the in-progress `tabdat-runtime` evaluation from PR
+#22. The language crate remains a syntax-only parser; the runtime crate is a
+library-only eager local-Parquet boundary and not a usable TabDat command runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
 names and product commands are not installed support. The [migration authority](docs/migration/README.md)
@@ -14,7 +15,8 @@ silently invent parity.
 
 ## Current implementation
 
-- `Cargo.toml` describes one unpublished Rust 2024 binary package.
+- `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
+  `tabdat-language`, and the bounded `tabdat-runtime` evaluation.
 - `src/main.rs` contains the scaffold entry point, forbids unsafe code, and prints
   `Hello, world!`.
 - `tests/scaffold.rs` characterizes that placeholder output, successful exit, and
@@ -26,10 +28,17 @@ silently invent parity.
   [varlist]`, `duplicates [report] [varlist]`, and direct `summarize [varlist]`
   forms perform no execution or I/O; structured conditions/options and summary
   execution remain deferred.
+- `crates/tabdat-runtime` contains a private bundled-DuckDB adapter that accepts
+  only an existing local `.parquet` through `Command::Use` in eager mode, returns
+  owned schema/row-count metadata, and stages transactionally before publishing
+  active state. This bounded evaluation is not connected to the root binary and
+  does not establish broad data-runtime or DuckDB product support; see ADR 0007
+  and `_workspace/use-eager-parquet/`.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
-- There is no session model, data engine, statistical backend, REPL, MCP server,
-  or complete public TabDat command contract in this repository yet.
+- There is no general session/data-relation model, statistical backend, REPL, MCP
+  server, or complete public TabDat command contract in this repository yet. The
+  narrow runtime evaluation is deliberately insufficient for those claims.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

@@ -1,6 +1,6 @@
 # Contract: eager local-Parquet `use`
 
-Status: draft; contract recovery for the next bounded Phase 4 runtime slice.
+Status: draft; contract recovery for the bounded Phase 4 runtime slice in PR #22.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `tabdat-native-backends`, `simple-code-writer`
@@ -22,6 +22,10 @@ metadata, and records that dataset as the active relation. Loading is staged and
 validated before replacing the prior active relation so a failed read leaves
 the previous dataset and metadata unchanged.
 
+This bounded API accepts an already-resolved local path. Shell-style `~` home
+directory expansion remains deferred to the caller; the pinned Python resolver
+performs `expanduser()` and that parity gap is recorded rather than hidden.
+
 This slice deliberately does not add a CLI/REPL, JSON/MCP rendering, CSV/DTA/
 Feather/Arrow loading, URI/network access, lazy plans, named tables, `describe`
 or `count` execution, transformations, statistics, labels, or a general
@@ -42,7 +46,8 @@ Authoritative paths are:
 - `src/tabdat/executor.py:873-876,1310-1334`: `use` dispatch and session update;
 - `src/tabdat/backend.py:165-392`: source loading and eager Parquet staging;
 - `src/tabdat/backend.py:394-426`: schema and row-count metadata;
-- `src/tabdat/backend.py:3914-3966`: local path, suffix, and existence checks;
+- `src/tabdat/backend.py:3914-3966`: local path expansion, suffix precedence,
+  and existence checks;
 - `tests/conftest.py:15-34`: the synthetic three-row, four-column fixture;
 - `tests/test_executor.py:750-763`: eager local-Parquet success;
 - `tests/test_executor.py:1043-1059`: failed Parquet load preserves active state;
@@ -78,11 +83,15 @@ pub enum ExecutionResult { Load(LoadResult) }
 ```
 
 `Session::new` does not initialize DuckDB. Executing a supported `Command::Use`
-request initializes the backend lazily, validates that the source is a local
-existing regular file with a case-insensitive `.parquet` extension, and rejects
-lazy mode, URI sources, and CSV options with deterministic typed errors. The
-public API exposes no DuckDB connection, statement, Arrow value, raw pointer, or
-foreign lifetime.
+request initializes the backend lazily, validates the case-insensitive
+`.parquet` suffix before checking that the source is a local existing regular
+file, and rejects lazy mode, URI sources, and CSV options with deterministic typed
+errors. The public API exposes no DuckDB connection, statement, Arrow value, raw
+pointer, or foreign lifetime.
+
+The Rust boundary intentionally does not expand `~`; callers must provide the
+resolved path. This is a documented parity deferral from Python's
+`Path(...).expanduser()` behavior.
 
 The adapter sets `preserve_insertion_order = true`, creates a staging table from
 the bound Parquet path, reads ordered schema and a non-negative row count, then
@@ -97,6 +106,7 @@ Tests will cover:
 - parser-to-session eager loading of the synthetic three-row fixture;
 - ordered column names/types, row count, eager mode, and no lazy engine;
 - lazy/URI/non-Parquet/missing/directory/unsupported-option rejection;
+- unsupported-suffix precedence for missing paths and directories;
 - corrupt-Parquet failure after a successful load, with prior metadata and
   staged relation preserved;
 - a fresh session that has not initialized DuckDB until a supported load is
@@ -110,11 +120,12 @@ or committed native artifacts are needed.
 ## Implementation mapping and deferrals
 
 - Native Rust: `tabdat-runtime::Session`, owned metadata/results/errors, path
-  validation, transaction/staging lifecycle, and focused tests.
+  validation, transaction/staging lifecycle, parser-to-session wiring, and
+  focused tests.
 - DuckDB: `duckdb-rs` `1.10505.0` with `bundled` and `parquet` features, hidden
   behind the runtime adapter; this is the first production-boundary evaluation,
   not a blanket adoption of every spike capability.
-- Deferred: all other `use` formats/modes/sources, relation query APIs,
+- Deferred: `~` expansion, all other `use` formats/modes/sources, relation query APIs,
   schema-cache invalidation, named tables, session status, inspect/transform/
   statistics commands, reporting/serialization, and CLI/MCP surfaces.
 

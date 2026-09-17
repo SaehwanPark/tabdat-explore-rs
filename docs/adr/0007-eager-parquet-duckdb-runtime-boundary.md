@@ -5,8 +5,8 @@
 
 ## Context
 
-The language layer now parses `use`, but the repository has no session or data
-runtime. The isolated DuckDB feasibility prototype proves local Parquet reads,
+The language layer now parses `use`; before this evaluation, the repository had
+no session or data runtime. The isolated DuckDB feasibility prototype proves local Parquet reads,
 ordered Arrow results, and owned connection teardown, but it explicitly defers a
 domain-owned adapter, failure-atomic session state, thread/lifetime review,
 packaging, and redistribution decisions.
@@ -19,7 +19,9 @@ only an existing local `.parquet` loaded eagerly from a typed
 `tabdat-language::Command::Use`. The adapter stages and inspects the relation,
 then replaces the active table transactionally; the session publishes owned
 metadata only after success. DuckDB is initialized lazily when this operation is
-requested, not when a session is constructed.
+requested, not when a session is constructed. Validation checks the suffix before
+filesystem existence/type, matching the pinned Python resolver. Home-directory
+`~` expansion is intentionally deferred to callers in this bounded Rust API.
 
 The dependency candidate is `duckdb-rs` `1.10505.0` with `bundled` and `parquet`
 features, matching the isolated prototype. No raw handle, Arrow value, or
@@ -28,7 +30,7 @@ continue to use `#![forbid(unsafe_code)]`.
 
 ## Explicitly out of scope
 
-CSV/DTA/Feather/Arrow, URI/network access, lazy execution, named tables,
+CSV/DTA/Feather/Arrow, URI/network access, `~` expansion, lazy execution, named tables,
 transformations, inspect/count execution, labels, CLI/JSON/MCP surfaces, and a
 general relation API remain deferred. This slice must not mark the broad `use`
 or Phase 4 data-runtime roadmap items complete.
@@ -44,6 +46,14 @@ or Phase 4 data-runtime roadmap items complete.
   AGPL intent; and
 - an accepted disposition in this ADR and the `_workspace/use-eager-parquet/`
   contract/evidence/review artifacts.
+
+At the first PR head, the generic hosted unsafe-code job failed because plain
+`cargo geiger` treated 33 dependency asset warnings as a nonzero status, despite
+zero first-party unsafe usage. The security workflow now records JSON reports,
+asserts `forbid(unsafe_code)` and zero first-party unsafe counts for each workspace
+package, and surfaces transitive inventory as a warning. A path-scoped Linux
+runtime workflow supplies hosted native-build evidence for this crate; local
+macOS Apple Silicon evidence remains required for final acceptance.
 
 If any required ownership, semantic, platform, or licensing evidence remains
 unresolved, retain the implementation as a bounded partial evaluation or defer
