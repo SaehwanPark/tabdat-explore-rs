@@ -375,6 +375,10 @@ impl DuckDbBackend {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::sync::atomic::{AtomicU64, Ordering};
+  use std::time::{SystemTime, UNIX_EPOCH};
+
+  static NEXT_MISSING_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
   #[test]
   fn new_session_defers_backend_initialization() {
@@ -394,9 +398,18 @@ mod tests {
       ))
       .expect("the test active relation should be created");
 
-    let path = Path::new("__tabdat_runtime_missing_fixture__.parquet");
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after the Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_MISSING_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+      "tabdat-runtime-missing-{}-{nonce}-{fixture_id}.parquet",
+      std::process::id()
+    ));
+    assert!(!path.exists());
     assert!(matches!(
-      backend.load_eager_parquet(path),
+      backend.load_eager_parquet(&path),
       Err(RuntimeError::ParquetRead { .. })
     ));
 

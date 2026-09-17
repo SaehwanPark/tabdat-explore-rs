@@ -46,10 +46,12 @@ and zero first-party unsafe counts, and surface transitive inventory as a warnin
 The same pass found no runtime-specific hosted build workflow;
 `.github/workflows/runtime.yml` now adds a Linux x86_64 runtime check path.
 
-The remaining review pass will record final severity-ranked findings, fixes and
-commit references, and the disposition for any unresolved ownership,
-transaction, platform, license, or scope concern. No finding is treated as
-closed merely because local Cargo checks pass.
+The final review pass must record severity-ranked findings, fixes and commit
+references, and the disposition for any unresolved ownership, transaction,
+platform, license, or scope concern. The current review has no additional
+implementation finding beyond the documented `~` and diagnostic/scope
+deviations; hosted checks and acceptance evidence are still required. No finding
+is treated as closed merely because local Cargo checks pass.
 
 ## Verification reviewed
 

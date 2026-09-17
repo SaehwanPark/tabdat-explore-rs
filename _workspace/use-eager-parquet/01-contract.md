@@ -93,6 +93,13 @@ The Rust boundary intentionally does not expand `~`; callers must provide the
 resolved path. This is a documented parity deferral from Python's
 `Path(...).expanduser()` behavior.
 
+The bounded diagnostics intentionally differ from Python outside the supported
+success path: Rust reports one deterministic local-Parquet runtime error for
+unsupported suffixes and for lazy/URI/option configurations, while Python's
+general resolver reports `use only supports .parquet, .dta, .csv, .feather, and
+.arrow files` for a wrong suffix and supports the deferred formats and modes.
+These are scope/diagnostic deviations, not claims of whole-`use` parity.
+
 The adapter sets `preserve_insertion_order = true`, creates a staging table from
 the bound Parquet path, reads ordered schema and a non-negative row count, then
 replaces the internal active table in a transaction. The session updates its

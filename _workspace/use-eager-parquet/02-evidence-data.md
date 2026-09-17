@@ -54,14 +54,67 @@ covering the surrounding Python source/mode/error matrix. Because the pinned
 preservation test is lazy, an explicit eager probe was run separately against a
 synthetic three-row fixture:
 
+```sh
+cd ../tabdat-explore
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import duckdb
+
+from tabdat.executor import Executor
+from tabdat.models import CountCommand, CountResult, LoadResult, UseCommand
+
+with TemporaryDirectory() as temp:
+  root = Path(temp)
+  valid = root / "patients.parquet"
+  corrupt = root / "corrupt.parquet"
+  connection = duckdb.connect(database=":memory:")
+  try:
+    connection.execute(
+      """
+      copy (
+        select * from (
+          values
+            (30, 22.5, 'F', 100.0),
+            (42, 25.0, 'M', 150.0),
+            (54, 27.5, 'F', null)
+        ) as patients(age, bmi, sex, cost)
+      ) to ? (format parquet)
+      """,
+      [str(valid)],
+    )
+  finally:
+    connection.close()
+
+  executor = Executor()
+  try:
+    before = executor.execute(UseCommand(valid))
+    assert isinstance(before, LoadResult)
+    print("BEFORE", before.dataset.row_count, before.dataset.execution_mode, before.dataset.lazy_engine)
+    corrupt.write_text("not parquet")
+    try:
+      executor.execute(UseCommand(corrupt))
+    except Exception as exc:
+      print("ERROR", type(exc).__name__, str(exc))
+    after = executor.execute(CountCommand())
+    assert isinstance(after, CountResult)
+    print("AFTER", after.row_count)
+  finally:
+    executor.close()
+PY
+```
+
 ```text
-ERROR ExecutionError use could not read Parquet file: <corrupt.parquet>
 BEFORE 3 eager None
+ERROR ExecutionError use could not read Parquet file: <temporary-directory>/corrupt.parquet
 AFTER 3
 ```
 
-The probe confirms that a corrupt eager load preserves the prior active dataset
-and that a subsequent count still returns three rows.
+The command is pinned by the surrounding oracle checkout and uses its existing
+DuckDB fixture shape. It confirms that a corrupt eager load preserves the prior
+active dataset and that a subsequent count still returns three rows. The
+temporary-directory component is intentionally normalized in this artifact.
 
 The successful fixture reports three rows and four columns ordered `age`,
 `bmi`, `sex`, `cost`, with eager mode and no lazy engine. A corrupt Parquet load
@@ -95,6 +148,9 @@ Suffix validation intentionally precedes existence/type checks, matching the
 pinned Python resolver: an absent or directory path with an unsupported suffix
 reports the unsupported-format error first. Rust does not expand `~`; this is an
 explicit caller-resolves-path deferral from Python's `expanduser()` behavior.
+Rust's unsupported-suffix and unsupported-configuration diagnostics are
+deliberately narrower than Python's broad-format message because those formats,
+lazy modes, and options are outside this runtime slice.
 
 The runtime integration tests generate the same three-row fixture through the
 pinned DuckDB dependency, assert owned schema/order/count/mode metadata, cover

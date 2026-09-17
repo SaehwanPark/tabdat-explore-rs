@@ -43,14 +43,38 @@ cargo install cargo-geiger --version 0.13.0 --locked
 cargo deny check
 cargo audit -D warnings
 set -euo pipefail
-cargo metadata --no-deps --format-version 1 \
-  | jq -r '.packages[].manifest_path' \
+tmp_root="${RUNNER_TEMP:-$(mktemp -d)}"
+reports_dir="$tmp_root/tabdat-geiger-reports"
+mkdir -p "$reports_dir"
+metadata_file="$tmp_root/tabdat-cargo-metadata.json"
+cargo metadata --no-deps --format-version 1 >"$metadata_file"
+jq -r '.packages[].manifest_path' "$metadata_file" \
   | while IFS= read -r manifest; do
+      package_name="$(jq -er --arg manifest "$manifest" \
+        '.packages[] | select(.manifest_path == $manifest) | .name' \
+        "$metadata_file")"
       cargo geiger \
         --manifest-path "$manifest" \
         --all-dependencies \
         --all-targets \
-        --locked
+        --locked \
+        --output-format Json >"$reports_dir/$package_name.json" || geiger_status=$?
+      geiger_status="${geiger_status:-0}"
+      if [[ "$(jq --arg package "$package_name" \
+        '[.packages[] | select(.package.id.name == $package)] | length' \
+        "$reports_dir/$package_name.json")" != "1" ]]; then
+        echo "cargo geiger did not report exactly one first-party package: $package_name" >&2
+        exit 1
+      fi
+      jq -e --arg package "$package_name" '
+        [.packages[] | select(.package.id.name == $package)][0]
+        | (.unsafety.forbids_unsafe == true)
+          and ([(.unsafety.used | to_entries[] | .value.unsafe_ // 0)] | all(. == 0))
+      ' "$reports_dir/$package_name.json" >/dev/null
+      if [[ "$geiger_status" -ne 0 ]]; then
+        echo "cargo geiger reported dependency inventory warnings for $package_name (exit $geiger_status); first-party package is clean" >&2
+      fi
+      unset geiger_status
     done
 ```
 
@@ -59,11 +83,13 @@ and advisories are checked without local ignores. The current unpublished scaffo
 is explicitly excluded from dependency-license resolution until release licensing
 is decided; external crates are not. The metadata loop runs `cargo geiger` once for
 every workspace package, so the report covers current workspace and transitive
-unsafe usage. When a dependency subtree contains unsafe code, `cargo geiger` may
-return a nonzero inventory status even though the first-party package is clean;
-CI captures its JSON report and fails only when a workspace package lacks
-`forbid(unsafe_code)` or reports first-party unsafe usage. This does not prove FFI
-safety or replace review.
+unsafe usage. The JSON loop mirrors CI: it resolves each package name from the
+matching manifest path, retains one report per package, checks
+`forbid(unsafe_code)` and zero first-party unsafe usage, and treats a nonzero
+geiger status as dependency-inventory warning only. When a dependency subtree
+contains unsafe code, `cargo geiger` may return a nonzero inventory status even
+though the first-party package is clean. This does not prove FFI safety or
+replace review.
 
 The GitHub Actions `Rust baseline` job runs the four Cargo checks and the
 `Dependency and unsafe-code policy` job runs these three policy checks on Linux for
