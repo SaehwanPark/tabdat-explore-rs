@@ -424,6 +424,28 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
           if characters[index] == '!' {
             return Err(ParseError::new("unsupported token in command: !"));
           }
+          if characters[index].is_alphabetic() || characters[index] == '_' {
+            let identifier_start = index;
+            index += 1;
+            while index < characters.len()
+              && (characters[index].is_alphanumeric() || characters[index] == '_')
+            {
+              index += 1;
+            }
+            let identifier_is_if = index - identifier_start == 2
+              && characters[identifier_start].eq_ignore_ascii_case(&'i')
+              && characters[identifier_start + 1].eq_ignore_ascii_case(&'f');
+            if identifier_is_if {
+              if !text.is_empty() || quoted {
+                index = identifier_start;
+                break;
+              }
+              text.push_str("if");
+              continue;
+            }
+            text.extend(&characters[identifier_start..index]);
+            continue;
+          }
           if is_unsupported_simple_symbol(characters[index], allow_symbols) {
             return Err(ParseError::new(format!(
               "unsupported token in command: {}",
@@ -455,7 +477,7 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             return Err(ParseError::new("unsupported token in command: ."));
           }
           if matches!(characters[index], '\'' | '"' | '`') {
-            if allow_symbols && !text.is_empty() {
+            if allow_symbols && !text.is_empty() && characters[index] != '`' {
               break;
             }
             let quote = characters[index];
@@ -467,7 +489,7 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
               && quote != '`'
               && characters
                 .get(index)
-                .is_some_and(|next| matches!(next, '\'' | '"' | '`'))
+                .is_some_and(|next| matches!(next, '\'' | '"'))
             {
               break;
             }
@@ -714,6 +736,21 @@ mod tests {
           value: value.to_owned(),
         },
         "{value:?}"
+      );
+    }
+    for (input, value) in [
+      ("set graph_format foo`bar`", "foobar"),
+      ("set graph_format \"a\"`b`", "ab"),
+      ("set graph_format foo`bar`+x", "foobar+x"),
+      ("set graph_format `foo`bar`baz`", "foobarbaz"),
+    ] {
+      assert_eq!(
+        parse_command(input).unwrap(),
+        Command::Set {
+          name: SettingName::GraphFormat,
+          value: value.to_owned(),
+        },
+        "{input:?}"
       );
     }
   }
@@ -988,6 +1025,10 @@ mod tests {
         "set graph_format foo\"bar\"",
         "set expects syntax: set name value",
       ),
+      ("set graph_format foo-if", "missing expression after if"),
+      ("set graph_format foo.if", "missing expression after if"),
+      ("set graph_format \"foo\"if", "missing expression after if"),
+      ("set graph_format `foo`if", "missing expression after if"),
     ];
     for (input, expected) in cases {
       assert_eq!(
