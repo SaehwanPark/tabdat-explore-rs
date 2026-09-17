@@ -118,15 +118,15 @@ party packages forbid unsafe code and report zero first-party unsafe functions
 or expressions; dependency inventory warnings are retained as policy output:
 
 ```text
-tabdat-explore-rs  forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0  unscanned=0
-tabdat-language    forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0  unscanned=0
-tabdat-runtime     forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0  unscanned=33
+tabdat-explore-rs  forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
+tabdat-language    forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
+tabdat-runtime     forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
 ```
 
-The runtime's 33 unscanned dependency assets are the expected bundled-DuckDB
-inventory warning described by ADR 0007; the geiger process completed
-successfully and did not identify first-party unsafe usage. These scans do not
-prove native FFI safety.
+The runtime report retained 33 `used_but_not_scanned_files` entries in the
+dependency inventory, the expected bundled-DuckDB warning described by ADR
+0007. The geiger process completed successfully and did not identify
+first-party unsafe usage. These scans do not prove native FFI safety.
 
 Hosted checks for the final PR head and the post-merge main commit will be
 recorded after GitHub completes them. Local evidence is not a substitute for
