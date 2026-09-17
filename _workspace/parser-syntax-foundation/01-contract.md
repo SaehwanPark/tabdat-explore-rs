@@ -47,6 +47,9 @@ Observed oracle behavior (Python 3.13.3, existing pinned environment):
 | `help a b` or `? a b` | `ParseError("help expects at most one command name: help <command>")` |
 | `status now` or `status, verbose` | `ParseError("status does not accept arguments, if clauses, options, or assignment syntax")` |
 | `exit foo` or `quit, now` | command-specific `does not accept arguments, if clauses, or options` error |
+| `status=now` | `ParseError("status assignment requires a target before =")` |
+| `exit=now` or `quit=now` | command-specific `assignment requires a target before =` error |
+| `help,verbose` | `ParseError("unknown command: help")` |
 
 Quoted command names are rejected. Quoting a help topic is outside this slice's
 normal syntax and is preserved as literal topic text only when the parser's simple

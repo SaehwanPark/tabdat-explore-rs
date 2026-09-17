@@ -5,3 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+
+[workspace]
+members = [".", "crates/tabdat-language"]
+resolver = "3"

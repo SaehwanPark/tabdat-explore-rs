@@ -2,8 +2,11 @@
 
 ## Current behavior
 
-The Rust 2024 binary is a scaffold: it prints `Hello, world!` and exits successfully.
-It does not implement the TabDat language, data commands, or statistical models.
+The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
+successfully. The workspace also contains a backend-independent `tabdat-language`
+crate with a deliberately small syntax-only parser for `help`/`?`, `status`, and
+`exit`/`quit`. There is still no usable TabDat CLI, data runtime, or statistical
+model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -37,6 +40,27 @@ Acceptance: local clean checkout and GitHub commit/tree agree; every inventoried
 path exists at that revision; bounded parser/script oracle checks are recorded
 without implying full-suite or Rust parity; guidance has no stale missing-pin claim.
 No Python source edits, dependency installation, backend work, or migrated commands.
+
+## Verified slice: syntax-only parser foundation
+
+Add the first language-layer crate without changing the scaffold binary or
+initializing any runtime capability. `tabdat-language` exposes owned `Command`
+variants for `Help`, `Status`, and `Exit`; `quit` is an alias for `exit`; and
+`ParseError` has deterministic display text. The parser preserves the pinned
+Python behavior for surrounding whitespace, case-insensitive command/topic names,
+the `?` help alias, empty/unknown commands, quoted command-name rejection, and
+unsupported arguments/options/assignment forms for these commands.
+
+Evidence: `_workspace/parser-syntax-foundation/01-contract.md`,
+`crates/tabdat-language/src/lib.rs`, and its unit/integration tests. The pinned
+Python parser/script oracle suite passed with `516 passed in 0.44s` using
+`PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider
+tests/test_parser.py tests/test_script.py` from the clean sibling checkout at
+revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`. Rust workspace checks pass
+locally on the branch; hosted CI and review remain required before merge.
+
+This slice does not execute commands, load data, provide the full tokenizer or
+expression grammar, or establish parser/CLI/script parity beyond the listed forms.
 
 ## Verified slice: dependency and unsafe-code checks
 
