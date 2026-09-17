@@ -232,7 +232,7 @@ Build the domain model before substantial runtime implementation.
 
 ### 4.1 Workspace topology
 
-- [ ] Create `tabdat-language`.
+- [x] Create `tabdat-language` (bounded syntax-only parser foundation; PR #11).
 - [ ] Create `tabdat-domain`.
 - [ ] Create `tabdat-execution`.
 - [ ] Create `tabdat-data`.

@@ -1,9 +1,11 @@
 # TabDat Explore Rust architecture
 
-**Status:** current scaffold plus proposed ownership boundaries
+**Status:** current scaffold plus bounded language-layer slice and proposed ownership boundaries
 
 This document separates repository truth from the target architecture. The Rust
-repository currently contains one binary crate and no TabDat command implementation.
+repository currently contains one binary crate and a small `tabdat-language` crate;
+the latter implements only a syntax-only parser slice, not a usable TabDat command
+runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
 names and product commands are not installed support. The [migration authority](docs/migration/README.md)
@@ -17,10 +19,13 @@ silently invent parity.
   `Hello, world!`.
 - `tests/scaffold.rs` characterizes that placeholder output, successful exit, and
   empty stderr.
+- `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
+  for `help`/`?`, `status`, and `exit`/`quit`, plus owned command/error types and
+  focused tests. It performs no execution or I/O.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
-- There is no parser, session model, data engine, statistical backend, REPL, MCP
-  server, or public TabDat command contract in this repository yet.
+- There is no session model, data engine, statistical backend, REPL, MCP server,
+  or complete public TabDat command contract in this repository yet.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
@@ -165,8 +170,8 @@ do not mark a proposed boundary as present merely because it is described here.
 ## Explicit deferrals
 
 This document does not select a DuckDB crate/version, native statistical library,
-ReadStat/libgretl ABI, plotting stack, parser framework, workspace crate layout,
-minimum supported Rust version, packaging model, or Rust/Python parity surface. Those
-are bounded decisions for later spikes with feasibility, license, performance,
-ownership, and validation evidence. Python and R remain external validation tools,
-not core Rust runtime dependencies.
+ReadStat/libgretl ABI, plotting stack, parser framework, workspace crate layout beyond
+the bounded language member, minimum supported Rust version, packaging model, or
+Rust/Python parity surface. Those are bounded decisions for later spikes with
+feasibility, license, performance, ownership, and validation evidence. Python and R
+remain external validation tools, not core Rust runtime dependencies.

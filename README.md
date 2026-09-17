@@ -1,8 +1,10 @@
 # TabDat Explore Rust
 
 Rust-native successor to TabDat's terminal-first statistical/EDA environment.
-**This repository is a scaffold, not a usable TabDat CLI.** Running it currently
-prints `Hello, world!`; no parser, data engine, or statistical backend is installed.
+**This repository is a scaffold, not a usable TabDat CLI.** Running the root binary
+currently prints `Hello, world!`. The workspace has begun a safe language layer with
+a syntax-only parser for a few control/status commands; no data engine or statistical
+backend is installed.
 
 ## Development
 
@@ -14,7 +16,7 @@ cargo test --locked --workspace --all-targets
 ```
 
 `rust-toolchain.toml` pins the compiler, rustfmt, and Clippy used locally and in CI.
-The core scaffold requires neither Python nor R. See
+The core scaffold and language crate require neither Python nor R. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for all checks and the development workflow.
 
 ## Project state

@@ -42,14 +42,24 @@ cargo install cargo-audit --version 0.22.2 --locked
 cargo install cargo-geiger --version 0.13.0 --locked
 cargo deny check
 cargo audit -D warnings
-cargo geiger --all-dependencies --all-targets --locked
+set -euo pipefail
+cargo metadata --no-deps --format-version 1 \
+  | jq -r '.packages[].manifest_path' \
+  | while IFS= read -r manifest; do
+      cargo geiger \
+        --manifest-path "$manifest" \
+        --all-dependencies \
+        --all-targets \
+        --locked
+    done
 ```
 
 `deny.toml` rejects unknown sources, disallowed licenses, wildcard dependencies,
 and advisories are checked without local ignores. The current unpublished scaffold
 is explicitly excluded from dependency-license resolution until release licensing
-is decided; external crates are not. `cargo geiger` reports current workspace and
-transitive unsafe usage; it does not prove FFI safety or replace review.
+is decided; external crates are not. The metadata loop runs `cargo geiger` once for
+every workspace package, so the report covers current workspace and transitive
+unsafe usage. It does not prove FFI safety or replace review.
 
 The GitHub Actions `Rust baseline` job runs the four Cargo checks and the
 `Dependency and unsafe-code policy` job runs these three policy checks on Linux for

@@ -8,5 +8,7 @@ description = "Safe facade over libgretl OLS for the TabDat estimator-backend fe
 [dependencies]
 gretl-sys = { path = "gretl-sys" }
 
+[workspace]
+
 [lib]
 path = "src/lib.rs"
