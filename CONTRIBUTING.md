@@ -47,7 +47,7 @@ tmp_root="${RUNNER_TEMP:-$(mktemp -d)}"
 reports_dir="$tmp_root/tabdat-geiger-reports"
 mkdir -p "$reports_dir"
 metadata_file="$tmp_root/tabdat-cargo-metadata.json"
-cargo metadata --no-deps --format-version 1 >"$metadata_file"
+cargo metadata --no-deps --format-version 1 --locked >"$metadata_file"
 jq -r '.packages[].manifest_path' "$metadata_file" \
   | while IFS= read -r manifest; do
       package_name="$(jq -er --arg manifest "$manifest" \

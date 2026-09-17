@@ -99,8 +99,11 @@ with TemporaryDirectory() as temp:
       executor.execute(UseCommand(corrupt))
     except Exception as exc:
       print("ERROR", type(exc).__name__, str(exc))
+    else:
+      raise AssertionError("corrupt eager load unexpectedly succeeded")
     after = executor.execute(CountCommand())
     assert isinstance(after, CountResult)
+    assert after.row_count == 3
     print("AFTER", after.row_count)
   finally:
     executor.close()
