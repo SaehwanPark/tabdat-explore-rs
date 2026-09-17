@@ -74,6 +74,54 @@ fn datasignature_is_a_public_syntax_only_command() {
 }
 
 #[test]
+fn codebook_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" CODEBOOK `bmi-zscore` sex ").unwrap(),
+    Command::Codebook {
+      variables: vec!["bmi-zscore".to_owned(), "sex".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("codebook").unwrap(),
+    Command::Codebook { variables: vec![] }
+  );
+}
+
+#[test]
+fn codebook_preserves_exact_public_diagnostics() {
+  let cases = [
+    (
+      "codebook age if age > 18",
+      "codebook does not accept if clauses or options",
+    ),
+    (
+      "codebook age, detail",
+      "codebook does not accept if clauses or options",
+    ),
+    (
+      "codebook age = 1",
+      "codebook does not accept assignment syntax",
+    ),
+    (
+      "codebook = 1",
+      "codebook assignment requires a target before =",
+    ),
+    (
+      "codebook age,",
+      "comma must be followed by at least one option",
+    ),
+    ("codebook if", "missing expression after if"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),

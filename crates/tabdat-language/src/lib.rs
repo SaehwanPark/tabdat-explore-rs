@@ -18,6 +18,8 @@ pub enum Command {
   Doctor,
   /// Compute a signature for the active dataset (execution is deferred).
   Datasignature,
+  /// Inspect selected columns (execution is deferred).
+  Codebook { variables: Vec<String> },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Select a dataset source and loading options (execution is deferred).
@@ -267,6 +269,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
       }
     }
     "datasignature" => parse_datasignature_command(body),
+    "codebook" => parse_codebook_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
@@ -407,6 +410,35 @@ fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
   Err(ParseError::new(
     "datasignature does not accept arguments, if clauses, options, or assignment syntax",
   ))
+}
+
+fn parse_codebook_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "codebook assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment {
+    return Err(ParseError::new(
+      "codebook does not accept assignment syntax",
+    ));
+  }
+  if parts.has_condition || parts.has_options {
+    return Err(ParseError::new(
+      "codebook does not accept if clauses or options",
+    ));
+  }
+  Ok(Command::Codebook {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1272,6 +1304,36 @@ mod tests {
   }
 
   #[test]
+  fn parses_codebook_variables_without_execution() {
+    assert_eq!(
+      parse_command(" CODEBOOK ").unwrap(),
+      Command::Codebook { variables: vec![] }
+    );
+    assert_eq!(
+      parse_command("codebook age sex").unwrap(),
+      Command::Codebook {
+        variables: vec!["age".to_owned(), "sex".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("codebook `bmi-zscore` `cost.2024` `x/y`").unwrap(),
+      Command::Codebook {
+        variables: vec![
+          "bmi-zscore".to_owned(),
+          "cost.2024".to_owned(),
+          "x/y".to_owned(),
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("codebook\u{1c}`x y`\u{1d}sex").unwrap(),
+      Command::Codebook {
+        variables: vec!["x y".to_owned(), "sex".to_owned()],
+      }
+    );
+  }
+
+  #[test]
   fn parses_set_values_without_executing_configuration() {
     assert_eq!(
       parse_command(" SET GRAPH_FORMAT PnG ").unwrap(),
@@ -1778,6 +1840,42 @@ mod tests {
     for (input, expected) in cases {
       assert_eq!(
         parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_codebook_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "codebook age if age > 18",
+        "codebook does not accept if clauses or options",
+      ),
+      (
+        "codebook age, detail",
+        "codebook does not accept if clauses or options",
+      ),
+      (
+        "codebook age = 1",
+        "codebook does not accept assignment syntax",
+      ),
+      (
+        "codebook = 1",
+        "codebook assignment requires a target before =",
+      ),
+      (
+        "codebook age,",
+        "comma must be followed by at least one option",
+      ),
+      ("codebook if", "missing expression after if"),
+      ("codebook -1", "unsupported token in command: -"),
+      ("codebook age==x", "unsupported token in command: =="),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
         expected,
         "{input:?}"
       );
