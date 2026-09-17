@@ -8,4 +8,9 @@ publish = false
 
 [workspace]
 members = [".", "crates/tabdat-language"]
+exclude = [
+  "spikes/duckdb-prototype",
+  "spikes/readstat-prototype",
+  "spikes/gretl-prototype",
+]
 resolver = "3"

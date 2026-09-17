@@ -7,3 +7,5 @@ description = "Safe facade over the ReadStat DTA reader for the TabDat ingestion
 
 [dependencies]
 readstat-sys = { path = "readstat-sys" }
+
+[workspace]

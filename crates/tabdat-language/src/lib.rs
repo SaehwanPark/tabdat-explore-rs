@@ -105,12 +105,16 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
-  let normalized_name = name.to_ascii_lowercase();
+  let normalized_name = name.to_lowercase();
   match normalized_name.as_str() {
     "help" => parse_help(body),
     "status" => {
       if body.is_empty() {
         Ok(Command::Status)
+      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
+        Err(ParseError::new(
+          "comma must be followed by at least one option",
+        ))
       } else if body.starts_with('=') && !body.starts_with("==") {
         Err(ParseError::new(
           "status assignment requires a target before =",
@@ -126,6 +130,10 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
+      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
+        Err(ParseError::new(
+          "comma must be followed by at least one option",
+        ))
       } else if body.starts_with('=') && !body.starts_with("==") {
         Err(ParseError::new(format!(
           "{normalized_name} assignment requires a target before ="
@@ -216,6 +224,14 @@ mod tests {
       "unknown command: unknown"
     );
     assert_eq!(
+      parse_command("ÄBC").unwrap_err().to_string(),
+      "unknown command: äbc"
+    );
+    assert_eq!(
+      parse_command("ΣTATUS").unwrap_err().to_string(),
+      "unknown command: σtatus"
+    );
+    assert_eq!(
       parse_command("`help`").unwrap_err().to_string(),
       "command must start with an unquoted command name"
     );
@@ -271,6 +287,12 @@ mod tests {
       parse_command("exit == now").unwrap_err().to_string(),
       "unsupported token in command: =="
     );
+    for input in ["status,", "status now,", "exit,", "quit ,"] {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        "comma must be followed by at least one option"
+      );
+    }
     assert_eq!(
       parse_command("help,verbose").unwrap_err().to_string(),
       "unknown command: help"

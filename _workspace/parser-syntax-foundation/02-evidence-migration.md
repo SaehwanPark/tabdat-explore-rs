@@ -18,9 +18,9 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 ```
 
 Targeted probes covered `help`/`?`, lowercased topics, `status`, `exit`/`quit`,
-empty/unknown/quoted commands, comma/equal delimiters, `==`, U+001C–U+001F
-whitespace, and doubled/unterminated quotes. The expected results and source/test
-paths are recorded in `01-contract.md`.
+empty/unknown/quoted commands, comma/equal delimiters, `==`, trailing commas,
+Unicode command normalization, U+001C–U+001F whitespace, and doubled/unterminated
+quotes. The expected results and source/test paths are recorded in `01-contract.md`.
 
 ## Rust contract
 
@@ -61,5 +61,6 @@ green on this revision.
   reporting, JSON/MCP surfaces, and differential harness automation.
 
 No intentional Rust/Python behavior deviation is accepted for the bounded forms.
-Known diagnostics for punctuation outside this contract (for example `status:` or
-`status/foo`) remain deferred with the general tokenizer work.
+Diagnostics for malformed quoted tokens after a first token and punctuation outside
+this contract (for example `status:` or `status/foo`) remain deferred with the
+general tokenizer work; they do not affect the accepted scoped commands.

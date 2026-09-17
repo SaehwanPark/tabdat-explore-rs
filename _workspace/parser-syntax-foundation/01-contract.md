@@ -50,15 +50,17 @@ Observed oracle behavior (Python 3.13.3, existing pinned environment):
 | `status=now` | `ParseError("status assignment requires a target before =")` |
 | `exit=now` or `quit=now` | command-specific `assignment requires a target before =` error |
 | `status == now` or `exit == now` | `ParseError("unsupported token in command: ==")` |
+| `status,` / `status now,` / `exit,` / `quit ,` | `ParseError("comma must be followed by at least one option")` |
 | `help,verbose` | `ParseError("unknown command: help")` |
 
 Quoted command names are rejected. Quoting a help topic is outside this slice's
 normal syntax and is preserved as literal topic text only when the parser's simple
-topic form receives it; malformed leading quotes retain the oracle's
+topic form receives it; a single malformed leading quote token retains the oracle's
 `unterminated quoted string`/`unterminated quoted identifier` diagnostics. The
 parser also treats Python's four ASCII information separators (`U+001C`–`U+001F`)
 as whitespace. Empty quoted identifiers and doubled-quote unterminated forms use
-the corresponding Python diagnostics; no general tokenizer or expression grammar
+the corresponding Python diagnostics. Diagnostics for later malformed tokens and
+general punctuation remain deferred with the full tokenizer; no expression grammar
 is introduced here.
 
 ## Rust contract

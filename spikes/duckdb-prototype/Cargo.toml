@@ -6,3 +6,5 @@ publish = false
 
 [dependencies]
 duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
+
+[workspace]
