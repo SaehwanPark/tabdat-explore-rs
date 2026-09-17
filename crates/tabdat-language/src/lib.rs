@@ -16,6 +16,8 @@ pub enum Command {
   Describe,
   /// Inspect environment and capability health (execution is deferred).
   Doctor,
+  /// Compute descriptive statistics for selected columns (execution is deferred).
+  Summarize { variables: Vec<String> },
   /// Compute a signature for the active dataset (execution is deferred).
   Datasignature,
   /// Inspect selected columns (execution is deferred).
@@ -272,6 +274,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
         ))
       }
     }
+    "summarize" => parse_summarize_command(body),
     "datasignature" => parse_datasignature_command(body),
     "codebook" => parse_codebook_command(body),
     "missing" => parse_missing_command(body),
@@ -416,6 +419,35 @@ fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
   Err(ParseError::new(
     "datasignature does not accept arguments, if clauses, options, or assignment syntax",
   ))
+}
+
+fn parse_summarize_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "summarize assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment {
+    return Err(ParseError::new(
+      "summarize does not accept assignment syntax",
+    ));
+  }
+  if parts.has_condition || parts.has_options {
+    return Err(ParseError::new(
+      "summarize does not accept if clauses or options",
+    ));
+  }
+  Ok(Command::Summarize {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
 }
 
 fn parse_codebook_command(body: &str) -> Result<Command, ParseError> {
@@ -1370,6 +1402,76 @@ mod tests {
   fn parses_doctor_with_case_and_whitespace_normalization() {
     assert_eq!(parse_command("doctor").unwrap(), Command::Doctor);
     assert_eq!(parse_command("\tDOCTOR\u{1c}").unwrap(), Command::Doctor);
+  }
+
+  #[test]
+  fn parses_summarize_variables_without_execution() {
+    assert_eq!(
+      parse_command(" SUMMARIZE ").unwrap(),
+      Command::Summarize { variables: vec![] }
+    );
+    assert_eq!(
+      parse_command("summarize age bmi").unwrap(),
+      Command::Summarize {
+        variables: vec!["age".to_owned(), "bmi".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("summarize\u{1c}`bmi-zscore`\u{1d}\"value col\"").unwrap(),
+      Command::Summarize {
+        variables: vec!["bmi-zscore".to_owned(), "value col".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("summarize age age").unwrap(),
+      Command::Summarize {
+        variables: vec!["age".to_owned(), "age".to_owned()],
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_summarize_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "summarize age if age > 0",
+        "summarize does not accept if clauses or options",
+      ),
+      (
+        "summarize age, detail",
+        "summarize does not accept if clauses or options",
+      ),
+      (
+        "summarize age = other",
+        "summarize does not accept assignment syntax",
+      ),
+      (
+        "summarize = age",
+        "summarize assignment requires a target before =",
+      ),
+      (
+        "summarize age,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "summarize,",
+        "comma must be followed by at least one option",
+      ),
+      ("summarize if", "missing expression after if"),
+      ("summarize age if", "missing expression after if"),
+      ("summarize age==x", "unsupported token in command: =="),
+      ("summarize age-1", "unsupported token in command: -"),
+      ("summarize age+1", "unsupported token in command: +"),
+      ("summarize age!x", "unsupported token in command: !"),
+      ("summarize age@x", "unsupported token in command: @"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
   }
 
   #[test]
