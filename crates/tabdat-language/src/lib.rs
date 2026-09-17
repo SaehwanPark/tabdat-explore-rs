@@ -31,6 +31,8 @@ pub enum Command {
     variables: Vec<String>,
     missok: bool,
   },
+  /// Rename one column to another (relation execution is deferred).
+  Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
   Run { path: String },
   /// Change a runtime setting (configuration execution is deferred).
@@ -184,6 +186,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   }
   if command
     .as_bytes()
+    .get(..6)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"rename"))
+    && command.as_bytes().get(6) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
     .get(..3)
     .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"run"))
     && command.as_bytes().get(3) == Some(&b':')
@@ -312,6 +322,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
+    "rename" => parse_rename_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
@@ -667,6 +678,34 @@ fn parse_run_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Run {
     path: path.to_owned(),
   })
+}
+
+fn parse_rename_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "rename assignment requires a target before =",
+    ));
+  }
+  if parts.has_options || parts.has_assignment || parts.has_condition || parts.arguments.len() != 2
+  {
+    return Err(ParseError::new(
+      "rename expects exactly two variables: rename old new",
+    ));
+  }
+  let mut arguments = parts.arguments.into_iter();
+  let old_name = arguments
+    .next()
+    .expect("rename arity checked before extracting arguments")
+    .text;
+  let new_name = arguments
+    .next()
+    .expect("rename arity checked before extracting arguments")
+    .text;
+  Ok(Command::Rename { old_name, new_name })
 }
 
 fn first_unquoted_comma(text: &str) -> Option<usize> {
@@ -1872,6 +1911,88 @@ mod tests {
       ("isid patient_id!x", "unsupported token in command: !"),
       ("isid patient_id@x", "unsupported token in command: @"),
       ("isid patient_id, MISSOK", "isid unsupported option: MISSOK"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_rename_names_without_execution() {
+    assert_eq!(
+      parse_command(" rename sex gender ").unwrap(),
+      Command::Rename {
+        old_name: "sex".to_owned(),
+        new_name: "gender".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("RENAME\u{1c}  `old-name`\u{1d}\"new name\"").unwrap(),
+      Command::Rename {
+        old_name: "old-name".to_owned(),
+        new_name: "new name".to_owned(),
+      }
+    );
+    assert_eq!(
+      parse_command("rename old old").unwrap(),
+      Command::Rename {
+        old_name: "old".to_owned(),
+        new_name: "old".to_owned(),
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_rename_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "rename",
+        "rename expects exactly two variables: rename old new",
+      ),
+      (
+        "rename old",
+        "rename expects exactly two variables: rename old new",
+      ),
+      (
+        "rename old new now",
+        "rename expects exactly two variables: rename old new",
+      ),
+      ("rename if", "missing expression after if"),
+      ("rename old if", "missing expression after if"),
+      ("rename old new if", "missing expression after if"),
+      (
+        "rename old if x > 0",
+        "rename expects exactly two variables: rename old new",
+      ),
+      (
+        "rename old new if x > 0",
+        "rename expects exactly two variables: rename old new",
+      ),
+      (
+        "rename old new, replace",
+        "rename expects exactly two variables: rename old new",
+      ),
+      (
+        "rename old new,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "rename=old new",
+        "rename assignment requires a target before =",
+      ),
+      (
+        "rename = old",
+        "rename assignment requires a target before =",
+      ),
+      ("rename==old new", "unsupported token in command: =="),
+      ("rename:old new", "unsupported token in command: :"),
+      ("rename old-new new", "unsupported token in command: -"),
+      ("rename old+new new", "unsupported token in command: +"),
+      ("rename old@new new", "unsupported token in command: @"),
     ];
     for (input, expected) in cases {
       assert_eq!(

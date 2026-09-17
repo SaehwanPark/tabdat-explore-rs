@@ -64,9 +64,10 @@ Exact diagnostics frozen for direct and command-boundary cases are:
 | Input shape | Diagnostic |
 | --- | --- |
 | `rename`, `rename old`, or `rename old new now` | `rename expects exactly two variables: rename old new` |
+| `rename if`, `rename old if`, or `rename old new if` | `missing expression after if` |
 | `rename old if x > 0`, `rename old new if x > 0`, or `rename old new, replace` | `rename expects exactly two variables: rename old new` |
 | `rename old new,` | `comma must be followed by at least one option` |
-| `rename=old new` | `rename assignment requires a target before =` |
+| `rename=old new` or `rename = old` | `rename assignment requires a target before =` |
 | `rename==old new` | `unsupported token in command: ==` |
 | `rename:old new` | `unsupported token in command: :` |
 | `rename old-new new` | `unsupported token in command: -` |
