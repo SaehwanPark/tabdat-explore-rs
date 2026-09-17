@@ -6,8 +6,9 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-and `tail`, plus the verified direct `use` and `codebook [varlist]` forms. There
-is still no usable TabDat CLI, data runtime, or statistical model implementation.
+and `tail`, plus the verified direct `use` and `codebook [varlist]` forms. PR #19
+carries the in-progress direct `missing [varlist]` syntax slice. There is still
+no usable TabDat CLI, data runtime, or statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
@@ -215,6 +216,26 @@ This slice leaves active-dataset/schema semantics, wildcard/range expansion,
 conditions/options, prefixed commands, full tokenizer/varlist/expression
 grammar, execution/results, reporting/serialization, and backend capability
 initialization to later roadmap work.
+
+## In-progress slice: syntax-only `missing` command
+
+PR #19 adds direct, backend-independent `missing [varlist]` syntax to
+`tabdat-language`. The parser returns an owned ordered variable list, supports
+the pinned quote and backtick forms, and preserves the recovered diagnostics for
+conditions, options, assignments, missing `if` expressions, trailing commas,
+and unsupported punctuation. It does not inspect an active relation or schema,
+count nulls, validate variable names, expand wildcards/ranges, execute a command,
+or initialize a backend.
+
+Evidence: `_workspace/parser-missing-syntax/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. Focused/full pinned Python
+parser/script checks, local Rust checks, independent review, and hosted checks
+remain acceptance gates.
+
+This slice leaves active-relation/schema semantics, null-count and percentage
+rules, wildcard/range expansion, conditions/options, prefixed commands, full
+tokenizer/varlist/expression grammar, execution/results, reporting/serialization,
+and backend capability initialization to later roadmap work.
 
 ## Verified slice: dependency and unsafe-code checks
 

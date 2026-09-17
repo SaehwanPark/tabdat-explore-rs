@@ -293,6 +293,8 @@ Port TabDat's language before implementing most execution.
   `head`, `tail`, and direct `use` syntax; PRs #11–#17).
 - [x] Add the bounded direct `codebook [varlist]` syntax slice (PR #18; execution
   and full varlist semantics remain deferred).
+- [ ] Add the bounded direct `missing [varlist]` syntax slice (PR #19 in progress;
+  execution and full varlist semantics remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
