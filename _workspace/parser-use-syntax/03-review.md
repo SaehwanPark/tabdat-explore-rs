@@ -24,10 +24,11 @@ Evidence reviewed: `02-evidence-migration.md`
 
 ## Review passes and findings
 
-Independent parser, contract, and workspace passes are pending. Findings will be
-recorded here with the fixing revision and regression test, or the contract will
-record an explicit bounded deferral. No hosted check is treated as evidence of
-semantic parity by itself.
+The workspace pass found one low-severity command-boundary parity gap: attached
+`use:data` was initially reported as `unknown command: use:data` rather than the
+Python tokenizer diagnostic `unsupported token in command: :`. Revision
+`<pending-fix>` adds a safe ASCII-prefix guard and an exact regression test. No
+hosted check is treated as evidence of semantic parity by itself.
 
 ## Verification reviewed
 

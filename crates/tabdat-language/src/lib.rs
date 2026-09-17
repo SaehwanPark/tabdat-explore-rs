@@ -159,6 +159,15 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return parse_help(help_body.trim());
   }
 
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"use"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
@@ -1412,6 +1421,7 @@ mod tests {
       ("use, lazy", "unknown command: use"),
       ("use=data", "use assignment requires a target before ="),
       ("use==data", "unsupported token in command: =="),
+      ("use:data", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
