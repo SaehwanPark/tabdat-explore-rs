@@ -1,6 +1,6 @@
 # Contract: syntax-only `use`
 
-Status: proposed.
+Status: accepted and merged in PR #17 (`fc6e286`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

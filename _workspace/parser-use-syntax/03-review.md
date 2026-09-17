@@ -1,7 +1,7 @@
 # `use` syntax review
 
-Status: independent review complete; PR #17 remains a draft pending hosted CI,
-ready-for-review transition, and merge.
+Status: accepted; PR #17 merged as `fc6e286` after independent review and all
+required hosted checks passed.
 
 Reviewer: task owner with independent review agents
 
@@ -43,8 +43,8 @@ No in-scope finding remains open.
 
 Local focused/full oracle results, locked Rust checks, policy scans, and
 `git diff --check` are recorded in `02-evidence-migration.md`. Independent
-parser, contract, and workspace passes report no open finding. Hosted CI remains
-required before the PR can be marked ready and merged.
+parser, contract, and workspace passes report no open finding. The final hosted
+run set is linked there; all six jobs passed before merge.
 
 ## Disposition
 

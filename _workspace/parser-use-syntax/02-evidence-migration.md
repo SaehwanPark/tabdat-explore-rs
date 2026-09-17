@@ -1,7 +1,7 @@
 # `use` syntax evidence
 
-Status: implementation complete locally; PR #17 is open as a draft and awaits
-independent review, hosted checks, ready-for-review transition, and merge.
+Status: accepted and merged in PR #17 (`fc6e286`); all required hosted checks
+passed and the temporary branch was deleted.
 
 Producer: task owner
 
@@ -15,7 +15,7 @@ command-boundary diagnostic fix), and `a0b842a` (Unicode numeric option-token
 classification), and `b43feff` (attached comma-option boundary diagnostics).
 Revision `18e6f4a` then aligns bare `has_header` flags and the generic
 parenthesized diagnostics needed to reach unknown options. Documentation/
-evidence updates are on the same draft branch.
+evidence updates preceded the squash merge `fc6e286`.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -60,7 +60,7 @@ tokenizer errors, and command-boundary behavior for attached comma/equal forms.
 - `crates/tabdat-language/tests/parser_contract.rs`: public typed-command
   coverage;
 - `README.md`, `SPEC.md`, `ARCHITECTURE.md`, and
-  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current-state and in-progress scope;
+  `docs/TABDAT_RUST_PORT_ROADMAP.md`: current-state and verified scope;
 - `_workspace/parser-use-syntax/01-contract.md`: migration boundary.
 
 No active relation, file or URI access, named-table lookup, session mutation,
@@ -86,8 +86,14 @@ cargo audit -D warnings
 metadata-driven cargo geiger (root and tabdat-language): no unsafe usage
 ```
 
-Hosted CI and independent review are the acceptance authority; local success
-does not yet make this a verified `main` slice.
+Hosted CI was the acceptance authority for PR #17. The final hosted run set was:
+
+- [Rust baseline and dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35208582203);
+- [ReadStat spike and Rust job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35208581968);
+- [libgretl spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35208581954);
+- [libgretl OLS Rust job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35208582160).
+
+All six required jobs passed before the PR was marked ready and merged.
 
 ## Supported and deferred behavior
 
