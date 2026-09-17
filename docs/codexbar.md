@@ -44,6 +44,9 @@ codexbar --provider codex --json-only | jq '.[0].usage.primary.resetDescription'
 
 # Weekly only results
 codexbar --provider codex --json-only | jq '.[0].usage.secondary.usedPercent'
+
+# When weekly limit is reset? (may be reset time point or remaining timedelta)
+codexbar --provider codex --json-only | jq '.[0].usage.secondary.resetDescription'
 ```
 
 For handoffs, record both percentages and the reset description so the next
