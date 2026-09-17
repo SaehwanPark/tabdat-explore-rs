@@ -1,7 +1,7 @@
 # `use` syntax review
 
-Status: in review; PR #17 is a draft pending independent parser, contract, and
-workspace passes plus hosted CI.
+Status: independent review complete; PR #17 remains a draft pending hosted CI,
+ready-for-review transition, and merge.
 
 Reviewer: task owner with independent review agents
 
@@ -24,16 +24,21 @@ Evidence reviewed: `02-evidence-migration.md`
 
 ## Review passes and findings
 
-The workspace pass found one low-severity command-boundary parity gap: attached
+The parser pass found one low-severity command-boundary parity gap: attached
 `use:data` was initially reported as `unknown command: use:data` rather than the
 Python tokenizer diagnostic `unsupported token in command: :`. Revision
-`4eaa5d7` adds a safe ASCII-prefix guard and an exact regression test. No
-hosted check is treated as evidence of semantic parity by itself.
+`4eaa5d7` adds a safe ASCII-prefix guard and an exact regression test. The
+contract pass found no additional scope or authority issue. The workspace pass
+then found the same class of gap for bare attached `use,`, which initially
+returned `unknown command: use` instead of Python's trailing-comma diagnostic;
+revision `b43feff` routes attached comma text through option parsing and covers
+`use,`/`use,,`. No in-scope finding remains open.
 
 ## Verification reviewed
 
 Local focused/full oracle results, locked Rust checks, policy scans, and
-`git diff --check` are recorded in `02-evidence-migration.md`. Hosted CI remains
+`git diff --check` are recorded in `02-evidence-migration.md`. Independent
+parser, contract, and workspace passes report no open finding. Hosted CI remains
 required before the PR can be marked ready and merged.
 
 ## Disposition

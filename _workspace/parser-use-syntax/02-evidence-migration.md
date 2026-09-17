@@ -12,7 +12,8 @@ Boundary: pinned Python parser contract → Rust syntax-only parser
 Rust implementation revisions: `860a534` (contract), `9086fa9` (typed command,
 option tokenizer, diagnostics, and tests), `4eaa5d7` (attached `use:data`
 command-boundary diagnostic fix), and `a0b842a` (Unicode numeric option-token
-classification). Documentation/evidence updates are on the same draft branch.
+classification), and `b43feff` (attached comma-option boundary diagnostics).
+Documentation/evidence updates are on the same draft branch.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
@@ -66,7 +67,7 @@ dependency changed.
 
 ## Rust verification
 
-All required local baseline and policy checks pass on `9086fa9` plus the docs
+All required local baseline and policy checks pass on `b43feff` plus the docs
 changes:
 
 ```text
