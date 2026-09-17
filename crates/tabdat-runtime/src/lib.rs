@@ -223,45 +223,16 @@ fn command_name(command: &Command) -> &'static str {
   }
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn new_session_defers_backend_initialization() {
-    let session = Session::new();
-
-    assert!(session.backend.is_none());
-    assert!(session.active_dataset.is_none());
-  }
-
-  #[test]
-  fn failed_staged_read_keeps_the_private_active_relation() {
-    let mut backend = DuckDbBackend::new().expect("test backend should initialize");
-    backend
-      .connection
-      .execute_batch(&format!(
-        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
-      ))
-      .expect("the test active relation should be created");
-
-    let path = Path::new("__tabdat_runtime_missing_fixture__.parquet");
-    assert!(matches!(
-      backend.load_eager_parquet(path),
-      Err(RuntimeError::ParquetRead { .. })
-    ));
-
-    let value: i32 = backend
-      .connection
-      .query_row(&format!("SELECT value FROM {ACTIVE_TABLE}"), [], |row| {
-        row.get(0)
-      })
-      .expect("the prior active relation should remain queryable");
-    assert_eq!(value, 7);
-  }
-}
-
 fn validate_local_parquet_path(path: &Path) -> Result<(), RuntimeError> {
+  let extension_is_parquet = path
+    .extension()
+    .and_then(|extension| extension.to_str())
+    .is_some_and(|extension| extension.eq_ignore_ascii_case("parquet"));
+  if !extension_is_parquet {
+    return Err(RuntimeError::UnsupportedFormat {
+      path: path.to_owned(),
+    });
+  }
   if !path.exists() {
     return Err(RuntimeError::FileNotFound {
       path: path.to_owned(),
@@ -269,15 +240,6 @@ fn validate_local_parquet_path(path: &Path) -> Result<(), RuntimeError> {
   }
   if !path.is_file() {
     return Err(RuntimeError::NotAFile {
-      path: path.to_owned(),
-    });
-  }
-  let extension_is_parquet = path
-    .extension()
-    .and_then(|extension| extension.to_str())
-    .is_some_and(|extension| extension.eq_ignore_ascii_case("parquet"));
-  if !extension_is_parquet {
-    return Err(RuntimeError::UnsupportedFormat {
       path: path.to_owned(),
     });
   }
@@ -407,5 +369,43 @@ impl DuckDbBackend {
     let _ = self
       .connection
       .execute_batch(&format!("DROP TABLE IF EXISTS {STAGING_TABLE}"));
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn new_session_defers_backend_initialization() {
+    let session = Session::new();
+
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn failed_staged_read_keeps_the_private_active_relation() {
+    let mut backend = DuckDbBackend::new().expect("test backend should initialize");
+    backend
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+
+    let path = Path::new("__tabdat_runtime_missing_fixture__.parquet");
+    assert!(matches!(
+      backend.load_eager_parquet(path),
+      Err(RuntimeError::ParquetRead { .. })
+    ));
+
+    let value: i32 = backend
+      .connection
+      .query_row(&format!("SELECT value FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
   }
 }

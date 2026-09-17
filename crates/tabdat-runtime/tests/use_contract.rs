@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
-use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine};
+use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine, parse_command};
 use tabdat_runtime::{ExecutionResult, RuntimeError, Session};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
@@ -100,6 +100,22 @@ fn loads_existing_local_parquet_and_reports_owned_metadata() {
 }
 
 #[test]
+fn parses_use_before_executing_the_command() {
+  let fixture = Fixture::new();
+  let command_text = format!("use {}", fixture.parquet.display());
+  let command = parse_command(&command_text).expect("the fixture path should parse as use");
+  let mut session = Session::new();
+
+  let result = session
+    .execute(command)
+    .expect("a parsed eager local Parquet command should load");
+  let ExecutionResult::Load(load) = result;
+
+  assert_eq!(load.dataset.source, fixture.parquet);
+  assert_eq!(load.dataset.row_count, 3);
+}
+
+#[test]
 fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -140,6 +156,30 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
     "use runtime slice supports only eager local Parquet loads"
   );
 
+  let mut header = fixture.command();
+  if let Command::Use { has_header, .. } = &mut header {
+    *has_header = Some(true);
+  }
+  assert_eq!(
+    session.execute(header).unwrap_err().to_string(),
+    "use runtime slice supports only eager local Parquet loads"
+  );
+
+  let mut polars_lazy = fixture.command();
+  if let Command::Use {
+    execution_mode,
+    lazy_engine,
+    ..
+  } = &mut polars_lazy
+  {
+    *execution_mode = ExecutionMode::Lazy;
+    *lazy_engine = Some(LazyEngine::Polars);
+  }
+  assert_eq!(
+    session.execute(polars_lazy).unwrap_err().to_string(),
+    "use runtime slice supports only eager local Parquet loads"
+  );
+
   assert!(session.active_dataset().is_none());
 }
 
@@ -156,12 +196,35 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
     }
   );
 
-  let directory = use_command(&fixture.root);
+  let missing_wrong_extension = use_command(&fixture.root.join("missing.csv"));
+  assert_eq!(
+    session
+      .execute(missing_wrong_extension)
+      .unwrap_err()
+      .to_string(),
+    "use runtime slice supports only local .parquet files"
+  );
+
+  let directory_path = fixture.root.join("directory.parquet");
+  fs::create_dir(&directory_path).expect("directory fixture should be created");
+  let directory = use_command(&directory_path);
   assert_eq!(
     session.execute(directory).unwrap_err(),
     RuntimeError::NotAFile {
-      path: fixture.root.clone()
+      path: directory_path
     }
+  );
+
+  let directory_wrong_extension = fixture.root.join("directory.csv");
+  fs::create_dir(&directory_wrong_extension)
+    .expect("wrong-extension directory fixture should be created");
+  let directory_wrong_extension_command = use_command(&directory_wrong_extension);
+  assert_eq!(
+    session
+      .execute(directory_wrong_extension_command)
+      .unwrap_err()
+      .to_string(),
+    "use runtime slice supports only local .parquet files"
   );
 
   let wrong_extension_path = fixture.root.join("patients.csv");
