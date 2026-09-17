@@ -1,7 +1,7 @@
 # `rename` syntax migration evidence
 
-Status: implementation complete; independent review and hosted acceptance are
-pending.
+Status: implementation and independent review complete; current-head hosted
+acceptance and ready/merge/cleanup gates are pending.
 
 Producer: task owner
 
