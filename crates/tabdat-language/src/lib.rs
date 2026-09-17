@@ -20,6 +20,8 @@ pub enum Command {
   Datasignature,
   /// Inspect selected columns (execution is deferred).
   Codebook { variables: Vec<String> },
+  /// Report explicit-null missingness (execution is deferred).
+  Missing { variables: Vec<String> },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
   /// Select a dataset source and loading options (execution is deferred).
@@ -270,6 +272,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     }
     "datasignature" => parse_datasignature_command(body),
     "codebook" => parse_codebook_command(body),
+    "missing" => parse_missing_command(body),
     "set" => parse_set_command(body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
@@ -433,6 +436,33 @@ fn parse_codebook_command(body: &str) -> Result<Command, ParseError> {
     ));
   }
   Ok(Command::Codebook {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
+}
+
+fn parse_missing_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "missing assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment {
+    return Err(ParseError::new("missing does not accept assignment syntax"));
+  }
+  if parts.has_condition || parts.has_options {
+    return Err(ParseError::new(
+      "missing does not accept if clauses or options",
+    ));
+  }
+  Ok(Command::Missing {
     variables: parts
       .arguments
       .into_iter()
@@ -1365,6 +1395,26 @@ mod tests {
   }
 
   #[test]
+  fn parses_missing_variables_without_execution() {
+    assert_eq!(
+      parse_command(" MISSING ").unwrap(),
+      Command::Missing { variables: vec![] }
+    );
+    assert_eq!(
+      parse_command("missing cost age").unwrap(),
+      Command::Missing {
+        variables: vec!["cost".to_owned(), "age".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("missing\u{1c}`bmi-zscore`\u{1d}\"value col\"").unwrap(),
+      Command::Missing {
+        variables: vec!["bmi-zscore".to_owned(), "value col".to_owned()],
+      }
+    );
+  }
+
+  #[test]
   fn parses_set_values_without_executing_configuration() {
     assert_eq!(
       parse_command(" SET GRAPH_FORMAT PnG ").unwrap(),
@@ -1915,6 +1965,46 @@ mod tests {
     for (input, expected) in cases {
       assert_eq!(
         parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn rejects_invalid_missing_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "missing age if age > 0",
+        "missing does not accept if clauses or options",
+      ),
+      (
+        "missing age, detail",
+        "missing does not accept if clauses or options",
+      ),
+      (
+        "missing age = other",
+        "missing does not accept assignment syntax",
+      ),
+      (
+        "missing = age",
+        "missing assignment requires a target before =",
+      ),
+      (
+        "missing age,",
+        "comma must be followed by at least one option",
+      ),
+      ("missing,", "comma must be followed by at least one option"),
+      ("missing if", "missing expression after if"),
+      ("missing age==x", "unsupported token in command: =="),
+      ("missing age-1", "unsupported token in command: -"),
+      ("missing age+1", "unsupported token in command: +"),
+      ("missing age!x", "unsupported token in command: !"),
+      ("missing age@x", "unsupported token in command: @"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
         expected,
         "{input:?}"
       );

@@ -128,6 +128,60 @@ fn codebook_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn missing_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" MISSING `bmi-zscore` sex ").unwrap(),
+    Command::Missing {
+      variables: vec!["bmi-zscore".to_owned(), "sex".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("missing").unwrap(),
+    Command::Missing { variables: vec![] }
+  );
+}
+
+#[test]
+fn missing_preserves_exact_public_diagnostics() {
+  let cases = [
+    (
+      "missing age if age > 0",
+      "missing does not accept if clauses or options",
+    ),
+    (
+      "missing age, detail",
+      "missing does not accept if clauses or options",
+    ),
+    (
+      "missing age = other",
+      "missing does not accept assignment syntax",
+    ),
+    (
+      "missing = age",
+      "missing assignment requires a target before =",
+    ),
+    (
+      "missing age,",
+      "comma must be followed by at least one option",
+    ),
+    ("missing,", "comma must be followed by at least one option"),
+    ("missing if", "missing expression after if"),
+    ("missing age==x", "unsupported token in command: =="),
+    ("missing age-1", "unsupported token in command: -"),
+    ("missing age+1", "unsupported token in command: +"),
+    ("missing age!x", "unsupported token in command: !"),
+    ("missing age@x", "unsupported token in command: @"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn datasignature_preserves_exact_public_diagnostics() {
   let cases = [
     ("datasignature age if", "missing expression after if"),
