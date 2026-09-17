@@ -202,11 +202,11 @@ and unsupported punctuation. It does not inspect an active dataset or schema,
 validate variable names, expand wildcards/ranges, execute a command, or
 initialize a backend.
 
-Evidence: `_workspace/parser-codebook-syntax/{01-contract,02-evidence-migration}.md`,
+Evidence: `_workspace/parser-codebook-syntax/{01-contract,02-evidence-migration,03-review}.md`,
 `crates/tabdat-language/src/lib.rs`, and its unit/integration tests. Focused and
 full pinned Python parser/script checks pass; local Rust and policy checks pass.
-Hosted CI and final independent review remain required before this slice is
-accepted and merged.
+Independent parser/contract/workspace review is complete; the hosted policy job
+remains required before this slice is accepted and merged.
 
 This slice leaves active-dataset/schema semantics, wildcard/range expansion,
 conditions/options, prefixed commands, full tokenizer/varlist/expression

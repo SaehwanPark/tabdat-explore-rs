@@ -1,7 +1,7 @@
 # `codebook` syntax review
 
-Status: draft; awaiting the final contract-review confirmation and hosted
-policy check on PR #18.
+Status: review complete; PR #18 remains draft pending the hosted policy check
+and the final all-checks gate.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -26,28 +26,31 @@ Evidence reviewed: `02-evidence-migration.md`
 
 ## Review passes and findings
 
-The parser pass initially found two medium/low parity gaps. Revision `0816828`
+The parser pass initially found three medium/low parity gaps. Revision `0816828`
 rejects unsupported punctuation that had fallen through the bounded simple
 argument scanner. Revision `7a87dfb` splits adjacent non-backtick quoted
 fragments and stops treating doubled single/double quotes as escapes. Revision
 `a2ddc72` also preserves adjacent empty quoted fragments. Follow-up probes report
-no actionable in-scope finding. Full-tokenizer cases such as malformed numbers
-and attached-token boundaries remain explicitly deferred.
+no actionable in-scope finding. Revision `1ec1347` recognizes an unquoted `if`
+condition boundary before an adjacent backtick fragment. Full-tokenizer cases
+such as malformed numbers and attached-token boundaries remain explicitly
+deferred.
 
 The workspace pass reports no build, dependency, unsafe-code, public API,
-topology, or CI configuration finding. The contract pass is the final outstanding
-review confirmation for this draft artifact.
+topology, or CI configuration finding. The final contract pass reports no
+authority, typed-API, scope, or parity finding.
 
 ## Verification reviewed
 
 Focused/full pinned Python parser-script checks, locked Rust baseline checks,
 policy scans, and `git diff --check` are recorded in `02-evidence-migration.md`.
-Hosted Rust baseline, ReadStat, and both libgretl workflows have passed on the
-current PR run. The dependency/unsafe policy job remains an acceptance gate.
+The latest hosted Rust baseline, ReadStat, and both libgretl workflows have
+passed; the dependency/unsafe policy job remains an acceptance gate for the
+current PR head.
 
 ## Disposition
 
 Do not claim dataset/schema inspection, execution, full varlist or tokenizer
 parity, prefixed-command support, CLI/script support, or backend integration from
-this syntax-only slice. Mark accepted only after the final contract review and
-all six required hosted checks pass.
+this syntax-only slice. Mark accepted only after the current PR head’s hosted
+policy check joins the other five required checks.
