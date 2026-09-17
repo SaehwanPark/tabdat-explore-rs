@@ -1,6 +1,6 @@
 # Doctor-command syntax review
 
-Status: partial until hosted checks pass on the final revision
+Status: accepted; PR #14 merged as `0b918c7`
 Reviewer: task owner with three independent read-only review passes
 Contract reviewed: `01-contract.md`
 Evidence reviewed: `02-evidence-migration.md`
@@ -56,9 +56,9 @@ metadata-driven policy checks continue to cover every workspace package.
 - The latest pushed PR head remains the merge authority for the queued CI and
   isolated ReadStat/libgretl checks.
 
-## Required follow-up
+## Disposition
 
-Keep PR #14 draft until every check for the latest pushed head is successful.
-Then mark it ready, verify the merge state is clean, merge to `main`, and delete
-the local and remote feature branch. Do not check broad parser, environment,
-execution, or Phase 4 roadmap items from this syntax-only evidence.
+All current-head checks passed, PR #14 was marked ready and squash-merged as
+`0b918c7`, and the local and remote feature branches were deleted. Do not check
+broad parser, environment, execution, or Phase 4 roadmap items from this
+syntax-only evidence.

@@ -1,10 +1,11 @@
 # Doctor-command syntax evidence
 
-Status: partial pending review and hosted CI
+Status: accepted and merged in PR #14
 Producer: task owner
 Consumer: reviewer and next maintainer
 Boundary: Python parser contract → Rust syntax-only parser
-Rust implementation revision: `f93b88e`
+Rust implementation revisions: `f93b88e`, evidence/review `22a4909` and
+`15a1abe`; merged as `0b918c7`
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`)
 
@@ -65,10 +66,11 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
 
-PR #14 hosted checks for the latest pushed implementation/docs revision remain
-pending; the PR will not be merged until every current-head check is green.
-The preceding `main` revision `f6525b3` had green post-merge CI, policy,
-ReadStat, and libgretl workflows.
+PR #14 current-head checks all passed: Rust baseline, dependency/unsafe policy,
+ReadStat, and both libgretl workflows. The preceding `main` revision `f6525b3`
+also had green post-merge CI, policy, ReadStat, and libgretl workflows. The
+feature branch was deleted locally and remotely after the merge; this status
+correction is documentation-only.
 
 ## Supported and deferred behavior
 

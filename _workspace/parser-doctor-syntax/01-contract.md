@@ -1,6 +1,6 @@
 # Doctor-command syntax contract
 
-Status: bounded implementation slice, pending validation
+Status: accepted and merged in PR #14
 Producer: task owner
 Consumer: implementer/reviewer
 Selected skills: `tabdat-migration`, `simple-code-writer`
@@ -80,3 +80,6 @@ general tokenizer.
 
 Implement exactly this contract. Do not broaden the parser into prefixed
 commands, varlists, options, expressions, or `doctor` execution.
+
+PR #14 disposition: implemented and merged as `0b918c7`; the feature branch was
+deleted locally and remotely after all current-head checks passed.
