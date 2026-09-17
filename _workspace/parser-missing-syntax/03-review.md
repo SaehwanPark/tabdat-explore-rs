@@ -1,6 +1,7 @@
 # `missing` syntax review
 
-Status: review complete; PR #19 remains draft pending the final hosted checks.
+Status: accepted and merged in PR #19 (`dc75c4d`); all required hosted checks
+passed and the temporary branch was deleted.
 
 Reviewer set: independent parser, contract, and workspace review agents
 
@@ -36,14 +37,11 @@ review record and resolves the evidence-path finding.
 
 Focused/full pinned Python parser-script checks and locked Rust baseline checks
 are recorded in `02-evidence-migration.md`. Local dependency/unsafe policy scans
-also pass. Hosted Rust baseline, ReadStat, and libgretl jobs are acceptance gates
-for the current PR head; the final hosted run set is still pending after the
-latest documentation revision.
+also pass. All six required hosted checks passed on the final PR head before
+merge; the run links are recorded in `02-evidence-migration.md`.
 
 ## Disposition
 
 Do not claim active-relation missingness counts, schema-order behavior,
 execution, full varlist or tokenizer parity, prefixed-command support,
-CLI/script support, or backend integration from this syntax-only slice. Mark
-accepted only after the contract review and all hosted checks report no finding
-and the PR is merged with its temporary branch deleted.
+CLI/script support, or backend integration from this syntax-only slice.

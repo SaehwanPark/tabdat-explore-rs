@@ -1,11 +1,12 @@
 # Contract: syntax-only `missing`
 
-Status: draft; contract recovery for the next bounded parser slice.
+Status: accepted; implemented and merged in PR #19 (`dc75c4d`).
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 
 Rust base: `main` at `709a5dc` (the merged `codebook` syntax slice with green
-hosted checks).
+hosted checks). The implementation was squash-merged as `dc75c4d` after all
+required hosted checks passed; the temporary branch was deleted.
 
 ## Scope
 
