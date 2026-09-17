@@ -343,8 +343,8 @@ is read, no command is executed, and no session or backend state changes.
 
 Evidence and final acceptance are tracked in
 `_workspace/parser-run-syntax/{01-contract,02-evidence-migration,03-review}.md`.
-The focused and full pinned Python parser/script checks, locked Rust and policy
-checks, independent review, hosted checks, and merge result remain pending.
+The focused/full oracle, locked Rust, and policy checks are recorded as passed;
+independent review, hosted checks, and the merge result remain pending.
 
 This bounded form leaves path normalization, line-oriented script execution,
 comments, multiline SQL, macros, control flow, nested/recursive scripts,

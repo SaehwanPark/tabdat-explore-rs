@@ -139,15 +139,19 @@ first-party unsafe expressions. Its report totals were:
 
 ## Hosted acceptance
 
-At the implementation head `173a4ee`, PR #24 opened these required checks:
+At the current documentation/evidence head `030842d`, PR #24 triggered seven
+hosted jobs. The two native feasibility jobs and their Rust checks have already
+passed; the baseline, policy, and runtime jobs are still pending:
 
-- [dependency/unsafe policy job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35258284137/jobs/105327785159);
-- [Rust baseline job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35258284137/jobs/105327785703);
-- [tabdat-runtime Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35258284089/jobs/105327300849).
+- [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439157) (pending);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128197/jobs/105330439687) (pending);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128204/jobs/105330217820) (pending);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128214/jobs/105330126436) (passed);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128214/jobs/105330126736) (passed);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128229/jobs/105330126269) (passed);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35259128224/jobs/105330126491) (passed).
 
-Those checks are pending while documentation and independent review are
-completed. No ReadStat or libgretl workflow is expected for this parser-only
-change. The final head, hosted results, ready transition, squash merge, and
+The final head, all hosted results, ready transition, squash merge, and
 post-merge main checks must be appended before this artifact changes to
 accepted.
 
