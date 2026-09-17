@@ -31,17 +31,18 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
 ## Independent findings
 
-- Parser review approved implementation head `6f4bd37`: the direct parser,
-  quote handling, exact diagnostics, explicit colon boundary, and runtime
-  deferral remain within the bounded syntax-only scope.
-- Contract review identified and the working evidence revision corrected two
-  citation issues (`parser.py:126` for `select`, and `cli.py:133,308-313`) and
-  added a reproducible pinned probe with raw output. Final contract approval at
-  the evidence head is pending.
-- Workspace review identified the missing evidence/review artifacts and
-  current-state documentation; this revision adds both artifacts and updates
-  README/SPEC/ARCHITECTURE/roadmap without enabling execution. Final workspace
-  approval at the evidence head is pending.
+- Parser review approved corrected implementation head `90f4c41`: the direct
+  parser, quote handling, exact diagnostics (including missing assignment
+  expressions), explicit colon boundary, and runtime deferral remain within
+  the bounded syntax-only scope.
+- Contract review approved `90f4c41` after the evidence revision corrected the
+  `parser.py:126` and `cli.py:133,308-313` citations, matched the
+  missing-assignment-expression diagnostic, and added reproducible pinned
+  probes with raw output.
+- Workspace review approved the scoped artifacts and current-state updates at
+  `90f4c41`; provenance wording now distinguishes pre-fix evidence from the
+  corrected implementation. Final hosted acceptance at the final evidence
+  head is pending.
 
 ## Disposition
 

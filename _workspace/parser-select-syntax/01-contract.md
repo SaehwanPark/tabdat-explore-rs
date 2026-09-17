@@ -1,7 +1,6 @@
 # Contract: syntax-only `select <varlist>`
 
-Status: draft bounded contract; implementation and acceptance evidence are
-pending.
+Status: implementation complete; current-head acceptance is pending.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

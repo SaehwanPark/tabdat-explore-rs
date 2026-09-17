@@ -42,6 +42,9 @@ assignment, missing-expression, trailing-comma, and punctuation diagnostics in
 - `6f4bd37`: added the owned `Command::Select` variant, direct dispatch,
   syntax-only parser, public/unit coverage, runtime command-name mapping, and
   explicit unsupported-runtime regression.
+- `90f4c41`: matched Python's missing-assignment-expression diagnostic and
+  added its unit/public regression coverage plus reproducible boundary-probe
+  evidence.
 
 Changed implementation paths:
 
@@ -173,8 +176,8 @@ metadata-driven cargo geiger
 ## Hosted acceptance
 
 The draft PR is [PR #26](https://github.com/SaehwanPark/tabdat-explore-rs/pull/26),
-from `feat/parser-select-syntax`. The implementation head is `6f4bd37`; its
-complete current-head hosted set passed:
+from `feat/parser-select-syntax`. The pre-fix implementation baseline
+`6f4bd37` had a complete hosted set that passed:
 
 - [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35282974595/jobs/105408968850)
   (passed, 19m30s);
@@ -184,8 +187,27 @@ complete current-head hosted set passed:
   (passed, 21m3s).
 
 The contract-only superseded run `35282809276` was cancelled and is not an
-acceptance result. The documentation/evidence revision below will establish a
-new final PR head and must pass its own current-head checks before readiness.
+acceptance result. Corrected implementation head `90f4c41` adds the missing
+assignment-expression diagnostic and the boundary-probe evidence; its complete
+current-head hosted set passed:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785033/jobs/105417739211)
+  (passed, 19m35s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785033/jobs/105417739546)
+  (passed, 20m15s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785025/jobs/105417741372)
+  (passed, 19m26s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285784979/jobs/105417672663)
+  (passed, 23s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285784979/jobs/105417672541)
+  (passed, 27s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785044/jobs/105417673068)
+  (passed, 1m7s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785077/jobs/105417672916)
+  (passed, 1m21s).
+
+The documentation/evidence ledger revision below will establish the final PR
+head and must pass its own current-head checks before readiness.
 
 The temporary branch must be deleted locally and remotely after squash merge.
 Merge-triggered `main` checks and the final documentation-only closeout run
