@@ -353,6 +353,8 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.1 Session and backend
 
+- [x] Evaluate bounded eager local-Parquet session/adapter slice (PR #22;
+  broad session, relation, and load gates below remain unchecked).
 - [ ] Implement persistent DuckDB session.
 - [ ] Implement active relation.
 - [ ] Implement named-table registry.

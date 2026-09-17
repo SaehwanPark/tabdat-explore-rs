@@ -1,7 +1,7 @@
 # Eager local-Parquet runtime evidence
 
-Status: partial; implementation and local checks are complete on draft PR #22,
-while independent review and hosted acceptance remain in progress.
+Status: accepted for bounded evaluation; broad `use` parity and production
+DuckDB integration remain deferred after PR #22's green hosted matrix.
 
 Producer: task owner
 
@@ -15,7 +15,9 @@ contract and fixture), `57753b5` (runtime implementation), `8ba52f3` (lazy-init,
 relation-atomicity, and repeated-load tests), and `aea6728` (Python-compatible
 suffix validation order, parser-to-session wiring, and rejection coverage).
 Commit `cb0e8c3` adds the first-party unsafe-code CI gate, Linux runtime workflow,
-and current-state/evidence corrections.
+and current-state/evidence corrections. Commit `559f293` fixes the workspace
+manifest/package mapping in that gate, retains geiger reports for review, and
+adds the reproducible eager-failure probe and migration-decision entry.
 
 Python oracle revision: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 `601b236788872323af9277d2276a236154a0f129`), Python 3.13.3. The clean sibling
@@ -168,7 +170,7 @@ parity or full DuckDB product adoption.
 ## Local Rust and policy verification
 
 The targeted runtime checks passed on `aea6728`, and the full workspace gates
-passed on the current evidence head `cb0e8c3`:
+passed on the accepted implementation head `559f293`:
 
 ```text
 cargo fmt --all -- --check
@@ -196,13 +198,14 @@ cargo audit -D warnings                                     passed
 
 The metadata-driven geiger policy loop was run with JSON output for the root
 package, `tabdat-language`, and `tabdat-runtime`; all three local scans completed
-successfully at the implementation head before the documentation-only follow-up.
-The runtime JSON scan contained 169 packages, no packages without metrics, and no
-first-party unsafe usage. The first hosted attempt at
+successfully. The hosted policy job on `559f293` also completed the same loop and
+published per-package totals in its step summary. The runtime JSON scan contained
+169 packages, no packages without metrics, and no first-party unsafe usage. The
+first hosted attempt at
 `Report unsafe code` failed because plain `cargo geiger` returned nonzero for 33
 unscanned dependency assets even though first-party code was clean; this is
-tracked as a workflow policy bug, not hidden as a passing gate. CI now captures
-the JSON inventory and fails only on first-party unsafe usage.
+tracked as a workflow policy bug, not hidden as a passing gate. CI now retains
+the JSON reports for the job and fails only on first-party unsafe usage.
 
 ```text
 tabdat-explore-rs  forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
@@ -210,6 +213,14 @@ tabdat-language    forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
 tabdat-runtime     forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
 duckdb             forbids_unsafe=false unsafe_functions=4  unsafe_exprs=983
 libduckdb-sys      forbids_unsafe=false unsafe_functions=0  unsafe_exprs=18
+```
+
+Hosted runtime geiger summary (`559f293`):
+
+```text
+tabdat-runtime     forbids_unsafe=true  unsafe_functions=0  unsafe_exprs=0
+transitive runtime inventory: unsafe_functions=401  unsafe_exprs=23335
+unscanned dependency files: 33
 ```
 
 The transitive DuckDB unsafe inventory is expected and contained behind the
@@ -225,18 +236,33 @@ The existing
 [`docs/feasibility/duckdb.md`](../../docs/feasibility/duckdb.md) and
 [`ADR 0003`](../../docs/adr/0003-duckdb-feasibility-spike.md) record the
 `duckdb-rs` `1.10505.0` / `libduckdb-sys` `1.10505.0` candidate, bundled linkage,
-DuckDB `v1.5.5`, native unsafe inventory, and the CDLA license review. This PR
-adds the domain-owned adapter and transaction/state tests but does not broaden
-the candidate's support claims. Hosted Linux and local macOS-relevant build
-evidence, ownership/threading review, and final license/notice disposition are
-required before the ADR is accepted and the PR is merged.
+DuckDB `v1.5.5`, native unsafe inventory, and the CDLA license review. PR #22
+adds the domain-owned adapter and transaction/state tests without broadening the
+candidate's support claims. Local macOS Apple Silicon evidence is `Darwin 27.0
+arm64` with Rust 1.97.1; hosted Linux x86_64 evidence is the passing runtime
+workflow linked below. The adapter review records private connection ownership,
+no `Send`/`Sync` or panic-catching promises, staged cleanup, transactional
+publish, and RAII teardown. The repository remains unpublished, so the bundled
+license/notice review is accepted only as an evaluation disposition; production
+redistribution still needs an AGPL-compatible notice/package decision.
 
 ## Hosted acceptance
 
-Draft PR: [#22](https://github.com/SaehwanPark/tabdat-explore-rs/pull/22).
-The final head must have the Rust baseline, dependency/unsafe policy, and the
-new Linux runtime-boundary workflow green. Because this PR also touches shared
-policy/current-state paths, the current run set includes the path-scoped DuckDB,
-ReadStat, and libgretl feasibility workflows as well. Their final run links and
-the squash-merge SHA will be added here before this artifact changes to
-`Status: accepted`.
+PR: [#22](https://github.com/SaehwanPark/tabdat-explore-rs/pull/22), accepted after
+all eight required checks passed on implementation head `559f293`:
+
+- [Rust baseline and dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676933)
+  (jobs `105240552352` and `105240552463`);
+- [Linux runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676906)
+  (job `105240552009`);
+- [DuckDB feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676753)
+  (job `105240552575`);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232677233)
+  (jobs `105240552909` and `105240553260`); and
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676886)
+  plus [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35232676817)
+  (jobs `105240552368` and `105240551819`).
+
+The documentation-only acceptance follow-up is kept separate from this
+implementation evidence; merge and post-merge checks are recorded in
+`04-summary.md`.

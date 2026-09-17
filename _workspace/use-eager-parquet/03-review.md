@@ -1,8 +1,7 @@
 # Eager local-Parquet runtime review
 
-Status: partial; the implementation and local evidence are ready on draft PR
-#22. Review findings have fixes in the current worktree, while hosted checks and
-final ADR disposition remain open.
+Status: accepted for bounded evaluation; broad runtime parity and production
+DuckDB integration remain deferred.
 
 Reviewer set: independent runtime/parser, contract, and workspace/native review
 agents
@@ -46,25 +45,25 @@ and zero first-party unsafe counts, and surface transitive inventory as a warnin
 The same pass found no runtime-specific hosted build workflow;
 `.github/workflows/runtime.yml` now adds a Linux x86_64 runtime check path.
 
-The final review pass must record severity-ranked findings, fixes and commit
-references, and the disposition for any unresolved ownership, transaction,
-platform, license, or scope concern. The current review has no additional
-implementation finding beyond the documented `~` and diagnostic/scope
-deviations; hosted checks and acceptance evidence are still required. No finding
-is treated as closed merely because local Cargo checks pass.
+The final review found no additional implementation defect beyond the documented
+`~` and diagnostic/scope deviations. The suffix-order gap was fixed in `aea6728`,
+the hosted geiger package-mapping/policy-visibility defect was fixed in `559f293`,
+and the temporary-path isolation and reproducible eager-failure probe were added
+in the same follow-up. The private adapter's ownership, transactional cleanup,
+exclusive `&mut self` access, no-`Send`/`Sync` promise, and unpublished
+license/notice disposition are recorded in ADR 0007 and the evidence artifact.
+No finding is treated as closed merely because local Cargo checks pass.
 
 ## Verification reviewed
 
 The evidence artifact records the focused/full pinned Python checks, Rust
 baseline, dependency/advisory scans, metadata-driven geiger inventory, and
-`git diff --check`. Before promotion, rerun the final head and attach links for
-the Rust baseline, dependency/unsafe policy, Linux runtime-boundary workflow,
-and every path-scoped native workflow triggered by the final diff.
+`git diff --check`. All eight hosted checks passed on implementation head
+`559f293`; links and job IDs are recorded in `02-evidence-data.md`.
 
 ## Disposition
 
-Keep PR #22 draft until the independent reviews and every required hosted job
-are green. If the bounded contract is accepted, mark it ready, squash-merge it,
-delete the temporary branch, and then update this artifact and the ADR with the
-merge SHA and final hosted links. Do not claim broad Phase 4 `use` support or
-blanket DuckDB production adoption from this slice.
+PR #22's bounded contract is accepted for squash merge after the recorded green
+matrix. The merge follow-up must add the squash SHA and post-merge links to
+`04-summary.md`. Do not claim broad Phase 4 `use` support or blanket DuckDB
+production adoption from this slice.

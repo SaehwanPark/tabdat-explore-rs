@@ -1,6 +1,7 @@
 # Contract: eager local-Parquet `use`
 
-Status: draft; contract recovery for the bounded Phase 4 runtime slice in PR #22.
+Status: accepted for the bounded Phase 4 runtime evaluation in PR #22; broad
+`use` parity remains deferred.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `tabdat-native-backends`, `simple-code-writer`
