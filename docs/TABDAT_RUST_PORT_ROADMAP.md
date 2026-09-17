@@ -289,8 +289,8 @@ Port TabDat's language before implementing most execution.
 ### 5.1 Parser
 
 - [x] Port bounded syntax-only control/status/inspection/diagnostic/configuration forms
-  (`help`, `status`, `exit`, `describe`, `doctor`, `set`, `count`, `head`, and `tail`;
-  PRs #11–#15).
+  (`help`, `status`, `exit`, `describe`, `doctor`, `set`, `datasignature`, `count`,
+  `head`, and `tail`; PRs #11–#16).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
