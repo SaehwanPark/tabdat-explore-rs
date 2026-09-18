@@ -1,0 +1,60 @@
+# Review: bounded runtime `describe`
+
+Status: independent review complete; current docs-inclusive PR head passed all
+required hosted checks, and PR #31 remains draft until the final merge handoff.
+
+Reviewer: independent read-only runtime reviewer, reconciled by task owner
+
+## Acceptance checks
+
+- [x] Freeze the pinned Python active-dataset success/error contract.
+- [x] Keep the result read-only over the existing eager `DatasetInfo` cache.
+- [x] Preserve failed-replacement atomicity and backend non-initialization.
+- [x] Add exact runtime regressions for fresh, active, repeated, and failed
+  replacement states.
+- [x] Run the pinned focused oracle probe.
+- [x] Run locked Rust, formatting, Clippy, diff, advisory, license, and
+  first-party unsafe-code checks locally.
+- [x] Complete independent review with no P0/P1/P2/P3 findings.
+- [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
+- [ ] Mark PR ready, squash-merge PR #31, and delete the temporary branch
+  locally and remotely.
+- [ ] Record post-merge `main` verification.
+
+## Evidence reviewed
+
+The reviewer read `01-contract.md`, implementation revision `cea90b1` and its
+test-tightening follow-up `6e40f0f`,
+`crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/use_contract.rs`, and
+`02-evidence-migration.md`, and compared the behavior with the pinned Python
+paths listed in the contract.
+
+## Findings
+
+No P0/P1/P2/P3 findings. The implementation matches the frozen contract:
+
+- `describe` returns an owned clone of the cached `DatasetInfo`;
+- a fresh session produces the exact no-active-dataset diagnostic;
+- dispatch does not initialize DuckDB or issue a query;
+- a failed replacement load leaves the prior active dataset visible; and
+- parser-to-runtime and repeated-read behavior are covered.
+
+The reviewer noted that backend non-initialization was initially inferred by
+the integration test. The task owner added a private unit assertion to the
+existing session test so the implementation now directly verifies
+`session.backend.is_none()` after the fresh-session `describe` error.
+
+## Required follow-up
+
+Keep the slice bounded to cached eager local-Parquet metadata. Do not mark the
+roadmap's broad inspection/session gate complete, and do not imply `count`,
+`head`, `tail`, lazy materialization, labels, formatting, CLI, or MCP parity.
+Hosted checks passed on docs-inclusive head `fb608d3`:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968038), 19m31s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968274), 22m24s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594706/job/105540962892), 21m29s.
+
+Ready/merge/branch cleanup and post-merge `main` verification remain required
+before this evidence is accepted.

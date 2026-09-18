@@ -69,7 +69,9 @@ fn loads_existing_local_parquet_and_reports_owned_metadata() {
   let result = session
     .execute(fixture.command())
     .expect("eager local Parquet should load");
-  let ExecutionResult::Load(load) = result;
+  let ExecutionResult::Load(load) = result else {
+    panic!("use should return a Load result");
+  };
 
   assert_eq!(load.dataset.source, fixture.parquet);
   assert_eq!(load.dataset.row_count, 3);
@@ -94,7 +96,9 @@ fn loads_existing_local_parquet_and_reports_owned_metadata() {
   let replacement = session
     .execute(fixture.command())
     .expect("a second eager local Parquet load should replace the active relation");
-  let ExecutionResult::Load(replacement) = replacement;
+  let ExecutionResult::Load(replacement) = replacement else {
+    panic!("a replacement use should return a Load result");
+  };
   assert_eq!(replacement.dataset, load.dataset);
   assert_eq!(session.active_dataset(), Some(&replacement.dataset));
 }
@@ -109,7 +113,9 @@ fn parses_use_before_executing_the_command() {
   let result = session
     .execute(command)
     .expect("a parsed eager local Parquet command should load");
-  let ExecutionResult::Load(load) = result;
+  let ExecutionResult::Load(load) = result else {
+    panic!("a parsed use should return a Load result");
+  };
 
   assert_eq!(load.dataset.source, fixture.parquet);
   assert_eq!(load.dataset.row_count, 3);
@@ -256,6 +262,90 @@ fn corrupt_load_preserves_the_prior_active_dataset() {
     session.execute(corrupt).unwrap_err(),
     RuntimeError::ParquetRead { path: corrupt_path }
   );
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn describe_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("describe").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset {
+      command: "describe"
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("describe").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "describe requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn describe_returns_unchanged_owned_active_metadata() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("describe").unwrap())
+    .expect("describe should return active metadata");
+  let ExecutionResult::Describe(described) = result else {
+    panic!("describe should return a Describe result");
+  };
+  assert_eq!(described.dataset, expected);
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("describe").unwrap())
+    .expect("repeated describe should remain read-only");
+  let ExecutionResult::Describe(repeated) = repeated else {
+    panic!("repeated describe should return a Describe result");
+  };
+  assert_eq!(repeated.dataset, expected);
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn describe_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("describe").unwrap())
+    .expect("describe should still see the prior active dataset");
+  let ExecutionResult::Describe(described) = result else {
+    panic!("describe should return a Describe result");
+  };
+  assert_eq!(described.dataset, before);
   assert_eq!(session.active_dataset(), Some(&before));
 }
 

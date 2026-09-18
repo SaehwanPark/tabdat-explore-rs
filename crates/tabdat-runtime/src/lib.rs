@@ -41,11 +41,20 @@ pub struct LoadResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned by a read-only `describe` request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DescribeResult {
+  /// The unchanged metadata for the active dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionResult {
   /// A successfully loaded dataset.
   Load(LoadResult),
+  /// The metadata for the currently active dataset.
+  Describe(DescribeResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -53,6 +62,8 @@ pub enum ExecutionResult {
 pub enum RuntimeError {
   /// The runtime does not yet execute the named language command.
   UnsupportedCommand { name: &'static str },
+  /// The command requires a dataset, but the session has not loaded one.
+  NoActiveDataset { command: &'static str },
   /// The request uses a source, mode, or option outside this slice.
   UnsupportedUseConfiguration,
   /// The source path does not have a UTF-8 representation accepted by DuckDB.
@@ -81,6 +92,10 @@ impl fmt::Display for RuntimeError {
       Self::UnsupportedCommand { name } => {
         write!(formatter, "runtime does not execute command: {name}")
       }
+      Self::NoActiveDataset { command } => write!(
+        formatter,
+        "{command} requires an active dataset; run use <path> first"
+      ),
       Self::UnsupportedUseConfiguration => {
         formatter.write_str("use runtime slice supports only eager local Parquet loads")
       }
@@ -153,6 +168,7 @@ impl Session {
         delimiter,
         has_header,
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
+      Command::Describe => self.execute_describe(),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -160,6 +176,18 @@ impl Session {
   /// Return the currently published dataset metadata, if any.
   pub fn active_dataset(&self) -> Option<&DatasetInfo> {
     self.active_dataset.as_ref()
+  }
+
+  fn execute_describe(&self) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "describe",
+      })?;
+    Ok(ExecutionResult::Describe(DescribeResult {
+      dataset: dataset.clone(),
+    }))
   }
 
   fn execute_use(
@@ -389,9 +417,15 @@ mod tests {
   static NEXT_MISSING_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
   #[test]
-  fn new_session_defers_backend_initialization() {
-    let session = Session::new();
+  fn describe_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
 
+    assert_eq!(
+      session.execute(Command::Describe).unwrap_err(),
+      RuntimeError::NoActiveDataset {
+        command: "describe"
+      }
+    );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
   }
