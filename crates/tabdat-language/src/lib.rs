@@ -796,28 +796,27 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
   for argument in parts.arguments {
     let mut variable = argument.text;
     let mut descending = false;
-    if !argument.backtick_quoted {
-      if let Some(prefix) = variable
+    if !argument.backtick_quoted
+      && let Some(prefix) = variable
         .chars()
         .next()
         .filter(|prefix| matches!(prefix, '+' | '-'))
+    {
+      descending = prefix == '-';
+      variable.remove(0);
+      if variable.is_empty() {
+        return Err(ParseError::new(
+          "gsort expects a variable after each direction prefix",
+        ));
+      }
+      if variable
+        .chars()
+        .next()
+        .is_some_and(|prefix| matches!(prefix, '+' | '-'))
       {
-        descending = prefix == '-';
-        variable.remove(0);
-        if variable.is_empty() {
-          return Err(ParseError::new(
-            "gsort expects a variable after each direction prefix",
-          ));
-        }
-        if variable
-          .chars()
-          .next()
-          .is_some_and(|prefix| matches!(prefix, '+' | '-'))
-        {
-          return Err(ParseError::new(
-            "gsort keys must use at most one + or - prefix",
-          ));
-        }
+        return Err(ParseError::new(
+          "gsort keys must use at most one + or - prefix",
+        ));
       }
     }
     if variable.is_empty() {
