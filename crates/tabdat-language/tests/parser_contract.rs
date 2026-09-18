@@ -26,6 +26,34 @@ fn parse_error_exposes_a_stable_message() {
 }
 
 #[test]
+fn status_preserves_pinned_sign_and_empty_condition_diagnostics() {
+  let cases = [
+    ("status -1", "unsupported token in command: -"),
+    ("status +1", "unsupported token in command: +"),
+    ("status-1", "unsupported token in command: -"),
+    ("status+1", "unsupported token in command: +"),
+    ("status -", "unsupported token in command: -"),
+    ("status +", "unsupported token in command: +"),
+    ("status --1", "unsupported token in command: -"),
+    ("status ++1", "unsupported token in command: +"),
+    ("status -1,", "unsupported token in command: -"),
+    ("status +1,", "unsupported token in command: +"),
+    ("status if", "missing expression after if"),
+    (
+      "status if x",
+      "status does not accept arguments, if clauses, options, or assignment syntax",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn inspection_commands_are_public_syntax_only_values() {
   assert_eq!(parse_command("count").unwrap(), Command::Count);
   assert_eq!(
