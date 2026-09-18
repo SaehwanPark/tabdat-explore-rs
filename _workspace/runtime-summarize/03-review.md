@@ -1,6 +1,7 @@
 # Independent review: bounded eager-runtime `summarize`
 
-Status: pending independent review and acceptance.
+Status: independent review complete; acceptance pending hosted checks and
+post-merge evidence.
 
 ## Review scope
 
@@ -13,7 +14,16 @@ behavior, and current-state documentation.
 
 ## Findings and disposition
 
-Pending reviewer report.
+The independent reviewer inspected commit `862977a` against the recovered
+contract and pinned Python authority. No Critical, High, Medium, or other
+actionable findings remain.
+
+The review confirmed validation ordering, numeric selection, explicit order and
+duplicate preservation, nullable DuckDB aggregates, owned minimum/maximum
+conversion, identifier quoting, exact typed/displayed errors, and read-only
+state behavior. A single non-null standard-deviation assertion was added to the
+runtime fixture coverage after review; unusual numeric aliases remain a future
+fixture extension rather than a blocker.
 
 ## Acceptance gate
 

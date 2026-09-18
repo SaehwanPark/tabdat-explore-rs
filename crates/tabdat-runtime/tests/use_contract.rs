@@ -674,6 +674,8 @@ fn summarize_reports_no_numeric_columns_and_all_null_statistics() {
     "all-null.parquet",
     "SELECT CAST(NULL AS DOUBLE) AS value FROM range(2)",
   );
+  let one_value_path =
+    fixture.write_parquet("one-value.parquet", "SELECT CAST(7.5 AS DOUBLE) AS value");
   let mut session = Session::new();
 
   session
@@ -707,6 +709,21 @@ fn summarize_reports_no_numeric_columns_and_all_null_statistics() {
   assert_eq!(summary.rows[0].std_dev, None);
   assert_eq!(summary.rows[0].minimum, None);
   assert_eq!(summary.rows[0].maximum, None);
+
+  session
+    .execute(use_command(&one_value_path))
+    .expect("single-value numeric Parquet should load");
+  let result = session
+    .execute(parse_command("summarize value").unwrap())
+    .expect("single-value numeric summary should succeed");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(summary.rows[0].count, 1);
+  assert_eq!(summary.rows[0].mean, Some(7.5));
+  assert_eq!(summary.rows[0].std_dev, None);
+  assert_eq!(summary.rows[0].minimum, Some(CellValue::Float(7.5)));
+  assert_eq!(summary.rows[0].maximum, Some(CellValue::Float(7.5)));
 }
 
 #[test]
