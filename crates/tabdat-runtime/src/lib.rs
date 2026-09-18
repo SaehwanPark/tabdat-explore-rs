@@ -5,7 +5,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use duckdb::Connection;
-use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine};
+use duckdb::types::ValueRef;
+use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine, RowLimit};
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
 const STAGING_TABLE: &str = "__tabdat_next";
@@ -55,8 +56,41 @@ pub struct CountResult {
   pub row_count: u64,
 }
 
+/// An owned scalar value in a bounded dataset preview.
+///
+/// Values are copied out of DuckDB before the result leaves the runtime so a
+/// caller never depends on a backend row or connection lifetime.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CellValue {
+  /// An SQL NULL value.
+  Null,
+  /// A boolean value.
+  Boolean(bool),
+  /// A signed integer value, widened without loss of precision.
+  SignedInteger(i128),
+  /// An unsigned integer value, widened without loss of precision.
+  UnsignedInteger(u128),
+  /// A floating-point value.
+  Float(f64),
+  /// A decimal value with its declared width, scale, and scaled payload.
+  Decimal { width: u8, scale: u8, value: i128 },
+  /// A UTF-8 text value.
+  Text(String),
+  /// An owned binary value.
+  Bytes(Vec<u8>),
+}
+
+/// The owned result returned by a bounded `head` request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PreviewResult {
+  /// Column names in the active relation's schema order.
+  pub columns: Vec<String>,
+  /// Rows in relation insertion order, limited to the requested prefix.
+  pub rows: Vec<Vec<CellValue>>,
+}
+
 /// Results currently exposed by the bounded runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
   /// A successfully loaded dataset.
   Load(LoadResult),
@@ -64,6 +98,8 @@ pub enum ExecutionResult {
   Describe(DescribeResult),
   /// The row count for the currently active dataset.
   Count(CountResult),
+  /// The requested prefix of rows from the currently active dataset.
+  Head(PreviewResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -93,6 +129,8 @@ pub enum RuntimeError {
   Transaction { path: PathBuf },
   /// DuckDB could not initialize its in-memory connection.
   BackendInitialization,
+  /// DuckDB could not produce the requested preview.
+  PreviewFailed { command: &'static str },
 }
 
 impl fmt::Display for RuntimeError {
@@ -145,6 +183,7 @@ impl fmt::Display for RuntimeError {
         path.display()
       ),
       Self::BackendInitialization => formatter.write_str("use could not initialize DuckDB"),
+      Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
     }
   }
 }
@@ -179,6 +218,7 @@ impl Session {
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
+      Command::Head { limit } => self.execute_head(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -209,6 +249,37 @@ impl Session {
     Ok(ExecutionResult::Count(CountResult {
       row_count: dataset.row_count,
     }))
+  }
+
+  fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "head" })?;
+    let limit = limit
+      .as_decimal()
+      .parse::<i64>()
+      .map_err(|_| RuntimeError::PreviewFailed { command: "head" })?;
+    let columns = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.clone())
+      .collect::<Vec<_>>();
+    if limit == 0 {
+      return Ok(ExecutionResult::Head(PreviewResult {
+        columns,
+        rows: Vec::new(),
+      }));
+    }
+
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::PreviewFailed { command: "head" })?;
+    let rows = backend
+      .preview_rows(limit, dataset.columns.len())
+      .map_err(|_| RuntimeError::PreviewFailed { command: "head" })?;
+    Ok(ExecutionResult::Head(PreviewResult { columns, rows }))
   }
 
   fn execute_use(
@@ -427,6 +498,53 @@ impl DuckDbBackend {
       .connection
       .execute_batch(&format!("DROP TABLE IF EXISTS {STAGING_TABLE}"));
   }
+
+  fn preview_rows(&self, limit: i64, column_count: usize) -> Result<Vec<Vec<CellValue>>, ()> {
+    let mut statement = self
+      .connection
+      .prepare(&format!("SELECT * FROM {ACTIVE_TABLE} LIMIT ?"))
+      .map_err(|_| ())?;
+    let mut rows = statement.query([limit]).map_err(|_| ())?;
+    let mut preview = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| ())? {
+      let mut values = Vec::with_capacity(column_count);
+      for index in 0..column_count {
+        let value = row.get_ref(index).map_err(|_| ())?;
+        values.push(cell_value_from_ref(value)?);
+      }
+      preview.push(values);
+    }
+    Ok(preview)
+  }
+}
+
+fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
+  match value {
+    ValueRef::Null => Ok(CellValue::Null),
+    ValueRef::Boolean(value) => Ok(CellValue::Boolean(value)),
+    ValueRef::TinyInt(value) => Ok(CellValue::SignedInteger(i128::from(value))),
+    ValueRef::SmallInt(value) => Ok(CellValue::SignedInteger(i128::from(value))),
+    ValueRef::Int(value) => Ok(CellValue::SignedInteger(i128::from(value))),
+    ValueRef::BigInt(value) => Ok(CellValue::SignedInteger(i128::from(value))),
+    ValueRef::HugeInt(value) => Ok(CellValue::SignedInteger(value)),
+    ValueRef::UTinyInt(value) => Ok(CellValue::UnsignedInteger(u128::from(value))),
+    ValueRef::USmallInt(value) => Ok(CellValue::UnsignedInteger(u128::from(value))),
+    ValueRef::UInt(value) => Ok(CellValue::UnsignedInteger(u128::from(value))),
+    ValueRef::UBigInt(value) => Ok(CellValue::UnsignedInteger(u128::from(value))),
+    ValueRef::UHugeInt(value) => Ok(CellValue::UnsignedInteger(value)),
+    ValueRef::Float(value) => Ok(CellValue::Float(f64::from(value))),
+    ValueRef::Double(value) => Ok(CellValue::Float(value)),
+    ValueRef::Decimal(value) => Ok(CellValue::Decimal {
+      width: value.width(),
+      scale: value.scale(),
+      value: value.value(),
+    }),
+    ValueRef::Text(value) => String::from_utf8(value.to_vec())
+      .map(CellValue::Text)
+      .map_err(|_| ()),
+    ValueRef::Blob(value) | ValueRef::Geometry(value) => Ok(CellValue::Bytes(value.to_vec())),
+    _ => Err(()),
+  }
 }
 
 #[cfg(test)]
@@ -461,6 +579,65 @@ mod tests {
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn head_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Head {
+          limit: RowLimit::default(),
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "head" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn failed_preview_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!("DROP TABLE {ACTIVE_TABLE}"))
+      .expect("the test active relation should be dropped");
+
+    assert_eq!(
+      session
+        .execute(Command::Head {
+          limit: RowLimit::default(),
+        })
+        .unwrap_err(),
+      RuntimeError::PreviewFailed { command: "head" }
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }
 
   #[test]

@@ -55,7 +55,7 @@ pub enum Command {
     delimiter: Option<String>,
     has_header: Option<bool>,
   },
-  /// Count rows in the active dataset (execution is deferred).
+  /// Count rows in the active dataset.
   Count,
   /// Preview the first `limit` rows (execution is deferred).
   Head { limit: RowLimit },
