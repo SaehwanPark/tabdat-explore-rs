@@ -1,7 +1,7 @@
 # `status` sign-token diagnostic migration evidence
 
-Status: implementation and hosted checks passed; independent review and merge
-closeout are pending.
+Status: bounded implementation accepted after independent review; merge
+closeout is pending.
 
 Producer: task owner, with independent oracle and parser review
 
@@ -24,6 +24,7 @@ performed. The bounded contract is in `01-contract.md`.
 - `c188be9`: frozen contract and draft-PR handoff;
 - `ce73613`: status sign/empty-condition parser correction, exact unit/public
   regressions, and MIG-0002 scope update.
+- `337a53d`: evidence/review ledger and docs-inclusive hosted-check handoff.
 
 Changed implementation paths:
 
@@ -97,19 +98,23 @@ metadata-driven cargo geiger (all workspace packages,
   crates reported forbid(unsafe_code) and zero first-party unsafe usage
 ```
 
-## Hosted acceptance in progress
+## Hosted acceptance
 
 Draft PR #30 is
 [`Parse status sign-token diagnostics`](https://github.com/SaehwanPark/tabdat-explore-rs/pull/30),
-opened before implementation. Its current head is
-`ce736138117305e25fc1ac6d8dc49822b15100e0`. All current-head hosted jobs
-passed:
+opened before implementation. The implementation head is
+`ce736138117305e25fc1ac6d8dc49822b15100e0`; the docs-inclusive head used for
+the latest hosted checks is `337a53de7b17a6397201ea3c0c71c26c426a500d`. All
+required hosted jobs passed for that docs-inclusive head:
 
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35315903975/job/105507435747), 20m32s;
-- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35315903975/job/105507435916), 19m45s;
-- [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35315903961/job/105507373668), 21m8s.
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35317631151/job/105512682185), 19m28s;
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35317631151/job/105512681631), 16m56s;
+- [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35317630995/job/105512680940), 21m10s.
 
-Independent review, ready-state promotion, squash merge, branch deletion, and
-post-merge `main` verification remain to be recorded. Keep MIG-0002 unresolved
-for the broader status tokenizer matrix and keep the roadmap's broad tokenizer
-checkbox unchecked.
+The independent read-only parser review found no P0/P1/P2/P3 code or scope
+defects. It confirmed that runtime/backend surfaces remain untouched and that
+the earlier stale-head evidence note was corrected by this ledger revision.
+Ready-state promotion, squash merge, branch deletion, and post-merge `main`
+verification remain to be recorded. Keep MIG-0002 unresolved for the broader
+status tokenizer matrix and keep the roadmap's broad tokenizer checkbox
+unchecked.
