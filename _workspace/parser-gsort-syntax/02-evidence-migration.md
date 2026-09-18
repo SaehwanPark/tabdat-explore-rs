@@ -1,8 +1,8 @@
 # `gsort` syntax migration evidence
 
-Status: implementation complete at `44ac3ca`; oracle, local, policy, and
-independent-review evidence are recorded below. Hosted checks, readiness,
-merge, branch cleanup, and post-merge verification are pending.
+Status: accepted after PR #28 (`fd94133`) squash merge. Oracle, local, policy,
+independent-review, hosted, merge, and branch-cleanup evidence are recorded
+below; post-merge documentation-only verification is pending.
 
 Producer: task owner
 
@@ -148,11 +148,23 @@ deferred with the roadmap's tokenizer/varlist work. Attached command splitting
 uses a character-aware boundary; exact Python Unicode classification remains
 deferred as recorded below.
 
-## Hosted acceptance
+## Hosted acceptance and merge
 
-Draft PR #28 is [open](https://github.com/SaehwanPark/tabdat-explore-rs/pull/28)
-from `feat/parser-gsort-syntax`. Its implementation/evidence head and complete
-hosted check set will be linked here after independent review and readiness.
+PR #28 was marked ready after independent review and merged as `fd94133` on
+2026-09-18. The exact pushed head was `5a837437d86cfa30e7dbc81dcea6f646eee75ec8`.
+All required PR-head jobs passed:
+
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066498/job/105475507432), 20m38s;
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066498/job/105475507654), 19m08s;
+- [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066456/job/105475486979), 20m50s;
+- [ReadStat Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066442/job/105475461084), 28s;
+- [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066442/job/105475461192), 20s;
+- [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066459/job/105475461176), 59s;
+- [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066468/job/105475461309), 58s.
+
+The temporary `feat/parser-gsort-syntax` branch was deleted locally and on the
+remote after the squash merge. The post-merge `main` checks and final closeout
+links will be appended after this documentation update is pushed.
 
 ## Supported and deferred behavior
 

@@ -1,6 +1,7 @@
 # Contract: syntax-only `gsort [+|-]varlist`
 
-Status: contract frozen; implementation and acceptance are pending.
+Status: accepted after PR #28 (`fd94133`) squash merge; runtime sorting remains
+deferred.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

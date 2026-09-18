@@ -1,8 +1,8 @@
 # `gsort` syntax slice review
 
-Status: implementation complete at `44ac3ca`; independent review is complete,
-while hosted checks, readiness, merge, branch cleanup, and post-merge
-verification are pending.
+Status: accepted after PR #28 (`fd94133`) squash merge; independent review,
+hosted checks, readiness, merge, and branch cleanup are complete. Post-merge
+documentation-only verification is pending.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -49,12 +49,12 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
   execution scope was widened to absorb them.
 - The independent workspace-scope review found no actionable implementation,
   ownership, backend, unsafe-code, dependency, or unrelated-file findings.
-- Local full baseline and policy gates passed at `44ac3ca`; hosted acceptance
-  remains pending on the current pushed head.
+- Local full baseline and policy gates passed at `44ac3ca`; all seven hosted
+  PR-head jobs passed on `5a837437d86cfa30e7dbc81dcea6f646eee75ec8`.
 
 ## Disposition
 
 Independent review is complete with the tokenizer limitations explicitly
-dispositioned as deferrals. Acceptance remains pending the complete hosted
-check set; the temporary branch must then be deleted and post-merge `main`
-checks recorded.
+dispositioned as deferrals. PR #28 was accepted and merged as `fd94133`; the
+temporary branch was deleted locally and remotely. Final post-merge `main`
+checks remain to be recorded after the documentation closeout push.

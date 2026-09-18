@@ -30,7 +30,7 @@ silently invent parity.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
   `run <script-path>`, direct `rename <old> <new>`, and direct
-  `select <varlist>`, direct `sort <varlist>`, and draft direct `gsort [+|-]varlist`
+  `select <varlist>`, direct `sort <varlist>`, and direct `gsort [+|-]varlist`
   forms perform no execution or I/O; structured
   conditions/options, key semantics, summary execution, and script loading
   remain deferred.
@@ -49,9 +49,8 @@ silently invent parity.
 The accepted backend-independent syntax-only `sort <varlist>` form is recorded
 by PR #27 (`7cf21ae`). Row ordering and all relation effects remain deferred.
 
-Draft PR #28 carries the backend-independent syntax-only `gsort [+|-]varlist`
-candidate. It is not accepted current support until its migration evidence and
-hosted checks complete; direction metadata is parsed, while row ordering and
+Merged PR #28 (`fd94133`) records the accepted backend-independent syntax-only
+`gsort [+|-]varlist` form. Direction metadata is parsed, while row ordering and
 all relation effects remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
