@@ -86,6 +86,13 @@ All workflows triggered by that merge completed successfully:
   and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193938/job/105787357091);
 - [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193942)
   ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193942/job/105787356790)).
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774662)
+  ([spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774662/job/105792139601),
+   [Rust spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774662/job/105792139742));
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774663)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774663/job/105792138501)); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774708)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35404774708/job/105792138553)).
 
 This bounded migration is accepted. Lazy/materialized execution,
 `last_operation`, labels, wildcard/range expansion, formatting, CLI/REPL,
