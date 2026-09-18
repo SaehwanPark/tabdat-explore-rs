@@ -12,9 +12,8 @@ Boundary: pinned Python execution contract → Rust-owned eager-session row coun
 
 Execute the existing syntax-only `Command::Count` against the active dataset
 held by the bounded eager local-Parquet `tabdat-runtime` session. A successful
-request queries the cached active relation and returns an owned `CountResult`
-with its row count. A fresh session returns the deterministic typed no-active
-error. A query failure does not publish any changed session metadata.
+request returns an owned `CountResult` from the already-known eager row count.
+A fresh session returns the deterministic typed no-active error.
 
 This slice builds only on the accepted eager local-Parquet `use` boundary in
 PR #22 and the bounded read-only `describe` boundary in PR #31. It does not
@@ -54,12 +53,11 @@ the exact no-active diagnostic is `count requires an active dataset; run use
 
 ## Rust contract
 
-Add the following owned result and error surface to `tabdat-runtime`:
+Add the following owned result surface to `tabdat-runtime`:
 
 ```rust
 pub struct CountResult { pub row_count: u64 }
 pub enum ExecutionResult { Load(LoadResult), Describe(DescribeResult), Count(CountResult) }
-pub enum RuntimeError { /* existing variants */, CountQuery }
 ```
 
 Executing `Command::Count` behaves as follows:
@@ -67,14 +65,15 @@ Executing `Command::Count` behaves as follows:
 | Session state | Result | State transition |
 | --- | --- | --- |
 | no active dataset | `RuntimeError::NoActiveDataset { command: "count" }` with exact Python-compatible display text | unchanged; backend remains uninitialized |
-| active eager local-Parquet dataset and valid active relation | `ExecutionResult::Count` with the `u64` `SELECT COUNT(*)` result | publish the row count only after the query succeeds; metadata otherwise unchanged |
-| active metadata but count query fails | `RuntimeError::CountQuery` displayed as `count failed` | active metadata remains exactly as before the failure |
+| active eager local-Parquet dataset | `ExecutionResult::Count` with the cached `u64` row count | unchanged; eager load already established the known row count |
 
-The count query is executed through the private DuckDB adapter over the
-existing `__tabdat_active` relation. The public API exposes no connection,
-statement, Arrow value, raw pointer, or foreign lifetime. The eager session
-already knows a row count from `use`; re-querying preserves the Python command
-semantics and gives this command an explicit failure/atomicity boundary.
+The Python backend internally executes `SELECT COUNT(*)`, including lazy
+materialization paths. The bounded Rust session rejects lazy loads and already
+owns the eager row count, so returning that cache is an intentional
+implementation choice with the same observable result and no extra backend
+operation. Lazy/materialized count behavior remains deferred. The public API
+exposes no connection, statement, Arrow value, raw pointer, or foreign
+lifetime.
 
 ## Test contract
 
@@ -84,8 +83,6 @@ Add runtime tests for:
 - parser-to-session eager `use` followed by `count`, returning three rows and
   preserving the active dataset metadata;
 - repeated `count` stability;
-- a count query failure (with the active relation removed in a private unit
-  fixture) preserving the prior metadata; and
 - a failed replacement `use` followed by `count`, preserving the prior
   dataset.
 
@@ -95,8 +92,7 @@ checks, and hosted baseline/runtime workflows.
 
 ## Stop conditions
 
-Stop and record a decision if eager count cannot be expressed through the
-existing active relation, if the row-count conversion cannot remain explicit
-and checked, or if a failed query mutates active metadata. Do not expand this
-slice into lazy materialization, transforms, or preview/value semantics.
-
+Stop and record a decision if the eager cached row count is not sufficient for
+the pinned success contract or if a failed replacement mutates active
+metadata. Do not expand this slice into lazy materialization, transforms, or
+preview/value semantics.

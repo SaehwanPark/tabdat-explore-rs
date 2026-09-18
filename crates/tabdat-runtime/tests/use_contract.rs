@@ -350,6 +350,88 @@ fn describe_after_failed_replacement_keeps_the_prior_dataset() {
 }
 
 #[test]
+fn count_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("count").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset { command: "count" }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("count").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "count requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn count_returns_the_cached_active_row_count_and_preserves_metadata() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("count").unwrap())
+    .expect("count should return the active row count");
+  let ExecutionResult::Count(count) = result else {
+    panic!("count should return a Count result");
+  };
+  assert_eq!(count.row_count, 3);
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("count").unwrap())
+    .expect("repeated count should remain read-only");
+  let ExecutionResult::Count(repeated) = repeated else {
+    panic!("repeated count should return a Count result");
+  };
+  assert_eq!(repeated.row_count, 3);
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn count_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("count-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("count").unwrap())
+    .expect("count should still see the prior active dataset");
+  let ExecutionResult::Count(count) = result else {
+    panic!("count should return a Count result");
+  };
+  assert_eq!(count.row_count, 3);
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
 fn leaves_isid_execution_deferred() {
   let mut session = Session::new();
   let command = Command::Isid {
