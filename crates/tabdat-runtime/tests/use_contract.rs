@@ -792,6 +792,28 @@ fn missing_requires_an_active_dataset_without_initializing_the_backend() {
 }
 
 #[test]
+fn duplicates_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("duplicates").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset {
+      command: "duplicates"
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("duplicates").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "duplicates requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
 fn missing_returns_exact_counts_types_percentages_and_is_read_only() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -1018,6 +1040,207 @@ fn missing_after_failed_replacement_keeps_the_prior_dataset() {
     panic!("missing should return a Missing result");
   };
   assert_eq!(missing.rows[0].missing, 1);
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn duplicates_reports_null_equal_groups_and_preserves_key_requests() {
+  let fixture = Fixture::new();
+  let duplicate_path = fixture.write_parquet(
+    "duplicates.parquet",
+    "SELECT * FROM (VALUES (1, 'a'), (1, 'a'), (2, 'b'), (CAST(NULL AS INTEGER), 'c'), (CAST(NULL AS INTEGER), 'c'), (CAST(NULL AS INTEGER), 'd')) AS duplicates(id, label)",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&duplicate_path))
+    .expect("duplicate fixture should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("duplicates report id").unwrap())
+    .expect("the report alias should parse and execute");
+  let ExecutionResult::Duplicates(id) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(id.variables, vec!["id"]);
+  assert_eq!(id.total_rows, 6);
+  assert_eq!(id.unique_groups, 3);
+  assert_eq!(id.duplicate_groups, 2);
+  assert_eq!(id.duplicate_rows, 5);
+  assert_eq!(id.extra_rows, 3);
+  assert_eq!(id.max_copies, 3);
+
+  let result = session
+    .execute(parse_command("duplicates").unwrap())
+    .expect("the default key list should use schema order");
+  let ExecutionResult::Duplicates(all) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(all.variables, vec!["id", "label"]);
+  assert_eq!(all.total_rows, 6);
+  assert_eq!(all.unique_groups, 4);
+  assert_eq!(all.duplicate_groups, 2);
+  assert_eq!(all.duplicate_rows, 4);
+  assert_eq!(all.extra_rows, 2);
+  assert_eq!(all.max_copies, 2);
+
+  let result = session
+    .execute(parse_command("duplicates id id").unwrap())
+    .expect("duplicate key requests should remain valid");
+  let ExecutionResult::Duplicates(repeated) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(repeated.variables, vec!["id", "id"]);
+  assert_eq!(repeated.total_rows, id.total_rows);
+  assert_eq!(repeated.unique_groups, id.unique_groups);
+  assert_eq!(repeated.duplicate_groups, id.duplicate_groups);
+  assert_eq!(repeated.duplicate_rows, id.duplicate_rows);
+  assert_eq!(repeated.extra_rows, id.extra_rows);
+  assert_eq!(repeated.max_copies, id.max_copies);
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn duplicates_reports_empty_relations_and_quoted_columns() {
+  let fixture = Fixture::new();
+  let empty_path = fixture.write_parquet(
+    "empty-duplicates.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS \"weird name\", CAST(NULL AS VARCHAR) AS label FROM range(0)",
+  );
+  let quoted_path = fixture.write_parquet(
+    "quoted-duplicates.parquet",
+    "SELECT * FROM (VALUES (1, 'a'), (1, 'a'), (2, 'b')) AS duplicates(\"weird name\", label)",
+  );
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&empty_path))
+    .expect("empty duplicate fixture should load");
+  let result = session
+    .execute(parse_command("duplicates").unwrap())
+    .expect("empty duplicates should succeed");
+  let ExecutionResult::Duplicates(empty) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(empty.variables, vec!["weird name", "label"]);
+  assert_eq!(empty.total_rows, 0);
+  assert_eq!(empty.unique_groups, 0);
+  assert_eq!(empty.duplicate_groups, 0);
+  assert_eq!(empty.duplicate_rows, 0);
+  assert_eq!(empty.extra_rows, 0);
+  assert_eq!(empty.max_copies, 0);
+
+  session
+    .execute(use_command(&quoted_path))
+    .expect("quoted duplicate fixture should load");
+  let result = session
+    .execute(parse_command("duplicates `weird name`").unwrap())
+    .expect("quoted duplicate key should execute");
+  let ExecutionResult::Duplicates(quoted) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(quoted.variables, vec!["weird name"]);
+  assert_eq!(quoted.total_rows, 3);
+  assert_eq!(quoted.unique_groups, 2);
+  assert_eq!(quoted.duplicate_groups, 1);
+  assert_eq!(quoted.duplicate_rows, 2);
+  assert_eq!(quoted.extra_rows, 1);
+  assert_eq!(quoted.max_copies, 2);
+}
+
+#[test]
+fn duplicates_avoids_internal_count_alias_collisions() {
+  let fixture = Fixture::new();
+  let path = fixture.write_parquet(
+    "duplicate-alias-collision.parquet",
+    "SELECT * FROM (VALUES (1, 'x'), (1, 'x'), (2, 'y')) AS duplicates(\"__tabdat_duplicate_count\", label)",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&path))
+    .expect("alias-collision fixture should load");
+
+  let result = session
+    .execute(parse_command("duplicates `__tabdat_duplicate_count`").unwrap())
+    .expect("duplicate count alias should not shadow a user column");
+  let ExecutionResult::Duplicates(report) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(report.variables, vec!["__tabdat_duplicate_count"]);
+  assert_eq!(report.total_rows, 3);
+  assert_eq!(report.unique_groups, 2);
+  assert_eq!(report.duplicate_groups, 1);
+  assert_eq!(report.duplicate_rows, 2);
+  assert_eq!(report.extra_rows, 1);
+  assert_eq!(report.max_copies, 2);
+}
+
+#[test]
+fn duplicates_rejects_unknown_variables_without_changing_state() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("duplicates absent absent age").unwrap())
+      .unwrap_err(),
+    RuntimeError::DuplicatesUnknownVariable {
+      variables: vec!["absent".to_owned(), "absent".to_owned()]
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("duplicates absent absent age").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "duplicates unknown variable: absent, absent"
+  );
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn duplicates_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("duplicates-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("duplicates age").unwrap())
+    .expect("duplicates should still see the prior active dataset");
+  let ExecutionResult::Duplicates(report) = result else {
+    panic!("duplicates should return a Duplicates result");
+  };
+  assert_eq!(report.total_rows, 3);
+  assert_eq!(report.unique_groups, 3);
+  assert_eq!(report.duplicate_groups, 0);
+  assert_eq!(report.duplicate_rows, 0);
+  assert_eq!(report.extra_rows, 0);
+  assert_eq!(report.max_copies, 1);
   assert_eq!(session.active_dataset(), Some(&before));
 }
 

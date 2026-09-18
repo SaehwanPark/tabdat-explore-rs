@@ -24,7 +24,7 @@ pub enum Command {
   Codebook { variables: Vec<String> },
   /// Report explicit-null missingness for selected columns.
   Missing { variables: Vec<String> },
-  /// Report duplicate key groups (execution is deferred).
+  /// Report duplicate key groups in the bounded eager runtime.
   Duplicates { variables: Vec<String> },
   /// Assert key uniqueness for selected variables (execution is deferred).
   Isid {

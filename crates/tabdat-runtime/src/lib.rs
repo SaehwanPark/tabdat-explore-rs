@@ -128,6 +128,25 @@ pub struct MissingResult {
   pub rows: Vec<MissingRow>,
 }
 
+/// The owned duplicate-key aggregate returned by a read-only request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DuplicatesResult {
+  /// Key variables in schema or requested order, including repeated requests.
+  pub variables: Vec<String>,
+  /// The number of rows in the active relation.
+  pub total_rows: u64,
+  /// The number of distinct key groups, including groups containing NULLs.
+  pub unique_groups: u64,
+  /// The number of groups containing at least two rows.
+  pub duplicate_groups: u64,
+  /// The number of rows belonging to duplicate groups.
+  pub duplicate_rows: u64,
+  /// The surplus rows after retaining one row per duplicate group.
+  pub extra_rows: u64,
+  /// The largest number of rows in any key group.
+  pub max_copies: u64,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -176,6 +195,8 @@ pub enum ExecutionResult {
   Codebook(CodebookResult),
   /// Reports SQL-NULL missingness for selected columns.
   Missing(MissingResult),
+  /// Reports duplicate groups for selected key columns.
+  Duplicates(DuplicatesResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -227,6 +248,10 @@ pub enum RuntimeError {
   MissingUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce the missingness aggregate.
   MissingFailed,
+  /// The duplicate request named variables absent from the active schema.
+  DuplicatesUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not produce the duplicate aggregate.
+  DuplicatesFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -312,6 +337,14 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::MissingFailed => formatter.write_str("missing failed"),
+      Self::DuplicatesUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "duplicates unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::DuplicatesFailed => formatter.write_str("duplicates failed"),
     }
   }
 }
@@ -349,6 +382,7 @@ impl Session {
       Command::Summarize { variables } => self.execute_summarize(variables),
       Command::Codebook { variables } => self.execute_codebook(variables),
       Command::Missing { variables } => self.execute_missing(variables),
+      Command::Duplicates { variables } => self.execute_duplicates(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -555,6 +589,46 @@ impl Session {
       .missingness(&typed_requested)
       .map_err(|_| RuntimeError::MissingFailed)?;
     Ok(ExecutionResult::Missing(MissingResult { rows }))
+  }
+
+  fn execute_duplicates(&self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "duplicates",
+      })?;
+    let known = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<std::collections::HashSet<_>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| !known.contains(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::DuplicatesUnknownVariable { variables: unknown });
+    }
+
+    let requested = if variables.is_empty() {
+      dataset
+        .columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>()
+    } else {
+      variables
+    };
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::DuplicatesFailed)?;
+    backend
+      .duplicates(&requested)
+      .map(ExecutionResult::Duplicates)
+      .map_err(|_| RuntimeError::DuplicatesFailed)
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -996,6 +1070,68 @@ impl DuckDbBackend {
       })
       .collect()
   }
+
+  fn duplicates(&self, variables: &[String]) -> Result<DuplicatesResult, ()> {
+    let count_alias = duplicate_count_alias(variables);
+    let grouped_query = if variables.is_empty() {
+      format!("SELECT COUNT(*) AS {count_alias} FROM {ACTIVE_TABLE}")
+    } else {
+      let group_columns = variables
+        .iter()
+        .map(|variable| quote_identifier(variable))
+        .collect::<Vec<_>>()
+        .join(", ");
+      format!("SELECT COUNT(*) AS {count_alias} FROM {ACTIVE_TABLE} GROUP BY {group_columns}")
+    };
+    let query = format!(
+      "SELECT COALESCE(SUM({count_alias}), CAST(0 AS HUGEINT)),\
+       COUNT(*),\
+       COUNT(*) FILTER (WHERE {count_alias} >= 2),\
+       COALESCE(SUM(CASE WHEN {count_alias} >= 2 THEN {count_alias} ELSE 0 END), CAST(0 AS HUGEINT)),\
+       COALESCE(SUM(CASE WHEN {count_alias} >= 2 THEN {count_alias} - 1 ELSE 0 END), CAST(0 AS HUGEINT)),\
+       COALESCE(MAX({count_alias}), CAST(0 AS HUGEINT))\
+       FROM ({grouped_query}) AS \"__tabdat_duplicate_groups\""
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let total_rows = u64::try_from(row.get::<_, i128>(0).map_err(|_| ())?).map_err(|_| ())?;
+    let unique_groups = u64::try_from(row.get::<_, i64>(1).map_err(|_| ())?).map_err(|_| ())?;
+    let duplicate_groups = u64::try_from(row.get::<_, i64>(2).map_err(|_| ())?).map_err(|_| ())?;
+    let duplicate_rows = u64::try_from(row.get::<_, i128>(3).map_err(|_| ())?).map_err(|_| ())?;
+    let extra_rows = u64::try_from(row.get::<_, i128>(4).map_err(|_| ())?).map_err(|_| ())?;
+    let max_copies = u64::try_from(row.get::<_, i128>(5).map_err(|_| ())?).map_err(|_| ())?;
+    Ok(DuplicatesResult {
+      variables: variables.to_owned(),
+      total_rows,
+      unique_groups,
+      duplicate_groups,
+      duplicate_rows,
+      extra_rows,
+      max_copies,
+    })
+  }
+}
+
+fn duplicate_count_alias(variables: &[String]) -> String {
+  let base = "__tabdat_duplicate_count";
+  let mut suffix = 0_u64;
+  loop {
+    let candidate = if suffix == 0 {
+      base.to_owned()
+    } else {
+      format!("{base}_{suffix}")
+    };
+    if variables
+      .iter()
+      .all(|variable| !variable.eq_ignore_ascii_case(&candidate))
+    {
+      return quote_identifier(&candidate);
+    }
+    suffix = suffix
+      .checked_add(1)
+      .expect("duplicate alias suffix overflow");
+  }
 }
 
 fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
@@ -1122,6 +1258,24 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::NoActiveDataset { command: "missing" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn duplicates_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Duplicates {
+          variables: Vec::new(),
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset {
+        command: "duplicates"
+      }
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
@@ -1291,6 +1445,49 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::MissingFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_duplicates_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!("DROP TABLE {ACTIVE_TABLE}"))
+      .expect("the test active relation should be dropped");
+
+    assert_eq!(
+      session
+        .execute(Command::Duplicates {
+          variables: vec!["value".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::DuplicatesFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }
