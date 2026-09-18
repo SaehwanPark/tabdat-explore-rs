@@ -1,7 +1,7 @@
 # Contract: eager-runtime `count`
 
-Status: contract frozen; implementation and review are pending in draft PR
-`runtime-count`.
+Status: accepted after PR #32 squash merge `2287fff`; post-merge `main`
+verification and final hosted workflow checks are green.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`

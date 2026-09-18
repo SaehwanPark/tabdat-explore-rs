@@ -403,7 +403,9 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [ ] `isid`
 - [ ] `datasignature`
 - [ ] `assert`
-- [ ] `count`
+- [x] `count` — bounded eager local-Parquet active-dataset row count
+  (`CountResult`; PR #32, squash merge `2287fff`). Broader lazy/materialized,
+  status, transforms, formatting, CLI, and MCP surfaces remain deferred.
 - [ ] `head`
 - [ ] `tail`
 

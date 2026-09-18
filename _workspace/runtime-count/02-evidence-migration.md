@@ -1,7 +1,7 @@
 # Bounded runtime `count` migration evidence
 
-Status: implementation and independent review complete; draft PR #32 is open
-while its hosted baseline, runtime, and policy workflows complete.
+Status: accepted after PR #32 squash merge `2287fff`; post-merge `main`
+verification is green. A docs-only closeout workflow will run for this update.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -29,6 +29,8 @@ relation query, lazy plan, materialization path, or backend initialization for
 
 - `0549bf0`: frozen contract and draft-PR handoff;
 - `6e47ab0`: owned `CountResult`, count dispatch, and state/atomicity tests;
+- `c7a69ed`: migration evidence and independent review;
+- `2287fff`: squash merge of PR #32 to `main` with temporary branch cleanup;
 - PR #32: [Execute bounded runtime count](https://github.com/SaehwanPark/tabdat-explore-rs/pull/32), opened before implementation.
 
 Changed implementation paths:
@@ -116,12 +118,21 @@ explicit deferrals.
 
 ## Hosted acceptance and completion state
 
-PR #32 is currently draft and its current-head hosted checks are in progress:
+PR #32 was marked ready after its current-head checks passed, then squash-merged
+as `2287fff5055531a07146cd81f53d276ed0ddec6e`. Its final docs-inclusive head
+`c7a69ed` passed all required hosted jobs:
 
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35336706832/job/105573165378);
-- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35336706758/job/105573095981); and
-- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35336706832/job/105573165210).
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35337253867/job/105574920672), 19m53s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35337253867/job/105574920878), 19m52s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35337253792/job/105574922037), 21m23s.
 
-The independent review found no P0/P1/P2/P3 findings. The PR will be marked
-ready only after its current-head jobs are green; post-merge `main` verification
-and temporary-branch cleanup remain required before this evidence is accepted.
+Post-merge `main` verification passed at `2287fff5055531a07146cd81f53d276ed0ddec6e`:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35339118917/job/105580737453), 14m43s;
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35339118917/job/105580737135), 21m12s; and
+- [main tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35339118742/job/105580736603), 21m34s.
+
+The independent review found no P0/P1/P2/P3 findings. Local `main` and
+`origin/main` point at the merge commit, and the temporary `feat/runtime-count`
+branch is absent locally and remotely. The roadmap acceptance and final
+docs-only workflow status will be recorded with this closeout push.

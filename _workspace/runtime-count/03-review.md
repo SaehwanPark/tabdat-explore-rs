@@ -1,7 +1,8 @@
 # Review: bounded runtime `count`
 
-Status: independent review complete; PR #32 remains draft pending current-head
-hosted checks.
+Status: independent review complete; PR #32 was marked ready and squash-merged
+as `2287fff`. Post-merge `main` verification is green; this closeout push will
+run one docs-only workflow.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -17,10 +18,10 @@ Reviewer: independent read-only runtime reviewer, reconciled by task owner
 - [x] Run locked Rust, formatting, Clippy, diff, advisory, license, and
   first-party unsafe-code checks locally.
 - [x] Complete independent review with no P0/P1/P2/P3 findings.
-- [ ] Confirm current-head hosted Rust, policy, and runtime jobs pass.
-- [ ] Mark PR ready, squash-merge PR #32, and delete the temporary branch
+- [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
+- [x] Mark PR ready, squash-merge PR #32, and delete the temporary branch
   locally and remotely.
-- [ ] Record post-merge `main` verification.
+- [x] Record post-merge `main` verification.
 
 ## Evidence reviewed
 
@@ -48,5 +49,6 @@ not expand the slice into lazy materialization or a new backend failure mode.
 
 Keep the slice bounded to eager local-Parquet row counts. Do not mark the broad
 inspection/session gate complete, and do not imply lazy count, status tracking,
-transforms, labels, formatting, CLI, or MCP parity. Hosted checks and the
-post-merge branch/`main` closeout are still required.
+transforms, labels, formatting, CLI, or MCP parity. The current-head hosted
+checks and post-merge `main` jobs all passed; only the docs-only closeout run
+remains to be recorded.
