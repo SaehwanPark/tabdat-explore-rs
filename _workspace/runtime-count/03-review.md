@@ -1,8 +1,8 @@
 # Review: bounded runtime `count`
 
 Status: independent review complete; PR #32 was marked ready and squash-merged
-as `2287fff`. Post-merge `main` verification is green; this closeout push will
-run one docs-only workflow.
+as `2287fff`. Post-merge `main` verification and the final docs-inclusive
+hosted workflows are green.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -50,5 +50,4 @@ not expand the slice into lazy materialization or a new backend failure mode.
 Keep the slice bounded to eager local-Parquet row counts. Do not mark the broad
 inspection/session gate complete, and do not imply lazy count, status tracking,
 transforms, labels, formatting, CLI, or MCP parity. The current-head hosted
-checks and post-merge `main` jobs all passed; only the docs-only closeout run
-remains to be recorded.
+checks, post-merge `main` jobs, and auxiliary closeout workflows all passed.

@@ -1,7 +1,7 @@
 # Bounded runtime `count` migration evidence
 
 Status: accepted after PR #32 squash merge `2287fff`; post-merge `main`
-verification is green. A docs-only closeout workflow will run for this update.
+verification and the final docs-inclusive hosted workflows are green.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -132,7 +132,14 @@ Post-merge `main` verification passed at `2287fff5055531a07146cd81f53d276ed0ddec
 - [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35339118917/job/105580737135), 21m12s; and
 - [main tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35339118742/job/105580736603), 21m34s.
 
+The final docs-inclusive closeout head `469c87b50b7cb044068eee2ea2fc055f400d7c17`
+also passed [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014158):
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014158/job/105586680000), 19m37s; and
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014158/job/105586680180), 21m15s.
+
+The same closeout push passed the [ReadStat feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014156), [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014199), and [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35341014160). All current-head jobs concluded successfully.
+
 The independent review found no P0/P1/P2/P3 findings. Local `main` and
 `origin/main` point at the merge commit, and the temporary `feat/runtime-count`
-branch is absent locally and remotely. The roadmap acceptance and final
-docs-only workflow status will be recorded with this closeout push.
+branch is absent locally and remotely.
