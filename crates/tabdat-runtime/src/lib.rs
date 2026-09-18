@@ -48,6 +48,13 @@ pub struct DescribeResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after counting rows in the active dataset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CountResult {
+  /// The row count observed in the active relation.
+  pub row_count: u64,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionResult {
@@ -55,6 +62,8 @@ pub enum ExecutionResult {
   Load(LoadResult),
   /// The metadata for the currently active dataset.
   Describe(DescribeResult),
+  /// The row count for the currently active dataset.
+  Count(CountResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -169,6 +178,7 @@ impl Session {
         has_header,
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
       Command::Describe => self.execute_describe(),
+      Command::Count => self.execute_count(),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -187,6 +197,17 @@ impl Session {
       })?;
     Ok(ExecutionResult::Describe(DescribeResult {
       dataset: dataset.clone(),
+    }))
+  }
+
+  fn execute_count(&self) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "count" })?
+      .clone();
+    Ok(ExecutionResult::Count(CountResult {
+      row_count: dataset.row_count,
     }))
   }
 
@@ -425,6 +446,18 @@ mod tests {
       RuntimeError::NoActiveDataset {
         command: "describe"
       }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn count_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session.execute(Command::Count).unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "count" }
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
