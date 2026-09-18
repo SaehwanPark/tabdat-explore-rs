@@ -1,8 +1,8 @@
 # `gsort` syntax slice review
 
 Status: accepted after PR #28 (`fd94133`) squash merge; independent review,
-hosted checks, readiness, merge, and branch cleanup are complete. Post-merge
-documentation-only verification is pending.
+hosted checks, readiness, merge, branch cleanup, and post-merge verification are
+complete.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -56,5 +56,5 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
 Independent review is complete with the tokenizer limitations explicitly
 dispositioned as deferrals. PR #28 was accepted and merged as `fd94133`; the
-temporary branch was deleted locally and remotely. Final post-merge `main`
-checks remain to be recorded after the documentation closeout push.
+temporary branch was deleted locally and remotely. The documentation closeout
+commit `1ed5343` is on `main`, whose post-merge CI and native checks passed.

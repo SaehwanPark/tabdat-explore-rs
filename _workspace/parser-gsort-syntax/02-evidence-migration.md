@@ -1,8 +1,8 @@
 # `gsort` syntax migration evidence
 
 Status: accepted after PR #28 (`fd94133`) squash merge. Oracle, local, policy,
-independent-review, hosted, merge, and branch-cleanup evidence are recorded
-below; post-merge documentation-only verification is pending.
+independent-review, hosted, merge, branch-cleanup, and post-merge evidence are
+recorded below.
 
 Producer: task owner
 
@@ -163,8 +163,21 @@ All required PR-head jobs passed:
 - [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35305066468/job/105475461309), 58s.
 
 The temporary `feat/parser-gsort-syntax` branch was deleted locally and on the
-remote after the squash merge. The post-merge `main` checks and final closeout
-links will be appended after this documentation update is pushed.
+remote after the squash merge.
+
+The documentation closeout commit `1ed5343d5cb9a49dd956ab0aa4211fbf10b2d401`
+was pushed to `main`; its post-merge checks also passed:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616500/job/105480061171), 19m19s;
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616500/job/105480061522), 20m36s;
+- [main ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616617/job/105480011349), 22s;
+- [main ReadStat Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616617/job/105480011442), 25s;
+- [main libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616543/job/105480011059), 59s;
+- [main libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35306616511/job/105480011280), 1m06s.
+
+Final cleanup verification: `main` is synchronized with `origin/main`, the
+working tree is clean, and `git ls-remote --heads origin feat/parser-gsort-syntax`
+returns no branch.
 
 ## Supported and deferred behavior
 
