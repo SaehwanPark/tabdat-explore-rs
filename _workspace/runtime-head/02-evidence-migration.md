@@ -1,7 +1,7 @@
 # Bounded runtime `head` migration evidence
 
-Status: implementation complete; independent review and hosted acceptance are
-pending in draft PR #33.
+Status: accepted after PR #33 squash merge `b107251`; post-merge `main`
+verification and docs-inclusive hosted workflows are green.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -121,7 +121,20 @@ and MCP output remain explicit deferrals.
 
 ## Hosted acceptance and completion state
 
-Current-head baseline, policy, runtime, and auxiliary workflows are running on
-PR #33. The PR remains draft until an independent review reports no findings
-and all required current-head jobs are green. The roadmap `head` checkbox is
-intentionally unchanged until merge and post-merge `main` verification.
+PR #33 was opened before implementation, reviewed independently, marked ready
+after all current-head checks passed, and squash-merged as
+`b107251d8cb80a228a4632eec41414c673c8e28f`. The temporary
+`feat/runtime-head` branch was deleted locally and remotely. Current-head PR
+checks were green:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35347629750/job/105607848665);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35347629750/job/105607848905); and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35347629813/job/105607850297).
+
+Post-merge `main` verification passed at `b107251d8cb80a228a4632eec41414c673c8e28f`:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781739/job/105614878164);
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781739/job/105614877899); and
+- [main tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781741/job/105614877774).
+
+The same merge push passed the [ReadStat feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781792), [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781724), and [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35349781803).

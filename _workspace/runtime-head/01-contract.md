@@ -1,7 +1,7 @@
 # Contract: bounded eager-runtime `head`
 
-Status: contract frozen; implementation and review are pending in draft PR
-`runtime-head`.
+Status: accepted after PR #33 squash merge `b107251`; post-merge `main`
+verification and docs-inclusive hosted workflows are green.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`

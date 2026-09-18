@@ -406,7 +406,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [x] `count` — bounded eager local-Parquet active-dataset row count
   (`CountResult`; PR #32, squash merge `2287fff`). Broader lazy/materialized,
   status, transforms, formatting, CLI, and MCP surfaces remain deferred.
-- [ ] `head`
+- [x] `head` — bounded eager local-Parquet owned preview execution
+  (`PreviewResult`/`CellValue`; PR #33, squash merge `b107251`). Broader
+  `tail`, lazy/materialized behavior, unsupported logical/container values,
+  formatting, CLI, and MCP surfaces remain deferred.
 - [ ] `tail`
 
 ### 6.3 Transform commands
