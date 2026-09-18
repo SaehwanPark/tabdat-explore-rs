@@ -1,6 +1,7 @@
 # Independent review: bounded eager-runtime `missing`
 
-Status: independent review complete; PR #37 remains draft pending hosted acceptance
+Status: accepted after independent review, PR #37 squash merge `fac2d34`, and
+green post-merge workflows
 
 ## Review scope
 
@@ -29,8 +30,7 @@ read-only execution.
 
 ## Acceptance gate
 
-The PR may be marked ready after the completed independent review, once the
-contract/evidence records are accepted and all required PR-head workflows are
-green. After squash merge, the temporary branch must be deleted locally and
-remotely and the final post-merge workflow links recorded in
-`02-evidence-migration.md`.
+The completed review supported marking PR #37 ready. The contract and evidence
+records are accepted, PR-head workflows were green, the PR was squash-merged
+as `fac2d34`, the temporary branch was deleted locally and remotely, and the
+final post-merge workflow links are recorded in `02-evidence-migration.md`.

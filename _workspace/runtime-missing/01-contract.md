@@ -1,6 +1,6 @@
 # Contract: bounded eager-runtime `missing`
 
-Status: implementation reviewed on PR #37; hosted acceptance pending
+Status: accepted after PR #37 squash merge `fac2d34`; hosted checks and branch cleanup complete
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
@@ -141,6 +141,6 @@ not sort rows or normalize percentages beyond the explicit zero-total rule.
 - Deferred: lazy/materialized execution, labels, wildcard/range varlists,
   formatting, JSON/MCP/CLI surfaces, and broad session/registry APIs.
 
-Contract recovery is `complete` for the pinned Python behavior. Rust
-implementation and hosted parity evidence remain `partial` until the bounded
-slice is built, reviewed, merged, and documented.
+Contract recovery and the bounded Rust implementation are `complete` for this
+slice. Hosted parity evidence is recorded in `02-evidence-migration.md`; lazy,
+materialized, and presentation surfaces remain explicit deferrals.

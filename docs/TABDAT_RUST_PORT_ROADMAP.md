@@ -404,7 +404,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   (`CodebookResult`/`CodebookRow`; PR #36, squash merge `bbadf12`). Variable
   labels, lazy/materialized behavior, unsupported logical/container coercion,
   formatting, CLI, and MCP surfaces remain deferred.
-- [ ] `missing`
+- [x] `missing` — bounded eager local-Parquet SQL-NULL missingness execution
+  (`MissingResult`/`MissingRow`; PR #37, squash merge `fac2d34`). Lazy/materialized
+  behavior, last-operation state, labels, wildcard/range expansion, formatting,
+  CLI, JSON, and MCP surfaces remain deferred.
 - [ ] `duplicates`
 - [ ] `isid`
 - [ ] `datasignature`

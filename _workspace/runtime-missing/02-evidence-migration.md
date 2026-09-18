@@ -1,6 +1,7 @@
 # Bounded runtime `missing` migration evidence
 
-Status: implementation and review pending; PR #37 is draft
+Status: accepted after PR #37 squash merge `fac2d34`; independent review,
+hosted checks, and temporary branch cleanup complete
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -33,6 +34,10 @@ labels, transforms, or presentation surfaces.
 - `00000f8`: added unit/integration coverage for active-state errors, counts,
   percentages, order, duplicates, unknown variables, empty/all-null relations,
   quoted identifiers, container columns, and failed replacement.
+- `9d140b5`: recorded the migration evidence and review scope for the draft;
+- `f4da62f`: recorded the completed independent review before hosted
+  acceptance; and
+- `fac2d34`: squash-merged the reviewed implementation into `main`.
 
 PR #37 ([Add bounded eager missingness report](https://github.com/SaehwanPark/tabdat-explore-rs/pull/37))
 was opened as a draft before implementation.
@@ -136,7 +141,18 @@ metadata/relation contract.
 
 ## Hosted acceptance and completion state
 
-Independent review, PR-head workflows, post-merge workflows, and temporary
-branch cleanup are pending. The acceptance record will be updated with exact
-hosted run/job links after PR #37 is reviewed, marked ready, squash-merged,
-and the resulting `main` workflows pass.
+Independent review completed with no actionable findings. PR-head checks for
+`f4da62f` were green: [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35386923219)
+([policy job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35386923219/job/105736260936),
+[Rust baseline job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35386923219/job/105736261246))
+and [runtime run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35386923188)
+([runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35386923188/job/105736258654)).
+
+PR [#37](https://github.com/SaehwanPark/tabdat-explore-rs/pull/37) was marked
+ready after review, squash-merged as [`fac2d34`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/fac2d34e841aa1c5f24c6e4c2d4e4f54ab408dfb),
+and its temporary branch was deleted locally and remotely. The post-merge
+`main` checks for `fac2d34` were green: [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35389062540)
+([policy job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35389062540/job/105742889965),
+[Rust baseline job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35389062540/job/105742890551))
+and [runtime run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35389062548)
+([runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35389062548/job/105742889982)).

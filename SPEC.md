@@ -124,7 +124,7 @@ revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
 This syntax-only slice did not itself establish `head`/`tail` execution,
 active-dataset preconditions, row-order and missingness guarantees, backend
 range conversion, results, or reporting. Separate bounded eager-runtime slices
-now cover `describe`, `count`, `head`, `tail`, `summarize`, and `codebook`; lazy/materialized behavior
+now cover `describe`, `count`, `head`, `tail`, `summarize`, `codebook`, and `missing`; lazy/materialized behavior
 and broader reporting remain roadmap work.
 
 ## Verified slice: syntax-only describe command
