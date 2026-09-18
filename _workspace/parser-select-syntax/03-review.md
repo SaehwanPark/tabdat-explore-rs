@@ -1,7 +1,7 @@
 # `select` syntax slice review
 
-Status: review requested; corrected implementation, hosted acceptance, and
-merge are pending.
+Status: accepted; independent reviews, hosted checks, readiness, merge, branch
+cleanup, and post-merge verification are complete or recorded below.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -40,11 +40,12 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
   missing-assignment-expression diagnostic, and added reproducible pinned
   probes with raw output.
 - Workspace review approved the scoped artifacts and current-state updates at
-  `90f4c41`; provenance wording now distinguishes pre-fix evidence from the
-  corrected implementation. Final hosted acceptance at the final evidence
-  head is pending.
+  `90f4c41`; provenance wording distinguishes pre-fix evidence from the
+  corrected implementation, and the final evidence-head hosted checks passed.
 
 ## Disposition
 
-Pending findings, hosted checks, readiness, squash merge, temporary-branch
-cleanup, and post-merge `main` verification.
+Accepted bounded slice. PR #26 was marked ready after all final evidence-head
+checks passed, squash-merged as `5735b43`, and its temporary branch was deleted
+locally and remotely. The merge-triggered `main` checks are recorded in the
+evidence artifact and passed before this handoff closeout.

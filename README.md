@@ -28,9 +28,9 @@ Merged PR #25 (`89f6c14`) adds the owned syntax-only `rename <old> <new>` form.
 Schema lookup, collision checks, relation mutation, and execution remain
 deferred.
 
-Draft PR #26 adds the owned syntax-only `select <varlist>` form. Active-schema
-lookup, wildcard/range expansion, relation mutation, and execution remain
-deferred pending review and hosted verification.
+Merged PR #26 (`5735b43`) adds the owned syntax-only `select <varlist>` form.
+Active-schema lookup, wildcard/range expansion, relation mutation, and
+execution remain deferred.
 
 ## Development
 

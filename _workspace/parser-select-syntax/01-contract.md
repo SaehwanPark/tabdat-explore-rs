@@ -1,6 +1,7 @@
 # Contract: syntax-only `select <varlist>`
 
-Status: implementation complete; current-head acceptance is pending.
+Status: accepted; implementation, independent review, hosted checks, merge,
+branch cleanup, and post-merge verification are complete or recorded below.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

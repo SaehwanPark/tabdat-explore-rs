@@ -1,7 +1,7 @@
 # `select` syntax migration evidence
 
-Status: implementation complete; independent review and hosted acceptance are
-pending.
+Status: accepted; implementation, independent review, hosted checks, merge,
+branch cleanup, and post-merge verification are complete or recorded below.
 
 Producer: task owner
 
@@ -206,12 +206,44 @@ current-head hosted set passed:
 - [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35285785077/jobs/105417672916)
   (passed, 1m21s).
 
-The documentation/evidence ledger revision below will establish the final PR
-head and must pass its own current-head checks before readiness.
+Final evidence/documentation head `51e227f` also passed its complete
+current-head hosted set:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430064/jobs/105422766354)
+  (passed, 14m24s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430064/jobs/105422766141)
+  (passed, 15m59s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430076/jobs/105422766304)
+  (passed, 20m47s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430049/jobs/105422766612)
+  (passed, 25s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430049/jobs/105422766277)
+  (passed, 25s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430101/jobs/105422766469)
+  (passed, 1m20s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35287430056/jobs/105422766245)
+  (passed, 1m1s).
 
 The temporary branch must be deleted locally and remotely after squash merge.
-Merge-triggered `main` checks and the final documentation-only closeout run
-will be recorded before this slice is accepted.
+Merge-triggered `main` checks for merge commit `5735b43` passed:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043865/jobs/105427675690)
+  (passed, 17m37s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043865/jobs/105427675919)
+  (passed, 21m3s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043839/jobs/105427675521)
+  (passed, 21m31s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043859/jobs/105427675810)
+  (passed, 20s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043859/jobs/105427675612)
+  (passed, 21s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043847/jobs/105427675236)
+  (passed, 1m15s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043951/jobs/105427675822)
+  (passed, 1m12s).
+
+The final documentation-only closeout run for the accepted state will be
+recorded after this commit.
 
 ## Supported and deferred behavior
 

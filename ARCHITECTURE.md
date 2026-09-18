@@ -25,11 +25,11 @@ silently invent parity.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, and draft `select`, plus owned
+  `isid`, `run`, `head`, `tail`, `rename`, and `select`, plus owned
   command/error types and focused tests.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
-  `run <script-path>`, direct `rename <old> <new>`, and draft direct
+  `run <script-path>`, direct `rename <old> <new>`, and direct
   `select <varlist>` forms perform no execution or I/O; structured
   conditions/options, key semantics, summary execution, and script loading
   remain deferred.

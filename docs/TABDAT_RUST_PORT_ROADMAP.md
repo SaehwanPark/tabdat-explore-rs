@@ -310,9 +310,10 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `rename <old> <new>` syntax slice (PR #25, merged
   as `89f6c14`; schema lookup, collision checks, relation mutation, and
   execution remain deferred until a later data-runtime slice).
-- [ ] Add the bounded direct `select <varlist>` syntax slice (PR #26 draft;
+- [x] Add the bounded direct `select <varlist>` syntax slice (PR #26, merged
+  as `5735b43`;
   active-schema lookup, wildcard/range expansion, relation mutation, and
-  execution remain deferred until review and hosted verification).
+  execution remain deferred until a later data-runtime slice).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
