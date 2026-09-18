@@ -56,6 +56,7 @@ The focused oracle command is:
 PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
   tests/test_executor.py -k \
   'test_tail_returns_last_rows or \
+   test_active_row_order_is_consistent_for_previews_and_filters or \
    test_phase_3_inspection_commands_require_active_dataset'
 ```
 

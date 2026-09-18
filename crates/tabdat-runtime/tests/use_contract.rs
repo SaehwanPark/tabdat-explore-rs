@@ -450,6 +450,24 @@ fn head_requires_an_active_dataset_without_initializing_the_backend() {
 }
 
 #[test]
+fn tail_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session.execute(parse_command("tail").unwrap()).unwrap_err(),
+    RuntimeError::NoActiveDataset { command: "tail" }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("tail").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "tail requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
 fn head_returns_ordered_owned_rows_with_decimal_and_null_values() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -511,6 +529,64 @@ fn head_returns_ordered_owned_rows_with_decimal_and_null_values() {
 }
 
 #[test]
+fn tail_returns_ordered_owned_rows_with_decimal_and_null_values() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  let use_text = format!("use {}", fixture.parquet.display());
+  session
+    .execute(parse_command(&use_text).expect("the fixture use should parse"))
+    .expect("parsed eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("tail 2").unwrap())
+    .expect("tail should return the final two rows");
+  let ExecutionResult::Tail(preview) = result else {
+    panic!("tail should return a Tail result");
+  };
+  assert_eq!(preview.columns, vec!["age", "bmi", "sex", "cost"]);
+  assert_eq!(
+    preview.rows,
+    vec![
+      vec![
+        CellValue::SignedInteger(42),
+        CellValue::Decimal {
+          width: 3,
+          scale: 1,
+          value: 250,
+        },
+        CellValue::Text("M".to_owned()),
+        CellValue::Decimal {
+          width: 4,
+          scale: 1,
+          value: 1500,
+        },
+      ],
+      vec![
+        CellValue::SignedInteger(54),
+        CellValue::Decimal {
+          width: 3,
+          scale: 1,
+          value: 275,
+        },
+        CellValue::Text("F".to_owned()),
+        CellValue::Null,
+      ],
+    ]
+  );
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("tail 2").unwrap())
+    .expect("repeated tail should remain read-only");
+  assert_eq!(repeated, ExecutionResult::Tail(preview));
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
 fn head_default_and_oversized_limits_return_all_rows() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -527,6 +603,29 @@ fn head_default_and_oversized_limits_return_all_rows() {
     };
     assert_eq!(preview.columns, vec!["age", "bmi", "sex", "cost"]);
     assert_eq!(preview.rows.len(), 3);
+    assert_eq!(preview.rows[2][0], CellValue::SignedInteger(54));
+    assert_eq!(preview.rows[2][3], CellValue::Null);
+  }
+}
+
+#[test]
+fn tail_default_and_oversized_limits_return_all_rows() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  for command in ["tail", "tail 99", "tail 9223372036854775807"] {
+    let result = session
+      .execute(parse_command(command).unwrap())
+      .expect("tail should return all rows when the limit is large enough");
+    let ExecutionResult::Tail(preview) = result else {
+      panic!("tail should return a Tail result");
+    };
+    assert_eq!(preview.columns, vec!["age", "bmi", "sex", "cost"]);
+    assert_eq!(preview.rows.len(), 3);
+    assert_eq!(preview.rows[0][0], CellValue::SignedInteger(30));
     assert_eq!(preview.rows[2][0], CellValue::SignedInteger(54));
     assert_eq!(preview.rows[2][3], CellValue::Null);
   }
@@ -559,6 +658,32 @@ fn head_preserves_nontrivial_source_insertion_order() {
 }
 
 #[test]
+fn tail_preserves_nontrivial_source_insertion_order() {
+  let fixture = Fixture::new();
+  let connection = Connection::open_in_memory().expect("fixture connection should open");
+  let parquet_string = fixture.parquet.to_string_lossy().into_owned();
+  connection
+    .execute(
+      "COPY (SELECT * FROM (VALUES (42, 25.0, 'M', 150.0), (30, 22.5, 'F', 100.0), (54, 27.5, 'F', NULL)) AS patients(age, bmi, sex, cost)) TO ? (FORMAT PARQUET)",
+      [&parquet_string],
+    )
+    .expect("reordered fixture Parquet should be written");
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("tail 2").unwrap())
+    .expect("tail should return the final two source rows");
+  let ExecutionResult::Tail(preview) = result else {
+    panic!("tail should return a Tail result");
+  };
+  assert_eq!(preview.rows[0][0], CellValue::SignedInteger(30));
+  assert_eq!(preview.rows[1][0], CellValue::SignedInteger(54));
+}
+
+#[test]
 fn head_zero_returns_columns_without_rows() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -571,6 +696,24 @@ fn head_zero_returns_columns_without_rows() {
     .expect("head zero should return an empty preview");
   let ExecutionResult::Head(preview) = result else {
     panic!("head should return a Head result");
+  };
+  assert_eq!(preview.columns, vec!["age", "bmi", "sex", "cost"]);
+  assert!(preview.rows.is_empty());
+}
+
+#[test]
+fn tail_zero_returns_columns_without_rows() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("tail 0").unwrap())
+    .expect("tail zero should return an empty preview");
+  let ExecutionResult::Tail(preview) = result else {
+    panic!("tail should return a Tail result");
   };
   assert_eq!(preview.columns, vec!["age", "bmi", "sex", "cost"]);
   assert!(preview.rows.is_empty());
@@ -606,6 +749,35 @@ fn head_above_i64_limit_fails_deterministically_and_preserves_metadata() {
 }
 
 #[test]
+fn tail_above_i64_limit_fails_deterministically_and_preserves_metadata() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+  let too_large = (i64::MAX as u128 + 1).to_string();
+
+  assert_eq!(
+    session
+      .execute(parse_command(&format!("tail {too_large}")).unwrap())
+      .unwrap_err(),
+    RuntimeError::PreviewFailed { command: "tail" }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command(&format!("tail {too_large}")).unwrap())
+      .unwrap_err()
+      .to_string(),
+    "tail failed"
+  );
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
 fn head_after_failed_replacement_keeps_the_prior_dataset() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -634,6 +806,38 @@ fn head_after_failed_replacement_keeps_the_prior_dataset() {
   };
   assert_eq!(preview.rows.len(), 1);
   assert_eq!(preview.rows[0][0], CellValue::SignedInteger(30));
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn tail_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("tail-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("tail 1").unwrap())
+    .expect("tail should still see the prior active dataset");
+  let ExecutionResult::Tail(preview) = result else {
+    panic!("tail should return a Tail result");
+  };
+  assert_eq!(preview.rows.len(), 1);
+  assert_eq!(preview.rows[0][0], CellValue::SignedInteger(54));
   assert_eq!(session.active_dataset(), Some(&before));
 }
 
