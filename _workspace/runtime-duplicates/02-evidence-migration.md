@@ -61,8 +61,9 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 
 Policy checks also passed locally: `cargo deny check` reported advisories,
 bans, licenses, and sources ok; `cargo audit -D warnings` completed without
-reported vulnerabilities. The metadata-driven geiger scan and hosted workflow
-evidence remain part of the acceptance gate.
+reported vulnerabilities. The metadata-driven `cargo geiger` loop completed
+with first-party-safe reports for `tabdat-explore-rs`, `tabdat-language`, and
+`tabdat-runtime`; hosted workflow evidence remains part of the acceptance gate.
 
 The independent review of `535d37c` found no actionable issues. It confirmed
 the report alias, NULL-equal grouping, checked aggregate arithmetic, collision-
