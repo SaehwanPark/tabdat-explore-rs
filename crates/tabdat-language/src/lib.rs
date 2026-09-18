@@ -2112,6 +2112,10 @@ mod tests {
       ("sort age:label", "unsupported token in command: :"),
       ("sort age/label", "unsupported token in command: /"),
       ("sort age.label", "unsupported token in command: ."),
+      ("sort +age", "unsupported token in command: +"),
+      ("sort -age", "unsupported token in command: -"),
+      ("sort !age", "unsupported token in command: !"),
+      ("sort @age", "unsupported token in command: @"),
       ("sort ``", "quoted identifier cannot be empty"),
       ("sort \"unterminated", "unterminated quoted string"),
     ];
