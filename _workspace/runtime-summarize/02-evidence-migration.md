@@ -143,5 +143,14 @@ The post-merge `main` checks for `f2b7ed7` were also green:
 ([policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197025/job/105672401727),
 [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197025/job/105672402019))
 and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197020/job/105672401507).
-Docs-inclusive workflows for this closeout are recorded in the follow-up
-evidence commit after this documentation push.
+
+The docs-inclusive closeout push at `6da2f48` also passed every triggered
+workflow: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741043)
+([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741043/job/105680623632),
+[policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741043/job/105680623938)),
+[runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741027/job/105680618635),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741050)
+([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741050/job/105680625852),
+[ReadStat job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741050/job/105680625992)),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741024/job/105680616575),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35369741065/job/105680617136).
