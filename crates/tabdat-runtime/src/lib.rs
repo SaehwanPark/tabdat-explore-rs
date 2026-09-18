@@ -80,12 +80,12 @@ pub enum CellValue {
   Bytes(Vec<u8>),
 }
 
-/// The owned result returned by a bounded `head` request.
+/// The owned result returned by a bounded preview request.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreviewResult {
   /// Column names in the active relation's schema order.
   pub columns: Vec<String>,
-  /// Rows in relation insertion order, limited to the requested prefix.
+  /// Rows in relation insertion order, limited to the requested preview.
   pub rows: Vec<Vec<CellValue>>,
 }
 
@@ -100,6 +100,8 @@ pub enum ExecutionResult {
   Count(CountResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
+  /// The requested suffix of rows from the currently active dataset.
+  Tail(PreviewResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -219,6 +221,7 @@ impl Session {
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
       Command::Head { limit } => self.execute_head(limit),
+      Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -252,34 +255,51 @@ impl Session {
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
+    self
+      .execute_preview(limit, "head", false)
+      .map(ExecutionResult::Head)
+  }
+
+  fn execute_tail(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
+    self
+      .execute_preview(limit, "tail", true)
+      .map(ExecutionResult::Tail)
+  }
+
+  fn execute_preview(
+    &self,
+    limit: RowLimit,
+    command: &'static str,
+    from_end: bool,
+  ) -> Result<PreviewResult, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
-      .ok_or(RuntimeError::NoActiveDataset { command: "head" })?;
+      .ok_or(RuntimeError::NoActiveDataset { command })?;
     let limit = limit
       .as_decimal()
       .parse::<i64>()
-      .map_err(|_| RuntimeError::PreviewFailed { command: "head" })?;
+      .map_err(|_| RuntimeError::PreviewFailed { command })?;
     let columns = dataset
       .columns
       .iter()
       .map(|column| column.name.clone())
       .collect::<Vec<_>>();
     if limit == 0 {
-      return Ok(ExecutionResult::Head(PreviewResult {
+      return Ok(PreviewResult {
         columns,
         rows: Vec::new(),
-      }));
+      });
     }
 
     let backend = self
       .backend
       .as_ref()
-      .ok_or(RuntimeError::PreviewFailed { command: "head" })?;
+      .ok_or(RuntimeError::PreviewFailed { command })?;
     let rows = backend
-      .preview_rows(limit, dataset.columns.len())
-      .map_err(|_| RuntimeError::PreviewFailed { command: "head" })?;
-    Ok(ExecutionResult::Head(PreviewResult { columns, rows }))
+      .preview_rows(limit, dataset.columns.len(), from_end)
+      .map_err(|_| RuntimeError::PreviewFailed { command })?;
+    Ok(PreviewResult { columns, rows })
   }
 
   fn execute_use(
@@ -499,11 +519,17 @@ impl DuckDbBackend {
       .execute_batch(&format!("DROP TABLE IF EXISTS {STAGING_TABLE}"));
   }
 
-  fn preview_rows(&self, limit: i64, column_count: usize) -> Result<Vec<Vec<CellValue>>, ()> {
+  fn preview_rows(
+    &self,
+    limit: i64,
+    column_count: usize,
+    from_end: bool,
+  ) -> Result<Vec<Vec<CellValue>>, ()> {
+    let order = if from_end { "DESC" } else { "ASC" };
     let mut statement = self
       .connection
       .prepare(&format!(
-        "SELECT * FROM (SELECT row_number() OVER () AS __tabdat_preview_order, * FROM {ACTIVE_TABLE}) ORDER BY 1 LIMIT ?"
+        "SELECT * FROM (SELECT row_number() OVER () AS __tabdat_preview_order, * FROM {ACTIVE_TABLE}) ORDER BY 1 {order} LIMIT ?"
       ))
       .map_err(|_| ())?;
     let mut rows = statement.query([limit]).map_err(|_| ())?;
@@ -515,6 +541,9 @@ impl DuckDbBackend {
         values.push(cell_value_from_ref(value)?);
       }
       preview.push(values);
+    }
+    if from_end {
+      preview.reverse();
     }
     Ok(preview)
   }
@@ -600,6 +629,22 @@ mod tests {
   }
 
   #[test]
+  fn tail_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Tail {
+          limit: RowLimit::default(),
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "tail" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -638,6 +683,14 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::PreviewFailed { command: "head" }
+    );
+    assert_eq!(
+      session
+        .execute(Command::Tail {
+          limit: RowLimit::default(),
+        })
+        .unwrap_err(),
+      RuntimeError::PreviewFailed { command: "tail" }
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }
