@@ -1,6 +1,7 @@
 # Contract: syntax-only `sort <varlist>`
 
-Status: frozen; implementation and acceptance are pending.
+Status: implementation complete at `d574ec2`; current-head acceptance is
+pending hosted checks and final review disposition.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

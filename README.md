@@ -32,6 +32,10 @@ Merged PR #26 (`5735b43`) adds the owned syntax-only `select <varlist>` form.
 Active-schema lookup, wildcard/range expansion, relation mutation, and
 execution remain deferred.
 
+Draft PR #27 records a bounded syntax-only `sort <varlist>` parser candidate;
+it is not an accepted product surface yet, and active-schema lookup, sorting,
+and execution remain deferred.
+
 ## Development
 
 Install [rustup](https://rustup.rs/), then:

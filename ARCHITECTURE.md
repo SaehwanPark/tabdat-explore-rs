@@ -45,6 +45,11 @@ silently invent parity.
   server, or complete public TabDat command contract in this repository yet. The
   narrow runtime evaluation is deliberately insufficient for those claims.
 
+Draft PR #27 currently carries a backend-independent syntax-only `sort
+<varlist>` candidate. It is not an accepted current surface until its hosted
+checks and migration review complete; row ordering and all relation effects
+remain deferred.
+
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
 

@@ -18,6 +18,10 @@ statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
+Draft PR #27 records the bounded syntax-only `sort <varlist>` parser candidate;
+until that PR is accepted, `sort` is not part of the current supported command
+surface and all relation sorting semantics remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
