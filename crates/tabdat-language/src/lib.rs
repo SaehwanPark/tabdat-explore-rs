@@ -236,6 +236,21 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("unsupported token in command: :"));
   }
 
+  // `status` keeps the Python tokenizer's punctuation diagnostics for
+  // attached unary-sign forms such as `status-1` and `status+1`.
+  if command.len() > 6
+    && command
+      .as_bytes()
+      .get(..6)
+      .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"status"))
+    && command
+      .get(6..)
+      .and_then(|suffix| suffix.chars().next())
+      .is_some_and(|character| matches!(character, '-' | '+'))
+  {
+    return parse_named_command("status", &command[6..]);
+  }
+
   // `gsort` permits attached symbolic key text (for example `gsort-age` and
   // `gsort:age`) in the pinned Python tokenizer. Split only this command's
   // non-identifier suffix before the generic command-name boundary scan.
@@ -315,25 +330,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
   let normalized_name = name.to_lowercase();
   match normalized_name.as_str() {
     "help" => parse_help(body),
-    "status" => {
-      if body.is_empty() {
-        Ok(Command::Status)
-      } else if body.trim_matches(is_command_whitespace).ends_with(',') {
-        Err(ParseError::new(
-          "comma must be followed by at least one option",
-        ))
-      } else if body.starts_with('=') && !body.starts_with("==") {
-        Err(ParseError::new(
-          "status assignment requires a target before =",
-        ))
-      } else if body.starts_with("==") {
-        Err(ParseError::new("unsupported token in command: =="))
-      } else {
-        Err(ParseError::new(
-          "status does not accept arguments, if clauses, options, or assignment syntax",
-        ))
-      }
-    }
+    "status" => parse_status_command(body),
     "describe" => {
       if body.is_empty() {
         Ok(Command::Describe)
@@ -418,6 +415,37 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     }
     other => Err(ParseError::new(format!("unknown command: {other}"))),
   }
+}
+
+fn parse_status_command(body: &str) -> Result<Command, ParseError> {
+  if body.is_empty() {
+    return Ok(Command::Status);
+  }
+  if body.starts_with('-') {
+    return Err(ParseError::new("unsupported token in command: -"));
+  }
+  if body.starts_with('+') {
+    return Err(ParseError::new("unsupported token in command: +"));
+  }
+  if body.eq_ignore_ascii_case("if") {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if body.trim_matches(is_command_whitespace).ends_with(',') {
+    return Err(ParseError::new(
+      "comma must be followed by at least one option",
+    ));
+  }
+  if body.starts_with('=') && !body.starts_with("==") {
+    return Err(ParseError::new(
+      "status assignment requires a target before =",
+    ));
+  }
+  if body.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  Err(ParseError::new(
+    "status does not accept arguments, if clauses, options, or assignment syntax",
+  ))
 }
 
 #[derive(Debug)]
@@ -3474,13 +3502,27 @@ mod tests {
       parse_command("status, verbose").unwrap_err().to_string(),
       "status does not accept arguments, if clauses, options, or assignment syntax"
     );
+    for (input, expected) in [
+      ("status -1", "unsupported token in command: -"),
+      ("status +1", "unsupported token in command: +"),
+      ("status-1", "unsupported token in command: -"),
+      ("status+1", "unsupported token in command: +"),
+      ("status -", "unsupported token in command: -"),
+      ("status +", "unsupported token in command: +"),
+      ("status --1", "unsupported token in command: -"),
+      ("status ++1", "unsupported token in command: +"),
+      ("status -1,", "unsupported token in command: -"),
+      ("status +1,", "unsupported token in command: +"),
+      (
+        "status if x",
+        "status does not accept arguments, if clauses, options, or assignment syntax",
+      ),
+    ] {
+      assert_eq!(parse_command(input).unwrap_err().to_string(), expected);
+    }
     assert_eq!(
-      parse_command("status -1").unwrap_err().to_string(),
-      "status does not accept arguments, if clauses, options, or assignment syntax"
-    );
-    assert_eq!(
-      parse_command("status +1").unwrap_err().to_string(),
-      "status does not accept arguments, if clauses, options, or assignment syntax"
+      parse_command("status if").unwrap_err().to_string(),
+      "missing expression after if"
     );
     assert_eq!(
       parse_command("exit foo").unwrap_err().to_string(),

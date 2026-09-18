@@ -15,16 +15,19 @@ Python oracle: `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe` (tree
 
 ## Scope
 
-Correct the two unresolved punctuation diagnostics recorded in MIG-0002 for
-the syntax-only `status` command:
+Correct the unresolved punctuation/empty-condition diagnostics for the
+syntax-only `status` command:
 
 - `status -1` must report `unsupported token in command: -`;
 - `status +1` must report `unsupported token in command: +`.
 
-The same lexical rule applies when the signed token is otherwise attached to
-the status body, such as `status -`, `status +`, `status --1`, and
-`status ++1`. The parser remains pure and backend-independent. No status result,
-session inspection, environment probe, or runtime behavior is added.
+The same lexical rule applies to attached command forms and punctuation before
+a trailing comma: `status-1`, `status+1`, `status -`, `status +`,
+`status --1`, `status ++1`, `status -1,`, and `status +1,`. A bare `status if`
+continues to report `missing expression after if`, including the existing
+syntax-only condition boundary. The parser remains pure and
+backend-independent. No status result, session inspection, environment probe,
+or runtime behavior is added.
 
 This is a deliberately bounded parity correction, not the full tokenizer
 migration. Generic status arguments, options, assignments, `if` expressions,
@@ -47,10 +50,15 @@ Pinned probes (Python 3.13.3) produce:
 status       -> StatusCommand()
 status -1    -> unsupported token in command: -
 status +1    -> unsupported token in command: +
+status-1     -> unsupported token in command: -
+status+1     -> unsupported token in command: +
 status -     -> unsupported token in command: -
 status +     -> unsupported token in command: +
 status --1   -> unsupported token in command: -
 status ++1   -> unsupported token in command: +
+status -1,   -> unsupported token in command: -
+status +1,   -> unsupported token in command: +
+status if    -> missing expression after if
 ```
 
 The existing generic cases remain in scope as regression guards:
@@ -60,7 +68,7 @@ status now       -> status does not accept arguments, if clauses, options, or as
 status, verbose  -> status does not accept arguments, if clauses, options, or assignment syntax
 status = now     -> status assignment requires a target before =
 status == now    -> unsupported token in command: ==
-status if        -> missing expression after if
+status if x      -> status does not accept arguments, if clauses, options, or assignment syntax
 ```
 
 ## Rust contract
