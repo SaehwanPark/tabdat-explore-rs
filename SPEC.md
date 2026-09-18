@@ -121,9 +121,10 @@ Python parser/script oracle suite again passed with `516 passed in 0.45s` using
 tests/test_parser.py tests/test_script.py` from the clean sibling checkout at
 revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
 
-This slice leaves `count`/`head`/`tail` execution, active-dataset preconditions,
-row-order and missingness guarantees, backend range conversion, results, and
-reporting to the data-runtime work in the roadmap.
+This syntax-only slice leaves `head`/`tail` execution, active-dataset
+preconditions, row-order and missingness guarantees, backend range conversion,
+results, and reporting to the data-runtime work in the roadmap. The separate
+bounded runtime slices now cover `describe` and `count`.
 
 ## Verified slice: syntax-only describe command
 
