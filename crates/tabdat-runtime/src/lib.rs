@@ -56,6 +56,30 @@ pub struct CountResult {
   pub row_count: u64,
 }
 
+/// An owned descriptive-statistics row for one numeric column.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummaryRow {
+  /// The requested column name.
+  pub variable: String,
+  /// The number of non-null values in the column.
+  pub count: u64,
+  /// The arithmetic mean, or `None` when there are no non-null values.
+  pub mean: Option<f64>,
+  /// The sample standard deviation, or `None` for fewer than two values.
+  pub std_dev: Option<f64>,
+  /// The minimum non-null value, preserving its owned DuckDB scalar type.
+  pub minimum: Option<CellValue>,
+  /// The maximum non-null value, preserving its owned DuckDB scalar type.
+  pub maximum: Option<CellValue>,
+}
+
+/// The owned result returned by a read-only `summarize` request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummarizeResult {
+  /// Rows in requested order, including repeated explicit variables.
+  pub rows: Vec<SummaryRow>,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -98,6 +122,8 @@ pub enum ExecutionResult {
   Describe(DescribeResult),
   /// The row count for the currently active dataset.
   Count(CountResult),
+  /// Descriptive statistics for selected numeric columns.
+  Summarize(SummarizeResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -133,6 +159,14 @@ pub enum RuntimeError {
   BackendInitialization,
   /// DuckDB could not produce the requested preview.
   PreviewFailed { command: &'static str },
+  /// The summary request named variables absent from the active schema.
+  SummaryUnknownVariable { variables: Vec<String> },
+  /// The summary request named variables that are not numeric.
+  SummaryRequiresNumeric { variables: Vec<String> },
+  /// The active schema contains no numeric columns for a default summary.
+  SummaryNoNumericColumns,
+  /// DuckDB could not produce or own one summary row.
+  SummaryFailed { variable: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -186,6 +220,20 @@ impl fmt::Display for RuntimeError {
       ),
       Self::BackendInitialization => formatter.write_str("use could not initialize DuckDB"),
       Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
+      Self::SummaryUnknownVariable { variables } => write!(
+        formatter,
+        "summarize unknown variable: {}",
+        variables.join(", ")
+      ),
+      Self::SummaryRequiresNumeric { variables } => write!(
+        formatter,
+        "summarize requires numeric variables: {}",
+        variables.join(", ")
+      ),
+      Self::SummaryNoNumericColumns => formatter.write_str("summarize found no numeric columns"),
+      Self::SummaryFailed { variable } => {
+        write!(formatter, "summarize failed for variable: {variable}")
+      }
     }
   }
 }
@@ -220,6 +268,7 @@ impl Session {
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
+      Command::Summarize { variables } => self.execute_summarize(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -252,6 +301,75 @@ impl Session {
     Ok(ExecutionResult::Count(CountResult {
       row_count: dataset.row_count,
     }))
+  }
+
+  fn execute_summarize(&self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "summarize",
+      })?;
+    let column_types = dataset
+      .columns
+      .iter()
+      .map(|column| (column.name.as_str(), column.data_type.as_str()))
+      .collect::<std::collections::HashMap<_, _>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| !column_types.contains_key(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::SummaryUnknownVariable { variables: unknown });
+    }
+
+    let requested = if variables.is_empty() {
+      dataset
+        .columns
+        .iter()
+        .filter(|column| is_numeric_data_type(&column.data_type))
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>()
+    } else {
+      variables
+    };
+    if requested.is_empty() {
+      return Err(RuntimeError::SummaryNoNumericColumns);
+    }
+
+    let non_numeric = requested
+      .iter()
+      .filter(|variable| {
+        column_types
+          .get(variable.as_str())
+          .is_none_or(|data_type| !is_numeric_data_type(data_type))
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !non_numeric.is_empty() {
+      return Err(RuntimeError::SummaryRequiresNumeric {
+        variables: non_numeric,
+      });
+    }
+
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or_else(|| RuntimeError::SummaryFailed {
+        variable: requested[0].clone(),
+      })?;
+    let rows = requested
+      .iter()
+      .map(|variable| {
+        backend
+          .summarize_variable(variable)
+          .map_err(|_| RuntimeError::SummaryFailed {
+            variable: variable.clone(),
+          })
+      })
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(ExecutionResult::Summarize(SummarizeResult { rows }))
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -369,6 +487,43 @@ fn command_name(command: &Command) -> &'static str {
     Command::Head { .. } => "head",
     Command::Tail { .. } => "tail",
   }
+}
+
+fn is_numeric_data_type(data_type: &str) -> bool {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  matches!(
+    base,
+    "TINYINT"
+      | "SMALLINT"
+      | "INTEGER"
+      | "BIGINT"
+      | "HUGEINT"
+      | "UHUGEINT"
+      | "UTINYINT"
+      | "USMALLINT"
+      | "UINTEGER"
+      | "UBIGINT"
+      | "INT8"
+      | "INT16"
+      | "INT32"
+      | "INT64"
+      | "UINT8"
+      | "UINT16"
+      | "UINT32"
+      | "UINT64"
+      | "UINT128"
+      | "FLOAT32"
+      | "FLOAT64"
+      | "FLOAT"
+      | "REAL"
+      | "DOUBLE"
+      | "DECIMAL"
+  )
+}
+
+fn quote_identifier(identifier: &str) -> String {
+  format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
 fn validate_local_parquet_path(path: &Path) -> Result<(), RuntimeError> {
@@ -547,6 +702,38 @@ impl DuckDbBackend {
     }
     Ok(preview)
   }
+
+  fn summarize_variable(&self, variable: &str) -> Result<SummaryRow, ()> {
+    let quoted_variable = quote_identifier(variable);
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE}"
+      ))
+      .map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let count: i64 = row.get(0).map_err(|_| ())?;
+    let count = u64::try_from(count).map_err(|_| ())?;
+    let mean: Option<f64> = row.get(1).map_err(|_| ())?;
+    let std_dev: Option<f64> = row.get(2).map_err(|_| ())?;
+    let minimum = match row.get_ref(3).map_err(|_| ())? {
+      ValueRef::Null => None,
+      value => Some(cell_value_from_ref(value)?),
+    };
+    let maximum = match row.get_ref(4).map_err(|_| ())? {
+      ValueRef::Null => None,
+      value => Some(cell_value_from_ref(value)?),
+    };
+    Ok(SummaryRow {
+      variable: variable.to_owned(),
+      count,
+      mean,
+      std_dev,
+      minimum,
+      maximum,
+    })
+  }
 }
 
 fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
@@ -691,6 +878,35 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::PreviewFailed { command: "tail" }
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_summary_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+
+    assert_eq!(
+      session
+        .execute(Command::Summarize {
+          variables: vec!["value".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::SummaryFailed {
+        variable: "value".to_owned(),
+      }
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }

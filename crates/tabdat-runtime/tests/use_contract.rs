@@ -43,6 +43,19 @@ impl Fixture {
   fn command(&self) -> Command {
     use_command(&self.parquet)
   }
+
+  fn write_parquet(&self, name: &str, query: &str) -> PathBuf {
+    let path = self.root.join(name);
+    let connection = Connection::open_in_memory().expect("fixture connection should open");
+    let parquet_string = path.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!("COPY ({query}) TO ? (FORMAT PARQUET)"),
+        [&parquet_string],
+      )
+      .expect("fixture Parquet should be written");
+    path
+  }
 }
 
 impl Drop for Fixture {
@@ -465,6 +478,283 @@ fn tail_requires_an_active_dataset_without_initializing_the_backend() {
     "tail requires an active dataset; run use <path> first"
   );
   assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn summarize_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("summarize").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset {
+      command: "summarize"
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("summarize").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "summarize requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn summarize_returns_requested_statistics_in_order_and_is_read_only() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(
+      parse_command(&format!("use {}", fixture.parquet.display()))
+        .expect("the fixture use should parse"),
+    )
+    .expect("parsed eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("summarize age cost").unwrap())
+    .expect("summarize should return requested numeric columns");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(summary.rows.len(), 2);
+  assert_eq!(summary.rows[0].variable, "age");
+  assert_eq!(summary.rows[0].count, 3);
+  assert_eq!(summary.rows[0].mean, Some(42.0));
+  assert_eq!(summary.rows[0].std_dev, Some(12.0));
+  assert_eq!(summary.rows[0].minimum, Some(CellValue::SignedInteger(30)));
+  assert_eq!(summary.rows[0].maximum, Some(CellValue::SignedInteger(54)));
+  assert_eq!(summary.rows[1].variable, "cost");
+  assert_eq!(summary.rows[1].count, 2);
+  assert_eq!(summary.rows[1].mean, Some(125.0));
+  assert!((summary.rows[1].std_dev.unwrap() - 35.35533905932738).abs() < 1e-12);
+  assert_eq!(
+    summary.rows[1].minimum,
+    Some(CellValue::Decimal {
+      width: 4,
+      scale: 1,
+      value: 1000,
+    })
+  );
+  assert_eq!(
+    summary.rows[1].maximum,
+    Some(CellValue::Decimal {
+      width: 4,
+      scale: 1,
+      value: 1500,
+    })
+  );
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("summarize age cost").unwrap())
+    .expect("repeated summarize should remain read-only");
+  assert_eq!(repeated, ExecutionResult::Summarize(summary));
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn summarize_without_variables_selects_numeric_columns_in_schema_order() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("summarize").unwrap())
+    .expect("summarize should select numeric columns by default");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(
+    summary
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["age", "bmi", "cost"]
+  );
+  assert_eq!(summary.rows[1].count, 3);
+  assert_eq!(summary.rows[1].mean, Some(25.0));
+  assert_eq!(
+    summary.rows[1].minimum,
+    Some(CellValue::Decimal {
+      width: 3,
+      scale: 1,
+      value: 225,
+    })
+  );
+  assert_eq!(
+    summary.rows[1].maximum,
+    Some(CellValue::Decimal {
+      width: 3,
+      scale: 1,
+      value: 275,
+    })
+  );
+}
+
+#[test]
+fn summarize_preserves_explicit_variable_order_and_duplicates() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("summarize cost age cost").unwrap())
+    .expect("summarize should preserve explicit order");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(
+    summary
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["cost", "age", "cost"]
+  );
+  assert_eq!(summary.rows[0], summary.rows[2]);
+}
+
+#[test]
+fn summarize_rejects_unknown_and_non_numeric_variables_with_exact_errors() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  assert_eq!(
+    session
+      .execute(parse_command("summarize missing age").unwrap())
+      .unwrap_err(),
+    RuntimeError::SummaryUnknownVariable {
+      variables: vec!["missing".to_owned()]
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("summarize missing age").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "summarize unknown variable: missing"
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("summarize sex").unwrap())
+      .unwrap_err(),
+    RuntimeError::SummaryRequiresNumeric {
+      variables: vec!["sex".to_owned()]
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("summarize sex").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "summarize requires numeric variables: sex"
+  );
+}
+
+#[test]
+fn summarize_reports_no_numeric_columns_and_all_null_statistics() {
+  let fixture = Fixture::new();
+  let text_path = fixture.write_parquet("text.parquet", "SELECT 'F' AS sex");
+  let null_path = fixture.write_parquet(
+    "all-null.parquet",
+    "SELECT CAST(NULL AS DOUBLE) AS value FROM range(2)",
+  );
+  let one_value_path =
+    fixture.write_parquet("one-value.parquet", "SELECT CAST(7.5 AS DOUBLE) AS value");
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&text_path))
+    .expect("text-only eager local Parquet should load");
+  assert_eq!(
+    session
+      .execute(parse_command("summarize").unwrap())
+      .unwrap_err(),
+    RuntimeError::SummaryNoNumericColumns
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("summarize").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "summarize found no numeric columns"
+  );
+
+  session
+    .execute(use_command(&null_path))
+    .expect("all-null numeric Parquet should load");
+  let result = session
+    .execute(parse_command("summarize value").unwrap())
+    .expect("all-null numeric summary should succeed");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(summary.rows[0].count, 0);
+  assert_eq!(summary.rows[0].mean, None);
+  assert_eq!(summary.rows[0].std_dev, None);
+  assert_eq!(summary.rows[0].minimum, None);
+  assert_eq!(summary.rows[0].maximum, None);
+
+  session
+    .execute(use_command(&one_value_path))
+    .expect("single-value numeric Parquet should load");
+  let result = session
+    .execute(parse_command("summarize value").unwrap())
+    .expect("single-value numeric summary should succeed");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(summary.rows[0].count, 1);
+  assert_eq!(summary.rows[0].mean, Some(7.5));
+  assert_eq!(summary.rows[0].std_dev, None);
+  assert_eq!(summary.rows[0].minimum, Some(CellValue::Float(7.5)));
+  assert_eq!(summary.rows[0].maximum, Some(CellValue::Float(7.5)));
+}
+
+#[test]
+fn summarize_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("summarize-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("summarize age").unwrap())
+    .expect("summarize should still see the prior active dataset");
+  let ExecutionResult::Summarize(summary) = result else {
+    panic!("summarize should return a Summarize result");
+  };
+  assert_eq!(summary.rows[0].count, 3);
+  assert_eq!(session.active_dataset(), Some(&before));
 }
 
 #[test]
