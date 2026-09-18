@@ -150,5 +150,13 @@ branch was deleted locally and remotely. The post-merge `main` checks for
 ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027428/job/105710513920),
 [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027428/job/105710514151))
 and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027438/job/105710517725).
-Docs-inclusive workflows for the current-state closeout are recorded in the
-follow-up evidence commit after this documentation push.
+The docs-inclusive closeout commit `5742675` also passed every path-scoped
+workflow: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533892)
+([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533892/job/105718586557),
+[policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533892/job/105718586159)),
+[runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533793/job/105718585441),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533976)
+([low-level bindings](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533976/job/105718586519),
+[safe facade](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533976/job/105718586932)),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381533849/job/105718599809),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35381534020/job/105718589461).
