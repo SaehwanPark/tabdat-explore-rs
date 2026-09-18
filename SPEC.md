@@ -21,6 +21,11 @@ The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 Merged PR #27 (`7cf21ae`) adds the verified syntax-only `sort <varlist>` form;
 active-schema lookup, row sorting, and execution remain deferred.
 
+Draft PR #28 records the bounded syntax-only `gsort [+|-]varlist` parser slice;
+until acceptance, it is not part of the verified command surface. Direction
+metadata is parsed only; active-schema lookup, ordering, and execution remain
+deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

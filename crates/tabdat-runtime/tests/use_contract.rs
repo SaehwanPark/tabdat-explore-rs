@@ -325,3 +325,19 @@ fn leaves_sort_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "sort" }
   );
 }
+
+#[test]
+fn leaves_gsort_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Gsort {
+    keys: vec![tabdat_language::SortKey {
+      variable: "age".to_owned(),
+      descending: true,
+    }],
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "gsort" }
+  );
+}

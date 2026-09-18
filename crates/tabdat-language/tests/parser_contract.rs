@@ -1,5 +1,5 @@
 use tabdat_language::{
-  Command, DataSource, ExecutionMode, LazyEngine, RowLimit, SettingName, parse_command,
+  Command, DataSource, ExecutionMode, LazyEngine, RowLimit, SettingName, SortKey, parse_command,
 };
 
 #[test]
@@ -522,6 +522,114 @@ fn sort_preserves_exact_public_diagnostics() {
     ("sort @age", "unsupported token in command: @"),
     ("sort ``", "quoted identifier cannot be empty"),
     ("sort \"unterminated", "unterminated quoted string"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn gsort_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" GSORT +group_id -label ").unwrap(),
+    Command::Gsort {
+      keys: vec![
+        SortKey {
+          variable: "group_id".to_owned(),
+          descending: false,
+        },
+        SortKey {
+          variable: "label".to_owned(),
+          descending: true,
+        },
+      ],
+    }
+  );
+  assert_eq!(
+    parse_command("gsort\u{1c}`-score`\u{1d}\"old name\"").unwrap(),
+    Command::Gsort {
+      keys: vec![
+        SortKey {
+          variable: "-score".to_owned(),
+          descending: false,
+        },
+        SortKey {
+          variable: "old name".to_owned(),
+          descending: false,
+        },
+      ],
+    }
+  );
+  assert_eq!(
+    parse_command("gsort \"-score\"").unwrap(),
+    Command::Gsort {
+      keys: vec![SortKey {
+        variable: "score".to_owned(),
+        descending: true,
+      }],
+    }
+  );
+  assert_eq!(
+    parse_command("gsort+age").unwrap(),
+    Command::Gsort {
+      keys: vec![SortKey {
+        variable: "age".to_owned(),
+        descending: false,
+      }],
+    }
+  );
+  assert_eq!(
+    parse_command("gsort-age").unwrap(),
+    Command::Gsort {
+      keys: vec![SortKey {
+        variable: "age".to_owned(),
+        descending: true,
+      }],
+    }
+  );
+}
+
+#[test]
+fn gsort_preserves_exact_public_diagnostics() {
+  let cases = [
+    ("gsort", "gsort expects at least one variable"),
+    (
+      "gsort group_id if x > 0",
+      "gsort only accepts a signed variable list",
+    ),
+    (
+      "gsort group_id, stable",
+      "gsort only accepts a signed variable list",
+    ),
+    (
+      "gsort group_id = x",
+      "gsort only accepts a signed variable list",
+    ),
+    ("gsort = x", "gsort assignment requires a target before ="),
+    (
+      "gsort group_id =",
+      "gsort assignment requires an expression after =",
+    ),
+    (
+      "gsort group_id,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "gsort --group_id",
+      "gsort keys must use at most one + or - prefix",
+    ),
+    (
+      "gsort -",
+      "gsort expects a variable after each direction prefix",
+    ),
+    ("gsort age!x", "unsupported token in command: !"),
+    ("gsort age@x", "unsupported token in command: @"),
+    ("gsort ``", "quoted identifier cannot be empty"),
+    ("gsort \"unterminated", "unterminated quoted string"),
   ];
   for (input, expected) in cases {
     assert_eq!(
