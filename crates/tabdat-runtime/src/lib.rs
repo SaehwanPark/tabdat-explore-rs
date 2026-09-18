@@ -502,14 +502,16 @@ impl DuckDbBackend {
   fn preview_rows(&self, limit: i64, column_count: usize) -> Result<Vec<Vec<CellValue>>, ()> {
     let mut statement = self
       .connection
-      .prepare(&format!("SELECT * FROM {ACTIVE_TABLE} LIMIT ?"))
+      .prepare(&format!(
+        "SELECT * FROM (SELECT row_number() OVER () AS __tabdat_preview_order, * FROM {ACTIVE_TABLE}) ORDER BY 1 LIMIT ?"
+      ))
       .map_err(|_| ())?;
     let mut rows = statement.query([limit]).map_err(|_| ())?;
     let mut preview = Vec::new();
     while let Some(row) = rows.next().map_err(|_| ())? {
       let mut values = Vec::with_capacity(column_count);
       for index in 0..column_count {
-        let value = row.get_ref(index).map_err(|_| ())?;
+        let value = row.get_ref(index + 1).map_err(|_| ())?;
         values.push(cell_value_from_ref(value)?);
       }
       preview.push(values);
@@ -542,7 +544,7 @@ fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
     ValueRef::Text(value) => String::from_utf8(value.to_vec())
       .map(CellValue::Text)
       .map_err(|_| ()),
-    ValueRef::Blob(value) | ValueRef::Geometry(value) => Ok(CellValue::Bytes(value.to_vec())),
+    ValueRef::Blob(value) => Ok(CellValue::Bytes(value.to_vec())),
     _ => Err(()),
   }
 }

@@ -518,7 +518,7 @@ fn head_default_and_oversized_limits_return_all_rows() {
     .execute(fixture.command())
     .expect("eager local Parquet should load");
 
-  for command in ["head", "head 99"] {
+  for command in ["head", "head 99", "head 9223372036854775807"] {
     let result = session
       .execute(parse_command(command).unwrap())
       .expect("head should return all rows when the limit is large enough");
@@ -530,6 +530,32 @@ fn head_default_and_oversized_limits_return_all_rows() {
     assert_eq!(preview.rows[2][0], CellValue::SignedInteger(54));
     assert_eq!(preview.rows[2][3], CellValue::Null);
   }
+}
+
+#[test]
+fn head_preserves_nontrivial_source_insertion_order() {
+  let fixture = Fixture::new();
+  let connection = Connection::open_in_memory().expect("fixture connection should open");
+  let parquet_string = fixture.parquet.to_string_lossy().into_owned();
+  connection
+    .execute(
+      "COPY (SELECT * FROM (VALUES (42, 25.0, 'M', 150.0), (30, 22.5, 'F', 100.0), (54, 27.5, 'F', NULL)) AS patients(age, bmi, sex, cost)) TO ? (FORMAT PARQUET)",
+      [&parquet_string],
+    )
+    .expect("reordered fixture Parquet should be written");
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("head 2").unwrap())
+    .expect("head should return the first two source rows");
+  let ExecutionResult::Head(preview) = result else {
+    panic!("head should return a Head result");
+  };
+  assert_eq!(preview.rows[0][0], CellValue::SignedInteger(42));
+  assert_eq!(preview.rows[1][0], CellValue::SignedInteger(30));
 }
 
 #[test]
