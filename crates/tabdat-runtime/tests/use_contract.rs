@@ -341,3 +341,31 @@ fn leaves_gsort_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "gsort" }
   );
 }
+
+#[test]
+fn leaves_save_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Save {
+    path: "output.parquet".to_owned(),
+    replace: false,
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "save" }
+  );
+}
+
+#[test]
+fn leaves_export_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Export {
+    path: "output.csv".to_owned(),
+    replace: true,
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "export" }
+  );
+}

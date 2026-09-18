@@ -43,6 +43,10 @@ pub enum Command {
   Run { path: String },
   /// Change a runtime setting (configuration execution is deferred).
   Set { name: SettingName, value: String },
+  /// Persist the active dataset to a path (filesystem execution is deferred).
+  Save { path: String, replace: bool },
+  /// Export the active dataset to a path (filesystem execution is deferred).
+  Export { path: String, replace: bool },
   /// Select a dataset source and loading options (execution is deferred).
   Use {
     source: DataSource,
@@ -248,6 +252,21 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return parse_named_command("gsort", &command[5..]);
   }
 
+  for (name, prefix_length) in [("save", 4usize), ("export", 6usize)] {
+    if command.len() > prefix_length
+      && command
+        .as_bytes()
+        .get(..prefix_length)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(name.as_bytes()))
+      && command
+        .get(prefix_length..)
+        .and_then(|suffix| suffix.chars().next())
+        .is_some_and(|character| !character.is_alphanumeric() && character != '_')
+    {
+      return parse_named_command(name, &command[prefix_length..]);
+    }
+  }
+
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
@@ -375,6 +394,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "rename" => parse_rename_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
+    "save" | "export" => parse_save_export_command(normalized_name.as_str(), body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "exit" | "quit" => {
@@ -849,6 +869,78 @@ fn parse_run_command(body: &str) -> Result<Command, ParseError> {
   }
   Ok(Command::Run {
     path: path.to_owned(),
+  })
+}
+
+fn parse_save_export_command(command_name: &str, body: &str) -> Result<Command, ParseError> {
+  let (path_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(path_body, true)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(format!(
+      "{command_name} assignment requires a target before ="
+    )));
+  }
+  if parts.has_assignment && path_body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(format!(
+      "{command_name} assignment requires an expression after ="
+    )));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  if parts.has_condition || parts.has_assignment {
+    return Err(ParseError::new(format!(
+      "{command_name} does not accept if clauses or assignment syntax"
+    )));
+  }
+  if parts.arguments.len() != 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} expects exactly one path"
+    )));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| option.name != "replace")
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "{command_name} unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+  if options
+    .iter()
+    .any(|option| option.name == "replace" && option.value != UseOptionValue::Flag)
+  {
+    return Err(ParseError::new(format!(
+      "{command_name} option replace does not accept a value"
+    )));
+  }
+
+  let path = parts
+    .arguments
+    .into_iter()
+    .next()
+    .expect("save/export arity checked before extracting the path")
+    .text;
+  let replace = options.iter().any(|option| option.name == "replace");
+  Ok(match command_name {
+    "save" => Command::Save { path, replace },
+    "export" => Command::Export { path, replace },
+    _ => unreachable!("save/export parser only handles save and export"),
   })
 }
 
@@ -2545,6 +2637,109 @@ mod tests {
       ("run=foo", "run assignment requires a target before ="),
       ("run==foo", "unsupported token in command: =="),
       ("run:foo", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_save_and_export_paths_without_execution() {
+    assert_eq!(
+      parse_command(" SAVE output.parquet ").unwrap(),
+      Command::Save {
+        path: "output.parquet".to_owned(),
+        replace: false,
+      }
+    );
+    assert_eq!(
+      parse_command("export \"my output.parquet\", replace").unwrap(),
+      Command::Export {
+        path: "my output.parquet".to_owned(),
+        replace: true,
+      }
+    );
+    assert_eq!(
+      parse_command("save `a,b`, replace replace").unwrap(),
+      Command::Save {
+        path: "a,b".to_owned(),
+        replace: true,
+      }
+    );
+    assert_eq!(
+      parse_command("export a==b").unwrap(),
+      Command::Export {
+        path: "a==b".to_owned(),
+        replace: false,
+      }
+    );
+    assert_eq!(
+      parse_command("save:out.parquet").unwrap(),
+      Command::Save {
+        path: ":out.parquet".to_owned(),
+        replace: false,
+      }
+    );
+    assert_eq!(
+      parse_command("export/out.csv").unwrap(),
+      Command::Export {
+        path: "/out.csv".to_owned(),
+        replace: false,
+      }
+    );
+    assert_eq!(
+      parse_command("save \"\"").unwrap(),
+      Command::Save {
+        path: String::new(),
+        replace: false,
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_save_and_export_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("save", "save expects exactly one path"),
+      ("save one two", "save expects exactly one path"),
+      ("export", "export expects exactly one path"),
+      ("export one two", "export expects exactly one path"),
+      (
+        "save out if x > 0",
+        "save does not accept if clauses or assignment syntax",
+      ),
+      (
+        "export out = x",
+        "export does not accept if clauses or assignment syntax",
+      ),
+      ("save if", "missing expression after if"),
+      ("save = out", "save assignment requires a target before ="),
+      (
+        "export out =",
+        "export assignment requires an expression after =",
+      ),
+      ("save out,", "comma must be followed by at least one option"),
+      ("save out, force", "save unsupported option: force"),
+      ("export out, REPLACE", "export unsupported option: REPLACE"),
+      (
+        "save out, replace=true",
+        "save option replace does not accept a value",
+      ),
+      (
+        "export out, replace(foo)",
+        "export option replace does not accept a value",
+      ),
+      ("save out@x", "unsupported token in command: @"),
+      ("export@out", "unsupported token in command: @"),
+      (
+        "save out, replace, replace",
+        "option names must be identifiers",
+      ),
+      ("save ``, replace", "quoted identifier cannot be empty"),
+      ("export \"unterminated", "unterminated quoted string"),
     ];
     for (input, expected) in cases {
       assert_eq!(
