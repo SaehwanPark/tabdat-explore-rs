@@ -59,7 +59,7 @@ pub enum Command {
   Count,
   /// Preview the first `limit` rows of the active dataset.
   Head { limit: RowLimit },
-  /// Preview the last `limit` rows (execution is deferred).
+  /// Preview the last `limit` rows of the active dataset.
   Tail { limit: RowLimit },
 }
 

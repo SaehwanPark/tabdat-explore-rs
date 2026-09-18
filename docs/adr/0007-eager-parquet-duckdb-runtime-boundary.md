@@ -32,7 +32,7 @@ continue to use `#![forbid(unsafe_code)]`.
 ## Explicitly out of scope
 
 CSV/DTA/Feather/Arrow, URI/network access, `~` expansion, lazy execution, named tables,
-transformations, broad inspect execution beyond bounded `describe`/`count`/`head`,
+transformations, broad inspect execution beyond bounded `describe`/`count`/`head`/`tail`,
 labels, CLI/JSON/MCP surfaces, and a general relation API remain deferred. This slice must not mark the broad `use`
 or Phase 4 data-runtime roadmap items complete.
 
