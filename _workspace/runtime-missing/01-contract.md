@@ -1,6 +1,6 @@
 # Contract: bounded eager-runtime `missing`
 
-Status: contract recovered; implementation pending
+Status: implementation reviewed on PR #37; hosted acceptance pending
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
