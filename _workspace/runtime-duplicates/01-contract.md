@@ -1,6 +1,6 @@
 # Contract: bounded eager-runtime `duplicates`
 
-Status: contract recovered; implementation and hosted acceptance pending
+Status: accepted after PR #38 squash merge `6a10039`; hosted checks and branch cleanup complete
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
@@ -137,6 +137,7 @@ Test the observable result and state independently:
   `last_operation`, formatting, JSON/MCP/CLI surfaces, and broader relation
   APIs.
 
-Contract recovery is `complete` for the pinned Python behavior. Rust
-implementation and hosted parity evidence remain `partial` until the bounded
-slice is built, reviewed, merged, and documented.
+Contract recovery and bounded Rust implementation are complete for the pinned
+Python behavior. PR #38 was reviewed, squash-merged as `6a10039`, and its
+temporary branch was deleted locally and remotely. Lazy/materialized,
+presentation, and broader relation surfaces remain explicit deferrals.

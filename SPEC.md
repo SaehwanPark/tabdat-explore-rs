@@ -124,8 +124,9 @@ revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
 This syntax-only slice did not itself establish `head`/`tail` execution,
 active-dataset preconditions, row-order and missingness guarantees, backend
 range conversion, results, or reporting. Separate bounded eager-runtime slices
-now cover `describe`, `count`, `head`, `tail`, `summarize`, `codebook`, and `missing`; lazy/materialized behavior
-and broader reporting remain roadmap work.
+now cover `describe`, `count`, `head`, `tail`, `summarize`, `codebook`, `missing`,
+and `duplicates`; lazy/materialized behavior and broader reporting remain
+roadmap work.
 
 ## Verified slice: syntax-only describe command
 
@@ -321,6 +322,24 @@ This slice leaves duplicate-group and null-key semantics, active-relation/schema
 behavior, conditions/options, prefixed commands, full tokenizer/varlist/
 expression grammar, execution/results, reporting/serialization, and backend
 capability initialization to later roadmap work.
+
+## Verified slice: bounded eager-runtime `duplicates` command
+
+Merged PR #38 (`6a10039`) adds the bounded eager local-Parquet
+`duplicates [report] [varlist]` execution path to `tabdat-runtime`. It validates
+active state and keys before querying, preserves requested/default key order and
+duplicates, groups SQL NULL keys together, and returns an owned
+`DuplicatesResult` with checked aggregate metrics. Successful and failed reads
+are read-only with respect to active metadata and the private relation.
+
+Evidence: `_workspace/runtime-duplicates/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. The PR-head CI, policy, and
+runtime workflows passed before merge; post-merge workflow links and branch
+cleanup are recorded in the migration evidence.
+
+This slice leaves lazy/materialized execution, last-operation state, labels,
+wildcard/range expansion, formatting, CLI/REPL, JSON/MCP surfaces, and broader
+relation APIs deferred.
 
 ## Verified slice: syntax-only `summarize` command
 

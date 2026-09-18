@@ -1,6 +1,7 @@
 # Bounded runtime `duplicates` migration evidence
 
-Status: implementation and independent review complete; hosted acceptance pending
+Status: accepted after PR #38 squash merge `6a10039`; independent review,
+hosted checks, and temporary branch cleanup complete
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -35,14 +36,24 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 14 passed in 0.84s
 ```
 
-The implementation evidence, local checks, review disposition, hosted links,
-and temporary branch cleanup will be appended as the draft PR advances.
+The implementation evidence, local checks, review disposition, and hosted
+acceptance are recorded below. PR #38 was opened as a draft before
+implementation and marked ready only after all required PR-head workflows were
+green.
 
 ## Implementation revision and local checks
 
 - `535d37c`: added owned `DuplicatesResult`, typed unknown/failure diagnostics,
   eager session dispatch, a quoted grouped DuckDB aggregate with a
   collision-safe internal count alias, and focused unit/integration coverage.
+- `74f8850`: recorded implementation evidence;
+- `1fef73b`: recorded the independent review; and
+- `69b4eb5`: recorded the first-party unsafe-inventory evidence.
+
+PR #38 ([Add bounded eager duplicates report](https://github.com/SaehwanPark/tabdat-explore-rs/pull/38))
+was squash-merged as [`6a10039`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/6a10039d6b3a062e7f98343e3e59489b32d6b977).
+The temporary `feat/runtime-duplicates` branch was deleted locally and
+remotely.
 
 The pinned Python probe passed with `14 passed in 0.46s`. At implementation
 head `535d37c`, the required Rust checks passed:
@@ -68,7 +79,15 @@ with first-party-safe reports for `tabdat-explore-rs`, `tabdat-language`, and
 The independent review of `535d37c` found no actionable issues. It confirmed
 the report alias, NULL-equal grouping, checked aggregate arithmetic, collision-
 safe aliases, exact diagnostics, and read-only failure preservation. The review
-record is in `03-review.md`; hosted PR-head and post-merge links remain pending.
+record is in `03-review.md`.
+
+The required PR-head workflows passed before merge:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35394059810),
+  including [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35394059810/job/105758872778)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35394059810/job/105758873113);
+- [runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35394059703),
+  including the [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35394059703/job/105758908679).
 
 The implementation is read-only after `use` publishes an eager relation:
 
@@ -79,6 +98,12 @@ The implementation is read-only after `use` publishes an eager relation:
 | repeated NULL keys | any key list | NULL values group together; exact duplicate metrics | unchanged |
 | unknown keys | `duplicates` | typed exact diagnostic before query | unchanged |
 | missing/dropped active relation | `duplicates` | typed `DuplicatesFailed` displayed as `duplicates failed` | active metadata remains exactly as before |
+
+## Post-merge verification
+
+The squash commit triggered the standard post-merge workflows. Their exact
+successful run and job links will be recorded here after the documentation
+closeout push completes.
 
 ## Deferred scope
 

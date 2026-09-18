@@ -408,7 +408,11 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   (`MissingResult`/`MissingRow`; PR #37, squash merge `fac2d34`). Lazy/materialized
   behavior, last-operation state, labels, wildcard/range expansion, formatting,
   CLI, JSON, and MCP surfaces remain deferred.
-- [ ] `duplicates`
+- [x] `duplicates` — bounded eager local-Parquet duplicate-key aggregate
+  (`DuplicatesResult`; PR #38, squash merge `6a10039`). NULL-equal groups,
+  requested/default key order, checked aggregate metrics, and read-only state
+  are covered. Lazy/materialized execution, last-operation state, labels,
+  wildcard/range expansion, formatting, CLI, JSON, and MCP remain deferred.
 - [ ] `isid`
 - [ ] `datasignature`
 - [ ] `assert`
