@@ -1,6 +1,6 @@
 # Bounded runtime `duplicates` migration evidence
 
-Status: contract recovered; implementation and hosted acceptance pending
+Status: implementation complete; independent review and hosted acceptance pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -37,6 +37,42 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 
 The implementation evidence, local checks, review disposition, hosted links,
 and temporary branch cleanup will be appended as the draft PR advances.
+
+## Implementation revision and local checks
+
+- `535d37c`: added owned `DuplicatesResult`, typed unknown/failure diagnostics,
+  eager session dispatch, a quoted grouped DuckDB aggregate with a
+  collision-safe internal count alias, and focused unit/integration coverage.
+
+The pinned Python probe passed with `14 passed in 0.46s`. At implementation
+head `535d37c`, the required Rust checks passed:
+
+```text
+cargo fmt --all -- --check                              passed
+git diff --check                                        passed
+cargo check --locked --workspace --all-targets          passed
+cargo test --locked --workspace --all-targets           passed
+  root scaffold: 1 test passed
+  tabdat-language: 42 unit + 32 public integration tests passed
+  tabdat-runtime: 13 unit + 60 integration tests passed
+cargo clippy --locked --workspace --all-targets -- -D warnings
+                                                         passed
+```
+
+Policy checks also passed locally: `cargo deny check` reported advisories,
+bans, licenses, and sources ok; `cargo audit -D warnings` completed without
+reported vulnerabilities. The metadata-driven geiger scan and hosted workflow
+evidence remain part of the acceptance gate.
+
+The implementation is read-only after `use` publishes an eager relation:
+
+| Before | Input | Result | After |
+| --- | --- | --- | --- |
+| no active dataset | `duplicates` | typed `NoActiveDataset` with exact text | unchanged; backend remains uninitialized |
+| active eager local-Parquet dataset | selected keys | owned aggregate in requested/default order | unchanged |
+| repeated NULL keys | any key list | NULL values group together; exact duplicate metrics | unchanged |
+| unknown keys | `duplicates` | typed exact diagnostic before query | unchanged |
+| missing/dropped active relation | `duplicates` | typed `DuplicatesFailed` displayed as `duplicates failed` | active metadata remains exactly as before |
 
 ## Deferred scope
 
