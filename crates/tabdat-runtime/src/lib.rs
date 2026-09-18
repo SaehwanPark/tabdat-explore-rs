@@ -104,6 +104,30 @@ pub struct CodebookResult {
   pub rows: Vec<CodebookRow>,
 }
 
+/// An owned missingness row for one active column.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MissingRow {
+  /// The requested column name.
+  pub variable: String,
+  /// The schema type reported by DuckDB when the relation was loaded.
+  pub data_type: String,
+  /// The total number of rows in the active relation.
+  pub total: u64,
+  /// The number of SQL NULL values in the column.
+  pub missing: u64,
+  /// The number of non-NULL values in the column.
+  pub nonmissing: u64,
+  /// The missing percentage, or zero for an empty relation.
+  pub missing_percent: f64,
+}
+
+/// The owned result returned by a read-only `missing` request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MissingResult {
+  /// Rows in schema or requested order, including repeated explicit variables.
+  pub rows: Vec<MissingRow>,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -150,6 +174,8 @@ pub enum ExecutionResult {
   Summarize(SummarizeResult),
   /// Profiles selected columns in the active dataset.
   Codebook(CodebookResult),
+  /// Reports SQL-NULL missingness for selected columns.
+  Missing(MissingResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -197,6 +223,10 @@ pub enum RuntimeError {
   CodebookUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce or own one codebook row.
   CodebookFailed { variable: String },
+  /// The missingness request named variables absent from the active schema.
+  MissingUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not produce the missingness aggregate.
+  MissingFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -274,6 +304,14 @@ impl fmt::Display for RuntimeError {
       Self::CodebookFailed { variable } => {
         write!(formatter, "codebook failed for variable: {variable}")
       }
+      Self::MissingUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "missing unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::MissingFailed => formatter.write_str("missing failed"),
     }
   }
 }
@@ -310,6 +348,7 @@ impl Session {
       Command::Count => self.execute_count(),
       Command::Summarize { variables } => self.execute_summarize(variables),
       Command::Codebook { variables } => self.execute_codebook(variables),
+      Command::Missing { variables } => self.execute_missing(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -469,6 +508,53 @@ impl Session {
       })
       .collect::<Result<Vec<_>, _>>()?;
     Ok(ExecutionResult::Codebook(CodebookResult { rows }))
+  }
+
+  fn execute_missing(&self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "missing" })?;
+    let column_types = dataset
+      .columns
+      .iter()
+      .map(|column| (column.name.as_str(), column.data_type.as_str()))
+      .collect::<std::collections::HashMap<_, _>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| !column_types.contains_key(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::MissingUnknownVariable { variables: unknown });
+    }
+
+    let requested = if variables.is_empty() {
+      dataset
+        .columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>()
+    } else {
+      variables
+    };
+    let typed_requested = requested
+      .iter()
+      .map(|variable| {
+        Ok((
+          variable.as_str(),
+          column_types
+            .get(variable.as_str())
+            .copied()
+            .ok_or(RuntimeError::MissingFailed)?,
+        ))
+      })
+      .collect::<Result<Vec<_>, _>>()?;
+    let backend = self.backend.as_ref().ok_or(RuntimeError::MissingFailed)?;
+    let rows = backend
+      .missingness(&typed_requested)
+      .map_err(|_| RuntimeError::MissingFailed)?;
+    Ok(ExecutionResult::Missing(MissingResult { rows }))
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -868,6 +954,48 @@ impl DuckDbBackend {
       examples,
     })
   }
+
+  fn missingness(&self, variables: &[(&str, &str)]) -> Result<Vec<MissingRow>, ()> {
+    let mut select_items = vec!["count(*)".to_owned()];
+    for (index, (variable, _)) in variables.iter().enumerate() {
+      let quoted_variable = quote_identifier(variable);
+      select_items.push(format!(
+        "count({quoted_variable}) AS \"__tabdat_missing_nonmissing_{index}\""
+      ));
+    }
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT {} FROM {ACTIVE_TABLE}",
+        select_items.join(", ")
+      ))
+      .map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let total = u64::try_from(row.get::<_, i64>(0).map_err(|_| ())?).map_err(|_| ())?;
+    variables
+      .iter()
+      .enumerate()
+      .map(|(index, (variable, data_type))| {
+        let nonmissing =
+          u64::try_from(row.get::<_, i64>(index + 1).map_err(|_| ())?).map_err(|_| ())?;
+        let missing = total.checked_sub(nonmissing).ok_or(())?;
+        let missing_percent = if total == 0 {
+          0.0
+        } else {
+          (missing as f64 / total as f64) * 100.0
+        };
+        Ok(MissingRow {
+          variable: (*variable).to_owned(),
+          data_type: (*data_type).to_owned(),
+          total,
+          missing,
+          nonmissing,
+          missing_percent,
+        })
+      })
+      .collect()
+  }
 }
 
 fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
@@ -978,6 +1106,22 @@ mod tests {
       RuntimeError::NoActiveDataset {
         command: "codebook"
       }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn missing_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Missing {
+          variables: Vec::new(),
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "missing" }
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
@@ -1104,6 +1248,49 @@ mod tests {
       RuntimeError::CodebookFailed {
         variable: "value".to_owned()
       }
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_missing_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!("DROP TABLE {ACTIVE_TABLE}"))
+      .expect("the test active relation should be dropped");
+
+    assert_eq!(
+      session
+        .execute(Command::Missing {
+          variables: vec!["value".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::MissingFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }

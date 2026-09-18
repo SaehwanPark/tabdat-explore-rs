@@ -772,6 +772,256 @@ fn codebook_after_failed_replacement_keeps_the_prior_dataset() {
 }
 
 #[test]
+fn missing_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("missing").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset { command: "missing" }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("missing").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "missing requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn missing_returns_exact_counts_types_percentages_and_is_read_only() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(
+      parse_command(&format!("use {}", fixture.parquet.display()))
+        .expect("the fixture use should parse"),
+    )
+    .expect("parsed eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("missing age cost").unwrap())
+    .expect("missing should return requested rows");
+  let ExecutionResult::Missing(missing) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(missing.rows.len(), 2);
+  assert_eq!(missing.rows[0].variable, "age");
+  assert_eq!(missing.rows[0].data_type, "INTEGER");
+  assert_eq!(missing.rows[0].total, 3);
+  assert_eq!(missing.rows[0].missing, 0);
+  assert_eq!(missing.rows[0].nonmissing, 3);
+  assert_eq!(missing.rows[0].missing_percent, 0.0);
+  assert_eq!(missing.rows[1].variable, "cost");
+  assert_eq!(missing.rows[1].data_type, "DECIMAL(4,1)");
+  assert_eq!(missing.rows[1].total, 3);
+  assert_eq!(missing.rows[1].missing, 1);
+  assert_eq!(missing.rows[1].nonmissing, 2);
+  assert!((missing.rows[1].missing_percent - (100.0 / 3.0)).abs() < 1e-12);
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("missing age cost").unwrap())
+    .expect("repeated missing should remain read-only");
+  assert_eq!(repeated, ExecutionResult::Missing(missing));
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn missing_default_order_and_explicit_duplicates_are_preserved() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("missing").unwrap())
+    .expect("missing should report every schema column by default");
+  let ExecutionResult::Missing(defaults) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(
+    defaults
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["age", "bmi", "sex", "cost"]
+  );
+  assert_eq!(defaults.rows[2].missing, 0);
+  assert_eq!(defaults.rows[3].missing, 1);
+
+  let result = session
+    .execute(parse_command("missing cost age cost").unwrap())
+    .expect("missing should preserve explicit order and duplicates");
+  let ExecutionResult::Missing(explicit) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(
+    explicit
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["cost", "age", "cost"]
+  );
+  assert_eq!(explicit.rows[0], explicit.rows[2]);
+}
+
+#[test]
+fn missing_reports_zero_percent_for_all_null_and_empty_relations() {
+  let fixture = Fixture::new();
+  let null_path = fixture.write_parquet(
+    "all-null-missing.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS value FROM range(2)",
+  );
+  let empty_path = fixture.write_parquet(
+    "empty-missing.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS value FROM range(0)",
+  );
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&null_path))
+    .expect("all-null Parquet should load");
+  let result = session
+    .execute(parse_command("missing value").unwrap())
+    .expect("all-null missing should succeed");
+  let ExecutionResult::Missing(nulls) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(nulls.rows[0].total, 2);
+  assert_eq!(nulls.rows[0].missing, 2);
+  assert_eq!(nulls.rows[0].nonmissing, 0);
+  assert_eq!(nulls.rows[0].missing_percent, 100.0);
+
+  session
+    .execute(use_command(&empty_path))
+    .expect("empty Parquet should load");
+  let result = session
+    .execute(parse_command("missing").unwrap())
+    .expect("empty missing should succeed");
+  let ExecutionResult::Missing(empty) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(empty.rows[0].total, 0);
+  assert_eq!(empty.rows[0].missing, 0);
+  assert_eq!(empty.rows[0].nonmissing, 0);
+  assert_eq!(empty.rows[0].missing_percent, 0.0);
+}
+
+#[test]
+fn missing_rejects_unknown_variables_without_changing_state() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("missing absent absent age").unwrap())
+      .unwrap_err(),
+    RuntimeError::MissingUnknownVariable {
+      variables: vec!["absent".to_owned(), "absent".to_owned()]
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("missing absent absent age").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "missing unknown variable: absent, absent"
+  );
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn missing_counts_quoted_and_container_columns_without_value_conversion() {
+  let fixture = Fixture::new();
+  let quoted_path = fixture.write_parquet(
+    "quoted-missing.parquet",
+    "SELECT 1 AS \"weird name\", NULL::INTEGER AS \"other col\"",
+  );
+  let list_path = fixture.write_parquet(
+    "list-missing.parquet",
+    "SELECT [1, 2] AS items UNION ALL SELECT NULL AS items",
+  );
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&quoted_path))
+    .expect("quoted-column Parquet should load");
+  let result = session
+    .execute(parse_command("missing `weird name` `other col`").unwrap())
+    .expect("missing should quote identifiers deliberately");
+  let ExecutionResult::Missing(quoted) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(quoted.rows[0].variable, "weird name");
+  assert_eq!(quoted.rows[0].total, 1);
+  assert_eq!(quoted.rows[0].missing, 0);
+  assert_eq!(quoted.rows[1].variable, "other col");
+  assert_eq!(quoted.rows[1].missing, 1);
+
+  session
+    .execute(use_command(&list_path))
+    .expect("list Parquet should load");
+  let result = session
+    .execute(parse_command("missing items").unwrap())
+    .expect("missing should count container columns without owning values");
+  let ExecutionResult::Missing(list) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(list.rows[0].total, 2);
+  assert_eq!(list.rows[0].missing, 1);
+  assert_eq!(list.rows[0].nonmissing, 1);
+}
+
+#[test]
+fn missing_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("missing-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("missing cost").unwrap())
+    .expect("missing should still see the prior active dataset");
+  let ExecutionResult::Missing(missing) = result else {
+    panic!("missing should return a Missing result");
+  };
+  assert_eq!(missing.rows[0].missing, 1);
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
 fn summarize_returns_requested_statistics_in_order_and_is_read_only() {
   let fixture = Fixture::new();
   let mut session = Session::new();
