@@ -503,6 +503,275 @@ fn summarize_requires_an_active_dataset_without_initializing_the_backend() {
 }
 
 #[test]
+fn codebook_requires_an_active_dataset_without_initializing_the_backend() {
+  let mut session = Session::new();
+
+  assert_eq!(
+    session
+      .execute(parse_command("codebook").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset {
+      command: "codebook"
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("codebook").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "codebook requires an active dataset; run use <path> first"
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
+fn codebook_returns_counts_types_examples_and_is_read_only() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(
+      parse_command(&format!("use {}", fixture.parquet.display()))
+        .expect("the fixture use should parse"),
+    )
+    .expect("parsed eager local Parquet should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("codebook age cost").unwrap())
+    .expect("codebook should return requested profiles");
+  let ExecutionResult::Codebook(codebook) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(codebook.rows.len(), 2);
+  assert_eq!(codebook.rows[0].variable, "age");
+  assert_eq!(codebook.rows[0].data_type, "INTEGER");
+  assert_eq!(codebook.rows[0].nonmissing, 3);
+  assert_eq!(codebook.rows[0].missing, 0);
+  assert_eq!(codebook.rows[0].distinct, 3);
+  assert_eq!(
+    codebook.rows[0].examples,
+    vec![
+      CellValue::SignedInteger(30),
+      CellValue::SignedInteger(42),
+      CellValue::SignedInteger(54),
+    ]
+  );
+  assert_eq!(codebook.rows[1].variable, "cost");
+  assert_eq!(codebook.rows[1].data_type, "DECIMAL(4,1)");
+  assert_eq!(codebook.rows[1].nonmissing, 2);
+  assert_eq!(codebook.rows[1].missing, 1);
+  assert_eq!(codebook.rows[1].distinct, 2);
+  assert_eq!(
+    codebook.rows[1].examples,
+    vec![
+      CellValue::Decimal {
+        width: 4,
+        scale: 1,
+        value: 1000,
+      },
+      CellValue::Decimal {
+        width: 4,
+        scale: 1,
+        value: 1500,
+      },
+    ]
+  );
+  assert_eq!(session.active_dataset(), Some(&expected));
+
+  let repeated = session
+    .execute(parse_command("codebook age cost").unwrap())
+    .expect("repeated codebook should remain read-only");
+  assert_eq!(repeated, ExecutionResult::Codebook(codebook));
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn codebook_default_order_and_examples_preserve_schema_and_duplicates() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  let result = session
+    .execute(parse_command("codebook").unwrap())
+    .expect("codebook should profile every schema column by default");
+  let ExecutionResult::Codebook(defaults) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(
+    defaults
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["age", "bmi", "sex", "cost"]
+  );
+  assert_eq!(defaults.rows[1].data_type, "DECIMAL(3,1)");
+  assert_eq!(defaults.rows[1].distinct, 3);
+  assert_eq!(
+    defaults.rows[2].examples,
+    vec![
+      CellValue::Text("F".to_owned()),
+      CellValue::Text("M".to_owned()),
+      CellValue::Text("F".to_owned()),
+    ]
+  );
+
+  let result = session
+    .execute(parse_command("codebook cost age cost").unwrap())
+    .expect("codebook should preserve explicit order and duplicates");
+  let ExecutionResult::Codebook(explicit) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(
+    explicit
+      .rows
+      .iter()
+      .map(|row| row.variable.as_str())
+      .collect::<Vec<_>>(),
+    vec!["cost", "age", "cost"]
+  );
+  assert_eq!(explicit.rows[0], explicit.rows[2]);
+}
+
+#[test]
+fn codebook_rejects_unknown_variables_with_exact_error() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+
+  assert_eq!(
+    session
+      .execute(parse_command("codebook missing missing age").unwrap())
+      .unwrap_err(),
+    RuntimeError::CodebookUnknownVariable {
+      variables: vec!["missing".to_owned(), "missing".to_owned()]
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("codebook missing missing age").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "codebook unknown variable: missing, missing"
+  );
+}
+
+#[test]
+fn codebook_reports_empty_and_all_null_columns() {
+  let fixture = Fixture::new();
+  let null_path = fixture.write_parquet(
+    "all-null-codebook.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS value FROM range(2)",
+  );
+  let empty_path = fixture.write_parquet(
+    "empty-codebook.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS value FROM range(0)",
+  );
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&null_path))
+    .expect("all-null Parquet should load");
+  let result = session
+    .execute(parse_command("codebook value").unwrap())
+    .expect("all-null codebook should succeed");
+  let ExecutionResult::Codebook(codebook) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(codebook.rows[0].nonmissing, 0);
+  assert_eq!(codebook.rows[0].missing, 2);
+  assert_eq!(codebook.rows[0].distinct, 0);
+  assert!(codebook.rows[0].examples.is_empty());
+
+  session
+    .execute(use_command(&empty_path))
+    .expect("empty Parquet should load");
+  let result = session
+    .execute(parse_command("codebook").unwrap())
+    .expect("empty codebook should succeed");
+  let ExecutionResult::Codebook(codebook) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(codebook.rows[0].nonmissing, 0);
+  assert_eq!(codebook.rows[0].missing, 0);
+  assert_eq!(codebook.rows[0].distinct, 0);
+  assert!(codebook.rows[0].examples.is_empty());
+}
+
+#[test]
+fn codebook_failure_preserves_active_metadata() {
+  let fixture = Fixture::new();
+  let unsupported_path =
+    fixture.write_parquet("unsupported-codebook.parquet", "SELECT [1, 2] AS items");
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  session
+    .execute(use_command(&unsupported_path))
+    .expect("unsupported-value Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("codebook items").unwrap())
+      .unwrap_err(),
+    RuntimeError::CodebookFailed {
+      variable: "items".to_owned()
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("codebook items").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "codebook failed for variable: items"
+  );
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
+fn codebook_after_failed_replacement_keeps_the_prior_dataset() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("initial eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("initial load should publish active metadata")
+    .clone();
+
+  let corrupt_path = fixture.root.join("codebook-replacement-corrupt.parquet");
+  fs::write(&corrupt_path, "not parquet").expect("corrupt fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&corrupt_path)).unwrap_err(),
+    RuntimeError::ParquetRead {
+      path: corrupt_path.clone()
+    }
+  );
+
+  let result = session
+    .execute(parse_command("codebook age").unwrap())
+    .expect("codebook should still see the prior active dataset");
+  let ExecutionResult::Codebook(codebook) = result else {
+    panic!("codebook should return a Codebook result");
+  };
+  assert_eq!(codebook.rows[0].nonmissing, 3);
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
 fn summarize_returns_requested_statistics_in_order_and_is_read_only() {
   let fixture = Fixture::new();
   let mut session = Session::new();
