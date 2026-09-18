@@ -242,8 +242,23 @@ Merge-triggered `main` checks for merge commit `5735b43` passed:
 - [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35289043951/jobs/105427675822)
   (passed, 1m12s).
 
-The final documentation-only closeout run for the accepted state will be
-recorded after this commit.
+The accepted-state documentation commit `a19bec5` also passed its
+documentation-only hosted checks. The runtime workflow is path-filtered to
+runtime/code changes and therefore did not trigger for this docs-only commit;
+the merge-triggered runtime check for `5735b43` is recorded above.
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663518/jobs/105432576593)
+  (passed, 19m51s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663518/jobs/105432576577)
+  (passed, 19m21s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663506/jobs/105432576165)
+  (passed, 20s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663506/jobs/105432575840)
+  (passed, 23s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663486/jobs/105432575896)
+  (passed, 1m7s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35290663536/jobs/105432577376)
+  (passed, 1m14s).
 
 ## Supported and deferred behavior
 

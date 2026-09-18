@@ -47,5 +47,6 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
 Accepted bounded slice. PR #26 was marked ready after all final evidence-head
 checks passed, squash-merged as `5735b43`, and its temporary branch was deleted
-locally and remotely. The merge-triggered `main` checks are recorded in the
+locally and remotely. The merge-triggered `main` checks and the subsequent
+accepted-state documentation-only checks for `a19bec5` are recorded in the
 evidence artifact and passed before this handoff closeout.
