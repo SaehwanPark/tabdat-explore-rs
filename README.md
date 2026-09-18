@@ -36,6 +36,11 @@ Merged PR #27 (`7cf21ae`) adds the owned syntax-only `sort <varlist>` form.
 Active-schema lookup, stable/null/descending/expression sorting, relation
 mutation, and execution remain deferred.
 
+Draft PR #28 records a bounded syntax-only `gsort [+|-]varlist` parser slice;
+it is not accepted yet. Direction metadata is owned in typed keys, while
+active-schema lookup, ordering, relation mutation, and execution remain
+deferred.
+
 ## Development
 
 Install [rustup](https://rustup.rs/), then:
