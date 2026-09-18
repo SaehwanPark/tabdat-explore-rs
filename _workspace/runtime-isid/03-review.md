@@ -1,6 +1,6 @@
 # Independent review: bounded eager-runtime `isid`
 
-Status: review pending implementation
+Status: independent review complete; hosted acceptance pending
 
 ## Review scope
 
@@ -12,9 +12,15 @@ alias collisions, exact diagnostics, and state preservation after failure.
 
 ## Findings and disposition
 
-To be completed after the implementation commit is available. The reviewer
-must report severity-ranked findings or explicitly record that no actionable
-issues remain, with focused commands and residual coverage gaps.
+An independent review of commit `3a183ea` found no actionable issues. The
+review confirmed active-state and backend-initialization ordering, NULL-equal
+grouping, missing-key counting, duplicate-group gating regardless of `missok`,
+empty relations, repeated keys, quoted identifiers, collision-safe internal
+aliases, checked aggregate conversions, exact diagnostics, and failure-state
+preservation. It made no code changes. `git diff --check` was clean.
+
+Residual scope is intentional: lazy/materialized execution, presentation
+surfaces, and broader relation APIs remain deferred by the contract.
 
 ## Acceptance gate
 

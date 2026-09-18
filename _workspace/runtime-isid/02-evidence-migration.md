@@ -1,6 +1,6 @@
 # Bounded runtime `isid` migration evidence
 
-Status: contract recovered; implementation and hosted acceptance pending
+Status: implementation and independent review complete; hosted acceptance pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -36,8 +36,36 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 20 passed in 0.54s
 ```
 
-The implementation evidence, local checks, review disposition, hosted links,
-and temporary branch cleanup will be appended as the draft PR advances.
+## Implementation evidence
+
+Commit `3a183ea` (`runtime: add bounded eager isid check`) implements the
+bounded contract. It adds the owned `IsidResult`, typed diagnostics, session
+dispatch, collision-safe grouped DuckDB aggregation, checked conversions, and
+read-only/state-preservation coverage. The implementation remains eager and
+local-Parquet only as scoped above.
+
+Focused and workspace checks passed on the draft branch:
+
+```text
+cargo test --locked -p tabdat-runtime --test use_contract isid -- --nocapture
+4 passed
+cargo test --locked -p tabdat-runtime --all-targets
+15 unit + 63 integration tests passed
+cargo test --locked --workspace --all-targets
+all workspace targets passed
+cargo fmt --all -- --check
+git diff --check
+cargo check --locked --workspace --all-targets
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo deny check
+cargo audit -D warnings
+metadata-driven cargo geiger loop
+all passed; first-party packages reported forbid(unsafe_code) and zero unsafe usage
+```
+
+The pinned Python focused module remains `20 passed in 0.54s`. The independent
+review in `03-review.md` reported no actionable findings. PR-head workflow links
+and post-merge workflow links will be recorded after hosted acceptance.
 
 ## Planned implementation and state checks
 

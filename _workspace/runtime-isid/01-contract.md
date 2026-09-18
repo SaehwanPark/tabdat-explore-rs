@@ -1,6 +1,6 @@
 # Contract: bounded eager-runtime `isid`
 
-Status: contract recovered; implementation and hosted acceptance pending
+Status: contract recovered; implementation complete; hosted acceptance pending
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
@@ -138,6 +138,6 @@ Test the observable result and state independently:
   `last_operation`, formatting, JSON/MCP/CLI surfaces, and broader relation
   APIs.
 
-Contract recovery is `complete` for the pinned Python behavior. Rust
-implementation and hosted parity evidence remain `partial` until the bounded
-slice is built, reviewed, merged, and documented.
+Contract recovery is `complete` for the pinned Python behavior. The bounded
+Rust implementation is complete in commit `3a183ea` on draft PR #39; hosted
+workflow and post-merge evidence remain pending before final acceptance.
