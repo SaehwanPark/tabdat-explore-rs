@@ -1,7 +1,7 @@
 # Bounded runtime `describe` migration evidence
 
-Status: implementation is on draft PR #31; review, hosted checks, merge, and
-post-merge verification are pending.
+Status: bounded implementation reviewed and current draft-PR checks passed;
+merge and post-merge verification are pending.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -30,7 +30,9 @@ not add a query, relation, lazy plan, or backend initialization path.
   session dispatch, and state/atomicity regressions;
 - `6e40f0f`: direct private-unit assertion that a fresh-session `describe`
   leaves the DuckDB backend uninitialized;
-- later evidence/review and merge revisions will be recorded here.
+- `fb608d3`: migration evidence, independent review, and current-head hosted
+  check links.
+- later merge and post-merge revisions will be recorded here.
 
 Changed implementation paths:
 
@@ -116,7 +118,13 @@ commands remain explicit deferrals.
 
 Draft PR #31 is
 [`Runtime: execute bounded eager-session describe`](https://github.com/SaehwanPark/tabdat-explore-rs/pull/31),
-opened before implementation. Current-head Rust, policy, and runtime workflow
-links, independent-review findings, ready/merge state, branch cleanup, and
-post-merge `main` verification will be appended before this slice is marked
-accepted.
+opened before implementation. The current docs-inclusive head `fb608d3` passed
+all required hosted jobs:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968038), 19m31s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968274), 22m24s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594706/job/105540962892), 21m29s.
+
+The independent review found no P0/P1/P2/P3 findings. Ready/merge state,
+temporary-branch cleanup, and post-merge `main` verification remain to be
+recorded before this slice is marked accepted.

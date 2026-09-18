@@ -1,7 +1,7 @@
 # Review: bounded runtime `describe`
 
-Status: independent review complete; PR #31 remains draft while the final
-evidence revision and hosted checks are collected.
+Status: independent review complete; current docs-inclusive PR head passed all
+required hosted checks, and PR #31 remains draft until the final merge handoff.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -16,7 +16,7 @@ Reviewer: independent read-only runtime reviewer, reconciled by task owner
 - [x] Run locked Rust, formatting, Clippy, diff, advisory, license, and
   first-party unsafe-code checks locally.
 - [x] Complete independent review with no P0/P1/P2/P3 findings.
-- [ ] Confirm current-head hosted Rust, policy, and runtime jobs pass.
+- [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
 - [ ] Mark PR ready, squash-merge PR #31, and delete the temporary branch
   locally and remotely.
 - [ ] Record post-merge `main` verification.
@@ -50,5 +50,11 @@ existing session test so the implementation now directly verifies
 Keep the slice bounded to cached eager local-Parquet metadata. Do not mark the
 roadmap's broad inspection/session gate complete, and do not imply `count`,
 `head`, `tail`, lazy materialization, labels, formatting, CLI, or MCP parity.
-Hosted checks, ready/merge/branch cleanup, and post-merge `main` verification
-remain required before this evidence is accepted.
+Hosted checks passed on docs-inclusive head `fb608d3`:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968038), 19m31s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968274), 22m24s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594706/job/105540962892), 21m29s.
+
+Ready/merge/branch cleanup and post-merge `main` verification remain required
+before this evidence is accepted.
