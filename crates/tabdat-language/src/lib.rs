@@ -20,7 +20,7 @@ pub enum Command {
   Summarize { variables: Vec<String> },
   /// Compute a signature for the active dataset (execution is deferred).
   Datasignature,
-  /// Inspect selected columns (execution is deferred).
+  /// Profile selected columns.
   Codebook { variables: Vec<String> },
   /// Report explicit-null missingness (execution is deferred).
   Missing { variables: Vec<String> },

@@ -1,7 +1,7 @@
 # Bounded runtime `codebook` migration evidence
 
-Status: implementation and local validation complete; acceptance pending
-independent review, PR-head checks, merge, and post-merge hosted evidence.
+Status: accepted after PR #36 squash merge `bbadf12`; independent review,
+PR-head checks, post-merge hosted workflows, and branch cleanup are complete.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -32,6 +32,9 @@ does not add lazy materialization, labels, transforms, or presentation surfaces.
   diagnostics, and read-only state handling; and
 - `c53c7b8`: added unit/integration coverage for counts, types, examples,
   ordering, duplicates, null/empty relations, unsupported values, and failures.
+- `bbadf12`: squash-merged PR #36 after independent review and green hosted
+  checks; and
+- documentation closeout: this acceptance record.
 
 PR #36 ([Add bounded eager codebook execution](https://github.com/SaehwanPark/tabdat-explore-rs/pull/36))
 was opened as a draft before implementation.
@@ -134,7 +137,18 @@ Independent review is complete with no actionable findings. PR-head checks for
 [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35374637669/job/105696800355))
 and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35374637696/job/105696326339).
 
-After this evidence commit is validated, PR #36 will be marked ready,
-squash-merged, and its temporary branch deleted locally and remotely. The
-roadmap checkbox and current-state wording will be updated only after the
-post-merge main workflows and docs-inclusive validation are green.
+The final docs-inclusive PR-head checks for `a92f130` were green:
+[CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35376896241)
+([policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35376896241/job/105703577357),
+[Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35376896241/job/105703577603))
+and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35376896187/job/105703576807).
+
+PR #36 ([Add bounded eager codebook execution](https://github.com/SaehwanPark/tabdat-explore-rs/pull/36))
+was marked ready after review, squash-merged as `bbadf12`, and its temporary
+branch was deleted locally and remotely. The post-merge `main` checks for
+`bbadf12` were green: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027428)
+([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027428/job/105710513920),
+[policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027428/job/105710514151))
+and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35379027438/job/105710517725).
+Docs-inclusive workflows for the current-state closeout are recorded in the
+follow-up evidence commit after this documentation push.

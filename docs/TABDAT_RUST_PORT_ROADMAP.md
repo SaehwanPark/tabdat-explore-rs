@@ -400,7 +400,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   (`SummarizeResult`/`SummaryRow`; PR #35, squash merge `f2b7ed7`). Broader
   grouped/lazy/materialized behavior, unsupported numeric/container values,
   formatting, CLI, and MCP surfaces remain deferred.
-- [ ] `codebook`
+- [x] `codebook` — bounded eager local-Parquet column profiles
+  (`CodebookResult`/`CodebookRow`; PR #36, squash merge `bbadf12`). Variable
+  labels, lazy/materialized behavior, unsupported logical/container coercion,
+  formatting, CLI, and MCP surfaces remain deferred.
 - [ ] `missing`
 - [ ] `duplicates`
 - [ ] `isid`

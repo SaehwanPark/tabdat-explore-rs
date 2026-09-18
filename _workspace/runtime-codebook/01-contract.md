@@ -1,6 +1,7 @@
 # Contract: bounded eager-runtime `codebook`
 
-Status: recovered contract; implementation pending.
+Status: accepted after PR #36 squash merge `bbadf12`; post-merge hosted
+workflows are green.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`

@@ -1,7 +1,7 @@
 # Independent review: bounded eager-runtime `codebook`
 
-Status: independent review complete; PR-head checks are green, with acceptance
-pending post-merge evidence.
+Status: accepted after PR #36 squash merge `bbadf12`; post-merge hosted
+workflows are green and the temporary branch is deleted.
 
 ## Review scope
 
@@ -23,6 +23,6 @@ unsupported conversions intentionally map to `CodebookFailed`.
 
 ## Acceptance gate
 
-PR-head checks are green. Contract acceptance, post-merge hosted checks, and
-deletion of the temporary branch remain pending and are recorded in
-`02-evidence-migration.md`.
+PR-head and post-merge hosted checks are green, the contract is accepted, and
+the temporary branch was deleted locally and remotely. The acceptance evidence
+is recorded in `02-evidence-migration.md`.
