@@ -6,7 +6,7 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-`tail`, `run <script-path>`, plus the verified direct `use`, `codebook [varlist]`,
+`tail`, `run <script-path>`, `save <path> [, replace]`, and `export <path> [, replace]`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 and `isid [varlist] [, missok]` forms. Merged PR #25 (`89f6c14`) adds the
 verified direct `rename <old> <new>` form, and merged PR #26 (`5735b43`) adds
@@ -24,6 +24,32 @@ active-schema lookup, row sorting, and execution remain deferred.
 Merged PR #28 (`fd94133`) adds the verified syntax-only `gsort [+|-]varlist`
 form. Direction metadata is parsed only; active-schema lookup, ordering, and
 execution remain deferred.
+
+PR #29 adds the bounded syntax-only `save <path> [, replace]` and
+`export <path> [, replace]` forms. The language layer owns the lexical path and
+replacement flag; filesystem validation, active-dataset access, output formats,
+and persistence remain deferred.
+
+## Verified slice: syntax-only `save` and `export` commands
+
+Add direct, backend-independent `save <path> [, replace]` and
+`export <path> [, replace]` commands. Case-insensitive command names, quoted and
+symbolic paths, repeated flag-only `replace` options, exact arity/option/
+condition/assignment diagnostics, and explicit runtime deferral are covered by
+focused unit and public integration tests.
+
+Evidence: `_workspace/parser-save-export-syntax/01-contract.md`,
+`crates/tabdat-language/src/lib.rs`,
+`crates/tabdat-language/tests/parser_contract.rs`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/use_contract.rs`. The pinned configuration and
+persistence parser subset passed with `419 passed, 70 deselected` at revision
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`; the full parser/script oracle and
+hosted acceptance checks remain part of the PR evidence.
+
+This slice does not inspect paths or active data, write files, validate output
+formats, mutate session state, initialize a backend, or claim persistence/output
+parity.
 
 ## Verified slice: reproducible build baseline
 

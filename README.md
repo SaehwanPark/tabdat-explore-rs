@@ -6,7 +6,7 @@ currently prints `Hello, world!`. The workspace has begun a safe language layer 
 a syntax-only parser for a few control, status, inspection, diagnostic, and
 configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
 `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `isid`,
-`select`, `rename`, `run`, `sort`, `gsort`, `count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
+`select`, `rename`, `run`, `sort`, `gsort`, `save`, `export`, `count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
 direct `summarize [varlist]`, and direct `isid [varlist] [, missok]` forms are
 syntax-only; no data engine or statistical
 backend is installed as a supported product surface. Merged PR #22 (`26dba2b`) accepted a bounded
@@ -39,6 +39,11 @@ mutation, and execution remain deferred.
 Merged PR #28 (`fd94133`) adds the owned syntax-only `gsort [+|-]varlist` form.
 Direction metadata is owned in typed keys, while active-schema lookup, ordering,
 relation mutation, and execution remain deferred.
+
+PR #29 adds the owned syntax-only `save <path> [, replace]` and
+`export <path> [, replace]` forms. Path parsing and the replacement flag are
+typed, while filesystem checks, output formats, active-dataset access, writing,
+and persistence effects remain deferred.
 
 ## Development
 

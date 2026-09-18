@@ -25,14 +25,15 @@ silently invent parity.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, and `select`, plus owned
+  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, and `export`, plus owned
   command/error types and focused tests.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
   `run <script-path>`, direct `rename <old> <new>`, and direct
-  `select <varlist>`, direct `sort <varlist>`, and direct `gsort [+|-]varlist`
-  forms perform no execution or I/O; structured
-  conditions/options, key semantics, summary execution, and script loading
+  `select <varlist>`, direct `sort <varlist>`, direct `gsort [+|-]varlist`, and
+  direct `save <path> [, replace]` / `export <path> [, replace]` forms perform
+  no execution or I/O; structured conditions/options, key semantics,
+  persistence/output, summary execution, and script loading
   remain deferred.
 - `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
   evaluation that accepts only an existing local `.parquet` through
@@ -52,6 +53,11 @@ by PR #27 (`7cf21ae`). Row ordering and all relation effects remain deferred.
 Merged PR #28 (`fd94133`) records the accepted backend-independent syntax-only
 `gsort [+|-]varlist` form. Direction metadata is parsed, while row ordering and
 all relation effects remain deferred.
+
+PR #29 records the bounded backend-independent syntax-only `save` and `export`
+forms. Their owned paths and `replace` flags are parsed without filesystem or
+active-relation effects; writing, format validation, and persistence remain
+deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
