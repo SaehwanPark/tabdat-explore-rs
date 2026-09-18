@@ -312,3 +312,16 @@ fn leaves_select_execution_deferred() {
     RuntimeError::UnsupportedCommand { name: "select" }
   );
 }
+
+#[test]
+fn leaves_sort_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Sort {
+    variables: vec!["age".to_owned(), "sex".to_owned()],
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "sort" }
+  );
+}

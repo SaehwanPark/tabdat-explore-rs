@@ -33,6 +33,8 @@ pub enum Command {
   },
   /// Keep only listed columns (relation execution is deferred).
   Select { variables: Vec<String> },
+  /// Sort active rows by listed columns (relation execution is deferred).
+  Sort { variables: Vec<String> },
   /// Rename one column to another (relation execution is deferred).
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -196,6 +198,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   }
   if command
     .as_bytes()
+    .get(..4)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"sort"))
+    && command.as_bytes().get(4) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
     .get(..6)
     .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"select"))
     && command.as_bytes().get(6) == Some(&b':')
@@ -333,6 +343,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
     "select" => parse_select_command(body),
+    "sort" => parse_sort_command(body),
     "rename" => parse_rename_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
@@ -693,6 +704,36 @@ fn parse_select_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("select expects at least one variable"));
   }
   Ok(Command::Select {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
+}
+
+fn parse_sort_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "sort assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "sort assignment requires an expression after =",
+    ));
+  }
+  if parts.has_options || parts.has_assignment || parts.has_condition {
+    return Err(ParseError::new("sort only accepts a variable list"));
+  }
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("sort expects at least one variable"));
+  }
+  Ok(Command::Sort {
     variables: parts
       .arguments
       .into_iter()
@@ -2010,6 +2051,69 @@ mod tests {
       ("select age!x", "unsupported token in command: !"),
       ("select age@x", "unsupported token in command: @"),
       ("select:age", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_sort_variables_without_execution() {
+    assert_eq!(
+      parse_command(" SORT age label ").unwrap(),
+      Command::Sort {
+        variables: vec!["age".to_owned(), "label".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("sort\u{1c}`a,b`\u{1d}\"old name\"").unwrap(),
+      Command::Sort {
+        variables: vec!["a,b".to_owned(), "old name".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("sort age age").unwrap(),
+      Command::Sort {
+        variables: vec!["age".to_owned(), "age".to_owned()],
+      }
+    );
+    assert_eq!(
+      parse_command("sort age label now").unwrap(),
+      Command::Sort {
+        variables: vec!["age".to_owned(), "label".to_owned(), "now".to_owned()],
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_sort_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("sort", "sort expects at least one variable"),
+      ("sort age if age > 0", "sort only accepts a variable list"),
+      ("sort age, stable", "sort only accepts a variable list"),
+      ("sort age = x", "sort only accepts a variable list"),
+      ("sort = x", "sort assignment requires a target before ="),
+      (
+        "sort age =",
+        "sort assignment requires an expression after =",
+      ),
+      ("sort age,", "comma must be followed by at least one option"),
+      ("sort if", "missing expression after if"),
+      ("sort age==x", "unsupported token in command: =="),
+      ("sort age-1", "unsupported token in command: -"),
+      ("sort age+1", "unsupported token in command: +"),
+      ("sort age!x", "unsupported token in command: !"),
+      ("sort age@x", "unsupported token in command: @"),
+      ("sort:age", "unsupported token in command: :"),
+      ("sort age:label", "unsupported token in command: :"),
+      ("sort age/label", "unsupported token in command: /"),
+      ("sort age.label", "unsupported token in command: ."),
+      ("sort ``", "quoted identifier cannot be empty"),
+      ("sort \"unterminated", "unterminated quoted string"),
     ];
     for (input, expected) in cases {
       assert_eq!(

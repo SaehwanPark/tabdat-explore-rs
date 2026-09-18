@@ -465,6 +465,70 @@ fn select_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn sort_is_a_public_syntax_only_command() {
+  assert_eq!(
+    parse_command(" SORT age label ").unwrap(),
+    Command::Sort {
+      variables: vec!["age".to_owned(), "label".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("sort\u{1c}`a,b`\u{1d}\"old name\"").unwrap(),
+    Command::Sort {
+      variables: vec!["a,b".to_owned(), "old name".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("sort age age").unwrap(),
+    Command::Sort {
+      variables: vec!["age".to_owned(), "age".to_owned()],
+    }
+  );
+  assert_eq!(
+    parse_command("sort age label now").unwrap(),
+    Command::Sort {
+      variables: vec!["age".to_owned(), "label".to_owned(), "now".to_owned()],
+    }
+  );
+}
+
+#[test]
+fn sort_preserves_exact_public_diagnostics() {
+  let cases = [
+    ("sort", "sort expects at least one variable"),
+    ("sort age if age > 0", "sort only accepts a variable list"),
+    ("sort age, stable", "sort only accepts a variable list"),
+    ("sort age = x", "sort only accepts a variable list"),
+    ("sort = x", "sort assignment requires a target before ="),
+    (
+      "sort age =",
+      "sort assignment requires an expression after =",
+    ),
+    ("sort age,", "comma must be followed by at least one option"),
+    ("sort,", "comma must be followed by at least one option"),
+    ("sort if", "missing expression after if"),
+    ("sort age==x", "unsupported token in command: =="),
+    ("sort age-1", "unsupported token in command: -"),
+    ("sort age+1", "unsupported token in command: +"),
+    ("sort age!x", "unsupported token in command: !"),
+    ("sort age@x", "unsupported token in command: @"),
+    ("sort:age", "unsupported token in command: :"),
+    ("sort age:label", "unsupported token in command: :"),
+    ("sort age/label", "unsupported token in command: /"),
+    ("sort age.label", "unsupported token in command: ."),
+    ("sort ``", "quoted identifier cannot be empty"),
+    ("sort \"unterminated", "unterminated quoted string"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn run_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" RUN analysis.td ").unwrap(),

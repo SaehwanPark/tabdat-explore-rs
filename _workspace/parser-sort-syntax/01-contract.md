@@ -102,8 +102,8 @@ The pinned focused parser selection and full parser/script regression were
 re-run before freezing this contract:
 
 ```text
-tests/test_parser.py -k 'test_parse_sort_commands or test_parse_invalid_commands'
-418 passed, 71 deselected in 0.44s
+tests/test_sort.py tests/test_parser.py -k 'test_parse_sort_commands or test_parse_invalid_commands'
+419 passed, 77 deselected in 0.41s
 
 tests/test_parser.py tests/test_script.py
 516 passed in 0.46s
