@@ -80,6 +80,30 @@ pub struct SummarizeResult {
   pub rows: Vec<SummaryRow>,
 }
 
+/// An owned codebook profile row for one active column.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CodebookRow {
+  /// The requested column name.
+  pub variable: String,
+  /// The schema type reported by DuckDB when the relation was loaded.
+  pub data_type: String,
+  /// The number of non-null values in the column.
+  pub nonmissing: u64,
+  /// The number of null values in the column.
+  pub missing: u64,
+  /// The number of distinct non-null values in the column.
+  pub distinct: u64,
+  /// Up to three non-null values copied into the owned value boundary.
+  pub examples: Vec<CellValue>,
+}
+
+/// The owned result returned by a read-only `codebook` request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CodebookResult {
+  /// Rows in schema or requested order, including repeated explicit variables.
+  pub rows: Vec<CodebookRow>,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -124,6 +148,8 @@ pub enum ExecutionResult {
   Count(CountResult),
   /// Descriptive statistics for selected numeric columns.
   Summarize(SummarizeResult),
+  /// Profiles selected columns in the active dataset.
+  Codebook(CodebookResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -167,6 +193,10 @@ pub enum RuntimeError {
   SummaryNoNumericColumns,
   /// DuckDB could not produce or own one summary row.
   SummaryFailed { variable: String },
+  /// The codebook request named variables absent from the active schema.
+  CodebookUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not produce or own one codebook row.
+  CodebookFailed { variable: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -234,6 +264,16 @@ impl fmt::Display for RuntimeError {
       Self::SummaryFailed { variable } => {
         write!(formatter, "summarize failed for variable: {variable}")
       }
+      Self::CodebookUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "codebook unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::CodebookFailed { variable } => {
+        write!(formatter, "codebook failed for variable: {variable}")
+      }
     }
   }
 }
@@ -269,6 +309,7 @@ impl Session {
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
       Command::Summarize { variables } => self.execute_summarize(variables),
+      Command::Codebook { variables } => self.execute_codebook(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -372,6 +413,64 @@ impl Session {
     Ok(ExecutionResult::Summarize(SummarizeResult { rows }))
   }
 
+  fn execute_codebook(&self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "codebook",
+      })?;
+    let column_types = dataset
+      .columns
+      .iter()
+      .map(|column| (column.name.as_str(), column.data_type.as_str()))
+      .collect::<std::collections::HashMap<_, _>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| !column_types.contains_key(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::CodebookUnknownVariable { variables: unknown });
+    }
+
+    let requested = if variables.is_empty() {
+      dataset
+        .columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>()
+    } else {
+      variables
+    };
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or_else(|| RuntimeError::CodebookFailed {
+        variable: requested
+          .first()
+          .cloned()
+          .unwrap_or_else(|| "<none>".to_owned()),
+      })?;
+    let rows = requested
+      .iter()
+      .map(|variable| {
+        let data_type = column_types
+          .get(variable.as_str())
+          .copied()
+          .ok_or_else(|| RuntimeError::CodebookFailed {
+            variable: variable.clone(),
+          })?;
+        backend
+          .codebook_variable(variable, data_type)
+          .map_err(|_| RuntimeError::CodebookFailed {
+            variable: variable.clone(),
+          })
+      })
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(ExecutionResult::Codebook(CodebookResult { rows }))
+  }
+
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
     self
       .execute_preview(limit, "head", false)
@@ -469,8 +568,8 @@ fn command_name(command: &Command) -> &'static str {
     Command::Describe => "describe",
     Command::Doctor => "doctor",
     Command::Summarize { .. } => "summarize",
-    Command::Datasignature => "datasignature",
     Command::Codebook { .. } => "codebook",
+    Command::Datasignature => "datasignature",
     Command::Missing { .. } => "missing",
     Command::Duplicates { .. } => "duplicates",
     Command::Isid { .. } => "isid",
@@ -734,6 +833,41 @@ impl DuckDbBackend {
       maximum,
     })
   }
+
+  fn codebook_variable(&self, variable: &str, data_type: &str) -> Result<CodebookRow, ()> {
+    let quoted_variable = quote_identifier(variable);
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT count({quoted_variable}), count(*) - count({quoted_variable}), count(DISTINCT {quoted_variable}) FROM {ACTIVE_TABLE}"
+      ))
+      .map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let nonmissing = u64::try_from(row.get::<_, i64>(0).map_err(|_| ())?).map_err(|_| ())?;
+    let missing = u64::try_from(row.get::<_, i64>(1).map_err(|_| ())?).map_err(|_| ())?;
+    let distinct = u64::try_from(row.get::<_, i64>(2).map_err(|_| ())?).map_err(|_| ())?;
+
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT {quoted_variable} FROM {ACTIVE_TABLE} WHERE {quoted_variable} IS NOT NULL LIMIT 3"
+      ))
+      .map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let mut examples = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| ())? {
+      examples.push(cell_value_from_ref(row.get_ref(0).map_err(|_| ())?)?);
+    }
+    Ok(CodebookRow {
+      variable: variable.to_owned(),
+      data_type: data_type.to_owned(),
+      nonmissing,
+      missing,
+      distinct,
+      examples,
+    })
+  }
 }
 
 fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
@@ -832,6 +966,24 @@ mod tests {
   }
 
   #[test]
+  fn codebook_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Codebook {
+          variables: Vec::new()
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset {
+        command: "codebook"
+      }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -906,6 +1058,51 @@ mod tests {
         .unwrap_err(),
       RuntimeError::SummaryFailed {
         variable: "value".to_owned(),
+      }
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_codebook_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!("DROP TABLE {ACTIVE_TABLE}"))
+      .expect("the test active relation should be dropped");
+
+    assert_eq!(
+      session
+        .execute(Command::Codebook {
+          variables: vec!["value".to_owned()]
+        })
+        .unwrap_err(),
+      RuntimeError::CodebookFailed {
+        variable: "value".to_owned()
       }
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
