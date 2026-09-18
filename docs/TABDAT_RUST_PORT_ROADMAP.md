@@ -392,7 +392,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 ### 6.2 Load and inspect commands
 
 - [ ] `use`
-- [ ] `describe`
+- [x] `describe` — bounded eager local-Parquet active-metadata execution
+  (`DescribeResult`; PR #31, squash merge `6fccd5d`). Broader inspection,
+  lazy/materialized behavior, labels, formatting, CLI, and MCP surfaces remain
+  deferred.
 - [ ] `summarize`
 - [ ] `codebook`
 - [ ] `missing`

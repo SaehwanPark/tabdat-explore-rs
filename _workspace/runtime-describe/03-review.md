@@ -1,7 +1,7 @@
 # Review: bounded runtime `describe`
 
-Status: independent review complete; current docs-inclusive PR head passed all
-required hosted checks, and PR #31 remains draft until the final merge handoff.
+Status: independent review complete; PR #31 was marked ready and squash-merged
+as `6fccd5d`. Final post-merge `main` verification is pending this closeout.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -17,7 +17,7 @@ Reviewer: independent read-only runtime reviewer, reconciled by task owner
   first-party unsafe-code checks locally.
 - [x] Complete independent review with no P0/P1/P2/P3 findings.
 - [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
-- [ ] Mark PR ready, squash-merge PR #31, and delete the temporary branch
+- [x] Mark PR ready, squash-merge PR #31, and delete the temporary branch
   locally and remotely.
 - [ ] Record post-merge `main` verification.
 
@@ -50,11 +50,13 @@ existing session test so the implementation now directly verifies
 Keep the slice bounded to cached eager local-Parquet metadata. Do not mark the
 roadmap's broad inspection/session gate complete, and do not imply `count`,
 `head`, `tail`, lazy materialization, labels, formatting, CLI, or MCP parity.
-Hosted checks passed on docs-inclusive head `fb608d3`:
+Hosted checks passed on docs-inclusive head `402b6e5`:
 
-- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968038), 19m31s;
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968274), 22m24s; and
-- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594706/job/105540962892), 21m29s.
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639245/job/105547554847), 19m38s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639245/job/105547555160), 20m18s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639397/job/105547556014), 20m45s.
 
-Ready/merge/branch cleanup and post-merge `main` verification remain required
+The PR was marked ready, squash-merged as
+`6fccd5ded1e6d45d3f77534bc507a511adfe0c41`, and its temporary branch was
+deleted locally and remotely. Post-merge `main` verification remains required
 before this evidence is accepted.

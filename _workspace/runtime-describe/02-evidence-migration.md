@@ -1,7 +1,7 @@
 # Bounded runtime `describe` migration evidence
 
-Status: bounded implementation reviewed and current draft-PR checks passed;
-merge and post-merge verification are pending.
+Status: accepted after PR #31 squash merge `6fccd5d`; post-merge `main`
+verification is pending this closeout commit.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -32,7 +32,8 @@ not add a query, relation, lazy plan, or backend initialization path.
   leaves the DuckDB backend uninitialized;
 - `fb608d3`: migration evidence, independent review, and current-head hosted
   check links.
-- later merge and post-merge revisions will be recorded here.
+- `6fccd5d`: squash merge of PR #31 to `main` with temporary branch cleanup;
+- this closeout revision: roadmap acceptance and final main-workflow links.
 
 Changed implementation paths:
 
@@ -116,15 +117,17 @@ commands remain explicit deferrals.
 
 ## Hosted acceptance and completion state
 
-Draft PR #31 is
+PR #31 is
 [`Runtime: execute bounded eager-session describe`](https://github.com/SaehwanPark/tabdat-explore-rs/pull/31),
-opened before implementation. The current docs-inclusive head `fb608d3` passed
+opened before implementation and was marked ready after review. Its final
+docs-inclusive head `402b6e5` passed
 all required hosted jobs:
 
-- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968038), 19m31s;
-- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594711/job/105540968274), 22m24s; and
-- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35326594706/job/105540962892), 21m29s.
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639245/job/105547554847), 19m38s;
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639245/job/105547555160), 20m18s; and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35328639397/job/105547556014), 20m45s.
 
-The independent review found no P0/P1/P2/P3 findings. Ready/merge state,
-temporary-branch cleanup, and post-merge `main` verification remain to be
-recorded before this slice is marked accepted.
+The independent review found no P0/P1/P2/P3 findings. The PR was marked ready,
+squash-merged as `6fccd5ded1e6d45d3f77534bc507a511adfe0c41`, and its temporary
+branch was deleted locally and remotely. Post-merge `main` verification is the
+remaining closeout item.
