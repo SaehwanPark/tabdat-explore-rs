@@ -35,6 +35,8 @@ pub enum Command {
   Select { variables: Vec<String> },
   /// Sort active rows by listed columns (relation execution is deferred).
   Sort { variables: Vec<String> },
+  /// Sort active rows by explicitly directed keys (relation execution is deferred).
+  Gsort { keys: Vec<SortKey> },
   /// Rename one column to another (relation execution is deferred).
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -87,6 +89,15 @@ pub enum SettingName {
   ArtifactDir,
   /// Select whether generated graphs open automatically (validation is deferred).
   GraphOpen,
+}
+
+/// One owned `gsort` key and its requested direction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SortKey {
+  /// The variable spelling after an optional unquoted direction prefix.
+  pub variable: String,
+  /// Whether the key requests descending order.
+  pub descending: bool,
 }
 
 /// A validated, canonical non-negative decimal row limit.
@@ -221,6 +232,22 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("unsupported token in command: :"));
   }
 
+  // `gsort` permits attached symbolic key text (for example `gsort-age` and
+  // `gsort:age`) in the pinned Python tokenizer. Split only this command's
+  // non-identifier suffix before the generic command-name boundary scan.
+  if command.len() > 5
+    && command
+      .as_bytes()
+      .get(..5)
+      .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"gsort"))
+    && command
+      .get(5..)
+      .and_then(|suffix| suffix.chars().next())
+      .is_some_and(|character| !character.is_alphanumeric() && character != '_')
+  {
+    return parse_named_command("gsort", &command[5..]);
+  }
+
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
@@ -344,6 +371,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "isid" => parse_isid_command(body),
     "select" => parse_select_command(body),
     "sort" => parse_sort_command(body),
+    "gsort" => parse_gsort_command(body),
     "rename" => parse_rename_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
@@ -740,6 +768,69 @@ fn parse_sort_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
   })
+}
+
+fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, true)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "gsort assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "gsort assignment requires an expression after =",
+    ));
+  }
+  if parts.has_options || parts.has_assignment || parts.has_condition {
+    return Err(ParseError::new("gsort only accepts a signed variable list"));
+  }
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("gsort expects at least one variable"));
+  }
+
+  let mut keys = Vec::with_capacity(parts.arguments.len());
+  for argument in parts.arguments {
+    let mut variable = argument.text;
+    let mut descending = false;
+    if !argument.backtick_quoted {
+      if let Some(prefix) = variable
+        .chars()
+        .next()
+        .filter(|prefix| matches!(prefix, '+' | '-'))
+      {
+        descending = prefix == '-';
+        variable.remove(0);
+        if variable.is_empty() {
+          return Err(ParseError::new(
+            "gsort expects a variable after each direction prefix",
+          ));
+        }
+        if variable
+          .chars()
+          .next()
+          .is_some_and(|prefix| matches!(prefix, '+' | '-'))
+        {
+          return Err(ParseError::new(
+            "gsort keys must use at most one + or - prefix",
+          ));
+        }
+      }
+    }
+    if variable.is_empty() {
+      return Err(ParseError::new(
+        "gsort expects a variable after each direction prefix",
+      ));
+    }
+    keys.push(SortKey {
+      variable,
+      descending,
+    });
+  }
+  Ok(Command::Gsort { keys })
 }
 
 fn parse_run_command(body: &str) -> Result<Command, ParseError> {
@@ -1617,7 +1708,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName,
+    Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName, SortKey,
     parse_command,
   };
 
@@ -2118,6 +2209,195 @@ mod tests {
       ("sort @age", "unsupported token in command: @"),
       ("sort ``", "quoted identifier cannot be empty"),
       ("sort \"unterminated", "unterminated quoted string"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_gsort_keys_without_execution() {
+    assert_eq!(
+      parse_command(" GSORT group_id -label ").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: "group_id".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "label".to_owned(),
+            descending: true,
+          },
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort\u{1c}+group_id\u{1d}-label").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: "group_id".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "label".to_owned(),
+            descending: true,
+          },
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort `-score` \"old name\"").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: "-score".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "old name".to_owned(),
+            descending: false,
+          },
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort \"-score\"").unwrap(),
+      Command::Gsort {
+        keys: vec![SortKey {
+          variable: "score".to_owned(),
+          descending: true,
+        }],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort group_id group_id").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: "group_id".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "group_id".to_owned(),
+            descending: false,
+          },
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort+age").unwrap(),
+      Command::Gsort {
+        keys: vec![SortKey {
+          variable: "age".to_owned(),
+          descending: false,
+        }],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort-age").unwrap(),
+      Command::Gsort {
+        keys: vec![SortKey {
+          variable: "age".to_owned(),
+          descending: true,
+        }],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort +age -age").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: "age".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "age".to_owned(),
+            descending: true,
+          },
+        ],
+      }
+    );
+    assert_eq!(
+      parse_command("gsort:age age==x").unwrap(),
+      Command::Gsort {
+        keys: vec![
+          SortKey {
+            variable: ":age".to_owned(),
+            descending: false,
+          },
+          SortKey {
+            variable: "age==x".to_owned(),
+            descending: false,
+          },
+        ],
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_gsort_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("gsort", "gsort expects at least one variable"),
+      (
+        "gsort group_id if x > 0",
+        "gsort only accepts a signed variable list",
+      ),
+      (
+        "gsort group_id, stable",
+        "gsort only accepts a signed variable list",
+      ),
+      (
+        "gsort group_id = x",
+        "gsort only accepts a signed variable list",
+      ),
+      ("gsort = x", "gsort assignment requires a target before ="),
+      (
+        "gsort group_id =",
+        "gsort assignment requires an expression after =",
+      ),
+      (
+        "gsort group_id,",
+        "comma must be followed by at least one option",
+      ),
+      ("gsort,", "comma must be followed by at least one option"),
+      ("gsort if", "missing expression after if"),
+      (
+        "gsort --group_id",
+        "gsort keys must use at most one + or - prefix",
+      ),
+      (
+        "gsort ++label",
+        "gsort keys must use at most one + or - prefix",
+      ),
+      (
+        "gsort +-label",
+        "gsort keys must use at most one + or - prefix",
+      ),
+      (
+        "gsort -",
+        "gsort expects a variable after each direction prefix",
+      ),
+      (
+        "gsort +",
+        "gsort expects a variable after each direction prefix",
+      ),
+      (
+        "gsort group_id -",
+        "gsort expects a variable after each direction prefix",
+      ),
+      ("gsort age!x", "unsupported token in command: !"),
+      ("gsort age@x", "unsupported token in command: @"),
+      ("gsort!age", "unsupported token in command: !"),
+      ("gsort@age", "unsupported token in command: @"),
+      ("gsort?age", "unsupported token in command: ?"),
+      ("gsort ``", "quoted identifier cannot be empty"),
+      ("gsort \"unterminated", "unterminated quoted string"),
     ];
     for (input, expected) in cases {
       assert_eq!(
