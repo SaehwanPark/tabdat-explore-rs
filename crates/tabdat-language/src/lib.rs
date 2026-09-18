@@ -22,7 +22,7 @@ pub enum Command {
   Datasignature,
   /// Profile selected columns.
   Codebook { variables: Vec<String> },
-  /// Report explicit-null missingness (execution is deferred).
+  /// Report explicit-null missingness for selected columns.
   Missing { variables: Vec<String> },
   /// Report duplicate key groups (execution is deferred).
   Duplicates { variables: Vec<String> },
