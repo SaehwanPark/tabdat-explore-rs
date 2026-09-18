@@ -1,7 +1,6 @@
 # Review: bounded `status` sign-token diagnostics
 
-Status: bounded implementation accepted after independent review and current-
-head hosted checks; merge and post-merge closeout are pending.
+Status: bounded implementation accepted, merged, and verified on `main`.
 
 Reviewer: independent read-only parser reviewer, reconciled by task owner
 
@@ -17,9 +16,9 @@ Reviewer: independent read-only parser reviewer, reconciled by task owner
   first-party unsafe-code checks locally.
 - [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
 - [x] Complete independent review with no P0/P1/P2/P3 findings.
-- [ ] Mark PR ready, squash-merge PR #30, and
+- [x] Mark PR ready, squash-merge PR #30, and
   delete the temporary branch locally and remotely.
-- [ ] Record post-merge `main` verification.
+- [x] Record post-merge `main` verification.
 
 ## Evidence reviewed
 
@@ -42,6 +41,6 @@ stale current-head reference in the earlier evidence ledger was corrected by
 
 ## Required follow-up
 
-Complete the independent review, then record ready/merge/branch-cleanup and
-post-merge `main` checks. Keep MIG-0002 unresolved for the broader matrix and
-keep the roadmap tokenizer checkbox unchecked.
+Ready/merge/branch-cleanup and post-merge `main` checks are complete. Keep
+MIG-0002 unresolved for the broader matrix and keep the roadmap tokenizer
+checkbox unchecked.

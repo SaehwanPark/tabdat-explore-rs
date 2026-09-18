@@ -1,7 +1,6 @@
 # `status` sign-token diagnostic migration evidence
 
-Status: bounded implementation accepted after independent review; merge
-closeout is pending.
+Status: bounded implementation accepted, squash-merged, and verified on `main`.
 
 Producer: task owner, with independent oracle and parser review
 
@@ -25,6 +24,7 @@ performed. The bounded contract is in `01-contract.md`.
 - `ce73613`: status sign/empty-condition parser correction, exact unit/public
   regressions, and MIG-0002 scope update.
 - `337a53d`: evidence/review ledger and docs-inclusive hosted-check handoff.
+- `ecdf78b`: squash merge of PR #30 to `main`.
 
 Changed implementation paths:
 
@@ -114,7 +114,16 @@ required hosted jobs passed for that docs-inclusive head:
 The independent read-only parser review found no P0/P1/P2/P3 code or scope
 defects. It confirmed that runtime/backend surfaces remain untouched and that
 the earlier stale-head evidence note was corrected by this ledger revision.
-Ready-state promotion, squash merge, branch deletion, and post-merge `main`
-verification remain to be recorded. Keep MIG-0002 unresolved for the broader
-status tokenizer matrix and keep the roadmap's broad tokenizer checkbox
-unchecked.
+PR #30 was marked ready and squash-merged as
+`ecdf78b29fc306b0069195fdbd80987f78733685`; the temporary branch was deleted
+locally and remotely. Post-merge `main` verification passed at that merge
+revision:
+
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35321122939/job/105523611588), 20m26s;
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35321122939/job/105523611325), 19m43s;
+- [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35321123155/job/105523611729), 21m11s.
+
+Local `main` and `origin/main` both resolved to the merge revision, and
+`git ls-remote --heads origin feat/parser-status-token-diagnostics` returned
+no branch. Keep MIG-0002 unresolved for the broader status tokenizer matrix
+and keep the roadmap's broad tokenizer checkbox unchecked.
