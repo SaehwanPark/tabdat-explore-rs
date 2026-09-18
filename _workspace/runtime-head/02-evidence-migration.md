@@ -30,14 +30,17 @@ surfaces.
 - `0173160`: frozen contract and draft-PR handoff;
 - `414d8da`: owned preview/value surfaces, eager head dispatch, conversion and
   state/atomicity tests, and stale current-state documentation corrections;
+- `e9a869c`: oracle-aligned row-number ordering, exact `i64::MAX` acceptance,
+  nontrivial insertion-order regression, stale `Head` comment correction, and
+  explicit rejection of `GEOMETRY` values;
 - PR #33: [Execute bounded runtime head](https://github.com/SaehwanPark/tabdat-explore-rs/pull/33),
   opened before implementation.
 
 Changed implementation paths:
 
 - `crates/tabdat-runtime/src/lib.rs`: owned `CellValue`/`PreviewResult`, typed
-  preview failure, `Command::Head` dispatch, bounded relation query, and
-  backend-value conversion;
+  preview failure, `Command::Head` dispatch, oracle-aligned bounded relation
+  query, and backend-value conversion;
 - `crates/tabdat-runtime/tests/use_contract.rs`: exact fresh-session,
   parser-to-session, default/zero/oversized, repeated-read, value-conversion,
   and failed-replacement coverage;
@@ -70,7 +73,7 @@ preserves schema order, source insertion order, exact decimals, text, and nulls.
 
 ## Rust checks
 
-At implementation revision `414d8da`, the required local checks passed:
+At implementation revision `e9a869c`, the required local checks passed:
 
 ```text
 cargo fmt --all -- --check                              passed
