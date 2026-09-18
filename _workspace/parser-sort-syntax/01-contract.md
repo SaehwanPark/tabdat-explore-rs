@@ -1,7 +1,7 @@
 # Contract: syntax-only `sort <varlist>`
 
-Status: implementation complete at `d574ec2`; current-head acceptance is
-pending hosted checks and final review disposition.
+Status: implementation complete at `d574ec2`; current-head hosted checks and
+independent reviews passed, with merge/branch cleanup still pending.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

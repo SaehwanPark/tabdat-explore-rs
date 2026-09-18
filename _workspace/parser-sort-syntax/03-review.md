@@ -1,7 +1,7 @@
 # `sort` syntax slice review
 
-Status: implementation review in progress; acceptance is pending hosted checks
-and final current-state documentation.
+Status: independently reviewed; current-head hosted checks passed; readiness,
+merge, branch cleanup, and post-merge verification are pending.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -39,13 +39,14 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
   accepted forms, diagnostics, focused/full oracle results, and local package
   tests. The follow-up `d574ec2` adds the leading-punctuation regressions.
 - Workspace review found no dependency, unsafe, backend/session, topology, or
-  unrelated-file issue. It requested these evidence/review ledgers and a
-  draft current-state note before readiness; those items are tracked in the
-  current PR.
+  unrelated-file issue. The requested evidence/review ledgers and draft
+  current-state notes are now present in the current PR.
+- The complete hosted set for `dc82d92` passed: policy, Rust baseline, runtime
+  boundary, ReadStat, and libgretl jobs are linked in the evidence artifact.
 
 ## Disposition
 
-Partial acceptance only: implementation and local evidence are complete, but
-PR #27 remains draft until hosted checks pass, current-state docs are updated,
-the final review ledger is approved, and the temporary branch is merged and
-deleted.
+Ready for acceptance: the bounded implementation, independent reviews, pinned
+oracle/local/policy evidence, current-state draft notes, and complete hosted
+checks are green. PR #27 can now be marked ready and squash-merged; the
+temporary branch must then be deleted and post-merge `main` checks recorded.

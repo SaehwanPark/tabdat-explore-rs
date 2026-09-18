@@ -140,10 +140,26 @@ metadata-driven cargo geiger --all-dependencies --all-targets --locked
 ## Hosted acceptance
 
 The draft PR is [PR #27](https://github.com/SaehwanPark/tabdat-explore-rs/pull/27),
-from `feat/parser-sort-syntax`. Hosted CI, policy, ReadStat, and libgretl
-checks for the current implementation head are pending; their exact job links,
-durations, readiness, squash merge, branch cleanup, and post-merge `main`
-checks will be recorded here before acceptance.
+from `feat/parser-sort-syntax`. The latest implementation/evidence head
+`dc82d92` passed its complete hosted set:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649241/jobs/105447578806)
+  (passed, 19m39s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649241/jobs/105447578593)
+  (passed, 20m42s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649246/jobs/105447575638)
+  (passed, 21m4s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649328/jobs/105447526788)
+  (passed, 26s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649328/jobs/105447527043)
+  (passed, 23s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649249/jobs/105447526747)
+  (passed, 1m7s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649276/jobs/105447526997)
+  (passed, 1m9s).
+
+The PR is ready for the final review/readiness transition. Squash merge,
+temporary-branch cleanup, and post-merge `main` checks remain to be recorded.
 
 ## Supported and deferred behavior
 
