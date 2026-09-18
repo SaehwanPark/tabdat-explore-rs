@@ -92,7 +92,9 @@ The policy checks passed locally:
 ```text
 cargo deny check                                        advisories, bans, licenses, sources ok
 cargo audit -D warnings                                 passed; no vulnerabilities reported
-metadata-driven cargo geiger                            in progress for this evidence revision
+metadata-driven cargo geiger                            passed; first-party packages
+                                                         reported forbid(unsafe_code)
+                                                         and zero first-party unsafe usage
 ```
 
 The geiger loop follows the all-package assertion in `CONTRIBUTING.md`: it
