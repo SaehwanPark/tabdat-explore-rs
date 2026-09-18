@@ -1,6 +1,6 @@
 # Bounded runtime `duplicates` migration evidence
 
-Status: implementation complete; independent review and hosted acceptance pending
+Status: implementation and independent review complete; hosted acceptance pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -63,6 +63,11 @@ Policy checks also passed locally: `cargo deny check` reported advisories,
 bans, licenses, and sources ok; `cargo audit -D warnings` completed without
 reported vulnerabilities. The metadata-driven geiger scan and hosted workflow
 evidence remain part of the acceptance gate.
+
+The independent review of `535d37c` found no actionable issues. It confirmed
+the report alias, NULL-equal grouping, checked aggregate arithmetic, collision-
+safe aliases, exact diagnostics, and read-only failure preservation. The review
+record is in `03-review.md`; hosted PR-head and post-merge links remain pending.
 
 The implementation is read-only after `use` publishes an eager relation:
 
