@@ -314,9 +314,9 @@ Port TabDat's language before implementing most execution.
   as `5735b43`;
   active-schema lookup, wildcard/range expansion, relation mutation, and
   execution remain deferred until a later data-runtime slice).
-- [ ] Add the bounded direct `sort <varlist>` syntax slice (draft PR #27;
-  acceptance pending; active-schema lookup, row sorting, and execution remain
-  deferred until a later data-runtime slice).
+- [x] Add the bounded direct `sort <varlist>` syntax slice (PR #27, merged as
+  `7cf21ae`; active-schema lookup, row sorting, and execution remain deferred
+  until a later data-runtime slice).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

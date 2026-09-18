@@ -1,7 +1,7 @@
 # `sort` syntax slice review
 
-Status: independently reviewed; current-head hosted checks passed; readiness,
-merge, branch cleanup, and post-merge verification are pending.
+Status: accepted. Independent review, hosted checks, readiness, squash merge,
+branch cleanup, and post-merge verification are complete and recorded below.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -43,10 +43,14 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
   current-state notes are now present in the current PR.
 - The complete hosted set for `dc82d92` passed: policy, Rust baseline, runtime
   boundary, ReadStat, and libgretl jobs are linked in the evidence artifact.
+- Merge-triggered checks for `7cf21ae` passed: policy, Rust baseline, runtime
+  boundary, ReadStat, and libgretl jobs are linked in the evidence artifact;
+  the temporary branch was deleted locally and remotely.
 
 ## Disposition
 
-Ready for acceptance: the bounded implementation, independent reviews, pinned
-oracle/local/policy evidence, current-state draft notes, and complete hosted
-checks are green. PR #27 can now be marked ready and squash-merged; the
-temporary branch must then be deleted and post-merge `main` checks recorded.
+Accepted bounded slice: the implementation, independent reviews, pinned
+oracle/local/policy evidence, current-state notes, complete PR-head hosted
+checks, squash merge as `7cf21ae`, branch cleanup, and merge-triggered `main`
+checks are green. Documentation-only closeout checks remain to be appended to
+the evidence ledger after this update.

@@ -1,7 +1,8 @@
 # `sort` syntax migration evidence
 
-Status: implementation complete; hosted acceptance and final merge disposition
-are pending.
+Status: accepted. Implementation, hosted acceptance, squash merge, branch
+cleanup, and post-merge verification are recorded below; documentation-only
+closeout checks will be appended after this ledger update.
 
 Producer: task owner
 
@@ -158,8 +159,27 @@ from `feat/parser-sort-syntax`. The latest implementation/evidence head
 - [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35295649276/jobs/105447526997)
   (passed, 1m9s).
 
-The PR is ready for the final review/readiness transition. Squash merge,
-temporary-branch cleanup, and post-merge `main` checks remain to be recorded.
+PR #27 was marked ready and squash-merged as `7cf21ae65cb159199661e9ba98ea52c9ef94e0fb`.
+The temporary `feat/parser-sort-syntax` branch was deleted locally and from
+the remote. Merge-triggered checks for the merge commit passed:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683135/jobs/105456476684)
+  (passed, 16m33s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683135/jobs/105456476690)
+  (passed, 20m41s);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683143/jobs/105456476476)
+  (passed, 20m27s);
+- [ReadStat Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683093/jobs/105456476739)
+  (passed, 56s);
+- [ReadStat feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683093/jobs/105456476544)
+  (passed, 26s);
+- [libgretl OLS Rust check on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683095/jobs/105456476416)
+  (passed, 1m5s);
+- [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683150/jobs/105456476403)
+  (passed, 1m44s).
+
+The accepted-state documentation-only closeout run will be appended after
+this ledger commit.
 
 ## Supported and deferred behavior
 

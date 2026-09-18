@@ -18,9 +18,8 @@ statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
-Draft PR #27 records the bounded syntax-only `sort <varlist>` parser candidate;
-until that PR is accepted, `sort` is not part of the current supported command
-surface and all relation sorting semantics remain deferred.
+Merged PR #27 (`7cf21ae`) adds the verified syntax-only `sort <varlist>` form;
+active-schema lookup, row sorting, and execution remain deferred.
 
 ## Verified slice: reproducible build baseline
 
@@ -391,6 +390,22 @@ The contract and migration evidence are in
 `_workspace/parser-select-syntax/`. The focused/full oracle, local locked and
 policy checks, seven PR-head hosted jobs, squash merge, branch cleanup, and
 post-merge `main` verification are recorded there as passed.
+
+## Verified slice: syntax-only `sort` command
+
+Merged PR #27 (`7cf21ae`) adds direct, backend-independent `sort <varlist>`
+syntax to `tabdat-language`. The parser returns an owned ordered variable list,
+preserves duplicates and quoted/backtick names, and records the pinned Python
+diagnostics for conditions, options, assignments, punctuation, and quote
+boundaries. Runtime execution remains an explicit unsupported-command result;
+active-schema lookup, wildcard/range expansion, stable/null/descending or
+expression sorting, relation mutation, and execution are deferred.
+
+The contract and migration evidence are in
+`_workspace/parser-sort-syntax/`. The focused/full oracle, local locked and
+policy checks, independent reviews, seven PR-head hosted jobs, squash merge,
+branch cleanup, and post-merge `main` verification are recorded there as
+passed.
 
 ## Verified slice: dependency and unsafe-code checks
 
