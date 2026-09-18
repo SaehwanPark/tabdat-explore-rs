@@ -1,7 +1,7 @@
 # Contract: syntax-only `save` and `export`
 
-Status: frozen bounded contract; implementation and acceptance evidence are
-pending on the feature branch.
+Status: accepted after PR #29 (`8b16223`) squash merge; persistence/output
+execution remains deferred.
 
 Selected skills: `tabdat-migration`, `simple-code-writer`
 

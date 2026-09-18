@@ -25,7 +25,7 @@ Merged PR #28 (`fd94133`) adds the verified syntax-only `gsort [+|-]varlist`
 form. Direction metadata is parsed only; active-schema lookup, ordering, and
 execution remain deferred.
 
-PR #29 adds the bounded syntax-only `save <path> [, replace]` and
+Merged PR #29 (`8b16223`) adds the bounded syntax-only `save <path> [, replace]` and
 `export <path> [, replace]` forms. The language layer owns the lexical path and
 replacement flag; filesystem validation, active-dataset access, output formats,
 and persistence remain deferred.

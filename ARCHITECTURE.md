@@ -54,7 +54,7 @@ Merged PR #28 (`fd94133`) records the accepted backend-independent syntax-only
 `gsort [+|-]varlist` form. Direction metadata is parsed, while row ordering and
 all relation effects remain deferred.
 
-PR #29 records the bounded backend-independent syntax-only `save` and `export`
+Merged PR #29 (`8b16223`) records the bounded backend-independent syntax-only `save` and `export`
 forms. Their owned paths and `replace` flags are parsed without filesystem or
 active-relation effects; writing, format validation, and persistence remain
 deferred.

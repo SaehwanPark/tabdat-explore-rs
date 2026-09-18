@@ -40,7 +40,7 @@ Merged PR #28 (`fd94133`) adds the owned syntax-only `gsort [+|-]varlist` form.
 Direction metadata is owned in typed keys, while active-schema lookup, ordering,
 relation mutation, and execution remain deferred.
 
-PR #29 adds the owned syntax-only `save <path> [, replace]` and
+Merged PR #29 (`8b16223`) adds the owned syntax-only `save <path> [, replace]` and
 `export <path> [, replace]` forms. Path parsing and the replacement flag are
 typed, while filesystem checks, output formats, active-dataset access, writing,
 and persistence effects remain deferred.

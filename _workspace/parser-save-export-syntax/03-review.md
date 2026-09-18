@@ -1,7 +1,7 @@
 # Review: syntax-only `save` and `export`
 
-Status: partial — bounded implementation review is complete; hosted acceptance,
-merge, and branch-cleanup gates remain pending.
+Status: accepted after PR #29 (`8b16223`) squash merge; post-merge main
+verification is pending this documentation closeout.
 
 Reviewer: independent read-only parser reviewer, reconciled by task owner
 
@@ -19,9 +19,10 @@ Reviewer: independent read-only parser reviewer, reconciled by task owner
 - [x] Run the pinned focused and parser/script oracle suites.
 - [x] Run local locked Rust, formatting, Clippy, diff, advisory, license, and
   first-party unsafe-code checks.
-- [ ] Confirm all required PR-head hosted jobs pass.
-- [ ] Mark PR ready, merge, delete the temporary branch, and record post-merge
-  main checks.
+- [x] Confirm all required PR-head hosted jobs pass.
+- [x] Mark PR ready, squash-merge PR #29, and delete the temporary branch
+  locally and remotely.
+- [ ] Record post-merge main checks after this documentation closeout.
 
 ## Evidence reviewed
 
@@ -55,8 +56,5 @@ Both are named in the contract and evidence ledger and require a later tokenizer
 
 ## Required follow-up
 
-Complete the hosted PR checks, promote PR #29 from draft after the bounded review
-remains green, squash-merge it, remove `feat/parser-save-export-syntax` locally
-and remotely, then update this ledger and `02-evidence-migration.md` with the
-merge commit, hosted job links, and post-merge `main` verification. Keep Phase
-6.5 persistence/output unchecked.
+Run and record the post-merge `main` checks for this documentation closeout.
+Keep Phase 6.5 persistence/output unchecked.

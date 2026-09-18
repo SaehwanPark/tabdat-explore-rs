@@ -1,7 +1,8 @@
 # `save`/`export` syntax migration evidence
 
-Status: partial — local/oracle/policy/review evidence is complete; PR-head
-hosted checks and merge cleanup are pending.
+Status: accepted after PR #29 (`8b16223`) squash merge. Oracle, local, policy,
+independent-review, hosted, merge, and branch-cleanup evidence are recorded
+below; post-merge main verification is pending this documentation closeout.
 
 Producer: task owner, with independent parser review
 
@@ -28,6 +29,7 @@ performed. The frozen contract is in `01-contract.md`.
   explicit unsupported-runtime regressions;
 - `0afb8c5`: current-state and roadmap documentation for the bounded syntax
   scope.
+- `8b16223`: squash merge of PR #29 to `main`.
 
 Changed implementation paths:
 
@@ -130,10 +132,25 @@ as migrated tokenizer behavior.
 ## Hosted acceptance and completion state
 
 PR #29 (`https://github.com/SaehwanPark/tabdat-explore-rs/pull/29`) was opened
-as a draft before implementation. The current head is `0afb8c5`; its required
-Rust baseline, policy, and runtime-boundary workflows are pending at the time of
-this evidence update. The slice is therefore `partial` until those hosted jobs
-pass, the PR is marked ready, merged, and the temporary branch is removed.
+as a draft before implementation, promoted to ready after review, and squash-
+merged as `8b162232cb31df75dbd96f4ae3c75842533904b4` on 2026-09-18. All
+required PR-head jobs passed:
+
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703919/job/105492018946), 21m45s;
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703919/job/105492019104), 19m19s;
+- [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703932/job/105492019610), 20m39s;
+- [ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703944/job/105491967338), 26s;
+- [ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703944/job/105491967136), 25s;
+- [libgretl OLS Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703923/job/105491966960), 1m14s;
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703934/job/105491966968), 1m8s.
+
+The temporary `feat/parser-save-export-syntax` branch was deleted locally and
+on the remote after merge. The closeout commit is now on `main`; its post-merge
+checks are pending below. The migration state is `accepted` for the bounded
+syntax-only contract.
+
+Post-merge main verification will be appended after this documentation update
+is pushed.
 
 No backend, filesystem, active-dataset, overwrite, output-format, reporting, or
 serialization claim is made here. Phase 6.5 persistence/output work remains
