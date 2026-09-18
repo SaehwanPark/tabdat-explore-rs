@@ -320,6 +320,9 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `gsort [+|-]varlist` syntax slice (PR #28, merged
   as `fd94133`; direction metadata only, with active-schema lookup, row ordering,
   and execution deferred until a later data-runtime slice).
+- [x] Add the bounded direct `save <path> [, replace]` and `export <path> [, replace]`
+  syntax slice (PR #29; filesystem validation, output formats, persistence, and
+  execution remain deferred until a later data-runtime slice).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

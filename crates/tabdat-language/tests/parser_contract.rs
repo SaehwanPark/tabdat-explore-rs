@@ -707,6 +707,95 @@ fn run_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn save_and_export_are_public_syntax_only_commands() {
+  assert_eq!(
+    parse_command(" SAVE output.parquet ").unwrap(),
+    Command::Save {
+      path: "output.parquet".to_owned(),
+      replace: false,
+    }
+  );
+  assert_eq!(
+    parse_command("export \"my output.parquet\", replace").unwrap(),
+    Command::Export {
+      path: "my output.parquet".to_owned(),
+      replace: true,
+    }
+  );
+  assert_eq!(
+    parse_command("save `a,b`, replace replace").unwrap(),
+    Command::Save {
+      path: "a,b".to_owned(),
+      replace: true,
+    }
+  );
+  assert_eq!(
+    parse_command("save:out.parquet").unwrap(),
+    Command::Save {
+      path: ":out.parquet".to_owned(),
+      replace: false,
+    }
+  );
+  assert_eq!(
+    parse_command("export/out.csv").unwrap(),
+    Command::Export {
+      path: "/out.csv".to_owned(),
+      replace: false,
+    }
+  );
+}
+
+#[test]
+fn save_and_export_preserve_exact_public_diagnostics() {
+  let cases = [
+    ("save", "save expects exactly one path"),
+    ("save one two", "save expects exactly one path"),
+    ("export", "export expects exactly one path"),
+    ("export one two", "export expects exactly one path"),
+    (
+      "save out if x > 0",
+      "save does not accept if clauses or assignment syntax",
+    ),
+    (
+      "export out = x",
+      "export does not accept if clauses or assignment syntax",
+    ),
+    ("save if", "missing expression after if"),
+    ("save = out", "save assignment requires a target before ="),
+    (
+      "export out =",
+      "export assignment requires an expression after =",
+    ),
+    ("save out,", "comma must be followed by at least one option"),
+    ("save out, force", "save unsupported option: force"),
+    ("export out, REPLACE", "export unsupported option: REPLACE"),
+    (
+      "save out, replace=true",
+      "save option replace does not accept a value",
+    ),
+    (
+      "export out, replace(foo)",
+      "export option replace does not accept a value",
+    ),
+    ("save out@x", "unsupported token in command: @"),
+    ("export@out", "unsupported token in command: @"),
+    (
+      "save out, replace, replace",
+      "option names must be identifiers",
+    ),
+    ("save ``, replace", "quoted identifier cannot be empty"),
+    ("export \"unterminated", "unterminated quoted string"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn rename_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" rename sex gender ").unwrap(),

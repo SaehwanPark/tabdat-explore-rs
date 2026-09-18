@@ -222,6 +222,8 @@ fn command_name(command: &Command) -> &'static str {
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
+    Command::Save { .. } => "save",
+    Command::Export { .. } => "export",
     Command::Use { .. } => "use",
     Command::Count => "count",
     Command::Head { .. } => "head",
