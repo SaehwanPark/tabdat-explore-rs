@@ -1,7 +1,7 @@
 # Review: bounded runtime `describe`
 
 Status: independent review complete; PR #31 was marked ready and squash-merged
-as `6fccd5d`. Final post-merge `main` verification is green.
+as `6fccd5d`. Final post-merge `main` verification and docs-only CI are green.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -66,3 +66,5 @@ deleted locally and remotely. Post-merge `main` verification passed at
 - [main tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330482045/job/105553443539), 20m57s.
 
 The closeout push also passed ReadStat and both libgretl feasibility workflows.
+The final docs-only head `7018ef11de2ae6ece6331d4a275e636f8cede87b` passed
+[main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35332474871).
