@@ -1,7 +1,7 @@
 # Review: syntax-only `save` and `export`
 
-Status: accepted after PR #29 (`8b16223`) squash merge; post-merge main
-verification is pending this documentation closeout.
+Status: accepted after PR #29 (`8b16223`) squash merge; post-merge main and
+native workflow checks passed for the closeout head `72fe12f`.
 
 Reviewer: independent read-only parser reviewer, reconciled by task owner
 
@@ -22,7 +22,8 @@ Reviewer: independent read-only parser reviewer, reconciled by task owner
 - [x] Confirm all required PR-head hosted jobs pass.
 - [x] Mark PR ready, squash-merge PR #29, and delete the temporary branch
   locally and remotely.
-- [ ] Record post-merge main checks after this documentation closeout.
+- [x] Record post-merge main and native workflow checks for closeout head
+  `72fe12f`.
 
 ## Evidence reviewed
 
@@ -56,5 +57,5 @@ Both are named in the contract and evidence ledger and require a later tokenizer
 
 ## Required follow-up
 
-Run and record the post-merge `main` checks for this documentation closeout.
-Keep Phase 6.5 persistence/output unchecked.
+Post-merge `main` and native workflow checks are recorded in the evidence
+ledger and passed. Keep Phase 6.5 persistence/output unchecked.

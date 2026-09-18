@@ -1,8 +1,8 @@
 # `save`/`export` syntax migration evidence
 
 Status: accepted after PR #29 (`8b16223`) squash merge. Oracle, local, policy,
-independent-review, hosted, merge, and branch-cleanup evidence are recorded
-below; post-merge main verification is pending this documentation closeout.
+independent-review, hosted, merge, branch-cleanup, and post-merge main evidence
+are recorded below.
 
 Producer: task owner, with independent parser review
 
@@ -30,6 +30,8 @@ performed. The frozen contract is in `01-contract.md`.
 - `0afb8c5`: current-state and roadmap documentation for the bounded syntax
   scope.
 - `8b16223`: squash merge of PR #29 to `main`.
+- `72fe12f`: post-merge acceptance documentation on `main`; all current-head
+  hosted checks passed and are linked below.
 
 Changed implementation paths:
 
@@ -145,12 +147,20 @@ required PR-head jobs passed:
 - [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35310703934/job/105491966968), 1m8s.
 
 The temporary `feat/parser-save-export-syntax` branch was deleted locally and
-on the remote after merge. The closeout commit is now on `main`; its post-merge
-checks are pending below. The migration state is `accepted` for the bounded
-syntax-only contract.
+on the remote after merge. The closeout commit is on `main`, and the current
+post-merge checks for that head all passed:
 
-Post-merge main verification will be appended after this documentation update
-is pushed.
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312289002/job/105496672112), 21m3s;
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312289002/job/105496671966), 19m17s;
+- [ReadStat Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312289018/job/105496619045), 23s;
+- [ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312289018/job/105496618947), 56s;
+- [libgretl OLS Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312288924/job/105496618277), 1m13s;
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35312289016/job/105496670938), 1m7s.
+
+The local verification at this closeout recorded `main` and `origin/main` at
+`72fe12fc49ed7c3bec5d81d7d1f52801dd058f35`, with no temporary remote branch
+remaining. The migration state is `accepted` for the bounded syntax-only
+contract.
 
 No backend, filesystem, active-dataset, overwrite, output-format, reporting, or
 serialization claim is made here. Phase 6.5 persistence/output work remains
