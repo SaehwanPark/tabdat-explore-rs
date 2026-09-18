@@ -75,7 +75,7 @@ non-numeric validation, and read-only active metadata.
 
 ## Rust and policy checks
 
-At implementation revision `862977a`, the required local checks passed:
+At implementation revision `0a55b58`, the required local checks passed:
 
 ```text
 cargo fmt --all -- --check                              passed
@@ -94,14 +94,15 @@ The policy checks passed locally:
 ```text
 cargo deny check                                        advisories, bans, licenses, sources ok
 cargo audit -D warnings                                 passed; no vulnerabilities reported
-metadata-driven cargo geiger                            running/record pending
+metadata-driven cargo geiger                            passed; first-party packages
+                                                         forbid unsafe and use zero unsafe
 ```
 
 The geiger loop follows the all-package assertion in `CONTRIBUTING.md`: it
 resolves every workspace package from locked metadata, checks
 `forbid(unsafe_code)` and zero first-party unsafe usage, and treats transitive
-dependency inventory warnings as non-first-party findings. Its final result
-will be recorded before the PR is marked ready.
+dependency inventory warnings as non-first-party findings. The loop completed
+successfully for every first-party workspace package.
 
 ## State and parity evidence
 
@@ -125,8 +126,8 @@ deferrals.
 
 ## Hosted acceptance and completion state
 
-PR-head baseline, runtime, and policy checks are pending at the time this
-evidence was drafted. After independent review, PR #35 will be marked ready,
+PR-head baseline, runtime, and policy checks are pending after the final test
+coverage push. After independent review, PR #35 will be marked ready,
 squash-merged, and its temporary branch deleted locally and remotely. The
 roadmap checkbox and this document will be updated only after post-merge main
 workflows and docs-inclusive validation are green.
