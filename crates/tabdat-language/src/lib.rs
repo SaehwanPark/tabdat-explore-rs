@@ -26,7 +26,7 @@ pub enum Command {
   Missing { variables: Vec<String> },
   /// Report duplicate key groups in the bounded eager runtime.
   Duplicates { variables: Vec<String> },
-  /// Assert key uniqueness for selected variables (execution is deferred).
+  /// Assert key uniqueness for selected variables in the bounded eager runtime.
   Isid {
     variables: Vec<String>,
     missok: bool,
