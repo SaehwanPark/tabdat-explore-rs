@@ -1,7 +1,7 @@
 # Review: bounded runtime `describe`
 
 Status: independent review complete; PR #31 was marked ready and squash-merged
-as `6fccd5d`. Final post-merge `main` verification is pending this closeout.
+as `6fccd5d`. Final post-merge `main` verification is green.
 
 Reviewer: independent read-only runtime reviewer, reconciled by task owner
 
@@ -19,7 +19,7 @@ Reviewer: independent read-only runtime reviewer, reconciled by task owner
 - [x] Confirm current-head hosted Rust, policy, and runtime jobs pass.
 - [x] Mark PR ready, squash-merge PR #31, and delete the temporary branch
   locally and remotely.
-- [ ] Record post-merge `main` verification.
+- [x] Record post-merge `main` verification.
 
 ## Evidence reviewed
 
@@ -58,5 +58,11 @@ Hosted checks passed on docs-inclusive head `402b6e5`:
 
 The PR was marked ready, squash-merged as
 `6fccd5ded1e6d45d3f77534bc507a511adfe0c41`, and its temporary branch was
-deleted locally and remotely. Post-merge `main` verification remains required
-before this evidence is accepted.
+deleted locally and remotely. Post-merge `main` verification passed at
+`e737897d6f94dedcca2444267577145e4ee4e6bd`:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635949/job/105553999096), 19m49s;
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635949/job/105553999315), 20m28s; and
+- [main tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330482045/job/105553443539), 20m57s.
+
+The closeout push also passed ReadStat and both libgretl feasibility workflows.

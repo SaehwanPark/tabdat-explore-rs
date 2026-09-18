@@ -1,7 +1,7 @@
 # Bounded runtime `describe` migration evidence
 
 Status: accepted after PR #31 squash merge `6fccd5d`; post-merge `main`
-verification is pending this closeout commit.
+verification and final hosted workflow checks are green.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -33,7 +33,8 @@ not add a query, relation, lazy plan, or backend initialization path.
 - `fb608d3`: migration evidence, independent review, and current-head hosted
   check links.
 - `6fccd5d`: squash merge of PR #31 to `main` with temporary branch cleanup;
-- this closeout revision: roadmap acceptance and final main-workflow links.
+- `e737897`: roadmap acceptance and post-merge main-workflow links;
+- final closeout revision: docs-only evidence status and confirmation.
 
 Changed implementation paths:
 
@@ -129,5 +130,11 @@ all required hosted jobs:
 
 The independent review found no P0/P1/P2/P3 findings. The PR was marked ready,
 squash-merged as `6fccd5ded1e6d45d3f77534bc507a511adfe0c41`, and its temporary
-branch was deleted locally and remotely. Post-merge `main` verification is the
-remaining closeout item.
+branch was deleted locally and remotely. Post-merge `main` verification passed
+at `e737897d6f94dedcca2444267577145e4ee4e6bd`:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635949/job/105553999096), 19m49s;
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635949/job/105553999315), 20m28s; and
+- [main tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330482045/job/105553443539), 20m57s.
+
+The same closeout push also passed the [ReadStat feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635991), [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635978), and [libgretl feasibility spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35330635960). Local `main` and `origin/main` now point at the closeout revision, and the temporary remote branch is absent.
