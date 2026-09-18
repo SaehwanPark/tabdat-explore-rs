@@ -413,7 +413,12 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   requested/default key order, checked aggregate metrics, and read-only state
   are covered. Lazy/materialized execution, last-operation state, labels,
   wildcard/range expansion, formatting, CLI, JSON, and MCP remain deferred.
-- [ ] `isid`
+- [x] `isid` — bounded eager local-Parquet key-uniqueness assertion
+  (`IsidResult`; PR #39, squash merge `e04def0`). Ordered/repeated key requests,
+  SQL-NULL-equal groups, `missok` gating, duplicate-group failures, checked
+  aggregate metrics, exact diagnostics, and read-only state are covered.
+  Lazy/materialized execution, last-operation state, labels, wildcard/range
+  expansion, formatting, CLI, JSON, and MCP remain deferred.
 - [ ] `datasignature`
 - [ ] `assert`
 - [x] `count` — bounded eager local-Parquet active-dataset row count

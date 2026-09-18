@@ -1,6 +1,6 @@
 # Independent review: bounded eager-runtime `isid`
 
-Status: independent review complete; hosted acceptance pending
+Status: accepted bounded eager-runtime slice
 
 ## Review scope
 
@@ -24,7 +24,6 @@ surfaces, and broader relation APIs remain deferred by the contract.
 
 ## Acceptance gate
 
-The PR may be marked ready only after contract/evidence updates, independent
-review, and all required PR-head workflows are green. After squash merge, the
-temporary branch must be deleted locally and remotely, and final post-merge
-workflow links must be recorded in `02-evidence-migration.md`.
+The acceptance gate passed: contract/evidence updates, independent review, all
+required PR-head workflows, squash merge, branch cleanup, and all post-merge
+workflows are recorded in `02-evidence-migration.md`.

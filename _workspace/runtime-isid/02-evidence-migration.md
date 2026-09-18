@@ -1,6 +1,6 @@
 # Bounded runtime `isid` migration evidence
 
-Status: implementation and independent review complete; hosted acceptance pending
+Status: accepted bounded eager-runtime slice
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -64,8 +64,32 @@ all passed; first-party packages reported forbid(unsafe_code) and zero unsafe us
 ```
 
 The pinned Python focused module remains `20 passed in 0.54s`. The independent
-review in `03-review.md` reported no actionable findings. PR-head workflow links
-and post-merge workflow links will be recorded after hosted acceptance.
+review in `03-review.md` reported no actionable findings.
+
+## Hosted acceptance and cleanup
+
+PR #39 was marked ready only after all PR-head gates passed for commit `7feefdf`:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35401533278),
+  including [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35401533278/job/105782364157)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35401533278/job/105782364183);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35401533227)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35401533227/job/105782597582)).
+
+PR #39 was squash-merged as
+[`e04def0`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e04def037a829db4cb4f969cd364aeb9aacae348)
+and the temporary `feat/runtime-isid` branch was deleted locally and remotely.
+All workflows triggered by that merge completed successfully:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193938),
+  including [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193938/job/105787356806)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193938/job/105787357091);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193942)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35403193942/job/105787356790)).
+
+This bounded migration is accepted. Lazy/materialized execution,
+`last_operation`, labels, wildcard/range expansion, formatting, CLI/REPL,
+JSON/MCP, and broader relation APIs remain explicit deferrals.
 
 ## Planned implementation and state checks
 

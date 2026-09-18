@@ -1,6 +1,6 @@
 # Contract: bounded eager-runtime `isid`
 
-Status: contract recovered; implementation complete; hosted acceptance pending
+Status: accepted bounded eager-runtime slice
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
@@ -139,5 +139,7 @@ Test the observable result and state independently:
   APIs.
 
 Contract recovery is `complete` for the pinned Python behavior. The bounded
-Rust implementation is complete in commit `3a183ea` on draft PR #39; hosted
-workflow and post-merge evidence remain pending before final acceptance.
+Rust implementation is in commit `3a183ea`, squash-merged through PR #39 as
+`e04def037a829db4cb4f969cd364aeb9aacae348`; the temporary branch was deleted
+locally and remotely. Hosted and post-merge acceptance evidence is recorded in
+`02-evidence-migration.md`.

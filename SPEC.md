@@ -125,7 +125,7 @@ This syntax-only slice did not itself establish `head`/`tail` execution,
 active-dataset preconditions, row-order and missingness guarantees, backend
 range conversion, results, or reporting. Separate bounded eager-runtime slices
 now cover `describe`, `count`, `head`, `tail`, `summarize`, `codebook`, `missing`,
-and `duplicates`; lazy/materialized behavior and broader reporting remain
+`duplicates`, and `isid`; lazy/materialized behavior and broader reporting remain
 roadmap work.
 
 ## Verified slice: syntax-only describe command
@@ -341,6 +341,28 @@ This slice leaves lazy/materialized execution, last-operation state, labels,
 wildcard/range expansion, formatting, CLI/REPL, JSON/MCP surfaces, and broader
 relation APIs deferred.
 
+## Verified slice: bounded eager-runtime `isid` command
+
+Merged PR #39 (`e04def0`) adds the bounded eager local-Parquet
+`isid [varlist] [, missok]` execution path to `tabdat-runtime`. It validates an
+active dataset and every requested key before querying, preserves ordered and
+repeated key variables, groups SQL NULL values equally, counts rows with any
+missing key component, and returns an owned `IsidResult` when all requested
+constraints pass. Missing-key rows fail unless `missok` is present; duplicate
+key groups fail regardless of `missok`. Empty relations pass with zero counts,
+and both successful and failed requests preserve active metadata and the private
+relation.
+
+Evidence: `_workspace/runtime-isid/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its unit/integration tests. The pinned focused oracle,
+locked Rust checks, policy scans, independent review, all PR-head and post-merge
+hosted jobs, the squash merge, and branch cleanup are recorded in the migration
+evidence.
+
+This slice leaves lazy/materialized execution, last-operation state, labels,
+wildcard/range expansion, formatting, CLI/REPL, JSON/MCP surfaces, and broader
+relation APIs deferred.
+
 ## Verified slice: syntax-only `summarize` command
 
 PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax
@@ -372,23 +394,21 @@ PR #23 adds direct, backend-independent `isid [varlist] [, missok]` syntax to
 `tabdat-language`. The parser returns an owned ordered key-variable list and an
 exact-lowercase `missok` flag, preserving the bounded pinned-Python diagnostics
 for missing keys, unsupported conditions/options/assignments, option values,
-trailing commas, and unsupported punctuation. Runtime execution remains an
-explicit typed unsupported-command error; no active dataset or backend is
-accessed.
+trailing commas, and unsupported punctuation. This syntax-only section does not
+describe the bounded eager execution path documented separately below.
 
 Evidence: `_workspace/parser-isid-syntax/{01-contract,02-evidence-migration,03-review}.md`,
 the implementation, and its unit/integration tests. The focused `isid` oracle
 check passed with `1 passed, 19 deselected`, and the full pinned parser/script
 oracle passed with `516 passed` at Python revision
-`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`. Locked Rust checks, policy scans,
-and independent review are being recorded in the evidence files; hosted checks
-and the eventual merge commit will be recorded there after acceptance.
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`.
 
-This slice leaves wildcard/range expansion, unknown-variable validation,
-null-key and duplicate-key semantics, active-relation/schema behavior, key
-scans, result/reporting/serialization, full tokenizer/varlist/option and
-expression grammar, scripts, CLI/JSON/MCP surfaces, and backend capability
-initialization to later roadmap work.
+This syntax-only slice leaves wildcard/range expansion, unknown-variable
+validation, null-key and duplicate-key semantics, active-relation/schema
+behavior, key scans, result/reporting/serialization, full tokenizer/varlist/
+option and expression grammar, scripts, CLI/JSON/MCP surfaces, and backend
+capability initialization to later roadmap work; bounded runtime semantics are
+covered separately above.
 
 ## Verified slice: syntax-only `run <script-path>`
 
