@@ -16,7 +16,7 @@ pub enum Command {
   Describe,
   /// Inspect environment and capability health (execution is deferred).
   Doctor,
-  /// Compute descriptive statistics for selected columns (execution is deferred).
+  /// Compute descriptive statistics for selected columns.
   Summarize { variables: Vec<String> },
   /// Compute a signature for the active dataset (execution is deferred).
   Datasignature,

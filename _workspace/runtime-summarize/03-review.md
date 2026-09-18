@@ -1,7 +1,7 @@
 # Independent review: bounded eager-runtime `summarize`
 
-Status: independent review complete; acceptance pending hosted checks and
-post-merge evidence.
+Status: accepted after PR #35 squash merge `f2b7ed7`; post-merge hosted
+workflows are green and the temporary branch is deleted.
 
 ## Review scope
 
@@ -27,5 +27,6 @@ fixture extension rather than a blocker.
 
 ## Acceptance gate
 
-Pending PR-head and post-merge hosted checks, contract acceptance, and deletion
-of the temporary branch.
+PR-head and post-merge hosted checks are green, the contract is accepted, and
+the temporary branch was deleted locally and remotely. The acceptance evidence
+is recorded in `02-evidence-migration.md`.

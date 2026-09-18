@@ -1,7 +1,7 @@
 # Bounded runtime `summarize` migration evidence
 
-Status: implementation and local validation complete; acceptance pending
-independent review, PR-head checks, merge, and post-merge hosted evidence.
+Status: accepted after PR #35 squash merge `f2b7ed7`; independent review,
+PR-head checks, post-merge hosted workflows, and branch cleanup are complete.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -30,7 +30,11 @@ materialization, transforms, or presentation surfaces.
 - `96b0eef`: recovered the summarize contract and opened draft PR #35;
 - `862977a`: added owned summary results, eager DuckDB aggregates, typed
   diagnostics, and state/NULL/order/type tests; and
-- documentation closeout and hosted evidence: pending acceptance.
+- `0a55b58`: added the reviewed single-value standard-deviation assertion and
+  final integration coverage;
+- `f2b7ed7`: squash-merged PR #35 after independent review and green hosted
+  checks; and
+- documentation closeout: this acceptance record.
 
 PR #35 ([Execute bounded runtime summarize](https://github.com/SaehwanPark/tabdat-explore-rs/pull/35))
 was opened as a draft before implementation.
@@ -62,7 +66,7 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 Observed result:
 
 ```text
-13 passed, 404 deselected in 1.01s
+13 passed, 404 deselected in 1.67s
 ```
 
 The authoritative no-active error is exactly:
@@ -126,8 +130,18 @@ deferrals.
 
 ## Hosted acceptance and completion state
 
-PR-head baseline, runtime, and policy checks are pending after the final test
-coverage push. After independent review, PR #35 will be marked ready,
-squash-merged, and its temporary branch deleted locally and remotely. The
-roadmap checkbox and this document will be updated only after post-merge main
-workflows and docs-inclusive validation are green.
+PR #35 ([Execute bounded runtime summarize](https://github.com/SaehwanPark/tabdat-explore-rs/pull/35))
+was marked ready after independent review, squash-merged as `f2b7ed7`, and its
+temporary branch was deleted locally and remotely. The PR-head checks were
+green: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35364985476)
+([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35364985476/job/105665278637),
+[policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35364985476/job/105665278928))
+and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35364985490/job/105665443131).
+
+The post-merge `main` checks for `f2b7ed7` were also green:
+[CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197025)
+([policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197025/job/105672401727),
+[Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197025/job/105672402019))
+and [runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35367197020/job/105672401507).
+Docs-inclusive workflows for this closeout are recorded in the follow-up
+evidence commit after this documentation push.

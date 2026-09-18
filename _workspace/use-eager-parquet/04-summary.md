@@ -14,7 +14,7 @@ current-state files below are the durable record of what was accepted.
 The slice implements one eager `Command::Use` of an existing local Parquet file
 through a private DuckDB adapter. Broad `use` parity, lazy/remote/other-format
 loading, general relation APIs, broad inspect execution beyond bounded
-`describe`/`count`/`head`/`tail`, CLI/REPL, scripts,
+`describe`/`count`/`head`/`tail`/`summarize`, CLI/REPL, scripts,
 reporting, JSON/MCP, and production DuckDB packaging remain deferred.
 
 ## Durable records

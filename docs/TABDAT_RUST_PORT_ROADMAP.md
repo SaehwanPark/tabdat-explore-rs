@@ -396,7 +396,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   (`DescribeResult`; PR #31, squash merge `6fccd5d`). Broader inspection,
   lazy/materialized behavior, labels, formatting, CLI, and MCP surfaces remain
   deferred.
-- [ ] `summarize`
+- [x] `summarize` — bounded eager local-Parquet numeric summary execution
+  (`SummarizeResult`/`SummaryRow`; PR #35, squash merge `f2b7ed7`). Broader
+  grouped/lazy/materialized behavior, unsupported numeric/container values,
+  formatting, CLI, and MCP surfaces remain deferred.
 - [ ] `codebook`
 - [ ] `missing`
 - [ ] `duplicates`

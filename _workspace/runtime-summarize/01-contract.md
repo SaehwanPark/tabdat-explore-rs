@@ -1,6 +1,7 @@
 # Contract: bounded eager-runtime `summarize`
 
-Status: recovered contract; implementation pending.
+Status: accepted after PR #35 squash merge `f2b7ed7`; post-merge hosted
+workflows are green.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`
