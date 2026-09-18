@@ -1,8 +1,8 @@
 # `sort` syntax migration evidence
 
 Status: accepted. Implementation, hosted acceptance, squash merge, branch
-cleanup, and post-merge verification are recorded below; documentation-only
-closeout checks will be appended after this ledger update.
+cleanup, post-merge verification, and documentation-only closeout checks are
+recorded below.
 
 Producer: task owner
 
@@ -178,8 +178,24 @@ the remote. Merge-triggered checks for the merge commit passed:
 - [libgretl feasibility on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35298683150/jobs/105456476403)
   (passed, 1m44s).
 
-The accepted-state documentation-only closeout run will be appended after
-this ledger commit.
+The accepted-state documentation-only closeout commit was `e0649298793d2581a426b26a39ced2a50cf0fbaf`.
+Its hosted checks passed:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324221/jobs/105461408485)
+  (passed, 17m15s);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324221/jobs/105461408797)
+  (passed, 20m56s);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324230/jobs/105461408511)
+  (passed, 21s);
+- [ReadStat Rust check](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324230/jobs/105461408681)
+  (passed, 25s);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324215/jobs/105461408556)
+  (passed, 1m20s);
+- [libgretl OLS Rust check](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35300324223/jobs/105461408495)
+  (passed, 2m10s).
+
+The runtime-boundary workflow was correctly not triggered by this
+documentation-only commit. No implementation or dependency files changed.
 
 ## Supported and deferred behavior
 

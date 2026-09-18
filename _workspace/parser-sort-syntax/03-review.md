@@ -46,11 +46,16 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
 - Merge-triggered checks for `7cf21ae` passed: policy, Rust baseline, runtime
   boundary, ReadStat, and libgretl jobs are linked in the evidence artifact;
   the temporary branch was deleted locally and remotely.
+- The accepted-state documentation-only commit `e064929` passed policy,
+  Rust-baseline, ReadStat, and libgretl hosted checks; exact job links and
+  durations are recorded in the evidence artifact. The runtime-boundary
+  workflow was correctly skipped because no runtime paths changed.
 
 ## Disposition
 
 Accepted bounded slice: the implementation, independent reviews, pinned
 oracle/local/policy evidence, current-state notes, complete PR-head hosted
 checks, squash merge as `7cf21ae`, branch cleanup, and merge-triggered `main`
-checks are green. Documentation-only closeout checks remain to be appended to
-the evidence ledger after this update.
+checks are green, including the documentation-only closeout hosted checks for
+`e064929`. No implementation, dependency, or backend claim was added by the
+closeout documentation.
