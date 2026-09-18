@@ -1,8 +1,8 @@
 # `gsort` syntax migration evidence
 
-Status: implementation complete at `85b1a92`; local and oracle evidence are
-recorded below. Independent review, hosted checks, readiness, merge, branch
-cleanup, and post-merge verification are pending.
+Status: implementation complete at `44ac3ca`; oracle, local, policy, and
+independent-review evidence are recorded below. Hosted checks, readiness,
+merge, branch cleanup, and post-merge verification are pending.
 
 Producer: task owner
 
@@ -29,6 +29,8 @@ The frozen contract and source citations are in
 - `85b1a92`: added owned `SortKey`/`Command::Gsort`, direct dispatch including
   attached symbolic command suffixes, signed-key parsing, public/unit coverage,
   runtime command-name mapping, and explicit unsupported-runtime regression.
+- `44ac3ca`: collapsed the gsort direction-prefix condition so the required
+  clippy gate passes at the final implementation head.
 
 Changed implementation paths:
 
@@ -103,7 +105,7 @@ PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
 
 ## Rust checks at implementation head
 
-Focused locked checks passed at `85b1a92`:
+Focused locked checks passed at `44ac3ca`:
 
 ```text
 cargo fmt --all -- --check
@@ -113,6 +115,28 @@ cargo test --locked -p tabdat-language -p tabdat-runtime --all-targets
 git diff --check
 ```
 
+The full workspace and policy gates were then run at `44ac3ca`:
+
+```text
+cargo fmt --all -- --check                              passed
+cargo check --locked --workspace --all-targets          passed
+cargo test --locked --workspace --all-targets           passed
+cargo clippy --locked --workspace --all-targets -- -D warnings
+                                                         passed
+git diff --check                                        passed
+cargo deny check                                        passed
+cargo audit -D warnings                                 passed
+metadata-driven cargo geiger (all workspace packages,
+  locked/all-targets/all-dependencies JSON assertions)  passed
+```
+
+The first clippy attempt at the preceding documentation head `c7be0a2`
+reported `clippy::collapsible-if`; `44ac3ca` contains that mechanical fix and
+the final clippy result above is from the exact implementation head. The
+geiger loop followed `CONTRIBUTING.md`: it asserted one report per first-party
+package, `forbid(unsafe_code)`, and zero first-party unsafe usage, while keeping
+dependency-inventory warnings distinct from first-party safety.
+
 The runtime tests include `leaves_gsort_execution_deferred`, which returns the
 owned `UnsupportedCommand { name: "gsort" }` error without initializing or
 mutating a backend/session relation.
@@ -121,8 +145,8 @@ The syntax-only slice intentionally does not claim full tokenizer parity. The
 pinned Python parser rejects malformed numeric-looking keys such as `1.2.3`,
 where this owned simple-body path preserves raw symbolic key text; that remains
 deferred with the roadmap's tokenizer/varlist work. Attached command splitting
-uses a character-aware boundary so non-ASCII identifier continuations do not
-become accidental `gsort` keys.
+uses a character-aware boundary; exact Python Unicode classification remains
+deferred as recorded below.
 
 ## Hosted acceptance
 
@@ -141,4 +165,19 @@ deferral.
 Deferred are active-schema lookup, unknown-variable checks, stable/null/order
 semantics, lazy/backend execution, relation/session effects, `by:` wrappers,
 wildcard/range expansion, CLI/JSON/MCP output, malformed-number/tokenizer
-parity, and the roadmap's Phase 6.3 `gsort` transform behavior.
+parity, Unicode classification parity, attached-`if` condition parsing, quote
+diagnostics after early assignment/option delimiters, and the roadmap's Phase
+6.3 `gsort` transform behavior.
+
+Independent parser review also recorded these explicit out-of-contract probes:
+
+| Probe family | Pinned Python result | Current Rust result | Disposition |
+| --- | --- | --- | --- |
+| `gsort U+0345age` / attached `gsortU+0345age` | unsupported token in command | raw key / unknown command | deferred Unicode tokenizer parity |
+| `gsort if+score`, `if/score`, `if:score`, `if==x` | expression-token diagnostics | literal symbolic key | deferred condition/expression parsing |
+| `gsort if-score` | signed-list diagnostic | literal symbolic key | deferred condition/expression parsing |
+| `'gsort=``'` and `'gsort,``'` | empty quoted-identifier diagnostic | assignment/comma diagnostic | deferred quote scanning after early delimiters |
+
+The already-recorded `gsort 1.2.3` malformed-number difference has the same
+tokenizer-parity disposition. None of these probes expands the accepted
+contract or is presented as migrated behavior.

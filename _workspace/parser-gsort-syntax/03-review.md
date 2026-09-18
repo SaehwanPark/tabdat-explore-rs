@@ -1,8 +1,8 @@
 # `gsort` syntax slice review
 
-Status: implementation complete at `85b1a92`; independent review, hosted
-checks, readiness, merge, branch cleanup, and post-merge verification are
-pending.
+Status: implementation complete at `44ac3ca`; independent review is complete,
+while hosted checks, readiness, merge, branch cleanup, and post-merge
+verification are pending.
 
 Producer: task owner. Consumers: maintainers of the bounded parser contract.
 
@@ -41,10 +41,20 @@ Producer: task owner. Consumers: maintainers of the bounded parser contract.
   direction handling, quoted-sign distinction, attached forms, and exact
   diagnostics. It also identified malformed numeric-key handling as an
   intentional tokenizer-parity deferral, now recorded in the evidence ledger.
-- Hosted acceptance and workspace-scope review remain pending.
+- The independent parser review found three additional P2/P3 tokenizer-edge
+  differences: Python Unicode alphanumeric classification around U+0345,
+  attached `if` condition forms, and quote diagnostics after early assignment/
+  option delimiters. They are explicitly recorded as out-of-contract deferred
+  behavior in `01-contract.md` and `02-evidence-migration.md`; no parser or
+  execution scope was widened to absorb them.
+- The independent workspace-scope review found no actionable implementation,
+  ownership, backend, unsafe-code, dependency, or unrelated-file findings.
+- Local full baseline and policy gates passed at `44ac3ca`; hosted acceptance
+  remains pending on the current pushed head.
 
 ## Disposition
 
-Pending independent workspace review and the complete hosted check set. The
-bounded implementation is intended for acceptance only after those checks pass;
-the temporary branch must then be deleted and post-merge `main` checks recorded.
+Independent review is complete with the tokenizer limitations explicitly
+dispositioned as deferrals. Acceptance remains pending the complete hosted
+check set; the temporary branch must then be deleted and post-merge `main`
+checks recorded.

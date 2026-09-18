@@ -144,3 +144,26 @@ Deferred are active-schema lookup, unknown-variable checks, stable/null/order
 semantics, lazy/backend execution, relation/session effects, `by:` wrappers,
 wildcard/range expansion, CLI/JSON/MCP output, and full tokenizer/varlist
 parity. The roadmap's `gsort` runtime transform item remains unchecked.
+
+## Explicit tokenizer-parity deferrals
+
+The bounded contract does not claim parity for tokenizer edge cases outside the
+accepted forms above. Independent review recorded these pinned-oracle cases for
+the future tokenizer/condition slice:
+
+- Python's Unicode `str.isalnum()` boundary differs from Rust's standard
+  character classification for U+0345 (`gsort U+0345age` is an unsupported
+  token in Python, while the current Rust simple-body path preserves it as raw
+  key text; attached `gsortU+0345age` is an unsupported token in Python and an
+  unknown command in Rust).
+- Attached reserved `if` forms are still handled by the simple-body path as
+  literal symbolic keys (`if+score`, `if-score`, `if/score`, `if:score`, and
+  `if==x`), while Python enters condition parsing and emits expression/list
+  diagnostics.
+- Early assignment/option delimiters stop Rust before later quote scanning
+  (`'gsort=``'` and `'gsort,``'`), so Python's empty-quoted-identifier
+  diagnostic is not yet reproduced there.
+
+These cases remain explicit limitations, not acceptance claims; a later
+tokenizer/condition milestone must add oracle probes and exact Rust tests before
+their behavior is declared migrated.
