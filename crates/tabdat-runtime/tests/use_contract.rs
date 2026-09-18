@@ -1245,6 +1245,194 @@ fn duplicates_after_failed_replacement_keeps_the_prior_dataset() {
 }
 
 #[test]
+fn isid_reports_unique_keys_and_allows_missing_with_missok() {
+  let fixture = Fixture::new();
+  let path = fixture.write_parquet(
+    "isid-unique.parquet",
+    "SELECT * FROM (VALUES (1, 1, 'a'), (1, 2, 'b'), (2, 1, 'c'), (CAST(NULL AS INTEGER), 1, 'd'), (CAST(NULL AS INTEGER), 2, 'e')) AS key_data(patient_id, visit, status)",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&path))
+    .expect("isid fixture should load");
+  let expected = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  let result = session
+    .execute(parse_command("isid patient_id visit, missok").unwrap())
+    .expect("unique keys should pass with missok");
+  let ExecutionResult::Isid(report) = result else {
+    panic!("isid should return an Isid result");
+  };
+  assert_eq!(report.variables, vec!["patient_id", "visit"]);
+  assert_eq!(report.total_rows, 5);
+  assert_eq!(report.unique_groups, 5);
+  assert_eq!(report.missing_key_rows, 2);
+  assert!(report.missok);
+
+  let repeated = session
+    .execute(parse_command("isid patient_id visit patient_id, missok").unwrap())
+    .expect("repeated key variables should remain valid");
+  let ExecutionResult::Isid(repeated) = repeated else {
+    panic!("isid should return an Isid result");
+  };
+  assert_eq!(
+    repeated.variables,
+    vec!["patient_id", "visit", "patient_id"]
+  );
+  assert_eq!(repeated.total_rows, report.total_rows);
+  assert_eq!(repeated.unique_groups, report.unique_groups);
+  assert_eq!(repeated.missing_key_rows, report.missing_key_rows);
+  assert_eq!(repeated.missok, report.missok);
+  assert_eq!(session.active_dataset(), Some(&expected));
+}
+
+#[test]
+fn isid_rejects_missing_keys_without_missok_and_duplicate_groups_always() {
+  let fixture = Fixture::new();
+  let unique_path = fixture.write_parquet(
+    "isid-missing.parquet",
+    "SELECT * FROM (VALUES (1, 1), (1, 2), (2, 1), (CAST(NULL AS INTEGER), 1), (CAST(NULL AS INTEGER), 2)) AS key_data(patient_id, visit)",
+  );
+  let duplicate_path = fixture.write_parquet(
+    "isid-duplicate.parquet",
+    "SELECT * FROM (VALUES (1, 1), (1, 1), (CAST(NULL AS INTEGER), 1), (CAST(NULL AS INTEGER), 1)) AS key_data(patient_id, visit)",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&unique_path))
+    .expect("missing-key fixture should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("isid patient_id visit").unwrap())
+      .unwrap_err(),
+    RuntimeError::IsidSemanticFailure {
+      missing_key_rows: 2,
+      duplicate_rows: 0,
+      duplicate_groups: 0,
+      missok: false,
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("isid patient_id visit").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "isid failed: 2 rows have missing key values (use , missok to permit them)"
+  );
+  assert_eq!(session.active_dataset(), Some(&before));
+
+  session
+    .execute(use_command(&duplicate_path))
+    .expect("duplicate-key fixture should replace the active dataset");
+  let both = session
+    .execute(parse_command("isid patient_id visit").unwrap())
+    .unwrap_err();
+  assert_eq!(
+    both.to_string(),
+    "isid failed: 2 rows have missing key values (use , missok to permit them); 4 rows are in 2 duplicate key groups"
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("isid patient_id visit, missok").unwrap())
+      .unwrap_err(),
+    RuntimeError::IsidSemanticFailure {
+      missing_key_rows: 2,
+      duplicate_rows: 4,
+      duplicate_groups: 2,
+      missok: true,
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("isid patient_id visit, missok").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "isid failed: 4 rows are in 2 duplicate key groups"
+  );
+}
+
+#[test]
+fn isid_handles_empty_relations_and_internal_alias_collisions() {
+  let fixture = Fixture::new();
+  let empty_path = fixture.write_parquet(
+    "isid-empty.parquet",
+    "SELECT CAST(NULL AS INTEGER) AS patient_id, CAST(NULL AS INTEGER) AS visit FROM range(0)",
+  );
+  let alias_path = fixture.write_parquet(
+    "isid-alias-collision.parquet",
+    "SELECT * FROM (VALUES (1, 10), (2, 20)) AS key_data(\"__tabdat_isid_count\", visit)",
+  );
+  let mut session = Session::new();
+
+  session
+    .execute(use_command(&empty_path))
+    .expect("empty isid fixture should load");
+  let result = session
+    .execute(parse_command("isid patient_id visit").unwrap())
+    .expect("empty key relation should pass");
+  let ExecutionResult::Isid(empty) = result else {
+    panic!("isid should return an Isid result");
+  };
+  assert_eq!(empty.variables, vec!["patient_id", "visit"]);
+  assert_eq!(empty.total_rows, 0);
+  assert_eq!(empty.unique_groups, 0);
+  assert_eq!(empty.missing_key_rows, 0);
+  assert!(!empty.missok);
+
+  session
+    .execute(use_command(&alias_path))
+    .expect("alias-collision fixture should load");
+  let result = session
+    .execute(parse_command("isid `__tabdat_isid_count` visit").unwrap())
+    .expect("the internal alias should not shadow a user column");
+  let ExecutionResult::Isid(alias) = result else {
+    panic!("isid should return an Isid result");
+  };
+  assert_eq!(alias.variables, vec!["__tabdat_isid_count", "visit"]);
+  assert_eq!(alias.total_rows, 2);
+  assert_eq!(alias.unique_groups, 2);
+  assert_eq!(alias.missing_key_rows, 0);
+}
+
+#[test]
+fn isid_rejects_unknown_variables_without_changing_state() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("eager local Parquet should load");
+  let before = session
+    .active_dataset()
+    .expect("the load should publish active metadata")
+    .clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("isid absent absent age").unwrap())
+      .unwrap_err(),
+    RuntimeError::IsidUnknownVariable {
+      variables: vec!["absent".to_owned(), "absent".to_owned()],
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("isid absent absent age").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "isid unknown variable: absent, absent"
+  );
+  assert_eq!(session.active_dataset(), Some(&before));
+}
+
+#[test]
 fn summarize_returns_requested_statistics_in_order_and_is_read_only() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -1871,20 +2059,6 @@ fn tail_after_failed_replacement_keeps_the_prior_dataset() {
   assert_eq!(preview.rows.len(), 1);
   assert_eq!(preview.rows[0][0], CellValue::SignedInteger(54));
   assert_eq!(session.active_dataset(), Some(&before));
-}
-
-#[test]
-fn leaves_isid_execution_deferred() {
-  let mut session = Session::new();
-  let command = Command::Isid {
-    variables: vec!["patient_id".to_owned()],
-    missok: false,
-  };
-
-  assert_eq!(
-    session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "isid" }
-  );
 }
 
 #[test]

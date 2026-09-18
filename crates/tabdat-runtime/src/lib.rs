@@ -147,6 +147,21 @@ pub struct DuplicatesResult {
   pub max_copies: u64,
 }
 
+/// The owned key-uniqueness aggregate returned by a read-only `isid` request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IsidResult {
+  /// Key variables in the requested order, including repeated requests.
+  pub variables: Vec<String>,
+  /// The number of rows in the active relation.
+  pub total_rows: u64,
+  /// The number of distinct key groups, including groups containing NULLs.
+  pub unique_groups: u64,
+  /// The number of rows containing at least one NULL key component.
+  pub missing_key_rows: u64,
+  /// Whether missing key components were permitted for this request.
+  pub missok: bool,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -197,6 +212,8 @@ pub enum ExecutionResult {
   Missing(MissingResult),
   /// Reports duplicate groups for selected key columns.
   Duplicates(DuplicatesResult),
+  /// Asserts key uniqueness for selected variables.
+  Isid(IsidResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -252,6 +269,19 @@ pub enum RuntimeError {
   DuplicatesUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce the duplicate aggregate.
   DuplicatesFailed,
+  /// The isid request named variables absent from the active schema.
+  IsidUnknownVariable { variables: Vec<String> },
+  /// The isid request did not name any key variables.
+  IsidNoVariables,
+  /// The active key values violate the requested isid constraints.
+  IsidSemanticFailure {
+    missing_key_rows: u64,
+    duplicate_rows: u64,
+    duplicate_groups: u64,
+    missok: bool,
+  },
+  /// DuckDB could not produce the isid aggregate.
+  IsidFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -345,6 +375,30 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::DuplicatesFailed => formatter.write_str("duplicates failed"),
+      Self::IsidUnknownVariable { variables } => {
+        write!(formatter, "isid unknown variable: {}", variables.join(", "))
+      }
+      Self::IsidNoVariables => formatter.write_str("isid expects at least one key variable"),
+      Self::IsidSemanticFailure {
+        missing_key_rows,
+        duplicate_rows,
+        duplicate_groups,
+        missok,
+      } => {
+        let mut failures = Vec::new();
+        if !missok && *missing_key_rows > 0 {
+          failures.push(format!(
+            "{missing_key_rows} rows have missing key values (use , missok to permit them)"
+          ));
+        }
+        if *duplicate_groups > 0 {
+          failures.push(format!(
+            "{duplicate_rows} rows are in {duplicate_groups} duplicate key groups"
+          ));
+        }
+        write!(formatter, "isid failed: {}", failures.join("; "))
+      }
+      Self::IsidFailed => formatter.write_str("isid failed"),
     }
   }
 }
@@ -383,6 +437,7 @@ impl Session {
       Command::Codebook { variables } => self.execute_codebook(variables),
       Command::Missing { variables } => self.execute_missing(variables),
       Command::Duplicates { variables } => self.execute_duplicates(variables),
+      Command::Isid { variables, missok } => self.execute_isid(variables, missok),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -629,6 +684,53 @@ impl Session {
       .duplicates(&requested)
       .map(ExecutionResult::Duplicates)
       .map_err(|_| RuntimeError::DuplicatesFailed)
+  }
+
+  fn execute_isid(
+    &self,
+    variables: Vec<String>,
+    missok: bool,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "isid" })?;
+    if variables.is_empty() {
+      return Err(RuntimeError::IsidNoVariables);
+    }
+    let known = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<std::collections::HashSet<_>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| !known.contains(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::IsidUnknownVariable { variables: unknown });
+    }
+
+    let backend = self.backend.as_ref().ok_or(RuntimeError::IsidFailed)?;
+    let (total_rows, unique_groups, duplicate_groups, duplicate_rows, missing_key_rows) = backend
+      .isid_counts(&variables)
+      .map_err(|_| RuntimeError::IsidFailed)?;
+    if (!missok && missing_key_rows > 0) || duplicate_groups > 0 {
+      return Err(RuntimeError::IsidSemanticFailure {
+        missing_key_rows,
+        duplicate_rows,
+        duplicate_groups,
+        missok,
+      });
+    }
+    Ok(ExecutionResult::Isid(IsidResult {
+      variables,
+      total_rows,
+      unique_groups,
+      missing_key_rows,
+      missok,
+    }))
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -1111,6 +1213,45 @@ impl DuckDbBackend {
       max_copies,
     })
   }
+
+  fn isid_counts(&self, variables: &[String]) -> Result<(u64, u64, u64, u64, u64), ()> {
+    let count_alias = isid_count_alias(variables);
+    let key_sql = variables
+      .iter()
+      .map(|variable| quote_identifier(variable))
+      .collect::<Vec<_>>()
+      .join(", ");
+    let missing_condition = variables
+      .iter()
+      .map(|variable| format!("{} IS NULL", quote_identifier(variable)))
+      .collect::<Vec<_>>()
+      .join(" OR ");
+    let grouped_query =
+      format!("SELECT {key_sql}, COUNT(*) AS {count_alias} FROM {ACTIVE_TABLE} GROUP BY {key_sql}");
+    let query = format!(
+      "SELECT COALESCE(SUM({count_alias}), CAST(0 AS HUGEINT)),\
+       COUNT(*),\
+       COUNT(*) FILTER (WHERE {count_alias} > 1),\
+       COALESCE(SUM(CASE WHEN {count_alias} > 1 THEN {count_alias} ELSE 0 END), CAST(0 AS HUGEINT)),\
+       COALESCE(SUM(CASE WHEN {missing_condition} THEN {count_alias} ELSE 0 END), CAST(0 AS HUGEINT))\
+       FROM ({grouped_query}) AS \"__tabdat_isid_groups\""
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let total_rows = u64::try_from(row.get::<_, i128>(0).map_err(|_| ())?).map_err(|_| ())?;
+    let unique_groups = u64::try_from(row.get::<_, i64>(1).map_err(|_| ())?).map_err(|_| ())?;
+    let duplicate_groups = u64::try_from(row.get::<_, i64>(2).map_err(|_| ())?).map_err(|_| ())?;
+    let duplicate_rows = u64::try_from(row.get::<_, i128>(3).map_err(|_| ())?).map_err(|_| ())?;
+    let missing_key_rows = u64::try_from(row.get::<_, i128>(4).map_err(|_| ())?).map_err(|_| ())?;
+    Ok((
+      total_rows,
+      unique_groups,
+      duplicate_groups,
+      duplicate_rows,
+      missing_key_rows,
+    ))
+  }
 }
 
 fn duplicate_count_alias(variables: &[String]) -> String {
@@ -1131,6 +1272,25 @@ fn duplicate_count_alias(variables: &[String]) -> String {
     suffix = suffix
       .checked_add(1)
       .expect("duplicate alias suffix overflow");
+  }
+}
+
+fn isid_count_alias(variables: &[String]) -> String {
+  let base = "__tabdat_isid_count";
+  let mut suffix = 0_u64;
+  loop {
+    let candidate = if suffix == 0 {
+      base.to_owned()
+    } else {
+      format!("{base}_{suffix}")
+    };
+    if variables
+      .iter()
+      .all(|variable| !variable.eq_ignore_ascii_case(&candidate))
+    {
+      return quote_identifier(&candidate);
+    }
+    suffix = suffix.checked_add(1).expect("isid alias suffix overflow");
   }
 }
 
@@ -1276,6 +1436,23 @@ mod tests {
       RuntimeError::NoActiveDataset {
         command: "duplicates"
       }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn isid_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Isid {
+          variables: vec!["id".to_owned()],
+          missok: false,
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "isid" }
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
@@ -1488,6 +1665,50 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::DuplicatesFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_isid_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS value"
+      ))
+      .expect("the test active relation should be created");
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!("DROP TABLE {ACTIVE_TABLE}"))
+      .expect("the test active relation should be dropped");
+
+    assert_eq!(
+      session
+        .execute(Command::Isid {
+          variables: vec!["value".to_owned()],
+          missok: false,
+        })
+        .unwrap_err(),
+      RuntimeError::IsidFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
   }
