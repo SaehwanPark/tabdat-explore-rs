@@ -1,6 +1,7 @@
 # Bounded runtime `tail` migration evidence
 
-Status: implementation complete; pending PR #34 hosted acceptance and merge.
+Status: accepted after PR #34 squash merge `1c5affa`; post-merge main
+verification and docs-inclusive hosted workflows are green.
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -122,8 +123,30 @@ output remain explicit deferrals.
 
 ## Hosted acceptance and completion state
 
-PR #34 remains a draft while its current-head policy, baseline, runtime, and
-auxiliary hosted workflows complete. After all required checks and review are
-green, mark it ready, squash-merge it, remove the temporary branch locally and
-remotely, and record the merge/post-merge workflow links here before accepting
-the roadmap checkbox.
+PR #34 was opened as a draft before implementation, independently reviewed,
+marked ready after all current-head checks passed, and squash-merged as
+`1c5affac54c9450d732652ae303509a6bfc9cf63`. The temporary
+`feat/runtime-tail` branch was deleted locally and remotely.
+
+Current-head PR checks were green:
+
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567633/job/105634186009);
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567633/job/105634185732);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567718/job/105634177177);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567606),
+  including its [Rust job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567606/job/105633965730);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567625/job/105634076038); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35355567676/job/105634084365).
+
+Post-merge `main` workflows passed at `1c5affac54c9450d732652ae303509a6bfc9cf63`:
+
+- [main dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357992959/job/105641975529);
+- [main Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357992959/job/105641975794);
+- [main tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357992778/job/105641971830);
+- [main ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357992853/job/105641971895);
+- [main libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357993037/job/105641973315); and
+- [main libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35357992793/job/105641971649).
+
+The roadmap `tail` checkbox is accepted only with this merge and its post-merge
+evidence; broader session, lazy/materialized, formatting, CLI, and MCP work
+remain deferred.

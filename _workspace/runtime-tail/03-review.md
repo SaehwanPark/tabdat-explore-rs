@@ -1,6 +1,6 @@
 # Independent review: bounded eager-runtime `tail`
 
-Status: review complete; no actionable findings; PR #34 acceptance pending.
+Status: accepted after PR #34 squash merge `1c5affa`; no actionable findings.
 
 ## Review scope
 
@@ -40,6 +40,6 @@ tests, the 10-case pinned oracle probe, `cargo fmt --all -- --check`,
 
 ## Acceptance gate
 
-The implementation is ready for hosted policy/baseline/runtime verification.
-Update this record with PR-head and post-merge links, then mark the contract
-accepted only after the temporary branch is deleted locally and remotely.
+PR-head and post-merge hosted checks are green, the contract is accepted, and
+the temporary branch is deleted locally and remotely. The optional unsupported
+container fixture remains deferred rather than expanding this bounded slice.

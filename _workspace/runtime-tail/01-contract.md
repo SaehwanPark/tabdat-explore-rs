@@ -1,6 +1,7 @@
 # Contract: bounded eager-runtime `tail`
 
-Status: recovered contract; implementation pending.
+Status: accepted after PR #34 squash merge `1c5affa`; post-merge main
+verification and docs-inclusive hosted workflows are green.
 
 Selected skills: `tabdat-migration`, `tabdat-data-semantics`,
 `simple-code-writer`

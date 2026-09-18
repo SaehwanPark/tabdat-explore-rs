@@ -408,9 +408,12 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   status, transforms, formatting, CLI, and MCP surfaces remain deferred.
 - [x] `head` — bounded eager local-Parquet owned preview execution
   (`PreviewResult`/`CellValue`; PR #33, squash merge `b107251`). Broader
-  `tail`, lazy/materialized behavior, unsupported logical/container values,
-  formatting, CLI, and MCP surfaces remain deferred.
-- [ ] `tail`
+  lazy/materialized behavior, unsupported logical/container values, formatting,
+  CLI, and MCP surfaces remain deferred.
+- [x] `tail` — bounded eager local-Parquet owned suffix preview execution
+  (`PreviewResult`/`CellValue`; PR #34, squash merge `1c5affa`). Broader
+  lazy/materialized behavior, unsupported logical/container values, formatting,
+  CLI, and MCP surfaces remain deferred.
 
 ### 6.3 Transform commands
 
