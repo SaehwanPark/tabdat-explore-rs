@@ -40,4 +40,4 @@ The completed review supported marking PR #38 ready. The contract and evidence
 records were updated, all required PR-head workflows passed, the PR was
 squash-merged as `6a10039`, and the temporary branch was deleted locally and
 remotely. Final post-merge workflow links are recorded in
-`02-evidence-migration.md` after the documentation closeout push.
+`02-evidence-migration.md`.

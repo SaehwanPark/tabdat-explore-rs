@@ -101,9 +101,27 @@ The implementation is read-only after `use` publishes an eager relation:
 
 ## Post-merge verification
 
-The squash commit triggered the standard post-merge workflows. Their exact
-successful run and job links will be recorded here after the documentation
-closeout push completes.
+The documentation closeout commit [`f87130a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f87130ac66af5dccc17d27f78b7dcb4136cf53f1)
+triggered the standard post-merge matrix, and every workflow completed
+successfully:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216098),
+  including [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216098/job/105765906363)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216098/job/105765906370);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216172)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216172/job/105765909267));
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216212),
+  with [native](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216212/job/105765524117)
+  and [Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216212/job/105765524411)
+  jobs;
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216133)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216133/job/105765534876)); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216126)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35396216126/job/105765523772)).
+
+The superseded CI/runtime push runs for squash commit `6a10039` were cancelled
+by the repository concurrency group when this closeout commit arrived; the
+authoritative closeout matrix above is green.
 
 ## Deferred scope
 
