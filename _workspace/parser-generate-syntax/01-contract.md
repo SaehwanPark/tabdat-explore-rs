@@ -1,6 +1,6 @@
 # Bounded syntax-only `generate` contract
 
-Status: contract recovered; implementation is not yet started.
+Status: implementation complete; hosted acceptance and merge are pending.
 
 Producer: task owner, using `tabdat-migration` and `simple-code-writer`, with
 independent pinned-Python contract recovery and Rust boundary reconnaissance.
@@ -109,5 +109,7 @@ with data-semantics evidence.
 
 No new dependency, native backend, FFI, unsafe code, or ADR decision is needed.
 
-Completion state: pending implementation, focused oracle/Rust checks,
-independent review, hosted acceptance, merge, and temporary-branch cleanup.
+Completion state: the bounded implementation, focused oracle/Rust checks, and
+independent review are complete at implementation head `772eb58`. Hosted
+acceptance, merge, and temporary-branch cleanup remain to be recorded in the
+evidence, review, and summary artifacts.
