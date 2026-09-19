@@ -1,6 +1,6 @@
 # Bounded eager-runtime `replace` contract
 
-Status: draft at the contract checkpoint.
+Status: accepted and verified on `main` at `df2cad9` (PR #48).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.
@@ -132,6 +132,5 @@ Focused runtime coverage must include:
 The existing parser contract tests remain authoritative for syntax. No new
 dependency, native backend, FFI, unsafe code, or ADR decision is required.
 
-Completion state: draft; oracle recovery and contract definition are complete,
-while implementation, review, hosted acceptance, merge, and post-merge
-verification remain pending.
+Completion state: accepted; oracle recovery, bounded implementation, focused
+review, hosted acceptance, merge, and post-merge verification are complete.

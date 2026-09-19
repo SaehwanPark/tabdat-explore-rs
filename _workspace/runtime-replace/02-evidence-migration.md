@@ -1,7 +1,6 @@
 # Runtime `replace` evidence and migration record
 
-Status: implementation-complete on PR #48; hosted acceptance and merge are
-pending.
+Status: accepted and verified on `main` at `df2cad9`.
 
 ## Authority and oracle evidence
 
@@ -51,7 +50,8 @@ private-backend no-active regression and mismatched-relation atomicity test in
 
 ## Local verification
 
-The final implementation head before hosted acceptance is `9f3e21a`:
+The final implementation head before hosted acceptance is `9f3e21a`; the final
+PR head, including the review evidence, is `427055c`:
 
 ```text
 cargo fmt --all -- --check                         passed
@@ -75,8 +75,26 @@ tool's separate report.
 
 Draft PR [#48](https://github.com/SaehwanPark/tabdat-explore-rs/pull/48) was
 opened at the contract checkpoint and contains implementation commits
-`a9ec68d`, `6bfb231`, `58fa7e8`, and `9f3e21a`. The final PR-head workflow
-links and conclusions will be recorded here after the head checks complete.
+`a9ec68d`, `6bfb231`, `58fa7e8`, and `9f3e21a`, followed by the review evidence
+commit `427055c`. Its final head passed:
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35452188768),
+  including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35452188768/job/105921196645)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35452188768/job/105921196520);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35452188801)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35452188801/job/105921195853)).
+
+The PR was marked ready after the three-pass local review and squash-merged as
+[`df2cad9`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/df2cad9e8f61479ad67f118441acbbeb0704c408)
+with `--delete-branch`. The local and remote `feat/runtime-replace` refs were
+absent after the merge.
+
+## Merge-head evidence
+
+The merge-head [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332490)
+and [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332473)
+were triggered for `df2cad9`; their terminal job conclusions are recorded in
+the closeout commit after both workflows complete.
 
 ## Deviations and deferrals
 

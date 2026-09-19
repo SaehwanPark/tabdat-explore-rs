@@ -143,6 +143,32 @@ The accepted runtime subset is library-only and does not establish binary CLI,
 JSON/MCP, lazy/materialized, function-call, string/boolean/NULL/comparison,
 exact overflow-count, label/panel, `last_operation`, or broad transform parity.
 
+## Verified slice: bounded eager runtime `replace` command
+
+Execute the parsed `replace <target> = <expression> [if <condition>]` subset
+against an active eager local-Parquet DuckDB relation. The runtime validates the
+target, identifiers, domains, predicate, and supported expression forms before
+staging a source-order projection. It preserves the target's schema position,
+row order, row count, NULL behavior, source and eager metadata, and publishes
+through the shared transactional `__tabdat_next` path before changing session
+metadata.
+
+Evidence: `_workspace/runtime-replace/`,
+`crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/replace_contract.rs`, and the updated deferred
+runtime regression in `crates/tabdat-runtime/tests/use_contract.rs`. Local
+format/check/test/Clippy, dependency-policy, audit, and metadata-driven geiger
+checks passed. Draft PR [#48](https://github.com/SaehwanPark/tabdat-explore-rs/pull/48)
+was opened at the contract checkpoint, passed its PR-head workflows, and was
+squash-merged as
+[`df2cad9`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/df2cad9e8f61479ad67f118441acbbeb0704c408).
+Merge-head workflow evidence is recorded in the companion workspace artifact.
+
+This accepted runtime subset is library-only. Function calls, unsupported
+boolean/other target domains, exact overflow-count diagnostics, lazy/materialized
+execution, labels/panel metadata, `last_operation`, formatting, CLI, JSON, MCP,
+and broad transform parity remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

@@ -1,7 +1,7 @@
 # Runtime `replace` review
 
-Status: local review complete; no blocking findings. Hosted checks and merge
-are pending.
+Status: accepted; no blocking findings. PR-head and merge-head hosted checks
+passed.
 
 The parent review used the `code-reviewer` workflow against the complete PR
 diff, the pinned contract, the language/runtime callers, the DuckDB boundary,
@@ -23,7 +23,9 @@ and focused tests. Three independent passes were performed:
    no-initialization regression was added; no remaining actionable issue was
    found.
 
-Residual coverage gaps are intentional contract deferrals: lazy/materialized
+The PR-head and merge-head workflow links and conclusions are recorded in
+[`02-evidence-migration.md`](02-evidence-migration.md). Residual coverage gaps
+are intentional contract deferrals: lazy/materialized
 execution, function calls, boolean/other target domains, exact overflow
 diagnostics, labels/panel metadata, `last_operation`, CLI/JSON/MCP, and broad
 transform sequencing.

@@ -484,7 +484,15 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   overflow-count reporting, lazy/materialized execution, labels/panel metadata,
   `last_operation`, formatting, CLI, JSON, MCP, and broad transform parity
   remain deferred.
-- [ ] `replace`
+- [x] `replace` — bounded eager local-Parquet value replacement
+  (`ReplaceResult`; PR #48, squash merge `df2cad9`). Numeric/string domain
+  assignments, explicit NULL replacement, typed boolean/missing predicates,
+  quoted identifiers, schema-position/row-order preservation, staged
+  publication, typed validation/errors, and failure-atomic metadata/relation
+  behavior are covered. Function calls, unsupported boolean/other target
+  domains, exact overflow-count diagnostics, lazy/materialized execution,
+  labels/panel metadata, `last_operation`, formatting, CLI, JSON, MCP, and
+  broad transform parity remain deferred.
 - [ ] `rename`
 - [ ] `sort`
 - [ ] `gsort`
