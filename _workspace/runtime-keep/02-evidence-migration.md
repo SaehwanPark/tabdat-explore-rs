@@ -1,7 +1,7 @@
 # Bounded eager-runtime `keep` migration evidence
 
-Status: accepted bounded slice; PR #42 and temporary-branch cleanup complete;
-post-merge matrix pending.
+Status: accepted bounded slice; PR #42, temporary-branch cleanup, and the
+post-merge matrix are complete on `main` at `37f0ab6`.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`, with independent runtime review
@@ -111,8 +111,14 @@ docs-inclusive PR head was `b490c61`; its green [CI run
 35422981525](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422981525)
 and [runtime boundary run
 35422981533](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422981533)
-confirmed the evidence-only closeout before merge. The post-merge matrix will
-be appended after the main documentation closeout.
+confirmed the evidence-only closeout before merge. The final main
+documentation closeout `37f0ab6` passed the complete matrix:
+
+- [CI run 35424054768](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054768), with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054768/job/105846859357) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054768/job/105846859448);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054718), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054718/job/105846858331);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054733), [spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054733/job/105846827011), and [Rust job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054733/job/105846827226);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054778), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054778/job/105846826961); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054698), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054698/job/105846826653).
 
 ## Deferred scope
 

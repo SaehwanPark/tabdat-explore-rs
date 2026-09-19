@@ -1,6 +1,6 @@
 # Bounded eager-runtime `keep` closeout
 
-Status: accepted and merged on `main` at `d43c923`; post-merge matrix pending.
+Status: accepted and verified on `main` at `37f0ab6`.
 
 PR [#42](https://github.com/SaehwanPark/tabdat-explore-rs/pull/42) was opened
 as a draft before implementation, independently reviewed, marked ready after
@@ -34,3 +34,12 @@ broader transformation sequencing remain deferred.
 
 The next bounded roadmap candidate is `drop`. This merge does not establish
 general predicate transforms, relation sequencing, or broad Phase 4 completion.
+
+## Post-merge verification
+
+The final main documentation closeout `37f0ab6` passed the complete matrix:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054768), [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054718);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054733);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054778); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35424054698).
