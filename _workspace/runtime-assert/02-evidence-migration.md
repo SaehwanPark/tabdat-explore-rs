@@ -1,6 +1,6 @@
 # Bounded runtime `assert` migration evidence
 
-Status: implementation complete; hosted acceptance and merge pending
+Status: implementation, review, and PR-head hosted acceptance complete; merge pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -47,13 +47,19 @@ The implementation is split across these commits:
 - `7a2040a` — recovered the pinned contract;
 - `7dc6b90` — added the owned expression AST, parser, runtime dispatch,
   null-aware SQL aggregate, typed result/errors, and six focused runtime tests;
-- `5fc2c0c` — fixed the warnings-as-errors lint findings.
+- `5fc2c0c` — fixed the warnings-as-errors lint findings;
+- `7778f5f` — recorded the migration evidence and aligned null/type
+  diagnostics;
+- `9a6f955` — mirrored safe numeric arithmetic semantics, unsigned guards, and
+  first-unknown diagnostics, with regression tests.
 
 The bounded parser accepts identifiers (including backticks), numeric/string/
 `null` literals, unary minus, parentheses, arithmetic, and comparisons. The
 runtime validates unknown names and expression domains before querying, quotes
-identifiers, compiles explicit null comparisons to `IS NULL`/`IS NOT NULL`, and
-counts false or SQL-NULL predicate values as failures. Empty relations return
+identifiers, applies checked integer arithmetic and finite-to-NULL numeric
+normalization, rejects unsafe unsigned subtraction/negation, compiles explicit
+null comparisons to `IS NULL`/`IS NOT NULL`, and counts false or SQL-NULL
+predicate values as failures. Empty relations return
 `checked=0, failed=0`; failures use the exact
 `assertion failed: {failed} of {checked} rows failed` diagnostic and preserve
 active metadata.
@@ -64,7 +70,7 @@ Focused Rust evidence:
 cargo test --locked -p tabdat-language --test parser_contract assert_
 2 passed
 cargo test --locked -p tabdat-runtime --test assert_contract
-6 passed
+7 passed
 cargo test --locked -p tabdat-runtime assert_does_not_initialize_backend_for_a_new_session
 1 passed
 ```
@@ -80,7 +86,7 @@ git diff --check
 ```
 
 The workspace test totals were root 1, language unit 42, parser contract 34,
-runtime unit 19, assert contract 6, datasignature contract 6, and use contract
+runtime unit 19, assert contract 7, datasignature contract 6, and use contract
 63, with no failures. `cargo deny check` and `cargo audit -D warnings` passed.
 The metadata-driven all-package `cargo geiger` policy scan reported clean
 first-party unsafe usage for the root, `tabdat-language`, and `tabdat-runtime`
@@ -89,11 +95,12 @@ packages (transitive inventory remains a warning signal only).
 ## Hosted acceptance and cleanup
 
 Draft PR [#41](https://github.com/SaehwanPark/tabdat-explore-rs/pull/41) was
-opened before implementation. Its current head is `5fc2c0c`; the PR-head CI
-and Linux runtime-boundary workflows are still running while this evidence is
-prepared. The final workflow links, ready-for-review transition, squash merge,
-post-merge matrix, and branch deletion will be appended after those checks
-complete.
+opened before implementation. Its current head is `9a6f955`. PR-head hosted
+acceptance is green: [CI run 35416402198](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402198)
+(Rust baseline and dependency/unsafe-code policy) and [runtime boundary run
+35416402180](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402180)
+(Linux runtime targets). The ready-for-review transition, squash merge,
+post-merge matrix, and branch deletion will be appended after acceptance.
 
 ## Deferred scope
 

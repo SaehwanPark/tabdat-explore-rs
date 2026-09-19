@@ -1,6 +1,6 @@
 # Bounded eager-runtime `assert` contract
 
-Status: contract recovered; implementation pending (`partial`).
+Status: contract recovered; bounded implementation and PR-head acceptance complete.
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: runtime implementation and review on `feat/runtime-assert`.
