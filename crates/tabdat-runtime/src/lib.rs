@@ -1003,12 +1003,12 @@ fn expression_domain(
         variables: vec![name.clone()],
       }),
     AssertExpression::Number(_) | AssertExpression::UnaryMinus(_) => {
-      if let AssertExpression::UnaryMinus(operand) = expression {
-        if expression_domain(operand, dataset)? != ExpressionDomain::Numeric {
-          return Err(RuntimeError::AssertTypeMismatch {
-            message: "expression type mismatch: unary minus requires numeric operand".to_owned(),
-          });
-        }
+      if let AssertExpression::UnaryMinus(operand) = expression
+        && expression_domain(operand, dataset)? != ExpressionDomain::Numeric
+      {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "expression type mismatch: unary minus requires numeric operand".to_owned(),
+        });
       }
       Ok(ExpressionDomain::Numeric)
     }
