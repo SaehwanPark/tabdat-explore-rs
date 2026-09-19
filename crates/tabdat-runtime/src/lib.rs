@@ -1513,11 +1513,11 @@ impl Session {
       .ok_or_else(|| RuntimeError::EncodeUnknownVariable {
         variable: source.clone(),
       })?;
-    if data_type_expression_domain(&source_column.data_type) != ExpressionDomain::String {
-      return Err(RuntimeError::EncodeRequiresString { variable: source });
-    }
     if dataset.columns.iter().any(|column| column.name == generate) {
       return Err(RuntimeError::EncodeTargetExists { variable: generate });
+    }
+    if data_type_expression_domain(&source_column.data_type) != ExpressionDomain::String {
+      return Err(RuntimeError::EncodeRequiresString { variable: source });
     }
 
     let backend = self.backend.as_mut().ok_or(RuntimeError::EncodeFailed)?;
@@ -1528,7 +1528,10 @@ impl Session {
       .into_iter()
       .enumerate()
       .map(|(index, value)| {
-        let code = i64::try_from(index + 1).map_err(|_| RuntimeError::EncodeFailed)?;
+        let code = index
+          .checked_add(1)
+          .and_then(|value| i64::try_from(value).ok())
+          .ok_or(RuntimeError::EncodeFailed)?;
         Ok((value, code))
       })
       .collect::<Result<Vec<_>, RuntimeError>>()?;
