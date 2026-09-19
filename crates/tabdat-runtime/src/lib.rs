@@ -2792,9 +2792,7 @@ impl DuckDbBackend {
       RecodeTarget::Generate { variables } => Some(variables),
       RecodeTarget::Replace => None,
     };
-    let targets = generated
-      .cloned()
-      .unwrap_or_else(|| variables.to_vec());
+    let targets = generated.cloned().unwrap_or_else(|| variables.to_vec());
     let expressions = variables
       .iter()
       .zip(targets.iter())
