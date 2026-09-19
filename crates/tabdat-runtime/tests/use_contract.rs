@@ -2103,6 +2103,19 @@ fn generate_requires_an_active_dataset_before_execution() {
 }
 
 #[test]
+fn replace_execution_remains_deferred_without_initializing_a_backend() {
+  let mut session = Session::new();
+  let command = parse_command("replace age = age + 1 if age > 0")
+    .expect("replace should parse before runtime deferral");
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "replace" }
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
 fn select_requires_an_active_dataset() {
   let mut session = Session::new();
   let command = Command::Select {

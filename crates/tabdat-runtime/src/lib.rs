@@ -1213,6 +1213,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Datasignature => "datasignature",
     Command::Assert { .. } => "assert",
     Command::Generate { .. } => "generate",
+    Command::Replace { .. } => "replace",
     Command::Keep { .. } => "keep",
     Command::Drop { .. } => "drop",
     Command::Missing { .. } => "missing",
