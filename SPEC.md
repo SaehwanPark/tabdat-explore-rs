@@ -428,6 +428,28 @@ transform semantics. Lazy/materialized execution, wildcard/range expansion,
 labels/panel metadata, `last_operation`, formatting, CLI/REPL, JSON/MCP, and
 broader transformation sequencing remain deferred.
 
+## Verified slice: bounded eager-runtime `drop` projection
+
+Merged PR #43 (`50cf80c`) adds the bounded eager local-Parquet
+`drop <explicit-varlist>` complement projection path to `tabdat-runtime`. The
+typed command returns an owned `DropResult`, validates every requested name
+before mutation, preserves source/schema order for the surviving columns, row
+order and count, NULL values, and source metadata, and supports quoted/backtick
+identifiers and duplicate requests. All-column removal, unknown variables, and
+staging/backend failures are rejected atomically; the published metadata and
+private active relation remain unchanged on failure.
+
+Evidence: `_workspace/runtime-drop/{01-contract,02-evidence-migration,03-review,04-summary}.md`,
+the implementation, and its parser/runtime contract tests. The pinned focused
+oracle, locked Rust checks, policy scans, independent review, PR-head hosted
+checks, squash merge, branch cleanup, and post-merge workflow matrix are
+recorded there.
+
+Predicate-form `drop if <expression>` remains deferred, as do
+lazy/materialized execution, wildcard/range expansion, labels/panel metadata,
+`last_operation`, formatting, CLI/REPL, JSON/MCP, and broader transformation
+sequencing.
+
 ## Verified slice: syntax-only `summarize` command
 
 PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax

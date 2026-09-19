@@ -1,7 +1,7 @@
 # Bounded eager-runtime `drop` migration evidence
 
-Status: implementation complete on `feat/runtime-drop` at `9a90db8`; hosted
-acceptance, merge, and branch cleanup remain pending.
+Status: accepted and merged on `main` at `50cf80c`; the temporary
+`feat/runtime-drop` branch was removed locally and remotely.
 
 Boundary: pinned Python explicit-varlist `drop` contract → Rust-owned eager
 DuckDB complement projection over the active local-Parquet relation.
@@ -76,9 +76,25 @@ job is the acceptance gate for the final head.
 ## Hosted acceptance and merge record
 
 Draft PR [#43](https://github.com/SaehwanPark/tabdat-explore-rs/pull/43) was
-opened before implementation. The final PR-head workflow links, ready-for-review
-transition, squash merge SHA, temporary-branch cleanup, and post-merge matrix
-will be appended here before closeout.
+opened before implementation and marked ready after the final implementation
+head passed its required checks:
+
+- PR-head [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35427227457),
+  with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35427227457/job/105855196747)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35427227457/job/105855196897);
+- PR-head [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35427218086),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35427218086/job/105855177153).
+
+The PR was squash-merged as
+[`50cf80c71d0c60f14bc8a96547cc93e3ed322bc2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/50cf80c71d0c60f14bc8a96547cc93e3ed322bc2),
+and `feat/runtime-drop` was deleted locally and remotely. The post-merge code-head
+checks also passed:
+
+- [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35428243328),
+  [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35428243328/job/105857896234),
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35428243328/job/105857896085);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35428243325),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35428243325/job/105857896126).
 
 ## Deferred scope
 

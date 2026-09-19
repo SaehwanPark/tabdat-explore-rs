@@ -32,7 +32,7 @@ continue to use `#![forbid(unsafe_code)]`.
 ## Explicitly out of scope
 
 CSV/DTA/Feather/Arrow, URI/network access, `~` expansion, lazy execution, named tables,
-transformations beyond the bounded explicit-varlist `keep` projection, broad
+transformations beyond the bounded explicit-varlist `keep`/`drop` projections, broad
 inspect execution beyond bounded `describe`/`count`/`head`/`tail`/`summarize`/`codebook`/`missing`/`duplicates`/`isid`/`datasignature`/`assert`,
 labels, CLI/JSON/MCP surfaces, and a general relation API remain deferred. This slice must not mark the broad `use`
 or Phase 4 data-runtime roadmap items complete.
@@ -63,6 +63,9 @@ or Phase 4 data-runtime roadmap items complete.
   [`_workspace/use-eager-parquet/`](../../_workspace/use-eager-parquet/); this
   ADR accepts the bounded evaluation while broad runtime integration remains
   deferred.
+- The accepted bounded transform coverage now includes the explicit-varlist
+  `keep` and `drop` projection slices; predicate transforms and broad relation
+  APIs remain deferred.
 
 At the first PR head, the generic hosted unsafe-code job failed because plain
 `cargo geiger` treated 33 dependency asset warnings as a nonzero status, despite

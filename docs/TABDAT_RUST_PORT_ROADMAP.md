@@ -453,7 +453,12 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   (`keep if`), lazy/materialized execution, wildcard/range expansion,
   overflow/filter semantics, labels, `last_operation`, formatting, CLI, JSON,
   and MCP remain deferred.
-- [ ] `drop`
+- [x] `drop` — bounded eager local-Parquet explicit-varlist complement projection
+  (`DropResult`; PR #43, squash merge `50cf80c`). Source-order complement,
+  quoted identifiers, duplicate-request behavior, all-column guard, staged
+  publication, and failure-atomic metadata/relation are covered. Predicate
+  form (`drop if`), lazy/materialized execution, wildcard/range expansion,
+  labels, `last_operation`, formatting, CLI, JSON, and MCP remain deferred.
 - [ ] `select`
 - [ ] `generate`
 - [ ] `replace`
