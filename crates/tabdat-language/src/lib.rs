@@ -33,6 +33,8 @@ pub enum Command {
   },
   /// Validate a boolean predicate against every row in the bounded eager runtime.
   Assert { expression: AssertExpression },
+  /// Keep an explicit ordered set of columns in the bounded eager runtime.
+  Keep { variables: Vec<String> },
   /// Keep only listed columns (relation execution is deferred).
   Select { variables: Vec<String> },
   /// Sort active rows by listed columns (relation execution is deferred).
@@ -452,6 +454,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
+    "keep" => parse_keep_command(body),
     "select" => parse_select_command(body),
     "sort" => parse_sort_command(body),
     "gsort" => parse_gsort_command(body),
@@ -1051,6 +1054,103 @@ fn parse_select_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
   })
+}
+
+fn parse_keep_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  let condition_has_options = parts.has_condition && keep_condition_has_options(body);
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "keep assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "keep assignment requires an expression after =",
+    ));
+  }
+  if condition_has_options || parts.has_options || parts.has_assignment {
+    return Err(ParseError::new(
+      "keep does not accept options or assignment syntax",
+    ));
+  }
+  if parts.has_condition {
+    if parts.arguments.is_empty() {
+      return Err(ParseError::new(
+        "keep if execution is deferred in the bounded runtime",
+      ));
+    }
+    return Err(ParseError::new(
+      "keep cannot combine a variable list with an if clause",
+    ));
+  }
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("keep expects a variable list or if clause"));
+  }
+  Ok(Command::Keep {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
+}
+
+fn keep_condition_has_options(body: &str) -> bool {
+  let characters: Vec<char> = body.chars().collect();
+  let mut index = 0;
+  let mut condition_seen = false;
+  while index < characters.len() {
+    if matches!(characters[index], '\'' | '"' | '`') {
+      let quote = characters[index];
+      index += 1;
+      while index < characters.len() {
+        if characters[index] == quote {
+          if quote == '`' && characters.get(index + 1) == Some(&'`') {
+            index += 2;
+            continue;
+          }
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      continue;
+    }
+    if characters[index].is_alphabetic() || characters[index] == '_' {
+      let start = index;
+      index += 1;
+      while index < characters.len()
+        && (characters[index].is_alphanumeric() || characters[index] == '_')
+      {
+        index += 1;
+      }
+      if !condition_seen
+        && characters[start..index]
+          .iter()
+          .collect::<String>()
+          .eq_ignore_ascii_case("if")
+      {
+        condition_seen = true;
+      }
+      continue;
+    }
+    if condition_seen && characters[index] == ',' {
+      let mut lookahead = index + 1;
+      while characters
+        .get(lookahead)
+        .is_some_and(|character| is_command_whitespace(*character))
+      {
+        lookahead += 1;
+      }
+      return characters.get(lookahead).is_some();
+    }
+    index += 1;
+  }
+  false
 }
 
 fn parse_sort_command(body: &str) -> Result<Command, ParseError> {

@@ -46,6 +46,13 @@ pub struct LoadResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after projecting columns with `keep`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeepResult {
+  /// Metadata for the newly active projected dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// The owned result returned by a read-only `describe` request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescribeResult {
@@ -244,6 +251,8 @@ pub enum ExecutionResult {
   Datasignature(DatasignatureResult),
   /// Checks a typed boolean expression across every active row.
   Assert(AssertResult),
+  /// Projects an explicit ordered set of columns in the active dataset.
+  Keep(KeepResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -324,6 +333,12 @@ pub enum RuntimeError {
   AssertTypeMismatch { message: String },
   /// DuckDB could not produce the assertion aggregate.
   AssertFailed,
+  /// The keep request named variables absent from the active schema.
+  KeepUnknownVariable { variables: Vec<String> },
+  /// The keep request did not name any variables.
+  KeepNoVariables,
+  /// DuckDB could not stage or publish the projected relation.
+  KeepFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -456,6 +471,11 @@ impl fmt::Display for RuntimeError {
       ),
       Self::AssertTypeMismatch { message } => formatter.write_str(message),
       Self::AssertFailed => formatter.write_str("assert failed"),
+      Self::KeepUnknownVariable { variables } => {
+        write!(formatter, "keep unknown variable: {}", variables.join(", "))
+      }
+      Self::KeepNoVariables => formatter.write_str("keep expects a variable list or if clause"),
+      Self::KeepFailed => formatter.write_str("keep failed"),
     }
   }
 }
@@ -497,6 +517,7 @@ impl Session {
       Command::Isid { variables, missok } => self.execute_isid(variables, missok),
       Command::Datasignature => self.execute_datasignature(),
       Command::Assert { expression } => self.execute_assert(expression),
+      Command::Keep { variables } => self.execute_keep(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -848,6 +869,38 @@ impl Session {
     Ok(ExecutionResult::Assert(AssertResult { checked, failed }))
   }
 
+  fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "keep" })?
+      .clone();
+    if variables.is_empty() {
+      return Err(RuntimeError::KeepNoVariables);
+    }
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::KeepUnknownVariable { variables: unknown });
+    }
+    let backend = self.backend.as_mut().ok_or(RuntimeError::KeepFailed)?;
+    let next_dataset = backend
+      .keep_columns(&dataset, &variables)
+      .map_err(|_| RuntimeError::KeepFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Keep(KeepResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
     self
       .execute_preview(limit, "head", false)
@@ -948,6 +1001,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Codebook { .. } => "codebook",
     Command::Datasignature => "datasignature",
     Command::Assert { .. } => "assert",
+    Command::Keep { .. } => "keep",
     Command::Missing { .. } => "missing",
     Command::Duplicates { .. } => "duplicates",
     Command::Isid { .. } => "isid",
@@ -1536,6 +1590,56 @@ impl DuckDbBackend {
       columns,
       execution_mode: ExecutionMode::Eager,
       lazy_engine: None,
+    })
+  }
+
+  fn keep_columns(
+    &mut self,
+    dataset: &DatasetInfo,
+    variables: &[String],
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let select_list = variables
+      .iter()
+      .map(|variable| quote_identifier(variable))
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_list} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
     })
   }
 
@@ -2503,6 +2607,22 @@ mod tests {
   }
 
   #[test]
+  fn keep_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Keep {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "keep" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn head_does_not_initialize_backend_for_a_new_session() {
     let mut session = Session::new();
 
@@ -2652,6 +2772,34 @@ mod tests {
       RuntimeError::PreviewFailed { command: "tail" }
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_keep_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "age".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+
+    assert_eq!(
+      session
+        .execute(Command::Keep {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::KeepFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    assert!(session.backend.is_some());
   }
 
   #[test]
