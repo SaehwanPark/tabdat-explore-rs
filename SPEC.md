@@ -38,6 +38,17 @@ expression tree, including function-call syntax, while expression evaluation,
 schema/type validation, target mutation, and all runtime/output surfaces remain
 deferred.
 
+Merged PR #46 (`98979bc`) adds a separate bounded eager runtime slice for
+`generate`: numeric identifiers/literals, unary minus, and `+`, `-`, `*`, `/`
+append a generated column to an active local-Parquet DuckDB relation through
+staged failure-atomic publication. Target collisions, unknown variables,
+non-numeric operands, unsupported expression forms, quoted identifiers, empty
+relations, row order, and metadata preservation are covered by typed runtime
+results/errors and focused tests. This library-only path is not wired into the
+binary CLI and does not claim function-call, string/boolean/NULL/comparison,
+exact overflow-count, lazy/materialized, label/panel, `last_operation`,
+CLI/JSON/MCP, or broad transform parity.
+
 ## Verified slice: syntax-only `save` and `export` commands
 
 Add direct, backend-independent `save <path> [, replace]` and
@@ -82,6 +93,25 @@ This slice does not evaluate expressions, inspect an active dataset or schema,
 validate types or target collisions, mutate relations/session state, initialize
 a backend, or claim CLI/JSON/MCP/runtime parity. Those remain a separate eager
 runtime contract.
+
+## Verified slice: bounded eager runtime `generate` command
+
+Execute the parsed numeric `generate <target> = <expression>` subset against an
+active eager local-Parquet DuckDB relation. The runtime validates before staging,
+uses quoted SQL identifiers, appends the generated column in schema order, and
+publishes through the shared transactional `__tabdat_next` path. Failures leave
+the published metadata and private active relation unchanged.
+
+Evidence: `_workspace/runtime-generate/`, `crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/generate_contract.rs`, and the legacy deferred
+runtime regression in `crates/tabdat-runtime/tests/use_contract.rs`. Local
+format/check/test/Clippy, dependency-policy, audit, and metadata-driven geiger
+checks passed; PR #46 (`98979bc`) and its post-merge CI/runtime workflows
+passed.
+
+The accepted runtime subset is library-only and does not establish binary CLI,
+JSON/MCP, lazy/materialized, function-call, string/boolean/NULL/comparison,
+exact overflow-count, label/panel, `last_operation`, or broad transform parity.
 
 ## Verified slice: reproducible build baseline
 

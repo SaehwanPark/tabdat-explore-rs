@@ -470,8 +470,15 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   Predicate form (`select if`), lazy/materialized execution, wildcard/range
   expansion, labels/panel metadata, `last_operation`, formatting, CLI, JSON,
   and MCP remain deferred.
-- [ ] `generate` (syntax-only parser groundwork is merged in PR #45; eager
-  runtime semantics remain unchecked)
+- [x] `generate` — bounded eager local-Parquet numeric-column generation
+  (`GenerateResult`; PR #46, squash merge `98979bc`). Numeric identifiers and
+  literals, unary minus, `+`, `-`, `*`, `/`, quoted identifiers, staged
+  publication, typed validation/errors, row/order/schema preservation, empty
+  relations, and failure-atomic metadata/relation behavior are covered.
+  String/boolean/NULL/comparison expressions, function calls, exact
+  overflow-count reporting, lazy/materialized execution, labels/panel metadata,
+  `last_operation`, formatting, CLI, JSON, MCP, and broad transform parity
+  remain deferred.
 - [ ] `replace`
 - [ ] `rename`
 - [ ] `sort`

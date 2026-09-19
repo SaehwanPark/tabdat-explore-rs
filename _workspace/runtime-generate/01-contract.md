@@ -1,7 +1,6 @@
 # Bounded eager-runtime `generate` contract
 
-Status: contract recovered; bounded implementation is in progress on the
-`feat/runtime-generate` draft branch.
+Status: accepted and verified on `main` at `98979bc` (PR #46).
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`, with independent Python-contract and Rust-boundary
@@ -109,6 +108,7 @@ The parser contract remains covered by the existing language tests, including
 function-call AST retention and quoted identifiers. No new dependency, native
 backend, FFI, unsafe code, or ADR decision is required.
 
-Completion state: contract recovery and draft-PR setup are complete;
-implementation, independent review, hosted acceptance, merge, and temporary
-branch cleanup remain pending.
+Completion state: contract recovery, bounded implementation, parent review,
+hosted acceptance, squash merge, post-merge verification, and temporary-branch
+cleanup are complete. The explicit deferrals above remain outside this accepted
+slice.
