@@ -55,7 +55,7 @@ pub enum Command {
   Drop { variables: Vec<String> },
   /// Keep only listed columns (relation execution is deferred).
   Select { variables: Vec<String> },
-  /// Sort active rows by listed columns (relation execution is deferred).
+  /// Sort active rows by listed columns in the bounded eager runtime.
   Sort { variables: Vec<String> },
   /// Sort active rows by explicitly directed keys (relation execution is deferred).
   Gsort { keys: Vec<SortKey> },

@@ -2129,7 +2129,7 @@ fn select_requires_an_active_dataset() {
 }
 
 #[test]
-fn leaves_sort_execution_deferred() {
+fn sort_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = Command::Sort {
     variables: vec!["age".to_owned(), "sex".to_owned()],
@@ -2137,7 +2137,7 @@ fn leaves_sort_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "sort" }
+    RuntimeError::NoActiveDataset { command: "sort" }
   );
 }
 
