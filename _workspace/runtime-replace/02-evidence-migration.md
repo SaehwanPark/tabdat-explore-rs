@@ -91,10 +91,13 @@ absent after the merge.
 
 ## Merge-head evidence
 
-The merge-head [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332490)
-and [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332473)
-were triggered for `df2cad9`; their terminal job conclusions are recorded in
-the closeout commit after both workflows complete.
+The merge-head [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332473)
+passed for `df2cad9` ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453332473/job/105924178833)).
+The merge-head CI invocation was superseded by the documentation closeout push
+under the repository's `cancel-in-progress` concurrency policy. The follow-on
+main [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485)
+for `84d6cb2` passed, including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485/job/105924386502)
+and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485/job/105924386301).
 
 ## Deviations and deferrals
 
