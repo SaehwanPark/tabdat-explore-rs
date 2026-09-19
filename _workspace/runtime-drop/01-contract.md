@@ -1,7 +1,7 @@
 # Bounded eager-runtime `drop` contract
 
-Status: contract recovered; implementation is in progress on
-`feat/runtime-drop`.
+Status: contract recovered and bounded implementation complete on
+`feat/runtime-drop` at `9a90db8`; hosted acceptance remains pending.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`, with independent Python-contract and scope review.
@@ -125,5 +125,5 @@ execution, wildcard/range expansion, labels and panel metadata,
 `last_operation`, formatting, CLI/REPL, JSON/MCP, and broad transformation
 sequencing also remain outside this bounded slice.
 
-Completion state: contract recovery is complete; implementation and hosted
-acceptance remain pending.
+Completion state: contract recovery and bounded implementation are complete;
+hosted acceptance, merge, and branch cleanup remain pending.
