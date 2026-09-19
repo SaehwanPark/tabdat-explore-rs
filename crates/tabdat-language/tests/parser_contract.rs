@@ -626,6 +626,82 @@ fn keep_preserves_bounded_projection_diagnostics() {
 }
 
 #[test]
+fn drop_parses_an_explicit_projection() {
+  assert_eq!(
+    parse_command(" DROP sex `age years` sex ").unwrap(),
+    Command::Drop {
+      variables: vec!["sex".to_owned(), "age years".to_owned(), "sex".to_owned()],
+    }
+  );
+}
+
+#[test]
+fn drop_preserves_bounded_projection_diagnostics() {
+  let cases = [
+    ("drop", "drop expects a variable list or if clause"),
+    ("drop if", "missing expression after if"),
+    (
+      "drop if age > 0",
+      "drop if execution is deferred in the bounded runtime",
+    ),
+    (
+      "drop age if age > 0",
+      "drop cannot combine a variable list with an if clause",
+    ),
+    (
+      "drop age, stable",
+      "drop does not accept options or assignment syntax",
+    ),
+    (
+      "drop age = other",
+      "drop does not accept options or assignment syntax",
+    ),
+    ("drop = other", "drop assignment requires a target before ="),
+    (
+      "drop age =",
+      "drop assignment requires an expression after =",
+    ),
+    (
+      "drop if age > 0, stable",
+      "drop does not accept options or assignment syntax",
+    ),
+    (
+      "drop if age > 0,",
+      "drop if execution is deferred in the bounded runtime",
+    ),
+    (
+      "drop age if age > 0, stable",
+      "drop does not accept options or assignment syntax",
+    ),
+    (
+      "drop age if age > 0,",
+      "drop cannot combine a variable list with an if clause",
+    ),
+    ("drop age==x", "unsupported token in command: =="),
+    ("drop age-1", "unsupported token in command: -"),
+    ("drop age+1", "unsupported token in command: +"),
+    ("drop age!x", "unsupported token in command: !"),
+    ("drop age@x", "unsupported token in command: @"),
+    ("drop age:x", "unsupported token in command: :"),
+    (
+      "drop if age >= ",
+      "drop if execution is deferred in the bounded runtime",
+    ),
+    (
+      "drop if age > 0 if age > 1",
+      "drop if execution is deferred in the bounded runtime",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn sort_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" SORT age label ").unwrap(),

@@ -35,6 +35,8 @@ pub enum Command {
   Assert { expression: AssertExpression },
   /// Keep an explicit ordered set of columns in the bounded eager runtime.
   Keep { variables: Vec<String> },
+  /// Drop an explicit set of columns in the bounded eager runtime.
+  Drop { variables: Vec<String> },
   /// Keep only listed columns (relation execution is deferred).
   Select { variables: Vec<String> },
   /// Sort active rows by listed columns (relation execution is deferred).
@@ -455,6 +457,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "duplicates" => parse_duplicates_command(body),
     "isid" => parse_isid_command(body),
     "keep" => parse_keep_command(body),
+    "drop" => parse_drop_command(body),
     "select" => parse_select_command(body),
     "sort" => parse_sort_command(body),
     "gsort" => parse_gsort_command(body),
@@ -1091,6 +1094,49 @@ fn parse_keep_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("keep expects a variable list or if clause"));
   }
   Ok(Command::Keep {
+    variables: parts
+      .arguments
+      .into_iter()
+      .map(|argument| argument.text)
+      .collect(),
+  })
+}
+
+fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
+  let parts = parse_simple_body(body, false)?;
+  let condition_has_options = parts.has_condition && keep_condition_has_options(body);
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "drop assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "drop assignment requires an expression after =",
+    ));
+  }
+  if condition_has_options || parts.has_options || parts.has_assignment {
+    return Err(ParseError::new(
+      "drop does not accept options or assignment syntax",
+    ));
+  }
+  if parts.has_condition {
+    if parts.arguments.is_empty() {
+      return Err(ParseError::new(
+        "drop if execution is deferred in the bounded runtime",
+      ));
+    }
+    return Err(ParseError::new(
+      "drop cannot combine a variable list with an if clause",
+    ));
+  }
+  if parts.arguments.is_empty() {
+    return Err(ParseError::new("drop expects a variable list or if clause"));
+  }
+  Ok(Command::Drop {
     variables: parts
       .arguments
       .into_iter()

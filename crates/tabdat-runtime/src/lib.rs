@@ -53,6 +53,13 @@ pub struct KeepResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after projecting out columns with `drop`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropResult {
+  /// Metadata for the newly active projected dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// The owned result returned by a read-only `describe` request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescribeResult {
@@ -253,6 +260,8 @@ pub enum ExecutionResult {
   Assert(AssertResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
+  /// Removes an explicit set of columns from the active dataset.
+  Drop(DropResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -339,6 +348,14 @@ pub enum RuntimeError {
   KeepNoVariables,
   /// DuckDB could not stage or publish the projected relation.
   KeepFailed,
+  /// The drop request named variables absent from the active schema.
+  DropUnknownVariable { variables: Vec<String> },
+  /// The drop request did not name any variables.
+  DropNoVariables,
+  /// The drop request would leave the active relation without columns.
+  DropWouldRemoveEveryColumn,
+  /// DuckDB could not stage or publish the projected relation.
+  DropFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -476,6 +493,12 @@ impl fmt::Display for RuntimeError {
       }
       Self::KeepNoVariables => formatter.write_str("keep expects a variable list or if clause"),
       Self::KeepFailed => formatter.write_str("keep failed"),
+      Self::DropUnknownVariable { variables } => {
+        write!(formatter, "drop unknown variable: {}", variables.join(", "))
+      }
+      Self::DropNoVariables => formatter.write_str("drop expects a variable list or if clause"),
+      Self::DropWouldRemoveEveryColumn => formatter.write_str("drop would remove every column"),
+      Self::DropFailed => formatter.write_str("drop failed"),
     }
   }
 }
@@ -518,6 +541,7 @@ impl Session {
       Command::Datasignature => self.execute_datasignature(),
       Command::Assert { expression } => self.execute_assert(expression),
       Command::Keep { variables } => self.execute_keep(variables),
+      Command::Drop { variables } => self.execute_drop(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -893,10 +917,51 @@ impl Session {
     }
     let backend = self.backend.as_mut().ok_or(RuntimeError::KeepFailed)?;
     let next_dataset = backend
-      .keep_columns(&dataset, &variables)
+      .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::KeepFailed)?;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Keep(KeepResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_drop(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "drop" })?
+      .clone();
+    if variables.is_empty() {
+      return Err(RuntimeError::DropNoVariables);
+    }
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::DropUnknownVariable { variables: unknown });
+    }
+    let remaining = dataset
+      .columns
+      .iter()
+      .filter(|column| !variables.iter().any(|variable| variable == &column.name))
+      .map(|column| column.name.clone())
+      .collect::<Vec<_>>();
+    if remaining.is_empty() {
+      return Err(RuntimeError::DropWouldRemoveEveryColumn);
+    }
+    let backend = self.backend.as_mut().ok_or(RuntimeError::DropFailed)?;
+    let next_dataset = backend
+      .project_columns(&dataset, &remaining)
+      .map_err(|_| RuntimeError::DropFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Drop(DropResult {
       dataset: next_dataset,
     }))
   }
@@ -1002,6 +1067,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Datasignature => "datasignature",
     Command::Assert { .. } => "assert",
     Command::Keep { .. } => "keep",
+    Command::Drop { .. } => "drop",
     Command::Missing { .. } => "missing",
     Command::Duplicates { .. } => "duplicates",
     Command::Isid { .. } => "isid",
@@ -1593,7 +1659,7 @@ impl DuckDbBackend {
     })
   }
 
-  fn keep_columns(
+  fn project_columns(
     &mut self,
     dataset: &DatasetInfo,
     variables: &[String],
@@ -2797,6 +2863,40 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::KeepFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    assert!(session.backend.is_some());
+  }
+
+  #[test]
+  fn failed_drop_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![
+        ColumnInfo {
+          name: "age".to_owned(),
+          data_type: "INTEGER".to_owned(),
+        },
+        ColumnInfo {
+          name: "sex".to_owned(),
+          data_type: "VARCHAR".to_owned(),
+        },
+      ],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+
+    assert_eq!(
+      session
+        .execute(Command::Drop {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::DropFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     assert!(session.backend.is_some());
