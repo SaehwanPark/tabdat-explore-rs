@@ -599,7 +599,11 @@ fn keep_preserves_bounded_projection_diagnostics() {
     ),
     (
       "keep if age > 0, stable",
-      "keep if execution is deferred in the bounded runtime",
+      "keep does not accept options or assignment syntax",
+    ),
+    (
+      "keep age if age > 0, stable",
+      "keep does not accept options or assignment syntax",
     ),
     ("keep age==x", "unsupported token in command: =="),
     ("keep age-1", "unsupported token in command: -"),
