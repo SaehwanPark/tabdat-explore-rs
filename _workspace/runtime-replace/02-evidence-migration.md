@@ -1,6 +1,7 @@
 # Runtime `replace` evidence and migration record
 
-Status: accepted and verified on `main` at `df2cad9`.
+Status: accepted and verified on `main` at `df2cad9`; documentation closeout
+is complete at `6821e1c`.
 
 ## Authority and oracle evidence
 
@@ -98,6 +99,9 @@ under the repository's `cancel-in-progress` concurrency policy. The follow-on
 main [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485)
 for `84d6cb2` passed, including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485/job/105924386502)
 and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35453397485/job/105924386301).
+The final docs-only [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35454598916)
+for `6821e1c` also passed, including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35454598916/job/105927550996)
+and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35454598916/job/105927551167).
 
 ## Deviations and deferrals
 

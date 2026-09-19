@@ -1,7 +1,7 @@
 # Bounded eager-runtime `replace` closeout
 
 Status: accepted and verified on `main` at `df2cad9`; documentation closeout
-is pushed at `84d6cb2`.
+is complete at `6821e1c`.
 
 ## Accepted scope
 
@@ -32,10 +32,9 @@ The temporary branch was deleted locally and remotely.
 
 ## Post-merge verification
 
-The merge-head runtime workflow passed, and the follow-on main CI for the
-documentation closeout commit passed. A final docs-only CI run is triggered by
-this summary commit and is monitored before handoff; no implementation files
-or runtime behavior change in the closeout.
+The merge-head runtime workflow passed, and both the follow-on main CI and the
+final docs-only CI for the closeout passed. No implementation files or runtime
+behavior changed in the documentation closeout.
 
 Function calls, unsupported boolean/other target domains, exact overflow-count
 diagnostics, lazy/materialized execution, labels/panel metadata,
