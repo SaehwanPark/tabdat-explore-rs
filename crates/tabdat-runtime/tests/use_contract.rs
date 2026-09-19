@@ -2142,7 +2142,7 @@ fn sort_requires_an_active_dataset_before_execution() {
 }
 
 #[test]
-fn leaves_gsort_execution_deferred() {
+fn gsort_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = Command::Gsort {
     keys: vec![tabdat_language::SortKey {
@@ -2153,7 +2153,7 @@ fn leaves_gsort_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "gsort" }
+    RuntimeError::NoActiveDataset { command: "gsort" }
   );
 }
 

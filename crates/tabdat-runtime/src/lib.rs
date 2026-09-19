@@ -10,7 +10,7 @@ use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit,
+  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit, SortKey,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -239,6 +239,13 @@ pub struct SortResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after stably sorting active rows by directed keys.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GsortResult {
+  /// Metadata for the newly active directed-sort dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -303,6 +310,8 @@ pub enum ExecutionResult {
   Rename(RenameResult),
   /// Stably sorts active rows by ascending columns.
   Sort(SortResult),
+  /// Stably sorts active rows by explicitly directed columns.
+  Gsort(GsortResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -423,6 +432,12 @@ pub enum RuntimeError {
   SortUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish the sorted relation.
   SortFailed,
+  /// The gsort request did not name any variables.
+  GsortNoVariables,
+  /// The gsort request named variables absent from the active schema.
+  GsortUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not stage or publish the directed sorted relation.
+  GsortFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -614,6 +629,15 @@ impl fmt::Display for RuntimeError {
         write!(formatter, "sort unknown variable: {}", variables.join(", "))
       }
       Self::SortFailed => formatter.write_str("sort failed"),
+      Self::GsortNoVariables => formatter.write_str("gsort expects at least one variable"),
+      Self::GsortUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "gsort unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::GsortFailed => formatter.write_str("gsort failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -686,6 +710,7 @@ impl Session {
       } => self.execute_replace(variable, expression, condition),
       Command::Rename { old_name, new_name } => self.execute_rename(old_name, new_name),
       Command::Sort { variables } => self.execute_sort(variables),
+      Command::Gsort { keys } => self.execute_gsort(keys),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1242,6 +1267,44 @@ impl Session {
       .map_err(|_| RuntimeError::SortFailed)?;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Sort(SortResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_gsort(&mut self, keys: Vec<SortKey>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "gsort" })?
+      .clone();
+    if keys.is_empty() {
+      return Err(RuntimeError::GsortNoVariables);
+    }
+    let variables = keys
+      .iter()
+      .map(|key| key.variable.clone())
+      .collect::<Vec<_>>();
+    let directions = keys.iter().map(|key| key.descending).collect::<Vec<_>>();
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::GsortUnknownVariable { variables: unknown });
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::GsortFailed)?;
+    let next_dataset = backend
+      .sort_rows_directed(&dataset, &variables, &directions)
+      .map_err(|_| RuntimeError::GsortFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Gsort(GsortResult {
       dataset: next_dataset,
     }))
   }
@@ -2352,6 +2415,19 @@ impl DuckDbBackend {
   }
 
   fn sort_rows(&mut self, dataset: &DatasetInfo, variables: &[String]) -> Result<DatasetInfo, ()> {
+    let directions = vec![false; variables.len()];
+    self.sort_rows_directed(dataset, variables, &directions)
+  }
+
+  fn sort_rows_directed(
+    &mut self,
+    dataset: &DatasetInfo,
+    variables: &[String],
+    directions: &[bool],
+  ) -> Result<DatasetInfo, ()> {
+    if variables.len() != directions.len() {
+      return Err(());
+    }
     self.drop_staging();
     let mut ordinal_name = "__tabdat_sort_ordinal".to_owned();
     while dataset
@@ -2364,7 +2440,11 @@ impl DuckDbBackend {
     let quoted_ordinal = quote_identifier(&ordinal_name);
     let order_by = variables
       .iter()
-      .map(|variable| format!("{} ASC NULLS LAST", quote_identifier(variable)))
+      .zip(directions)
+      .map(|(variable, is_descending)| {
+        let direction = if *is_descending { "DESC" } else { "ASC" };
+        format!("{} {direction} NULLS LAST", quote_identifier(variable))
+      })
       .chain(std::iter::once(format!("{quoted_ordinal} ASC")))
       .collect::<Vec<_>>()
       .join(", ");
@@ -3689,6 +3769,25 @@ mod tests {
   }
 
   #[test]
+  fn gsort_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Gsort {
+          keys: vec![SortKey {
+            variable: "value".to_owned(),
+            descending: true,
+          }],
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "gsort" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -4292,6 +4391,55 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::SortFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let value: i32 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT other FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
+  }
+
+  #[test]
+  fn failed_gsort_keeps_metadata_and_private_active_relation() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS other"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Gsort {
+          keys: vec![SortKey {
+            variable: "value".to_owned(),
+            descending: true,
+          }],
+        })
+        .unwrap_err(),
+      RuntimeError::GsortFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     let value: i32 = session
