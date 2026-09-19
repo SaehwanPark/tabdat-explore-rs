@@ -1061,6 +1061,16 @@ fn parse_keep_command(body: &str) -> Result<Command, ParseError> {
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
   }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "keep assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "keep assignment requires an expression after =",
+    ));
+  }
   if parts.has_condition {
     if parts.arguments.is_empty() {
       return Err(ParseError::new(

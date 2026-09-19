@@ -592,6 +592,15 @@ fn keep_preserves_bounded_projection_diagnostics() {
       "keep age = other",
       "keep does not accept options or assignment syntax",
     ),
+    ("keep = other", "keep assignment requires a target before ="),
+    (
+      "keep age =",
+      "keep assignment requires an expression after =",
+    ),
+    (
+      "keep if age > 0, stable",
+      "keep if execution is deferred in the bounded runtime",
+    ),
     ("keep age==x", "unsupported token in command: =="),
     ("keep age-1", "unsupported token in command: -"),
   ];

@@ -2775,6 +2775,34 @@ mod tests {
   }
 
   #[test]
+  fn failed_keep_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "age".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+
+    assert_eq!(
+      session
+        .execute(Command::Keep {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::KeepFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    assert!(session.backend.is_some());
+  }
+
+  #[test]
   fn failed_summary_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
