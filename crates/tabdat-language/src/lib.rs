@@ -59,6 +59,15 @@ pub enum Command {
   Sort { variables: Vec<String> },
   /// Sort active rows by explicitly directed keys in the bounded eager runtime.
   Gsort { keys: Vec<SortKey> },
+  /// Recode values or ranges in the bounded eager runtime.
+  Recode {
+    /// The source variables in parser order.
+    variables: Vec<String>,
+    /// The ordered recode rules.
+    rules: Vec<RecodeRule>,
+    /// Whether to append generated columns or replace the source columns.
+    target: RecodeTarget,
+  },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -233,6 +242,65 @@ pub struct SortKey {
   pub variable: String,
   /// Whether the key requests descending order.
   pub descending: bool,
+}
+
+/// A value accepted on either side of a bounded `recode` rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecodeValue {
+  /// A numeric literal preserved as source text.
+  Number(String),
+  /// A text value, including a parsed unquoted keyword outside its structural
+  /// role.
+  Text(String),
+}
+
+/// One endpoint of an inclusive numeric `recode` range.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecodeRangeEndpoint {
+  /// The lower unbounded endpoint.
+  Min,
+  /// The upper unbounded endpoint.
+  Max,
+  /// A numeric endpoint preserved as source text.
+  Number(String),
+}
+
+/// One input accepted by a bounded `recode` rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecodeInput {
+  /// A single scalar value.
+  Value(RecodeValue),
+  /// An inclusive numeric range.
+  Range {
+    /// The lower endpoint.
+    start: RecodeRangeEndpoint,
+    /// The upper endpoint.
+    end: RecodeRangeEndpoint,
+  },
+  /// SQL NULL values.
+  Missing,
+  /// Non-NULL values.
+  NonMissing,
+  /// The unmatched fallback value.
+  Else,
+}
+
+/// One ordered bounded `recode` rule.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecodeRule {
+  /// The input values or ranges matched by this rule.
+  pub inputs: Vec<RecodeInput>,
+  /// The value emitted for a matching row.
+  pub output: RecodeValue,
+}
+
+/// The mutually exclusive write target for a bounded `recode` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecodeTarget {
+  /// Append one new output column per source variable.
+  Generate { variables: Vec<String> },
+  /// Replace the selected source variables in place.
+  Replace,
 }
 
 impl AssertBinaryOperator {
@@ -537,6 +605,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "select" => parse_select_command(body),
     "sort" => parse_sort_command(body),
     "gsort" => parse_gsort_command(body),
+    "recode" => parse_recode_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
     "replace" => parse_replace_command(body),
@@ -1836,6 +1905,327 @@ fn parse_sort_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_recode_command(body: &str) -> Result<Command, ParseError> {
+  let tokens = tokenize_use_options(body)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "recode command: missing variable list and rules",
+    ));
+  }
+
+  let mut depth = 0_i32;
+  let mut comma_index = None;
+  for (index, token) in tokens.iter().enumerate() {
+    match (token.kind.clone(), token.text.as_str()) {
+      (UseTokenKind::Symbol, "(") => depth += 1,
+      (UseTokenKind::Symbol, ")") => depth -= 1,
+      (UseTokenKind::Symbol, ",") if depth == 0 => {
+        comma_index = Some(index);
+        break;
+      }
+      _ => {}
+    }
+  }
+
+  let (body_tokens, option_tokens) = match comma_index {
+    Some(index) => (&tokens[..index], Some(&tokens[index + 1..])),
+    None => (&tokens[..], None),
+  };
+  let target = parse_recode_target(option_tokens)?;
+
+  let Some(first_rule_index) = body_tokens
+    .iter()
+    .position(|token| token.kind == UseTokenKind::Symbol && token.text == "(")
+  else {
+    return Err(ParseError::new("recode command: no rules specified"));
+  };
+  if first_rule_index == 0 {
+    return Err(ParseError::new("recode command: no variables specified"));
+  }
+
+  let variables = body_tokens[..first_rule_index]
+    .iter()
+    .map(|token| match &token.kind {
+      UseTokenKind::Identifier { .. } => Ok(token.text.clone()),
+      _ => Err(ParseError::new(format!(
+        "invalid variable name in recode list: {}",
+        token.text
+      ))),
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+
+  let mut rules = Vec::new();
+  let mut index = first_rule_index;
+  while index < body_tokens.len() {
+    if body_tokens[index].kind != UseTokenKind::Symbol || body_tokens[index].text != "(" {
+      return Err(ParseError::new(format!(
+        "expected '(' at start of rule, got: {}",
+        body_tokens[index].text
+      )));
+    }
+
+    let mut rule_depth = 1_i32;
+    let mut end = index + 1;
+    while end < body_tokens.len() && rule_depth > 0 {
+      match (
+        body_tokens[end].kind.clone(),
+        body_tokens[end].text.as_str(),
+      ) {
+        (UseTokenKind::Symbol, "(") => rule_depth += 1,
+        (UseTokenKind::Symbol, ")") => rule_depth -= 1,
+        _ => {}
+      }
+      if rule_depth > 0 {
+        end += 1;
+      }
+    }
+    if rule_depth > 0 {
+      return Err(ParseError::new("unterminated rule parenthesis"));
+    }
+
+    rules.push(parse_recode_rule(&body_tokens[index + 1..end])?);
+    index = end + 1;
+  }
+
+  Ok(Command::Recode {
+    variables,
+    rules,
+    target,
+  })
+}
+
+fn parse_recode_target(tokens: Option<&[UseToken]>) -> Result<RecodeTarget, ParseError> {
+  let Some(tokens) = tokens else {
+    return Err(ParseError::new(
+      "recode command requires either generate() or replace option",
+    ));
+  };
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "comma must be followed by at least one option",
+    ));
+  }
+
+  let options = parse_use_option_tokens(tokens.to_vec())?;
+  let mut generate = None;
+  let mut replace = false;
+  for option in options {
+    let name = option.name.to_ascii_lowercase();
+    match name.as_str() {
+      "generate" => {
+        if generate.is_some() {
+          return Err(ParseError::new("recode option specified more than once"));
+        }
+        let UseOptionValue::Identifiers(variables) = option.value else {
+          return Err(ParseError::new(
+            "recode generate option expects variable names",
+          ));
+        };
+        generate = Some(variables);
+      }
+      "replace" => {
+        if replace {
+          return Err(ParseError::new("recode option specified more than once"));
+        }
+        if option.value != UseOptionValue::Flag {
+          return Err(ParseError::new(
+            "recode replace option does not accept a value",
+          ));
+        }
+        replace = true;
+      }
+      _ => {
+        return Err(ParseError::new(format!(
+          "recode unsupported option: {name}"
+        )));
+      }
+    }
+  }
+
+  match (generate, replace) {
+    (Some(variables), false) => Ok(RecodeTarget::Generate { variables }),
+    (None, true) => Ok(RecodeTarget::Replace),
+    (Some(_), true) => Err(ParseError::new(
+      "recode command: cannot specify both generate() and replace",
+    )),
+    (None, false) => Err(ParseError::new(
+      "recode command requires either generate() or replace option",
+    )),
+  }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RecodeAtom {
+  Value(RecodeValue),
+  Min,
+  Max,
+  Missing,
+  NonMissing,
+  Else,
+  Slash,
+}
+
+fn parse_recode_rule(tokens: &[UseToken]) -> Result<RecodeRule, ParseError> {
+  let equals = tokens
+    .iter()
+    .enumerate()
+    .filter(|(_, token)| token.kind == UseTokenKind::Symbol && token.text == "=")
+    .map(|(index, _)| index)
+    .collect::<Vec<_>>();
+  let Some(&equal_index) = equals.first() else {
+    return Err(ParseError::new(
+      "recode rule expects '=' between inputs and output",
+    ));
+  };
+  if equals.len() > 1 {
+    return Err(ParseError::new("recode rule contains multiple '=' symbols"));
+  }
+  let lhs_tokens = &tokens[..equal_index];
+  let rhs_tokens = &tokens[equal_index + 1..];
+  if lhs_tokens.is_empty() {
+    return Err(ParseError::new("recode rule: missing inputs before '='"));
+  }
+  if rhs_tokens.is_empty() {
+    return Err(ParseError::new("recode rule: missing output after '='"));
+  }
+
+  let lhs_atoms = parse_recode_atoms(lhs_tokens)?;
+  let mut inputs = Vec::new();
+  let mut index = 0;
+  while index < lhs_atoms.len() {
+    if lhs_atoms[index] == RecodeAtom::Slash {
+      return Err(ParseError::new("invalid slash positioning in recode rule"));
+    }
+    if lhs_atoms.get(index + 1) == Some(&RecodeAtom::Slash) {
+      let Some(end) = lhs_atoms.get(index + 2) else {
+        return Err(ParseError::new("unterminated range in recode rule"));
+      };
+      let start = recode_range_endpoint(&lhs_atoms[index]).ok_or_else(|| {
+        ParseError::new(format!(
+          "invalid range start in recode rule: {}",
+          recode_atom_text(&lhs_atoms[index])
+        ))
+      })?;
+      let end = recode_range_endpoint(end).ok_or_else(|| {
+        ParseError::new(format!(
+          "invalid range end in recode rule: {}",
+          recode_atom_text(end)
+        ))
+      })?;
+      inputs.push(RecodeInput::Range { start, end });
+      index += 3;
+      continue;
+    }
+    inputs.push(recode_input(lhs_atoms[index].clone()));
+    index += 1;
+  }
+  if inputs
+    .iter()
+    .filter(|input| matches!(input, RecodeInput::Else))
+    .count()
+    > 0
+    && inputs.len() > 1
+  {
+    return Err(ParseError::new(
+      "else rule must not be combined with other inputs",
+    ));
+  }
+
+  let output_atoms = parse_recode_atoms(rhs_tokens)?;
+  if output_atoms.len() != 1 {
+    return Err(ParseError::new("recode rule output must be a single value"));
+  }
+  let output = match output_atoms.into_iter().next().expect("length checked") {
+    RecodeAtom::Value(value) => value,
+    atom => RecodeValue::Text(recode_atom_text(&atom)),
+  };
+  Ok(RecodeRule { inputs, output })
+}
+
+fn parse_recode_atoms(tokens: &[UseToken]) -> Result<Vec<RecodeAtom>, ParseError> {
+  let mut atoms = Vec::new();
+  let mut index = 0;
+  while index < tokens.len() {
+    let token = &tokens[index];
+    if token.kind == UseTokenKind::Symbol && token.text == "/" {
+      atoms.push(RecodeAtom::Slash);
+      index += 1;
+      continue;
+    }
+    if token.kind == UseTokenKind::Symbol
+      && matches!(token.text.as_str(), "+" | "-")
+      && tokens
+        .get(index + 1)
+        .is_some_and(|next| next.kind == UseTokenKind::Number)
+    {
+      let number = format!("{}{}", token.text, tokens[index + 1].text);
+      atoms.push(RecodeAtom::Value(RecodeValue::Number(number)));
+      index += 2;
+      continue;
+    }
+    atoms.push(match &token.kind {
+      UseTokenKind::Number => RecodeAtom::Value(RecodeValue::Number(token.text.clone())),
+      UseTokenKind::String => RecodeAtom::Value(RecodeValue::Text(token.text.clone())),
+      UseTokenKind::Identifier { .. } => match token.text.to_ascii_lowercase().as_str() {
+        "min" => RecodeAtom::Min,
+        "max" => RecodeAtom::Max,
+        "missing" => RecodeAtom::Missing,
+        "nonmissing" => RecodeAtom::NonMissing,
+        "else" => RecodeAtom::Else,
+        _ => RecodeAtom::Value(RecodeValue::Text(token.text.to_ascii_lowercase())),
+      },
+      UseTokenKind::Symbol => {
+        return Err(ParseError::new(format!(
+          "unexpected token in recode rule input: {}",
+          token.text
+        )));
+      }
+    });
+    index += 1;
+  }
+  Ok(atoms)
+}
+
+fn recode_range_endpoint(atom: &RecodeAtom) -> Option<RecodeRangeEndpoint> {
+  match atom {
+    RecodeAtom::Min => Some(RecodeRangeEndpoint::Min),
+    RecodeAtom::Max => Some(RecodeRangeEndpoint::Max),
+    RecodeAtom::Value(RecodeValue::Number(value)) => {
+      Some(RecodeRangeEndpoint::Number(value.clone()))
+    }
+    RecodeAtom::Value(RecodeValue::Text(_))
+    | RecodeAtom::Missing
+    | RecodeAtom::NonMissing
+    | RecodeAtom::Else
+    | RecodeAtom::Slash => None,
+  }
+}
+
+fn recode_input(atom: RecodeAtom) -> RecodeInput {
+  match atom {
+    RecodeAtom::Value(value) => RecodeInput::Value(value),
+    RecodeAtom::Missing => RecodeInput::Missing,
+    RecodeAtom::NonMissing => RecodeInput::NonMissing,
+    RecodeAtom::Else => RecodeInput::Else,
+    RecodeAtom::Min => RecodeInput::Value(RecodeValue::Text("min".to_owned())),
+    RecodeAtom::Max => RecodeInput::Value(RecodeValue::Text("max".to_owned())),
+    RecodeAtom::Slash => unreachable!("slash is handled before scalar conversion"),
+  }
+}
+
+fn recode_atom_text(atom: &RecodeAtom) -> String {
+  match atom {
+    RecodeAtom::Value(RecodeValue::Number(value)) => value.clone(),
+    RecodeAtom::Value(RecodeValue::Text(value)) => value.clone(),
+    RecodeAtom::Min => "min".to_owned(),
+    RecodeAtom::Max => "max".to_owned(),
+    RecodeAtom::Missing => "missing".to_owned(),
+    RecodeAtom::NonMissing => "nonmissing".to_owned(),
+    RecodeAtom::Else => "else".to_owned(),
+    RecodeAtom::Slash => "/".to_owned(),
+  }
+}
+
 fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
   let parts = parse_simple_body(body, true)?;
   if parts.missing_condition_expression {
@@ -2191,6 +2581,10 @@ fn parse_use_command(body: &str) -> Result<Command, ParseError> {
 
 fn parse_use_options(text: &str) -> Result<Vec<UseOption>, ParseError> {
   let tokens = tokenize_use_options(text)?;
+  parse_use_option_tokens(tokens)
+}
+
+fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, ParseError> {
   if tokens.is_empty() {
     return Err(ParseError::new(
       "comma must be followed by at least one option",

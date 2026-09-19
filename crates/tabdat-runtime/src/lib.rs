@@ -10,7 +10,8 @@ use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit, SortKey,
+  GenerateBinaryOperator, GenerateExpression, LazyEngine, RecodeInput, RecodeRangeEndpoint,
+  RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -246,6 +247,13 @@ pub struct GsortResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after recoding selected columns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecodeResult {
+  /// Metadata for the newly active recoded dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -312,6 +320,8 @@ pub enum ExecutionResult {
   Sort(SortResult),
   /// Stably sorts active rows by explicitly directed columns.
   Gsort(GsortResult),
+  /// Recodes values or ranges in selected active columns.
+  Recode(RecodeResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -438,6 +448,22 @@ pub enum RuntimeError {
   GsortUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish the directed sorted relation.
   GsortFailed,
+  /// The recode request did not name any source variables.
+  RecodeNoVariables,
+  /// The recode request did not contain any rules.
+  RecodeNoRules,
+  /// The recode request named variables absent from the active schema.
+  RecodeUnknownVariable { variables: Vec<String> },
+  /// Generate mode did not provide one output per source variable.
+  RecodeGenerateCountMismatch,
+  /// Generate mode repeated an output variable.
+  RecodeGenerateDuplicateVariable,
+  /// Generate mode named an output already present in the active schema.
+  RecodeGenerateTargetExists { variable: String },
+  /// A numeric range was applied to a non-numeric source column.
+  RecodeRangeRequiresNumeric { variable: String },
+  /// DuckDB could not stage or publish the recoded relation.
+  RecodeFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -638,6 +664,29 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::GsortFailed => formatter.write_str("gsort failed"),
+      Self::RecodeNoVariables => formatter.write_str("recode expects at least one variable"),
+      Self::RecodeNoRules => formatter.write_str("recode expects at least one rule"),
+      Self::RecodeUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "recode unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::RecodeGenerateCountMismatch => {
+        formatter.write_str("number of generate variables must match number of variables to recode")
+      }
+      Self::RecodeGenerateDuplicateVariable => {
+        formatter.write_str("recode generate variables must be unique")
+      }
+      Self::RecodeGenerateTargetExists { variable } => {
+        write!(formatter, "generate variable already exists: {variable}")
+      }
+      Self::RecodeRangeRequiresNumeric { variable } => write!(
+        formatter,
+        "range recode rule not allowed on non-numeric column: {variable}"
+      ),
+      Self::RecodeFailed => formatter.write_str("recode failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -711,6 +760,11 @@ impl Session {
       Command::Rename { old_name, new_name } => self.execute_rename(old_name, new_name),
       Command::Sort { variables } => self.execute_sort(variables),
       Command::Gsort { keys } => self.execute_gsort(keys),
+      Command::Recode {
+        variables,
+        rules,
+        target,
+      } => self.execute_recode(variables, rules, target),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1309,6 +1363,97 @@ impl Session {
     }))
   }
 
+  fn execute_recode(
+    &mut self,
+    variables: Vec<String>,
+    rules: Vec<RecodeRule>,
+    target: RecodeTarget,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "recode" })?
+      .clone();
+    if variables.is_empty() {
+      return Err(RuntimeError::RecodeNoVariables);
+    }
+    if rules.is_empty() {
+      return Err(RuntimeError::RecodeNoRules);
+    }
+
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::RecodeUnknownVariable { variables: unknown });
+    }
+
+    if let Some(range_variable) = variables.iter().find(|variable| {
+      let data_type = dataset
+        .columns
+        .iter()
+        .find(|column| column.name == **variable)
+        .map(|column| column.data_type.as_str())
+        .expect("source variable validation precedes range validation");
+      !is_numeric_data_type(data_type)
+        && rules.iter().any(|rule| {
+          rule
+            .inputs
+            .iter()
+            .any(|input| matches!(input, RecodeInput::Range { .. }))
+        })
+    }) {
+      return Err(RuntimeError::RecodeRangeRequiresNumeric {
+        variable: (*range_variable).clone(),
+      });
+    }
+
+    if let RecodeTarget::Generate {
+      variables: generated,
+    } = &target
+    {
+      if generated.len() != variables.len() {
+        return Err(RuntimeError::RecodeGenerateCountMismatch);
+      }
+      if generated.is_empty() {
+        return Err(RuntimeError::RecodeGenerateCountMismatch);
+      }
+      if generated
+        .iter()
+        .enumerate()
+        .any(|(index, variable)| generated[..index].contains(variable))
+      {
+        return Err(RuntimeError::RecodeGenerateDuplicateVariable);
+      }
+      if let Some(variable) = generated.iter().find(|variable| {
+        dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      }) {
+        return Err(RuntimeError::RecodeGenerateTargetExists {
+          variable: variable.clone(),
+        });
+      }
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::RecodeFailed)?;
+    let next_dataset = backend
+      .recode_columns(&dataset, &variables, &rules, &target)
+      .map_err(|_| RuntimeError::RecodeFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Recode(RecodeResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -1524,6 +1669,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Select { .. } => "select",
     Command::Sort { .. } => "sort",
     Command::Gsort { .. } => "gsort",
+    Command::Recode { .. } => "recode",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
@@ -2191,6 +2337,144 @@ fn quote_identifier(identifier: &str) -> String {
   format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
+fn quote_recode_literal(value: &str) -> String {
+  format!("'{}'", value.replace('\'', "''"))
+}
+
+fn validate_recode_number(value: &str) -> Result<(), ()> {
+  value
+    .parse::<f64>()
+    .is_ok_and(f64::is_finite)
+    .then_some(())
+    .ok_or(())
+}
+
+fn compile_recode_case(source: &ColumnInfo, rules: &[RecodeRule]) -> Result<String, ()> {
+  let source_is_numeric = is_numeric_data_type(&source.data_type);
+  let output_is_text = !source_is_numeric
+    || rules
+      .iter()
+      .any(|rule| matches!(&rule.output, RecodeValue::Text(_)));
+  let source_sql = quote_identifier(&source.name);
+  let mut clauses = Vec::new();
+  let mut else_sql = None;
+
+  for rule in rules {
+    let mut conditions = Vec::new();
+    let mut is_else = false;
+    for input in &rule.inputs {
+      match input {
+        RecodeInput::Value(value) => {
+          conditions.push(compile_recode_value_condition(
+            &source_sql,
+            source_is_numeric,
+            value,
+          )?);
+        }
+        RecodeInput::Range { start, end } => {
+          if !source_is_numeric {
+            return Err(());
+          }
+          conditions.push(compile_recode_range_condition(&source_sql, start, end)?);
+        }
+        RecodeInput::Missing => conditions.push(format!("{source_sql} IS NULL")),
+        RecodeInput::NonMissing => conditions.push(format!("{source_sql} IS NOT NULL")),
+        RecodeInput::Else => is_else = true,
+      }
+    }
+    let output_sql = compile_recode_output(&rule.output, output_is_text)?;
+    if is_else {
+      else_sql = Some(output_sql);
+    } else if !conditions.is_empty() {
+      let condition_sql = conditions
+        .into_iter()
+        .map(|condition| format!("({condition})"))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+      clauses.push(format!("WHEN {condition_sql} THEN {output_sql}"));
+    }
+  }
+
+  let fallback_sql = else_sql.unwrap_or_else(|| {
+    if output_is_text {
+      format!("CAST({source_sql} AS VARCHAR)")
+    } else {
+      source_sql.clone()
+    }
+  });
+  if clauses.is_empty() {
+    return Ok(fallback_sql);
+  }
+  Ok(format!(
+    "CASE {} ELSE {fallback_sql} END",
+    clauses.join(" ")
+  ))
+}
+
+fn compile_recode_value_condition(
+  source_sql: &str,
+  source_is_numeric: bool,
+  value: &RecodeValue,
+) -> Result<String, ()> {
+  match value {
+    RecodeValue::Number(value) => {
+      validate_recode_number(value)?;
+      if source_is_numeric {
+        Ok(format!("{source_sql} = {value}"))
+      } else {
+        Ok(format!(
+          "CAST({source_sql} AS VARCHAR) = {}",
+          quote_recode_literal(value)
+        ))
+      }
+    }
+    RecodeValue::Text(value) => Ok(format!(
+      "CAST({source_sql} AS VARCHAR) = {}",
+      quote_recode_literal(value)
+    )),
+  }
+}
+
+fn compile_recode_range_condition(
+  source_sql: &str,
+  start: &RecodeRangeEndpoint,
+  end: &RecodeRangeEndpoint,
+) -> Result<String, ()> {
+  let start_sql = recode_range_endpoint_sql(start)?;
+  let end_sql = recode_range_endpoint_sql(end)?;
+  match (start_sql, end_sql) {
+    (None, None) => Ok(format!("{source_sql} IS NOT NULL")),
+    (None, Some(end)) => Ok(format!("{source_sql} <= {end}")),
+    (Some(start), None) => Ok(format!("{source_sql} >= {start}")),
+    (Some(start), Some(end)) => Ok(format!("{source_sql} >= {start} AND {source_sql} <= {end}")),
+  }
+}
+
+fn recode_range_endpoint_sql(endpoint: &RecodeRangeEndpoint) -> Result<Option<String>, ()> {
+  match endpoint {
+    RecodeRangeEndpoint::Min => Ok(None),
+    RecodeRangeEndpoint::Max => Ok(None),
+    RecodeRangeEndpoint::Number(value) => {
+      validate_recode_number(value)?;
+      Ok(Some(value.clone()))
+    }
+  }
+}
+
+fn compile_recode_output(value: &RecodeValue, output_is_text: bool) -> Result<String, ()> {
+  match value {
+    RecodeValue::Number(value) => {
+      validate_recode_number(value)?;
+      if output_is_text {
+        Ok(quote_recode_literal(value))
+      } else {
+        Ok(value.clone())
+      }
+    }
+    RecodeValue::Text(value) => Ok(quote_recode_literal(value)),
+  }
+}
+
 fn validate_local_parquet_path(path: &Path) -> Result<(), RuntimeError> {
   let extension_is_parquet = path
     .extension()
@@ -2482,6 +2766,116 @@ impl DuckDbBackend {
       return Err(());
     }
     if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn recode_columns(
+    &mut self,
+    dataset: &DatasetInfo,
+    variables: &[String],
+    rules: &[RecodeRule],
+    target: &RecodeTarget,
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+
+    let generated = match target {
+      RecodeTarget::Generate { variables } => Some(variables),
+      RecodeTarget::Replace => None,
+    };
+    let targets = generated
+      .cloned()
+      .unwrap_or_else(|| variables.to_vec());
+    let expressions = variables
+      .iter()
+      .zip(targets.iter())
+      .map(|(source, target)| {
+        let source_column = dataset
+          .columns
+          .iter()
+          .find(|column| column.name == *source)
+          .ok_or(())?;
+        let expression = compile_recode_case(source_column, rules)?;
+        Ok::<_, ()>((source.clone(), target.clone(), expression))
+      })
+      .collect::<Result<Vec<_>, _>>()?;
+
+    let mut select_items = dataset
+      .columns
+      .iter()
+      .map(|column| {
+        let expression = expressions
+          .iter()
+          .find(|(source, _, _)| source == &column.name)
+          .map(|(_, _, expression)| expression);
+        match (target, expression) {
+          (RecodeTarget::Replace, Some(expression)) => {
+            format!("{expression} AS {}", quote_identifier(&column.name))
+          }
+          _ => quote_identifier(&column.name),
+        }
+      })
+      .collect::<Vec<_>>();
+    if let Some(generated) = generated {
+      select_items.extend(expressions.iter().map(|(_, target, expression)| {
+        debug_assert!(generated.iter().any(|variable| variable == target));
+        format!("{expression} AS {}", quote_identifier(target))
+      }));
+    }
+
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {} FROM {ACTIVE_TABLE}",
+        select_items.join(", ")
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let mut expected_names = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.clone())
+      .collect::<Vec<_>>();
+    if let Some(generated) = generated {
+      expected_names.extend(generated.iter().cloned());
+    }
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names.iter().map(String::as_str))
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if row_count != dataset.row_count || self.publish_staging().is_err() {
       self.drop_staging();
       return Err(());
     }
