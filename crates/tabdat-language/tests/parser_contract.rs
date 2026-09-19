@@ -1,6 +1,7 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode, LazyEngine, RowLimit,
-  SettingName, SortKey, parse_command,
+  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
+  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit, SettingName, SortKey,
+  parse_command,
 };
 
 #[test]
@@ -224,6 +225,93 @@ fn assert_preserves_exact_bounded_diagnostics() {
       "assert does not accept if clauses",
     ),
     ("assert age = 0", "assert does not accept assignment syntax"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn generate_preserves_typed_expression_structure() {
+  assert_eq!(
+    parse_command("GENERATE `age group` = `body mass` + 1").unwrap(),
+    Command::Generate {
+      variable: "age group".to_owned(),
+      expression: GenerateExpression::Binary {
+        left: Box::new(GenerateExpression::Identifier("body mass".to_owned())),
+        operator: GenerateBinaryOperator::Add,
+        right: Box::new(GenerateExpression::Number("1".to_owned())),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("generate total = round(sqrt(age + 1), 2)").unwrap(),
+    Command::Generate {
+      variable: "total".to_owned(),
+      expression: GenerateExpression::FunctionCall {
+        name: "round".to_owned(),
+        arguments: vec![
+          GenerateExpression::FunctionCall {
+            name: "sqrt".to_owned(),
+            arguments: vec![GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Identifier("age".to_owned())),
+              operator: GenerateBinaryOperator::Add,
+              right: Box::new(GenerateExpression::Number("1".to_owned())),
+            }],
+          },
+          GenerateExpression::Number("2".to_owned()),
+        ],
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("generate `if` = `a``b` == null").unwrap(),
+    Command::Generate {
+      variable: "if".to_owned(),
+      expression: GenerateExpression::Binary {
+        left: Box::new(GenerateExpression::Identifier("a`b".to_owned())),
+        operator: GenerateBinaryOperator::Equal,
+        right: Box::new(GenerateExpression::Null),
+      },
+    }
+  );
+}
+
+#[test]
+fn generate_preserves_exact_bounded_diagnostics() {
+  let cases = [
+    (
+      "generate",
+      "generate expects syntax: generate new = expression",
+    ),
+    (
+      "generate new",
+      "generate expects syntax: generate new = expression",
+    ),
+    (
+      "generate = age",
+      "generate assignment requires a target before =",
+    ),
+    (
+      "generate new =",
+      "generate assignment requires an expression after =",
+    ),
+    ("generate new = age +", "incomplete expression after +"),
+    ("generate new = age IF age > 18", "duplicate if clause"),
+    (
+      "generate new = age, force",
+      "generate does not accept if clauses or options",
+    ),
+    (
+      "generate new = age + 1)",
+      "unsupported token in expression: )",
+    ),
+    ("generate new == age", "unsupported token in command: =="),
+    ("generate new + age", "unsupported token in command: +"),
   ];
   for (input, expected) in cases {
     assert_eq!(

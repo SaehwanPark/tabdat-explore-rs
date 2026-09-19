@@ -4,7 +4,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
-use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine, parse_command};
+use tabdat_language::{
+  Command, DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, LazyEngine,
+  parse_command,
+};
 use tabdat_runtime::{CellValue, ExecutionResult, RuntimeError, Session};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
@@ -2085,6 +2088,24 @@ fn leaves_rename_execution_deferred() {
   assert_eq!(
     session.execute(command).unwrap_err(),
     RuntimeError::UnsupportedCommand { name: "rename" }
+  );
+}
+
+#[test]
+fn leaves_generate_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Generate {
+    variable: "age2".to_owned(),
+    expression: GenerateExpression::Binary {
+      left: Box::new(GenerateExpression::Identifier("age".to_owned())),
+      operator: GenerateBinaryOperator::Add,
+      right: Box::new(GenerateExpression::Number("1".to_owned())),
+    },
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "generate" }
   );
 }
 
