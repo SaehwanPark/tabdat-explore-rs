@@ -146,6 +146,8 @@ fn replace_supports_string_values_and_explicit_nulls() {
   };
   assert_eq!(replace.dataset.columns[2].name, "sex");
   assert_eq!(replace.dataset.columns[2].data_type, "VARCHAR");
+  assert_eq!(replace.dataset.columns[3].name, "cost");
+  assert_eq!(replace.dataset.columns[3].data_type, "DECIMAL(4,1)");
 
   let result = session
     .execute(parse_command("head 3").unwrap())

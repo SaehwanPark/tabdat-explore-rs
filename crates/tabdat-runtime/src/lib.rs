@@ -3385,6 +3385,28 @@ mod tests {
   }
 
   #[test]
+  fn replace_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Replace {
+          variable: "age".to_owned(),
+          expression: GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("age".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Number("1".to_owned())),
+          },
+          condition: None,
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "replace" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
