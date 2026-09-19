@@ -2607,6 +2607,22 @@ mod tests {
   }
 
   #[test]
+  fn keep_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Keep {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "keep" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn head_does_not_initialize_backend_for_a_new_session() {
     let mut session = Session::new();
 
