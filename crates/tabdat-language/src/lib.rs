@@ -57,7 +57,7 @@ pub enum Command {
   Select { variables: Vec<String> },
   /// Sort active rows by listed columns in the bounded eager runtime.
   Sort { variables: Vec<String> },
-  /// Sort active rows by explicitly directed keys (relation execution is deferred).
+  /// Sort active rows by explicitly directed keys in the bounded eager runtime.
   Gsort { keys: Vec<SortKey> },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
