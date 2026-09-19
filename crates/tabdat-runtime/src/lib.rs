@@ -218,6 +218,13 @@ pub struct GenerateResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after replacing values in an existing column.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplaceResult {
+  /// Metadata for the newly active replaced dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -276,6 +283,8 @@ pub enum ExecutionResult {
   Assert(AssertResult),
   /// Appends a generated numeric column to the active dataset.
   Generate(GenerateResult),
+  /// Replaces values in an existing column in the active dataset.
+  Replace(ReplaceResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -372,6 +381,18 @@ pub enum RuntimeError {
   GenerateUnsupportedExpression { message: String },
   /// DuckDB could not stage or publish the generated relation.
   GenerateFailed,
+  /// The replace target is absent from the active schema.
+  ReplaceTargetUnknownVariable { variable: String },
+  /// The replace expression or predicate named variables absent from the active schema.
+  ReplaceUnknownVariable { variables: Vec<String> },
+  /// The replace expression or target has incompatible domains.
+  ReplaceTypeMismatch { message: String },
+  /// The replace predicate did not evaluate to a boolean or null domain.
+  ReplaceRequiresBoolean,
+  /// The replace expression uses a form outside this bounded runtime slice.
+  ReplaceUnsupportedExpression { message: String },
+  /// DuckDB could not stage or publish the replaced relation.
+  ReplaceFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -537,6 +558,20 @@ impl fmt::Display for RuntimeError {
       Self::GenerateTypeMismatch { message } => formatter.write_str(message),
       Self::GenerateUnsupportedExpression { message } => formatter.write_str(message),
       Self::GenerateFailed => formatter.write_str("generate failed"),
+      Self::ReplaceTargetUnknownVariable { variable } => {
+        write!(formatter, "replace unknown variable: {variable}")
+      }
+      Self::ReplaceUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "expression unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::ReplaceTypeMismatch { message } => formatter.write_str(message),
+      Self::ReplaceRequiresBoolean => formatter.write_str("predicate requires boolean expression"),
+      Self::ReplaceUnsupportedExpression { message } => formatter.write_str(message),
+      Self::ReplaceFailed => formatter.write_str("replace failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -602,6 +637,11 @@ impl Session {
         variable,
         expression,
       } => self.execute_generate(variable, expression),
+      Command::Replace {
+        variable,
+        expression,
+        condition,
+      } => self.execute_replace(variable, expression, condition),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1007,6 +1047,101 @@ impl Session {
     }))
   }
 
+  fn execute_replace(
+    &mut self,
+    variable: String,
+    expression: GenerateExpression,
+    condition: Option<GenerateExpression>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "replace" })?
+      .clone();
+    if !dataset.columns.iter().any(|column| column.name == variable) {
+      return Err(RuntimeError::ReplaceTargetUnknownVariable { variable });
+    }
+
+    let replacement = replace_expression_to_assert(&expression)?;
+    let condition = condition
+      .as_ref()
+      .map(replace_expression_to_assert)
+      .transpose()?;
+    let identifiers = replace_expression_identifiers(&expression)
+      .into_iter()
+      .chain(
+        condition
+          .as_ref()
+          .map(expression_identifiers)
+          .into_iter()
+          .flatten(),
+      )
+      .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+      .collect::<Vec<_>>();
+    if !identifiers.is_empty() {
+      return Err(RuntimeError::ReplaceUnknownVariable {
+        variables: identifiers,
+      });
+    }
+
+    let target_type = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == variable)
+      .map(|column| column.data_type.as_str())
+      .ok_or_else(|| RuntimeError::ReplaceTargetUnknownVariable {
+        variable: variable.clone(),
+      })?;
+    let target_domain = data_type_expression_domain(target_type);
+    if !matches!(
+      target_domain,
+      ExpressionDomain::Numeric | ExpressionDomain::String
+    ) {
+      return Err(RuntimeError::ReplaceTypeMismatch {
+        message: format!(
+          "replace target {variable} has unsupported domain: {}",
+          expression_domain_name(target_domain)
+        ),
+      });
+    }
+
+    let replacement_domain =
+      expression_domain(&replacement, &dataset).map_err(map_replace_error)?;
+    if replacement_domain != ExpressionDomain::Null && replacement_domain != target_domain {
+      return Err(RuntimeError::ReplaceTypeMismatch {
+        message: format!(
+          "replace target {variable} is {} but expression is {}",
+          expression_domain_name(target_domain),
+          expression_domain_name(replacement_domain)
+        ),
+      });
+    }
+    if let Some(condition) = condition.as_ref() {
+      let condition_domain = expression_domain(condition, &dataset).map_err(map_replace_error)?;
+      if !matches!(
+        condition_domain,
+        ExpressionDomain::Boolean | ExpressionDomain::Null
+      ) {
+        return Err(RuntimeError::ReplaceRequiresBoolean);
+      }
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::ReplaceFailed)?;
+    let next_dataset = backend
+      .replace_column(
+        &dataset,
+        &variable,
+        target_type,
+        &replacement,
+        condition.as_ref(),
+      )
+      .map_err(|_| RuntimeError::ReplaceFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Replace(ReplaceResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -1274,6 +1409,75 @@ fn generate_expression_identifiers(expression: &GenerateExpression) -> Vec<Strin
       .iter()
       .flat_map(generate_expression_identifiers)
       .collect(),
+  }
+}
+
+fn replace_expression_identifiers(expression: &GenerateExpression) -> Vec<String> {
+  match expression {
+    GenerateExpression::Identifier(name) => vec![name.clone()],
+    GenerateExpression::Number(_) | GenerateExpression::String(_) | GenerateExpression::Null => {
+      Vec::new()
+    }
+    GenerateExpression::UnaryMinus(operand) => replace_expression_identifiers(operand),
+    GenerateExpression::Binary { left, right, .. } => {
+      let mut identifiers = replace_expression_identifiers(left);
+      identifiers.extend(replace_expression_identifiers(right));
+      identifiers
+    }
+    GenerateExpression::FunctionCall { arguments, .. } => arguments
+      .iter()
+      .flat_map(replace_expression_identifiers)
+      .collect(),
+  }
+}
+
+fn replace_expression_to_assert(
+  expression: &GenerateExpression,
+) -> Result<AssertExpression, RuntimeError> {
+  match expression {
+    GenerateExpression::Identifier(name) => Ok(AssertExpression::Identifier(name.clone())),
+    GenerateExpression::Number(value) => Ok(AssertExpression::Number(value.clone())),
+    GenerateExpression::String(value) => Ok(AssertExpression::String(value.clone())),
+    GenerateExpression::Null => Ok(AssertExpression::Null),
+    GenerateExpression::UnaryMinus(operand) => Ok(AssertExpression::UnaryMinus(Box::new(
+      replace_expression_to_assert(operand)?,
+    ))),
+    GenerateExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      let operator = match operator {
+        GenerateBinaryOperator::Add => AssertBinaryOperator::Add,
+        GenerateBinaryOperator::Subtract => AssertBinaryOperator::Subtract,
+        GenerateBinaryOperator::Multiply => AssertBinaryOperator::Multiply,
+        GenerateBinaryOperator::Divide => AssertBinaryOperator::Divide,
+        GenerateBinaryOperator::Equal => AssertBinaryOperator::Equal,
+        GenerateBinaryOperator::NotEqual => AssertBinaryOperator::NotEqual,
+        GenerateBinaryOperator::Less => AssertBinaryOperator::Less,
+        GenerateBinaryOperator::LessOrEqual => AssertBinaryOperator::LessOrEqual,
+        GenerateBinaryOperator::Greater => AssertBinaryOperator::Greater,
+        GenerateBinaryOperator::GreaterOrEqual => AssertBinaryOperator::GreaterOrEqual,
+      };
+      Ok(AssertExpression::Binary {
+        left: Box::new(replace_expression_to_assert(left)?),
+        operator,
+        right: Box::new(replace_expression_to_assert(right)?),
+      })
+    }
+    GenerateExpression::FunctionCall { .. } => Err(RuntimeError::ReplaceUnsupportedExpression {
+      message: "replace does not support function calls".to_owned(),
+    }),
+  }
+}
+
+fn map_replace_error(error: RuntimeError) -> RuntimeError {
+  match error {
+    RuntimeError::AssertUnknownVariable { variables } => {
+      RuntimeError::ReplaceUnknownVariable { variables }
+    }
+    RuntimeError::AssertTypeMismatch { message } => RuntimeError::ReplaceTypeMismatch { message },
+    other => other,
   }
 }
 
@@ -1975,6 +2179,80 @@ impl DuckDbBackend {
       .connection
       .execute_batch(&format!(
         "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT *, {expression_sql} AS {target_sql} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn replace_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    variable: &str,
+    target_type: &str,
+    expression: &AssertExpression,
+    condition: Option<&AssertExpression>,
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let expression_sql = if matches!(expression, AssertExpression::Null) {
+      format!("CAST(NULL AS {target_type})")
+    } else {
+      compile_assert_expression(expression, dataset)?
+    };
+    let replacement_sql = if let Some(condition) = condition {
+      let condition_sql = compile_assert_expression(condition, dataset)?;
+      format!(
+        "CASE WHEN {condition_sql} THEN {expression_sql} ELSE {} END",
+        quote_identifier(variable)
+      )
+    } else {
+      expression_sql
+    };
+    let select_list = dataset
+      .columns
+      .iter()
+      .map(|column| {
+        if column.name == variable {
+          format!("{replacement_sql} AS {}", quote_identifier(&column.name))
+        } else {
+          quote_identifier(&column.name)
+        }
+      })
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_list} FROM {ACTIVE_TABLE}"
       ))
       .is_err()
     {
@@ -3107,6 +3385,28 @@ mod tests {
   }
 
   #[test]
+  fn replace_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Replace {
+          variable: "age".to_owned(),
+          expression: GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("age".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Number("1".to_owned())),
+          },
+          condition: None,
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "replace" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -3565,6 +3865,58 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::GenerateFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let value: i32 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT other FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
+  }
+
+  #[test]
+  fn failed_replace_keeps_metadata_and_private_active_relation() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS other"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Replace {
+          variable: "value".to_owned(),
+          expression: GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("value".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Number("1".to_owned())),
+          },
+          condition: None,
+        })
+        .unwrap_err(),
+      RuntimeError::ReplaceFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     let value: i32 = session

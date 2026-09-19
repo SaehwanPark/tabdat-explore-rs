@@ -2103,14 +2103,14 @@ fn generate_requires_an_active_dataset_before_execution() {
 }
 
 #[test]
-fn replace_execution_remains_deferred_without_initializing_a_backend() {
+fn replace_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = parse_command("replace age = age + 1 if age > 0")
-    .expect("replace should parse before runtime deferral");
+    .expect("replace should parse before execution");
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "replace" }
+    RuntimeError::NoActiveDataset { command: "replace" }
   );
   assert!(session.active_dataset().is_none());
 }
