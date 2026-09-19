@@ -96,8 +96,16 @@ Merge-head acceptance passed after the squash merge:
 - [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892036)
   ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892036/job/105939038984)).
 
-The final documentation-only main CI run will be added after this closeout
-record is pushed.
+The documentation closeout commit
+[`df128e3`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/df128e3cc104d79da7ddb2a4d7ad7af8259483c0)
+also passed the repository workflows:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460065887)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460065887/job/105942205549),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460065887/job/105942205753));
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460066017);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460065949); and
+- [libgretl OLS spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35460065966).
 
 ## Deviations and deferrals
 

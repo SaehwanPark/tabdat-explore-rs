@@ -1,7 +1,7 @@
 # Bounded eager-runtime `rename` closeout
 
 Status: accepted and verified on `main` at `0bd547f`; documentation closeout
-is pending its final main CI run.
+is complete at `df128e3`.
 
 ## Accepted scope
 
@@ -31,10 +31,10 @@ The temporary branch was deleted locally and remotely.
 
 ## Hosted verification
 
-PR-head CI and runtime workflows passed before merge, and the post-merge
-merge-head CI and runtime workflows also passed. Their direct links are
-recorded in [`02-evidence-migration.md`](02-evidence-migration.md). The final
-documentation-only main CI link will be added after this closeout is pushed.
+PR-head CI and runtime workflows passed before merge, the post-merge merge-head
+CI and runtime workflows passed, and the documentation closeout commit passed
+the main CI and repository feasibility workflows. Their direct links are
+recorded in [`02-evidence-migration.md`](02-evidence-migration.md).
 
 Panel/label metadata, lazy or materialized execution, wildcard or multi-column
 forms, `last_operation`, formatting, CLI/JSON/MCP, and broad transform
