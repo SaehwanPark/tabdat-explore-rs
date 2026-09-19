@@ -197,6 +197,36 @@ fn generate_supports_unary_minus_precedence_parentheses_literals_and_quoted_name
 }
 
 #[test]
+fn generate_quotes_identifiers_with_embedded_double_quotes() {
+  let fixture = Fixture::new();
+  let quoted = fixture.write_parquet("embedded-quote.parquet", "SELECT 3 AS \"a\"\"b\"");
+  let mut session = Session::new();
+  session
+    .execute(use_command(&quoted))
+    .expect("quoted fixture should load");
+
+  session
+    .execute(parse_command(r#"generate `out"put` = `a"b` + 1"#).unwrap())
+    .expect("embedded quotes should remain addressable");
+
+  let result = session
+    .execute(parse_command("head 1").unwrap())
+    .expect("generated relation should be previewable");
+  let ExecutionResult::Head(preview) = result else {
+    panic!("head should return a Head result");
+  };
+  assert_eq!(preview.columns, vec!["a\"b", "out\"put"]);
+  assert_eq!(
+    preview.rows[0][1],
+    CellValue::Decimal {
+      width: 38,
+      scale: 0,
+      value: 4
+    }
+  );
+}
+
+#[test]
 fn generate_keeps_empty_relation_schema_and_zero_rows() {
   let fixture = Fixture::new();
   let empty = fixture.write_parquet(
