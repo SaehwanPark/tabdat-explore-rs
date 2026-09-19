@@ -1,6 +1,6 @@
 # Bounded eager-runtime `rename` contract
 
-Status: proposed at the contract checkpoint.
+Status: accepted and verified on `main` at `0bd547f` (PR #49).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.

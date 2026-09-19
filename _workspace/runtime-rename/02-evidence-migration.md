@@ -1,6 +1,6 @@
 # Runtime `rename` evidence and migration record
 
-Status: implementation and local review complete; hosted acceptance is pending.
+Status: accepted and verified on `main` at `0bd547f` (PR #49).
 
 ## Authority and oracle evidence
 
@@ -44,7 +44,8 @@ private-backend no-active regression and mismatched-relation atomicity test in
 `crates/tabdat-runtime/tests/use_contract.rs`.
 
 The contract checkpoint is commit `3c847f0`; the implementation commit is
-`9e298fb`; and the final PR-head documentation correction is `e650128`.
+`9e298fb`; the stale-comment correction is `e650128`; and the final PR-head
+review/evidence update is `e955427`.
 
 ## Local verification
 
@@ -75,10 +76,28 @@ after that correction.
 ## Hosted acceptance
 
 Draft PR [#49](https://github.com/SaehwanPark/tabdat-explore-rs/pull/49) was
-opened at the contract checkpoint and contains the bounded contract,
-implementation, tests, and review evidence. The PR must be marked ready only
-after its final-head CI and runtime-boundary jobs pass. The final hosted run
-links and squash-merge commit will be recorded here before closeout.
+opened at the contract checkpoint, marked ready after review, and squash-merged
+as [`0bd547f`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0bd547f15db7fef01e2a60554fe52a8eb4a4f129).
+
+PR-head acceptance passed at final head
+[`e955427`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e95542704b72393369f966ce5a6fea0fb81d9d6c):
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35457695749)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35457695749/job/105935839601),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35457695749/job/105935839631));
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35457695750)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35457695750/job/105935839337)).
+
+Merge-head acceptance passed after the squash merge:
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892034)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892034/job/105939039119),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892034/job/105939039216));
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892036)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35458892036/job/105939038984)).
+
+The final documentation-only main CI run will be added after this closeout
+record is pushed.
 
 ## Deviations and deferrals
 

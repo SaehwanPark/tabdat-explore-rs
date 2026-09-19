@@ -1,6 +1,6 @@
 # Runtime `rename` review record
 
-Status: complete at final PR head `e650128`; no actionable findings remain.
+Status: complete at final PR head `e955427`; no actionable findings remain.
 
 The review used three independent passes over the contract, pinned oracle
 evidence, implementation diff, and focused tests.

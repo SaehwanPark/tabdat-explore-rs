@@ -169,6 +169,33 @@ boolean/other target domains, exact overflow-count diagnostics, lazy/materialize
 execution, labels/panel metadata, `last_operation`, formatting, CLI, JSON, MCP,
 and broad transform parity remain deferred.
 
+## Verified slice: bounded eager runtime `rename` command
+
+Execute the parsed `rename <old> <new>` subset against an active eager
+local-Parquet DuckDB relation. The runtime validates the source and target
+names before staging, rejects unknown sources and target collisions (including
+same-name requests), and stages a quoted source-order projection that aliases
+only the renamed column. Schema position and logical type, row order, row
+count, SQL NULL values, source path, and eager execution metadata are
+preserved; publication is failure-atomic through the shared transactional
+`__tabdat_next` path.
+
+Evidence: `_workspace/runtime-rename/`,
+`crates/tabdat-language/src/lib.rs`,
+`crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/rename_contract.rs`, and the updated no-active
+runtime regression in `crates/tabdat-runtime/tests/use_contract.rs`. The
+pinned oracle probe, focused Rust tests, locked workspace baseline, dependency
+policy, audit, and metadata-driven geiger checks passed locally. Draft PR
+[#49](https://github.com/SaehwanPark/tabdat-explore-rs/pull/49) passed its
+PR-head workflows and was squash-merged as
+[`0bd547f`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0bd547f15db7fef01e2a60554fe52a8eb4a4f129); merge-head workflow evidence
+is recorded in the companion artifact.
+
+This accepted runtime subset is library-only. Panel/label metadata, lazy or
+materialized execution, wildcard or multi-column forms, `last_operation`,
+formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

@@ -493,7 +493,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   domains, exact overflow-count diagnostics, lazy/materialized execution,
   labels/panel metadata, `last_operation`, formatting, CLI, JSON, MCP, and
   broad transform parity remain deferred.
-- [ ] `rename`
+- [x] `rename` — bounded eager local-Parquet schema rename
+  (`RenameResult`; PR #49, squash merge `0bd547f`). Exact source/target
+  validation, target-collision and same-name errors, quoted identifiers,
+  source-position/type/row-order/NULL preservation, staged publication, and
+  failure-atomic metadata/relation behavior are covered. Panel/label metadata,
+  lazy/materialized execution, wildcard or multi-column forms, `last_operation`,
+  formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
 - [ ] `sort`
 - [ ] `gsort`
 - [ ] `recode`
