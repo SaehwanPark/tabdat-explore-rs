@@ -53,6 +53,8 @@ missing expression after if
 For the selected projection form, unknown variables produce
 `keep unknown variable: ...`; requested column order and row order are
 preserved, and successful transforms report `Kept selected columns`.
+When a requested variable is repeated, DuckDB preserves both projections and
+renames the later result column deterministically (for example `age`, `age_1`).
 
 ## Bounded Rust contract
 
