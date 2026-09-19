@@ -1,7 +1,7 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit, SettingName, SortKey,
-  parse_command,
+  GenerateBinaryOperator, GenerateExpression, LazyEngine, RecodeInput, RecodeRangeEndpoint,
+  RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName, SortKey, parse_command,
 };
 
 #[test]
@@ -1080,6 +1080,104 @@ fn gsort_preserves_exact_public_diagnostics() {
     ("gsort age@x", "unsupported token in command: @"),
     ("gsort ``", "quoted identifier cannot be empty"),
     ("gsort \"unterminated", "unterminated quoted string"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn recode_preserves_typed_rules_and_target_modes() {
+  assert_eq!(
+    parse_command("recode age (min/17 = 0) (18 19 20 = 1) (else = -1), generate(age_group)")
+      .unwrap(),
+    Command::Recode {
+      variables: vec!["age".to_owned()],
+      rules: vec![
+        RecodeRule {
+          inputs: vec![RecodeInput::Range {
+            start: RecodeRangeEndpoint::Min,
+            end: RecodeRangeEndpoint::Number("17".to_owned()),
+          }],
+          output: RecodeValue::Number("0".to_owned()),
+        },
+        RecodeRule {
+          inputs: vec![
+            RecodeInput::Value(RecodeValue::Number("18".to_owned())),
+            RecodeInput::Value(RecodeValue::Number("19".to_owned())),
+            RecodeInput::Value(RecodeValue::Number("20".to_owned())),
+          ],
+          output: RecodeValue::Number("1".to_owned()),
+        },
+        RecodeRule {
+          inputs: vec![RecodeInput::Else],
+          output: RecodeValue::Number("-1".to_owned()),
+        },
+      ],
+      target: RecodeTarget::Generate {
+        variables: vec!["age_group".to_owned()],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("recode cost (missing = 999) (nonmissing = 100), replace").unwrap(),
+    Command::Recode {
+      variables: vec!["cost".to_owned()],
+      rules: vec![
+        RecodeRule {
+          inputs: vec![RecodeInput::Missing],
+          output: RecodeValue::Number("999".to_owned()),
+        },
+        RecodeRule {
+          inputs: vec![RecodeInput::NonMissing],
+          output: RecodeValue::Number("100".to_owned()),
+        },
+      ],
+      target: RecodeTarget::Replace,
+    }
+  );
+
+  assert_eq!(
+    parse_command(r#"recode `sex value` ('F' = 1), generate(`sex code`)"#).unwrap(),
+    Command::Recode {
+      variables: vec!["sex value".to_owned()],
+      rules: vec![RecodeRule {
+        inputs: vec![RecodeInput::Value(RecodeValue::Text("F".to_owned()))],
+        output: RecodeValue::Number("1".to_owned()),
+      }],
+      target: RecodeTarget::Generate {
+        variables: vec!["sex code".to_owned()],
+      },
+    }
+  );
+}
+
+#[test]
+fn recode_preserves_exact_bounded_diagnostics() {
+  let cases = [
+    ("recode", "recode command: missing variable list and rules"),
+    (
+      "recode age (1 = 0)",
+      "recode command requires either generate() or replace option",
+    ),
+    (
+      "recode age (1 = 0), generate(age_group) replace",
+      "recode command: cannot specify both generate() and replace",
+    ),
+    ("recode age, replace", "recode command: no rules specified"),
+    (
+      "recode (1 = 0), replace",
+      "recode command: no variables specified",
+    ),
+    (
+      "recode age (else 1 = 0), replace",
+      "else rule must not be combined with other inputs",
+    ),
   ];
   for (input, expected) in cases {
     assert_eq!(
