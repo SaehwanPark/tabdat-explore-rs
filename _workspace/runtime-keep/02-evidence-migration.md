@@ -1,7 +1,7 @@
 # Bounded eager-runtime `keep` migration evidence
 
-Status: PR-head evidence complete; all hosted checks passed for PR #42 at
-`a910119`; merge and main closeout pending.
+Status: accepted bounded slice; PR #42 and temporary-branch cleanup complete;
+post-merge matrix pending.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`, with independent runtime review
@@ -94,7 +94,7 @@ and use contract 63, with no failures. The metadata-driven all-package
 `cargo geiger` scan reported clean first-party unsafe usage for
 `tabdat-explore-rs`, `tabdat-language`, and `tabdat-runtime`.
 
-## Hosted acceptance and cleanup
+## Hosted acceptance, merge, and cleanup
 
 Draft PR [#42](https://github.com/SaehwanPark/tabdat-explore-rs/pull/42) was
 opened before implementation. The final code head was `a910119`; PR-head
@@ -105,8 +105,14 @@ and [dependency/unsafe-code policy job](https://github.com/SaehwanPark/tabdat-ex
 and [runtime boundary run
 35422022659](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422022659)
 passed its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422022659/job/105841374154).
-The accepted artifact will be updated with the squash merge SHA, branch
-cleanup, and post-merge matrix.
+PR #42 was marked ready after those checks and squash-merged as [`d43c923`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/d43c923f2b599a8ad7ebe7a3b5b0af44c1f77e00).
+The temporary `feat/runtime-keep` branch was removed locally and remotely. The
+docs-inclusive PR head was `b490c61`; its green [CI run
+35422981525](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422981525)
+and [runtime boundary run
+35422981533](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35422981533)
+confirmed the evidence-only closeout before merge. The post-merge matrix will
+be appended after the main documentation closeout.
 
 ## Deferred scope
 

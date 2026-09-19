@@ -1,7 +1,7 @@
 # Independent review: bounded eager-runtime `keep`
 
-Status: final review clean at `a910119`; PR-head hosted checks are green and
-PR #42 remains open pending merge.
+Status: accepted after final review at `a910119`; PR #42 squash-merged as
+`d43c923` and its temporary branch was removed.
 
 An independent runtime review examined parser diagnostics, projection SQL and
 identifier quoting, duplicate-column naming, staging/publication atomicity,

@@ -446,7 +446,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.3 Transform commands
 
-- [ ] `keep`
+- [x] `keep` — bounded eager local-Parquet explicit-varlist projection
+  (`KeepResult`; PR #42, squash merge `d43c923`). Requested/duplicate column
+  order, row order, quoted identifiers, exact bounded diagnostics, staged
+  publication, and failure-atomic metadata are covered. Predicate form
+  (`keep if`), lazy/materialized execution, wildcard/range expansion,
+  overflow/filter semantics, labels, `last_operation`, formatting, CLI, JSON,
+  and MCP remain deferred.
 - [ ] `drop`
 - [ ] `select`
 - [ ] `generate`

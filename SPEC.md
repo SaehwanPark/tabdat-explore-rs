@@ -405,6 +405,29 @@ This slice leaves lazy/materialized execution, function calls and `e(sample)`,
 `last_operation`, row-level diagnostics, formatting, CLI/REPL, JSON/MCP,
 broader tokenizer/expression parity, and general relation APIs deferred.
 
+## Verified slice: bounded eager-runtime `keep` projection
+
+Merged PR #42 (`d43c923`) adds the bounded eager local-Parquet
+`keep <explicit-varlist>` projection path to `tabdat-runtime`. The typed command
+supports case-insensitive syntax, quoted/backtick identifiers, requested column
+order, preserved row order, duplicate projection requests (with DuckDB's
+deterministic duplicate names), exact bounded diagnostics, and staged
+transactional publication. Unknown variables and dropped/corrupt active
+relations fail before publication and preserve the previously published
+metadata.
+
+Evidence: `_workspace/runtime-keep/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its parser/runtime contract tests. The pinned focused
+oracle, locked Rust checks, policy scans, independent review, PR-head hosted
+checks, squash merge, branch cleanup, and post-merge workflow matrix are
+recorded there.
+
+Predicate-form `keep if <expression>` remains deferred, including boolean/null
+filtering, expression functions, arithmetic overflow reporting, and row-level
+transform semantics. Lazy/materialized execution, wildcard/range expansion,
+labels/panel metadata, `last_operation`, formatting, CLI/REPL, JSON/MCP, and
+broader transformation sequencing remain deferred.
+
 ## Verified slice: syntax-only `summarize` command
 
 PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax

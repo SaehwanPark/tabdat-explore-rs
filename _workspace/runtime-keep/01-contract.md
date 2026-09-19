@@ -1,7 +1,7 @@
 # Bounded eager-runtime `keep` contract
 
-Status: accepted bounded slice implemented on `feat/runtime-keep`; merge and
-main closeout pending.
+Status: accepted bounded slice merged on `main` at `d43c923`; post-merge
+documentation matrix pending.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`.
@@ -93,4 +93,4 @@ execution, wildcard/range expansion, options, labels/panel metadata,
 `last_operation`, CLI/JSON/MCP, and broader transformation sequencing.
 
 Completion state: `complete` for contract recovery and bounded implementation;
-hosted acceptance, merge, and main-documentation closeout remain pending.
+hosted acceptance, squash merge, and temporary-branch cleanup are complete.
