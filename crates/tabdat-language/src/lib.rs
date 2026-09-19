@@ -1108,6 +1108,11 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
   }
+  if parts.has_condition
+    && let Some(error) = drop_condition_syntax_error(body)
+  {
+    return Err(error);
+  }
   if parts.assignment_target_missing {
     return Err(ParseError::new(
       "drop assignment requires a target before =",
@@ -1143,6 +1148,55 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
   })
+}
+
+fn drop_condition_syntax_error(body: &str) -> Option<ParseError> {
+  let tokens = tokenize_use_options(body).ok()?;
+  let condition_start = tokens.iter().position(|token| {
+    matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+      && token.text.eq_ignore_ascii_case("if")
+  })?;
+  let mut depth = 0_i32;
+  let mut saw_operand = false;
+  let mut last_condition_token = None;
+  for token in tokens.into_iter().skip(condition_start + 1) {
+    if token.kind == UseTokenKind::Symbol {
+      match token.text.as_str() {
+        "(" => depth += 1,
+        ")" => depth -= 1,
+        "," if depth == 0 => break,
+        _ => {}
+      }
+      if depth == 0 && token.text.eq_ignore_ascii_case("if") {
+        return Some(ParseError::new("duplicate if clause"));
+      }
+      last_condition_token = Some(token);
+      continue;
+    }
+    if depth == 0
+      && matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+      && token.text.eq_ignore_ascii_case("if")
+    {
+      return Some(ParseError::new("duplicate if clause"));
+    }
+    saw_operand = true;
+    last_condition_token = Some(token);
+  }
+  let Some(last) = last_condition_token else {
+    return None;
+  };
+  if saw_operand
+    && matches!(
+      last.text.as_str(),
+      "+" | "-" | "*" | "/" | "==" | "!=" | "<" | "<=" | ">" | ">="
+    )
+  {
+    return Some(ParseError::new(format!(
+      "incomplete expression after {}",
+      last.text
+    )));
+  }
+  None
 }
 
 fn keep_condition_has_options(body: &str) -> bool {

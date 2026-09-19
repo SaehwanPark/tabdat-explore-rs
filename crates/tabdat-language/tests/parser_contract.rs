@@ -683,14 +683,8 @@ fn drop_preserves_bounded_projection_diagnostics() {
     ("drop age!x", "unsupported token in command: !"),
     ("drop age@x", "unsupported token in command: @"),
     ("drop age:x", "unsupported token in command: :"),
-    (
-      "drop if age >= ",
-      "drop if execution is deferred in the bounded runtime",
-    ),
-    (
-      "drop if age > 0 if age > 1",
-      "drop if execution is deferred in the bounded runtime",
-    ),
+    ("drop if age >= ", "incomplete expression after >="),
+    ("drop if age > 0 if age > 1", "duplicate if clause"),
   ];
   for (input, expected) in cases {
     assert_eq!(
