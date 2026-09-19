@@ -602,8 +602,16 @@ fn keep_preserves_bounded_projection_diagnostics() {
       "keep does not accept options or assignment syntax",
     ),
     (
+      "keep if age > 0,",
+      "keep if execution is deferred in the bounded runtime",
+    ),
+    (
       "keep age if age > 0, stable",
       "keep does not accept options or assignment syntax",
+    ),
+    (
+      "keep age if age > 0,",
+      "keep cannot combine a variable list with an if clause",
     ),
     ("keep age==x", "unsupported token in command: =="),
     ("keep age-1", "unsupported token in command: -"),

@@ -1139,7 +1139,14 @@ fn keep_condition_has_options(body: &str) -> bool {
       continue;
     }
     if condition_seen && characters[index] == ',' {
-      return true;
+      let mut lookahead = index + 1;
+      while characters
+        .get(lookahead)
+        .is_some_and(|character| is_command_whitespace(*character))
+      {
+        lookahead += 1;
+      }
+      return characters.get(lookahead).is_some();
     }
     index += 1;
   }
