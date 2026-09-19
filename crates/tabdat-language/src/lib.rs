@@ -2327,13 +2327,17 @@ fn parse_encode_command(body: &str) -> Result<Command, ParseError> {
     match name.as_str() {
       "generate" => {
         if generate.is_some() {
-          return Err(ParseError::new("encode option specified more than once"));
+          return Err(ParseError::new(
+            "encode option generate can only be specified once",
+          ));
         }
         generate = Some(parse_encode_identifier_option(&name, &option.value)?);
       }
       "label" => {
         if label.is_some() {
-          return Err(ParseError::new("encode option specified more than once"));
+          return Err(ParseError::new(
+            "encode option label can only be specified once",
+          ));
         }
         label = Some(parse_encode_identifier_option(&name, &option.value)?);
       }
@@ -2364,12 +2368,12 @@ fn parse_encode_identifier_option(
 ) -> Result<String, ParseError> {
   let UseOptionValue::Identifiers(values) = value else {
     return Err(ParseError::new(format!(
-      "encode option {name} expects one variable name"
+      "encode option {name} expects identifiers in parentheses"
     )));
   };
   if values.len() != 1 {
     return Err(ParseError::new(format!(
-      "encode option {name} expects one variable name"
+      "encode option {name} expects exactly one variable"
     )));
   }
   Ok(values[0].clone())

@@ -1226,7 +1226,7 @@ fn encode_preserves_exact_bounded_diagnostics() {
     ),
     (
       "encode sex, generate(sex_n) generate(other)",
-      "encode option specified more than once",
+      "encode option generate can only be specified once",
     ),
   ];
   for (input, expected) in cases {
