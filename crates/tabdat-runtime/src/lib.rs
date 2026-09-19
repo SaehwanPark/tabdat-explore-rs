@@ -232,6 +232,13 @@ pub struct RenameResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after stably sorting active rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SortResult {
+  /// Metadata for the newly active sorted dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -294,6 +301,8 @@ pub enum ExecutionResult {
   Replace(ReplaceResult),
   /// Renames one column in the active dataset.
   Rename(RenameResult),
+  /// Stably sorts active rows by ascending columns.
+  Sort(SortResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -408,6 +417,12 @@ pub enum RuntimeError {
   RenameTargetExists { variable: String },
   /// DuckDB could not stage or publish the renamed relation.
   RenameFailed,
+  /// The sort request did not name any variables.
+  SortNoVariables,
+  /// The sort request named variables absent from the active schema.
+  SortUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not stage or publish the sorted relation.
+  SortFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -594,6 +609,11 @@ impl fmt::Display for RuntimeError {
         write!(formatter, "rename target already exists: {variable}")
       }
       Self::RenameFailed => formatter.write_str("rename failed"),
+      Self::SortNoVariables => formatter.write_str("sort expects a variable list"),
+      Self::SortUnknownVariable { variables } => {
+        write!(formatter, "sort unknown variable: {}", variables.join(", "))
+      }
+      Self::SortFailed => formatter.write_str("sort failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -665,6 +685,7 @@ impl Session {
         condition,
       } => self.execute_replace(variable, expression, condition),
       Command::Rename { old_name, new_name } => self.execute_rename(old_name, new_name),
+      Command::Sort { variables } => self.execute_sort(variables),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1188,6 +1209,39 @@ impl Session {
       .map_err(|_| RuntimeError::RenameFailed)?;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Rename(RenameResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_sort(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "sort" })?
+      .clone();
+    if variables.is_empty() {
+      return Err(RuntimeError::SortNoVariables);
+    }
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::SortUnknownVariable { variables: unknown });
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::SortFailed)?;
+    let next_dataset = backend
+      .sort_rows(&dataset, &variables)
+      .map_err(|_| RuntimeError::SortFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Sort(SortResult {
       dataset: next_dataset,
     }))
   }
@@ -2283,6 +2337,70 @@ impl DuckDbBackend {
         return Err(());
       }
     };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn sort_rows(&mut self, dataset: &DatasetInfo, variables: &[String]) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let mut ordinal_name = "__tabdat_sort_ordinal".to_owned();
+    while dataset
+      .columns
+      .iter()
+      .any(|column| column.name == ordinal_name)
+    {
+      ordinal_name.push('_');
+    }
+    let quoted_ordinal = quote_identifier(&ordinal_name);
+    let order_by = variables
+      .iter()
+      .map(|variable| format!("{} ASC NULLS LAST", quote_identifier(variable)))
+      .chain(std::iter::once(format!("{quoted_ordinal} ASC")))
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT * EXCLUDE ({quoted_ordinal}) FROM (SELECT row_number() OVER () AS {quoted_ordinal}, * FROM {ACTIVE_TABLE}) AS __tabdat_sort_rows ORDER BY {order_by}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if columns != dataset.columns {
+      self.drop_staging();
+      return Err(());
+    }
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if row_count != dataset.row_count {
+      self.drop_staging();
+      return Err(());
+    }
     if self.publish_staging().is_err() {
       self.drop_staging();
       return Err(());
@@ -3555,6 +3673,22 @@ mod tests {
   }
 
   #[test]
+  fn sort_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Sort {
+          variables: vec!["value".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "sort" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -4112,6 +4246,52 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::RenameFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let value: i32 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT other FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
+  }
+
+  #[test]
+  fn failed_sort_keeps_metadata_and_private_active_relation() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS other"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Sort {
+          variables: vec!["value".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::SortFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     let value: i32 = session
