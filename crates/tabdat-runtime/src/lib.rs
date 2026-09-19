@@ -254,6 +254,13 @@ pub struct RecodeResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after encoding one string column.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncodeResult {
+  /// Metadata for the newly active encoded dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -322,6 +329,8 @@ pub enum ExecutionResult {
   Gsort(GsortResult),
   /// Recodes values or ranges in selected active columns.
   Recode(RecodeResult),
+  /// Encodes one string column into a new integer-coded column.
+  Encode(EncodeResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -464,6 +473,16 @@ pub enum RuntimeError {
   RecodeRangeRequiresNumeric { variable: String },
   /// DuckDB could not stage or publish the recoded relation.
   RecodeFailed,
+  /// The encode request named a value-label set outside this runtime slice.
+  EncodeLabelsUnsupported { label: String },
+  /// The encode request named a source column absent from the active schema.
+  EncodeUnknownVariable { variable: String },
+  /// The encode source column is not a string variable.
+  EncodeRequiresString { variable: String },
+  /// The encode target already exists in the active schema.
+  EncodeTargetExists { variable: String },
+  /// DuckDB could not stage or publish the encoded relation.
+  EncodeFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -687,6 +706,20 @@ impl fmt::Display for RuntimeError {
         "range recode rule not allowed on non-numeric column: {variable}"
       ),
       Self::RecodeFailed => formatter.write_str("recode failed"),
+      Self::EncodeLabelsUnsupported { label } => write!(
+        formatter,
+        "encode label metadata is not supported in this runtime slice: {label}"
+      ),
+      Self::EncodeUnknownVariable { variable } => {
+        write!(formatter, "encode unknown variable: {variable}")
+      }
+      Self::EncodeRequiresString { variable } => {
+        write!(formatter, "encode requires a string variable: {variable}")
+      }
+      Self::EncodeTargetExists { variable } => {
+        write!(formatter, "encode target already exists: {variable}")
+      }
+      Self::EncodeFailed => formatter.write_str("encode failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -765,6 +798,11 @@ impl Session {
         rules,
         target,
       } => self.execute_recode(variables, rules, target),
+      Command::Encode {
+        source,
+        generate,
+        label,
+      } => self.execute_encode(source, generate, label),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1454,6 +1492,55 @@ impl Session {
     }))
   }
 
+  fn execute_encode(
+    &mut self,
+    source: String,
+    generate: String,
+    label: Option<String>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "encode" })?
+      .clone();
+    if let Some(label) = label {
+      return Err(RuntimeError::EncodeLabelsUnsupported { label });
+    }
+    let source_column = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == source)
+      .ok_or_else(|| RuntimeError::EncodeUnknownVariable {
+        variable: source.clone(),
+      })?;
+    if data_type_expression_domain(&source_column.data_type) != ExpressionDomain::String {
+      return Err(RuntimeError::EncodeRequiresString { variable: source });
+    }
+    if dataset.columns.iter().any(|column| column.name == generate) {
+      return Err(RuntimeError::EncodeTargetExists { variable: generate });
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::EncodeFailed)?;
+    let values = backend
+      .distinct_nonmissing_string_values(&source)
+      .map_err(|_| RuntimeError::EncodeFailed)?;
+    let mapping = values
+      .into_iter()
+      .enumerate()
+      .map(|(index, value)| {
+        let code = i64::try_from(index + 1).map_err(|_| RuntimeError::EncodeFailed)?;
+        Ok((value, code))
+      })
+      .collect::<Result<Vec<_>, RuntimeError>>()?;
+    let next_dataset = backend
+      .encode_column(&dataset, &source, &generate, &mapping)
+      .map_err(|_| RuntimeError::EncodeFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Encode(EncodeResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -1670,6 +1757,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Sort { .. } => "sort",
     Command::Gsort { .. } => "gsort",
     Command::Recode { .. } => "recode",
+    Command::Encode { .. } => "encode",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
@@ -2766,6 +2854,106 @@ impl DuckDbBackend {
       return Err(());
     }
     if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn distinct_nonmissing_string_values(&self, source: &str) -> Result<Vec<String>, ()> {
+    let quoted_source = quote_identifier(source);
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT DISTINCT CAST({quoted_source} AS VARCHAR) AS value FROM {ACTIVE_TABLE} WHERE {quoted_source} IS NOT NULL ORDER BY value"
+      ))
+      .map_err(|_| ())?;
+    let rows = statement
+      .query_map([], |row| row.get::<_, String>(0))
+      .map_err(|_| ())?;
+    rows.map(|row| row.map_err(|_| ())).collect()
+  }
+
+  fn encode_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    source: &str,
+    target: &str,
+    mapping: &[(String, i64)],
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let quoted_source = quote_identifier(source);
+    let quoted_target = quote_identifier(target);
+    let case_sql = if mapping.is_empty() {
+      "CAST(NULL AS BIGINT)".to_owned()
+    } else {
+      let whens = mapping
+        .iter()
+        .map(|(value, code)| {
+          format!(
+            "WHEN {quoted_source} = {} THEN {code}",
+            quote_recode_literal(value)
+          )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+      format!("CASE {whens} ELSE NULL END")
+    };
+    let select_items = dataset
+      .columns
+      .iter()
+      .map(|column| quote_identifier(&column.name))
+      .chain(std::iter::once(format!("{case_sql} AS {quoted_target}")))
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_items} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let mut expected_names = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.clone())
+      .collect::<Vec<_>>();
+    expected_names.push(target.to_owned());
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names.iter().map(String::as_str))
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if row_count != dataset.row_count || self.publish_staging().is_err() {
       self.drop_staging();
       return Err(());
     }

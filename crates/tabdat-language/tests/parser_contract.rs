@@ -1189,6 +1189,56 @@ fn recode_preserves_exact_bounded_diagnostics() {
 }
 
 #[test]
+fn encode_preserves_source_target_and_optional_label() {
+  assert_eq!(
+    parse_command("encode sex, generate(sex_n)").unwrap(),
+    Command::Encode {
+      source: "sex".to_owned(),
+      generate: "sex_n".to_owned(),
+      label: None,
+    }
+  );
+  assert_eq!(
+    parse_command(r#"encode `region value`, generate(`region code`) label(regionlbl)"#).unwrap(),
+    Command::Encode {
+      source: "region value".to_owned(),
+      generate: "region code".to_owned(),
+      label: Some("regionlbl".to_owned()),
+    }
+  );
+}
+
+#[test]
+fn encode_preserves_exact_bounded_diagnostics() {
+  let cases = [
+    (
+      "encode",
+      "encode expects syntax: encode <strvar>, generate(<newvar>)",
+    ),
+    ("encode sex", "encode requires generate(<newvar>)"),
+    (
+      "encode sex, label(sex_label)",
+      "encode requires generate(<newvar>)",
+    ),
+    (
+      "encode sex, generate(sex_n) unknown",
+      "encode unsupported option: unknown",
+    ),
+    (
+      "encode sex, generate(sex_n) generate(other)",
+      "encode option specified more than once",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn run_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" RUN analysis.td ").unwrap(),
