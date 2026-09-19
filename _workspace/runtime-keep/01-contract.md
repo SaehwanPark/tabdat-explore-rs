@@ -1,6 +1,7 @@
 # Bounded eager-runtime `keep` contract
 
-Status: contract recovered; implementation pending.
+Status: accepted bounded slice implemented on `feat/runtime-keep`; merge and
+main closeout pending.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`.
@@ -91,5 +92,5 @@ so do expression functions, arithmetic overflow reporting, lazy/materialized
 execution, wildcard/range expansion, options, labels/panel metadata,
 `last_operation`, CLI/JSON/MCP, and broader transformation sequencing.
 
-Completion state: `complete` for contract recovery; Rust implementation remains
-pending.
+Completion state: `complete` for contract recovery and bounded implementation;
+hosted acceptance, merge, and main-documentation closeout remain pending.
