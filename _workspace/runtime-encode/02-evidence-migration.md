@@ -50,7 +50,8 @@ The implementation checkpoint commits are:
 - `ecb5b38` — language/runtime implementation;
 - `d3895c0` — focused runtime tests; and
 - `1f67205` — validation-order and overflow hardening; and
-- `915b6ba` — parser diagnostic parity hardening.
+- `915b6ba` — parser diagnostic parity hardening; and
+- `4bf0941` — case-sensitive option-name parity.
 
 ## Local verification
 
@@ -74,7 +75,7 @@ zero, and each geiger process exited zero.
 
 Draft PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53) was
 opened at the contract checkpoint. The current implementation head is
-`915b6ba`; its hosted baseline, policy, and runtime checks are pending. The
+`4bf0941`; its hosted baseline, policy, and runtime checks are pending. The
 final accepted record will add the documentation-head and merge-head workflow
 links after GitHub reports green conclusions.
 

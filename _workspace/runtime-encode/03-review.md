@@ -4,7 +4,7 @@ Status: implementation review complete; hosted acceptance pending.
 
 Review basis: [01-contract.md](01-contract.md), the pinned oracle evidence in
 [02-evidence-migration.md](02-evidence-migration.md), and the branch diff from
-`main` through `915b6ba`.
+`main` through `4bf0941`.
 
 ## Findings
 
