@@ -92,8 +92,21 @@ code-head checks also passed:
 - [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544),
   [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544/job/105869917478).
 
-The main docs closeout and native feasibility matrix will be appended after the
-roadmap/SPEC/ADR records are updated.
+The main docs closeout commit `30f4fb4` also passed the full native feasibility
+matrix:
+
+- [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683),
+  [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683/job/105872537237),
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683/job/105872537249);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646794),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646794/job/105872537296);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648),
+  with [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648/job/105872536968)
+  and [Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648/job/105872536826);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646693),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646693/job/105872536979); and
+- [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646740),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646740/job/105872537282).
 
 ## Deferred scope
 

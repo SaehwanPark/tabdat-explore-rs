@@ -42,8 +42,21 @@ The merge-head code workflows passed:
 - [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544)
   ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544/job/105869917478)).
 
-The main docs closeout will trigger the full native feasibility matrix; its
-final links will be appended to the evidence record before the next slice.
+The main docs closeout commit `30f4fb4` passed the full native feasibility
+matrix:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683),
+  [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683/job/105872537237),
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646683/job/105872537249);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646794),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646794/job/105872537296);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648),
+  [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648/job/105872536968),
+  and [Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646648/job/105872536826);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646693),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646693/job/105872536979); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646740),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35433646740/job/105872537282).
 
 ## Handoff
 
