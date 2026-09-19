@@ -2075,7 +2075,7 @@ fn leaves_run_execution_deferred() {
 }
 
 #[test]
-fn leaves_rename_execution_deferred() {
+fn rename_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = Command::Rename {
     old_name: "old_name".to_owned(),
@@ -2084,7 +2084,7 @@ fn leaves_rename_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "rename" }
+    RuntimeError::NoActiveDataset { command: "rename" }
   );
 }
 
