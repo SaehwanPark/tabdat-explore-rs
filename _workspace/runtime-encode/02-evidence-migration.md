@@ -49,7 +49,8 @@ The implementation checkpoint commits are:
 - `2d9f075` — contract;
 - `ecb5b38` — language/runtime implementation;
 - `d3895c0` — focused runtime tests; and
-- `1f67205` — validation-order and overflow hardening.
+- `1f67205` — validation-order and overflow hardening; and
+- `915b6ba` — parser diagnostic parity hardening.
 
 ## Local verification
 
@@ -72,18 +73,10 @@ zero, and each geiger process exited zero.
 ## Hosted acceptance
 
 Draft PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53) was
-opened at the contract checkpoint. The current code head is `1f67205` and its
-hosted checks are in progress:
-
-- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474019898)
-  with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474019898/job/105980040975)
-  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474019898/job/105980041186); and
-- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474019924)
-  with [Linux runtime checks](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474019924/job/105980041713).
-
-These links are intentionally recorded as in-progress until GitHub reports a
-green conclusion; the final accepted record will add the documentation-head
-and merge-head workflow results.
+opened at the contract checkpoint. The current implementation head is
+`915b6ba`; its hosted baseline, policy, and runtime checks are pending. The
+final accepted record will add the documentation-head and merge-head workflow
+links after GitHub reports green conclusions.
 
 ## Deviations and deferrals
 
