@@ -1,7 +1,7 @@
 # `generate` syntax slice closeout
 
-Status: accepted; implementation, hosted checks, merge, and branch cleanup are
-complete. Post-merge documentation workflow verification is pending.
+Status: accepted; implementation, hosted checks, merge, branch cleanup, and
+post-merge workflow verification are complete.
 
 This loop adds the backend-independent, syntax-only
 `generate <target> = <expression>` command. It retains identifiers, literals,

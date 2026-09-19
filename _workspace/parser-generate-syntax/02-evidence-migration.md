@@ -1,8 +1,7 @@
 # `generate` syntax migration evidence
 
 Status: accepted; implementation, independent review, hosted acceptance,
-merge, and branch cleanup are complete. The documentation closeout's `main`
-workflow run is the remaining verification link to append.
+merge, branch cleanup, and post-merge verification are complete.
 
 Boundary: pinned Python parser contract → backend-independent Rust syntax. This
 artifact deliberately does not claim eager `generate` execution.
@@ -110,6 +109,18 @@ accepted final-head runs for `9187626` were:
 PR #45 was marked ready after those checks and squash-merged as
 `63e65ec40074a868bcd271c932275a7359cd2ce3`. `gh pr merge --delete-branch`
 removed `feat/parser-generate-syntax` locally and remotely; `main` was clean
-and synchronized at the merge commit. The documentation closeout commit and
-its post-merge `main` workflow link remain to be appended before this artifact
-is fully closed.
+and synchronized at the merge commit. The documentation closeout head
+`272b66c` then passed the current `main` workflows:
+
+- [CI run 35438774251](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35438774251)
+  (Rust baseline and dependency/unsafe policy, both passed);
+- [ReadStat feasibility run 35438774226](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35438774226)
+  (passed);
+- [libgretl feasibility run 35438774240](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35438774240)
+  and [libgretl OLS run 35438774227](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35438774227)
+  (both passed).
+
+The merged-code runtime workflow also passed at
+[run 35438697808](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35438697808).
+The final documentation-only evidence commit does not change Rust paths, so
+runtime workflow selection remains covered by that merged-code run.

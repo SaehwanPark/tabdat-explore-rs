@@ -1,7 +1,7 @@
 # `generate` syntax slice review
 
-Status: accepted; independent review, hosted acceptance, merge, and temporary
-branch cleanup are complete.
+Status: accepted; independent review, hosted acceptance, merge, temporary
+branch cleanup, and post-merge verification are complete.
 
 ## Scope reviewed
 
@@ -40,6 +40,7 @@ passed.
 
 The bounded slice was approved after the current-head workflows turned green.
 PR #45 was marked ready and squash-merged as `63e65ec`; the temporary branch
-was deleted locally and remotely. Full eager `generate` parity is not approved
-by this review; it requires a separate data-semantics contract. The remaining
-post-merge `main` workflow link belongs in the evidence closeout.
+was deleted locally and remotely. The post-merge `main` workflows and
+merged-code runtime workflow passed; links are in `02-evidence-migration.md`.
+Full eager `generate` parity is not approved by this review; it requires a
+separate data-semantics contract.
