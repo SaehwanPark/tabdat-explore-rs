@@ -1319,8 +1319,7 @@ impl DuckDbBackend {
       update_signature_token(&mut digest, b"row");
       for (index, column) in columns.iter().enumerate() {
         let value = row.get_ref(index).map_err(|_| ())?.to_owned();
-        let canonical_type = canonical_signature_type(&column.data_type);
-        let encoded = signature_value(&value, Some(&canonical_type)).map_err(|_| ())?;
+        let encoded = signature_value(&value, Some(&column.data_type)).map_err(|_| ())?;
         update_signature_token(&mut digest, &encoded);
       }
       row_count = row_count.checked_add(1).ok_or(())?;
@@ -1404,11 +1403,7 @@ fn signature_value(value: &Value, type_hint: Option<&str>) -> Result<Vec<u8>, ()
     Value::Decimal(value) => Ok(text_value(b'D', &value.to_string())),
     Value::Timestamp(unit, value) => Ok(text_value(
       b'Z',
-      &format_timestamp(
-        *unit,
-        *value,
-        type_hint.is_some_and(|hint| hint.ends_with("_TZ")),
-      ),
+      &format_timestamp(*unit, *value, is_timezone_type(type_hint)),
     )),
     Value::Text(value) => Ok(text_value(b'S', value)),
     Value::Blob(value) | Value::Geometry(value) => {
@@ -1518,11 +1513,13 @@ fn map_sequence_value(
   values: &duckdb::types::OrderedMap<Value, Value>,
   type_hint: Option<&str>,
 ) -> Result<Vec<u8>, ()> {
-  let value_hint = map_value_type(type_hint).map(|value| canonical_signature_type(&value));
+  let type_hints = map_value_types(type_hint);
+  let key_hint = type_hints.as_ref().map(|(key, _)| key.as_str());
+  let value_hint = type_hints.as_ref().map(|(_, value)| value.as_str());
   let mut encoded = b"L".to_vec();
   append_ascii_length(&mut encoded, values.iter().count())?;
   for (key, value) in values.iter() {
-    let pair = sequence_pair_value(key, value, value_hint.as_deref())?;
+    let pair = sequence_pair_value(key, value, key_hint, value_hint)?;
     append_signature_part(&mut encoded, &pair)?;
   }
   Ok(encoded)
@@ -1531,11 +1528,12 @@ fn map_sequence_value(
 fn sequence_pair_value(
   key: &Value,
   value: &Value,
+  key_hint: Option<&str>,
   value_hint: Option<&str>,
 ) -> Result<Vec<u8>, ()> {
   let mut encoded = b"L".to_vec();
   append_ascii_length(&mut encoded, 2)?;
-  let key = signature_value(key, None)?;
+  let key = signature_value(key, key_hint)?;
   let value = signature_value(value, value_hint)?;
   append_signature_part(&mut encoded, &key)?;
   append_signature_part(&mut encoded, &value)?;
@@ -1555,19 +1553,23 @@ fn mapping_entries(entries: &mut Vec<(Vec<u8>, Vec<u8>)>) -> Result<Vec<u8>, ()>
 }
 
 fn list_value_type(type_hint: Option<&str>) -> Option<&str> {
-  let type_hint = type_hint?;
-  type_hint
+  let type_hint = type_hint?.trim();
+  if let Some(value) = type_hint
     .strip_prefix("LIST(")
     .and_then(|value| value.strip_suffix(')'))
+  {
+    return Some(value.trim());
+  }
+  type_hint.strip_suffix("[]").map(str::trim)
 }
 
-fn map_value_type(type_hint: Option<&str>) -> Option<String> {
+fn map_value_types(type_hint: Option<&str>) -> Option<(String, String)> {
   let type_hint = type_hint?;
   let body = type_hint
     .strip_prefix("MAP(")
     .and_then(|value| value.strip_suffix(')'))?;
-  let (_, value) = split_top_level_once(body)?;
-  Some(value.to_owned())
+  let (key, value) = split_top_level_once(body)?;
+  Some((key.trim().to_owned(), value.trim().to_owned()))
 }
 
 fn struct_field_type(type_hint: Option<&str>, key: &str) -> Option<String> {
@@ -1576,14 +1578,26 @@ fn struct_field_type(type_hint: Option<&str>, key: &str) -> Option<String> {
     .strip_prefix("STRUCT(")
     .and_then(|value| value.strip_suffix(')'))?;
   for field in split_top_level_parts(body) {
-    let rest = field.strip_prefix('"')?;
-    let end = rest.find('"')?;
-    let field_name = &rest[..end];
+    let field = field.trim();
+    if field.is_empty() {
+      continue;
+    }
+    let (field_name, field_type) = if let Some(rest) = field.strip_prefix('"') {
+      let end = rest.find('"')?;
+      (&rest[..end], rest[end + 1..].trim())
+    } else {
+      let (field_name, field_type) = field.split_once(char::is_whitespace)?;
+      (field_name, field_type.trim())
+    };
     if field_name.eq_ignore_ascii_case(key) {
-      return Some(canonical_signature_type(&rest[end + 1..]));
+      return (!field_type.is_empty()).then(|| field_type.to_owned());
     }
   }
   None
+}
+
+fn is_timezone_type(type_hint: Option<&str>) -> bool {
+  type_hint.is_some_and(|hint| canonical_signature_type(hint).ends_with("_TZ"))
 }
 
 fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
