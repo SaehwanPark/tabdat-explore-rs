@@ -821,15 +821,14 @@ impl Session {
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "assert" })?;
-    let unknown = expression_identifiers(&expression)
-      .into_iter()
-      .filter(|variable| {
-        !dataset
-          .columns
-          .iter()
-          .any(|column| column.name == *variable)
-      })
-      .collect::<Vec<_>>();
+    let mut unknown = Vec::new();
+    for variable in expression_identifiers(&expression) {
+      if !dataset.columns.iter().any(|column| column.name == variable)
+        && !unknown.iter().any(|known| known == &variable)
+      {
+        unknown.push(variable);
+      }
+    }
     if !unknown.is_empty() {
       return Err(RuntimeError::AssertUnknownVariable { variables: unknown });
     }
@@ -1002,10 +1001,15 @@ fn expression_domain(
       .ok_or_else(|| RuntimeError::AssertUnknownVariable {
         variables: vec![name.clone()],
       }),
-    AssertExpression::Number(_) | AssertExpression::UnaryMinus(_) => {
-      if let AssertExpression::UnaryMinus(operand) = expression
-        && expression_domain(operand, dataset)? != ExpressionDomain::Numeric
-      {
+    AssertExpression::Number(_) => Ok(ExpressionDomain::Numeric),
+    AssertExpression::UnaryMinus(operand) => {
+      let operand_domain = expression_domain(operand, dataset)?;
+      if operand_domain == ExpressionDomain::Null {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "null literal only supports equality and inequality comparisons".to_owned(),
+        });
+      }
+      if operand_domain != ExpressionDomain::Numeric {
         return Err(RuntimeError::AssertTypeMismatch {
           message: "expression type mismatch: unary minus requires numeric operand".to_owned(),
         });
@@ -1047,6 +1051,11 @@ fn expression_domain(
         }
         return Ok(ExpressionDomain::Boolean);
       }
+      if expression_contains_null_literal(left) || expression_contains_null_literal(right) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "null literal only supports equality and inequality comparisons".to_owned(),
+        });
+      }
       if left_domain != ExpressionDomain::Numeric || right_domain != ExpressionDomain::Numeric {
         return Err(RuntimeError::AssertTypeMismatch {
           message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
@@ -1078,6 +1087,19 @@ fn expression_domain_name(domain: ExpressionDomain) -> &'static str {
     ExpressionDomain::Boolean => "boolean",
     ExpressionDomain::Null => "null",
     ExpressionDomain::Other => "unsupported",
+  }
+}
+
+fn expression_contains_null_literal(expression: &AssertExpression) -> bool {
+  match expression {
+    AssertExpression::Null => true,
+    AssertExpression::UnaryMinus(operand) => expression_contains_null_literal(operand),
+    AssertExpression::Binary { left, right, .. } => {
+      expression_contains_null_literal(left) || expression_contains_null_literal(right)
+    }
+    AssertExpression::Identifier(_) | AssertExpression::Number(_) | AssertExpression::String(_) => {
+      false
+    }
   }
 }
 
