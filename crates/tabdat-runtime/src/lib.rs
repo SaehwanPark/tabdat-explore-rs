@@ -225,6 +225,13 @@ pub struct ReplaceResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after renaming one column in the active dataset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenameResult {
+  /// Metadata for the newly active renamed dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -285,6 +292,8 @@ pub enum ExecutionResult {
   Generate(GenerateResult),
   /// Replaces values in an existing column in the active dataset.
   Replace(ReplaceResult),
+  /// Renames one column in the active dataset.
+  Rename(RenameResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -393,6 +402,12 @@ pub enum RuntimeError {
   ReplaceUnsupportedExpression { message: String },
   /// DuckDB could not stage or publish the replaced relation.
   ReplaceFailed,
+  /// The rename request named a source column absent from the active schema.
+  RenameUnknownVariable { variable: String },
+  /// The rename request named a target already present in the active schema.
+  RenameTargetExists { variable: String },
+  /// DuckDB could not stage or publish the renamed relation.
+  RenameFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -572,6 +587,13 @@ impl fmt::Display for RuntimeError {
       Self::ReplaceRequiresBoolean => formatter.write_str("predicate requires boolean expression"),
       Self::ReplaceUnsupportedExpression { message } => formatter.write_str(message),
       Self::ReplaceFailed => formatter.write_str("replace failed"),
+      Self::RenameUnknownVariable { variable } => {
+        write!(formatter, "rename unknown variable: {variable}")
+      }
+      Self::RenameTargetExists { variable } => {
+        write!(formatter, "rename target already exists: {variable}")
+      }
+      Self::RenameFailed => formatter.write_str("rename failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -642,6 +664,7 @@ impl Session {
         expression,
         condition,
       } => self.execute_replace(variable, expression, condition),
+      Command::Rename { old_name, new_name } => self.execute_rename(old_name, new_name),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1138,6 +1161,33 @@ impl Session {
       .map_err(|_| RuntimeError::ReplaceFailed)?;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Replace(ReplaceResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_rename(
+    &mut self,
+    old_name: String,
+    new_name: String,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "rename" })?
+      .clone();
+    if !dataset.columns.iter().any(|column| column.name == old_name) {
+      return Err(RuntimeError::RenameUnknownVariable { variable: old_name });
+    }
+    if dataset.columns.iter().any(|column| column.name == new_name) {
+      return Err(RuntimeError::RenameTargetExists { variable: new_name });
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::RenameFailed)?;
+    let next_dataset = backend
+      .rename_column(&dataset, &old_name, &new_name)
+      .map_err(|_| RuntimeError::RenameFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Rename(RenameResult {
       dataset: next_dataset,
     }))
   }
@@ -2145,6 +2195,87 @@ impl DuckDbBackend {
         return Err(());
       }
     };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn rename_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    old_name: &str,
+    new_name: &str,
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let select_list = dataset
+      .columns
+      .iter()
+      .map(|column| {
+        if column.name == old_name {
+          format!(
+            "{} AS {}",
+            quote_identifier(&column.name),
+            quote_identifier(new_name)
+          )
+        } else {
+          quote_identifier(&column.name)
+        }
+      })
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_list} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let expected_names = dataset
+      .columns
+      .iter()
+      .map(|column| {
+        if column.name == old_name {
+          new_name.to_owned()
+        } else {
+          column.name.clone()
+        }
+      })
+      .collect::<Vec<_>>();
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names.iter().map(String::as_str))
+    {
+      self.drop_staging();
+      return Err(());
+    }
     let row_count = match self.staged_row_count() {
       Ok(row_count) => row_count,
       Err(()) => {
@@ -3407,6 +3538,23 @@ mod tests {
   }
 
   #[test]
+  fn rename_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Rename {
+          old_name: "old_name".to_owned(),
+          new_name: "new_name".to_owned(),
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "rename" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn failed_preview_keeps_the_published_dataset_metadata() {
     let mut session = Session::new();
     session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
@@ -3917,6 +4065,53 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::ReplaceFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let value: i32 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT other FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
+  }
+
+  #[test]
+  fn failed_rename_keeps_metadata_and_private_active_relation() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS other"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Rename {
+          old_name: "value".to_owned(),
+          new_name: "renamed".to_owned(),
+        })
+        .unwrap_err(),
+      RuntimeError::RenameFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     let value: i32 = session

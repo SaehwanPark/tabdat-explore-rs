@@ -59,7 +59,7 @@ pub enum Command {
   Sort { variables: Vec<String> },
   /// Sort active rows by explicitly directed keys (relation execution is deferred).
   Gsort { keys: Vec<SortKey> },
-  /// Rename one column to another (relation execution is deferred).
+  /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
   Run { path: String },
