@@ -821,16 +821,18 @@ impl Session {
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "assert" })?;
-    let mut unknown = Vec::new();
-    for variable in expression_identifiers(&expression) {
-      if !dataset.columns.iter().any(|column| column.name == variable)
-        && !unknown.iter().any(|known| known == &variable)
-      {
-        unknown.push(variable);
-      }
-    }
-    if !unknown.is_empty() {
-      return Err(RuntimeError::AssertUnknownVariable { variables: unknown });
+    if let Some(variable) = expression_identifiers(&expression)
+      .into_iter()
+      .find(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == *variable)
+      })
+    {
+      return Err(RuntimeError::AssertUnknownVariable {
+        variables: vec![variable],
+      });
     }
     let domain = expression_domain(&expression, dataset)?;
     if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
@@ -838,7 +840,7 @@ impl Session {
     }
     let backend = self.backend.as_ref().ok_or(RuntimeError::AssertFailed)?;
     let (checked, failed) = backend
-      .assert_rows(&expression)
+      .assert_rows(&expression, dataset)
       .map_err(|_| RuntimeError::AssertFailed)?;
     if failed > 0 {
       return Err(RuntimeError::AssertSemanticFailure { checked, failed });
@@ -1003,6 +1005,13 @@ fn expression_domain(
       }),
     AssertExpression::Number(_) => Ok(ExpressionDomain::Numeric),
     AssertExpression::UnaryMinus(operand) => {
+      if expression_contains_unsigned_identifier(operand, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message:
+            "expression type mismatch: unsigned numeric values do not support subtraction or unary minus"
+              .to_owned(),
+        });
+      }
       let operand_domain = expression_domain(operand, dataset)?;
       if operand_domain == ExpressionDomain::Null {
         return Err(RuntimeError::AssertTypeMismatch {
@@ -1023,6 +1032,19 @@ fn expression_domain(
       operator,
       right,
     } => {
+      if expression_has_unsafe_unsigned_arithmetic(expression, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message:
+            "expression type mismatch: unsigned numeric values do not support subtraction or unary minus"
+              .to_owned(),
+        });
+      }
+      if expression_has_unsafe_unsigned_numeric_pair(expression, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "expression type mismatch: unsigned numeric values cannot be combined with negative numeric literals"
+            .to_owned(),
+        });
+      }
       let left_domain = expression_domain(left, dataset)?;
       let right_domain = expression_domain(right, dataset)?;
       if operator.is_comparison() {
@@ -1032,7 +1054,7 @@ fn expression_domain(
             AssertBinaryOperator::Equal | AssertBinaryOperator::NotEqual
           ) {
             return Err(RuntimeError::AssertTypeMismatch {
-              message: "null literal can only be compared with == or !=".to_owned(),
+              message: "null literal only supports equality and inequality comparisons".to_owned(),
             });
           }
           return Ok(ExpressionDomain::Boolean);
@@ -1118,7 +1140,72 @@ fn assert_operator_sql_symbol(operator: AssertBinaryOperator) -> &'static str {
   }
 }
 
-fn compile_assert_expression(expression: &AssertExpression) -> Result<String, ()> {
+fn compile_assert_expression(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
+  match expression {
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } if operator.is_comparison() => {
+      let left_is_null = matches!(left.as_ref(), AssertExpression::Null);
+      let right_is_null = matches!(right.as_ref(), AssertExpression::Null);
+      if left_is_null || right_is_null {
+        if left_is_null && right_is_null {
+          return Ok(if *operator == AssertBinaryOperator::Equal {
+            "TRUE".to_owned()
+          } else if *operator == AssertBinaryOperator::NotEqual {
+            "FALSE".to_owned()
+          } else {
+            return Err(());
+          });
+        }
+        let other = if left_is_null { right } else { left };
+        let other_sql = compile_assert_expression_operand(other, dataset)?;
+        return Ok(format!(
+          "({other_sql} {})",
+          if *operator == AssertBinaryOperator::Equal {
+            "IS NULL"
+          } else if *operator == AssertBinaryOperator::NotEqual {
+            "IS NOT NULL"
+          } else {
+            return Err(());
+          }
+        ));
+      }
+      let left_sql = compile_assert_expression_operand(left, dataset)?;
+      let right_sql = compile_assert_expression_operand(right, dataset)?;
+      Ok(format!(
+        "({left_sql} {} {right_sql})",
+        assert_operator_sql_symbol(*operator)
+      ))
+    }
+    _ if expression_is_numeric_result(expression) => {
+      let raw = compile_assert_expression_raw(expression, dataset)?;
+      Ok(safe_numeric_sql(&raw))
+    }
+    _ => compile_assert_expression_raw(expression, dataset),
+  }
+}
+
+fn compile_assert_expression_operand(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
+  if expression_is_numeric_result(expression) {
+    let raw = compile_assert_expression_raw(expression, dataset)?;
+    Ok(safe_numeric_sql(&raw))
+  } else {
+    compile_assert_expression_raw(expression, dataset)
+  }
+}
+
+fn compile_assert_expression_raw(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
   match expression {
     AssertExpression::Identifier(name) => Ok(quote_identifier(name)),
     AssertExpression::Number(value) => {
@@ -1130,42 +1217,26 @@ fn compile_assert_expression(expression: &AssertExpression) -> Result<String, ()
     AssertExpression::String(value) => Ok(format!("'{}'", value.replace('\'', "''"))),
     AssertExpression::Null => Ok("NULL".to_owned()),
     AssertExpression::UnaryMinus(operand) => {
-      Ok(format!("-({})", compile_assert_expression(operand)?))
+      let mut operand_sql = compile_assert_expression_raw(operand, dataset)?;
+      if expression_is_integral(expression, dataset) {
+        operand_sql = cast_exact_integer_sql(&operand_sql);
+      }
+      Ok(format!("-({operand_sql})"))
+    }
+    AssertExpression::Binary { operator, .. } if operator.is_comparison() => {
+      compile_assert_expression(expression, dataset)
     }
     AssertExpression::Binary {
       left,
       operator,
       right,
     } => {
-      if operator.is_comparison() {
-        let left_is_null = matches!(left.as_ref(), AssertExpression::Null);
-        let right_is_null = matches!(right.as_ref(), AssertExpression::Null);
-        if left_is_null || right_is_null {
-          if left_is_null && right_is_null {
-            return Ok(if *operator == AssertBinaryOperator::Equal {
-              "TRUE".to_owned()
-            } else if *operator == AssertBinaryOperator::NotEqual {
-              "FALSE".to_owned()
-            } else {
-              return Err(());
-            });
-          }
-          let other = if left_is_null { right } else { left };
-          let other_sql = compile_assert_expression(other)?;
-          return Ok(format!(
-            "({other_sql} {})",
-            if *operator == AssertBinaryOperator::Equal {
-              "IS NULL"
-            } else if *operator == AssertBinaryOperator::NotEqual {
-              "IS NOT NULL"
-            } else {
-              return Err(());
-            }
-          ));
-        }
+      let mut left_sql = compile_assert_expression_raw(left, dataset)?;
+      let mut right_sql = compile_assert_expression_raw(right, dataset)?;
+      if expression_is_integral(expression, dataset) {
+        left_sql = cast_exact_integer_sql(&left_sql);
+        right_sql = cast_exact_integer_sql(&right_sql);
       }
-      let left_sql = compile_assert_expression(left)?;
-      let right_sql = compile_assert_expression(right)?;
       Ok(format!(
         "({left_sql} {} {right_sql})",
         assert_operator_sql_symbol(*operator)
@@ -1204,6 +1275,171 @@ fn is_numeric_data_type(data_type: &str) -> bool {
       | "REAL"
       | "DOUBLE"
       | "DECIMAL"
+  )
+}
+
+fn is_integer_data_type(data_type: &str) -> bool {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  matches!(
+    base,
+    "TINYINT"
+      | "SMALLINT"
+      | "INTEGER"
+      | "BIGINT"
+      | "HUGEINT"
+      | "UHUGEINT"
+      | "UTINYINT"
+      | "USMALLINT"
+      | "UINTEGER"
+      | "UBIGINT"
+      | "INT8"
+      | "INT16"
+      | "INT32"
+      | "INT64"
+      | "UINT8"
+      | "UINT16"
+      | "UINT32"
+      | "UINT64"
+      | "UINT128"
+  )
+}
+
+fn is_unsigned_data_type(data_type: &str) -> bool {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  matches!(
+    base,
+    "UTINYINT"
+      | "USMALLINT"
+      | "UINTEGER"
+      | "UBIGINT"
+      | "UHUGEINT"
+      | "UINT8"
+      | "UINT16"
+      | "UINT32"
+      | "UINT64"
+      | "UINT128"
+  )
+}
+
+fn expression_contains_unsigned_identifier(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  match expression {
+    AssertExpression::Identifier(name) => dataset
+      .columns
+      .iter()
+      .any(|column| column.name == *name && is_unsigned_data_type(&column.data_type)),
+    AssertExpression::UnaryMinus(operand) => {
+      expression_contains_unsigned_identifier(operand, dataset)
+    }
+    AssertExpression::Binary { left, right, .. } => {
+      expression_contains_unsigned_identifier(left, dataset)
+        || expression_contains_unsigned_identifier(right, dataset)
+    }
+    AssertExpression::Number(_) | AssertExpression::String(_) | AssertExpression::Null => false,
+  }
+}
+
+fn expression_has_unsafe_unsigned_arithmetic(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  match expression {
+    AssertExpression::UnaryMinus(operand) => {
+      expression_contains_unsigned_identifier(operand, dataset)
+    }
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      (*operator == AssertBinaryOperator::Subtract
+        && (expression_contains_unsigned_identifier(left, dataset)
+          || expression_contains_unsigned_identifier(right, dataset)))
+        || expression_has_unsafe_unsigned_arithmetic(left, dataset)
+        || expression_has_unsafe_unsigned_arithmetic(right, dataset)
+    }
+    AssertExpression::Identifier(_)
+    | AssertExpression::Number(_)
+    | AssertExpression::String(_)
+    | AssertExpression::Null => false,
+  }
+}
+
+fn expression_contains_negative_numeric_literal(expression: &AssertExpression) -> bool {
+  match expression {
+    AssertExpression::Number(value) => value.parse::<f64>().is_ok_and(|value| value < 0.0),
+    AssertExpression::UnaryMinus(operand) => matches!(
+      operand.as_ref(),
+      AssertExpression::Number(value) if value.parse::<f64>().is_ok_and(|value| value != 0.0)
+    ),
+    AssertExpression::Identifier(_)
+    | AssertExpression::String(_)
+    | AssertExpression::Null
+    | AssertExpression::Binary { .. } => false,
+  }
+}
+
+fn expression_has_unsafe_unsigned_numeric_pair(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  let AssertExpression::Binary { left, right, .. } = expression else {
+    return false;
+  };
+  (expression_contains_unsigned_identifier(left, dataset)
+    && expression_contains_negative_numeric_literal(right))
+    || (expression_contains_unsigned_identifier(right, dataset)
+      && expression_contains_negative_numeric_literal(left))
+}
+
+fn expression_is_integral(expression: &AssertExpression, dataset: &DatasetInfo) -> bool {
+  match expression {
+    AssertExpression::Identifier(name) => dataset
+      .columns
+      .iter()
+      .any(|column| column.name == *name && is_integer_data_type(&column.data_type)),
+    AssertExpression::Number(value) => !value.contains('.'),
+    AssertExpression::UnaryMinus(operand) => expression_is_integral(operand, dataset),
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      matches!(
+        operator,
+        AssertBinaryOperator::Add | AssertBinaryOperator::Subtract | AssertBinaryOperator::Multiply
+      ) && expression_is_integral(left, dataset)
+        && expression_is_integral(right, dataset)
+    }
+    AssertExpression::String(_) | AssertExpression::Null => false,
+  }
+}
+
+fn expression_is_numeric_result(expression: &AssertExpression) -> bool {
+  matches!(
+    expression,
+    AssertExpression::UnaryMinus(_)
+      | AssertExpression::Binary {
+        operator: AssertBinaryOperator::Add
+          | AssertBinaryOperator::Subtract
+          | AssertBinaryOperator::Multiply
+          | AssertBinaryOperator::Divide,
+        ..
+      }
+  )
+}
+
+fn cast_exact_integer_sql(expression: &str) -> String {
+  format!("CAST({expression} AS DECIMAL(38,0))")
+}
+
+fn safe_numeric_sql(expression: &str) -> String {
+  format!(
+    "(SELECT CASE WHEN isfinite(CAST(__tabdat_numeric_value AS DOUBLE)) THEN __tabdat_numeric_value ELSE NULL END FROM (SELECT try({expression}) AS __tabdat_numeric_value) AS __tabdat_numeric_result)"
   )
 }
 
@@ -1609,8 +1845,12 @@ impl DuckDbBackend {
     Ok((lower_hex(&digest.finalize()), row_count))
   }
 
-  fn assert_rows(&self, expression: &AssertExpression) -> Result<(u64, u64), ()> {
-    let predicate = compile_assert_expression(expression)?;
+  fn assert_rows(
+    &self,
+    expression: &AssertExpression,
+    dataset: &DatasetInfo,
+  ) -> Result<(u64, u64), ()> {
+    let predicate = compile_assert_expression(expression, dataset)?;
     let query = format!(
       "SELECT COUNT(*), COUNT(*) FILTER (WHERE ({predicate}) IS NULL OR NOT ({predicate})) FROM {ACTIVE_TABLE}"
     );

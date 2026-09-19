@@ -163,6 +163,14 @@ fn assert_validates_expression_domain_and_unknown_variables_before_querying() {
       variables: vec!["missing".to_owned()]
     }
   );
+  assert_eq!(
+    session
+      .execute(parse_command("assert missing + absent > 0").unwrap())
+      .unwrap_err(),
+    RuntimeError::AssertUnknownVariable {
+      variables: vec!["missing".to_owned()]
+    }
+  );
   assert_eq!(session.active_dataset(), Some(&before));
 }
 
@@ -220,5 +228,50 @@ fn assert_empty_dataset_passes() {
       checked: 0,
       failed: 0,
     })
+  );
+}
+
+#[test]
+fn assert_normalizes_numeric_overflow_and_rejects_unsigned_arithmetic() {
+  let fixture = Fixture::new();
+  let wide = fixture.write_parquet(
+    "wide.parquet",
+    "SELECT CAST(9223372036854775807 AS BIGINT) AS value",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&wide))
+    .expect("wide fixture should load");
+
+  assert_eq!(
+    session
+      .execute(parse_command("assert value + 1 == value").unwrap())
+      .unwrap_err(),
+    RuntimeError::AssertSemanticFailure {
+      checked: 1,
+      failed: 1,
+    }
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("assert value / 0 == null").unwrap())
+      .expect("division by zero should normalize to NULL"),
+    ExecutionResult::Assert(AssertResult {
+      checked: 1,
+      failed: 0,
+    })
+  );
+
+  let unsigned = fixture.write_parquet("unsigned.parquet", "SELECT CAST(1 AS UBIGINT) AS value");
+  let mut unsigned_session = Session::new();
+  unsigned_session
+    .execute(use_command(&unsigned))
+    .expect("unsigned fixture should load");
+  assert_eq!(
+    unsigned_session
+      .execute(parse_command("assert value - 1 > 0").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "expression type mismatch: unsigned numeric values do not support subtraction or unary minus"
   );
 }
