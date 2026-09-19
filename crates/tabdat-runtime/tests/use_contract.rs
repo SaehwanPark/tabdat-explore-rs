@@ -2089,7 +2089,7 @@ fn leaves_rename_execution_deferred() {
 }
 
 #[test]
-fn leaves_select_execution_deferred() {
+fn select_requires_an_active_dataset() {
   let mut session = Session::new();
   let command = Command::Select {
     variables: vec!["age".to_owned(), "sex".to_owned()],
@@ -2097,7 +2097,7 @@ fn leaves_select_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "select" }
+    RuntimeError::NoActiveDataset { command: "select" }
   );
 }
 

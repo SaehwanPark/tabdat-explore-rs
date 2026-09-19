@@ -551,6 +551,8 @@ fn select_preserves_exact_public_diagnostics() {
     ("select age!x", "unsupported token in command: !"),
     ("select age@x", "unsupported token in command: @"),
     ("select:age", "unsupported token in command: :"),
+    ("select if age >= ", "incomplete expression after >="),
+    ("select age if age > 0 if age > 1", "duplicate if clause"),
   ];
   for (input, expected) in cases {
     assert_eq!(
