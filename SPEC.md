@@ -11,7 +11,8 @@ and syntax-only `generate <target> = <expression>` and
 `replace <target> = <expression> [if <condition>]`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 `isid [varlist] [, missok]`, and bounded direct `assert <boolean-expression>`
-forms. Merged PR #25 (`89f6c14`) adds the
+forms, as well as the bounded direct `encode <strvar>, generate(<newvar>) [, label(<lblname>)]`
+form. Merged PR #25 (`89f6c14`) adds the
 verified direct `rename <old> <new>` form, and merged PR #26 (`5735b43`) adds
 the verified direct syntax-only `select <varlist>` form. Merged PR #22
 (`26dba2b`) accepted a separate library-only
@@ -31,6 +32,9 @@ documented below; broader directed-sort behavior remains deferred.
 
 Merged PR #52 (2e25cda) adds the bounded eager runtime subset for recode
 documented below; broader recode behavior remains deferred.
+
+Merged PR #53 (af3e3b2) adds the bounded eager runtime subset for encode
+documented below; broader encode/decode/label behavior remains deferred.
 
 Merged PR #29 (`8b16223`) adds the bounded syntax-only `save <path> [, replace]` and
 `export <path> [, replace]` forms. The language layer owns the lexical path and
@@ -282,6 +286,37 @@ artifact.
 This accepted runtime subset is library-only. Lazy/materialized execution,
 panel/label metadata, last_operation, formatting, CLI, JSON, MCP, and broad
 transform sequencing remain deferred.
+
+## Verified slice: bounded eager runtime encode command
+
+Execute the parsed `encode <strvar>, generate(<newvar>)` subset against an
+active eager local-Parquet DuckDB relation. The runtime discovers sorted unique
+nonmissing source strings, assigns one-based integer codes, preserves source
+NULLs as target NULLs, appends the generated column, and publishes the staged
+projection atomically. Quoted identifiers, embedded identifier quotes, empty
+relations, source existence/type validation, target collisions, and backend
+failure preservation are covered. The parser also retains an optional
+`label(<lblname>)` name, but the runtime rejects it explicitly because Rust
+value-label metadata is not yet implemented.
+
+Evidence: `_workspace/runtime-encode/`, `crates/tabdat-language/src/lib.rs`,
+`crates/tabdat-language/tests/parser_contract.rs`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/encode_contract.rs`. The pinned oracle focused
+suite reported 6 passed tests and an isolated probe confirmed `b, a, NULL, b`
+maps to `2, 1, NULL, 2` with an integer generated column. Local format,
+check, test, Clippy, dependency-policy, audit, and metadata-driven geiger
+checks passed. PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53)
+passed its [PR-head CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913800)
+and [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913819)
+before squash merge as
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
+Merge-head and documentation-closeout workflow links are recorded in the
+companion evidence artifact.
+
+This accepted runtime subset is library-only. Value-label metadata, `decode`,
+lazy/materialized execution, panel metadata, `last_operation`, formatting,
+CLI, JSON, MCP, and broad transform sequencing remain deferred.
 
 ## Verified slice: reproducible build baseline
 

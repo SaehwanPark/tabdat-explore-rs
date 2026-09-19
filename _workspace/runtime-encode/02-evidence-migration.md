@@ -1,7 +1,7 @@
 # Runtime encode evidence and migration record
 
-Status: implementation checkpoint; hosted acceptance is pending for the current
-PR head.
+Status: accepted and verified on `main` at merge commit
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
 
 ## Authority and oracle evidence
 
@@ -51,18 +51,23 @@ The implementation checkpoint commits are:
 - `d3895c0` — focused runtime tests; and
 - `1f67205` — validation-order and overflow hardening; and
 - `915b6ba` — parser diagnostic parity hardening; and
-- `4bf0941` — case-sensitive option-name parity.
+- `4bf0941` — case-sensitive option-name parity; and
+- `8c80894` — final parser checkpoint and documentation evidence.
 
 ## Local verification
 
-The locked baseline and policy checks passed after the final implementation
-checkpoint:
+The locked baseline checks passed at the final PR head:
 
     cargo fmt --all -- --check
     cargo check --locked --workspace --all-targets
     cargo test --locked --workspace --all-targets
     cargo clippy --locked --workspace --all-targets -- -D warnings
     git diff --check
+
+Dependency-policy, advisory-audit, and metadata-driven geiger checks also
+passed for the implementation branch; the final parser/documentation checkpoint
+changed no dependencies or unsafe boundaries.
+
     cargo deny check
     cargo audit -D warnings
 
@@ -74,10 +79,22 @@ zero, and each geiger process exited zero.
 ## Hosted acceptance
 
 Draft PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53) was
-opened at the contract checkpoint. The current implementation head is
-`4bf0941`; its hosted baseline, policy, and runtime checks are pending. The
-final accepted record will add the documentation-head and merge-head workflow
-links after GitHub reports green conclusions.
+opened at the contract checkpoint and marked ready after the final checks. Its
+final PR head [`8c80894`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8c80894b21042479be1b250fbc84c066579fc0d1)
+passed:
+
+- [CI run 35474913800](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913800), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913800/job/105982427299) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913800/job/105982427443); and
+- [tabdat-runtime run 35474913819](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913819), including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913819/job/105982428529).
+
+The PR was squash-merged as
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
+The merge-head passed:
+
+- [main CI run 35476036980](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980/job/105985334039) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980/job/105985334268); and
+- [main runtime run 35476036994](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036994), including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036994/job/105985334401).
+
+Documentation-closeout workflow evidence will be added after the main-branch
+documentation commit.
 
 ## Deviations and deferrals
 

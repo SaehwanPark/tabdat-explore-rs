@@ -1,10 +1,11 @@
 # Runtime encode review
 
-Status: implementation review complete; hosted acceptance pending.
+Status: accepted after green PR-head workflows and squash merge as
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
 
 Review basis: [01-contract.md](01-contract.md), the pinned oracle evidence in
 [02-evidence-migration.md](02-evidence-migration.md), and the branch diff from
-`main` through `4bf0941`.
+`main` through [`8c80894`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8c80894b21042479be1b250fbc84c066579fc0d1).
 
 ## Findings
 
@@ -51,7 +52,6 @@ Python parity; those need separate evidence.
 
 ## Disposition
 
-Accept the implementation for the bounded eager local-Parquet `encode` slice
-after the current PR-head workflows pass. Keep the label option parsed but
-explicitly unsupported in this runtime until the label metadata contract is
-implemented.
+The implementation is accepted for the bounded eager local-Parquet `encode`
+slice. The label option remains parsed but explicitly unsupported in this
+runtime until the label metadata contract is implemented.

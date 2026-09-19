@@ -521,7 +521,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   failure-atomic relation/metadata behavior are covered. Lazy/materialized
   execution, panel/label metadata, last_operation, formatting, CLI, JSON,
   MCP, and broad transform sequencing remain deferred.
-- [ ] `encode`
+- [x] `encode` — bounded eager local-Parquet integer coding (`EncodeResult`; PR #53,
+  squash merge `af3e3b2`). Sorted unique nonmissing string values receive
+  one-based codes, NULLs are preserved, quoted/empty relations and
+  failure-atomic staged publication are covered, and the optional label name is
+  parsed but explicitly unsupported until label metadata exists. Decode, label
+  metadata, lazy/materialized execution, panel metadata, last_operation,
+  formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
 - [ ] `decode`
 - [ ] `label`
 

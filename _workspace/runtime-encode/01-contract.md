@@ -1,6 +1,8 @@
 # Bounded eager-runtime `encode` contract
 
-Status: proposed implementation contract at WIP PR checkpoint.
+Status: accepted on `main` at merge commit
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61), via
+[PR #53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.

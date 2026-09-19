@@ -1,6 +1,7 @@
 # Bounded eager-runtime encode closeout
 
-Status: implementation checkpoint; merge closeout pending.
+Status: accepted and verified on `main` at merge commit
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
 
 ## Accepted scope
 
@@ -24,10 +25,12 @@ does not yet exist in the Rust session model.
   review; and
 - [roadmap Phase 6.3](../../docs/TABDAT_RUST_PORT_ROADMAP.md).
 
-Draft PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53) was
-opened at the contract checkpoint. It will be marked ready only after hosted
-baseline, policy, and Linux runtime checks pass; merge and main-branch docs
-closeout remain pending.
+PR [#53](https://github.com/SaehwanPark/tabdat-explore-rs/pull/53) was opened at
+the contract checkpoint, passed its hosted baseline, policy, and Linux runtime
+checks, and was squash-merged as
+[`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
+The companion evidence record contains the PR-head and subsequent main-branch
+workflow links.
 
 Decode, label metadata, lazy/materialized execution, panel metadata,
 last-operation state, formatting, CLI/JSON/MCP, and broad transform sequencing
