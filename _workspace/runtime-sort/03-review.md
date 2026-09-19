@@ -1,7 +1,7 @@
 # Runtime `sort` review record
 
-Status: complete at implementation head `7e0abb6`; no actionable findings
-remain. Hosted acceptance is pending.
+Status: complete at final PR head `55e1fc6`; no actionable findings remain.
+Hosted acceptance passed before squash merge as PR #50 (`f33987a`).
 
 The review used three independent passes over the contract, pinned oracle
 evidence, implementation diff, focused tests, and policy results.
@@ -45,5 +45,5 @@ evidence, implementation diff, focused tests, and policy results.
 ## Disposition
 
 The one review finding was fixed and regression-tested in `7e0abb6`. No
-severity-ranked findings remain. The PR is ready for hosted acceptance once the
-final-head checks pass.
+severity-ranked findings remain. The PR passed final-head checks and was
+squash-merged after the review disposition was recorded.

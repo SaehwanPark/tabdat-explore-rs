@@ -21,8 +21,9 @@ statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 
-Merged PR #27 (`7cf21ae`) adds the verified syntax-only `sort <varlist>` form;
-active-schema lookup, row sorting, and execution remain deferred.
+Merged PR #27 (`7cf21ae`) adds the verified syntax-only `sort <varlist>` form.
+Merged PR #50 (`f33987a`) adds the bounded eager runtime subset documented below;
+broader sort behavior remains deferred.
 
 Merged PR #28 (`fd94133`) adds the verified syntax-only `gsort [+|-]varlist`
 form. Direction metadata is parsed only; active-schema lookup, ordering, and
@@ -195,6 +196,35 @@ is recorded in the companion artifact.
 This accepted runtime subset is library-only. Panel/label metadata, lazy or
 materialized execution, wildcard or multi-column forms, `last_operation`,
 formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
+
+## Verified slice: bounded eager runtime `sort` command
+
+Execute the parsed `sort <varlist>` subset against an active eager local-Parquet
+DuckDB relation. The runtime validates every requested source column before
+staging, orders by one or more quoted native DuckDB scalar keys ascending with
+SQL `NULL` values last, and preserves prior row order for complete ties through
+a private collision-free row ordinal. All source columns, schema types and
+order, row count, source path, and eager execution metadata are preserved;
+staging, inspection, and publication failures leave the prior state unchanged.
+
+Evidence: `_workspace/runtime-sort/`,
+`crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/sort_contract.rs`, and the updated no-active
+runtime regression in `crates/tabdat-runtime/tests/use_contract.rs`. The
+pinned oracle probe reported 7 passed tests. Local format/check/test/Clippy,
+dependency-policy, audit, and metadata-driven geiger checks passed. Draft PR
+[#50](https://github.com/SaehwanPark/tabdat-explore-rs/pull/50) was opened at
+the contract checkpoint; final PR head
+[`55e1fc6`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/55e1fc6b327f42505531ba6da0dee89640f25a1f)
+passed the PR-head CI and runtime workflows before squash merge as
+[`f33987a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f33987ada50beb4030075a7eb388ec8855b64421).
+Merge-head and documentation-closeout workflow evidence is recorded in the
+companion artifact.
+
+This accepted runtime subset is library-only. Panel/label metadata, lazy or
+materialized execution, descending keys, `gsort`, expression keys,
+`last_operation`, formatting, CLI, JSON, MCP, and broad transform sequencing
+remain deferred.
 
 ## Verified slice: reproducible build baseline
 

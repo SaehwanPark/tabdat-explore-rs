@@ -1,6 +1,7 @@
 # Runtime `sort` evidence and migration record
 
-Status: implementation and local review complete; hosted acceptance is pending.
+Status: accepted and verified on `main` at merge commit
+[`f33987a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f33987ada50beb4030075a7eb388ec8855b64421).
 
 ## Authority and oracle evidence
 
@@ -74,10 +75,21 @@ this run.
 ## Hosted acceptance
 
 Draft PR [#50](https://github.com/SaehwanPark/tabdat-explore-rs/pull/50) was
-opened at the contract checkpoint and contains the bounded contract,
-implementation, focused tests, and review evidence. It must be marked ready
-only after the final PR-head CI and runtime-boundary jobs pass. Their direct
-links and the later squash-merge commit will be recorded here before closeout.
+opened at the contract checkpoint, marked ready after local review and green
+PR-head workflows, and squash-merged as
+[`f33987a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f33987ada50beb4030075a7eb388ec8855b64421).
+
+PR-head acceptance passed at final head
+[`55e1fc6`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/55e1fc6b327f42505531ba6da0dee89640f25a1f):
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976605)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976605/job/105947381267),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976605/job/105947381187));
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976678)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976678/job/105947382322)).
+
+Merge-head and documentation-closeout workflow links will be added before
+the next roadmap slice is opened.
 
 ## Deviations and deferrals
 
