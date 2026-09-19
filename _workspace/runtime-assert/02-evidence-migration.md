@@ -1,6 +1,6 @@
 # Bounded runtime `assert` migration evidence
 
-Status: accepted bounded slice; PR #41 merged, branch cleanup complete, post-merge matrix pending
+Status: accepted bounded slice; PR #41 merged, branch cleanup and post-merge matrix complete
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -102,8 +102,16 @@ Its final evidence head was `2435381`; PR-head hosted acceptance was green:
 (Rust baseline and dependency/unsafe-code policy) and [runtime boundary run
 35417321403](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35417321403)
 (Linux runtime targets). The temporary `feat/runtime-assert` branch was removed
-locally and remotely. Post-merge workflow links will be appended after the
-documentation closeout push.
+locally and remotely.
+
+The final main-head documentation closeout `24bc0dd` passed the complete
+post-merge matrix:
+
+- [CI run 35418552027](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027), with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027/job/105831818545) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027/job/105831818577);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552024), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552024/job/105831820370);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552068), with [Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552068/job/105831786308) and [feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552068/job/105831786497);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552025), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552025/job/105831785670); and
+- [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552022), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552022/job/105831785891).
 
 ## Deferred scope
 

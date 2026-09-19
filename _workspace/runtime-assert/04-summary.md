@@ -1,6 +1,6 @@
 # Bounded eager-runtime `assert` closeout
 
-Status: merged on `main`; post-merge workflow matrix pending
+Status: accepted and verified on `main` at `24bc0dd`
 
 PR [#41](https://github.com/SaehwanPark/tabdat-explore-rs/pull/41) was opened
 as a draft before implementation, independently reviewed, marked ready after
@@ -36,9 +36,15 @@ expression parity, and general relation APIs remain deferred.
 
 ## Post-merge verification
 
-The post-merge workflow links and job IDs will be appended here after the
-documentation closeout push. Local locked Cargo checks, dependency policy,
-advisory, geiger, focused oracle, and review evidence are recorded above.
+The final main-head documentation closeout `24bc0dd` passed the complete
+matrix:
+
+- [CI run 35418552027](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027), with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027/job/105831818545) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552027/job/105831818577);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552024), [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552024/job/105831820370);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552068), [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552025), and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35418552022).
+
+Local locked Cargo checks, dependency policy, advisory, geiger, focused oracle,
+and review evidence are recorded in `02-evidence-migration.md`.
 
 ## Handoff
 

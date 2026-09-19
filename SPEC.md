@@ -398,8 +398,8 @@ guards. Unknown names and non-boolean roots are rejected before querying.
 Evidence: `_workspace/runtime-assert/{01-contract,02-evidence-migration,03-review}.md`,
 the implementation, and its parser/runtime contract tests. The pinned focused
 oracle, locked Rust checks, policy scans, independent review, final PR-head
-hosted checks, squash merge, and branch cleanup are recorded there; the
-post-merge workflow matrix is added after the documentation closeout push.
+hosted checks, squash merge, branch cleanup, and post-merge workflow matrix are
+recorded there.
 
 This slice leaves lazy/materialized execution, function calls and `e(sample)`,
 `last_operation`, row-level diagnostics, formatting, CLI/REPL, JSON/MCP,

@@ -19,15 +19,15 @@ The review found no other actionable parser, null-comparison, identifier
 quoting, state-preservation, safety, or test-structure issues. Final-head
 verification confirms the focused parser (2 passed), runtime contract (7
 passed), no-active runtime unit test (passed), formatting, and diff checks.
-Hosted acceptance is green at the final implementation head: [CI run
-35416402198](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402198)
+Hosted acceptance is green at the final PR head: [CI run
+35417321384](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35417321384)
 and [runtime boundary run
-35416402180](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402180).
+35417321403](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35417321403).
 PR #41 was marked ready after those checks, squash-merged as
 [`019ceb1`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/019ceb1c58aabf72b263bbe40c817d3153600096),
 and its temporary branch was deleted locally and remotely. Post-merge workflow
-links will be appended to the migration evidence after the documentation
-closeout push.
+The post-merge matrix is recorded in the migration evidence and closeout
+summary.
 
 Deferred scope remains explicit: lazy/materialized execution, function calls
 and `e(sample)`, CLI/JSON/MCP surfaces, row-level diagnostics, `last_operation`,
