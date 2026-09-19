@@ -1,6 +1,6 @@
 # Bounded runtime `datasignature` migration evidence
 
-Status: WIP — contract recovered; implementation pending
+Status: WIP — implementation complete; hosted acceptance pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -23,20 +23,51 @@ performed. The bounded contract is in `01-contract.md`.
 
 The recovery pass identified the exact length-framed SHA-256 protocol,
 canonical type aliases, recursive value encodings, schema/row-order rules, and
-the pinned exact fixture digest. Focused oracle commands and observed results
-are recorded in `01-contract.md`; they will be rerun independently before the
-implementation is accepted.
+the pinned exact fixture digest. Independent rerun at the pinned checkout:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider \
+  tests/test_datasignature.py
+11 passed in 0.44s
+```
+
+The oracle produced `0b61cef05ab04301df893652f666b6ed974668f0cd214ebae17cfff02a6b3aad`
+for the three-row/four-column fixture,
+`c2d343670c50720e4e4360322c980346b3eea1c0984aba4acb437aced8c816ea` for the
+complex temporal/nonfinite/decimal/list fixture, and
+`9ee1723d85281a5b7423fe90999069a22ac2a4be650ba1a2b39d94fdff23d295` for the
+empty one-column schema.
 
 ## Implementation evidence
 
-Pending. This section will record the implementation commit, focused runtime
-tests, workspace checks, policy scans, and the independent review.
+Implementation commit `0acfd7f` (`runtime: add bounded eager datasignature`)
+adds the owned result/error boundary, safe `sha2` protocol encoder, eager
+DuckDB scan, and state-preservation tests. Focused runtime evidence on the
+branch:
+
+```text
+cargo test --locked -p tabdat-runtime --all-targets
+18 unit tests + 5 datasignature-contract tests + 63 existing integration tests passed
+cargo check --locked --workspace --all-targets
+passed
+cargo clippy --locked -p tabdat-runtime --all-targets -- -D warnings
+passed
+cargo fmt --all -- --check
+passed
+git diff --check
+passed
+```
+
+The Rust contract tests assert the three exact oracle digests, no-active and
+dropped-relation diagnostics, deterministic repeats, schema/row-order
+sensitivity, empty relations, parser dispatch, and state preservation.
 
 ## Hosted acceptance and cleanup
 
-Pending. The WIP PR will be marked ready only after all PR-head checks pass;
-after merge, the post-merge workflow matrix and deletion of the temporary local
-and remote branch will be recorded here.
+The WIP PR is #40. It will be marked ready only after the dependency/unsafe
+policy, Rust baseline, and runtime-boundary PR-head checks pass, after which the
+post-merge workflow matrix and deletion of the temporary local and remote branch
+will be recorded here.
 
 ## Deferred scope
 
