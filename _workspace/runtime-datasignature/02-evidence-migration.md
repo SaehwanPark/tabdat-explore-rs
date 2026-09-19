@@ -1,6 +1,6 @@
 # Bounded runtime `datasignature` migration evidence
 
-Status: WIP — implementation complete; hosted acceptance pending
+Status: accepted bounded eager-runtime slice
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -83,10 +83,28 @@ first-party packages.
 
 ## Hosted acceptance and cleanup
 
-The WIP PR is #40. It will be marked ready only after the dependency/unsafe
-policy, Rust baseline, and runtime-boundary PR-head checks pass, after which the
-post-merge workflow matrix and deletion of the temporary local and remote branch
-will be recorded here.
+PR #40 was marked ready after all PR-head gates passed for commit `24822ad`:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35411047370),
+  including [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35411047370/job/105810650144)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35411047370/job/105810650340);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35411047371)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35411047371/job/105810648318)).
+
+PR #40 was squash-merged as
+[`9a141da`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/9a141daa547571ad5e0e75efef08b6c842c99923).
+The temporary `feat/runtime-datasignature` branch was deleted locally and
+remotely. The post-merge workflows for the squash commit are:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35412237819),
+  including [dependency/unsafe policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35412237819/job/105813973474)
+  and [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35412237819/job/105813973742);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35412237838)
+  ([Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35412237838/job/105813973082)).
+
+Both post-merge workflows completed successfully on the squash commit before
+the main-branch roadmap closeout: the generic CI finished in 20m0s and the
+runtime boundary finished in 19m33s.
 
 ## Deferred scope
 

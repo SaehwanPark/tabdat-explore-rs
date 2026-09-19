@@ -419,7 +419,12 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   aggregate metrics, exact diagnostics, and read-only state are covered.
   Lazy/materialized execution, last-operation state, labels, wildcard/range
   expansion, formatting, CLI, JSON, and MCP remain deferred.
-- [ ] `datasignature`
+- [x] `datasignature` — bounded eager local-Parquet reproducibility fingerprint
+  (`DatasignatureResult`; PR #40, squash merge `9a141da`). The exact SHA-256
+  schema/row/value protocol, deterministic order, empty-schema behavior,
+  nested temporal hints, interval encoding, and escaped struct names are covered.
+  Lazy/materialized execution, `last_operation`, labels/panel metadata, CLI,
+  JSON/MCP, direct union values, and broader relation APIs remain deferred.
 - [ ] `assert`
 - [x] `count` — bounded eager local-Parquet active-dataset row count
   (`CountResult`; PR #32, squash merge `2287fff`). Broader lazy/materialized,

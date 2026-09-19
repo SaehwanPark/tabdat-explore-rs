@@ -363,6 +363,26 @@ This slice leaves lazy/materialized execution, last-operation state, labels,
 wildcard/range expansion, formatting, CLI/REPL, JSON/MCP surfaces, and broader
 relation APIs deferred.
 
+## Verified slice: bounded eager-runtime `datasignature` command
+
+Merged PR #40 (`9a141da`) adds the bounded eager local-Parquet
+`datasignature` execution path to `tabdat-runtime`. It returns an owned
+`DatasignatureResult` using the pinned SHA-256 schema/row/value protocol,
+preserves public schema and active row order, accepts empty relations, and
+leaves active metadata and the private relation unchanged. Exact fixtures cover
+nonfinite and decimal values, nanosecond and nested temporal values, interval
+encoding, temporal map keys, bare STRUCT fields, and escaped STRUCT names.
+
+Evidence: `_workspace/runtime-datasignature/{01-contract,02-evidence-migration,03-review}.md`,
+`docs/adr/0008-datasignature-sha256.md`, the implementation, and its
+unit/integration tests. The pinned focused oracle, locked Rust checks, policy
+scans, independent review, all PR-head and post-merge hosted jobs, the squash
+merge, and branch cleanup are recorded in the migration evidence.
+
+This slice leaves lazy/materialized execution, `last_operation`, labels/panel
+metadata, CLI/REPL, JSON/MCP, direct DuckDB union values, and broader relation
+APIs deferred.
+
 ## Verified slice: syntax-only `summarize` command
 
 PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax
