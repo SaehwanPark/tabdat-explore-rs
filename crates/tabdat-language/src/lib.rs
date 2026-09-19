@@ -2323,7 +2323,7 @@ fn parse_encode_command(body: &str) -> Result<Command, ParseError> {
   let mut label = None;
   let mut unsupported = Vec::new();
   for option in options {
-    let name = option.name.to_ascii_lowercase();
+    let name = option.name.clone();
     match name.as_str() {
       "generate" => {
         if generate.is_some() {

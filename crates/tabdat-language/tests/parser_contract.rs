@@ -1225,6 +1225,10 @@ fn encode_preserves_exact_bounded_diagnostics() {
       "encode unsupported option: unknown",
     ),
     (
+      "encode sex, GENERATE(sex_n)",
+      "encode unsupported option: GENERATE",
+    ),
+    (
       "encode sex, generate(sex_n) generate(other)",
       "encode option generate can only be specified once",
     ),
