@@ -9,7 +9,8 @@ use duckdb::Connection;
 use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode, LazyEngine, RowLimit,
+  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
+  GenerateBinaryOperator, GenerateExpression, LazyEngine, RowLimit,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -210,6 +211,13 @@ pub struct AssertResult {
   pub failed: u64,
 }
 
+/// The owned result returned after appending a generated numeric column.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GenerateResult {
+  /// Metadata for the newly active generated dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -266,6 +274,8 @@ pub enum ExecutionResult {
   Datasignature(DatasignatureResult),
   /// Checks a typed boolean expression across every active row.
   Assert(AssertResult),
+  /// Appends a generated numeric column to the active dataset.
+  Generate(GenerateResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -352,6 +362,16 @@ pub enum RuntimeError {
   AssertTypeMismatch { message: String },
   /// DuckDB could not produce the assertion aggregate.
   AssertFailed,
+  /// The generate target already exists in the active schema.
+  GenerateTargetExists { variable: String },
+  /// The generate expression named variables absent from the active schema.
+  GenerateUnknownVariable { variables: Vec<String> },
+  /// The generate expression has incompatible operand domains.
+  GenerateTypeMismatch { message: String },
+  /// The generate expression uses a form outside this bounded runtime slice.
+  GenerateUnsupportedExpression { message: String },
+  /// DuckDB could not stage or publish the generated relation.
+  GenerateFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -504,6 +524,19 @@ impl fmt::Display for RuntimeError {
       ),
       Self::AssertTypeMismatch { message } => formatter.write_str(message),
       Self::AssertFailed => formatter.write_str("assert failed"),
+      Self::GenerateTargetExists { variable } => {
+        write!(formatter, "generate target already exists: {variable}")
+      }
+      Self::GenerateUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "expression unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::GenerateTypeMismatch { message } => formatter.write_str(message),
+      Self::GenerateUnsupportedExpression { message } => formatter.write_str(message),
+      Self::GenerateFailed => formatter.write_str("generate failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -565,6 +598,10 @@ impl Session {
       Command::Isid { variables, missok } => self.execute_isid(variables, missok),
       Command::Datasignature => self.execute_datasignature(),
       Command::Assert { expression } => self.execute_assert(expression),
+      Command::Generate {
+        variable,
+        expression,
+      } => self.execute_generate(variable, expression),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -919,6 +956,57 @@ impl Session {
     Ok(ExecutionResult::Assert(AssertResult { checked, failed }))
   }
 
+  fn execute_generate(
+    &mut self,
+    variable: String,
+    expression: GenerateExpression,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "generate",
+      })?
+      .clone();
+    if dataset.columns.iter().any(|column| column.name == variable) {
+      return Err(RuntimeError::GenerateTargetExists { variable });
+    }
+
+    let unknown = generate_expression_identifiers(&expression)
+      .into_iter()
+      .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::GenerateUnknownVariable { variables: unknown });
+    }
+
+    let expression = generate_expression_to_assert(&expression)?;
+    match expression_domain(&expression, &dataset) {
+      Ok(ExpressionDomain::Numeric) => {}
+      Ok(_) => {
+        return Err(RuntimeError::GenerateTypeMismatch {
+          message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
+        });
+      }
+      Err(RuntimeError::AssertTypeMismatch { message }) => {
+        return Err(RuntimeError::GenerateTypeMismatch { message });
+      }
+      Err(RuntimeError::AssertUnknownVariable { variables }) => {
+        return Err(RuntimeError::GenerateUnknownVariable { variables });
+      }
+      Err(_) => return Err(RuntimeError::GenerateFailed),
+    }
+    validate_generate_expression(&expression, &dataset)?;
+    let backend = self.backend.as_mut().ok_or(RuntimeError::GenerateFailed)?;
+    let next_dataset = backend
+      .generate_column(&dataset, &variable, &expression)
+      .map_err(|_| RuntimeError::GenerateFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Generate(GenerateResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -1167,6 +1255,111 @@ fn expression_identifiers(expression: &AssertExpression) -> Vec<String> {
       identifiers
     }
   }
+}
+
+fn generate_expression_identifiers(expression: &GenerateExpression) -> Vec<String> {
+  match expression {
+    GenerateExpression::Identifier(name) => vec![name.clone()],
+    GenerateExpression::Number(_) | GenerateExpression::String(_) | GenerateExpression::Null => {
+      Vec::new()
+    }
+    GenerateExpression::UnaryMinus(operand) => generate_expression_identifiers(operand),
+    GenerateExpression::Binary { left, right, .. } => {
+      let mut identifiers = generate_expression_identifiers(left);
+      identifiers.extend(generate_expression_identifiers(right));
+      identifiers
+    }
+    GenerateExpression::FunctionCall { arguments, .. } => arguments
+      .iter()
+      .flat_map(generate_expression_identifiers)
+      .collect(),
+  }
+}
+
+fn generate_expression_to_assert(
+  expression: &GenerateExpression,
+) -> Result<AssertExpression, RuntimeError> {
+  match expression {
+    GenerateExpression::Identifier(name) => Ok(AssertExpression::Identifier(name.clone())),
+    GenerateExpression::Number(value) => Ok(AssertExpression::Number(value.clone())),
+    GenerateExpression::String(_) => Err(RuntimeError::GenerateUnsupportedExpression {
+      message: "generate does not support string expressions".to_owned(),
+    }),
+    GenerateExpression::Null => Err(RuntimeError::GenerateUnsupportedExpression {
+      message: "generate does not support NULL expressions".to_owned(),
+    }),
+    GenerateExpression::UnaryMinus(operand) => Ok(AssertExpression::UnaryMinus(Box::new(
+      generate_expression_to_assert(operand)?,
+    ))),
+    GenerateExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      let operator = match operator {
+        GenerateBinaryOperator::Add => AssertBinaryOperator::Add,
+        GenerateBinaryOperator::Subtract => AssertBinaryOperator::Subtract,
+        GenerateBinaryOperator::Multiply => AssertBinaryOperator::Multiply,
+        GenerateBinaryOperator::Divide => AssertBinaryOperator::Divide,
+        GenerateBinaryOperator::Equal
+        | GenerateBinaryOperator::NotEqual
+        | GenerateBinaryOperator::Less
+        | GenerateBinaryOperator::LessOrEqual
+        | GenerateBinaryOperator::Greater
+        | GenerateBinaryOperator::GreaterOrEqual => {
+          return Err(RuntimeError::GenerateUnsupportedExpression {
+            message: "generate does not support comparison expressions".to_owned(),
+          });
+        }
+      };
+      Ok(AssertExpression::Binary {
+        left: Box::new(generate_expression_to_assert(left)?),
+        operator,
+        right: Box::new(generate_expression_to_assert(right)?),
+      })
+    }
+    GenerateExpression::FunctionCall { .. } => Err(RuntimeError::GenerateUnsupportedExpression {
+      message: "generate does not support function calls".to_owned(),
+    }),
+  }
+}
+
+fn validate_generate_expression(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<(), RuntimeError> {
+  match expression {
+    AssertExpression::Identifier(name) => {
+      let is_numeric = dataset
+        .columns
+        .iter()
+        .find(|column| column.name == *name)
+        .is_some_and(|column| is_numeric_data_type(&column.data_type));
+      if !is_numeric {
+        return Err(RuntimeError::GenerateTypeMismatch {
+          message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
+        });
+      }
+    }
+    AssertExpression::Number(value) => {
+      if !value.parse::<f64>().is_ok_and(f64::is_finite) {
+        return Err(RuntimeError::GenerateTypeMismatch {
+          message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
+        });
+      }
+    }
+    AssertExpression::UnaryMinus(operand) => validate_generate_expression(operand, dataset)?,
+    AssertExpression::Binary { left, right, .. } => {
+      validate_generate_expression(left, dataset)?;
+      validate_generate_expression(right, dataset)?;
+    }
+    AssertExpression::String(_) | AssertExpression::Null => {
+      return Err(RuntimeError::GenerateUnsupportedExpression {
+        message: "generate does not support non-numeric expressions".to_owned(),
+      });
+    }
+  }
+  Ok(())
 }
 
 fn expression_domain(
@@ -1733,6 +1926,54 @@ impl DuckDbBackend {
       .connection
       .execute_batch(&format!(
         "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_list} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn generate_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    variable: &str,
+    expression: &AssertExpression,
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let expression_sql = compile_assert_expression(expression, dataset)?;
+    let target_sql = quote_identifier(variable);
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT *, {expression_sql} AS {target_sql} FROM {ACTIVE_TABLE}"
       ))
       .is_err()
     {
@@ -3288,6 +3529,53 @@ mod tests {
       RuntimeError::DatasignatureFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+  }
+
+  #[test]
+  fn failed_generate_keeps_metadata_and_private_active_relation() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![ColumnInfo {
+        name: "value".to_owned(),
+        data_type: "INTEGER".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS other"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Generate {
+          variable: "value2".to_owned(),
+          expression: GenerateExpression::Identifier("value".to_owned()),
+        })
+        .unwrap_err(),
+      RuntimeError::GenerateFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let value: i32 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT other FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the prior active relation should remain queryable");
+    assert_eq!(value, 7);
   }
 
   #[test]
