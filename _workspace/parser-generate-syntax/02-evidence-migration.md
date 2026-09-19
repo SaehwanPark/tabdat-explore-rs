@@ -1,7 +1,8 @@
 # `generate` syntax migration evidence
 
-Status: implementation and independent review are complete; hosted acceptance,
-merge, and post-merge verification are recorded when this slice closes.
+Status: accepted; implementation, independent review, hosted acceptance,
+merge, and branch cleanup are complete. The documentation closeout's `main`
+workflow run is the remaining verification link to append.
 
 Boundary: pinned Python parser contract → backend-independent Rust syntax. This
 artifact deliberately does not claim eager `generate` execution.
@@ -91,13 +92,24 @@ left-associative, and an empty expression before a comma reports the assignment
 expression error. The updated review found no remaining actionable findings;
 see `03-review.md`.
 
-The implementation-head hosted runs are:
+The implementation-head hosted runs passed all required jobs:
 
 - [CI policy and baseline run 35437154322](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35437154322)
   (policy and Rust baseline jobs);
 - [runtime run 35437154329](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35437154329)
   (runtime Linux job).
 
-Their final conclusions, the ready transition, merge SHA, branch cleanup, and
-post-merge `main` checks must be appended before this artifact is marked
-accepted. Superseded runs are not acceptance evidence.
+Those earlier runs were superseded while the implementation was corrected. The
+accepted final-head runs for `9187626` were:
+
+- [CI policy and baseline run 35437718683](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35437718683)
+  (policy and Rust baseline jobs, both passed);
+- [runtime run 35437718699](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35437718699)
+  (runtime Linux job, passed).
+
+PR #45 was marked ready after those checks and squash-merged as
+`63e65ec40074a868bcd271c932275a7359cd2ce3`. `gh pr merge --delete-branch`
+removed `feat/parser-generate-syntax` locally and remotely; `main` was clean
+and synchronized at the merge commit. The documentation closeout commit and
+its post-merge `main` workflow link remain to be appended before this artifact
+is fully closed.

@@ -1,6 +1,7 @@
 # Bounded syntax-only `generate` contract
 
-Status: implementation complete; hosted acceptance and merge are pending.
+Status: accepted; implementation, hosted acceptance, merge, and branch cleanup
+are complete.
 
 Producer: task owner, using `tabdat-migration` and `simple-code-writer`, with
 independent pinned-Python contract recovery and Rust boundary reconnaissance.
@@ -109,7 +110,8 @@ with data-semantics evidence.
 
 No new dependency, native backend, FFI, unsafe code, or ADR decision is needed.
 
-Completion state: the bounded implementation, focused oracle/Rust checks, and
-independent review are complete at implementation head `772eb58`. Hosted
-acceptance, merge, and temporary-branch cleanup remain to be recorded in the
-evidence, review, and summary artifacts.
+Completion state: the bounded implementation, focused oracle/Rust checks,
+independent review, and hosted acceptance are complete at implementation head
+`772eb58`. PR #45 was marked ready, squash-merged as `63e65ec`, and its local
+and remote temporary branch was deleted. Post-merge documentation and `main`
+workflow verification are recorded in the companion evidence closeout.

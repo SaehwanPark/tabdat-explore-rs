@@ -1,7 +1,7 @@
 # `generate` syntax slice review
 
-Status: independent review accepted; hosted acceptance and merge closeout are
-pending.
+Status: accepted; independent review, hosted acceptance, merge, and temporary
+branch cleanup are complete.
 
 ## Scope reviewed
 
@@ -38,6 +38,8 @@ strengthened at `772eb58`. Re-review of that head found no remaining actionable
 findings. Focused parser/runtime tests, formatting, and `git diff --check`
 passed.
 
-The bounded slice is therefore approved for hosted acceptance and merge once
-the current-head workflows are green. Full eager `generate` parity is not
-approved by this review; it requires a separate data-semantics contract.
+The bounded slice was approved after the current-head workflows turned green.
+PR #45 was marked ready and squash-merged as `63e65ec`; the temporary branch
+was deleted locally and remotely. Full eager `generate` parity is not approved
+by this review; it requires a separate data-semantics contract. The remaining
+post-merge `main` workflow link belongs in the evidence closeout.

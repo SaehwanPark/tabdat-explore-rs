@@ -6,7 +6,8 @@ The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
 successfully. The workspace also contains a backend-independent `tabdat-language`
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-`tail`, `run <script-path>`, `save <path> [, replace]`, and `export <path> [, replace]`, plus the verified direct `use`, `codebook [varlist]`,
+`tail`, `run <script-path>`, `save <path> [, replace]`, `export <path> [, replace]`,
+and syntax-only `generate <target> = <expression>`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 `isid [varlist] [, missok]`, and bounded direct `assert <boolean-expression>`
 forms. Merged PR #25 (`89f6c14`) adds the
@@ -31,6 +32,12 @@ Merged PR #29 (`8b16223`) adds the bounded syntax-only `save <path> [, replace]`
 replacement flag; filesystem validation, active-dataset access, output formats,
 and persistence remain deferred.
 
+Merged PR #45 (`63e65ec`) adds the bounded syntax-only
+`generate <target> = <expression>` form. The language layer preserves an owned
+expression tree, including function-call syntax, while expression evaluation,
+schema/type validation, target mutation, and all runtime/output surfaces remain
+deferred.
+
 ## Verified slice: syntax-only `save` and `export` commands
 
 Add direct, backend-independent `save <path> [, replace]` and
@@ -51,6 +58,30 @@ hosted acceptance checks remain part of the PR evidence.
 This slice does not inspect paths or active data, write files, validate output
 formats, mutate session state, initialize a backend, or claim persistence/output
 parity.
+
+## Verified slice: syntax-only `generate` command
+
+Add direct, backend-independent `generate <target> = <expression>` syntax. The
+parser preserves exact quoted identifier spelling, arithmetic/comparison
+precedence, null/string/numeric literals, nested function-call nodes, and the
+pinned malformed-input diagnostics. A quoted identifier named `if` remains
+distinct from the unsupported clause marker, and the pinned trailing-comma
+quirk is retained without introducing option parsing.
+
+Evidence: `_workspace/parser-generate-syntax/`,
+`crates/tabdat-language/src/lib.rs`,
+`crates/tabdat-language/tests/parser_contract.rs`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/use_contract.rs`. The pinned parser probe passed
+`5 passed, 484 deselected`; focused Rust parser/runtime checks passed, the
+locked workspace baseline and policy checks passed locally, and the final PR
+head passed the policy, baseline, and runtime workflows before squash merge as
+PR #45 (`63e65ec`).
+
+This slice does not evaluate expressions, inspect an active dataset or schema,
+validate types or target collisions, mutate relations/session state, initialize
+a backend, or claim CLI/JSON/MCP/runtime parity. Those remain a separate eager
+runtime contract.
 
 ## Verified slice: reproducible build baseline
 

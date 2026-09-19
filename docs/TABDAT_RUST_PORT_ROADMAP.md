@@ -323,6 +323,10 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `save <path> [, replace]` and `export <path> [, replace]`
   syntax slice (PR #29, merged as `8b16223`; filesystem validation, output formats, persistence, and
   execution remain deferred until a later data-runtime slice).
+- [x] Add the bounded direct `generate <target> = <expression>` syntax slice
+  (PR #45, merged as `63e65ec`; expression/function-call nodes are retained
+  syntax-only, with evaluation, type/schema validation, mutation, and runtime
+  surfaces deferred to a later data-runtime slice).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -466,7 +470,8 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   Predicate form (`select if`), lazy/materialized execution, wildcard/range
   expansion, labels/panel metadata, `last_operation`, formatting, CLI, JSON,
   and MCP remain deferred.
-- [ ] `generate`
+- [ ] `generate` (syntax-only parser groundwork is merged in PR #45; eager
+  runtime semantics remain unchecked)
 - [ ] `replace`
 - [ ] `rename`
 - [ ] `sort`
