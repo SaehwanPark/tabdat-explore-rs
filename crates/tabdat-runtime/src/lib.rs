@@ -1124,6 +1124,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Codebook { .. } => "codebook",
     Command::Datasignature => "datasignature",
     Command::Assert { .. } => "assert",
+    Command::Generate { .. } => "generate",
     Command::Keep { .. } => "keep",
     Command::Drop { .. } => "drop",
     Command::Missing { .. } => "missing",

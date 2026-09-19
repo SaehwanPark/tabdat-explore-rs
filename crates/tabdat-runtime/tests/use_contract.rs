@@ -2089,6 +2089,18 @@ fn leaves_rename_execution_deferred() {
 }
 
 #[test]
+fn leaves_generate_execution_deferred() {
+  let mut session = Session::new();
+  let command = parse_command("generate age2 = age + 1").expect("generate should parse");
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "generate" }
+  );
+  assert!(session.active_dataset().is_none());
+}
+
+#[test]
 fn select_requires_an_active_dataset() {
   let mut session = Session::new();
   let command = Command::Select {

@@ -33,6 +33,13 @@ pub enum Command {
   },
   /// Validate a boolean predicate against every row in the bounded eager runtime.
   Assert { expression: AssertExpression },
+  /// Parse a generated-column expression without executing it.
+  Generate {
+    /// The target column name.
+    variable: String,
+    /// The owned expression assigned to the target column.
+    expression: GenerateExpression,
+  },
   /// Keep an explicit ordered set of columns in the bounded eager runtime.
   Keep { variables: Vec<String> },
   /// Drop an explicit set of columns in the bounded eager runtime.
@@ -91,6 +98,66 @@ pub enum AssertExpression {
     /// Right operand.
     right: Box<Self>,
   },
+}
+
+/// An expression retained by the syntax-only `generate` command.
+///
+/// This deliberately remains separate from [`AssertExpression`]: the bounded
+/// assert runtime does not claim function-call support, while the language
+/// layer must preserve calls for a later generate execution slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GenerateExpression {
+  /// A dataset column reference.
+  Identifier(String),
+  /// A validated numeric literal preserved as source text.
+  Number(String),
+  /// A quoted string literal.
+  String(String),
+  /// An explicit SQL NULL literal.
+  Null,
+  /// Unary numeric negation.
+  UnaryMinus(Box<Self>),
+  /// A binary arithmetic or comparison expression.
+  Binary {
+    /// Left operand.
+    left: Box<Self>,
+    /// Operator between operands.
+    operator: GenerateBinaryOperator,
+    /// Right operand.
+    right: Box<Self>,
+  },
+  /// A function call with arguments in source order.
+  FunctionCall {
+    /// Function name as written by the caller.
+    name: String,
+    /// Arguments in source order.
+    arguments: Vec<Self>,
+  },
+}
+
+/// Operators accepted by [`GenerateExpression::Binary`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenerateBinaryOperator {
+  /// Addition.
+  Add,
+  /// Subtraction.
+  Subtract,
+  /// Multiplication.
+  Multiply,
+  /// Division.
+  Divide,
+  /// Equality.
+  Equal,
+  /// Inequality.
+  NotEqual,
+  /// Less-than comparison.
+  Less,
+  /// Less-than-or-equal comparison.
+  LessOrEqual,
+  /// Greater-than comparison.
+  Greater,
+  /// Greater-than-or-equal comparison.
+  GreaterOrEqual,
 }
 
 /// Operators accepted by [`AssertExpression::Binary`].
@@ -462,6 +529,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "sort" => parse_sort_command(body),
     "gsort" => parse_gsort_command(body),
     "rename" => parse_rename_command(body),
+    "generate" => parse_generate_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
     "save" | "export" => parse_save_export_command(normalized_name.as_str(), body),
@@ -676,6 +744,330 @@ fn parse_assert_command(body: &str) -> Result<Command, ParseError> {
 
   let expression = AssertExpressionParser::new(tokens).parse()?;
   Ok(Command::Assert { expression })
+}
+
+fn parse_generate_command(body: &str) -> Result<Command, ParseError> {
+  let tokens = tokenize_use_options(body)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "generate expects syntax: generate new = expression",
+    ));
+  }
+  if tokens
+    .first()
+    .is_some_and(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  {
+    return Err(ParseError::new(
+      "generate assignment requires a target before =",
+    ));
+  }
+  if tokens.first().is_some_and(|token| {
+    matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+      && token.text.eq_ignore_ascii_case("if")
+  }) {
+    match tokens.get(1) {
+      None => {
+        return Err(ParseError::new("missing expression after if"));
+      }
+      Some(token) if token.kind == UseTokenKind::Symbol && token.text == "," => {
+        return Err(ParseError::new("missing expression after if"));
+      }
+      Some(token) if token.kind == UseTokenKind::Symbol && token.text == "=" => {
+        return Err(ParseError::new("unsupported token in expression: ="));
+      }
+      _ => {
+        return Err(ParseError::new(
+          "generate does not accept if clauses or options",
+        ));
+      }
+    }
+  }
+
+  let Some(equal_index) = tokens
+    .iter()
+    .position(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  else {
+    if let Some(token) = tokens.iter().find(|token| {
+      token.kind == UseTokenKind::Symbol
+        && matches!(token.text.as_str(), "==" | "+" | "-" | "!" | "@" | ":")
+    }) {
+      return Err(ParseError::new(format!(
+        "unsupported token in command: {}",
+        token.text
+      )));
+    }
+    return Err(ParseError::new(
+      "generate expects syntax: generate new = expression",
+    ));
+  };
+
+  let target = tokens[..equal_index].iter().collect::<Vec<_>>();
+  if target.len() != 1 || !matches!(target[0].kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(
+      "generate expects syntax: generate new = expression",
+    ));
+  }
+  let variable = target[0].text.clone();
+  let expression_tokens = &tokens[equal_index + 1..];
+  if expression_tokens.is_empty() {
+    return Err(ParseError::new(
+      "generate assignment requires an expression after =",
+    ));
+  }
+
+  let mut depth = 0_i32;
+  let mut option_start = None;
+  for (index, token) in expression_tokens.iter().enumerate() {
+    match (&token.kind, token.text.as_str()) {
+      (UseTokenKind::Symbol, "(") => depth += 1,
+      (UseTokenKind::Symbol, ")") => depth -= 1,
+      (UseTokenKind::Identifier { quoted: false }, name)
+        if depth == 0 && name.eq_ignore_ascii_case("if") =>
+      {
+        return Err(ParseError::new("duplicate if clause"));
+      }
+      (UseTokenKind::Symbol, ",") if depth == 0 => {
+        option_start = Some(index);
+        break;
+      }
+      _ => {}
+    }
+  }
+  let expression_end = option_start.unwrap_or(expression_tokens.len());
+  if expression_end == 0 {
+    return Err(ParseError::new(
+      "generate assignment requires an expression after =",
+    ));
+  }
+  if option_start.is_some_and(|index| index + 1 < expression_tokens.len()) {
+    return Err(ParseError::new(
+      "generate does not accept if clauses or options",
+    ));
+  }
+  let expression =
+    GenerateExpressionParser::new(expression_tokens[..expression_end].to_vec()).parse()?;
+  Ok(Command::Generate {
+    variable,
+    expression,
+  })
+}
+
+struct GenerateExpressionParser {
+  tokens: Vec<UseToken>,
+  index: usize,
+}
+
+impl GenerateExpressionParser {
+  fn new(tokens: Vec<UseToken>) -> Self {
+    Self { tokens, index: 0 }
+  }
+
+  fn parse(mut self) -> Result<GenerateExpression, ParseError> {
+    let expression = self.parse_comparison()?;
+    if let Some(token) = self.peek() {
+      return Err(ParseError::new(format!(
+        "unsupported token in expression: {}",
+        token.text
+      )));
+    }
+    Ok(expression)
+  }
+
+  fn parse_comparison(&mut self) -> Result<GenerateExpression, ParseError> {
+    let mut expression = self.parse_additive()?;
+    while let Some(operator) = self.peek().and_then(generate_comparison_operator) {
+      self.index += 1;
+      if self.peek().is_none() {
+        return Err(ParseError::new(format!(
+          "incomplete expression after {}",
+          generate_operator_text(operator)
+        )));
+      }
+      let right = self.parse_additive()?;
+      expression = GenerateExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
+    }
+    Ok(expression)
+  }
+
+  fn parse_additive(&mut self) -> Result<GenerateExpression, ParseError> {
+    let mut expression = self.parse_multiplicative()?;
+    loop {
+      let Some(operator) = self.peek().and_then(|token| match token.text.as_str() {
+        "+" => Some(GenerateBinaryOperator::Add),
+        "-" => Some(GenerateBinaryOperator::Subtract),
+        _ => None,
+      }) else {
+        return Ok(expression);
+      };
+      self.index += 1;
+      if self.peek().is_none() {
+        return Err(ParseError::new(format!(
+          "incomplete expression after {}",
+          generate_operator_text(operator)
+        )));
+      }
+      let right = self.parse_multiplicative()?;
+      expression = GenerateExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
+    }
+  }
+
+  fn parse_multiplicative(&mut self) -> Result<GenerateExpression, ParseError> {
+    let mut expression = self.parse_unary()?;
+    loop {
+      let Some(operator) = self.peek().and_then(|token| match token.text.as_str() {
+        "*" => Some(GenerateBinaryOperator::Multiply),
+        "/" => Some(GenerateBinaryOperator::Divide),
+        _ => None,
+      }) else {
+        return Ok(expression);
+      };
+      self.index += 1;
+      if self.peek().is_none() {
+        return Err(ParseError::new(format!(
+          "incomplete expression after {}",
+          generate_operator_text(operator)
+        )));
+      }
+      let right = self.parse_unary()?;
+      expression = GenerateExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
+    }
+  }
+
+  fn parse_unary(&mut self) -> Result<GenerateExpression, ParseError> {
+    if self.peek().is_some_and(|token| token.text == "-") {
+      self.index += 1;
+      if self.peek().is_none() {
+        return Err(ParseError::new("incomplete expression after -"));
+      }
+      return Ok(GenerateExpression::UnaryMinus(Box::new(
+        self.parse_unary()?,
+      )));
+    }
+    self.parse_primary()
+  }
+
+  fn parse_primary(&mut self) -> Result<GenerateExpression, ParseError> {
+    let Some(token) = self.consume() else {
+      return Err(ParseError::new("missing expression"));
+    };
+    match token.kind {
+      UseTokenKind::Number => {
+        if token.text.parse::<f64>().is_err() {
+          return Err(ParseError::new(format!("malformed number: {}", token.text)));
+        }
+        Ok(GenerateExpression::Number(token.text))
+      }
+      UseTokenKind::String => Ok(GenerateExpression::String(token.text)),
+      UseTokenKind::Identifier { quoted } => {
+        if !quoted && token.text.eq_ignore_ascii_case("null") {
+          return Ok(GenerateExpression::Null);
+        }
+        if !quoted
+          && self
+            .peek()
+            .is_some_and(|next| next.kind == UseTokenKind::Symbol && next.text == "(")
+        {
+          return self.parse_function_call(token.text);
+        }
+        Ok(GenerateExpression::Identifier(token.text))
+      }
+      UseTokenKind::Symbol if token.text == "(" => {
+        let expression = self.parse_comparison()?;
+        let Some(closing) = self.consume() else {
+          return Err(ParseError::new("missing closing ) in expression"));
+        };
+        if closing.kind != UseTokenKind::Symbol || closing.text != ")" {
+          return Err(ParseError::new(format!(
+            "unsupported token in expression: {}",
+            closing.text
+          )));
+        }
+        Ok(expression)
+      }
+      UseTokenKind::Symbol => Err(ParseError::new(format!(
+        "unsupported token in expression: {}",
+        token.text
+      ))),
+    }
+  }
+
+  fn parse_function_call(&mut self, name: String) -> Result<GenerateExpression, ParseError> {
+    self.index += 1;
+    let mut arguments = Vec::new();
+    if self
+      .peek()
+      .is_some_and(|token| token.kind == UseTokenKind::Symbol && token.text == ")")
+    {
+      self.index += 1;
+      return Ok(GenerateExpression::FunctionCall { name, arguments });
+    }
+    loop {
+      arguments.push(self.parse_comparison()?);
+      let Some(separator) = self.consume() else {
+        return Err(ParseError::new(format!(
+          "missing closing ) in function call: {name}"
+        )));
+      };
+      if separator.kind == UseTokenKind::Symbol && separator.text == ")" {
+        break;
+      }
+      if separator.kind != UseTokenKind::Symbol || separator.text != "," {
+        return Err(ParseError::new(format!(
+          "function call {name} arguments must be separated by commas"
+        )));
+      }
+    }
+    Ok(GenerateExpression::FunctionCall { name, arguments })
+  }
+
+  fn peek(&self) -> Option<&UseToken> {
+    self.tokens.get(self.index)
+  }
+
+  fn consume(&mut self) -> Option<UseToken> {
+    let token = self.tokens.get(self.index).cloned();
+    self.index += usize::from(token.is_some());
+    token
+  }
+}
+
+fn generate_comparison_operator(token: &UseToken) -> Option<GenerateBinaryOperator> {
+  match token.text.as_str() {
+    "==" => Some(GenerateBinaryOperator::Equal),
+    "!=" => Some(GenerateBinaryOperator::NotEqual),
+    "<" => Some(GenerateBinaryOperator::Less),
+    "<=" => Some(GenerateBinaryOperator::LessOrEqual),
+    ">" => Some(GenerateBinaryOperator::Greater),
+    ">=" => Some(GenerateBinaryOperator::GreaterOrEqual),
+    _ => None,
+  }
+}
+
+fn generate_operator_text(operator: GenerateBinaryOperator) -> &'static str {
+  match operator {
+    GenerateBinaryOperator::Add => "+",
+    GenerateBinaryOperator::Subtract => "-",
+    GenerateBinaryOperator::Multiply => "*",
+    GenerateBinaryOperator::Divide => "/",
+    GenerateBinaryOperator::Equal => "==",
+    GenerateBinaryOperator::NotEqual => "!=",
+    GenerateBinaryOperator::Less => "<",
+    GenerateBinaryOperator::LessOrEqual => "<=",
+    GenerateBinaryOperator::Greater => ">",
+    GenerateBinaryOperator::GreaterOrEqual => ">=",
+  }
 }
 
 struct AssertExpressionParser {
