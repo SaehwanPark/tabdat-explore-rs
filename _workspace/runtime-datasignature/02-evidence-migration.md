@@ -44,14 +44,20 @@ nanosecond timestamp, `708fdda786f82d09019158fb402f4ae2cd6ea9b5bf785453c6fa77a6b
 for a nested timezone list, `3d1041974ea09a192c5ebd736d68bdd1f81d9f9a395407257a7ad772b46aab6b`
 for a nested timezone struct, `7a5a285fcec0d99773a3adc71fea4a065e12d37dc28f32b250fd5d6e11832552`
 for a nested timezone map, and `82372379c40bbea52435f328e4139e5567af9a6f1788b607d092e3fc56898765`
-for an interval value.
+for an interval value. Bare struct fields, temporal map keys, and an escaped
+struct field name also match the oracle: `80ea4f18ca0d129649989fc28dcff1ec6d3758aa08390161f2c41fba499c6599`,
+`1019fb05c4a0ae3614b19ff5a736d372e5dd43efe3157c60bc167c5a560dffdb`,
+`56a02953bcca1f09a4a63743e766fddf9f0eb48bf19c5d8c4fbf3d3e725ec07f`, and
+`5b331a8cd85c3a489eb42e9b69d9937f930ff05b0875873ea5c691a28870fd54`.
 
 ## Implementation evidence
 
 Implementation commit `0acfd7f` (`runtime: add bounded eager datasignature`)
 adds the owned result/error boundary, safe `sha2` protocol encoder, eager
-DuckDB scan, and state-preservation tests. Focused runtime evidence on the
-branch:
+DuckDB scan, and state-preservation tests. Corrections in `3512a46` propagate
+raw nested type hints (including temporal map keys and bare struct fields), and
+`22d6b36` handles doubled quotes in nested struct names. Focused runtime
+evidence on the branch:
 
 ```text
 cargo test --locked -p tabdat-runtime --all-targets
@@ -66,11 +72,14 @@ git diff --check
 passed
 ```
 
-The Rust contract tests assert the three exact oracle digests, no-active and
+The Rust contract tests assert the exact oracle digests, no-active and
 dropped-relation diagnostics, deterministic repeats, schema/row-order
 sensitivity, empty relations, parser dispatch, state preservation, and
-nanosecond/nested-timezone/interval encodings. The independent review in
-`03-review.md` found and then verified fixes for the three parity edge cases.
+nanosecond/nested-timezone/interval/escaped-name encodings. The independent
+review in `03-review.md` found and then verified fixes for all four parity edge
+cases. Dependency policy evidence is also green: `cargo deny check`,
+`cargo audit -D warnings`, and metadata-driven `cargo geiger` report clean
+first-party packages.
 
 ## Hosted acceptance and cleanup
 

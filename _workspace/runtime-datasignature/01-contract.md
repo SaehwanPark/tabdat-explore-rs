@@ -84,6 +84,10 @@ timezone metadata so aware timestamps retain their UTC offset. Direct DuckDB
 union values remain outside the bounded relation surface because local Parquet
 round-trips them as ordinary structs.
 
+Quoted STRUCT field names use DuckDB's doubled-quote escape and are decoded for
+nested type-hint lookup; the field name itself remains part of the ordinary
+mapping value encoding.
+
 The pinned fixture used by the oracle has an exact signature of
 `0b61cef05ab04301df893652f666b6ed974668f0cd214ebae17cfff02a6b3aad` for
 three rows and four columns. Complex date/timestamptz, NaN/infinity, decimal,
@@ -127,7 +131,7 @@ Test the observable result and state independently:
 - complex date/timestamptz, NaN/infinity, decimal, list, and NULL values;
 - nanosecond timestamps, nested timezone-bearing list/struct/map values, and
   interval values;
-- quoted names and no alias assumptions; and
+- quoted names (including embedded doubled quotes) and no alias assumptions; and
 - a dropped/corrupt active relation returning `datasignature failed` without
   metadata mutation.
 
