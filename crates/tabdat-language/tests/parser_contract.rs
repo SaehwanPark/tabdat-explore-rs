@@ -310,6 +310,16 @@ fn generate_preserves_exact_bounded_diagnostics() {
       "generate new = age + 1)",
       "unsupported token in expression: )",
     ),
+    ("generate if = 1", "unsupported token in expression: ="),
+    ("generate if", "missing expression after if"),
+    (
+      "generate if age",
+      "generate does not accept if clauses or options",
+    ),
+    (
+      "generate new =, force",
+      "generate assignment requires an expression after =",
+    ),
     ("generate new == age", "unsupported token in command: =="),
     ("generate new + age", "unsupported token in command: +"),
   ];
@@ -320,6 +330,22 @@ fn generate_preserves_exact_bounded_diagnostics() {
       "{input:?}"
     );
   }
+
+  assert_eq!(
+    parse_command("generate chained = age == 1 == 2").unwrap(),
+    Command::Generate {
+      variable: "chained".to_owned(),
+      expression: GenerateExpression::Binary {
+        left: Box::new(GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("age".to_owned())),
+          operator: GenerateBinaryOperator::Equal,
+          right: Box::new(GenerateExpression::Number("1".to_owned())),
+        }),
+        operator: GenerateBinaryOperator::Equal,
+        right: Box::new(GenerateExpression::Number("2".to_owned())),
+      },
+    }
+  );
 }
 
 #[test]

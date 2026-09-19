@@ -761,6 +761,27 @@ fn parse_generate_command(body: &str) -> Result<Command, ParseError> {
       "generate assignment requires a target before =",
     ));
   }
+  if tokens.first().is_some_and(|token| {
+    matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+      && token.text.eq_ignore_ascii_case("if")
+  }) {
+    match tokens.get(1) {
+      None => {
+        return Err(ParseError::new("missing expression after if"));
+      }
+      Some(token) if token.kind == UseTokenKind::Symbol && token.text == "," => {
+        return Err(ParseError::new("missing expression after if"));
+      }
+      Some(token) if token.kind == UseTokenKind::Symbol && token.text == "=" => {
+        return Err(ParseError::new("unsupported token in expression: ="));
+      }
+      _ => {
+        return Err(ParseError::new(
+          "generate does not accept if clauses or options",
+        ));
+      }
+    }
+  }
 
   let Some(equal_index) = tokens
     .iter()
@@ -813,6 +834,11 @@ fn parse_generate_command(body: &str) -> Result<Command, ParseError> {
     }
   }
   let expression_end = option_start.unwrap_or(expression_tokens.len());
+  if expression_end == 0 {
+    return Err(ParseError::new(
+      "generate assignment requires an expression after =",
+    ));
+  }
   if option_start.is_some_and(|index| index + 1 < expression_tokens.len()) {
     return Err(ParseError::new(
       "generate does not accept if clauses or options",
@@ -849,29 +875,20 @@ impl GenerateExpressionParser {
 
   fn parse_comparison(&mut self) -> Result<GenerateExpression, ParseError> {
     let mut expression = self.parse_additive()?;
-    let Some(operator) = self.peek().and_then(generate_comparison_operator) else {
-      return Ok(expression);
-    };
-    self.index += 1;
-    if self.peek().is_none() {
-      return Err(ParseError::new(format!(
-        "incomplete expression after {}",
-        generate_operator_text(operator)
-      )));
-    }
-    let right = self.parse_additive()?;
-    expression = GenerateExpression::Binary {
-      left: Box::new(expression),
-      operator,
-      right: Box::new(right),
-    };
-    if let Some(token) = self.peek()
-      && generate_comparison_operator(token).is_some()
-    {
-      return Err(ParseError::new(format!(
-        "unsupported token in expression: {}",
-        token.text
-      )));
+    while let Some(operator) = self.peek().and_then(generate_comparison_operator) {
+      self.index += 1;
+      if self.peek().is_none() {
+        return Err(ParseError::new(format!(
+          "incomplete expression after {}",
+          generate_operator_text(operator)
+        )));
+      }
+      let right = self.parse_additive()?;
+      expression = GenerateExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
     }
     Ok(expression)
   }
