@@ -7,7 +7,8 @@ successfully. The workspace also contains a backend-independent `tabdat-language
 crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
 `tail`, `run <script-path>`, `save <path> [, replace]`, `export <path> [, replace]`,
-and syntax-only `generate <target> = <expression>`, plus the verified direct `use`, `codebook [varlist]`,
+and syntax-only `generate <target> = <expression>` and
+`replace <target> = <expression> [if <condition>]`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
 `isid [varlist] [, missok]`, and bounded direct `assert <boolean-expression>`
 forms. Merged PR #25 (`89f6c14`) adds the
@@ -37,6 +38,12 @@ Merged PR #45 (`63e65ec`) adds the bounded syntax-only
 expression tree, including function-call syntax, while expression evaluation,
 schema/type validation, target mutation, and all runtime/output surfaces remain
 deferred.
+
+Merged PR #47 (`87ec017`) adds the bounded syntax-only
+`replace <target> = <expression> [if <condition>]` form. The language layer
+preserves the existing typed expression tree for the replacement and optional
+condition, while relation mutation, schema/type validation, predicate
+truthiness, and all runtime/output surfaces remain deferred.
 
 Merged PR #46 (`98979bc`) adds a separate bounded eager runtime slice for
 `generate`: numeric identifiers/literals, unary minus, and `+`, `-`, `*`, `/`
@@ -93,6 +100,29 @@ This slice does not evaluate expressions, inspect an active dataset or schema,
 validate types or target collisions, mutate relations/session state, initialize
 a backend, or claim CLI/JSON/MCP/runtime parity. Those remain a separate eager
 runtime contract.
+
+## Verified slice: syntax-only `replace` command
+
+Add direct, backend-independent `replace <target> = <expression> [if
+<condition>]` syntax. The parser preserves owned target and expression nodes,
+reuses the generate expression grammar, distinguishes nested `if` identifiers
+from the top-level clause marker, and retains the pinned bounded diagnostics.
+Runtime execution remains an explicit unsupported-command boundary.
+
+Evidence: `_workspace/parser-replace-syntax/`,
+`crates/tabdat-language/src/lib.rs`,
+`crates/tabdat-language/tests/parser_contract.rs`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/use_contract.rs`. The pinned parser probe passed
+`419 passed, 70 deselected`; focused Rust parser/runtime checks and the locked
+workspace/policy checks passed locally. PR #47 (`87ec017`) passed the policy,
+baseline, and runtime workflows before squash merge, and the merge-head
+workflows passed as recorded in the companion evidence.
+
+This slice does not inspect an active dataset or schema, evaluate expressions,
+validate target types or collisions, mutate relations/session state, initialize
+a backend, or claim CLI/JSON/MCP/runtime parity. Those remain a separate
+data-semantics and eager-runtime contract.
 
 ## Verified slice: bounded eager runtime `generate` command
 

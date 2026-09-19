@@ -327,6 +327,11 @@ Port TabDat's language before implementing most execution.
   (PR #45, merged as `63e65ec`; expression/function-call nodes are retained
   syntax-only, with evaluation, type/schema validation, mutation, and runtime
   surfaces deferred to a later data-runtime slice).
+- [x] Add the bounded direct `replace <target> = <expression> [if <condition>]`
+  syntax slice (PR #47, merged as `87ec017`; target, replacement expression,
+  optional condition, nested boundaries, and bounded diagnostics are retained
+  syntax-only, while relation mutation, predicate/type semantics, and runtime
+  surfaces remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

@@ -1,7 +1,6 @@
 # Bounded syntax-only `replace` contract
 
-Status: contract recovered; implementation is pending on the
-`feat/parser-replace-syntax` draft branch.
+Status: accepted and verified on `main` at `87ec017`.
 
 Producer: task owner, using `tabdat-migration` and `simple-code-writer`, with
 pinned Python parser reconnaissance.
@@ -134,6 +133,7 @@ required. The accepted syntax does not claim replace execution parity.
 
 ## Completion state
 
-Contract recovery and the draft-PR setup are complete. Implementation, focused
-Rust tests, independent review, hosted acceptance, merge, and temporary-branch
-cleanup remain pending.
+Contract recovery, the bounded implementation, focused Rust tests, independent
+review, hosted acceptance, squash merge, and temporary-branch cleanup are
+complete. PR #47 was merged as `87ec017`; the companion evidence, review, and
+summary records document the checks and explicit runtime deferrals.
