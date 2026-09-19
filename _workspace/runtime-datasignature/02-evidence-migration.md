@@ -38,6 +38,14 @@ complex temporal/nonfinite/decimal/list fixture, and
 `9ee1723d85281a5b7423fe90999069a22ac2a4be650ba1a2b39d94fdff23d295` for the
 empty one-column schema.
 
+The edge fixtures also match the independently generated oracle digests:
+`2d1c67af3c53e41de8eaecf6a39af59ff4c4cdb73ad50242747e869be8e7710a` for a
+nanosecond timestamp, `708fdda786f82d09019158fb402f4ae2cd6ea9b5bf785453c6fa77a6bac446bc`
+for a nested timezone list, `3d1041974ea09a192c5ebd736d68bdd1f81d9f9a395407257a7ad772b46aab6b`
+for a nested timezone struct, `7a5a285fcec0d99773a3adc71fea4a065e12d37dc28f32b250fd5d6e11832552`
+for a nested timezone map, and `82372379c40bbea52435f328e4139e5567af9a6f1788b607d092e3fc56898765`
+for an interval value.
+
 ## Implementation evidence
 
 Implementation commit `0acfd7f` (`runtime: add bounded eager datasignature`)
@@ -47,7 +55,7 @@ branch:
 
 ```text
 cargo test --locked -p tabdat-runtime --all-targets
-18 unit tests + 5 datasignature-contract tests + 63 existing integration tests passed
+18 unit tests + 6 datasignature-contract tests + 63 existing integration tests passed
 cargo check --locked --workspace --all-targets
 passed
 cargo clippy --locked -p tabdat-runtime --all-targets -- -D warnings
@@ -60,7 +68,9 @@ passed
 
 The Rust contract tests assert the three exact oracle digests, no-active and
 dropped-relation diagnostics, deterministic repeats, schema/row-order
-sensitivity, empty relations, parser dispatch, and state preservation.
+sensitivity, empty relations, parser dispatch, state preservation, and
+nanosecond/nested-timezone/interval encodings. The independent review in
+`03-review.md` found and then verified fixes for the three parity edge cases.
 
 ## Hosted acceptance and cleanup
 

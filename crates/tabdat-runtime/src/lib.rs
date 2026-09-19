@@ -1419,19 +1419,23 @@ fn signature_value(value: &Value, type_hint: Option<&str>) -> Result<Vec<u8>, ()
     }
     Value::Date32(value) => Ok(text_value(b'A', &format_date(i64::from(*value)))),
     Value::Time64(unit, value) => Ok(text_value(b'H', &format_time(*unit, *value))),
-    Value::List(values) | Value::Array(values) => sequence_value(values),
+    Value::List(values) | Value::Array(values) => sequence_value(values, type_hint),
     Value::Enum(value) => Ok(text_value(b'S', value)),
-    Value::Struct(values) => mapping_value(
-      values
-        .iter()
-        .map(|(key, value)| (Value::Text(key.clone()), value.clone())),
+    Value::Struct(values) => struct_value(values.iter(), type_hint),
+    Value::Map(values) => map_sequence_value(values, type_hint),
+    Value::Interval {
+      months,
+      days,
+      nanos,
+    } => sequence_value(
+      &[
+        Value::HugeInt(i128::from(*months)),
+        Value::HugeInt(i128::from(*days)),
+        Value::HugeInt(i128::from(*nanos)),
+      ],
+      None,
     ),
-    Value::Map(values) => mapping_value(
-      values
-        .iter()
-        .map(|(key, value)| (key.clone(), value.clone())),
-    ),
-    Value::Interval { .. } | Value::Union(_) => Err(()),
+    Value::Union(_) => Err(()),
     _ => Err(()),
   }
 }
@@ -1481,33 +1485,141 @@ fn python_float_hex(value: f64) -> String {
   }
 }
 
-fn sequence_value(values: &[Value]) -> Result<Vec<u8>, ()> {
+fn sequence_value(values: &[Value], type_hint: Option<&str>) -> Result<Vec<u8>, ()> {
   let mut encoded = b"L".to_vec();
   append_ascii_length(&mut encoded, values.len())?;
+  let child_hint = list_value_type(type_hint);
   for value in values {
-    let item = signature_value(value, None)?;
+    let item = signature_value(value, child_hint)?;
     append_signature_part(&mut encoded, &item)?;
   }
   Ok(encoded)
 }
 
-fn mapping_value<I>(values: I) -> Result<Vec<u8>, ()>
+fn struct_value<'a, I>(values: I, type_hint: Option<&str>) -> Result<Vec<u8>, ()>
 where
-  I: IntoIterator<Item = (Value, Value)>,
+  I: IntoIterator<Item = &'a (String, Value)>,
 {
   let mut entries = values
     .into_iter()
-    .map(|(key, value)| Ok::<_, ()>((signature_value(&key, None)?, signature_value(&value, None)?)))
+    .map(|(key, value)| {
+      let key_value = Value::Text(key.clone());
+      let value_hint = struct_field_type(type_hint, key);
+      Ok::<_, ()>((
+        signature_value(&key_value, None)?,
+        signature_value(value, value_hint.as_deref())?,
+      ))
+    })
     .collect::<Result<Vec<_>, _>>()?;
+  mapping_entries(&mut entries)
+}
+
+fn map_sequence_value(
+  values: &duckdb::types::OrderedMap<Value, Value>,
+  type_hint: Option<&str>,
+) -> Result<Vec<u8>, ()> {
+  let value_hint = map_value_type(type_hint).map(|value| canonical_signature_type(&value));
+  let mut encoded = b"L".to_vec();
+  append_ascii_length(&mut encoded, values.iter().count())?;
+  for (key, value) in values.iter() {
+    let pair = sequence_pair_value(key, value, value_hint.as_deref())?;
+    append_signature_part(&mut encoded, &pair)?;
+  }
+  Ok(encoded)
+}
+
+fn sequence_pair_value(
+  key: &Value,
+  value: &Value,
+  value_hint: Option<&str>,
+) -> Result<Vec<u8>, ()> {
+  let mut encoded = b"L".to_vec();
+  append_ascii_length(&mut encoded, 2)?;
+  let key = signature_value(key, None)?;
+  let value = signature_value(value, value_hint)?;
+  append_signature_part(&mut encoded, &key)?;
+  append_signature_part(&mut encoded, &value)?;
+  Ok(encoded)
+}
+
+fn mapping_entries(entries: &mut Vec<(Vec<u8>, Vec<u8>)>) -> Result<Vec<u8>, ()> {
   entries.sort();
 
   let mut encoded = b"M".to_vec();
   append_ascii_length(&mut encoded, entries.len())?;
   for (key, value) in entries {
-    append_signature_part(&mut encoded, &key)?;
-    append_signature_part(&mut encoded, &value)?;
+    append_signature_part(&mut encoded, key)?;
+    append_signature_part(&mut encoded, value)?;
   }
   Ok(encoded)
+}
+
+fn list_value_type(type_hint: Option<&str>) -> Option<&str> {
+  let type_hint = type_hint?;
+  type_hint
+    .strip_prefix("LIST(")
+    .and_then(|value| value.strip_suffix(')'))
+}
+
+fn map_value_type(type_hint: Option<&str>) -> Option<String> {
+  let type_hint = type_hint?;
+  let body = type_hint
+    .strip_prefix("MAP(")
+    .and_then(|value| value.strip_suffix(')'))?;
+  let (_, value) = split_top_level_once(body)?;
+  Some(value.to_owned())
+}
+
+fn struct_field_type(type_hint: Option<&str>, key: &str) -> Option<String> {
+  let type_hint = type_hint?;
+  let body = type_hint
+    .strip_prefix("STRUCT(")
+    .and_then(|value| value.strip_suffix(')'))?;
+  for field in split_top_level_parts(body) {
+    let rest = field.strip_prefix('"')?;
+    let end = rest.find('"')?;
+    let field_name = &rest[..end];
+    if field_name.eq_ignore_ascii_case(key) {
+      return Some(canonical_signature_type(&rest[end + 1..]));
+    }
+  }
+  None
+}
+
+fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
+  let mut depth = 0_u32;
+  let mut quoted = false;
+  for (index, character) in value.char_indices() {
+    match character {
+      '"' => quoted = !quoted,
+      '(' if !quoted => depth = depth.checked_add(1)?,
+      ')' if !quoted => depth = depth.checked_sub(1)?,
+      ',' if !quoted && depth == 0 => return Some((&value[..index], &value[index + 1..])),
+      _ => {}
+    }
+  }
+  None
+}
+
+fn split_top_level_parts(value: &str) -> Vec<&str> {
+  let mut parts = Vec::new();
+  let mut start = 0;
+  let mut depth = 0_u32;
+  let mut quoted = false;
+  for (index, character) in value.char_indices() {
+    match character {
+      '"' => quoted = !quoted,
+      '(' if !quoted => depth = depth.saturating_add(1),
+      ')' if !quoted => depth = depth.saturating_sub(1),
+      ',' if !quoted && depth == 0 => {
+        parts.push(&value[start..index]);
+        start = index + character.len_utf8();
+      }
+      _ => {}
+    }
+  }
+  parts.push(&value[start..]);
+  parts
 }
 
 fn append_ascii_length(output: &mut Vec<u8>, length: usize) -> Result<(), ()> {
@@ -1538,8 +1650,12 @@ fn format_timestamp(unit: TimeUnit, value: i64, timezone: bool) -> String {
   let (year, month, day) = civil_from_days(days);
   let micros = nanos / 1_000;
   let mut formatted = format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}");
-  if micros != 0 {
-    write!(&mut formatted, ".{micros:06}").expect("writing to a String cannot fail");
+  if nanos != 0 {
+    if unit == TimeUnit::Nanosecond && nanos % 1_000 != 0 {
+      write!(&mut formatted, ".{nanos:09}").expect("writing to a String cannot fail");
+    } else if micros != 0 {
+      write!(&mut formatted, ".{micros:06}").expect("writing to a String cannot fail");
+    }
   }
   if timezone {
     formatted.push_str("+00:00");

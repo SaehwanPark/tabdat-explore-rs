@@ -76,8 +76,13 @@ Canonical type aliases include integer widths, float widths, `BOOL`, `STRING`,
 decimal precision/scale, timestamp units/time-zone markers, and recursive list
 types. Value encodings include NULL, booleans, signed/unsigned integers,
 Python-compatible IEEE float hex (including NaN, infinities, and signed zero),
-fixed decimal text, UTC-normalized timestamps, dates, times, UTF-8 strings,
-bytes, recursively framed lists/arrays, and deterministically sorted mappings.
+fixed decimal text, UTC-normalized timestamps (including nanosecond precision),
+dates, times, UTF-8 strings, bytes, recursively framed lists/arrays, intervals
+as their three-integer month/day/nanosecond list representation, and
+deterministically sorted mappings. Nested list/map/struct type hints propagate
+timezone metadata so aware timestamps retain their UTC offset. Direct DuckDB
+union values remain outside the bounded relation surface because local Parquet
+round-trips them as ordinary structs.
 
 The pinned fixture used by the oracle has an exact signature of
 `0b61cef05ab04301df893652f666b6ed974668f0cd214ebae17cfff02a6b3aad` for
@@ -120,6 +125,8 @@ Test the observable result and state independently:
 - schema/row-order sensitivity using separate Parquet fixtures;
 - valid empty relation with a 64-character schema-dependent digest;
 - complex date/timestamptz, NaN/infinity, decimal, list, and NULL values;
+- nanosecond timestamps, nested timezone-bearing list/struct/map values, and
+  interval values;
 - quoted names and no alias assumptions; and
 - a dropped/corrupt active relation returning `datasignature failed` without
   metadata mutation.

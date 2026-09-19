@@ -136,6 +136,53 @@ fn datasignature_matches_temporal_nonfinite_decimal_list_and_null_values() {
 }
 
 #[test]
+fn datasignature_preserves_nested_temporal_and_interval_values() {
+  let fixture = Fixture::new();
+  let cases = [
+    (
+      "nanoseconds.parquet",
+      "SELECT CAST('2024-01-01 12:34:56.123456789' AS TIMESTAMP_NS) AS t",
+      "2d1c67af3c53e41de8eaecf6a39af59ff4c4cdb73ad50242747e869be8e7710a",
+    ),
+    (
+      "timestamp_list.parquet",
+      "SELECT [CAST('2024-01-01 12:34:56+00' AS TIMESTAMPTZ)] AS xs",
+      "708fdda786f82d09019158fb402f4ae2cd6ea9b5bf785453c6fa77a6bac446bc",
+    ),
+    (
+      "timestamp_struct.parquet",
+      "SELECT {'when': CAST('2024-01-01 12:34:56+00' AS TIMESTAMPTZ)} AS obj",
+      "3d1041974ea09a192c5ebd736d68bdd1f81d9f9a395407257a7ad772b46aab6b",
+    ),
+    (
+      "timestamp_map.parquet",
+      "SELECT MAP(['x'], [CAST('2024-01-01 12:34:56+00' AS TIMESTAMPTZ)]) AS mp",
+      "7a5a285fcec0d99773a3adc71fea4a065e12d37dc28f32b250fd5d6e11832552",
+    ),
+    (
+      "interval.parquet",
+      "SELECT INTERVAL '1 YEAR 2 MONTHS 3 DAYS 04:05:06.000007' AS iv",
+      "82372379c40bbea52435f328e4139e5567af9a6f1788b607d092e3fc56898765",
+    ),
+  ];
+
+  for (name, query, expected_signature) in cases {
+    let path = fixture.write_parquet(name, query);
+    let mut session = Session::new();
+    session
+      .execute(use_command(&path))
+      .expect("nested temporal or interval Parquet should load");
+    let result = session
+      .execute(Command::Datasignature)
+      .expect("nested temporal or interval datasignature should succeed");
+    let ExecutionResult::Datasignature(result) = result else {
+      panic!("datasignature should return its owned result");
+    };
+    assert_eq!(result.signature, expected_signature, "fixture {name}");
+  }
+}
+
+#[test]
 fn datasignature_accepts_an_empty_schema_and_changes_with_schema_or_row_order() {
   let fixture = Fixture::new();
   let empty = fixture.write_parquet(
