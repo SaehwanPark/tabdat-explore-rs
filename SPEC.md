@@ -8,7 +8,8 @@ crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
 `exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
 `tail`, `run <script-path>`, `save <path> [, replace]`, and `export <path> [, replace]`, plus the verified direct `use`, `codebook [varlist]`,
 `missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
-and `isid [varlist] [, missok]` forms. Merged PR #25 (`89f6c14`) adds the
+`isid [varlist] [, missok]`, and bounded direct `assert <boolean-expression>`
+forms. Merged PR #25 (`89f6c14`) adds the
 verified direct `rename <old> <new>` form, and merged PR #26 (`5735b43`) adds
 the verified direct syntax-only `select <varlist>` form. Merged PR #22
 (`26dba2b`) accepted a separate library-only
@@ -382,6 +383,27 @@ merge, and branch cleanup are recorded in the migration evidence.
 This slice leaves lazy/materialized execution, `last_operation`, labels/panel
 metadata, CLI/REPL, JSON/MCP, direct DuckDB union values, and broader relation
 APIs deferred.
+
+## Verified slice: bounded eager-runtime `assert` command
+
+Merged PR #41 (`019ceb1`) adds the bounded eager local-Parquet
+`assert <boolean-expression>` execution path to `tabdat-runtime`. The typed
+subset supports identifiers (including quoted identifiers), numeric/string/null
+literals, unary minus, parentheses, arithmetic, and comparisons. It returns an
+owned `AssertResult { checked, failed }`, treats false and SQL-NULL predicates
+as failures, accepts empty relations, preserves active state on success and
+failure, and uses checked/finite numeric normalization with unsigned safety
+guards. Unknown names and non-boolean roots are rejected before querying.
+
+Evidence: `_workspace/runtime-assert/{01-contract,02-evidence-migration,03-review}.md`,
+the implementation, and its parser/runtime contract tests. The pinned focused
+oracle, locked Rust checks, policy scans, independent review, final PR-head
+hosted checks, squash merge, and branch cleanup are recorded there; the
+post-merge workflow matrix is added after the documentation closeout push.
+
+This slice leaves lazy/materialized execution, function calls and `e(sample)`,
+`last_operation`, row-level diagnostics, formatting, CLI/REPL, JSON/MCP,
+broader tokenizer/expression parity, and general relation APIs deferred.
 
 ## Verified slice: syntax-only `summarize` command
 

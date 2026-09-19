@@ -14,7 +14,7 @@ current-state files below are the durable record of what was accepted.
 The slice implements one eager `Command::Use` of an existing local Parquet file
 through a private DuckDB adapter. Broad `use` parity, lazy/remote/other-format
 loading, general relation APIs, broad inspect execution beyond bounded
-`describe`/`count`/`head`/`tail`/`summarize`/`codebook`/`missing`/`duplicates`/`isid`, CLI/REPL, scripts,
+`describe`/`count`/`head`/`tail`/`summarize`/`codebook`/`missing`/`duplicates`/`isid`/`datasignature`/`assert`, CLI/REPL, scripts,
 reporting, JSON/MCP, and production DuckDB packaging remain deferred.
 
 ## Durable records
@@ -50,7 +50,8 @@ Python, and exact eager-failure checks are recorded in `02-evidence-data.md`.
 The runtime crate remains a library-only evaluation. It is not wired to the root
 binary, does not provide a general data engine, and does not justify checking any
 of the broad Phase 4 session, relation, load, inspect, transform, or reporting
-gates. The bounded `datasignature` slice is now accepted in
-`_workspace/runtime-datasignature/`. The next bounded roadmap slice should
-select a separate contract and PR; `assert` is a candidate, with broader
+gates. The bounded `datasignature` slice is accepted in
+`_workspace/runtime-datasignature/`, and the bounded `assert` slice is accepted
+in `_workspace/runtime-assert/`. The next bounded roadmap slice should select
+a separate contract and PR; `keep` is the next candidate, with broader
 relation and reporting semantics still deferred.

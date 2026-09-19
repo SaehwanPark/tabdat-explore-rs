@@ -425,7 +425,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   nested temporal hints, interval encoding, and escaped struct names are covered.
   Lazy/materialized execution, `last_operation`, labels/panel metadata, CLI,
   JSON/MCP, direct union values, and broader relation APIs remain deferred.
-- [ ] `assert`
+- [x] `assert` — bounded eager local-Parquet row assertion
+  (`AssertResult`; PR #41, squash merge `019ceb1`). The typed expression subset,
+  null/failure semantics, checked numeric arithmetic, unsigned guards,
+  first-unknown validation, and read-only active-state behavior are covered.
+  Lazy/materialized execution, function calls and `e(sample)`,
+  `last_operation`, row-level diagnostics, formatting, CLI, JSON/MCP, and
+  broader tokenizer/expression parity remain deferred.
 - [x] `count` — bounded eager local-Parquet active-dataset row count
   (`CountResult`; PR #32, squash merge `2287fff`). Broader lazy/materialized,
   status, transforms, formatting, CLI, and MCP surfaces remain deferred.

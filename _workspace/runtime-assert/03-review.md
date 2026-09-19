@@ -1,6 +1,6 @@
 # Independent review: bounded eager-runtime `assert`
 
-Status: accepted after final correction at `9a6f955`
+Status: accepted after final correction at `9a6f955`; PR #41 merged as `019ceb1`
 
 An independent runtime review of the implementation head `7778f5f` found two
 parity risks. Both were corrected before the slice can be accepted:
@@ -23,8 +23,11 @@ Hosted acceptance is green at the final implementation head: [CI run
 35416402198](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402198)
 and [runtime boundary run
 35416402180](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402180).
-The merge/cleanup record will be appended to the migration evidence after PR
-#41 is accepted.
+PR #41 was marked ready after those checks, squash-merged as
+[`019ceb1`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/019ceb1c58aabf72b263bbe40c817d3153600096),
+and its temporary branch was deleted locally and remotely. Post-merge workflow
+links will be appended to the migration evidence after the documentation
+closeout push.
 
 Deferred scope remains explicit: lazy/materialized execution, function calls
 and `e(sample)`, CLI/JSON/MCP surfaces, row-level diagnostics, `last_operation`,

@@ -1,6 +1,6 @@
 # Bounded runtime `assert` migration evidence
 
-Status: implementation, review, and PR-head hosted acceptance complete; merge pending
+Status: accepted bounded slice; PR #41 merged, branch cleanup complete, post-merge matrix pending
 
 Producer: task owner, with pinned oracle evidence and independent runtime review
 
@@ -95,12 +95,15 @@ packages (transitive inventory remains a warning signal only).
 ## Hosted acceptance and cleanup
 
 Draft PR [#41](https://github.com/SaehwanPark/tabdat-explore-rs/pull/41) was
-opened before implementation. Its current head is `9a6f955`. PR-head hosted
-acceptance is green: [CI run 35416402198](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402198)
+opened before implementation and squash-merged as
+[`019ceb1`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/019ceb1c58aabf72b263bbe40c817d3153600096).
+Its final evidence head was `2435381`; PR-head hosted acceptance was green:
+[CI run 35417321384](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35417321384)
 (Rust baseline and dependency/unsafe-code policy) and [runtime boundary run
-35416402180](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402180)
-(Linux runtime targets). The ready-for-review transition, squash merge,
-post-merge matrix, and branch deletion will be appended after acceptance.
+35417321403](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35417321403)
+(Linux runtime targets). The temporary `feat/runtime-assert` branch was removed
+locally and remotely. Post-merge workflow links will be appended after the
+documentation closeout push.
 
 ## Deferred scope
 

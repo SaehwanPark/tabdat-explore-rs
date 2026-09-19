@@ -1,6 +1,6 @@
 # Bounded eager-runtime `assert` contract
 
-Status: contract recovered; bounded implementation and PR-head acceptance complete.
+Status: accepted bounded eager slice after PR #41 squash merge `019ceb1`.
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: runtime implementation and review on `feat/runtime-assert`.
