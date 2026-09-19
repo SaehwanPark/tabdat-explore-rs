@@ -194,6 +194,35 @@ fn drop_treats_repeated_and_quoted_names_as_one_schema_selection() {
 }
 
 #[test]
+fn drop_quotes_identifiers_with_embedded_double_quotes() {
+  let fixture = Fixture::new();
+  let quoted = fixture.write_parquet(
+    "embedded-quote.parquet",
+    "SELECT 1 AS \"odd\"\"name\", 2 AS keep_me",
+  );
+  let mut session = Session::new();
+  session
+    .execute(fixture.command_for(quoted))
+    .expect("quoted fixture should load");
+
+  let result = session
+    .execute(parse_command(r#"drop `odd"name`"#).expect("projection should parse"))
+    .expect("projection should execute");
+  let ExecutionResult::Drop(drop) = result else {
+    panic!("drop should return a Drop result");
+  };
+  assert_eq!(
+    drop
+      .dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<Vec<_>>(),
+    vec!["keep_me"]
+  );
+}
+
+#[test]
 fn drop_unknown_variable_preserves_state_and_relation() {
   let fixture = Fixture::new();
   let mut session = Session::new();

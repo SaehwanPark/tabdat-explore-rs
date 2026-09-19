@@ -2889,6 +2889,15 @@ mod tests {
       lazy_engine: None,
     };
     session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS age"
+      ))
+      .expect("the mismatched active relation should be created");
 
     assert_eq!(
       session
@@ -2899,7 +2908,16 @@ mod tests {
       RuntimeError::DropFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
-    assert!(session.backend.is_some());
+    let age: i64 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT age FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the pre-existing active relation should remain available");
+    assert_eq!(age, 7);
   }
 
   #[test]

@@ -1151,7 +1151,10 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn drop_condition_syntax_error(body: &str) -> Option<ParseError> {
-  let tokens = tokenize_use_options(body).ok()?;
+  let tokens = match tokenize_use_options(body) {
+    Ok(tokens) => tokens,
+    Err(error) => return Some(error),
+  };
   let condition_start = tokens.iter().position(|token| {
     matches!(token.kind, UseTokenKind::Identifier { quoted: false })
       && token.text.eq_ignore_ascii_case("if")
