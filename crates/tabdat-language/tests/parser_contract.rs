@@ -282,6 +282,108 @@ fn generate_preserves_typed_expression_structure() {
 }
 
 #[test]
+fn replace_preserves_typed_expression_and_condition_structure() {
+  assert_eq!(
+    parse_command("REPLACE `cost value` = round(`cost value` * 2, 1) if `sex value` == 'F'")
+      .unwrap(),
+    Command::Replace {
+      variable: "cost value".to_owned(),
+      expression: GenerateExpression::FunctionCall {
+        name: "round".to_owned(),
+        arguments: vec![
+          GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("cost value".to_owned())),
+            operator: GenerateBinaryOperator::Multiply,
+            right: Box::new(GenerateExpression::Number("2".to_owned())),
+          },
+          GenerateExpression::Number("1".to_owned()),
+        ],
+      },
+      condition: Some(GenerateExpression::Binary {
+        left: Box::new(GenerateExpression::Identifier("sex value".to_owned())),
+        operator: GenerateBinaryOperator::Equal,
+        right: Box::new(GenerateExpression::String("F".to_owned())),
+      }),
+    }
+  );
+  assert_eq!(
+    parse_command("replace amount = null").unwrap(),
+    Command::Replace {
+      variable: "amount".to_owned(),
+      expression: GenerateExpression::Null,
+      condition: None,
+    }
+  );
+}
+
+#[test]
+fn replace_preserves_exact_bounded_diagnostics_and_nested_boundaries() {
+  let cases = [
+    (
+      "replace",
+      "replace expects syntax: replace existing = expression",
+    ),
+    (
+      "replace cost",
+      "replace expects syntax: replace existing = expression",
+    ),
+    (
+      "replace = cost",
+      "replace assignment requires a target before =",
+    ),
+    (
+      "replace cost =",
+      "replace assignment requires an expression after =",
+    ),
+    (
+      "replace cost = cost, force",
+      "replace does not accept options",
+    ),
+    (
+      "replace cost = cost if sex >",
+      "incomplete expression after >",
+    ),
+    (
+      "replace cost = cost if sex == 'F' if x",
+      "duplicate if clause",
+    ),
+    ("replace cost == 1", "unsupported token in command: =="),
+    ("replace cost + 1", "unsupported token in command: +"),
+    ("replace if = 1", "unsupported token in expression: ="),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+
+  assert_eq!(
+    parse_command("replace value = combine(if, (value + 1)) if (if == 1)").unwrap(),
+    Command::Replace {
+      variable: "value".to_owned(),
+      expression: GenerateExpression::FunctionCall {
+        name: "combine".to_owned(),
+        arguments: vec![
+          GenerateExpression::Identifier("if".to_owned()),
+          GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("value".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Number("1".to_owned())),
+          },
+        ],
+      },
+      condition: Some(GenerateExpression::Binary {
+        left: Box::new(GenerateExpression::Identifier("if".to_owned())),
+        operator: GenerateBinaryOperator::Equal,
+        right: Box::new(GenerateExpression::Number("1".to_owned())),
+      }),
+    }
+  );
+}
+
+#[test]
 fn generate_preserves_exact_bounded_diagnostics() {
   let cases = [
     (

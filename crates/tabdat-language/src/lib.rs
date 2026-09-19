@@ -40,6 +40,15 @@ pub enum Command {
     /// The owned expression assigned to the target column.
     expression: GenerateExpression,
   },
+  /// Parse a replacement expression without executing it.
+  Replace {
+    /// The existing target column name.
+    variable: String,
+    /// The owned expression assigned to the target.
+    expression: GenerateExpression,
+    /// An optional row predicate retained for a later runtime slice.
+    condition: Option<GenerateExpression>,
+  },
   /// Keep an explicit ordered set of columns in the bounded eager runtime.
   Keep { variables: Vec<String> },
   /// Drop an explicit set of columns in the bounded eager runtime.
@@ -100,7 +109,7 @@ pub enum AssertExpression {
   },
 }
 
-/// An expression retained by the syntax-only `generate` command.
+/// An expression retained by the syntax-only `generate` and `replace` commands.
 ///
 /// This deliberately remains separate from [`AssertExpression`]: the bounded
 /// assert runtime does not claim function-call support, while the language
@@ -530,6 +539,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "gsort" => parse_gsort_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
+    "replace" => parse_replace_command(body),
     "run" => parse_run_command(body),
     "set" => parse_set_command(body),
     "save" | "export" => parse_save_export_command(normalized_name.as_str(), body),
@@ -849,6 +859,151 @@ fn parse_generate_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Generate {
     variable,
     expression,
+  })
+}
+
+fn parse_replace_command(body: &str) -> Result<Command, ParseError> {
+  let tokens = tokenize_use_options(body)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "replace expects syntax: replace existing = expression",
+    ));
+  }
+  if tokens
+    .first()
+    .is_some_and(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  {
+    return Err(ParseError::new(
+      "replace assignment requires a target before =",
+    ));
+  }
+  if tokens.first().is_some_and(|token| {
+    matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+      && token.text.eq_ignore_ascii_case("if")
+  }) {
+    match tokens.get(1) {
+      None => return Err(ParseError::new("missing expression after if")),
+      Some(token)
+        if token.kind == UseTokenKind::Symbol
+          && matches!(token.text.as_str(), "," | "=" | "==") =>
+      {
+        if token.text == "," {
+          return Err(ParseError::new("missing expression after if"));
+        }
+        return Err(ParseError::new(format!(
+          "unsupported token in expression: {}",
+          token.text
+        )));
+      }
+      _ => {
+        return Err(ParseError::new(
+          "replace expects syntax: replace existing = expression",
+        ));
+      }
+    }
+  }
+
+  let Some(equal_index) = tokens
+    .iter()
+    .position(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  else {
+    if tokens.last().is_some_and(|token| {
+      matches!(token.kind, UseTokenKind::Identifier { quoted: false })
+        && token.text.eq_ignore_ascii_case("if")
+    }) {
+      return Err(ParseError::new("missing expression after if"));
+    }
+    if let Some(token) = tokens.iter().find(|token| {
+      token.kind == UseTokenKind::Symbol
+        && matches!(token.text.as_str(), "==" | "+" | "-" | "!" | "@" | ":")
+    }) {
+      return Err(ParseError::new(format!(
+        "unsupported token in command: {}",
+        token.text
+      )));
+    }
+    return Err(ParseError::new(
+      "replace expects syntax: replace existing = expression",
+    ));
+  };
+
+  let target = tokens[..equal_index].iter().collect::<Vec<_>>();
+  if target.len() != 1 || !matches!(target[0].kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(
+      "replace expects syntax: replace existing = expression",
+    ));
+  }
+  let variable = target[0].text.clone();
+  let expression_tokens = &tokens[equal_index + 1..];
+  if expression_tokens.is_empty() {
+    return Err(ParseError::new(
+      "replace assignment requires an expression after =",
+    ));
+  }
+
+  let mut depth = 0_i32;
+  let mut expression_end = expression_tokens.len();
+  let mut condition_tokens = &expression_tokens[expression_tokens.len()..];
+  let mut has_options = false;
+  for (index, token) in expression_tokens.iter().enumerate() {
+    match (&token.kind, token.text.as_str()) {
+      (UseTokenKind::Symbol, "(") => depth += 1,
+      (UseTokenKind::Symbol, ")") => depth -= 1,
+      (UseTokenKind::Identifier { quoted: false }, name)
+        if depth == 0 && name.eq_ignore_ascii_case("if") =>
+      {
+        expression_end = index;
+        let tail = &expression_tokens[index + 1..];
+        let mut tail_depth = 0_i32;
+        let mut condition_end = tail.len();
+        for (tail_index, tail_token) in tail.iter().enumerate() {
+          match (&tail_token.kind, tail_token.text.as_str()) {
+            (UseTokenKind::Symbol, "(") => tail_depth += 1,
+            (UseTokenKind::Symbol, ")") => tail_depth -= 1,
+            (UseTokenKind::Identifier { quoted: false }, name)
+              if tail_depth == 0 && name.eq_ignore_ascii_case("if") =>
+            {
+              return Err(ParseError::new("duplicate if clause"));
+            }
+            (UseTokenKind::Symbol, ",") if tail_depth == 0 => {
+              condition_end = tail_index;
+              has_options = true;
+              break;
+            }
+            _ => {}
+          }
+        }
+        condition_tokens = &tail[..condition_end];
+        break;
+      }
+      (UseTokenKind::Symbol, ",") if depth == 0 => {
+        expression_end = index;
+        has_options = true;
+        break;
+      }
+      _ => {}
+    }
+  }
+
+  let condition = if condition_tokens.is_empty() {
+    None
+  } else {
+    Some(GenerateExpressionParser::new(condition_tokens.to_vec()).parse()?)
+  };
+  if expression_end == 0 {
+    return Err(ParseError::new(
+      "replace assignment requires an expression after =",
+    ));
+  }
+  if has_options {
+    return Err(ParseError::new("replace does not accept options"));
+  }
+  let expression =
+    GenerateExpressionParser::new(expression_tokens[..expression_end].to_vec()).parse()?;
+  Ok(Command::Replace {
+    variable,
+    expression,
+    condition,
   })
 }
 
