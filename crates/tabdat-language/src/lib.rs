@@ -68,6 +68,15 @@ pub enum Command {
     /// Whether to append generated columns or replace the source columns.
     target: RecodeTarget,
   },
+  /// Encode one string column into a new integer-coded column.
+  Encode {
+    /// The existing string source column.
+    source: String,
+    /// The new integer-coded target column.
+    generate: String,
+    /// An optional value-label set name retained for the later label slice.
+    label: Option<String>,
+  },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -606,6 +615,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "sort" => parse_sort_command(body),
     "gsort" => parse_gsort_command(body),
     "recode" => parse_recode_command(body),
+    "encode" => parse_encode_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
     "replace" => parse_replace_command(body),
@@ -2286,6 +2296,87 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
     });
   }
   Ok(Command::Gsort { keys })
+}
+
+fn parse_encode_command(body: &str) -> Result<Command, ParseError> {
+  let (source_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let source_tokens = tokenize_use_options(source_body.trim_matches(is_command_whitespace))?;
+  let Some(source_token) = source_tokens.first() else {
+    return Err(ParseError::new(
+      "encode expects syntax: encode <strvar>, generate(<newvar>)",
+    ));
+  };
+  if source_tokens.len() != 1 || !matches!(source_token.kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(
+      "encode expects syntax: encode <strvar>, generate(<newvar>)",
+    ));
+  }
+
+  let Some(option_body) = option_body else {
+    return Err(ParseError::new("encode requires generate(<newvar>)"));
+  };
+  let options = parse_use_options(option_body)?;
+  let mut generate = None;
+  let mut label = None;
+  let mut unsupported = Vec::new();
+  for option in options {
+    let name = option.name.clone();
+    match name.as_str() {
+      "generate" => {
+        if generate.is_some() {
+          return Err(ParseError::new(
+            "encode option generate can only be specified once",
+          ));
+        }
+        generate = Some(parse_encode_identifier_option(&name, &option.value)?);
+      }
+      "label" => {
+        if label.is_some() {
+          return Err(ParseError::new(
+            "encode option label can only be specified once",
+          ));
+        }
+        label = Some(parse_encode_identifier_option(&name, &option.value)?);
+      }
+      _ => unsupported.push(name),
+    }
+  }
+  if !unsupported.is_empty() {
+    unsupported.sort_unstable();
+    unsupported.dedup();
+    return Err(ParseError::new(format!(
+      "encode unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+  let Some(generate) = generate else {
+    return Err(ParseError::new("encode requires generate(<newvar>)"));
+  };
+  Ok(Command::Encode {
+    source: source_token.text.clone(),
+    generate,
+    label,
+  })
+}
+
+fn parse_encode_identifier_option(
+  name: &str,
+  value: &UseOptionValue,
+) -> Result<String, ParseError> {
+  let UseOptionValue::Identifiers(values) = value else {
+    return Err(ParseError::new(format!(
+      "encode option {name} expects identifiers in parentheses"
+    )));
+  };
+  if values.len() != 1 {
+    return Err(ParseError::new(format!(
+      "encode option {name} expects exactly one variable"
+    )));
+  }
+  Ok(values[0].clone())
 }
 
 fn parse_run_command(body: &str) -> Result<Command, ParseError> {
