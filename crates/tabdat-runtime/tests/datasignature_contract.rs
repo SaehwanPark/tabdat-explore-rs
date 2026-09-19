@@ -160,6 +160,11 @@ fn datasignature_preserves_nested_temporal_and_interval_values() {
       "80ea4f18ca0d129649989fc28dcff1ec6d3758aa08390161f2c41fba499c6599",
     ),
     (
+      "escaped_timestamp_struct.parquet",
+      "SELECT {'a\"b': CAST('2024-01-01 12:34:56+00' AS TIMESTAMPTZ)} AS obj",
+      "5b331a8cd85c3a489eb42e9b69d9937f930ff05b0875873ea5c691a28870fd54",
+    ),
+    (
       "timestamp_map.parquet",
       "SELECT MAP(['x'], [CAST('2024-01-01 12:34:56+00' AS TIMESTAMPTZ)]) AS mp",
       "7a5a285fcec0d99773a3adc71fea4a065e12d37dc28f32b250fd5d6e11832552",

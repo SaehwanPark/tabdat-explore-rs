@@ -1583,11 +1583,11 @@ fn struct_field_type(type_hint: Option<&str>, key: &str) -> Option<String> {
       continue;
     }
     let (field_name, field_type) = if let Some(rest) = field.strip_prefix('"') {
-      let end = rest.find('"')?;
-      (&rest[..end], rest[end + 1..].trim())
+      let (field_name, field_type) = parse_quoted_struct_field(rest)?;
+      (field_name, field_type)
     } else {
       let (field_name, field_type) = field.split_once(char::is_whitespace)?;
-      (field_name, field_type.trim())
+      (field_name.to_owned(), field_type.trim())
     };
     if field_name.eq_ignore_ascii_case(key) {
       return (!field_type.is_empty()).then(|| field_type.to_owned());
@@ -1600,12 +1600,40 @@ fn is_timezone_type(type_hint: Option<&str>) -> bool {
   type_hint.is_some_and(|hint| canonical_signature_type(hint).ends_with("_TZ"))
 }
 
+fn parse_quoted_struct_field(value: &str) -> Option<(String, &str)> {
+  let mut name = String::new();
+  let mut offset = 0;
+  while offset < value.len() {
+    let character = value[offset..].chars().next()?;
+    let width = character.len_utf8();
+    if character == '"' {
+      let after_quote = offset + width;
+      if value[after_quote..].starts_with('"') {
+        name.push('"');
+        offset = after_quote + 1;
+        continue;
+      }
+      return Some((name, value[after_quote..].trim()));
+    }
+    name.push(character);
+    offset += width;
+  }
+  None
+}
+
 fn split_top_level_once(value: &str) -> Option<(&str, &str)> {
   let mut depth = 0_u32;
   let mut quoted = false;
-  for (index, character) in value.char_indices() {
+  let mut characters = value.char_indices().peekable();
+  while let Some((index, character)) = characters.next() {
     match character {
-      '"' => quoted = !quoted,
+      '"' => {
+        if quoted && characters.peek().is_some_and(|(_, next)| *next == '"') {
+          characters.next();
+        } else {
+          quoted = !quoted;
+        }
+      }
       '(' if !quoted => depth = depth.checked_add(1)?,
       ')' if !quoted => depth = depth.checked_sub(1)?,
       ',' if !quoted && depth == 0 => return Some((&value[..index], &value[index + 1..])),
@@ -1620,9 +1648,16 @@ fn split_top_level_parts(value: &str) -> Vec<&str> {
   let mut start = 0;
   let mut depth = 0_u32;
   let mut quoted = false;
-  for (index, character) in value.char_indices() {
+  let mut characters = value.char_indices().peekable();
+  while let Some((index, character)) = characters.next() {
     match character {
-      '"' => quoted = !quoted,
+      '"' => {
+        if quoted && characters.peek().is_some_and(|(_, next)| *next == '"') {
+          characters.next();
+        } else {
+          quoted = !quoted;
+        }
+      }
       '(' if !quoted => depth = depth.saturating_add(1),
       ')' if !quoted => depth = depth.saturating_sub(1),
       ',' if !quoted && depth == 0 => {
