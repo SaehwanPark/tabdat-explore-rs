@@ -60,6 +60,14 @@ pub struct DropResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after projecting an explicit selection with
+/// `select`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectResult {
+  /// Metadata for the newly active projected dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// The owned result returned by a read-only `describe` request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DescribeResult {
@@ -262,6 +270,8 @@ pub enum ExecutionResult {
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
   Drop(DropResult),
+  /// Projects an explicit ordered set of columns in the active dataset.
+  Select(SelectResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -356,6 +366,12 @@ pub enum RuntimeError {
   DropWouldRemoveEveryColumn,
   /// DuckDB could not stage or publish the projected relation.
   DropFailed,
+  /// The select request named variables absent from the active schema.
+  SelectUnknownVariable { variables: Vec<String> },
+  /// The select request did not name any variables.
+  SelectNoVariables,
+  /// DuckDB could not stage or publish the projected relation.
+  SelectFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -499,6 +515,15 @@ impl fmt::Display for RuntimeError {
       Self::DropNoVariables => formatter.write_str("drop expects a variable list or if clause"),
       Self::DropWouldRemoveEveryColumn => formatter.write_str("drop would remove every column"),
       Self::DropFailed => formatter.write_str("drop failed"),
+      Self::SelectUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "select unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::SelectNoVariables => formatter.write_str("select expects a variable list"),
+      Self::SelectFailed => formatter.write_str("select failed"),
     }
   }
 }
@@ -542,6 +567,7 @@ impl Session {
       Command::Assert { expression } => self.execute_assert(expression),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
+      Command::Select { variables } => self.execute_select(variables),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -962,6 +988,38 @@ impl Session {
       .map_err(|_| RuntimeError::DropFailed)?;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Drop(DropResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_select(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "select" })?
+      .clone();
+    if variables.is_empty() {
+      return Err(RuntimeError::SelectNoVariables);
+    }
+    let unknown = variables
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::SelectUnknownVariable { variables: unknown });
+    }
+    let backend = self.backend.as_mut().ok_or(RuntimeError::SelectFailed)?;
+    let next_dataset = backend
+      .project_columns(&dataset, &variables)
+      .map_err(|_| RuntimeError::SelectFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Select(SelectResult {
       dataset: next_dataset,
     }))
   }
@@ -2689,6 +2747,22 @@ mod tests {
   }
 
   #[test]
+  fn select_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Select {
+          variables: vec!["age".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "select" }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
   fn head_does_not_initialize_backend_for_a_new_session() {
     let mut session = Session::new();
 
@@ -2906,6 +2980,58 @@ mod tests {
         })
         .unwrap_err(),
       RuntimeError::DropFailed
+    );
+    assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
+    let age: i64 = session
+      .backend
+      .as_ref()
+      .expect("test backend should exist")
+      .connection
+      .query_row(&format!("SELECT age FROM {ACTIVE_TABLE}"), [], |row| {
+        row.get(0)
+      })
+      .expect("the pre-existing active relation should remain available");
+    assert_eq!(age, 7);
+  }
+
+  #[test]
+  fn failed_select_keeps_the_published_dataset_metadata() {
+    let mut session = Session::new();
+    session.backend = Some(DuckDbBackend::new().expect("test backend should initialize"));
+    let dataset = DatasetInfo {
+      source: PathBuf::from("fixture.parquet"),
+      row_count: 1,
+      columns: vec![
+        ColumnInfo {
+          name: "age".to_owned(),
+          data_type: "INTEGER".to_owned(),
+        },
+        ColumnInfo {
+          name: "sex".to_owned(),
+          data_type: "VARCHAR".to_owned(),
+        },
+      ],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    session.active_dataset = Some(dataset.clone());
+    session
+      .backend
+      .as_mut()
+      .expect("test backend should exist")
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE} AS SELECT 7 AS age"
+      ))
+      .expect("the mismatched active relation should be created");
+
+    assert_eq!(
+      session
+        .execute(Command::Select {
+          variables: vec!["sex".to_owned()],
+        })
+        .unwrap_err(),
+      RuntimeError::SelectFailed
     );
     assert_eq!(session.active_dataset.as_ref(), Some(&dataset));
     let age: i64 = session

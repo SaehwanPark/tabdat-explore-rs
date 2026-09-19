@@ -1034,6 +1034,11 @@ fn parse_select_command(body: &str) -> Result<Command, ParseError> {
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
   }
+  if parts.has_condition
+    && let Some(error) = condition_syntax_error(body)
+  {
+    return Err(error);
+  }
   if parts.assignment_target_missing {
     return Err(ParseError::new(
       "select assignment requires a target before =",
@@ -1109,7 +1114,7 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("missing expression after if"));
   }
   if parts.has_condition
-    && let Some(error) = drop_condition_syntax_error(body)
+    && let Some(error) = condition_syntax_error(body)
   {
     return Err(error);
   }
@@ -1150,7 +1155,7 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn drop_condition_syntax_error(body: &str) -> Option<ParseError> {
+fn condition_syntax_error(body: &str) -> Option<ParseError> {
   let tokens = match tokenize_use_options(body) {
     Ok(tokens) => tokens,
     Err(error) => return Some(error),
