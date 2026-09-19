@@ -1,5 +1,6 @@
 use tabdat_language::{
-  Command, DataSource, ExecutionMode, LazyEngine, RowLimit, SettingName, SortKey, parse_command,
+  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode, LazyEngine, RowLimit,
+  SettingName, SortKey, parse_command,
 };
 
 #[test]
@@ -163,6 +164,74 @@ fn datasignature_is_a_public_syntax_only_command() {
       .message(),
     "datasignature does not accept arguments, if clauses, options, or assignment syntax"
   );
+}
+
+#[test]
+fn assert_parses_the_bounded_typed_expression_form() {
+  assert_eq!(
+    parse_command(" ASSERT `age` >= 18 ").unwrap(),
+    Command::Assert {
+      expression: AssertExpression::Binary {
+        left: Box::new(AssertExpression::Identifier("age".to_owned())),
+        operator: AssertBinaryOperator::GreaterOrEqual,
+        right: Box::new(AssertExpression::Number("18".to_owned())),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("assert (bmi + 1) > 20").unwrap(),
+    Command::Assert {
+      expression: AssertExpression::Binary {
+        left: Box::new(AssertExpression::Binary {
+          left: Box::new(AssertExpression::Identifier("bmi".to_owned())),
+          operator: AssertBinaryOperator::Add,
+          right: Box::new(AssertExpression::Number("1".to_owned())),
+        }),
+        operator: AssertBinaryOperator::Greater,
+        right: Box::new(AssertExpression::Number("20".to_owned())),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("assert cost == null").unwrap(),
+    Command::Assert {
+      expression: AssertExpression::Binary {
+        left: Box::new(AssertExpression::Identifier("cost".to_owned())),
+        operator: AssertBinaryOperator::Equal,
+        right: Box::new(AssertExpression::Null),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("assert `null` == null").unwrap(),
+    Command::Assert {
+      expression: AssertExpression::Binary {
+        left: Box::new(AssertExpression::Identifier("null".to_owned())),
+        operator: AssertBinaryOperator::Equal,
+        right: Box::new(AssertExpression::Null),
+      },
+    }
+  );
+}
+
+#[test]
+fn assert_preserves_exact_bounded_diagnostics() {
+  let cases = [
+    ("assert", "assert expects a boolean expression"),
+    ("assert age > 0, strict", "assert does not accept options"),
+    (
+      "assert age > 0 if sex == 'F'",
+      "assert does not accept if clauses",
+    ),
+    ("assert age = 0", "assert does not accept assignment syntax"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
 }
 
 #[test]

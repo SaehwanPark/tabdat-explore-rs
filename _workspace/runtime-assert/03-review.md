@@ -1,0 +1,32 @@
+# Independent review: bounded eager-runtime `assert`
+
+Status: accepted after final correction at `9a6f955`
+
+An independent runtime review of the implementation head `7778f5f` found two
+parity risks. Both were corrected before the slice can be accepted:
+
+- Arithmetic now mirrors the oracle's safe numeric boundary: integral `+`, `-`,
+  and `*` operands are cast to `DECIMAL(38,0)`, numeric results use DuckDB
+  `try(...)` plus finite-to-NULL normalization, and unsigned subtraction or
+  unary-minus forms are rejected with the oracle diagnostic. Contract coverage
+  now includes BIGINT overflow, division by zero becoming NULL, and UBIGINT
+  subtraction.
+- Unknown-variable validation now stops at the first left-to-right unknown
+  identifier, matching the pinned executor's diagnostic. The contract test
+  covers an expression naming two missing variables.
+
+The review found no other actionable parser, null-comparison, identifier
+quoting, state-preservation, safety, or test-structure issues. Final-head
+verification confirms the focused parser (2 passed), runtime contract (7
+passed), no-active runtime unit test (passed), formatting, and diff checks.
+Hosted acceptance is green at the final implementation head: [CI run
+35416402198](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402198)
+and [runtime boundary run
+35416402180](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35416402180).
+The merge/cleanup record will be appended to the migration evidence after PR
+#41 is accepted.
+
+Deferred scope remains explicit: lazy/materialized execution, function calls
+and `e(sample)`, CLI/JSON/MCP surfaces, row-level diagnostics, `last_operation`,
+and broader expression/tokenizer parity are not part of this bounded eager
+slice.

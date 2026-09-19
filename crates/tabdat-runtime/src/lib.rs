@@ -8,7 +8,9 @@ use std::path::{Path, PathBuf};
 use duckdb::Connection;
 use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
-use tabdat_language::{Command, DataSource, ExecutionMode, LazyEngine, RowLimit};
+use tabdat_language::{
+  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode, LazyEngine, RowLimit,
+};
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
 const STAGING_TABLE: &str = "__tabdat_next";
@@ -177,6 +179,15 @@ pub struct DatasignatureResult {
   pub column_count: u64,
 }
 
+/// The owned aggregate returned by a read-only row assertion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssertResult {
+  /// The number of active rows checked by the predicate.
+  pub checked: u64,
+  /// The number of rows whose predicate was false or SQL NULL.
+  pub failed: u64,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -231,6 +242,8 @@ pub enum ExecutionResult {
   Isid(IsidResult),
   /// Computes a reproducibility fingerprint for the active relation.
   Datasignature(DatasignatureResult),
+  /// Checks a typed boolean expression across every active row.
+  Assert(AssertResult),
   /// The requested prefix of rows from the currently active dataset.
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
@@ -301,6 +314,16 @@ pub enum RuntimeError {
   IsidFailed,
   /// DuckDB could not produce the datasignature scan or encoding.
   DatasignatureFailed,
+  /// The assertion expression named variables absent from the active schema.
+  AssertUnknownVariable { variables: Vec<String> },
+  /// The assertion expression did not evaluate to a boolean or null domain.
+  AssertRequiresBoolean,
+  /// The assertion predicate found false or NULL rows.
+  AssertSemanticFailure { checked: u64, failed: u64 },
+  /// The assertion expression has incompatible operand domains.
+  AssertTypeMismatch { message: String },
+  /// DuckDB could not produce the assertion aggregate.
+  AssertFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -419,6 +442,20 @@ impl fmt::Display for RuntimeError {
       }
       Self::IsidFailed => formatter.write_str("isid failed"),
       Self::DatasignatureFailed => formatter.write_str("datasignature failed"),
+      Self::AssertUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "expression unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::AssertRequiresBoolean => formatter.write_str("predicate requires boolean expression"),
+      Self::AssertSemanticFailure { checked, failed } => write!(
+        formatter,
+        "assertion failed: {failed} of {checked} rows failed"
+      ),
+      Self::AssertTypeMismatch { message } => formatter.write_str(message),
+      Self::AssertFailed => formatter.write_str("assert failed"),
     }
   }
 }
@@ -459,6 +496,7 @@ impl Session {
       Command::Duplicates { variables } => self.execute_duplicates(variables),
       Command::Isid { variables, missok } => self.execute_isid(variables, missok),
       Command::Datasignature => self.execute_datasignature(),
+      Command::Assert { expression } => self.execute_assert(expression),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -778,6 +816,38 @@ impl Session {
     }))
   }
 
+  fn execute_assert(&self, expression: AssertExpression) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "assert" })?;
+    if let Some(variable) = expression_identifiers(&expression)
+      .into_iter()
+      .find(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == *variable)
+      })
+    {
+      return Err(RuntimeError::AssertUnknownVariable {
+        variables: vec![variable],
+      });
+    }
+    let domain = expression_domain(&expression, dataset)?;
+    if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+      return Err(RuntimeError::AssertRequiresBoolean);
+    }
+    let backend = self.backend.as_ref().ok_or(RuntimeError::AssertFailed)?;
+    let (checked, failed) = backend
+      .assert_rows(&expression, dataset)
+      .map_err(|_| RuntimeError::AssertFailed)?;
+    if failed > 0 {
+      return Err(RuntimeError::AssertSemanticFailure { checked, failed });
+    }
+    Ok(ExecutionResult::Assert(AssertResult { checked, failed }))
+  }
+
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
     self
       .execute_preview(limit, "head", false)
@@ -877,6 +947,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Summarize { .. } => "summarize",
     Command::Codebook { .. } => "codebook",
     Command::Datasignature => "datasignature",
+    Command::Assert { .. } => "assert",
     Command::Missing { .. } => "missing",
     Command::Duplicates { .. } => "duplicates",
     Command::Isid { .. } => "isid",
@@ -892,6 +963,285 @@ fn command_name(command: &Command) -> &'static str {
     Command::Count => "count",
     Command::Head { .. } => "head",
     Command::Tail { .. } => "tail",
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExpressionDomain {
+  Numeric,
+  String,
+  Boolean,
+  Null,
+  Other,
+}
+
+fn expression_identifiers(expression: &AssertExpression) -> Vec<String> {
+  match expression {
+    AssertExpression::Identifier(name) => vec![name.clone()],
+    AssertExpression::Number(_) | AssertExpression::String(_) | AssertExpression::Null => {
+      Vec::new()
+    }
+    AssertExpression::UnaryMinus(operand) => expression_identifiers(operand),
+    AssertExpression::Binary { left, right, .. } => {
+      let mut identifiers = expression_identifiers(left);
+      identifiers.extend(expression_identifiers(right));
+      identifiers
+    }
+  }
+}
+
+fn expression_domain(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<ExpressionDomain, RuntimeError> {
+  match expression {
+    AssertExpression::Identifier(name) => dataset
+      .columns
+      .iter()
+      .find(|column| column.name == *name)
+      .map(|column| data_type_expression_domain(&column.data_type))
+      .ok_or_else(|| RuntimeError::AssertUnknownVariable {
+        variables: vec![name.clone()],
+      }),
+    AssertExpression::Number(_) => Ok(ExpressionDomain::Numeric),
+    AssertExpression::UnaryMinus(operand) => {
+      if expression_contains_unsigned_identifier(operand, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message:
+            "expression type mismatch: unsigned numeric values do not support subtraction or unary minus"
+              .to_owned(),
+        });
+      }
+      let operand_domain = expression_domain(operand, dataset)?;
+      if operand_domain == ExpressionDomain::Null {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "null literal only supports equality and inequality comparisons".to_owned(),
+        });
+      }
+      if operand_domain != ExpressionDomain::Numeric {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "expression type mismatch: unary minus requires numeric operand".to_owned(),
+        });
+      }
+      Ok(ExpressionDomain::Numeric)
+    }
+    AssertExpression::String(_) => Ok(ExpressionDomain::String),
+    AssertExpression::Null => Ok(ExpressionDomain::Null),
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      if expression_has_unsafe_unsigned_arithmetic(expression, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message:
+            "expression type mismatch: unsigned numeric values do not support subtraction or unary minus"
+              .to_owned(),
+        });
+      }
+      if expression_has_unsafe_unsigned_numeric_pair(expression, dataset) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "expression type mismatch: unsigned numeric values cannot be combined with negative numeric literals"
+            .to_owned(),
+        });
+      }
+      let left_domain = expression_domain(left, dataset)?;
+      let right_domain = expression_domain(right, dataset)?;
+      if operator.is_comparison() {
+        if left_domain == ExpressionDomain::Null || right_domain == ExpressionDomain::Null {
+          if !matches!(
+            operator,
+            AssertBinaryOperator::Equal | AssertBinaryOperator::NotEqual
+          ) {
+            return Err(RuntimeError::AssertTypeMismatch {
+              message: "null literal only supports equality and inequality comparisons".to_owned(),
+            });
+          }
+          return Ok(ExpressionDomain::Boolean);
+        }
+        let compatible = left_domain == right_domain
+          || (left_domain == ExpressionDomain::Numeric
+            && right_domain == ExpressionDomain::Numeric);
+        if !compatible {
+          return Err(RuntimeError::AssertTypeMismatch {
+            message: format!(
+              "expression type mismatch: cannot compare {} and {} values",
+              expression_domain_name(left_domain),
+              expression_domain_name(right_domain)
+            ),
+          });
+        }
+        return Ok(ExpressionDomain::Boolean);
+      }
+      if expression_contains_null_literal(left) || expression_contains_null_literal(right) {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "null literal only supports equality and inequality comparisons".to_owned(),
+        });
+      }
+      if left_domain != ExpressionDomain::Numeric || right_domain != ExpressionDomain::Numeric {
+        return Err(RuntimeError::AssertTypeMismatch {
+          message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
+        });
+      }
+      Ok(ExpressionDomain::Numeric)
+    }
+  }
+}
+
+fn data_type_expression_domain(data_type: &str) -> ExpressionDomain {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  if is_numeric_data_type(data_type) {
+    ExpressionDomain::Numeric
+  } else if matches!(base, "BOOLEAN" | "BOOL") {
+    ExpressionDomain::Boolean
+  } else if matches!(base, "VARCHAR" | "TEXT" | "STRING" | "CHAR") {
+    ExpressionDomain::String
+  } else {
+    ExpressionDomain::Other
+  }
+}
+
+fn expression_domain_name(domain: ExpressionDomain) -> &'static str {
+  match domain {
+    ExpressionDomain::Numeric => "numeric",
+    ExpressionDomain::String => "string",
+    ExpressionDomain::Boolean => "boolean",
+    ExpressionDomain::Null => "null",
+    ExpressionDomain::Other => "unsupported",
+  }
+}
+
+fn expression_contains_null_literal(expression: &AssertExpression) -> bool {
+  match expression {
+    AssertExpression::Null => true,
+    AssertExpression::UnaryMinus(operand) => expression_contains_null_literal(operand),
+    AssertExpression::Binary { left, right, .. } => {
+      expression_contains_null_literal(left) || expression_contains_null_literal(right)
+    }
+    AssertExpression::Identifier(_) | AssertExpression::Number(_) | AssertExpression::String(_) => {
+      false
+    }
+  }
+}
+
+fn assert_operator_sql_symbol(operator: AssertBinaryOperator) -> &'static str {
+  match operator {
+    AssertBinaryOperator::Add => "+",
+    AssertBinaryOperator::Subtract => "-",
+    AssertBinaryOperator::Multiply => "*",
+    AssertBinaryOperator::Divide => "/",
+    AssertBinaryOperator::Equal => "=",
+    AssertBinaryOperator::NotEqual => "!=",
+    AssertBinaryOperator::Less => "<",
+    AssertBinaryOperator::LessOrEqual => "<=",
+    AssertBinaryOperator::Greater => ">",
+    AssertBinaryOperator::GreaterOrEqual => ">=",
+  }
+}
+
+fn compile_assert_expression(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
+  match expression {
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } if operator.is_comparison() => {
+      let left_is_null = matches!(left.as_ref(), AssertExpression::Null);
+      let right_is_null = matches!(right.as_ref(), AssertExpression::Null);
+      if left_is_null || right_is_null {
+        if left_is_null && right_is_null {
+          return Ok(if *operator == AssertBinaryOperator::Equal {
+            "TRUE".to_owned()
+          } else if *operator == AssertBinaryOperator::NotEqual {
+            "FALSE".to_owned()
+          } else {
+            return Err(());
+          });
+        }
+        let other = if left_is_null { right } else { left };
+        let other_sql = compile_assert_expression_operand(other, dataset)?;
+        return Ok(format!(
+          "({other_sql} {})",
+          if *operator == AssertBinaryOperator::Equal {
+            "IS NULL"
+          } else if *operator == AssertBinaryOperator::NotEqual {
+            "IS NOT NULL"
+          } else {
+            return Err(());
+          }
+        ));
+      }
+      let left_sql = compile_assert_expression_operand(left, dataset)?;
+      let right_sql = compile_assert_expression_operand(right, dataset)?;
+      Ok(format!(
+        "({left_sql} {} {right_sql})",
+        assert_operator_sql_symbol(*operator)
+      ))
+    }
+    _ if expression_is_numeric_result(expression) => {
+      let raw = compile_assert_expression_raw(expression, dataset)?;
+      Ok(safe_numeric_sql(&raw))
+    }
+    _ => compile_assert_expression_raw(expression, dataset),
+  }
+}
+
+fn compile_assert_expression_operand(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
+  if expression_is_numeric_result(expression) {
+    let raw = compile_assert_expression_raw(expression, dataset)?;
+    Ok(safe_numeric_sql(&raw))
+  } else {
+    compile_assert_expression_raw(expression, dataset)
+  }
+}
+
+fn compile_assert_expression_raw(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, ()> {
+  match expression {
+    AssertExpression::Identifier(name) => Ok(quote_identifier(name)),
+    AssertExpression::Number(value) => {
+      if value.parse::<f64>().is_err() {
+        return Err(());
+      }
+      Ok(value.clone())
+    }
+    AssertExpression::String(value) => Ok(format!("'{}'", value.replace('\'', "''"))),
+    AssertExpression::Null => Ok("NULL".to_owned()),
+    AssertExpression::UnaryMinus(operand) => {
+      let mut operand_sql = compile_assert_expression_raw(operand, dataset)?;
+      if expression_is_integral(expression, dataset) {
+        operand_sql = cast_exact_integer_sql(&operand_sql);
+      }
+      Ok(format!("-({operand_sql})"))
+    }
+    AssertExpression::Binary { operator, .. } if operator.is_comparison() => {
+      compile_assert_expression(expression, dataset)
+    }
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      let mut left_sql = compile_assert_expression_raw(left, dataset)?;
+      let mut right_sql = compile_assert_expression_raw(right, dataset)?;
+      if expression_is_integral(expression, dataset) {
+        left_sql = cast_exact_integer_sql(&left_sql);
+        right_sql = cast_exact_integer_sql(&right_sql);
+      }
+      Ok(format!(
+        "({left_sql} {} {right_sql})",
+        assert_operator_sql_symbol(*operator)
+      ))
+    }
   }
 }
 
@@ -925,6 +1275,171 @@ fn is_numeric_data_type(data_type: &str) -> bool {
       | "REAL"
       | "DOUBLE"
       | "DECIMAL"
+  )
+}
+
+fn is_integer_data_type(data_type: &str) -> bool {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  matches!(
+    base,
+    "TINYINT"
+      | "SMALLINT"
+      | "INTEGER"
+      | "BIGINT"
+      | "HUGEINT"
+      | "UHUGEINT"
+      | "UTINYINT"
+      | "USMALLINT"
+      | "UINTEGER"
+      | "UBIGINT"
+      | "INT8"
+      | "INT16"
+      | "INT32"
+      | "INT64"
+      | "UINT8"
+      | "UINT16"
+      | "UINT32"
+      | "UINT64"
+      | "UINT128"
+  )
+}
+
+fn is_unsigned_data_type(data_type: &str) -> bool {
+  let normalized = data_type.trim().to_ascii_uppercase();
+  let base = normalized.split('(').next().unwrap_or_default().trim();
+  matches!(
+    base,
+    "UTINYINT"
+      | "USMALLINT"
+      | "UINTEGER"
+      | "UBIGINT"
+      | "UHUGEINT"
+      | "UINT8"
+      | "UINT16"
+      | "UINT32"
+      | "UINT64"
+      | "UINT128"
+  )
+}
+
+fn expression_contains_unsigned_identifier(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  match expression {
+    AssertExpression::Identifier(name) => dataset
+      .columns
+      .iter()
+      .any(|column| column.name == *name && is_unsigned_data_type(&column.data_type)),
+    AssertExpression::UnaryMinus(operand) => {
+      expression_contains_unsigned_identifier(operand, dataset)
+    }
+    AssertExpression::Binary { left, right, .. } => {
+      expression_contains_unsigned_identifier(left, dataset)
+        || expression_contains_unsigned_identifier(right, dataset)
+    }
+    AssertExpression::Number(_) | AssertExpression::String(_) | AssertExpression::Null => false,
+  }
+}
+
+fn expression_has_unsafe_unsigned_arithmetic(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  match expression {
+    AssertExpression::UnaryMinus(operand) => {
+      expression_contains_unsigned_identifier(operand, dataset)
+    }
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      (*operator == AssertBinaryOperator::Subtract
+        && (expression_contains_unsigned_identifier(left, dataset)
+          || expression_contains_unsigned_identifier(right, dataset)))
+        || expression_has_unsafe_unsigned_arithmetic(left, dataset)
+        || expression_has_unsafe_unsigned_arithmetic(right, dataset)
+    }
+    AssertExpression::Identifier(_)
+    | AssertExpression::Number(_)
+    | AssertExpression::String(_)
+    | AssertExpression::Null => false,
+  }
+}
+
+fn expression_contains_negative_numeric_literal(expression: &AssertExpression) -> bool {
+  match expression {
+    AssertExpression::Number(value) => value.parse::<f64>().is_ok_and(|value| value < 0.0),
+    AssertExpression::UnaryMinus(operand) => matches!(
+      operand.as_ref(),
+      AssertExpression::Number(value) if value.parse::<f64>().is_ok_and(|value| value != 0.0)
+    ),
+    AssertExpression::Identifier(_)
+    | AssertExpression::String(_)
+    | AssertExpression::Null
+    | AssertExpression::Binary { .. } => false,
+  }
+}
+
+fn expression_has_unsafe_unsigned_numeric_pair(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> bool {
+  let AssertExpression::Binary { left, right, .. } = expression else {
+    return false;
+  };
+  (expression_contains_unsigned_identifier(left, dataset)
+    && expression_contains_negative_numeric_literal(right))
+    || (expression_contains_unsigned_identifier(right, dataset)
+      && expression_contains_negative_numeric_literal(left))
+}
+
+fn expression_is_integral(expression: &AssertExpression, dataset: &DatasetInfo) -> bool {
+  match expression {
+    AssertExpression::Identifier(name) => dataset
+      .columns
+      .iter()
+      .any(|column| column.name == *name && is_integer_data_type(&column.data_type)),
+    AssertExpression::Number(value) => !value.contains('.'),
+    AssertExpression::UnaryMinus(operand) => expression_is_integral(operand, dataset),
+    AssertExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      matches!(
+        operator,
+        AssertBinaryOperator::Add | AssertBinaryOperator::Subtract | AssertBinaryOperator::Multiply
+      ) && expression_is_integral(left, dataset)
+        && expression_is_integral(right, dataset)
+    }
+    AssertExpression::String(_) | AssertExpression::Null => false,
+  }
+}
+
+fn expression_is_numeric_result(expression: &AssertExpression) -> bool {
+  matches!(
+    expression,
+    AssertExpression::UnaryMinus(_)
+      | AssertExpression::Binary {
+        operator: AssertBinaryOperator::Add
+          | AssertBinaryOperator::Subtract
+          | AssertBinaryOperator::Multiply
+          | AssertBinaryOperator::Divide,
+        ..
+      }
+  )
+}
+
+fn cast_exact_integer_sql(expression: &str) -> String {
+  format!("CAST({expression} AS DECIMAL(38,0))")
+}
+
+fn safe_numeric_sql(expression: &str) -> String {
+  format!(
+    "(SELECT CASE WHEN isfinite(CAST(__tabdat_numeric_value AS DOUBLE)) THEN __tabdat_numeric_value ELSE NULL END FROM (SELECT try({expression}) AS __tabdat_numeric_value) AS __tabdat_numeric_result)"
   )
 }
 
@@ -1328,6 +1843,23 @@ impl DuckDbBackend {
     drop(statement);
 
     Ok((lower_hex(&digest.finalize()), row_count))
+  }
+
+  fn assert_rows(
+    &self,
+    expression: &AssertExpression,
+    dataset: &DatasetInfo,
+  ) -> Result<(u64, u64), ()> {
+    let predicate = compile_assert_expression(expression, dataset)?;
+    let query = format!(
+      "SELECT COUNT(*), COUNT(*) FILTER (WHERE ({predicate}) IS NULL OR NOT ({predicate})) FROM {ACTIVE_TABLE}"
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let row = rows.next().map_err(|_| ())?.ok_or(())?;
+    let checked = u64::try_from(row.get::<_, i64>(0).map_err(|_| ())?).map_err(|_| ())?;
+    let failed = u64::try_from(row.get::<_, i64>(1).map_err(|_| ())?).map_err(|_| ())?;
+    Ok((checked, failed))
   }
 }
 
@@ -1945,6 +2477,26 @@ mod tests {
       RuntimeError::NoActiveDataset {
         command: "datasignature"
       }
+    );
+    assert!(session.backend.is_none());
+    assert!(session.active_dataset.is_none());
+  }
+
+  #[test]
+  fn assert_does_not_initialize_backend_for_a_new_session() {
+    let mut session = Session::new();
+
+    assert_eq!(
+      session
+        .execute(Command::Assert {
+          expression: AssertExpression::Binary {
+            left: Box::new(AssertExpression::Identifier("age".to_owned())),
+            operator: AssertBinaryOperator::Greater,
+            right: Box::new(AssertExpression::Number("0".to_owned())),
+          },
+        })
+        .unwrap_err(),
+      RuntimeError::NoActiveDataset { command: "assert" }
     );
     assert!(session.backend.is_none());
     assert!(session.active_dataset.is_none());
