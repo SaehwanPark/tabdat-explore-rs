@@ -459,7 +459,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   publication, and failure-atomic metadata/relation are covered. Predicate
   form (`drop if`), lazy/materialized execution, wildcard/range expansion,
   labels, `last_operation`, formatting, CLI, JSON, and MCP remain deferred.
-- [ ] `select`
+- [x] `select` — bounded eager local-Parquet explicit-varlist projection
+  (`SelectResult`; PR #44, squash merge `228fa50`). Requested order,
+  duplicate projection naming, quoted identifiers, empty-relation behavior,
+  staged publication, and failure-atomic metadata/relation are covered.
+  Predicate form (`select if`), lazy/materialized execution, wildcard/range
+  expansion, labels/panel metadata, `last_operation`, formatting, CLI, JSON,
+  and MCP remain deferred.
 - [ ] `generate`
 - [ ] `replace`
 - [ ] `rename`

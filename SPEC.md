@@ -450,6 +450,28 @@ lazy/materialized execution, wildcard/range expansion, labels/panel metadata,
 `last_operation`, formatting, CLI/REPL, JSON/MCP, and broader transformation
 sequencing.
 
+## Verified slice: bounded eager-runtime `select` projection
+
+Merged PR #44 (`228fa50`) adds the bounded eager local-Parquet
+`select <explicit-varlist>` projection path to `tabdat-runtime`. The typed
+command returns an owned `SelectResult`, validates every requested name before
+backend work, preserves requested column order and deterministic duplicate
+projection names, row order and count, NULL values, source metadata, and quoted
+or backtick identifiers. Empty typed requests, unknown variables, and
+staging/backend failures leave the published metadata and private active
+relation unchanged.
+
+Evidence: `_workspace/runtime-select/{01-contract,02-evidence-migration,03-review,04-summary}.md`,
+the implementation, and its parser/runtime contract tests. The pinned focused
+oracle, locked Rust checks, policy scans, independent review, PR-head hosted
+checks, squash merge, branch cleanup, and post-merge workflow matrix are
+recorded there.
+
+Predicate-form `select if <expression>` remains deferred, as do
+lazy/materialized execution, wildcard/range expansion, labels/panel metadata,
+`last_operation`, formatting, CLI/REPL, JSON/MCP, and broader transformation
+sequencing.
+
 ## Verified slice: syntax-only `summarize` command
 
 PR #21 (`ae12a65`) adds direct, backend-independent `summarize [varlist]` syntax

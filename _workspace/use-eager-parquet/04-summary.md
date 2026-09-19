@@ -14,7 +14,7 @@ current-state files below are the durable record of what was accepted.
 The slice implements one eager `Command::Use` of an existing local Parquet file
 through a private DuckDB adapter. Broad `use` parity, lazy/remote/other-format
 loading, general relation APIs, broad inspect execution beyond bounded
-`describe`/`count`/`head`/`tail`/`summarize`/`codebook`/`missing`/`duplicates`/`isid`/`datasignature`/`assert`, and projection-only `keep`/`drop`, CLI/REPL, scripts,
+`describe`/`count`/`head`/`tail`/`summarize`/`codebook`/`missing`/`duplicates`/`isid`/`datasignature`/`assert`, and projection-only `keep`/`drop`/`select`, CLI/REPL, scripts,
 reporting, JSON/MCP, and production DuckDB packaging remain deferred.
 
 ## Durable records
@@ -27,6 +27,8 @@ reporting, JSON/MCP, and production DuckDB packaging remain deferred.
 - [`../runtime-keep/04-summary.md`](../runtime-keep/04-summary.md) and
   [`../runtime-drop/04-summary.md`](../runtime-drop/04-summary.md) — accepted
   bounded projection-transform closeouts.
+- [`../runtime-select/04-summary.md`](../runtime-select/04-summary.md) — accepted
+  bounded requested-order projection closeout.
 - [`docs/adr/0007-eager-parquet-duckdb-runtime-boundary.md`](../../docs/adr/0007-eager-parquet-duckdb-runtime-boundary.md)
   — accepted bounded DuckDB decision and production deferrals.
 
@@ -57,6 +59,7 @@ gates. The bounded `datasignature` slice is accepted in
 `_workspace/runtime-datasignature/`, and the bounded `assert` slice is accepted
 in `_workspace/runtime-assert/`. The bounded projection-only `keep` slice is
 accepted in `_workspace/runtime-keep/`, and the bounded projection-only `drop`
-slice is accepted in `_workspace/runtime-drop/`. The next bounded roadmap slice
-should select a separate contract and PR for `select`; broader relation,
+slice is accepted in `_workspace/runtime-drop/`, as is the bounded projection-only
+`select` slice in `_workspace/runtime-select/`. The next bounded roadmap slice
+should select a separate contract and PR for `generate`; broader relation,
 predicate-transform, and reporting semantics remain deferred.

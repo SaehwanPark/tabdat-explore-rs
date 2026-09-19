@@ -1,11 +1,12 @@
 # Bounded eager-runtime `select` contract
 
-Status: contract recovered and bounded implementation/review complete on
-`feat/runtime-select` at `d21788d`; hosted acceptance remains pending.
+Status: contract recovered and bounded implementation accepted on `main` at
+`228fa50` (PR #44).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`, with
 independent Python-contract and Rust-boundary reconnaissance.
-Consumer: bounded `select` implementation, review, and hosted acceptance.
+Consumer: bounded `select` implementation and review, subsequently
+squash-merged to `main` after hosted acceptance and temporary-branch cleanup.
 
 ## Scope
 
@@ -113,6 +114,7 @@ CLI/REPL, JSON/MCP, and broad transform sequencing remain deferred. This
 bounded contract does not claim full Python `select` parity or broad Phase 4
 completion.
 
-Completion state: contract recovery, bounded implementation, and independent
-review are complete; hosted acceptance, merge, and branch cleanup remain
-pending.
+Completion state: contract recovery, bounded implementation, independent review,
+hosted acceptance, squash merge, and temporary-branch cleanup are complete.
+Predicate execution and the other explicit deferrals above remain outside this
+accepted slice.

@@ -1,8 +1,7 @@
 # Bounded eager-runtime `select` migration evidence
 
-Status: implementation and independent review complete on
-`feat/runtime-select` at `d21788d`; hosted acceptance, merge, and branch
-cleanup remain pending.
+Status: accepted and merged on `main` at `228fa50`; the temporary
+`feat/runtime-select` branch was removed locally and remotely.
 
 Boundary: pinned Python explicit-varlist `select` contract → Rust-owned eager
 DuckDB requested-order projection over the active local-Parquet relation.
@@ -74,8 +73,27 @@ passed:
 - [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35430633830),
   [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35430633830/job/105864435701).
 
-Hosted merge/cleanup evidence and the final native matrix will be appended
-after the docs head is accepted.
+The docs/evidence head `f1db889` passed the same required hosted checks:
+
+- [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35431743740),
+  [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35431743740/job/105867469973),
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35431743740/job/105867470021);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35431743753),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35431743753/job/105867469887).
+
+The PR was squash-merged as
+[`228fa505dfeba3fb027590a2d430a28fa45e718f`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/228fa505dfeba3fb027590a2d430a28fa45e718f),
+and `feat/runtime-select` was deleted locally and remotely. The post-merge
+code-head checks also passed:
+
+- [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672560),
+  [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672560/job/105869917534),
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672560/job/105869917620);
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544),
+  [Linux job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35432672544/job/105869917478).
+
+The main docs closeout and native feasibility matrix will be appended after the
+roadmap/SPEC/ADR records are updated.
 
 ## Deferred scope
 

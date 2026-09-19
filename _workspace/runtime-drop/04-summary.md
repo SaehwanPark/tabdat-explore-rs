@@ -59,6 +59,8 @@ matrix:
 
 ## Handoff
 
-The next bounded roadmap candidate is `select`, with a separate contract and PR.
-This slice does not establish predicate transforms, broad relation sequencing,
-or general Phase 4 runtime/reporting completion.
+The next bounded roadmap candidate is `generate`, with a separate contract and
+PR. The accepted requested-order `select` slice is recorded in
+[`../runtime-select/04-summary.md`](../runtime-select/04-summary.md). This slice
+does not establish predicate transforms, broad relation sequencing, or general
+Phase 4 runtime/reporting completion.

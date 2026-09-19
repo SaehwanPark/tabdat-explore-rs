@@ -32,8 +32,10 @@ broader transformation sequencing remain deferred.
 
 ## Handoff
 
-The next bounded roadmap candidate is `select`; the inverse projection `drop`
-slice is accepted separately in [`../runtime-drop/04-summary.md`](../runtime-drop/04-summary.md).
+The next bounded roadmap candidate is `generate`; the inverse projection `drop`
+and requested-order projection `select` slices are accepted separately in
+[`../runtime-drop/04-summary.md`](../runtime-drop/04-summary.md) and
+[`../runtime-select/04-summary.md`](../runtime-select/04-summary.md).
 This merge does not establish general predicate transforms, relation sequencing,
 or broad Phase 4 completion.
 
