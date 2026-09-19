@@ -163,7 +163,7 @@ fn sort_quotes_identifiers_and_avoids_ordinal_collisions_on_empty_relations() {
   let fixture = Fixture::new();
   let quoted = fixture.write_parquet(
     "quoted.parquet",
-    "SELECT CAST(NULL AS INTEGER) AS \"a\"\"b\", CAST(NULL AS INTEGER) AS \"__tabdat_sort_ordinal\" WHERE FALSE",
+    "SELECT CAST(NULL AS INTEGER) AS \"a\"\"b\", CAST(NULL AS INTEGER) AS \"__TABDAT_SORT_ORDINAL\" WHERE FALSE",
   );
   let mut session = Session::new();
   session
@@ -185,7 +185,7 @@ fn sort_quotes_identifiers_and_avoids_ordinal_collisions_on_empty_relations() {
       .iter()
       .map(|column| column.name.as_str())
       .collect::<Vec<_>>(),
-    vec!["a\"b", "__tabdat_sort_ordinal"]
+    vec!["a\"b", "__TABDAT_SORT_ORDINAL"]
   );
 
   let result = session

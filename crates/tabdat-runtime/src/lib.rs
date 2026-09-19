@@ -2357,7 +2357,7 @@ impl DuckDbBackend {
     while dataset
       .columns
       .iter()
-      .any(|column| column.name == ordinal_name)
+      .any(|column| column.name.eq_ignore_ascii_case(&ordinal_name))
     {
       ordinal_name.push('_');
     }
