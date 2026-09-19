@@ -562,6 +562,49 @@ fn select_preserves_exact_public_diagnostics() {
 }
 
 #[test]
+fn keep_parses_an_ordered_projection() {
+  assert_eq!(
+    parse_command(" KEEP sex `age years` sex ").unwrap(),
+    Command::Keep {
+      variables: vec!["sex".to_owned(), "age years".to_owned(), "sex".to_owned()],
+    }
+  );
+}
+
+#[test]
+fn keep_preserves_bounded_projection_diagnostics() {
+  let cases = [
+    ("keep", "keep expects a variable list or if clause"),
+    ("keep if", "missing expression after if"),
+    (
+      "keep if age > 0",
+      "keep if execution is deferred in the bounded runtime",
+    ),
+    (
+      "keep age if age > 0",
+      "keep cannot combine a variable list with an if clause",
+    ),
+    (
+      "keep age, stable",
+      "keep does not accept options or assignment syntax",
+    ),
+    (
+      "keep age = other",
+      "keep does not accept options or assignment syntax",
+    ),
+    ("keep age==x", "unsupported token in command: =="),
+    ("keep age-1", "unsupported token in command: -"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn sort_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" SORT age label ").unwrap(),
