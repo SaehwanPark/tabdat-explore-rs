@@ -31,6 +31,8 @@ pub enum Command {
     variables: Vec<String>,
     missok: bool,
   },
+  /// Validate a boolean predicate against every row in the bounded eager runtime.
+  Assert { expression: AssertExpression },
   /// Keep only listed columns (relation execution is deferred).
   Select { variables: Vec<String> },
   /// Sort active rows by listed columns (relation execution is deferred).
@@ -61,6 +63,55 @@ pub enum Command {
   Head { limit: RowLimit },
   /// Preview the last `limit` rows of the active dataset.
   Tail { limit: RowLimit },
+}
+
+/// An expression accepted by the bounded eager `assert` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssertExpression {
+  /// A dataset column reference.
+  Identifier(String),
+  /// A validated numeric literal preserved as SQL-safe source text.
+  Number(String),
+  /// A quoted string literal.
+  String(String),
+  /// An explicit SQL NULL literal.
+  Null,
+  /// Unary numeric negation.
+  UnaryMinus(Box<Self>),
+  /// A binary arithmetic or comparison expression.
+  Binary {
+    /// Left operand.
+    left: Box<Self>,
+    /// Operator between operands.
+    operator: AssertBinaryOperator,
+    /// Right operand.
+    right: Box<Self>,
+  },
+}
+
+/// Operators accepted by [`AssertExpression::Binary`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssertBinaryOperator {
+  /// Addition.
+  Add,
+  /// Subtraction.
+  Subtract,
+  /// Multiplication.
+  Multiply,
+  /// Division.
+  Divide,
+  /// Equality.
+  Equal,
+  /// Inequality.
+  NotEqual,
+  /// Less-than comparison.
+  Less,
+  /// Less-than-or-equal comparison.
+  LessOrEqual,
+  /// Greater-than comparison.
+  Greater,
+  /// Greater-than-or-equal comparison.
+  GreaterOrEqual,
 }
 
 /// A local path or an unvalidated remote URI supplied to `use`.
@@ -102,6 +153,21 @@ pub struct SortKey {
   pub variable: String,
   /// Whether the key requests descending order.
   pub descending: bool,
+}
+
+impl AssertBinaryOperator {
+  /// Return whether this operator produces a boolean comparison.
+  pub fn is_comparison(self) -> bool {
+    matches!(
+      self,
+      Self::Equal
+        | Self::NotEqual
+        | Self::Less
+        | Self::LessOrEqual
+        | Self::Greater
+        | Self::GreaterOrEqual
+    )
+  }
 }
 
 /// A validated, canonical non-negative decimal row limit.
@@ -381,6 +447,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     }
     "summarize" => parse_summarize_command(body),
     "datasignature" => parse_datasignature_command(body),
+    "assert" => parse_assert_command(body),
     "codebook" => parse_codebook_command(body),
     "missing" => parse_missing_command(body),
     "duplicates" => parse_duplicates_command(body),
@@ -562,6 +629,204 @@ fn parse_datasignature_command(body: &str) -> Result<Command, ParseError> {
   Err(ParseError::new(
     "datasignature does not accept arguments, if clauses, options, or assignment syntax",
   ))
+}
+
+fn parse_assert_command(body: &str) -> Result<Command, ParseError> {
+  let tokens = tokenize_use_options(body)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new("assert expects a boolean expression"));
+  }
+
+  let mut depth = 0_i32;
+  for token in &tokens {
+    match (&token.kind, token.text.as_str()) {
+      (UseTokenKind::Symbol, "(") => depth += 1,
+      (UseTokenKind::Symbol, ")") => {
+        depth -= 1;
+        if depth < 0 {
+          return Err(ParseError::new("unsupported token in expression: )"));
+        }
+      }
+      (UseTokenKind::Symbol, ",") if depth == 0 => {
+        return Err(ParseError::new("assert does not accept options"));
+      }
+      (UseTokenKind::Identifier { quoted: false }, name)
+        if depth == 0 && name.eq_ignore_ascii_case("if") =>
+      {
+        return Err(ParseError::new("assert does not accept if clauses"));
+      }
+      _ => {}
+    }
+  }
+  if depth != 0 {
+    return Err(ParseError::new("unsupported token in expression: ("));
+  }
+  if tokens
+    .iter()
+    .any(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  {
+    return Err(ParseError::new("assert does not accept assignment syntax"));
+  }
+
+  let expression = AssertExpressionParser::new(tokens).parse()?;
+  Ok(Command::Assert { expression })
+}
+
+struct AssertExpressionParser {
+  tokens: Vec<UseToken>,
+  index: usize,
+}
+
+impl AssertExpressionParser {
+  fn new(tokens: Vec<UseToken>) -> Self {
+    Self { tokens, index: 0 }
+  }
+
+  fn parse(mut self) -> Result<AssertExpression, ParseError> {
+    let expression = self.parse_comparison()?;
+    if let Some(token) = self.peek() {
+      return Err(ParseError::new(format!(
+        "unsupported token in expression: {}",
+        token.text
+      )));
+    }
+    Ok(expression)
+  }
+
+  fn parse_comparison(&mut self) -> Result<AssertExpression, ParseError> {
+    let mut expression = self.parse_additive()?;
+    let Some(operator) = self.peek().and_then(assert_comparison_operator) else {
+      return Ok(expression);
+    };
+    self.index += 1;
+    let right = self.parse_additive()?;
+    expression = AssertExpression::Binary {
+      left: Box::new(expression),
+      operator,
+      right: Box::new(right),
+    };
+    if let Some(token) = self.peek()
+      && assert_comparison_operator(token).is_some()
+    {
+      return Err(ParseError::new(format!(
+        "unsupported token in expression: {}",
+        token.text
+      )));
+    }
+    Ok(expression)
+  }
+
+  fn parse_additive(&mut self) -> Result<AssertExpression, ParseError> {
+    let mut expression = self.parse_multiplicative()?;
+    loop {
+      let Some(operator) = self.peek().and_then(|token| match token.text.as_str() {
+        "+" => Some(AssertBinaryOperator::Add),
+        "-" => Some(AssertBinaryOperator::Subtract),
+        _ => None,
+      }) else {
+        return Ok(expression);
+      };
+      self.index += 1;
+      let right = self.parse_multiplicative()?;
+      expression = AssertExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
+    }
+  }
+
+  fn parse_multiplicative(&mut self) -> Result<AssertExpression, ParseError> {
+    let mut expression = self.parse_unary()?;
+    loop {
+      let Some(operator) = self.peek().and_then(|token| match token.text.as_str() {
+        "*" => Some(AssertBinaryOperator::Multiply),
+        "/" => Some(AssertBinaryOperator::Divide),
+        _ => None,
+      }) else {
+        return Ok(expression);
+      };
+      self.index += 1;
+      let right = self.parse_unary()?;
+      expression = AssertExpression::Binary {
+        left: Box::new(expression),
+        operator,
+        right: Box::new(right),
+      };
+    }
+  }
+
+  fn parse_unary(&mut self) -> Result<AssertExpression, ParseError> {
+    if self.peek().is_some_and(|token| token.text == "-") {
+      self.index += 1;
+      return Ok(AssertExpression::UnaryMinus(Box::new(self.parse_unary()?)));
+    }
+    self.parse_primary()
+  }
+
+  fn parse_primary(&mut self) -> Result<AssertExpression, ParseError> {
+    let Some(token) = self.consume() else {
+      return Err(ParseError::new("assert expects a boolean expression"));
+    };
+    match token.kind {
+      UseTokenKind::Number => {
+        if token.text.parse::<f64>().is_err() {
+          return Err(ParseError::new(format!("malformed number: {}", token.text)));
+        }
+        Ok(AssertExpression::Number(token.text))
+      }
+      UseTokenKind::String => Ok(AssertExpression::String(token.text)),
+      UseTokenKind::Identifier { quoted } => {
+        if !quoted && token.text.eq_ignore_ascii_case("null") {
+          Ok(AssertExpression::Null)
+        } else {
+          Ok(AssertExpression::Identifier(token.text))
+        }
+      }
+      UseTokenKind::Symbol if token.text == "(" => {
+        let expression = self.parse_comparison()?;
+        let Some(closing) = self.consume() else {
+          return Err(ParseError::new("unsupported token in expression: ("));
+        };
+        if closing.kind != UseTokenKind::Symbol || closing.text != ")" {
+          return Err(ParseError::new(format!(
+            "unsupported token in expression: {}",
+            closing.text
+          )));
+        }
+        Ok(expression)
+      }
+      UseTokenKind::Symbol => Err(ParseError::new(format!(
+        "unsupported token in expression: {}",
+        token.text
+      ))),
+    }
+  }
+
+  fn peek(&self) -> Option<&UseToken> {
+    self.tokens.get(self.index)
+  }
+
+  fn consume(&mut self) -> Option<UseToken> {
+    let token = self.tokens.get(self.index).cloned();
+    self.index += usize::from(token.is_some());
+    token
+  }
+}
+
+fn assert_comparison_operator(token: &UseToken) -> Option<AssertBinaryOperator> {
+  if token.kind != UseTokenKind::Symbol {
+    return None;
+  }
+  match token.text.as_str() {
+    "==" => Some(AssertBinaryOperator::Equal),
+    "!=" => Some(AssertBinaryOperator::NotEqual),
+    "<" => Some(AssertBinaryOperator::Less),
+    "<=" => Some(AssertBinaryOperator::LessOrEqual),
+    ">" => Some(AssertBinaryOperator::Greater),
+    ">=" => Some(AssertBinaryOperator::GreaterOrEqual),
+    _ => None,
+  }
 }
 
 fn parse_summarize_command(body: &str) -> Result<Command, ParseError> {
