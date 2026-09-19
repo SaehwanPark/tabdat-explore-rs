@@ -2,7 +2,7 @@
 
 Status: accepted and verified on
 [`main` at f33987a](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f33987ada50beb4030075a7eb388ec8855b64421);
-documentation closeout is in progress.
+documentation closeout is complete in the current `main` documentation commit.
 
 ## Accepted scope
 
@@ -33,10 +33,9 @@ The temporary branch was deleted locally and remotely.
 
 ## Hosted verification
 
-PR-head acceptance passed before merge. Merge-head and documentation-closeout
-workflow links will be recorded in
-[`02-evidence-migration.md`](02-evidence-migration.md) before the next
-bounded roadmap slice is opened.
+PR-head acceptance passed before merge. Merge-head runtime acceptance and the
+descendant main CI/feasibility workflows passed; their direct links are
+recorded in [`02-evidence-migration.md`](02-evidence-migration.md).
 
 Panel/label metadata, lazy or materialized execution, descending keys,
 `gsort`, expression keys, `last_operation`, formatting, CLI/JSON/MCP, and

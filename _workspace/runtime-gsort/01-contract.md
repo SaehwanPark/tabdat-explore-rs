@@ -1,6 +1,7 @@
 # Bounded eager-runtime `gsort` contract
 
-Status: proposed at the contract checkpoint.
+Status: accepted on `main` at merge commit
+[`c06ed5a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c06ed5a7d913aaa5a4ddbdf58f79149a8b81a79e).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.

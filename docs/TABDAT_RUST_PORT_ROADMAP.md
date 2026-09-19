@@ -507,7 +507,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   publication is failure-atomic. Panel/label metadata, lazy/materialized
   execution, descending keys, `gsort`, expression keys, `last_operation`,
   formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
-- [ ] `gsort`
+- [x] `gsort` — bounded eager local-Parquet stable directed sort
+  (`GsortResult`; PR #51, squash merge `c06ed5a`). Native scalar keys honor
+  per-key ascending/descending directions with SQL NULLs last, complete ties
+  preserve prior row order, quoted identifiers and private-ordinal collisions
+  are covered, and staged publication is failure-atomic. Panel/label metadata,
+  lazy/materialized execution, `last_operation`, formatting, CLI, JSON, MCP,
+  and broad transform sequencing remain deferred.
 - [ ] `recode`
 - [ ] `encode`
 - [ ] `decode`

@@ -88,8 +88,24 @@ PR-head acceptance passed at final head
 - [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976678)
   ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35461976678/job/105947382322)).
 
-Merge-head and documentation-closeout workflow links will be added before
-the next roadmap slice is opened.
+Merge-head acceptance passed after the squash merge:
+
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463131934)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463131934/job/105950455199)).
+
+The descendant documentation closeout commit
+[`48ea014`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/48ea0142)
+passed the main repository workflows:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329121)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329121/job/105951024226),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329121/job/105951023964));
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329130);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329119); and
+- [libgretl OLS spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35463329120).
+
+The combined sort/gsort documentation closeout is recorded in the current
+`main` documentation commit.
 
 ## Deviations and deferrals
 

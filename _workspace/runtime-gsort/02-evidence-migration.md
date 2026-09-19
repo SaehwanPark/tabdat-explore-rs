@@ -1,6 +1,7 @@
 # Runtime `gsort` evidence and migration record
 
-Status: implementation and local review complete; hosted acceptance is pending.
+Status: accepted and verified on `main` at merge commit
+[`c06ed5a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c06ed5a7d913aaa5a4ddbdf58f79149a8b81a79e).
 
 ## Authority and oracle evidence
 
@@ -74,10 +75,29 @@ package.
 ## Hosted acceptance
 
 Draft PR [#51](https://github.com/SaehwanPark/tabdat-explore-rs/pull/51) was
-opened at the contract checkpoint and contains the bounded contract,
-implementation, focused tests, and this evidence. It must be marked ready
-only after the final PR-head CI and runtime-boundary jobs pass. Their direct
-links and the later squash-merge commit will be recorded here before closeout.
+opened at the contract checkpoint, marked ready after local review and green
+PR-head workflows, and squash-merged as
+[`c06ed5a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c06ed5a7d913aaa5a4ddbdf58f79149a8b81a79e).
+
+PR-head acceptance passed at final head
+[`04b0d01`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/04b0d01e626cf002ab43403b295e650d46ba59be):
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35464208959)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35464208959/job/105953358264),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35464208959/job/105953358072));
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35464208962)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35464208962/job/105953357646)).
+
+Merge-head acceptance passed after the squash merge:
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35465450690)
+  ([Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35465450690/job/105956827450),
+  [policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35465450690/job/105956827635));
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35465450673)
+  ([Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35465450673/job/105956827373)).
+
+The combined sort/gsort documentation closeout is recorded in the current
+`main` documentation commit.
 
 ## Deviations and deferrals
 
