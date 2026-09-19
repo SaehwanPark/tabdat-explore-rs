@@ -4,7 +4,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
-use tabdat_language::{Command, DataSource, ExecutionMode, RecodeTarget, parse_command};
+use tabdat_language::{
+  Command, DataSource, ExecutionMode, RecodeInput, RecodeRule, RecodeTarget, RecodeValue,
+  parse_command,
+};
 use tabdat_runtime::{CellValue, ExecutionResult, RuntimeError, Session};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
@@ -277,6 +280,14 @@ fn recode_validation_failures_preserve_metadata_and_rows() {
       RuntimeError::RecodeNoVariables,
     ),
     (
+      Command::Recode {
+        variables: vec!["age".to_owned()],
+        rules: Vec::new(),
+        target: RecodeTarget::Replace,
+      },
+      RuntimeError::RecodeNoRules,
+    ),
+    (
       parse_command("recode missing (1 = 0), replace").expect("unknown-variable case should parse"),
       RuntimeError::RecodeUnknownVariable {
         variables: vec!["missing".to_owned()],
@@ -305,6 +316,19 @@ fn recode_validation_failures_preserve_metadata_and_rows() {
       RuntimeError::RecodeRangeRequiresNumeric {
         variable: "sex".to_owned(),
       },
+    ),
+    (
+      Command::Recode {
+        variables: vec!["age".to_owned()],
+        rules: vec![RecodeRule {
+          inputs: vec![RecodeInput::Value(RecodeValue::Number(
+            "not-a-number".to_owned(),
+          ))],
+          output: RecodeValue::Number("0".to_owned()),
+        }],
+        target: RecodeTarget::Replace,
+      },
+      RuntimeError::RecodeFailed,
     ),
   ];
   for (command, expected) in failures {
