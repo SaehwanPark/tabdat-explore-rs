@@ -1182,9 +1182,7 @@ fn drop_condition_syntax_error(body: &str) -> Option<ParseError> {
     saw_operand = true;
     last_condition_token = Some(token);
   }
-  let Some(last) = last_condition_token else {
-    return None;
-  };
+  let last = last_condition_token?;
   if saw_operand
     && matches!(
       last.text.as_str(),
