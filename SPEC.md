@@ -29,6 +29,9 @@ Merged PR #28 (`fd94133`) adds the verified syntax-only `gsort [+|-]varlist`
 form. Merged PR #51 (`c06ed5a`) adds the bounded eager runtime subset
 documented below; broader directed-sort behavior remains deferred.
 
+Merged PR #52 (2e25cda) adds the bounded eager runtime subset for recode
+documented below; broader recode behavior remains deferred.
+
 Merged PR #29 (`8b16223`) adds the bounded syntax-only `save <path> [, replace]` and
 `export <path> [, replace]` forms. The language layer owns the lexical path and
 replacement flag; filesystem validation, active-dataset access, output formats,
@@ -254,6 +257,31 @@ companion artifact.
 This accepted runtime subset is library-only. Panel/label metadata, lazy or
 materialized execution, `last_operation`, formatting, CLI, JSON, MCP, and
 broad transform sequencing remain deferred.
+
+## Verified slice: bounded eager runtime recode command
+
+Execute the parsed recode VARLIST (RULE) ... [, generate(NEWVARLIST) | replace]
+subset against an active eager local-Parquet DuckDB relation. The runtime
+supports numeric and quoted/text scalar inputs, inclusive numeric ranges,
+missing/nonmissing and else rules, ordered first-match behavior, unchanged
+fallback, one generated output per source, and in-place replacement.
+Validation occurs before staging. A full ordered projection is staged, its
+schema and row count are inspected, and it becomes active only after
+publication succeeds; failures preserve the previous relation and metadata.
+
+Evidence: _workspace/runtime-recode/, crates/tabdat-language/src/lib.rs,
+crates/tabdat-runtime/src/lib.rs, and
+crates/tabdat-runtime/tests/recode_contract.rs. The pinned oracle probe
+reported 3 passed recode tests. Local format/check/test/Clippy,
+dependency-policy, audit, and metadata-driven geiger checks passed. Draft PR
+52 was opened at the contract checkpoint, and its final documentation-head
+workflows passed before squash merge as 2e25cda. PR-head, merge-head, and
+documentation-closeout workflow links are recorded in the companion evidence
+artifact.
+
+This accepted runtime subset is library-only. Lazy/materialized execution,
+panel/label metadata, last_operation, formatting, CLI, JSON, MCP, and broad
+transform sequencing remain deferred.
 
 ## Verified slice: reproducible build baseline
 

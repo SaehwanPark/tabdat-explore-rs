@@ -1,7 +1,7 @@
 # Runtime recode evidence and migration record
 
-Status: implementation checkpoint on branch feat/runtime-recode; the code
-head passed the final PR-head workflows before the documentation closeout.
+Status: accepted and verified on main at merge commit
+2e25cda63093621a5ded71eb774e35c78faa7ad1.
 
 ## Authority and oracle evidence
 
@@ -82,9 +82,27 @@ e846ea8 passed:
 - [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35468724865)
   with [Linux runtime checks](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35468724865/job/105965713161).
 
-The documentation commit that follows will trigger a fresh PR-head workflow;
-its links and the squash merge/merge-head results will be added during the
-main-branch closeout.
+The documentation-head workflows for commit 097cd67 also passed:
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35469880151)
+  with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35469880151/job/105968776797)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35469880151/job/105968776514);
+ and
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35469880000)
+  with [Linux runtime checks](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35469880000/job/105968776166).
+
+Merge-head acceptance for 2e25cda passed:
+
+- [CI workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35471010511)
+  with [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35471010511/job/105971856368)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35471010511/job/105971856460);
+ and
+- [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35471010496)
+  with [Linux runtime checks](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35471010496/job/105971856077).
+
+The documentation closeout is recorded in the main-branch commit that updates
+SPEC.md and the roadmap. Its post-push workflow links are retained in the
+handoff alongside this record.
 
 ## Deviations and deferrals
 

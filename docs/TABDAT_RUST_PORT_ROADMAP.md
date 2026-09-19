@@ -514,7 +514,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   are covered, and staged publication is failure-atomic. Panel/label metadata,
   lazy/materialized execution, `last_operation`, formatting, CLI, JSON, MCP,
   and broad transform sequencing remain deferred.
-- [ ] `recode`
+- [x] `recode` — bounded eager local-Parquet recode (RecodeResult; PR #52,
+  squash merge `2e25cda`). Scalar values, inclusive numeric ranges,
+  missing/nonmissing and else rules, ordered first-match behavior,
+  generate/replace placement, quoted identifiers, staged publication, and
+  failure-atomic relation/metadata behavior are covered. Lazy/materialized
+  execution, panel/label metadata, last_operation, formatting, CLI, JSON,
+  MCP, and broad transform sequencing remain deferred.
 - [ ] `encode`
 - [ ] `decode`
 - [ ] `label`

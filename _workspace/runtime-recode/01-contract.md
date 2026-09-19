@@ -1,6 +1,7 @@
 # Bounded eager-runtime `recode` contract
 
-Status: implementation checkpoint on branch `feat/runtime-recode`.
+Status: accepted and verified on main at merge commit
+`2e25cda63093621a5ded71eb774e35c78faa7ad1`.
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.

@@ -1,7 +1,7 @@
 # Bounded eager-runtime recode closeout
 
-Status: ready for documentation closeout and merge after final PR-head
-acceptance.
+Status: accepted and verified on main at merge commit
+2e25cda63093621a5ded71eb774e35c78faa7ad1.
 
 ## Accepted scope
 
@@ -27,8 +27,10 @@ metadata unchanged.
 - [roadmap Phase 6.3](../../docs/TABDAT_RUST_PORT_ROADMAP.md).
 
 PR [#52](https://github.com/SaehwanPark/tabdat-explore-rs/pull/52) was opened
-as a draft at the contract checkpoint. It will be marked ready and squash
-merged after the documentation commit passes its PR-head workflows.
+as a draft at the contract checkpoint, marked ready after documentation-head
+acceptance, and squash-merged as
+[`2e25cda`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/2e25cda63093621a5ded71eb774e35c78faa7ad1).
+The temporary branch was deleted locally and remotely.
 
 Panel/label metadata, lazy or materialized execution, last-operation state,
 formatting, CLI/JSON/MCP, and broad transform sequencing remain deferred.

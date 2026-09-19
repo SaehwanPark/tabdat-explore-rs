@@ -1,7 +1,7 @@
 # Runtime recode review record
 
-Status: complete for code head e846ea8; no actionable findings remain.
-Hosted acceptance passed before the documentation closeout on PR #52.
+Status: complete at merge commit 2e25cda; no actionable findings remain.
+Hosted acceptance passed on PR #52 before squash merge.
 
 The review used three passes over the contract, pinned oracle evidence,
 implementation diff, focused tests, and policy results.
@@ -53,5 +53,5 @@ implementation diff, focused tests, and policy results.
 
 ## Disposition
 
-No severity-ranked findings remain. PR #52 can be marked ready after the
-documentation commit is green and then squash-merged.
+No severity-ranked findings remain. PR #52 was marked ready after its
+documentation-head workflows passed and was squash-merged as 2e25cda.
