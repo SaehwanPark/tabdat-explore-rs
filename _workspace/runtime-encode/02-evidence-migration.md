@@ -93,8 +93,14 @@ The merge-head passed:
 - [main CI run 35476036980](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980/job/105985334039) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036980/job/105985334268); and
 - [main runtime run 35476036994](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036994), including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35476036994/job/105985334401).
 
-Documentation-closeout workflow evidence will be added after the main-branch
-documentation commit.
+Documentation closeout commit
+[`26962f6`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/26962f66ecb185026b6719a812e437d83ccf4cf0)
+then passed:
+
+- [final main CI run 35477010689](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010689), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010689/job/105987872929) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010689/job/105987872719);
+- [final ReadStat workflow 35477010760](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010760), with [Rust](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010760/job/105987873060) and [release](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010760/job/105987873208) jobs;
+- [final libgretl feasibility workflow 35477010747](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010747), including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010747/job/105987873022); and
+- [final libgretl OLS workflow 35477010723](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010723), including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35477010723/job/105987872975).
 
 ## Deviations and deferrals
 

@@ -30,7 +30,10 @@ the contract checkpoint, passed its hosted baseline, policy, and Linux runtime
 checks, and was squash-merged as
 [`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
 The companion evidence record contains the PR-head and subsequent main-branch
-workflow links.
+workflow links. Documentation closeout commit
+[`26962f6`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/26962f66ecb185026b6719a812e437d83ccf4cf0)
+also passed the final main CI, ReadStat, libgretl feasibility, and libgretl
+OLS workflows recorded in [02-evidence-migration.md](02-evidence-migration.md).
 
 Decode, label metadata, lazy/materialized execution, panel metadata,
 last-operation state, formatting, CLI/JSON/MCP, and broad transform sequencing
