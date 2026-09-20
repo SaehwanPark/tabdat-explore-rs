@@ -98,6 +98,8 @@ pub enum Command {
   Panel { command: PanelCommand },
   /// Apply a panel within/between transform (execution is deferred).
   XtData { command: XtDataCommand },
+  /// Fit an instrumental-variables model (execution is deferred).
+  IvRegress { command: IvRegressCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -313,6 +315,37 @@ pub struct XtDataCommand {
   pub variables: Vec<String>,
   /// The requested within- or between-entity transform.
   pub transform: XtDataTransform,
+}
+
+/// The estimator forms accepted by the parser-only `ivregress` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IvEstimator {
+  /// Two-stage least squares.
+  TwoStageLeastSquares,
+  /// Generalized method of moments.
+  GeneralizedMethodOfMoments,
+}
+
+/// The parser-only `ivregress` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IvRegressCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered exogenous regressors.
+  pub exogenous: Vec<String>,
+  /// The single endogenous regressor supported by this syntax slice.
+  pub endogenous: String,
+  /// Ordered instrumental variables.
+  pub instruments: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+  /// The requested IV estimator.
+  pub estimator: IvEstimator,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -836,6 +869,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "reshape" => parse_reshape_command(body),
     "panel" => parse_panel_command(body),
     "xtdata" => parse_xtdata_command(body),
+    "ivregress" => parse_ivregress_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2770,6 +2804,150 @@ fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
         .map(|argument| argument.text)
         .collect(),
       transform,
+    },
+  })
+}
+
+fn ivregress_identifier_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<Vec<String>>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "ivregress option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
+    _ => Err(ParseError::new(format!(
+      "ivregress option {name} expects variables"
+    ))),
+  }
+}
+
+fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
+  let syntax =
+    "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let estimator = match (
+    parts.arguments[0].backtick_quoted,
+    parts.arguments[0].text.to_ascii_lowercase().as_str(),
+  ) {
+    (false, "2sls") => IvEstimator::TwoStageLeastSquares,
+    (false, "gmm") => IvEstimator::GeneralizedMethodOfMoments,
+    _ => return Err(ParseError::new("ivregress estimator must be 2sls or gmm")),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "endog" | "iv" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "ivregress unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "ivregress option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let endog_values = ivregress_identifier_option(&options, "endog")?;
+  let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
+    return Err(ParseError::new(
+      "ivregress option endog expects one variable",
+    ));
+  };
+  let endogenous = endog_values
+    .into_iter()
+    .next()
+    .expect("ivregress endog option arity checked before extracting the variable");
+
+  let instrument_values = ivregress_identifier_option(&options, "iv")?;
+  let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
+    return Err(ParseError::new(
+      "ivregress option iv expects at least one variable",
+    ));
+  };
+
+  let cluster_values = ivregress_identifier_option(&options, "cluster")?;
+  if cluster_values
+    .as_ref()
+    .is_some_and(|values| values.len() != 1)
+  {
+    return Err(ParseError::new(
+      "ivregress option cluster expects one variable",
+    ));
+  }
+  let cluster_variable = cluster_values.and_then(|mut values| values.pop());
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new(
+      "ivregress cannot combine robust and cluster",
+    ));
+  }
+
+  let outcome = parts.arguments[1].text.clone();
+  let exogenous = parts.arguments[2..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect::<Vec<_>>();
+  if exogenous.iter().any(|variable| variable == &endogenous) {
+    return Err(ParseError::new(
+      "ivregress endog variable must not appear in exogenous variables",
+    ));
+  }
+
+  Ok(Command::IvRegress {
+    command: IvRegressCommand {
+      outcome,
+      exogenous,
+      endogenous,
+      instruments,
+      robust,
+      cluster_variable,
+      include_intercept: !options.iter().any(|option| option.name == "noconstant"),
+      estimator,
     },
   })
 }

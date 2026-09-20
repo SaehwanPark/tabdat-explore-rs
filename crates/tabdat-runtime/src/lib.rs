@@ -2887,6 +2887,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Reshape { .. } => "reshape",
     Command::Panel { .. } => "panel",
     Command::XtData { .. } => "xtdata",
+    Command::IvRegress { .. } => "ivregress",
     Command::By { .. } => "by",
     Command::Collapse { .. } => "collapse",
     Command::Rename { .. } => "rename",
