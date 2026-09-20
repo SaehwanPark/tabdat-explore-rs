@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
   GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
-  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -321,6 +321,21 @@ pub struct LabelResult {
   pub metadata: Option<LabelMetadata>,
 }
 
+/// The owned result returned by a bounded one- or two-way frequency table.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TabulateResult {
+  /// Human-readable table headers in output order.
+  pub headers: Vec<String>,
+  /// Owned table rows in deterministic category order.
+  pub rows: Vec<Vec<CellValue>>,
+}
+
+struct TabulateCount {
+  row: CellValue,
+  column: Option<CellValue>,
+  count: u64,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -395,6 +410,8 @@ pub enum ExecutionResult {
   Decode(DecodeResult),
   /// Manages session-local variable and value-label metadata.
   Label(LabelResult),
+  /// Reports a bounded one- or two-way frequency table.
+  Tabulate(TabulateResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -571,6 +588,18 @@ pub enum RuntimeError {
   LabelDropUnknownSet { names: Vec<String> },
   /// A decode attachment contains values outside the integer code domain.
   DecodeRequiresIntegerLabels { variable: String },
+  /// The tabulate request did not name a row variable.
+  TabulateNoVariables,
+  /// The tabulate request named more than one row or column dimension.
+  TabulateUnsupportedDimensions,
+  /// The tabulate request repeated a dimension variable.
+  TabulateDuplicateVariable { variable: String },
+  /// The tabulate request named variables absent from the active schema.
+  TabulateUnknownVariable { variables: Vec<String> },
+  /// A percentage option was requested for a one-way table.
+  TabulatePercentageRequiresTwoWay { option: &'static str },
+  /// DuckDB could not produce or own the frequency table.
+  TabulateFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -822,6 +851,27 @@ impl fmt::Display for RuntimeError {
         formatter,
         "decode requires integer value labels on {variable}"
       ),
+      Self::TabulateNoVariables => formatter.write_str("tabulate expects a row variable"),
+      Self::TabulateUnsupportedDimensions => {
+        formatter.write_str("tabulate supports at most one row and one column variable")
+      }
+      Self::TabulateDuplicateVariable { variable } => {
+        write!(formatter, "tabulate duplicate variable: {variable}")
+      }
+      Self::TabulateUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "tabulate unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::TabulatePercentageRequiresTwoWay { option } => {
+        write!(
+          formatter,
+          "tabulate option {option} requires a two-way table"
+        )
+      }
+      Self::TabulateFailed => formatter.write_str("tabulate failed"),
       Self::LabelUnknownVariable { variable } => {
         write!(formatter, "label unknown variable: {variable}")
       }
@@ -940,6 +990,7 @@ impl Session {
       } => self.execute_encode(source, generate, label),
       Command::Decode { source, generate } => self.execute_decode(source, generate),
       Command::Label { command } => self.execute_label(command),
+      Command::Tabulate { command } => self.execute_tabulate(command),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1970,6 +2021,174 @@ impl Session {
     })
   }
 
+  fn execute_tabulate(&self, command: TabulateCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "tabulate",
+      })?;
+    if command.row_variables.is_empty() {
+      return Err(RuntimeError::TabulateNoVariables);
+    }
+    if command.row_variables.len() != 1 || command.column_variables.len() > 1 {
+      return Err(RuntimeError::TabulateUnsupportedDimensions);
+    }
+
+    let row_variable = &command.row_variables[0];
+    let column_variable = command.column_variables.first();
+    if column_variable.is_some_and(|variable| variable == row_variable) {
+      return Err(RuntimeError::TabulateDuplicateVariable {
+        variable: row_variable.clone(),
+      });
+    }
+    if column_variable.is_none() && command.row_percent {
+      return Err(RuntimeError::TabulatePercentageRequiresTwoWay { option: "row" });
+    }
+    if column_variable.is_none() && command.column_percent {
+      return Err(RuntimeError::TabulatePercentageRequiresTwoWay { option: "col" });
+    }
+
+    let known_variables = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<std::collections::BTreeSet<_>>();
+    let mut unknown = Vec::new();
+    if !known_variables.contains(row_variable.as_str()) {
+      unknown.push(row_variable.clone());
+    }
+    if let Some(variable) = column_variable
+      && !known_variables.contains(variable.as_str())
+    {
+      unknown.push(variable.clone());
+    }
+    if !unknown.is_empty() {
+      return Err(RuntimeError::TabulateUnknownVariable { variables: unknown });
+    }
+
+    let backend = self.backend.as_ref().ok_or(RuntimeError::TabulateFailed)?;
+    let counts = backend
+      .tabulate_counts(
+        row_variable,
+        column_variable.map(String::as_str),
+        command.include_missing,
+      )
+      .map_err(|_| RuntimeError::TabulateFailed)?;
+
+    if let Some(column_variable) = column_variable {
+      let mut row_values = Vec::new();
+      let mut column_values = Vec::new();
+      for count in &counts {
+        push_unique_tabulate_value(&mut row_values, &count.row);
+        let Some(column) = count.column.as_ref() else {
+          return Err(RuntimeError::TabulateFailed);
+        };
+        push_unique_tabulate_value(&mut column_values, column);
+      }
+      row_values.sort_by(tabulate_value_ordering);
+      column_values.sort_by(tabulate_value_ordering);
+
+      let mut headers = vec![row_variable.clone()];
+      for column in &column_values {
+        let displayed = if command.nolabel {
+          column.clone()
+        } else {
+          tabulate_display_value(&self.label_metadata, column_variable, column)
+        };
+        let label = tabulate_value_text(&displayed);
+        headers.push(format!("{label} Count"));
+        if command.row_percent {
+          headers.push(format!("{label} Row %"));
+        }
+        if command.column_percent {
+          headers.push(format!("{label} Col %"));
+        }
+      }
+
+      let mut rows = Vec::with_capacity(row_values.len());
+      for row_value in &row_values {
+        let displayed_row = if command.nolabel {
+          row_value.clone()
+        } else {
+          tabulate_display_value(&self.label_metadata, row_variable, row_value)
+        };
+        let row_total = counts
+          .iter()
+          .filter(|entry| tabulate_values_equal(&entry.row, row_value))
+          .map(|entry| entry.count)
+          .sum::<u64>();
+        let mut output = vec![displayed_row];
+        for column_value in &column_values {
+          let count = counts
+            .iter()
+            .find(|entry| {
+              tabulate_values_equal(&entry.row, row_value)
+                && entry
+                  .column
+                  .as_ref()
+                  .is_some_and(|entry_column| tabulate_values_equal(entry_column, column_value))
+            })
+            .map_or(0, |entry| entry.count);
+          output.push(CellValue::SignedInteger(i128::from(count)));
+          if command.row_percent {
+            output.push(CellValue::Float(if row_total == 0 {
+              0.0
+            } else {
+              100.0 * count as f64 / row_total as f64
+            }));
+          }
+          if command.column_percent {
+            let column_total = counts
+              .iter()
+              .filter(|entry| {
+                entry
+                  .column
+                  .as_ref()
+                  .is_some_and(|entry_column| tabulate_values_equal(entry_column, column_value))
+              })
+              .map(|entry| entry.count)
+              .sum::<u64>();
+            output.push(CellValue::Float(if column_total == 0 {
+              0.0
+            } else {
+              100.0 * count as f64 / column_total as f64
+            }));
+          }
+        }
+        rows.push(output);
+      }
+      return Ok(ExecutionResult::Tabulate(TabulateResult { headers, rows }));
+    }
+
+    let total = counts.iter().map(|entry| entry.count).sum::<u64>();
+    let mut rows = Vec::with_capacity(counts.len());
+    for entry in counts {
+      let displayed = if command.nolabel {
+        entry.row
+      } else {
+        tabulate_display_value(&self.label_metadata, row_variable, &entry.row)
+      };
+      rows.push(vec![
+        displayed,
+        CellValue::SignedInteger(i128::from(entry.count)),
+        CellValue::Float(if total == 0 {
+          0.0
+        } else {
+          100.0 * entry.count as f64 / total as f64
+        }),
+      ]);
+    }
+    Ok(ExecutionResult::Tabulate(TabulateResult {
+      headers: vec![
+        row_variable.clone(),
+        "Count".to_owned(),
+        "Percent".to_owned(),
+      ],
+      rows,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -2251,6 +2470,128 @@ fn upsert_attachment(metadata: &mut LabelMetadata, variable: String, set_name: S
   metadata.attachments.push((variable, set_name));
 }
 
+fn push_unique_tabulate_value(values: &mut Vec<CellValue>, value: &CellValue) {
+  if !values
+    .iter()
+    .any(|existing| tabulate_values_equal(existing, value))
+  {
+    values.push(value.clone());
+  }
+}
+
+fn tabulate_values_equal(left: &CellValue, right: &CellValue) -> bool {
+  match (left, right) {
+    (CellValue::Float(left), CellValue::Float(right)) => {
+      left == right || (left.is_nan() && right.is_nan())
+    }
+    _ => left == right,
+  }
+}
+
+fn tabulate_value_ordering(left: &CellValue, right: &CellValue) -> std::cmp::Ordering {
+  use std::cmp::Ordering;
+
+  match (left, right) {
+    (CellValue::Null, CellValue::Null) => Ordering::Equal,
+    (CellValue::Null, _) => Ordering::Greater,
+    (_, CellValue::Null) => Ordering::Less,
+    (CellValue::Boolean(left), CellValue::Boolean(right)) => left.cmp(right),
+    (CellValue::SignedInteger(left), CellValue::SignedInteger(right)) => left.cmp(right),
+    (CellValue::UnsignedInteger(left), CellValue::UnsignedInteger(right)) => left.cmp(right),
+    (CellValue::Float(left), CellValue::Float(right)) => left.total_cmp(right),
+    (
+      CellValue::Decimal {
+        scale: left_scale,
+        value: left,
+        ..
+      },
+      CellValue::Decimal {
+        scale: right_scale,
+        value: right,
+        ..
+      },
+    ) if left_scale == right_scale => left.cmp(right),
+    (CellValue::Text(left), CellValue::Text(right)) => left.cmp(right),
+    (CellValue::Bytes(left), CellValue::Bytes(right)) => left.cmp(right),
+    _ => tabulate_value_text(left).cmp(&tabulate_value_text(right)),
+  }
+}
+
+fn tabulate_display_value(
+  metadata: &LabelMetadata,
+  variable: &str,
+  value: &CellValue,
+) -> CellValue {
+  let Some((_, set_name)) = metadata
+    .attachments
+    .iter()
+    .find(|(name, _)| name == variable)
+  else {
+    return value.clone();
+  };
+  let Some(value_set) = metadata
+    .value_sets
+    .iter()
+    .find(|value_set| &value_set.name == set_name)
+  else {
+    return value.clone();
+  };
+  value_set
+    .mappings
+    .iter()
+    .find(|(label_value, _)| tabulate_label_matches_cell(label_value, value))
+    .map_or_else(|| value.clone(), |(_, text)| CellValue::Text(text.clone()))
+}
+
+fn tabulate_label_matches_cell(label: &LabelValue, value: &CellValue) -> bool {
+  match (label, value) {
+    (LabelValue::Integer(label), CellValue::SignedInteger(value)) => i128::from(*label) == *value,
+    (LabelValue::Integer(label), CellValue::UnsignedInteger(value)) => {
+      *label >= 0 && u128::try_from(*label).is_ok_and(|label| label == *value)
+    }
+    (LabelValue::Number(label), CellValue::Float(value)) => label
+      .parse::<f64>()
+      .is_ok_and(|label| label == *value || (label.is_nan() && value.is_nan())),
+    (LabelValue::Text(label), CellValue::Text(value)) => label == value,
+    _ => false,
+  }
+}
+
+fn tabulate_value_text(value: &CellValue) -> String {
+  match value {
+    CellValue::Null => "missing".to_owned(),
+    CellValue::Boolean(value) => value.to_string(),
+    CellValue::SignedInteger(value) => value.to_string(),
+    CellValue::UnsignedInteger(value) => value.to_string(),
+    CellValue::Float(value) => value.to_string(),
+    CellValue::Decimal { value, scale, .. } => {
+      if *scale == 0 {
+        return value.to_string();
+      }
+      let negative = *value < 0;
+      let digits = value.unsigned_abs().to_string();
+      let scale = usize::from(*scale);
+      let rendered = if digits.len() <= scale {
+        format!("0.{}{}", "0".repeat(scale - digits.len()), digits)
+      } else {
+        let split = digits.len() - scale;
+        format!("{}.{}", &digits[..split], &digits[split..])
+      };
+      if negative {
+        format!("-{rendered}")
+      } else {
+        rendered
+      }
+    }
+    CellValue::Text(value) => value.clone(),
+    CellValue::Bytes(value) => format!("0x{}", hex_bytes(value)),
+  }
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+  bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 impl Default for Session {
   fn default() -> Self {
     Self::new()
@@ -2282,6 +2623,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Encode { .. } => "encode",
     Command::Decode { .. } => "decode",
     Command::Label { .. } => "label",
+    Command::Tabulate { .. } => "tabulate",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
@@ -3403,6 +3745,60 @@ impl DuckDbBackend {
       .query_map([], |row| row.get::<_, String>(0))
       .map_err(|_| ())?;
     rows.map(|row| row.map_err(|_| ())).collect()
+  }
+
+  fn tabulate_counts(
+    &self,
+    row_variable: &str,
+    column_variable: Option<&str>,
+    include_missing: bool,
+  ) -> Result<Vec<TabulateCount>, ()> {
+    let quoted_row = quote_identifier(row_variable);
+    let quoted_column = column_variable.map(quote_identifier);
+    let select_columns = quoted_column.as_ref().map_or_else(
+      || quoted_row.clone(),
+      |column| format!("{quoted_row}, {column}"),
+    );
+    let group_columns = select_columns.clone();
+    let order_columns = quoted_column.as_ref().map_or_else(
+      || format!("{quoted_row} ASC NULLS LAST"),
+      |column| format!("{quoted_row} ASC NULLS LAST, {column} ASC NULLS LAST"),
+    );
+    let where_sql = if include_missing {
+      String::new()
+    } else {
+      let mut predicates = vec![format!("{quoted_row} IS NOT NULL")];
+      if let Some(column) = quoted_column.as_ref() {
+        predicates.push(format!("{column} IS NOT NULL"));
+      }
+      format!(" WHERE {}", predicates.join(" AND "))
+    };
+    let query = format!(
+      "SELECT {select_columns}, COUNT(*) FROM {ACTIVE_TABLE}{where_sql} GROUP BY {group_columns} ORDER BY {order_columns}"
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let mut counts = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| ())? {
+      let row_value = cell_value_from_ref(row.get_ref(0).map_err(|_| ())?)?;
+      let column = if quoted_column.is_some() {
+        Some(cell_value_from_ref(row.get_ref(1).map_err(|_| ())?)?)
+      } else {
+        None
+      };
+      let count = u64::try_from(
+        row
+          .get::<_, i64>(if quoted_column.is_some() { 2 } else { 1 })
+          .map_err(|_| ())?,
+      )
+      .map_err(|_| ())?;
+      counts.push(TabulateCount {
+        row: row_value,
+        column,
+        count,
+      });
+    }
+    Ok(counts)
   }
 
   fn encode_column(
