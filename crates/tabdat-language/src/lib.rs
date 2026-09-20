@@ -94,6 +94,8 @@ pub enum Command {
   Append { table_name: String },
   /// Reshape the active dataset between long and wide layouts (execution is deferred).
   Reshape { command: ReshapeCommand },
+  /// Report or declare panel identifiers (execution is deferred).
+  Panel { command: PanelCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -267,6 +269,29 @@ pub struct ReshapeCommand {
   pub identifiers: Vec<String>,
   /// The output variable carrying the long-form j values.
   pub j_variable: String,
+}
+
+/// The actions accepted by the parser-only `panel` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PanelAction {
+  /// Report the current panel declaration.
+  Report,
+  /// Clear the current panel declaration.
+  Clear,
+  /// Declare the entity and time variables for the active relation.
+  Set {
+    /// The entity identifier variable.
+    id_variable: String,
+    /// The time variable.
+    time_variable: String,
+  },
+}
+
+/// The parser-only panel form retained for a later relation runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PanelCommand {
+  /// The requested panel action.
+  pub action: PanelAction,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -788,6 +813,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "join" => parse_join_command(body),
     "append" => parse_append_command(body),
     "reshape" => parse_reshape_command(body),
+    "panel" => parse_panel_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2603,6 +2629,57 @@ fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
       variables,
       identifiers,
       j_variable,
+    },
+  })
+}
+
+fn parse_panel_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "panel expects syntax: panel [<id_var> <time_var>|clear]";
+  let parts = parse_simple_body(body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  if parts.arguments.is_empty() {
+    return Ok(Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Report,
+      },
+    });
+  }
+
+  let first = &parts.arguments[0];
+  if !first.backtick_quoted && first.text.eq_ignore_ascii_case("clear") {
+    if parts.arguments.len() == 1 {
+      return Ok(Command::Panel {
+        command: PanelCommand {
+          action: PanelAction::Clear,
+        },
+      });
+    }
+    return Err(ParseError::new(syntax));
+  }
+
+  if parts.arguments.len() != 2 {
+    return Err(ParseError::new(syntax));
+  }
+  let time_variable = &parts.arguments[1].text;
+  if first.text == *time_variable {
+    return Err(ParseError::new(
+      "panel id and time variables must be distinct",
+    ));
+  }
+
+  Ok(Command::Panel {
+    command: PanelCommand {
+      action: PanelAction::Set {
+        id_variable: first.text.clone(),
+        time_variable: time_variable.clone(),
+      },
     },
   })
 }
