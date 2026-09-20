@@ -1,9 +1,10 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
-  ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow, LabelCommand,
-  LabelValue, LazyEngine, PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule,
-  RecodeTarget, RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey,
-  TabulateCommand, XtDataCommand, XtDataTransform, parse_command,
+  ExecutionMode, GenerateBinaryOperator, GenerateExpression, IvEstimator, IvRegressCommand,
+  JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, PanelAction, PanelCommand,
+  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, ReshapeCommand,
+  ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, XtDataCommand,
+  XtDataTransform, parse_command,
 };
 
 #[test]
@@ -375,6 +376,112 @@ fn xtdata_preserves_bounded_parser_diagnostics() {
       "xtdata expects syntax: xtdata <varlist>, within|between",
     ),
     ("xtdata wage, `within`", "option names must be identifiers"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn ivregress_parses_bounded_estimator_forms() {
+  assert_eq!(
+    parse_command("ivregress 2sls cost age bmi, endog(hours) iv(distance policy)").unwrap(),
+    Command::IvRegress {
+      command: IvRegressCommand {
+        outcome: "cost".to_owned(),
+        exogenous: vec!["age".to_owned(), "bmi".to_owned()],
+        endogenous: "hours".to_owned(),
+        instruments: vec!["distance".to_owned(), "policy".to_owned()],
+        robust: false,
+        cluster_variable: None,
+        include_intercept: true,
+        estimator: IvEstimator::TwoStageLeastSquares,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command(
+      "IVREGRESS gmm `total cost` `age value`, endog(`hours value`) iv(`distance value`) cluster(group_id) noconstant"
+    )
+    .unwrap(),
+    Command::IvRegress {
+      command: IvRegressCommand {
+        outcome: "total cost".to_owned(),
+        exogenous: vec!["age value".to_owned()],
+        endogenous: "hours value".to_owned(),
+        instruments: vec!["distance value".to_owned()],
+        robust: false,
+        cluster_variable: Some("group_id".to_owned()),
+        include_intercept: false,
+        estimator: IvEstimator::GeneralizedMethodOfMoments,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("ivregress 2sls cost, endog(hours) iv(distance) robust").unwrap(),
+    Command::IvRegress {
+      command: IvRegressCommand {
+        outcome: "cost".to_owned(),
+        exogenous: vec![],
+        endogenous: "hours".to_owned(),
+        instruments: vec!["distance".to_owned()],
+        robust: true,
+        cluster_variable: None,
+        include_intercept: true,
+        estimator: IvEstimator::TwoStageLeastSquares,
+      },
+    }
+  );
+}
+
+#[test]
+fn ivregress_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "ivregress",
+      "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)",
+    ),
+    (
+      "ivregress liml y x, endog(z) iv(w)",
+      "ivregress estimator must be 2sls or gmm",
+    ),
+    (
+      "ivregress 2sls y x",
+      "ivregress option endog expects one variable",
+    ),
+    (
+      "ivregress 2sls y x, endog(z)",
+      "ivregress option iv expects at least one variable",
+    ),
+    (
+      "ivregress 2sls y x, endog(z w) iv(q)",
+      "ivregress option endog expects one variable",
+    ),
+    (
+      "ivregress 2sls y x, endog(z) iv(w) robust=true",
+      "ivregress option robust does not accept a value",
+    ),
+    (
+      "ivregress 2sls y x, endog(z) iv(w) robust cluster(g)",
+      "ivregress cannot combine robust and cluster",
+    ),
+    (
+      "ivregress 2sls y z, endog(z) iv(w)",
+      "ivregress endog variable must not appear in exogenous variables",
+    ),
+    (
+      "ivregress 2sls y x, endog(z) iv(w) foo",
+      "ivregress unsupported option: foo",
+    ),
+    (
+      "ivregress `2sls` y, endog(z) iv(w)",
+      "ivregress estimator must be 2sls or gmm",
+    ),
   ];
 
   for (input, expected) in cases {
