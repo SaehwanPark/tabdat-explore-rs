@@ -373,6 +373,11 @@ Port TabDat's language before implementing most execution.
   integer lag options, lag-order validation, exact diagnostics, and parser-only
   execution deferral are covered; panel metadata and dynamic-panel estimation
   remain deferred).
+- [x] Add the bounded shared tokenizer API (PR #68, squash merge `45da1ac`;
+  owned token kinds/text, Unicode-scalar offsets, recovered identifiers,
+  strings, numbers, symbols, exact lexical diagnostics, and delegation from
+  existing option/expression consumers are covered; command-specific
+  simple-body parsing and broader tokenizer integration remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

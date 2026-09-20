@@ -687,6 +687,30 @@ prediction, post-estimation state, labels, formatting, CLI, JSON, MCP, and
 broad Python `xtabond` parity deferred. Phase 11.1 runtime `xtabond` remains
 unchecked.
 
+## Verified slice: bounded tokenizer API
+
+Merged [PR #68](https://github.com/SaehwanPark/tabdat-explore-rs/pull/68)
+([45da1ac](https://github.com/SaehwanPark/tabdat-explore-rs/commit/45da1ac86b5a7194bf020417fd11d2a540e78e1e))
+adds an owned, backend-independent tokenizer API to `tabdat-language`.
+`TokenKind`, `Token`, and `tokenize` recover the pinned Python `_tokenize`
+behavior for identifiers, backtick identifiers, strings, numbers, two-character
+operators, one-character symbols, Unicode-scalar offsets, and bounded lexical
+diagnostics. Existing option/expression token consumers delegate through the
+shared tokenizer.
+
+This is a bounded lexical slice, not a complete parser. Command-specific
+`parse_simple_body` grammar, varlists, option parsing, `if` clauses, expression
+AST/precedence, prefixed commands, scripts, runtime execution, data behavior,
+and statistical behavior remain deferred. The recovered quoted-string offset
+quirk is documented and tested rather than normalized away.
+
+Evidence: [_workspace/parser-tokenizer/](_workspace/parser-tokenizer/),
+including the [migration evidence](_workspace/parser-tokenizer/02-evidence-migration.md),
+[review](_workspace/parser-tokenizer/03-review.md), and
+[summary](_workspace/parser-tokenizer/04-summary.md). The focused oracle,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
