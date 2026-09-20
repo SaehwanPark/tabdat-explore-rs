@@ -48,5 +48,5 @@ slices.
 
 The bounded eager local-Parquet grouped-aggregate contract is accepted. Oracle,
 local, PR-head, merge-head, policy, and focused review evidence are recorded in
-the companion migration record; documentation-closeout workflow links remain
-pending until the closeout push completes.
+the companion migration record; the documentation-closeout CI, ReadStat,
+libgretl, and libgretl OLS workflows also passed.

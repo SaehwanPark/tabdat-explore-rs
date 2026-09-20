@@ -102,8 +102,18 @@ The squash merge head [94391af](https://github.com/SaehwanPark/tabdat-explore-rs
 - [main runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35492943539),
   including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35492943539/job/106030888090).
 
-Documentation-closeout workflow links will be added after this closeout commit
-finishes its path-scoped hosted checks.
+The documentation-closeout commit [02e1554](https://github.com/SaehwanPark/tabdat-explore-rs/commit/02e1554b3853bc48d83521a050e389dadd3c518d) passed:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006705),
+  including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006705/job/106033677232)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006705/job/106033677331);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006702),
+  including [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006702/job/106033677280)
+  and [ReadStat Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006702/job/106033677364);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006655),
+  including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006655/job/106033677058); and
+- [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006711),
+  including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006711/job/106033677325).
 
 ## Deviations and deferrals
 

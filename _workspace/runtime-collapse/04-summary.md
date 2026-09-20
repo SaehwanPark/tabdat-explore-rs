@@ -37,5 +37,7 @@ formatting, CLI, JSON, MCP, and broad Python parity surfaces remain deferred.
 PR-head CI/runtime and policy workflows passed for e7f2540. The squash merge
 head 94391af was then verified by [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35492943464)
 and [main runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35492943539).
-Documentation-closeout workflow links will be added after the closeout commit
-is accepted by its hosted checks.
+The documentation-closeout commit 02e1554 then passed [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006705),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006702),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006655),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35494006711).
