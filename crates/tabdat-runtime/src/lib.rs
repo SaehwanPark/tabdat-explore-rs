@@ -2889,6 +2889,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::XtData { .. } => "xtdata",
     Command::IvRegress { .. } => "ivregress",
     Command::XtReg { .. } => "xtreg",
+    Command::Estat { .. } => "estat",
     Command::By { .. } => "by",
     Command::Collapse { .. } => "collapse",
     Command::Rename { .. } => "rename",

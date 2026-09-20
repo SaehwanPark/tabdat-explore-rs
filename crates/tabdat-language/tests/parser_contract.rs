@@ -1,10 +1,10 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
-  ExecutionMode, GenerateBinaryOperator, GenerateExpression, IvEstimator, IvRegressCommand,
-  JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, PanelAction, PanelCommand,
-  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, ReshapeCommand,
-  ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, XtDataCommand,
-  XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
+  EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
+  IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
+  PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
+  RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
+  XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -579,6 +579,86 @@ fn xtreg_preserves_bounded_parser_diagnostics() {
       "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
     ),
     ("xtreg wage exper, FE", "xtreg unsupported option: FE"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn estat_parses_bounded_diagnostic_subcommands() {
+  assert_eq!(
+    parse_command("estat firststage").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::FirstStage,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("ESTAT OVERID").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Overid,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("estat 'endogenous'").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Endogenous,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("estat \"hausman\"").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Hausman,
+      },
+    }
+  );
+}
+
+#[test]
+fn estat_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "estat",
+      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+    ),
+    (
+      "estat firststage extra",
+      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+    ),
+    (
+      "estat, firststage",
+      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+    ),
+    (
+      "estat detail",
+      "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+    ),
+    (
+      "estat firststage, robust",
+      "estat firststage does not support options",
+    ),
+    ("estat firststage if", "missing expression after if"),
+    (
+      "estat firststage=",
+      "estat assignment requires an expression after =",
+    ),
+    ("estat firststage -x", "unsupported token in command: -"),
+    (
+      "estat `firststage`",
+      "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+    ),
   ];
 
   for (input, expected) in cases {
