@@ -41,5 +41,8 @@ PR-head CI/runtime and policy workflows passed for cb463cd. The squash merge
 head 24405a6 was then verified by
 [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35487873526)
 and [main runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35487873479).
-The documentation-closeout workflow links are recorded after that commit
-completes.
+The documentation-closeout workflows for 7ff7e00 also passed: [main
+CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029352),
+[ReadStat](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029340),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029344),
+and [libgretl OLS](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029373).

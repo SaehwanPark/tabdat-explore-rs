@@ -89,7 +89,18 @@ The squash merge head 24405a6 was then verified by:
 - [main runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35487873479),
   including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35487873479/job/106017458008).
 
-The documentation-closeout workflows are recorded after their completion.
+The documentation-closeout workflows for 7ff7e00 also passed:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029352),
+  including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029352/job/106020591501)
+  and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029352/job/106020591564);
+- [ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029340),
+  including [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029340/job/106020591402)
+  and [ReadStat Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029340/job/106020591445);
+- [libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029344),
+  including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029344/job/106020591377); and
+- [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029373),
+  including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35489029373/job/106020591471).
 
 ## Deviations and deferrals
 
