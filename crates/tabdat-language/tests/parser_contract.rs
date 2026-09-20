@@ -4,7 +4,7 @@ use tabdat_language::{
   IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
   PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
   RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
-  XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
+  XtAbondCommand, XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -579,6 +579,161 @@ fn xtreg_preserves_bounded_parser_diagnostics() {
       "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
     ),
     ("xtreg wage exper, FE", "xtreg unsupported option: FE"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtabond_parses_bounded_dynamic_panel_forms() {
+  assert_eq!(
+    parse_command("xtabond wage").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec![],
+        robust: false,
+        lag_depth: 1,
+        instrument_lag_start: 2,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond wage exposure, robust").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec!["exposure".to_owned()],
+        robust: true,
+        lag_depth: 1,
+        instrument_lag_start: 2,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond wage exposure, lags(2) instlag(3)").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec!["exposure".to_owned()],
+        robust: false,
+        lag_depth: 2,
+        instrument_lag_start: 3,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond `wage value` `exposure value`, lags(2) instlag(3)").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage value".to_owned(),
+        predictors: vec!["exposure value".to_owned()],
+        robust: false,
+        lag_depth: 2,
+        instrument_lag_start: 3,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond \"wage value\" \"exposure value\", lags(2) instlag(3)").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage value".to_owned(),
+        predictors: vec!["exposure value".to_owned()],
+        robust: false,
+        lag_depth: 2,
+        instrument_lag_start: 3,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond wage, instlag(3)").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec![],
+        robust: false,
+        lag_depth: 1,
+        instrument_lag_start: 3,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtabond wage, robust robust lags(1) instlag(2)").unwrap(),
+    Command::XtAbond {
+      command: XtAbondCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec![],
+        robust: true,
+        lag_depth: 1,
+        instrument_lag_start: 2,
+      },
+    }
+  );
+}
+
+#[test]
+fn xtabond_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "xtabond",
+      "xtabond expects syntax: xtabond <y> [xvars] [, robust lags(#) instlag(#)]",
+    ),
+    (
+      "xtabond wage if x > 0",
+      "xtabond expects syntax: xtabond <y> [xvars] [, robust lags(#) instlag(#)]",
+    ),
+    (
+      "xtabond wage, robust=true",
+      "xtabond option robust does not accept a value",
+    ),
+    (
+      "xtabond wage, cluster(firm_id)",
+      "xtabond unsupported option: cluster",
+    ),
+    (
+      "xtabond wage, lags(0)",
+      "xtabond option lags must be at least 1",
+    ),
+    (
+      "xtabond wage, instlag(1)",
+      "xtabond option instlag must be at least 2",
+    ),
+    (
+      "xtabond wage, lags(2) instlag(2)",
+      "xtabond option instlag must be greater than option lags",
+    ),
+    (
+      "xtabond wage, lags(2) lags(3)",
+      "xtabond option lags may only be supplied once",
+    ),
+    ("xtabond wage, detail", "xtabond unsupported option: detail"),
+    (
+      "xtabond wage, lags(foo)",
+      "option lags expects a numeric value",
+    ),
+    (
+      "xtabond wage, instlag(foo)",
+      "option instlag expects a numeric value",
+    ),
+    (
+      "xtabond wage, lags(1.5) instlag(3)",
+      "xtabond option lags expects an integer value",
+    ),
+    (
+      "xtabond wage, lags(1) instlag(3) foo bar",
+      "xtabond unsupported option: bar, foo",
+    ),
+    (
+      "XTABOND wage, LAGS(2)",
+      "option LAGS values must be identifiers",
+    ),
   ];
 
   for (input, expected) in cases {

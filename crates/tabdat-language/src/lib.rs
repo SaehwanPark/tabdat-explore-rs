@@ -102,6 +102,8 @@ pub enum Command {
   IvRegress { command: IvRegressCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
   XtReg { command: XtRegCommand },
+  /// Fit a dynamic-panel Arellano-Bond model (execution is deferred).
+  XtAbond { command: XtAbondCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded grouped read-only child command.
@@ -375,6 +377,22 @@ pub struct XtRegCommand {
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
+}
+
+/// The parser-only `xtabond` dynamic-panel estimator form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct XtAbondCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Maximum lag depth used by the eventual estimator.
+  pub lag_depth: i64,
+  /// First lag used for the eventual instrument set.
+  pub instrument_lag_start: i64,
 }
 
 /// The no-option post-estimation diagnostics accepted by this parser-only
@@ -922,6 +940,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtdata" => parse_xtdata_command(body),
     "ivregress" => parse_ivregress_command(body),
     "xtreg" => parse_xtreg_command(body),
+    "xtabond" => parse_xtabond_command(body),
     "estat" => parse_estat_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
@@ -3112,6 +3131,113 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn xtabond_integer_option(
+  options: &[UseOption],
+  name: &str,
+  minimum: i64,
+) -> Result<Option<i64>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "xtabond option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+
+  let UseOptionValue::Number(value) = &option.value else {
+    return Err(ParseError::new(format!(
+      "xtabond option {name} expects an integer value"
+    )));
+  };
+  let parsed = value.parse::<f64>().ok().filter(|value| value.is_finite());
+  let Some(parsed) = parsed.filter(|value| value.fract() == 0.0) else {
+    return Err(ParseError::new(format!(
+      "xtabond option {name} expects an integer value"
+    )));
+  };
+  if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+    return Err(ParseError::new(format!(
+      "xtabond option {name} expects an integer value"
+    )));
+  }
+  let parsed = parsed as i64;
+  if parsed < minimum {
+    return Err(ParseError::new(format!(
+      "xtabond option {name} must be at least {minimum}"
+    )));
+  }
+  Ok(Some(parsed))
+}
+
+fn parse_xtabond_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "xtabond expects syntax: xtabond <y> [xvars] [, robust lags(#) instlag(#)]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.is_empty()
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "robust" | "lags" | "instlag"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "xtabond unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "robust" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "xtabond option robust does not accept a value",
+      ));
+    }
+  }
+
+  let lag_depth = xtabond_integer_option(&options, "lags", 1)?.unwrap_or(1);
+  let instrument_lag_start = xtabond_integer_option(&options, "instlag", 2)?.unwrap_or(2);
+  if instrument_lag_start <= lag_depth {
+    return Err(ParseError::new(
+      "xtabond option instlag must be greater than option lags",
+    ));
+  }
+
+  Ok(Command::XtAbond {
+    command: XtAbondCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|argument| argument.text.clone())
+        .collect(),
+      robust: options.iter().any(|option| option.name == "robust"),
+      lag_depth,
+      instrument_lag_start,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -4162,7 +4288,7 @@ struct UseToken {
 enum UseOptionValue {
   Flag,
   String(String),
-  Number,
+  Number(String),
   Boolean(bool),
   Identifiers(Vec<String>),
 }
@@ -4358,7 +4484,7 @@ fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, Pars
         )));
       }
       value = match value_token.kind {
-        UseTokenKind::Number => UseOptionValue::Number,
+        UseTokenKind::Number => UseOptionValue::Number(value_token.text),
         _ => UseOptionValue::String(value_token.text),
       };
     } else if stream.peek_is_kind(&UseTokenKind::Number)
@@ -4437,7 +4563,7 @@ fn parse_use_parenthesized_value(
   ) {
     let numeric_text: String = tokens.iter().map(|token| token.text.as_str()).collect();
     if numeric_text.parse::<f64>().is_ok() {
-      return Ok(UseOptionValue::Number);
+      return Ok(UseOptionValue::Number(numeric_text));
     }
     return Err(ParseError::new(format!(
       "option {name} expects a numeric value"
@@ -4465,14 +4591,18 @@ fn parse_use_parenthesized_value(
     if !use_numeric_list_is_valid(&tokens) {
       return Err(ParseError::new("option l1_ratio values must be numeric"));
     }
-    return Ok(UseOptionValue::Number);
+    return Ok(UseOptionValue::Number(
+      tokens.iter().map(|token| token.text.as_str()).collect(),
+    ));
   }
 
   if name == "start" {
     if !use_numeric_list_is_valid(&tokens) {
       return Err(ParseError::new("option start values must be numeric"));
     }
-    return Ok(UseOptionValue::Number);
+    return Ok(UseOptionValue::Number(
+      tokens.iter().map(|token| token.text.as_str()).collect(),
+    ));
   }
 
   if tokens
