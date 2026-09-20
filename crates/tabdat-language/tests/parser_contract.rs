@@ -59,6 +59,60 @@ fn tabulate_parses_bounded_frequency_forms() {
 }
 
 #[test]
+fn append_parses_bounded_named_table_forms() {
+  assert_eq!(
+    parse_command("append followup").unwrap(),
+    Command::Append {
+      table_name: "followup".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("APPEND `followup`").unwrap(),
+    Command::Append {
+      table_name: "followup".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command("append \"followup\"").unwrap(),
+    Command::Append {
+      table_name: "followup".to_owned(),
+    }
+  );
+}
+
+#[test]
+fn append_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("append", "append expects syntax: append <table>"),
+    (
+      "append followup extra",
+      "append expects syntax: append <table>",
+    ),
+    (
+      "append followup, replace",
+      "append expects syntax: append <table>",
+    ),
+    (
+      "append followup if age > 18",
+      "append expects syntax: append <table>",
+    ),
+    (
+      "append active",
+      "sql into cannot use reserved table name: active",
+    ),
+    ("append 123", "sql into table name must be an identifier"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn tabulate_preserves_bounded_parser_diagnostics() {
   let cases = [
     ("tabulate", "tabulate expects one or two variables"),
