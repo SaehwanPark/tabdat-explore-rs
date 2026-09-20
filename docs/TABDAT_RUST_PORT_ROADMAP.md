@@ -378,6 +378,11 @@ Port TabDat's language before implementing most execution.
   strings, numbers, symbols, exact lexical diagnostics, and delegation from
   existing option/expression consumers are covered; command-specific
   simple-body parsing and broader tokenizer integration remain deferred).
+- [x] Add the bounded direct `ttest` syntax slice (PR #69, squash merge
+  `4dcd892`; typed value, paired-variable, and `by()` forms, Welch/unequal
+  flags, recovered diagnostics, quoted names, and parser-only execution
+  deferral are covered; numeric conversion and statistical inference remain
+  deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

@@ -711,6 +711,31 @@ including the [migration evidence](_workspace/parser-tokenizer/02-evidence-migra
 locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
 workflows all passed.
 
+## Verified slice: syntax-only `ttest` command
+
+Merged [PR #69](https://github.com/SaehwanPark/tabdat-explore-rs/pull/69)
+([4dcd892](https://github.com/SaehwanPark/tabdat-explore-rs/commit/4dcd892f59422774e49742019e5f4eefb459711b))
+adds a bounded, backend-independent `ttest` syntax boundary to
+`tabdat-language`. The parser returns an owned `TtestCommand` for
+`ttest <var> == <numeric-value>`, `ttest <var> == <other-var>`, and
+`ttest <var>, by(<group-var>)` with flag-only `welch`/`unequal` options. It
+preserves the pinned diagnostics, decoded quoted names, repeated alias flags,
+and source numeric spelling. Runtime deliberately returns the typed unsupported
+command result; it does not inspect a relation, fit a model, calculate
+inference, initialize DuckDB, or mutate session state.
+
+Evidence: [_workspace/parser-ttest/](_workspace/parser-ttest/), including the
+[migration evidence](_workspace/parser-ttest/02-evidence-migration.md),
+[review](_workspace/parser-ttest/03-review.md), and
+[summary](_workspace/parser-ttest/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves numeric conversion, type and missingness
+semantics, sample construction, inference, covariance, post-estimation state,
+reporting, CLI, JSON, MCP, and broad Python statistical parity deferred. The
+Phase 7 statistical `ttest` item remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
