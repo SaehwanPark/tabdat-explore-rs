@@ -2,7 +2,7 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
   ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow, LabelCommand,
   LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
-  RowLimit, SettingName, SortKey, TabulateCommand, parse_command,
+  ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, parse_command,
 };
 
 #[test]
@@ -103,6 +103,124 @@ fn append_preserves_bounded_parser_diagnostics() {
     ("append 123", "sql into table name must be an identifier"),
   ];
 
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn reshape_parses_bounded_layout_forms() {
+  assert_eq!(
+    parse_command("reshape long income cost, i(id) j(year)").unwrap(),
+    Command::Reshape {
+      command: ReshapeCommand {
+        direction: ReshapeDirection::Long,
+        variables: vec!["income".to_owned(), "cost".to_owned()],
+        identifiers: vec!["id".to_owned()],
+        j_variable: "year".to_owned(),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("reshape WIDE income cost, i(firm_id `person id`) j(year)").unwrap(),
+    Command::Reshape {
+      command: ReshapeCommand {
+        direction: ReshapeDirection::Wide,
+        variables: vec!["income".to_owned(), "cost".to_owned()],
+        identifiers: vec!["firm_id".to_owned(), "person id".to_owned()],
+        j_variable: "year".to_owned(),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("reshape \"long\" \"income value\", i(id) j(year)").unwrap(),
+    Command::Reshape {
+      command: ReshapeCommand {
+        direction: ReshapeDirection::Long,
+        variables: vec!["income value".to_owned()],
+        identifiers: vec!["id".to_owned()],
+        j_variable: "year".to_owned(),
+      },
+    }
+  );
+}
+
+#[test]
+fn reshape_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "reshape",
+      "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)",
+    ),
+    (
+      "reshape wider income, i(id) j(year)",
+      "reshape direction must be long or wide",
+    ),
+    (
+      "reshape long, i(id) j(year)",
+      "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)",
+    ),
+    (
+      "reshape `long` income, i(id) j(year)",
+      "reshape direction must be long or wide",
+    ),
+    (
+      "reshape long income if age > 18, i(id) j(year)",
+      "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)",
+    ),
+    (
+      "reshape long income = cost, i(id) j(year)",
+      "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)",
+    ),
+    (
+      "reshape long income, i(id)",
+      "reshape expects exactly one j(name) option",
+    ),
+    (
+      "reshape long income, j(year)",
+      "reshape expects exactly one i(id_vars) option",
+    ),
+    (
+      "reshape long income, i() j(year)",
+      "reshape expects exactly one i(id_vars) option",
+    ),
+    (
+      "reshape long income, i(id) j()",
+      "reshape expects exactly one j(name) option",
+    ),
+    (
+      "reshape long income, i(id) j(year month)",
+      "reshape expects exactly one j(name) option",
+    ),
+    (
+      "reshape long income income, i(id) j(year)",
+      "reshape variable list contains duplicates",
+    ),
+    (
+      "reshape long income, i(id id) j(year)",
+      "reshape variable list contains duplicates",
+    ),
+    (
+      "reshape long income, i(id) i(group) j(year)",
+      "reshape option i may only be supplied once",
+    ),
+    (
+      "reshape long income, i(id) j(income)",
+      "reshape variables, i(), and j() names must be distinct",
+    ),
+    (
+      "reshape long income, i(income) j(year)",
+      "reshape variables, i(), and j() names must be distinct",
+    ),
+    (
+      "reshape long income, i(id) j(year) replace",
+      "reshape unsupported option: replace",
+    ),
+  ];
   for (input, expected) in cases {
     assert_eq!(
       parse_command(input).unwrap_err().message(),
