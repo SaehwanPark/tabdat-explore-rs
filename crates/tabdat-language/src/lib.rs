@@ -92,6 +92,8 @@ pub enum Command {
   Join { command: JoinCommand },
   /// Append rows from a named table (execution is deferred).
   Append { table_name: String },
+  /// Reshape the active dataset between long and wide layouts (execution is deferred).
+  Reshape { command: ReshapeCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -243,6 +245,28 @@ pub struct JoinCommand {
   pub how: JoinHow,
   /// Suffix used by the eventual runtime for colliding right-side columns.
   pub suffix: String,
+}
+
+/// The two layout directions accepted by the bounded `reshape` syntax.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReshapeDirection {
+  /// Convert repeated wide columns into rows.
+  Long,
+  /// Convert repeated rows into suffixed wide columns.
+  Wide,
+}
+
+/// The parser-only reshape form retained for a later relation runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReshapeCommand {
+  /// Whether the eventual runtime should produce long or wide output.
+  pub direction: ReshapeDirection,
+  /// Ordered source variables participating in the reshape.
+  pub variables: Vec<String>,
+  /// Ordered identifier variables retained across reshaped rows or columns.
+  pub identifiers: Vec<String>,
+  /// The output variable carrying the long-form j values.
+  pub j_variable: String,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -763,6 +787,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "tabulate" => parse_tabulate_command(body),
     "join" => parse_join_command(body),
     "append" => parse_append_command(body),
+    "reshape" => parse_reshape_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2469,6 +2494,143 @@ fn parse_append_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Append { table_name })
 }
 
+fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let argument_body = argument_body.trim_matches(is_command_whitespace);
+  let simple_parts = parse_simple_body(argument_body, false)?;
+  if simple_parts.has_condition
+    || simple_parts.has_assignment
+    || simple_parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let argument_tokens = tokenize_use_options(argument_body)?;
+  if argument_tokens.len() < 2 {
+    return Err(ParseError::new(syntax));
+  }
+  let direction = match &argument_tokens[0].kind {
+    UseTokenKind::Identifier { quoted: true } | UseTokenKind::Symbol => None,
+    _ => Some(argument_tokens[0].text.to_ascii_lowercase()),
+  };
+  let direction = match direction.as_deref() {
+    Some("long") => ReshapeDirection::Long,
+    Some("wide") => ReshapeDirection::Wide,
+    _ => return Err(ParseError::new("reshape direction must be long or wide")),
+  };
+
+  let variables = argument_tokens[1..]
+    .iter()
+    .map(|token| {
+      if matches!(token.kind, UseTokenKind::Symbol) {
+        Err(ParseError::new(syntax))
+      } else {
+        Ok(token.text.clone())
+      }
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+  if variables.iter().enumerate().any(|(index, variable)| {
+    variables[..index]
+      .iter()
+      .any(|previous| previous == variable)
+  }) {
+    return Err(ParseError::new("reshape variable list contains duplicates"));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .map(|option| option.name.clone())
+    .filter(|name| name != "i" && name != "j")
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "reshape unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let identifiers = reshape_identifier_option(&options, "i")?;
+  let Some(identifiers) = identifiers.filter(|identifiers| !identifiers.is_empty()) else {
+    return Err(ParseError::new(
+      "reshape expects exactly one i(id_vars) option",
+    ));
+  };
+  if identifiers.iter().enumerate().any(|(index, identifier)| {
+    identifiers[..index]
+      .iter()
+      .any(|previous| previous == identifier)
+  }) {
+    return Err(ParseError::new("reshape variable list contains duplicates"));
+  }
+
+  let j_values = reshape_identifier_option(&options, "j")?;
+  let Some(j_values) = j_values.filter(|values| values.len() == 1) else {
+    return Err(ParseError::new(
+      "reshape expects exactly one j(name) option",
+    ));
+  };
+  let j_variable = j_values
+    .into_iter()
+    .next()
+    .expect("reshape j option arity checked before extracting the name");
+
+  if variables
+    .iter()
+    .any(|variable| identifiers.iter().any(|identifier| identifier == variable))
+    || variables.iter().any(|variable| variable == &j_variable)
+    || identifiers
+      .iter()
+      .any(|identifier| identifier == &j_variable)
+  {
+    return Err(ParseError::new(
+      "reshape variables, i(), and j() names must be distinct",
+    ));
+  }
+
+  Ok(Command::Reshape {
+    command: ReshapeCommand {
+      direction,
+      variables,
+      identifiers,
+      j_variable,
+    },
+  })
+}
+
+fn reshape_identifier_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<Vec<String>>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "reshape option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
+    _ => Err(ParseError::new(format!(
+      "reshape option {name} expects variables"
+    ))),
+  }
+}
+
 fn parse_join_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "join expects syntax: join <table> on <keylist>";
   let (argument_body, option_body) = match first_unquoted_comma(body) {
@@ -3617,12 +3779,14 @@ fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, Pars
           "option {name} is missing closing )"
         )));
       }
-      if value_tokens.is_empty() && !name.eq_ignore_ascii_case("by") {
+      if value_tokens.is_empty() && !name.eq_ignore_ascii_case("by") && name != "i" && name != "j" {
         return Err(ParseError::new(format!(
           "option {name} expects at least one value"
         )));
       }
-      value = if name.eq_ignore_ascii_case("by") && value_tokens.is_empty() {
+      value = if value_tokens.is_empty()
+        && (name.eq_ignore_ascii_case("by") || name == "i" || name == "j")
+      {
         UseOptionValue::Identifiers(Vec::new())
       } else {
         parse_use_parenthesized_value(&name, value_tokens)?
