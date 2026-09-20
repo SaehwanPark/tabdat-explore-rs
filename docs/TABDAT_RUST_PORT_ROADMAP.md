@@ -363,6 +363,11 @@ Port TabDat's language before implementing most execution.
   ordered predictors, robust/cluster options, bounded diagnostics, and
   parser-only execution deferral are covered; panel metadata and runtime
   execution remain deferred).
+- [x] Add the bounded direct `estat firststage|overid|endogenous|hausman`
+  syntax slice (PR #66, squash merge `484148e`; typed no-option diagnostic
+  subcommands, case/quote normalization, bounded diagnostics, and parser-only
+  execution deferral are covered; post-estimation state and calculations remain
+  deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -891,14 +896,22 @@ Port the econometric command families that currently rely on linearmodels, stats
 - [ ] `ivregress gmm` — runtime remains deferred; the parser boundary is
   accepted in the Phase 5.1 direct-language slice (PR #64, squash merge
   `d355551`).
-- [ ] `estat firststage`
-- [ ] `estat overid`
-- [ ] `estat endogenous`
+- [ ] `estat firststage` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #66, squash merge
+  `484148e`).
+- [ ] `estat overid` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #66, squash merge
+  `484148e`).
+- [ ] `estat endogenous` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #66, squash merge
+  `484148e`).
 - [ ] `xtreg, fe` — runtime remains deferred; the parser boundary is accepted
   in the Phase 5.1 direct-language slice (PR #65, squash merge `c88d002`).
 - [ ] `xtreg, re` — runtime remains deferred; the parser boundary is accepted
   in the Phase 5.1 direct-language slice (PR #65, squash merge `c88d002`).
-- [ ] `estat hausman`
+- [ ] `estat hausman` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #66, squash merge
+  `484148e`).
 - [ ] `xtabond`
 - [ ] dynamic-panel prediction
 - [ ] dynamic-panel overidentification diagnostics

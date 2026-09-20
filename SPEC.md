@@ -631,6 +631,34 @@ degrees-of-freedom semantics, missingness, prediction, post-estimation state,
 labels, formatting, CLI, JSON, MCP, and broad Python `xtreg` parity deferred.
 Phase 11.1 runtime `xtreg, fe` and `xtreg, re` remain unchecked.
 
+## Verified slice: syntax-only selected `estat` diagnostics
+
+Merged [PR #66](https://github.com/SaehwanPark/tabdat-explore-rs/pull/66)
+([484148e](https://github.com/SaehwanPark/tabdat-explore-rs/commit/484148ee6a25dfe5f245fd2f7be01eec5efd27b3))
+adds a bounded, backend-independent `estat` syntax boundary to
+`tabdat-language` for `firststage`, `overid`, `endogenous`, and `hausman`.
+The parser returns an owned typed diagnostic subcommand, preserves command and
+subcommand case normalization plus single/double-quoted subcommands, and
+rejects options on the selected no-option forms with the recovered diagnostic.
+Runtime deliberately returns the typed unsupported-command result; it does not
+inspect model state, calculate a post-estimation result, initialize DuckDB, or
+mutate session state.
+
+Evidence: [_workspace/runtime-estat/](_workspace/runtime-estat/), including
+the [migration evidence](_workspace/runtime-estat/02-evidence-migration.md),
+[review](_workspace/runtime-estat/03-review.md), and
+[summary](_workspace/runtime-estat/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head, squash merge, and merge-head workflows
+all passed.
+
+This accepted syntax slice leaves first-stage, overidentification, endogeneity,
+and Hausman calculations, statistical model-state routing, IV/panel validation,
+covariance, missingness, output/reporting, labels, formatting, CLI, JSON, MCP,
+remaining `estat` subcommands, and broad Python `estat` parity deferred. Phase
+11.1 runtime `estat firststage`, `estat overid`, `estat endogenous`, and
+`estat hausman` remain unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
