@@ -2,7 +2,7 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
   GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
   RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName, SortKey,
-  parse_command,
+  TabulateCommand, parse_command,
 };
 
 #[test]
@@ -26,6 +26,75 @@ fn parse_error_exposes_a_stable_message() {
     "status does not accept arguments, if clauses, options, or assignment syntax"
   );
   assert_eq!(error.to_string(), error.message());
+}
+
+#[test]
+fn tabulate_parses_bounded_frequency_forms() {
+  assert_eq!(
+    parse_command("TABULATE `sex value`, MISSING NOLABEL").unwrap(),
+    Command::Tabulate {
+      command: TabulateCommand {
+        row_variables: vec!["sex value".to_owned()],
+        column_variables: vec![],
+        row_percent: false,
+        column_percent: false,
+        include_missing: true,
+        nolabel: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("tabulate sex age, row col missing").unwrap(),
+    Command::Tabulate {
+      command: TabulateCommand {
+        row_variables: vec!["sex".to_owned()],
+        column_variables: vec!["age".to_owned()],
+        row_percent: true,
+        column_percent: true,
+        include_missing: true,
+        nolabel: false,
+      },
+    }
+  );
+}
+
+#[test]
+fn tabulate_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("tabulate", "tabulate expects one or two variables"),
+    (
+      "tabulate age bmi sex",
+      "tabulate expects one or two variables",
+    ),
+    ("tabulate sex sex", "tabulate duplicate variable: sex"),
+    (
+      "tabulate sex, row",
+      "tabulate one-way tables do not accept row or col options",
+    ),
+    (
+      "tabulate sex age, row row",
+      "tabulate option row can only be specified once",
+    ),
+    (
+      "tabulate sex, values(cost)",
+      "tabulate unsupported option: values",
+    ),
+    (
+      "tabulate sex age, row=true",
+      "tabulate option row does not accept a value",
+    ),
+    (
+      "tabulate sex = age",
+      "tabulate expects one or two variables",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
 }
 
 #[test]
