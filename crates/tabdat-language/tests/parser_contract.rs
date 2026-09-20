@@ -1,8 +1,8 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
-  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName, SortKey,
-  TabulateCommand, parse_command,
+  AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
+  ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine,
+  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName,
+  SortKey, TabulateCommand, parse_command,
 };
 
 #[test]
@@ -86,6 +86,59 @@ fn tabulate_preserves_bounded_parser_diagnostics() {
     (
       "tabulate sex = age",
       "tabulate expects one or two variables",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn collapse_parses_grouped_aggregate_forms() {
+  assert_eq!(
+    parse_command("COLLAPSE MEAN age cost, BY(sex region)").unwrap(),
+    Command::Collapse {
+      command: CollapseCommand {
+        statistic: CollapseStatistic::Mean,
+        variables: vec!["age".to_owned(), "cost".to_owned()],
+        groups: vec!["sex".to_owned(), "region".to_owned()],
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("collapse count `value col`, by(`group key`)").unwrap(),
+    Command::Collapse {
+      command: CollapseCommand {
+        statistic: CollapseStatistic::Count,
+        variables: vec!["value col".to_owned()],
+        groups: vec!["group key".to_owned()],
+      },
+    }
+  );
+}
+
+#[test]
+fn collapse_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "collapse mean age",
+      "collapse expects exactly one by(group_vars) option",
+    ),
+    (
+      "collapse median age, by(sex)",
+      "collapse unsupported statistic: median",
+    ),
+    (
+      "collapse mean age, by(sex) by(region)",
+      "collapse expects exactly one by(group_vars) option",
+    ),
+    (
+      "collapse mean age if age > 0, by(sex)",
+      "collapse does not accept if clauses or assignment syntax",
     ),
   ];
   for (input, expected) in cases {
