@@ -96,6 +96,8 @@ pub enum Command {
   Reshape { command: ReshapeCommand },
   /// Report or declare panel identifiers (execution is deferred).
   Panel { command: PanelCommand },
+  /// Apply a panel within/between transform (execution is deferred).
+  XtData { command: XtDataCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -292,6 +294,25 @@ pub enum PanelAction {
 pub struct PanelCommand {
   /// The requested panel action.
   pub action: PanelAction,
+}
+
+/// The panel-index transform forms accepted by the parser-only `xtdata`
+/// command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum XtDataTransform {
+  /// Demean each requested variable within its panel entity.
+  Within,
+  /// Replace each requested variable with its entity-level mean.
+  Between,
+}
+
+/// The parser-only `xtdata` form retained for a later panel runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct XtDataCommand {
+  /// Ordered variables selected for transformation.
+  pub variables: Vec<String>,
+  /// The requested within- or between-entity transform.
+  pub transform: XtDataTransform,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -814,6 +835,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "append" => parse_append_command(body),
     "reshape" => parse_reshape_command(body),
     "panel" => parse_panel_command(body),
+    "xtdata" => parse_xtdata_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2680,6 +2702,74 @@ fn parse_panel_command(body: &str) -> Result<Command, ParseError> {
         id_variable: first.text.clone(),
         time_variable: time_variable.clone(),
       },
+    },
+  })
+}
+
+fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "xtdata expects syntax: xtdata <varlist>, within|between";
+  let (variable_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(variable_body, false)?;
+  if parts.arguments.is_empty()
+    || parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| option.name != "within" && option.name != "between")
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "xtdata unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(format!(
+        "xtdata option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let has_within = options.iter().any(|option| option.name == "within");
+  let has_between = options.iter().any(|option| option.name == "between");
+  if has_within == has_between {
+    return Err(ParseError::new(
+      "xtdata requires exactly one of within or between",
+    ));
+  }
+  let transform = if has_within {
+    XtDataTransform::Within
+  } else {
+    XtDataTransform::Between
+  };
+
+  Ok(Command::XtData {
+    command: XtDataCommand {
+      variables: parts
+        .arguments
+        .into_iter()
+        .map(|argument| argument.text)
+        .collect(),
+      transform,
     },
   })
 }

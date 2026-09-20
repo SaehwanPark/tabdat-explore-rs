@@ -3,7 +3,7 @@ use tabdat_language::{
   ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow, LabelCommand,
   LabelValue, LazyEngine, PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule,
   RecodeTarget, RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey,
-  TabulateCommand, parse_command,
+  TabulateCommand, XtDataCommand, XtDataTransform, parse_command,
 };
 
 #[test]
@@ -308,6 +308,73 @@ fn panel_preserves_bounded_parser_diagnostics() {
       "panel clear now",
       "panel expects syntax: panel [<id_var> <time_var>|clear]",
     ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtdata_parses_bounded_transform_forms() {
+  assert_eq!(
+    parse_command("xtdata wage exper, within").unwrap(),
+    Command::XtData {
+      command: XtDataCommand {
+        variables: vec!["wage".to_owned(), "exper".to_owned()],
+        transform: XtDataTransform::Within,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("XTDATA `wage value`, between").unwrap(),
+    Command::XtData {
+      command: XtDataCommand {
+        variables: vec!["wage value".to_owned()],
+        transform: XtDataTransform::Between,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtdata wage, within within").unwrap(),
+    Command::XtData {
+      command: XtDataCommand {
+        variables: vec!["wage".to_owned()],
+        transform: XtDataTransform::Within,
+      },
+    }
+  );
+}
+
+#[test]
+fn xtdata_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "xtdata",
+      "xtdata expects syntax: xtdata <varlist>, within|between",
+    ),
+    (
+      "xtdata wage",
+      "xtdata requires exactly one of within or between",
+    ),
+    (
+      "xtdata wage, within between",
+      "xtdata requires exactly one of within or between",
+    ),
+    ("xtdata wage, detail", "xtdata unsupported option: detail"),
+    (
+      "xtdata wage, within=true",
+      "xtdata option within does not accept a value",
+    ),
+    (
+      "xtdata wage if year > 2020, within",
+      "xtdata expects syntax: xtdata <varlist>, within|between",
+    ),
+    ("xtdata wage, `within`", "option names must be identifiers"),
   ];
 
   for (input, expected) in cases {
