@@ -84,6 +84,8 @@ pub enum Command {
     /// The new string target column.
     generate: String,
   },
+  /// Manage bounded session-local variable and value labels.
+  Label { command: LabelCommand },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -108,6 +110,55 @@ pub enum Command {
   Head { limit: RowLimit },
   /// Preview the last `limit` rows of the active dataset.
   Tail { limit: RowLimit },
+}
+
+/// A value accepted by a bounded `label define` command.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LabelValue {
+  /// An integer label value.
+  Integer(i64),
+  /// A non-integer numeric spelling retained without floating-point loss.
+  Number(String),
+  /// A text label value.
+  Text(String),
+}
+
+/// The non-I/O session-local forms of the `label` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LabelCommand {
+  /// Set or clear the display label for one variable. `None` clears it.
+  Variable {
+    /// The target variable.
+    variable: String,
+    /// The new display label, or `None` for `, clear`.
+    text: Option<String>,
+  },
+  /// Define or replace a named value-label set.
+  Define {
+    /// The value-label set name.
+    name: String,
+    /// The value-to-display-text mappings in source order.
+    mappings: Vec<(LabelValue, String)>,
+    /// Whether an existing set may be replaced.
+    replace: bool,
+  },
+  /// Attach or clear a value-label set for one variable. `None` clears it.
+  Values {
+    /// The target variable.
+    variable: String,
+    /// The attached set name, or `None` for `, clear`.
+    set_name: Option<String>,
+  },
+  /// Inspect all or selected value-label sets.
+  List {
+    /// Optional set names to filter.
+    names: Vec<String>,
+  },
+  /// Drop one or more named value-label sets.
+  Drop {
+    /// The set names to remove.
+    names: Vec<String>,
+  },
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -624,6 +675,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "recode" => parse_recode_command(body),
     "encode" => parse_encode_command(body),
     "decode" => parse_decode_command(body),
+    "label" => parse_label_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
     "replace" => parse_replace_command(body),
@@ -2304,6 +2356,290 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
     });
   }
   Ok(Command::Gsort { keys })
+}
+
+fn parse_label_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "label expects syntax: label variable|define|values|list|drop|save|use ...";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let tokens = tokenize_use_options(argument_body.trim_matches(is_command_whitespace))?;
+  let Some(action_token) = tokens.first() else {
+    return Err(ParseError::new(syntax));
+  };
+  let UseTokenKind::Identifier { quoted: false } = action_token.kind else {
+    return Err(ParseError::new(
+      "label subcommand must be an unquoted identifier",
+    ));
+  };
+  let action = action_token.text.to_ascii_lowercase();
+  let arguments = &tokens[1..];
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  match action.as_str() {
+    "variable" => parse_label_variable(arguments, &options),
+    "define" => parse_label_define(arguments, &options),
+    "values" => parse_label_values(arguments, &options),
+    "list" => {
+      if !options.is_empty() {
+        return Err(ParseError::new("label list does not accept options"));
+      }
+      let names = arguments
+        .iter()
+        .map(|token| label_identifier(token, "label list"))
+        .collect::<Result<Vec<_>, _>>()?;
+      Ok(Command::Label {
+        command: LabelCommand::List { names },
+      })
+    }
+    "drop" => {
+      if !options.is_empty() {
+        return Err(ParseError::new("label drop does not accept options"));
+      }
+      if arguments.is_empty() {
+        return Err(ParseError::new(
+          "label drop expects at least one label set name",
+        ));
+      }
+      let names = arguments
+        .iter()
+        .map(|token| label_identifier(token, "label drop"))
+        .collect::<Result<Vec<_>, _>>()?;
+      Ok(Command::Label {
+        command: LabelCommand::Drop { names },
+      })
+    }
+    _ => Err(ParseError::new(syntax)),
+  }
+}
+
+fn parse_label_variable(tokens: &[UseToken], options: &[UseOption]) -> Result<Command, ParseError> {
+  let clear = label_flag_option(options, "clear", "label variable")?;
+  if options
+    .iter()
+    .any(|option| !option.name.eq_ignore_ascii_case("clear"))
+  {
+    return Err(ParseError::new(format!(
+      "label variable unsupported option: {}",
+      unsupported_label_options(options, &["clear"])
+    )));
+  }
+  if clear {
+    if tokens.len() != 1 {
+      return Err(ParseError::new(
+        "label variable, clear expects syntax: label variable <varname>, clear",
+      ));
+    }
+    return Ok(Command::Label {
+      command: LabelCommand::Variable {
+        variable: label_identifier(&tokens[0], "label variable")?,
+        text: None,
+      },
+    });
+  }
+  if tokens.len() != 2 || !matches!(tokens[1].kind, UseTokenKind::String) {
+    return Err(ParseError::new(
+      "label variable expects syntax: label variable <varname> \"text\"",
+    ));
+  }
+  Ok(Command::Label {
+    command: LabelCommand::Variable {
+      variable: label_identifier(&tokens[0], "label variable")?,
+      text: Some(tokens[1].text.clone()),
+    },
+  })
+}
+
+fn parse_label_define(tokens: &[UseToken], options: &[UseOption]) -> Result<Command, ParseError> {
+  if options
+    .iter()
+    .any(|option| !option.name.eq_ignore_ascii_case("replace"))
+  {
+    return Err(ParseError::new(format!(
+      "label define unsupported option: {}",
+      unsupported_label_options(options, &["replace"])
+    )));
+  }
+  let replace = label_flag_option(options, "replace", "label define")?;
+  let Some(name_token) = tokens.first() else {
+    return Err(ParseError::new(
+      "label define expects syntax: label define <lblname> <value> \"text\" [<value> \"text\" ...]",
+    ));
+  };
+  let name = label_identifier(name_token, "label define")?;
+  let mut mappings = Vec::new();
+  let mut index = 1;
+  while index < tokens.len() {
+    let (value, consumed) = parse_label_value(&tokens[index..])?;
+    index += consumed;
+    let Some(text_token) = tokens.get(index) else {
+      return Err(ParseError::new("label define text must be a quoted string"));
+    };
+    if !matches!(text_token.kind, UseTokenKind::String) {
+      return Err(ParseError::new("label define text must be a quoted string"));
+    }
+    index += 1;
+    if mappings.iter().any(|(existing, _)| existing == &value) {
+      return Err(ParseError::new(format!(
+        "label define duplicate value: {}",
+        format_label_value(&value)
+      )));
+    }
+    mappings.push((value, text_token.text.clone()));
+  }
+  if mappings.is_empty() {
+    return Err(ParseError::new(
+      "label define expects syntax: label define <lblname> <value> \"text\" [<value> \"text\" ...]",
+    ));
+  }
+  Ok(Command::Label {
+    command: LabelCommand::Define {
+      name,
+      mappings,
+      replace,
+    },
+  })
+}
+
+fn parse_label_values(tokens: &[UseToken], options: &[UseOption]) -> Result<Command, ParseError> {
+  if options
+    .iter()
+    .any(|option| !option.name.eq_ignore_ascii_case("clear"))
+  {
+    return Err(ParseError::new(format!(
+      "label values unsupported option: {}",
+      unsupported_label_options(options, &["clear"])
+    )));
+  }
+  let clear = label_flag_option(options, "clear", "label values")?;
+  if tokens.len() != if clear { 1 } else { 2 } {
+    if clear {
+      return Err(ParseError::new(
+        "label values, clear expects syntax: label values <varname>, clear",
+      ));
+    }
+    return Err(ParseError::new(
+      "label values expects syntax: label values <varname> <lblname>",
+    ));
+  }
+  let variable = label_identifier(&tokens[0], "label values")?;
+  let set_name = if clear {
+    None
+  } else {
+    Some(label_identifier(&tokens[1], "label values")?)
+  };
+  Ok(Command::Label {
+    command: LabelCommand::Values { variable, set_name },
+  })
+}
+
+fn label_identifier(token: &UseToken, command_name: &str) -> Result<String, ParseError> {
+  if !matches!(token.kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(format!(
+      "{command_name} expects identifier arguments"
+    )));
+  }
+  Ok(token.text.clone())
+}
+
+fn label_flag_option(
+  options: &[UseOption],
+  name: &str,
+  command_name: &str,
+) -> Result<bool, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name.eq_ignore_ascii_case(name))
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option {name} can only be specified once"
+    )));
+  }
+  if let Some(option) = matching.first()
+    && option.value != UseOptionValue::Flag
+  {
+    return Err(ParseError::new(format!(
+      "{command_name} option {name} does not accept a value"
+    )));
+  }
+  Ok(!matching.is_empty())
+}
+
+fn unsupported_label_options(options: &[UseOption], allowed: &[&str]) -> String {
+  let mut names = options
+    .iter()
+    .filter(|option| {
+      !allowed
+        .iter()
+        .any(|allowed| option.name.eq_ignore_ascii_case(allowed))
+    })
+    .map(|option| option.name.to_ascii_lowercase())
+    .collect::<Vec<_>>();
+  names.sort_unstable();
+  names.dedup();
+  names.join(", ")
+}
+
+fn parse_label_value(tokens: &[UseToken]) -> Result<(LabelValue, usize), ParseError> {
+  let Some(token) = tokens.first() else {
+    return Err(ParseError::new(
+      "label define expects a value before each quoted label",
+    ));
+  };
+  match &token.kind {
+    UseTokenKind::String | UseTokenKind::Identifier { .. } => {
+      Ok((LabelValue::Text(token.text.clone()), 1))
+    }
+    UseTokenKind::Number => Ok((parse_label_number(&token.text)?, 1)),
+    UseTokenKind::Symbol if token.text == "+" || token.text == "-" => {
+      let Some(number) = tokens.get(1) else {
+        return Err(ParseError::new(
+          "label define expects a value before each quoted label",
+        ));
+      };
+      if !matches!(number.kind, UseTokenKind::Number) {
+        return Err(ParseError::new(
+          "label define expects a value before each quoted label",
+        ));
+      }
+      Ok((
+        parse_label_number(&format!("{}{}", token.text, number.text))?,
+        2,
+      ))
+    }
+    _ => Err(ParseError::new(
+      "label define expects a value before each quoted label",
+    )),
+  }
+}
+
+fn parse_label_number(text: &str) -> Result<LabelValue, ParseError> {
+  if text
+    .chars()
+    .any(|character| matches!(character, '.' | 'e' | 'E'))
+  {
+    if text.parse::<f64>().is_err() {
+      return Err(ParseError::new("label define expects numeric values"));
+    }
+    return Ok(LabelValue::Number(text.to_owned()));
+  }
+  text
+    .parse::<i64>()
+    .map(LabelValue::Integer)
+    .map_err(|_| ParseError::new("label define expects numeric values"))
+}
+
+fn format_label_value(value: &LabelValue) -> String {
+  match value {
+    LabelValue::Integer(value) => value.to_string(),
+    LabelValue::Number(value) => value.clone(),
+    LabelValue::Text(value) => format!("\"{value}\""),
+  }
 }
 
 fn parse_encode_command(body: &str) -> Result<Command, ParseError> {

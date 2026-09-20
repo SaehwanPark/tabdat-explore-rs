@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
-use tabdat_language::{Command, DataSource, ExecutionMode, parse_command};
-use tabdat_runtime::{CellValue, ExecutionResult, RuntimeError, Session};
+use tabdat_language::{Command, DataSource, ExecutionMode, LabelValue, parse_command};
+use tabdat_runtime::{CellValue, ExecutionResult, RuntimeError, Session, ValueLabelSet};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -135,6 +135,51 @@ fn encode_assigns_sorted_integer_codes_and_preserves_nulls() {
 }
 
 #[test]
+fn encode_label_metadata_supports_named_decode_sets_and_variable_labels() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("fixture should load");
+  session
+    .execute(parse_command("label variable sex \"Sex\"").unwrap())
+    .expect("variable label should execute");
+
+  session
+    .execute(parse_command("encode sex, generate(sex_n) label(sex_label)").unwrap())
+    .expect("named encode label should execute");
+  let metadata = session
+    .active_label_metadata()
+    .expect("encode should publish label metadata");
+  assert_eq!(
+    metadata.variable_labels,
+    vec![
+      ("sex".to_owned(), "Sex".to_owned()),
+      ("sex_n".to_owned(), "Sex".to_owned()),
+    ]
+  );
+  assert_eq!(
+    metadata.value_sets,
+    vec![ValueLabelSet {
+      name: "sex_label".to_owned(),
+      mappings: vec![
+        (LabelValue::Integer(1), "a".to_owned()),
+        (LabelValue::Integer(2), "b".to_owned()),
+      ],
+    }]
+  );
+  assert_eq!(
+    metadata.attachments,
+    vec![("sex_n".to_owned(), "sex_label".to_owned())]
+  );
+
+  let result = session
+    .execute(parse_command("decode sex_n, generate(sex_text)").unwrap())
+    .expect("decode should consume the attached label set");
+  assert!(matches!(result, ExecutionResult::Decode(_)));
+}
+
+#[test]
 fn encode_supports_quoted_names_empty_relations_and_repeated_successes() {
   let fixture = Fixture::new();
   let quoted = fixture.write_parquet(
@@ -196,12 +241,6 @@ fn encode_validation_and_backend_failures_are_atomic() {
     .clone();
 
   let failures = [
-    (
-      parse_command("encode sex, generate(sex_n) label(sex_label)").unwrap(),
-      RuntimeError::EncodeLabelsUnsupported {
-        label: "sex_label".to_owned(),
-      },
-    ),
     (
       parse_command("encode missing, generate(missing_n)").unwrap(),
       RuntimeError::EncodeUnknownVariable {
