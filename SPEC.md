@@ -438,7 +438,8 @@ and focused parser/runtime contract tests. The pinned oracle checks, locked Rust
 baseline, dependency-policy, advisory, metadata-driven geiger checks,
 independent review, PR-head workflows, squash merge, and merge-head workflows
 all passed. Documentation-closeout workflow links are recorded in the companion
-evidence artifact after their completion.
+evidence artifact; the closeout commit and its main CI, ReadStat feasibility,
+libgretl feasibility, and libgretl OLS Rust spike workflows also passed.
 
 This accepted slice remains library-only. Grouped tabulate and other child
 commands, conditions, weights, named-table execution, lazy/materialized

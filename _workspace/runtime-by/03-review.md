@@ -47,5 +47,6 @@ roadmap slices.
 
 The bounded eager local-Parquet grouped summarize/count contract is accepted.
 Oracle, local, PR-head, merge-head, policy, and focused review evidence are
-recorded in the companion migration record; documentation-closeout CI will be
-recorded after the closeout commit.
+recorded in the companion migration record. The documentation-closeout main
+CI, ReadStat feasibility, libgretl feasibility, and libgretl OLS Rust spike
+workflows also passed for the closeout commit.

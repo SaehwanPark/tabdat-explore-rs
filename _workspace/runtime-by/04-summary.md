@@ -41,5 +41,9 @@ head cc818e5 then passed main CI
 [35497533142](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35497533142)
 and main runtime
 [35497533149](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35497533149).
-The documentation-closeout workflow links will be appended to the evidence
-record after that commit completes.
+The documentation-closeout commit
+[664be28](https://github.com/SaehwanPark/tabdat-explore-rs/commit/664be28eec6f6bbc456119cd3f6fcb6e90b0b9ec)
+then passed [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35498489328),
+[ReadStat feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35498489360),
+[libgretl feasibility](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35498489297),
+and [libgretl OLS Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35498489337).
