@@ -40,5 +40,12 @@ The squash merge head `0845e6c` was then verified by
 and [main runtime run 35480547104](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547104).
 The remote feature branch was deleted after merge and pruned locally.
 
-The documentation closeout commit and its hosted workflows will be appended to
-the evidence record after the documentation patch is pushed.
+Documentation closeout commit
+[`08dba48`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/08dba4868d70f44f50cce6a11392dc8118357cda) then passed:
+
+- [final main CI run 35481514850](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514850);
+- [final ReadStat workflow 35481514778](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514778);
+- [final libgretl feasibility workflow 35481514780](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514780); and
+- [final libgretl OLS workflow 35481514788](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514788).
+
+The final evidence-only commit will record the hosted links for this update.

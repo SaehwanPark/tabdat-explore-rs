@@ -74,9 +74,20 @@ head [`1ffb845`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/1ffb845
 
 The PR was squash-merged as
 [`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2).
-The merge-head workflows are recorded in
-[04-summary.md](04-summary.md); the documentation-head workflows will be
-appended after this closeout commit.
+The merge-head workflows passed:
+
+- [main CI run 35480547109](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547109), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547109/job/105997441966) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547109/job/105997442091); and
+- [main runtime run 35480547104](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547104), including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35480547104/job/105997441940).
+
+Documentation closeout commit
+[`08dba48`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/08dba4868d70f44f50cce6a11392dc8118357cda) then passed:
+
+- [final main CI run 35481514850](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514850), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514850/job/106000077668) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514850/job/106000077736);
+- [final ReadStat workflow 35481514778](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514778), with [ReadStat spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514778/job/106000077051) and [ReadStat Rust spike](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514778/job/106000077176);
+- [final libgretl feasibility workflow 35481514780](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514780), including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514780/job/106000077223); and
+- [final libgretl OLS workflow 35481514788](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514788), including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35481514788/job/106000077244).
+
+The remote feature branch was deleted after merge and pruned locally.
 
 ## Deviations and deferrals
 
