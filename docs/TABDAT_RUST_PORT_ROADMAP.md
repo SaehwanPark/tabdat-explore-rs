@@ -343,6 +343,11 @@ Port TabDat's language before implementing most execution.
   syntax slice (PR #61, squash merge `e6cc4f1`; typed direction, ordered names,
   duplicate/distinctness validation, and bounded diagnostics are covered;
   relation/session reshape execution remains deferred).
+- [x] Add the bounded direct `panel [<id_var> <time_var>|clear]` syntax slice
+  (PR #62, squash merge `92e5d5e`; typed report/clear/set actions,
+  string/backtick `clear` boundary, distinct entity/time validation, and
+  bounded diagnostics are covered; panel metadata and runtime execution
+  remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -861,7 +866,8 @@ Port the econometric command families that currently rely on linearmodels, stats
 
 ### 11.1 IV and panel
 
-- [ ] `panel`
+- [ ] `panel` — runtime remains deferred; the parser boundary is accepted
+  in the Phase 5.1 direct-language slice (PR #62, squash merge `92e5d5e`).
 - [ ] `xtdata`
 - [ ] `ivregress 2sls`
 - [ ] `ivregress gmm`

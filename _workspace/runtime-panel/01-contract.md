@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-- Status: `draft` at the contract checkpoint; acceptance follows the PR-head
-  implementation and merge-head workflow evidence.
+- Status: `accepted` after PR #62 and its PR-head and merge-head workflows
+  passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `panel` command boundary without
   claiming panel metadata or structural-summary execution.
@@ -47,7 +47,8 @@ publication semantics that do not yet exist in this Rust workspace.
 1. `parse_command` recognizes `panel` case-insensitively and returns
    `Command::Panel` with a typed report, clear, or set action.
 2. Empty `panel` reports; exactly two variable arguments set panel identifiers;
-   exactly one unquoted `clear` argument clears the panel declaration.
+   exactly one unquoted or string-quoted `clear` argument clears the panel
+   declaration.
 3. Quoted/backtick identifiers retain decoded text. Backtick-quoted `clear` is
    not treated as the clear keyword; string-quoted `clear` follows the oracle's
    clear-action tokenization.
@@ -81,3 +82,13 @@ labels, formatting, CLI, JSON, MCP, or broad Python `panel` parity. Those
 behaviors remain future runtime evidence, gated by relation/session semantics
 and a dedicated panel execution contract. The parser can be merged without
 implying that a parsed panel command executes today.
+
+The contract checkpoint is
+[`331b5fb4fb0a59c91a886c3e07f47fab68592cd5`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/331b5fb4fb0a59c91a886c3e07f47fab68592cd5);
+the implementation checkpoint is
+[`67de5b835489d196dc800607054b227871b8b6d4`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/67de5b835489d196dc800607054b227871b8b6d4);
+the keyword-boundary test checkpoint is
+[`d1eeb2a321c80ec13e6f5daa57129cbecbe8d7c4`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/d1eeb2a321c80ec13e6f5daa57129cbecbe8d7c4);
+and PR [#62](https://github.com/SaehwanPark/tabdat-explore-rs/pull/62) was
+squash-merged to `main` as
+[`92e5d5e5be9aaededbfe3f44ded2d4319cdcac87`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/92e5d5e5be9aaededbfe3f44ded2d4319cdcac87).

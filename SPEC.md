@@ -527,6 +527,32 @@ row counts, type coercion, relation publication, labels, lazy/materialized
 behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `reshape`
 parity deferred. Phase 6.4 runtime `reshape` remains unchecked.
 
+## Verified slice: syntax-only `panel` command
+
+Merged [PR #62](https://github.com/SaehwanPark/tabdat-explore-rs/pull/62)
+([92e5d5e](https://github.com/SaehwanPark/tabdat-explore-rs/commit/92e5d5e5be9aaededbfe3f44ded2d4319cdcac87))
+adds a bounded, backend-independent `panel` syntax boundary to
+`tabdat-language`. The parser returns an owned typed report, clear, or set
+action for `panel`, `panel <id_var> <time_var>`, and `panel clear`,
+preserves the recovered string/backtick `clear` keyword boundary, and
+requires distinct entity and time names. Runtime deliberately returns the typed
+unsupported-command result; it does not inspect an active relation, initialize
+DuckDB, or mutate session state.
+
+Evidence: [_workspace/runtime-panel/](_workspace/runtime-panel/), including the
+[migration evidence](_workspace/runtime-panel/02-evidence-migration.md),
+[review](_workspace/runtime-panel/03-review.md), and
+[summary](_workspace/runtime-panel/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves panel metadata ownership, active-schema and
+numeric/time validation, duplicate entity-time checks, structural summaries,
+ordering, missingness, relation publication, labels, lazy/materialized behavior,
+persistence, formatting, CLI, JSON, MCP, and broad Python `panel` parity
+deferred. Phase 11.1 runtime `panel` remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
