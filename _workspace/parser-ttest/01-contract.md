@@ -24,7 +24,7 @@ Add `Command::Ttest { command: TtestCommand }` with:
 pub struct TtestCommand {
     pub varname1: String,
     pub varname2: Option<String>,
-    pub value: Option<f64>,
+    pub value: Option<String>,
     pub by_variable: Option<String>,
     pub welch: bool,
 }
@@ -35,6 +35,13 @@ value comparison sets `value` or `varname2`; a `by()` form sets
 `by_variable`; these alternatives are mutually exclusive. `unequal` is an
 alias for `welch` in the returned typed command. Repeated `welch`/`unequal`
 flags are accepted as in the oracle; `by()` may appear only once.
+
+The Rust syntax AST stores the recovered numeric spelling as an owned string
+(`"-1.5"`, `".5"`, and so on) rather than eagerly storing `f64`. This follows
+the existing expression-number contract, keeps the command AST total and
+`Eq`-compatible, and defers numeric conversion to a future statistical runtime
+boundary. Numeric acceptance and signed-value diagnostics still follow the
+oracle.
 
 ## Recovered diagnostics
 
