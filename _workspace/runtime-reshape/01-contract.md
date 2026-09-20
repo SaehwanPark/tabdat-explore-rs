@@ -19,8 +19,9 @@ The accepted form is:
 
 The parser produces an owned typed command containing the direction, ordered
 reshape variables, ordered identifier variables, and the single `j()` output
-name. Direction and option names are case-insensitive; quoted identifiers
-retain their decoded text, while the direction token must be unquoted.
+name. Direction is case-insensitive; the recovered `i` and `j` option names
+use their lowercase spellings. Quoted identifiers retain their decoded text,
+while a backtick-quoted direction token is not treated as a direction keyword.
 
 ## Authority and evidence inputs
 
