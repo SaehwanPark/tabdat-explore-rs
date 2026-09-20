@@ -86,6 +86,8 @@ pub enum Command {
   },
   /// Manage bounded session-local variable and value labels.
   Label { command: LabelCommand },
+  /// Produce bounded eager frequency tables for one or two variables.
+  Tabulate { command: TabulateCommand },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -159,6 +161,23 @@ pub enum LabelCommand {
     /// The set names to remove.
     names: Vec<String>,
   },
+}
+
+/// The bounded frequency-table forms of `tabulate`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TabulateCommand {
+  /// The one row variable supported by this slice.
+  pub row_variables: Vec<String>,
+  /// The optional one column variable supported by this slice.
+  pub column_variables: Vec<String>,
+  /// Include row percentages in a two-way table.
+  pub row_percent: bool,
+  /// Include column percentages in a two-way table.
+  pub column_percent: bool,
+  /// Include SQL NULL as an observed category.
+  pub include_missing: bool,
+  /// Suppress attached value-label display.
+  pub nolabel: bool,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -676,6 +695,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "encode" => parse_encode_command(body),
     "decode" => parse_decode_command(body),
     "label" => parse_label_command(body),
+    "tabulate" => parse_tabulate_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
     "replace" => parse_replace_command(body),
@@ -2356,6 +2376,90 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
     });
   }
   Ok(Command::Gsort { keys })
+}
+
+fn parse_tabulate_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "tabulate expects one or two variables";
+  let (variable_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let variable_tokens = tokenize_use_options(variable_body.trim_matches(is_command_whitespace))?;
+  let variables = variable_tokens
+    .iter()
+    .map(|token| match &token.kind {
+      UseTokenKind::Identifier { .. } => Ok(token.text.clone()),
+      _ => Err(ParseError::new(syntax)),
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+  if !matches!(variables.len(), 1 | 2) {
+    return Err(ParseError::new(syntax));
+  }
+
+  for (index, variable) in variables.iter().enumerate() {
+    if variables[..index]
+      .iter()
+      .any(|previous| previous == variable)
+    {
+      return Err(ParseError::new(format!(
+        "tabulate duplicate variable: {variable}"
+      )));
+    }
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let supported = ["row", "col", "missing", "nolabel"];
+  let mut unsupported = options
+    .iter()
+    .map(|option| option.name.to_ascii_lowercase())
+    .filter(|name| !supported.contains(&name.as_str()))
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "tabulate unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let mut option_names = Vec::with_capacity(options.len());
+  for option in &options {
+    let name = option.name.to_ascii_lowercase();
+    if option_names.iter().any(|previous| previous == &name) {
+      return Err(ParseError::new(format!(
+        "tabulate option {name} can only be specified once"
+      )));
+    }
+    if option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(format!(
+        "tabulate option {name} does not accept a value"
+      )));
+    }
+    option_names.push(name);
+  }
+
+  let row_percent = option_names.iter().any(|name| name == "row");
+  let column_percent = option_names.iter().any(|name| name == "col");
+  if variables.len() == 1 && (row_percent || column_percent) {
+    return Err(ParseError::new(
+      "tabulate one-way tables do not accept row or col options",
+    ));
+  }
+
+  Ok(Command::Tabulate {
+    command: TabulateCommand {
+      row_variables: vec![variables[0].clone()],
+      column_variables: variables.get(1).cloned().into_iter().collect(),
+      row_percent,
+      column_percent,
+      include_missing: option_names.iter().any(|name| name == "missing"),
+      nolabel: option_names.iter().any(|name| name == "nolabel"),
+    },
+  })
 }
 
 fn parse_label_command(body: &str) -> Result<Command, ParseError> {
