@@ -88,6 +88,8 @@ pub enum Command {
   Label { command: LabelCommand },
   /// Produce bounded eager frequency tables for one or two variables.
   Tabulate { command: TabulateCommand },
+  /// Join the active dataset with a named table (execution is deferred).
+  Join { command: JoinCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -217,6 +219,28 @@ pub struct ByCommand {
   pub groups: Vec<String>,
   /// The child command retained for bounded runtime dispatch.
   pub command: Box<Command>,
+}
+
+/// The bounded join modes accepted by the syntax boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JoinHow {
+  /// Keep only active rows with a matching named-table row.
+  Inner,
+  /// Keep every active row and fill unmatched right-side values with NULL.
+  Left,
+}
+
+/// The named-table join form retained for a later runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JoinCommand {
+  /// The user-visible named table to join.
+  pub table_name: String,
+  /// Ordered join keys shared by the active and named-table relations.
+  pub keys: Vec<String>,
+  /// Whether unmatched active rows are retained.
+  pub how: JoinHow,
+  /// Suffix used by the eventual runtime for colliding right-side columns.
+  pub suffix: String,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -735,6 +759,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "decode" => parse_decode_command(body),
     "label" => parse_label_command(body),
     "tabulate" => parse_tabulate_command(body),
+    "join" => parse_join_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2417,6 +2442,137 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
     });
   }
   Ok(Command::Gsort { keys })
+}
+
+fn parse_join_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "join expects syntax: join <table> on <keylist>";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let argument_body = argument_body.trim_matches(is_command_whitespace);
+  let simple_parts = parse_simple_body(argument_body, false)?;
+  if simple_parts.has_condition
+    || simple_parts.has_assignment
+    || simple_parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let tokens = tokenize_use_options(argument_body)?;
+  if tokens.len() < 3 {
+    return Err(ParseError::new(syntax));
+  }
+  if !is_join_argument_token(&tokens[0])
+    || !matches!(&tokens[1].kind, UseTokenKind::Identifier { quoted: false })
+    || !tokens[1].text.eq_ignore_ascii_case("on")
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let table_name = tokens[0].text.clone();
+  validate_join_table_name(&table_name)?;
+  let keys = tokens[2..]
+    .iter()
+    .map(|token| {
+      if is_join_argument_token(token) {
+        Ok(token.text.clone())
+      } else {
+        Err(ParseError::new(syntax))
+      }
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+  if keys
+    .iter()
+    .enumerate()
+    .any(|(index, key)| keys[..index].iter().any(|previous| previous == key))
+  {
+    return Err(ParseError::new("join key list contains duplicates"));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .map(|option| option.name.to_ascii_lowercase())
+    .filter(|name| name != "how" && name != "suffix")
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "join unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let how = match join_single_text_option(&options, "how")?.as_deref() {
+    None | Some("inner") => JoinHow::Inner,
+    Some("left") => JoinHow::Left,
+    Some(_) => return Err(ParseError::new("join how must be inner or left")),
+  };
+  let suffix = join_single_text_option(&options, "suffix")?.unwrap_or_else(|| "_right".to_owned());
+  if suffix.is_empty() {
+    return Err(ParseError::new("join suffix cannot be empty"));
+  }
+
+  Ok(Command::Join {
+    command: JoinCommand {
+      table_name,
+      keys,
+      how,
+      suffix,
+    },
+  })
+}
+
+fn is_join_argument_token(token: &UseToken) -> bool {
+  !matches!(token.kind, UseTokenKind::Symbol)
+}
+
+fn validate_join_table_name(table_name: &str) -> Result<(), ParseError> {
+  let mut characters = table_name.chars();
+  let valid = characters
+    .next()
+    .is_some_and(|character| character.is_alphabetic() || character == '_')
+    && characters.all(|character| character.is_alphanumeric() || character == '_');
+  if !valid {
+    return Err(ParseError::new("sql into table name must be an identifier"));
+  }
+  let normalized = table_name.to_ascii_lowercase();
+  if normalized == "active" || normalized.starts_with("__tabdat_") {
+    return Err(ParseError::new(format!(
+      "sql into cannot use reserved table name: {table_name}"
+    )));
+  }
+  Ok(())
+}
+
+fn join_single_text_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<String>, ParseError> {
+  let matches = options
+    .iter()
+    .filter(|option| option.name.eq_ignore_ascii_case(name))
+    .collect::<Vec<_>>();
+  if matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "join option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matches.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::String(value) => Ok(Some(value.clone())),
+    UseOptionValue::Identifiers(values) if values.len() == 1 => Ok(Some(values[0].clone())),
+    _ => Err(ParseError::new(format!(
+      "join option {name} expects a value"
+    ))),
+  }
 }
 
 fn parse_by_command(body: &str) -> Result<Command, ParseError> {
