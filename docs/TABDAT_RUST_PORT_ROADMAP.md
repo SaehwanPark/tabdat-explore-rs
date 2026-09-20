@@ -565,7 +565,16 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   35486898316/35486898348 and merge-head workflows
   35487873526/35487873479 passed; detailed evidence is in
   _workspace/runtime-tabulate/.
-- [ ] `collapse`
+- [x] `collapse` — bounded eager local-Parquet grouped aggregates
+  (CollapseResult; PR #57, squash merge 94391af). Direct `by(...)` forms for
+  count/mean/sum/min/max, SQL NULL grouping, deterministic NULL-last ordering,
+  non-NULL counts, numeric validation, atomic active-relation replacement,
+  owned metadata, and surviving-group label retention are covered. Conditions,
+  weights, named tables, lazy/materialized execution, panel propagation,
+  persistence, formatting, CLI, JSON, MCP, and broad Python parity remain
+  deferred. PR-head workflows 35491989391/35491989384 and merge-head
+  workflows 35492943464/35492943539 passed; detailed evidence is in
+  _workspace/runtime-collapse/.
 - [ ] `by`
 
 ### 6.5 Persistence and SQL

@@ -392,6 +392,32 @@ predicates, by-prefixes, multiple dimensions, named-table execution,
 lazy/materialized execution, persistence, formatting, CLI, JSON, MCP, and
 broad Python tabulate parity remain deferred.
 
+## Verified slice: bounded eager runtime `collapse` command
+
+Merged PR [#57](https://github.com/SaehwanPark/tabdat-explore-rs/pull/57)
+([94391af](https://github.com/SaehwanPark/tabdat-explore-rs/commit/94391afe84ab1b1c8c3c5006a55911426d6767b1))
+adds the bounded eager local-Parquet grouped-aggregate path to tabdat-runtime.
+The typed language boundary accepts direct `collapse <statistic> <variables>,
+by(<groups>)` forms for `count`, `mean`, `sum`, `min`, and `max`, with exact
+bounded rejection for conditions, assignment syntax, unsupported statistics,
+and malformed grouping options. Runtime execution validates active state,
+schema names, and numeric requirements before staging a quoted DuckDB query;
+it groups SQL NULL values explicitly, orders groups ascending with NULL last,
+counts non-NULL values, and atomically publishes an owned `CollapseResult`.
+Source/eager metadata is preserved, and session-local variable labels and
+value-label attachments are pruned to surviving group columns.
+
+Evidence: [_workspace/runtime-collapse/](_workspace/runtime-collapse/),
+the implementation, and focused parser/runtime contract tests. The pinned
+oracle checks, locked Rust baseline, dependency-policy, advisory,
+metadata-driven geiger checks, review, PR-head workflows, squash merge, and
+merge-head workflows all passed. Documentation-closeout workflow links are
+recorded in the companion evidence artifact after their completion.
+
+This accepted slice remains library-only. Conditions, weights, named-table
+execution, lazy/materialized execution, panel propagation, persistence,
+formatting, CLI, JSON, MCP, and broad Python `collapse` parity remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

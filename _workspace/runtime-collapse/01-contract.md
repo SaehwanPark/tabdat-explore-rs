@@ -1,7 +1,9 @@
 # Bounded eager-runtime `collapse` contract
 
-Status: implementation checkpoint; local verification is complete and hosted
-verification/merge are pending.
+Status: accepted and verified on main at merge commit
+[94391af](https://github.com/SaehwanPark/tabdat-explore-rs/commit/94391afe84ab1b1c8c3c5006a55911426d6767b1), via
+[PR #57](https://github.com/SaehwanPark/tabdat-explore-rs/pull/57). Detailed
+evidence is in [02-evidence-migration.md](02-evidence-migration.md).
 
 ## Authority
 
