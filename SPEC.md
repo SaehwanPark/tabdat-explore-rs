@@ -473,6 +473,32 @@ publication rules, labels, lazy/materialized behavior, persistence, formatting,
 CLI, JSON, MCP, and broad Python `join` parity deferred. Phase 6.4 runtime
 `join` remains unchecked.
 
+## Verified slice: syntax-only `append` command
+
+Merged [PR #60](https://github.com/SaehwanPark/tabdat-explore-rs/pull/60)
+([8ab016f](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8ab016f1e014445288d2411cf7d058e2bd523b49))
+adds a bounded, backend-independent `append <table>` syntax boundary to
+`tabdat-language`. The parser returns an owned table name, applies the recovered
+identifier and reserved-name checks, accepts the established quoted/backtick
+forms, and preserves bounded diagnostics for malformed arity, options,
+conditions, and assignment syntax. Runtime deliberately returns the typed
+unsupported-command result; it does not initialize DuckDB, inspect files, or
+mutate session state.
+
+Evidence: [_workspace/runtime-append/](_workspace/runtime-append/), including the
+[migration evidence](_workspace/runtime-append/02-evidence-migration.md),
+[review](_workspace/runtime-append/03-review.md), and
+[summary](_workspace/runtime-append/04-summary.md). The pinned oracle parser
+selection, locked Rust baseline, dependency/advisory/unsafe-code policy,
+metadata-driven geiger checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves named-table registry and activation, SQL
+creation, DuckDB append execution, schema compatibility, column union/type and
+missingness semantics, row ordering/publication, labels, lazy/materialized
+behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `append`
+parity deferred. Phase 6.4 runtime `append` remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

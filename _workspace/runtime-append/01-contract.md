@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-- Status: `in progress` at the contract checkpoint.
+- Status: `accepted` after PR #60 and its merge-head workflows passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `append` command boundary without
   claiming named-table execution.
@@ -63,6 +63,13 @@ named-table and SQL state model that does not yet exist in this Rust workspace.
   warnings denied pass before the PR is marked ready.
 - Documentation and `git diff --check` pass; only this slice's files are
   staged.
+
+The contract checkpoint was committed as
+[`8874983441332d9916f8ae581d9b8f4a4d71d1cb`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8874983441332d9916f8ae581d9b8f4a4d71d1cb).
+The implementation was committed as
+[`04e397caf4d61ea4aaeba42d407c198bbb80d2a1`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/04e397caf4d61ea4aaeba42d407c198bbb80d2a1)
+and merged to `main` as
+[`8ab016f1e014445288d2411cf7d058e2bd523b49`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8ab016f1e014445288d2411cf7d058e2bd523b49).
 
 ## Known gaps and next dependency
 
