@@ -90,6 +90,8 @@ pub enum Command {
   Tabulate { command: TabulateCommand },
   /// Join the active dataset with a named table (execution is deferred).
   Join { command: JoinCommand },
+  /// Append rows from a named table (execution is deferred).
+  Append { table_name: String },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -760,6 +762,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "label" => parse_label_command(body),
     "tabulate" => parse_tabulate_command(body),
     "join" => parse_join_command(body),
+    "append" => parse_append_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2444,6 +2447,28 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Gsort { keys })
 }
 
+fn parse_append_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "append expects syntax: append <table>";
+  let parts = parse_simple_body(body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() != 1
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let table_name = parts
+    .arguments
+    .into_iter()
+    .next()
+    .expect("append arity checked before extracting the table")
+    .text;
+  validate_named_table_name(&table_name)?;
+  Ok(Command::Append { table_name })
+}
+
 fn parse_join_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "join expects syntax: join <table> on <keylist>";
   let (argument_body, option_body) = match first_unquoted_comma(body) {
@@ -2471,7 +2496,7 @@ fn parse_join_command(body: &str) -> Result<Command, ParseError> {
   }
 
   let table_name = tokens[0].text.clone();
-  validate_join_table_name(&table_name)?;
+  validate_named_table_name(&table_name)?;
   let keys = tokens[2..]
     .iter()
     .map(|token| {
@@ -2532,7 +2557,7 @@ fn is_join_argument_token(token: &UseToken) -> bool {
   !matches!(token.kind, UseTokenKind::Symbol)
 }
 
-fn validate_join_table_name(table_name: &str) -> Result<(), ParseError> {
+fn validate_named_table_name(table_name: &str) -> Result<(), ParseError> {
   let mut characters = table_name.chars();
   let valid = characters
     .next()

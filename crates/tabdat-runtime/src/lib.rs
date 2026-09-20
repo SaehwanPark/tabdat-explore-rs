@@ -2883,6 +2883,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Label { .. } => "label",
     Command::Tabulate { .. } => "tabulate",
     Command::Join { .. } => "join",
+    Command::Append { .. } => "append",
     Command::By { .. } => "by",
     Command::Collapse { .. } => "collapse",
     Command::Rename { .. } => "rename",
