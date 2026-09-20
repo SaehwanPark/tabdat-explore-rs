@@ -4,7 +4,7 @@ use tabdat_language::{
   JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, PanelAction, PanelCommand,
   RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, ReshapeCommand,
   ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, XtDataCommand,
-  XtDataTransform, parse_command,
+  XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -482,6 +482,103 @@ fn ivregress_preserves_bounded_parser_diagnostics() {
       "ivregress `2sls` y, endog(z) iv(w)",
       "ivregress estimator must be 2sls or gmm",
     ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtreg_parses_bounded_panel_estimator_forms() {
+  assert_eq!(
+    parse_command("xtreg wage exper tenure, fe").unwrap(),
+    Command::XtReg {
+      command: XtRegCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec!["exper".to_owned(), "tenure".to_owned()],
+        estimator: XtRegEstimator::FixedEffects,
+        robust: false,
+        cluster_variable: None,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("XTREG `wage value` `exper value`, re").unwrap(),
+    Command::XtReg {
+      command: XtRegCommand {
+        outcome: "wage value".to_owned(),
+        predictors: vec!["exper value".to_owned()],
+        estimator: XtRegEstimator::RandomEffects,
+        robust: false,
+        cluster_variable: None,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtreg wage exper, re robust").unwrap(),
+    Command::XtReg {
+      command: XtRegCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec!["exper".to_owned()],
+        estimator: XtRegEstimator::RandomEffects,
+        robust: true,
+        cluster_variable: None,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtreg wage exper, fe cluster(firm_id)").unwrap(),
+    Command::XtReg {
+      command: XtRegCommand {
+        outcome: "wage".to_owned(),
+        predictors: vec!["exper".to_owned()],
+        estimator: XtRegEstimator::FixedEffects,
+        robust: false,
+        cluster_variable: Some("firm_id".to_owned()),
+      },
+    }
+  );
+}
+
+#[test]
+fn xtreg_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("xtreg", "xtreg expects syntax: xtreg <y> <xvars>, fe|re"),
+    (
+      "xtreg wage",
+      "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
+    ),
+    ("xtreg wage exper", "xtreg requires exactly one of fe or re"),
+    (
+      "xtreg wage exper, fe re",
+      "xtreg requires exactly one of fe or re",
+    ),
+    (
+      "xtreg wage exper, fe=true",
+      "xtreg option fe does not accept a value",
+    ),
+    (
+      "xtreg wage exper, fe cluster(firm year)",
+      "xtreg option cluster expects one variable",
+    ),
+    (
+      "xtreg wage exper, fe cluster(firm) robust",
+      "xtreg cannot combine robust and cluster",
+    ),
+    (
+      "xtreg wage exper, detail",
+      "xtreg unsupported option: detail",
+    ),
+    (
+      "xtreg wage if year > 2020, fe",
+      "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
+    ),
+    ("xtreg wage exper, FE", "xtreg unsupported option: FE"),
   ];
 
   for (input, expected) in cases {
