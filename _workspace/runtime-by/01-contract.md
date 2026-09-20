@@ -1,9 +1,9 @@
 # Bounded eager-runtime `by` contract
 
-Status: implementation checkpoint on `feat/runtime-by`; the contract is
-intentionally bounded and will be marked accepted only after local and hosted
-verification. The pinned Python authority and focused evidence are recorded
-below.
+Status: accepted and verified on main at merge commit
+[cc818e5](https://github.com/SaehwanPark/tabdat-explore-rs/commit/cc818e5e5e395d9b0f8c86a0dee451417ca98002), via
+[PR #58](https://github.com/SaehwanPark/tabdat-explore-rs/pull/58). Detailed
+evidence is in [02-evidence-migration.md](02-evidence-migration.md).
 
 ## Authority
 

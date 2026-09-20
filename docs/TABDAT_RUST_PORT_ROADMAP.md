@@ -575,7 +575,19 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   deferred. PR-head workflows 35491989391/35491989384 and merge-head
   workflows 35492943464/35492943539 passed; detailed evidence is in
   _workspace/runtime-collapse/.
-- [ ] `by`
+- [x] `by` — bounded eager local-Parquet grouped summarize/count
+  (ByResult; PR #58, squash merge cc818e5). Typed by-prefix parsing preserves
+  grouping and child-command boundaries, supports quoted identifiers, and
+  rejects missing delimiters, empty groups, nested by, help, status, and doctor
+  children. Grouped summarize defaults to numeric non-group columns, grouped
+  count uses COUNT(*), SQL NULL groups are explicit and NULL-last ordered, and
+  both read-only forms return owned cells while preserving active state.
+  Grouped tabulate, conditions, weights, named tables, lazy/materialized
+  execution, panel propagation, persistence, formatting, CLI, JSON, MCP, and
+  broad Python by parity remain deferred. PR-head workflows
+  35496489763/35496489761 and merge-head workflows
+  35497533142/35497533149 passed; detailed evidence is in
+  _workspace/runtime-by/.
 
 ### 6.5 Persistence and SQL
 

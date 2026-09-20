@@ -418,6 +418,33 @@ This accepted slice remains library-only. Conditions, weights, named-table
 execution, lazy/materialized execution, panel propagation, persistence,
 formatting, CLI, JSON, MCP, and broad Python `collapse` parity remain deferred.
 
+## Verified slice: bounded eager runtime by command
+
+Merged PR [#58](https://github.com/SaehwanPark/tabdat-explore-rs/pull/58)
+([cc818e5](https://github.com/SaehwanPark/tabdat-explore-rs/commit/cc818e5e5e395d9b0f8c86a0dee451417ca98002))
+adds the bounded eager local-Parquet grouped read-only path to tabdat-runtime.
+The typed language boundary accepts by group-list prefixes over summarize and
+count, including quoted identifiers and exact rejection of missing delimiters,
+empty grouping lists, nested by commands, and help/status/doctor children.
+Grouped summarize returns an owned ByResult with group values followed by
+mean-variable columns; an omitted variable list selects numeric non-group
+columns in schema order. Grouped count returns group values and Count using
+COUNT(*). Both forms treat SQL NULL group values as explicit groups, order
+groups ascending with NULL last, validate schema and numeric requirements before
+querying, and preserve the active relation and session metadata.
+
+Evidence: [_workspace/runtime-by/](_workspace/runtime-by/), the implementation,
+and focused parser/runtime contract tests. The pinned oracle checks, locked Rust
+baseline, dependency-policy, advisory, metadata-driven geiger checks,
+independent review, PR-head workflows, squash merge, and merge-head workflows
+all passed. Documentation-closeout workflow links are recorded in the companion
+evidence artifact after their completion.
+
+This accepted slice remains library-only. Grouped tabulate and other child
+commands, conditions, weights, named-table execution, lazy/materialized
+execution, panel propagation, persistence, formatting, CLI, JSON, MCP, and
+broad Python by parity remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
