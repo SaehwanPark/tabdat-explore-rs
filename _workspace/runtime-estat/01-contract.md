@@ -19,8 +19,9 @@ The accepted syntax target is:
     estat firststage|overid|endogenous|hausman
 
 The parser produces an owned typed command containing one of the four selected
-diagnostic subcommands. The subcommand is case-insensitive and quoted text is
-accepted by the pinned oracle; selected forms do not accept options.
+diagnostic subcommands. The subcommand is case-insensitive; single- and
+double-quoted text is accepted by the pinned oracle, while backtick quoting is
+not. Selected forms do not accept options.
 
 ## Authority and recovered behavior
 

@@ -102,6 +102,8 @@ pub enum Command {
   IvRegress { command: IvRegressCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
   XtReg { command: XtRegCommand },
+  /// Run a bounded post-estimation diagnostic (execution is deferred).
+  Estat { command: EstatCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -373,6 +375,28 @@ pub struct XtRegCommand {
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
+}
+
+/// The no-option post-estimation diagnostics accepted by this parser-only
+/// `estat` slice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EstatSubcommand {
+  /// Report the first-stage diagnostic for an IV model.
+  FirstStage,
+  /// Report the overidentification diagnostic for an IV model.
+  Overid,
+  /// Report the endogeneity diagnostic for an IV model.
+  Endogenous,
+  /// Compare fixed- and random-effects panel models.
+  Hausman,
+}
+
+/// The parser-only `estat` form retained for a later post-estimation runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EstatCommand {
+  /// The requested diagnostic subcommand.
+  pub subcommand: EstatSubcommand,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -898,6 +922,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtdata" => parse_xtdata_command(body),
     "ivregress" => parse_ivregress_command(body),
     "xtreg" => parse_xtreg_command(body),
+    "estat" => parse_estat_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -3084,6 +3109,51 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
       robust,
       cluster_variable,
     },
+  })
+}
+
+fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "estat assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment {
+    return Err(ParseError::new(
+      "estat assignment requires an expression after =",
+    ));
+  }
+  if parts.has_condition || parts.arguments.len() != 1 {
+    return Err(ParseError::new(syntax));
+  }
+
+  let argument = &parts.arguments[0];
+  let normalized_subcommand = argument.text.to_ascii_lowercase();
+  let subcommand = match (normalized_subcommand.as_str(), argument.backtick_quoted) {
+    ("firststage", false) => EstatSubcommand::FirstStage,
+    ("overid", false) => EstatSubcommand::Overid,
+    ("endogenous", false) => EstatSubcommand::Endogenous,
+    ("hausman", false) => EstatSubcommand::Hausman,
+    _ => {
+      return Err(ParseError::new(
+        "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+      ));
+    }
+  };
+  if parts.has_options {
+    return Err(ParseError::new(format!(
+      "estat {} does not support options",
+      normalized_subcommand
+    )));
+  }
+
+  Ok(Command::Estat {
+    command: EstatCommand { subcommand },
   })
 }
 
