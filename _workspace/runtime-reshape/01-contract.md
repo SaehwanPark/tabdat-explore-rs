@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-- Status: `draft` at the contract checkpoint; acceptance follows the PR-head
-  implementation and merge-head workflow evidence.
+- Status: `accepted` after PR #61 and its PR-head and merge-head workflows
+  passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `reshape` command boundary without
   claiming relation execution.
@@ -85,3 +85,13 @@ Python `reshape` parity. Those behaviors remain future runtime evidence, gated
 by relation/session semantics and a dedicated reshape execution contract. The
 parser can be merged without implying that a parsed reshape command executes
 today.
+
+The contract checkpoint is
+[`48323f75423773e3b0501cd1eb7d2a8bcb0a3b5a`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/48323f75423773e3b0501cd1eb7d2a8bcb0a3b5a);
+the casing correction is
+[`e3e9897abb8fba93e912ee853885f7a1d18e7665`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e3e9897abb8fba93e912ee853885f7a1d18e7665);
+the implementation checkpoint is
+[`0d1a059ab5c03c72fc78cb855ce4c9ea122dc0b9`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0d1a059ab5c03c72fc78cb855ce4c9ea122dc0b9);
+and PR [#61](https://github.com/SaehwanPark/tabdat-explore-rs/pull/61) was
+squash-merged to `main` as
+[`e6cc4f1768c9b55b8ead702a08a36283f2a27bee`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e6cc4f1768c9b55b8ead702a08a36283f2a27bee).

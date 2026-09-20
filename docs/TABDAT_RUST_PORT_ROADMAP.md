@@ -339,6 +339,10 @@ Port TabDat's language before implementing most execution.
 - [x] Add the bounded direct `append <table>` syntax slice (PR #60, squash
   merge `8ab016f`; typed table parsing and bounded diagnostics are covered;
   named-table state, SQL, and execution remain deferred).
+- [x] Add the bounded direct `reshape long|wide <varlist>, i(<id_vars>) j(<name>)`
+  syntax slice (PR #61, squash merge `e6cc4f1`; typed direction, ordered names,
+  duplicate/distinctness validation, and bounded diagnostics are covered;
+  relation/session reshape execution remains deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -562,7 +566,8 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   the Phase 5.1 direct-language slice (PR #59, squash merge `585c53f`).
 - [ ] `append` — runtime remains deferred; the parser boundary is accepted in
   the Phase 5.1 direct-language slice (PR #60, squash merge `8ab016f`).
-- [ ] `reshape`
+- [ ] `reshape` — runtime remains deferred; the parser boundary is accepted in
+  the Phase 5.1 direct-language slice (PR #61, squash merge `e6cc4f1`).
 - [x] `tabulate` — bounded eager local-Parquet one- and two-way frequency
   tables (TabulateResult; PR #56, squash merge 24405a6). Direct row/column
   forms, count/percent output, row/column percentages, missing categories,

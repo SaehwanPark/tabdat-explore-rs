@@ -499,6 +499,34 @@ missingness semantics, row ordering/publication, labels, lazy/materialized
 behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `append`
 parity deferred. Phase 6.4 runtime `append` remains unchecked.
 
+## Verified slice: syntax-only `reshape` command
+
+Merged [PR #61](https://github.com/SaehwanPark/tabdat-explore-rs/pull/61)
+([e6cc4f1](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e6cc4f1768c9b55b8ead702a08a36283f2a27bee))
+adds a bounded, backend-independent
+`reshape long|wide <varlist>, i(<id_vars>) j(<name>)` syntax boundary to
+`tabdat-language`. The parser returns an owned `ReshapeCommand` with typed long
+or wide direction, ordered variables and identifiers, and the single `j()` name.
+It preserves the recovered quoted/unquoted direction behavior, requires unique
+and pairwise-distinct names, requires exactly one lowercase `i()` and `j()`
+option, and preserves bounded diagnostics for malformed or unsupported forms.
+Runtime deliberately returns the typed unsupported-command result; it does not
+initialize DuckDB, inspect files, or mutate session state.
+
+Evidence: [_workspace/runtime-reshape/](_workspace/runtime-reshape/), including
+the [migration evidence](_workspace/runtime-reshape/02-evidence-migration.md),
+[review](_workspace/runtime-reshape/03-review.md), and
+[summary](_workspace/runtime-reshape/04-summary.md). The pinned oracle parser
+selection, locked Rust baseline, dependency/advisory/unsafe-code policy,
+metadata-driven geiger checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves long/wide relation execution, identifier-group
+and missingness semantics, wide-column naming and collision rules, row ordering,
+row counts, type coercion, relation publication, labels, lazy/materialized
+behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `reshape`
+parity deferred. Phase 6.4 runtime `reshape` remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
