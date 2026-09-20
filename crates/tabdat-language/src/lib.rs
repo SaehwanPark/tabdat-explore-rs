@@ -100,6 +100,8 @@ pub enum Command {
   XtData { command: XtDataCommand },
   /// Fit an instrumental-variables model (execution is deferred).
   IvRegress { command: IvRegressCommand },
+  /// Fit a fixed- or random-effects panel model (execution is deferred).
+  XtReg { command: XtRegCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -346,6 +348,31 @@ pub struct IvRegressCommand {
   pub include_intercept: bool,
   /// The requested IV estimator.
   pub estimator: IvEstimator,
+}
+
+/// The estimator forms accepted by the parser-only `xtreg` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum XtRegEstimator {
+  /// Fixed-effects panel estimator.
+  FixedEffects,
+  /// Random-effects panel estimator.
+  RandomEffects,
+}
+
+/// The parser-only `xtreg` form retained for a later panel/statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct XtRegCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// The requested fixed- or random-effects estimator.
+  pub estimator: XtRegEstimator,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -870,6 +897,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "panel" => parse_panel_command(body),
     "xtdata" => parse_xtdata_command(body),
     "ivregress" => parse_ivregress_command(body),
+    "xtreg" => parse_xtreg_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -2948,6 +2976,113 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
       cluster_variable,
       include_intercept: !options.iter().any(|option| option.name == "noconstant"),
       estimator,
+    },
+  })
+}
+
+fn xtreg_identifier_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<Vec<String>>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "xtreg option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
+    _ => Err(ParseError::new(format!(
+      "xtreg option {name} expects variables"
+    ))),
+  }
+}
+
+fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "xtreg expects syntax: xtreg <y> <xvars>, fe|re";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "fe" | "re" | "robust" | "cluster"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "xtreg unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "fe" | "re" | "robust")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "xtreg option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let cluster_values = xtreg_identifier_option(&options, "cluster")?;
+  if cluster_values
+    .as_ref()
+    .is_some_and(|values| values.len() != 1)
+  {
+    return Err(ParseError::new("xtreg option cluster expects one variable"));
+  }
+  let cluster_variable = cluster_values.and_then(|mut values| values.pop());
+
+  let has_fe = options.iter().any(|option| option.name == "fe");
+  let has_re = options.iter().any(|option| option.name == "re");
+  if has_fe == has_re {
+    return Err(ParseError::new("xtreg requires exactly one of fe or re"));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new("xtreg cannot combine robust and cluster"));
+  }
+
+  Ok(Command::XtReg {
+    command: XtRegCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|argument| argument.text.clone())
+        .collect(),
+      estimator: if has_fe {
+        XtRegEstimator::FixedEffects
+      } else {
+        XtRegEstimator::RandomEffects
+      },
+      robust,
+      cluster_variable,
     },
   })
 }
