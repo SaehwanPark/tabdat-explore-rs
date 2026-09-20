@@ -88,6 +88,8 @@ pub enum Command {
   Label { command: LabelCommand },
   /// Produce bounded eager frequency tables for one or two variables.
   Tabulate { command: TabulateCommand },
+  /// Replace the active dataset with a bounded grouped aggregate relation.
+  Collapse { command: CollapseCommand },
   /// Rename one column in the bounded eager runtime.
   Rename { old_name: String, new_name: String },
   /// Execute a script file (script execution is deferred).
@@ -178,6 +180,32 @@ pub struct TabulateCommand {
   pub include_missing: bool,
   /// Suppress attached value-label display.
   pub nolabel: bool,
+}
+
+/// The finite aggregate functions accepted by bounded `collapse`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollapseStatistic {
+  /// Count non-NULL values in each aggregate variable.
+  Count,
+  /// Compute the arithmetic mean of each aggregate variable.
+  Mean,
+  /// Compute the sum of each aggregate variable.
+  Sum,
+  /// Compute the minimum of each aggregate variable.
+  Min,
+  /// Compute the maximum of each aggregate variable.
+  Max,
+}
+
+/// The bounded grouped aggregate form of `collapse`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollapseCommand {
+  /// The aggregate function applied to every requested variable.
+  pub statistic: CollapseStatistic,
+  /// Aggregate variables in source order.
+  pub variables: Vec<String>,
+  /// Grouping variables in source order.
+  pub groups: Vec<String>,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -696,6 +724,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "decode" => parse_decode_command(body),
     "label" => parse_label_command(body),
     "tabulate" => parse_tabulate_command(body),
+    "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
     "replace" => parse_replace_command(body),
@@ -2378,6 +2407,89 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Gsort { keys })
 }
 
+fn parse_collapse_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "collapse expects syntax: collapse stat varlist, by(group_vars)";
+  let Some(comma_index) = first_unquoted_comma(body) else {
+    return Err(ParseError::new(
+      "collapse expects exactly one by(group_vars) option",
+    ));
+  };
+  let variable_body = body[..comma_index].trim_matches(is_command_whitespace);
+  let simple_parts = parse_simple_body(variable_body, false)?;
+  if simple_parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if simple_parts.has_condition || simple_parts.has_assignment {
+    return Err(ParseError::new(
+      "collapse does not accept if clauses or assignment syntax",
+    ));
+  }
+  let variable_tokens = tokenize_use_options(variable_body)?;
+  if variable_tokens.len() < 2 {
+    return Err(ParseError::new(syntax));
+  }
+
+  let statistic_text = variable_tokens[0].text.clone();
+  if !matches!(
+    &variable_tokens[0].kind,
+    UseTokenKind::Identifier { quoted: false }
+  ) {
+    return Err(ParseError::new(format!(
+      "collapse unsupported statistic: {statistic_text}"
+    )));
+  }
+  let statistic = match statistic_text.to_ascii_lowercase().as_str() {
+    "count" => CollapseStatistic::Count,
+    "mean" => CollapseStatistic::Mean,
+    "sum" => CollapseStatistic::Sum,
+    "min" => CollapseStatistic::Min,
+    "max" => CollapseStatistic::Max,
+    _ => {
+      return Err(ParseError::new(format!(
+        "collapse unsupported statistic: {statistic_text}"
+      )));
+    }
+  };
+
+  let variables = variable_tokens[1..]
+    .iter()
+    .map(|token| {
+      if matches!(&token.kind, UseTokenKind::Identifier { .. }) {
+        Ok(token.text.clone())
+      } else {
+        Err(ParseError::new(syntax))
+      }
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+
+  let options = parse_use_options(&body[comma_index + 1..])?;
+  let by_options = options
+    .iter()
+    .filter(|option| option.name.eq_ignore_ascii_case("by"))
+    .collect::<Vec<_>>();
+  if options.len() != 1 || by_options.len() != 1 {
+    return Err(ParseError::new(
+      "collapse expects exactly one by(group_vars) option",
+    ));
+  }
+  let groups = match &by_options[0].value {
+    UseOptionValue::Identifiers(groups) if !groups.is_empty() => groups.clone(),
+    _ => {
+      return Err(ParseError::new(
+        "collapse by() expects at least one grouping variable",
+      ));
+    }
+  };
+
+  Ok(Command::Collapse {
+    command: CollapseCommand {
+      statistic,
+      variables,
+      groups,
+    },
+  })
+}
+
 fn parse_tabulate_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "tabulate expects one or two variables";
   let (variable_body, option_body) = match first_unquoted_comma(body) {
@@ -3232,12 +3344,16 @@ fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, Pars
           "option {name} is missing closing )"
         )));
       }
-      if value_tokens.is_empty() {
+      if value_tokens.is_empty() && !name.eq_ignore_ascii_case("by") {
         return Err(ParseError::new(format!(
           "option {name} expects at least one value"
         )));
       }
-      value = parse_use_parenthesized_value(&name, value_tokens)?;
+      value = if name.eq_ignore_ascii_case("by") && value_tokens.is_empty() {
+        UseOptionValue::Identifiers(Vec::new())
+      } else {
+        parse_use_parenthesized_value(&name, value_tokens)?
+      };
     }
 
     if stream.peek_is_symbol("=") {
