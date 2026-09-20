@@ -1,7 +1,7 @@
 # Bounded eager-runtime `collapse` contract
 
-Status: contract checkpoint; implementation and hosted verification are
-pending.
+Status: implementation checkpoint; local verification is complete and hosted
+verification/merge are pending.
 
 ## Authority
 
@@ -55,8 +55,9 @@ statistics, and additional options with command-specific diagnostics.
   `DatasetInfo`; it exposes no DuckDB statement, row handle, or connection
   lifetime.
 - The source path and eager execution metadata remain attached to the new
-  dataset. Session-local label metadata is pruned to surviving group columns;
-  no labels are synthesized for aggregate columns.
+  dataset. Variable labels and value-label attachments are pruned to surviving
+  group columns; defined value-label sets may remain detached, and no labels
+  are synthesized for aggregate columns.
 - Validation, type checking, query failure, and publication failure leave the
   prior active relation, dataset metadata, and label metadata unchanged.
 

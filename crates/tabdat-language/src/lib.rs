@@ -3344,12 +3344,16 @@ fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, Pars
           "option {name} is missing closing )"
         )));
       }
-      if value_tokens.is_empty() {
+      if value_tokens.is_empty() && !name.eq_ignore_ascii_case("by") {
         return Err(ParseError::new(format!(
           "option {name} expects at least one value"
         )));
       }
-      value = parse_use_parenthesized_value(&name, value_tokens)?;
+      value = if name.eq_ignore_ascii_case("by") && value_tokens.is_empty() {
+        UseOptionValue::Identifiers(Vec::new())
+      } else {
+        parse_use_parenthesized_value(&name, value_tokens)?
+      };
     }
 
     if stream.peek_is_symbol("=") {

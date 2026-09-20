@@ -137,6 +137,10 @@ fn collapse_preserves_bounded_parser_diagnostics() {
       "collapse expects exactly one by(group_vars) option",
     ),
     (
+      "collapse mean age, by()",
+      "collapse by() expects at least one grouping variable",
+    ),
+    (
       "collapse mean age if age > 0, by(sex)",
       "collapse does not accept if clauses or assignment syntax",
     ),
