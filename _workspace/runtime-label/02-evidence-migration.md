@@ -84,7 +84,12 @@ The squash merge head was then verified by:
 - [main CI run 35484575373](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35484575373), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35484575373/job/106008480712) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35484575373/job/106008480569); and
 - [main runtime run 35484575369](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35484575369), including its [Linux runtime job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35484575369/job/106008480665).
 
-The documentation-closeout workflows are recorded after their completion.
+The documentation-closeout commit `3a0ab00` then passed:
+
+- [final main CI run 35485577830](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577830), including [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577830/job/106011208017) and [dependency/unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577830/job/106011207859);
+- [final ReadStat workflow 35485577864](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577864), including [facade job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577864/job/106011208002) and [upstream build job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577864/job/106011208037);
+- [final libgretl feasibility workflow 35485577816](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577816), including its [Linux spike job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577816/job/106011208154); and
+- [final libgretl OLS workflow 35485577786](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577786), including its [Linux OLS job](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35485577786/job/106011207790).
 
 ## Deviations and deferrals
 

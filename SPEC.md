@@ -360,8 +360,9 @@ locked format/check/test/Clippy, dependency-policy, advisory, and
 metadata-driven geiger checks passed. PR-head workflows
 `35483588143`/`35483588144` passed before squash merge as
 [`70b9745`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/70b9745ae7e22855c763bcb9e3ed40332646723c).
-Merge-head and documentation-closeout workflow links are recorded in the
-companion evidence artifact.
+Merge-head workflows `35484575373`/`35484575369` and documentation-closeout
+workflows `35485577830`, `35485577864`, `35485577816`, and `35485577786` passed;
+the detailed links are recorded in the companion evidence artifact.
 
 This accepted slice remains library-only. `label save/use`, DTA-imported
 labels, inspection/reporting rendering, lazy/materialized execution, panel
