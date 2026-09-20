@@ -88,6 +88,8 @@ pub enum Command {
   Label { command: LabelCommand },
   /// Produce bounded eager frequency tables for one or two variables.
   Tabulate { command: TabulateCommand },
+  /// Run a bounded grouped read-only child command.
+  By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
   Collapse { command: CollapseCommand },
   /// Rename one column in the bounded eager runtime.
@@ -206,6 +208,15 @@ pub struct CollapseCommand {
   pub variables: Vec<String>,
   /// Grouping variables in source order.
   pub groups: Vec<String>,
+}
+
+/// The grouped read-only form of `by`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ByCommand {
+  /// Grouping variables in source order.
+  pub groups: Vec<String>,
+  /// The child command retained for bounded runtime dispatch.
+  pub command: Box<Command>,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
@@ -724,6 +735,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "decode" => parse_decode_command(body),
     "label" => parse_label_command(body),
     "tabulate" => parse_tabulate_command(body),
+    "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
@@ -2407,6 +2419,57 @@ fn parse_gsort_command(body: &str) -> Result<Command, ParseError> {
   Ok(Command::Gsort { keys })
 }
 
+fn parse_by_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "by expects syntax: by group_vars: command";
+  let Some(colon_index) = first_unquoted_colon(body) else {
+    return Err(ParseError::new(syntax));
+  };
+
+  let group_body = body[..colon_index].trim_matches(is_command_whitespace);
+  let group_tokens = tokenize_use_options(group_body)?;
+  if group_tokens.is_empty()
+    || group_tokens
+      .iter()
+      .any(|token| !matches!(token.kind, UseTokenKind::Identifier { .. }))
+  {
+    return Err(ParseError::new("by expects at least one grouping variable"));
+  }
+  let groups = group_tokens
+    .into_iter()
+    .map(|token| token.text)
+    .collect::<Vec<_>>();
+
+  let command_body = body[colon_index + 1..].trim_matches(is_command_whitespace);
+  if command_body.is_empty() {
+    return Err(ParseError::new("by expects a command after :"));
+  }
+  let command = parse_command(command_body)?;
+  match &command {
+    Command::By { .. } => return Err(ParseError::new("nested by commands are not supported")),
+    Command::Help { .. } => {
+      return Err(ParseError::new("help is not supported inside by commands"));
+    }
+    Command::Status => {
+      return Err(ParseError::new(
+        "status is not supported inside by commands",
+      ));
+    }
+    Command::Doctor => {
+      return Err(ParseError::new(
+        "doctor is not supported inside by commands",
+      ));
+    }
+    _ => {}
+  }
+
+  Ok(Command::By {
+    command: ByCommand {
+      groups,
+      command: Box::new(command),
+    },
+  })
+}
+
 fn parse_collapse_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "collapse expects syntax: collapse stat varlist, by(group_vars)";
   let Some(comma_index) = first_unquoted_comma(body) else {
@@ -3153,6 +3216,35 @@ fn first_unquoted_comma(text: &str) -> Option<usize> {
         index += 1;
       }
       b',' => return Some(index),
+      _ => index += 1,
+    }
+  }
+  None
+}
+
+fn first_unquoted_colon(text: &str) -> Option<usize> {
+  let bytes = text.as_bytes();
+  let mut quote = None;
+  let mut index = 0;
+  while index < bytes.len() {
+    let character = bytes[index];
+    if let Some(active_quote) = quote {
+      if character == active_quote {
+        if active_quote == b'`' && bytes.get(index + 1) == Some(&active_quote) {
+          index += 2;
+          continue;
+        }
+        quote = None;
+      }
+      index += 1;
+      continue;
+    }
+    match character {
+      b'\'' | b'"' | b'`' => {
+        quote = Some(character);
+        index += 1;
+      }
+      b':' => return Some(index),
       _ => index += 1,
     }
   }
@@ -3965,8 +4057,8 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName, SortKey,
-    parse_command,
+    ByCommand, Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName,
+    SortKey, TabulateCommand, parse_command,
   };
 
   #[test]
@@ -5746,5 +5838,97 @@ mod tests {
       parse_command("\"foo\"\"").unwrap_err().to_string(),
       "unterminated quoted string"
     );
+  }
+
+  #[test]
+  fn parses_by_grouped_read_only_children() {
+    assert_eq!(
+      parse_command("BY sex: summarize age cost").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["sex".to_owned()],
+          command: Box::new(Command::Summarize {
+            variables: vec!["age".to_owned(), "cost".to_owned()],
+          }),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by sex age: count").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["sex".to_owned(), "age".to_owned()],
+          command: Box::new(Command::Count),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by `group:key`: summarize `value col`").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["group:key".to_owned()],
+          command: Box::new(Command::Summarize {
+            variables: vec!["value col".to_owned()],
+          }),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by sex: tabulate outcome").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["sex".to_owned()],
+          command: Box::new(Command::Tabulate {
+            command: TabulateCommand {
+              row_variables: vec!["outcome".to_owned()],
+              column_variables: Vec::new(),
+              row_percent: false,
+              column_percent: false,
+              include_missing: false,
+              nolabel: false,
+            },
+          }),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_by_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "by sex summarize age",
+        "by expects syntax: by group_vars: command",
+      ),
+      (
+        "by : summarize age",
+        "by expects at least one grouping variable",
+      ),
+      (
+        "by sex, age: count",
+        "by expects at least one grouping variable",
+      ),
+      ("by sex:", "by expects a command after :"),
+      (
+        "by sex: by age: count",
+        "nested by commands are not supported",
+      ),
+      ("by sex: help", "help is not supported inside by commands"),
+      (
+        "by sex: status",
+        "status is not supported inside by commands",
+      ),
+      (
+        "by sex: doctor",
+        "doctor is not supported inside by commands",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
   }
 }
