@@ -1,7 +1,8 @@
 # Bounded eager-runtime `decode` contract
 
-Status: proposed at the WIP contract checkpoint on branch
-`feat/runtime-decode`.
+Status: accepted on `main` at merge commit
+[`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2), via
+[PR #54](https://github.com/SaehwanPark/tabdat-explore-rs/pull/54).
 
 Producer: task owner, using `tabdat-migration` and `tabdat-data-semantics`.
 Consumer: the bounded eager runtime implementation and its focused review.
@@ -26,8 +27,8 @@ The Rust slice supports:
 
 The session owns the decode map as private, Rust-owned provenance attached to
 the generated encode column. It is not the general value-label metadata model:
-the `label()` command, imported DTA labels, arbitrary user-created label sets,
-variable labels, and public label metadata remain later roadmap work. The
+the generic `label` command, imported DTA labels, arbitrary user-created label
+sets, variable labels, and public label metadata remain later roadmap work. The
 already-parsed `encode ..., label(...)` option therefore remains explicitly
 unsupported even though an ordinary encode creates the map needed for this
 bounded round trip.

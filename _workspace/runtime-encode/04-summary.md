@@ -13,8 +13,10 @@ source existence, target collision, and backend/staging failures without
 mutating the prior active state.
 
 The parser also preserves the optional `label(<lblname>)` syntax, but the
-runtime returns an explicit unsupported-label error because value-label metadata
-does not yet exist in the Rust session model.
+encode slice returns an explicit unsupported-label error because general
+value-label metadata is outside its contract. Ordinary encode now retains a
+private code-to-text map consumed by the separately accepted bounded decode
+slice.
 
 ## Durable records
 
@@ -35,6 +37,7 @@ workflow links. Documentation closeout commit
 also passed the final main CI, ReadStat, libgretl feasibility, and libgretl
 OLS workflows recorded in [02-evidence-migration.md](02-evidence-migration.md).
 
-Decode, label metadata, lazy/materialized execution, panel metadata,
-last-operation state, formatting, CLI/JSON/MCP, and broad transform sequencing
-remain deferred.
+General label metadata, the generic `label` command, lazy/materialized
+execution, panel metadata, last-operation state, formatting, CLI/JSON/MCP, and
+broad transform sequencing remain deferred. Bounded same-session `decode` is
+accepted separately in `_workspace/runtime-decode/`.

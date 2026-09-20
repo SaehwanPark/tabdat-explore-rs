@@ -284,7 +284,7 @@ documentation-closeout workflow links are recorded in the companion evidence
 artifact.
 
 This accepted runtime subset is library-only. Lazy/materialized execution,
-panel/label metadata, last_operation, formatting, CLI, JSON, MCP, and broad
+panel metadata, last_operation, formatting, CLI, JSON, MCP, and broad
 transform sequencing remain deferred.
 
 ## Verified slice: bounded eager runtime encode command
@@ -295,9 +295,10 @@ nonmissing source strings, assigns one-based integer codes, preserves source
 NULLs as target NULLs, appends the generated column, and publishes the staged
 projection atomically. Quoted identifiers, embedded identifier quotes, empty
 relations, source existence/type validation, target collisions, and backend
-failure preservation are covered. The parser also retains an optional
-`label(<lblname>)` name, but the runtime rejects it explicitly because Rust
-value-label metadata is not yet implemented.
+failure preservation are covered. Ordinary encode also retains a private
+session-owned code-to-text map for the bounded decode slice; the optional
+`label(<lblname>)` name remains explicitly unsupported until general label
+metadata exists.
 
 Evidence: `_workspace/runtime-encode/`, `crates/tabdat-language/src/lib.rs`,
 `crates/tabdat-language/tests/parser_contract.rs`,
@@ -314,9 +315,31 @@ before squash merge as
 Merge-head and documentation-closeout workflow links are recorded in the
 companion evidence artifact.
 
-This accepted runtime subset is library-only. Value-label metadata, `decode`,
-lazy/materialized execution, panel metadata, `last_operation`, formatting,
-CLI, JSON, MCP, and broad transform sequencing remain deferred.
+This accepted runtime subset is library-only. General value-label metadata, the
+`label` command, lazy/materialized execution, panel metadata, `last_operation`,
+formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
+
+## Verified slice: bounded eager runtime `decode` command
+
+Merged PR [#54](https://github.com/SaehwanPark/tabdat-explore-rs/pull/54) adds
+the bounded eager local-Parquet `decode <numvar>, generate(<newvar>)` path to
+`tabdat-runtime`. It consumes only the private code-to-text map produced by an
+ordinary same-session `encode`, maps known integer codes back to strings, and
+returns SQL NULL for source NULLs and unmapped codes. Quoted identifiers,
+empty mappings, source/type/target validation, rename/projection provenance,
+retry after failed publication, and atomic staged publication are covered.
+
+Evidence: `_workspace/runtime-decode/`, the implementation, and focused parser
+and runtime contract tests. The pinned oracle focused suite reported 6 passed
+tests. Local locked Rust checks, dependency-policy, advisory, and
+metadata-driven geiger checks passed; PR-head workflows
+`35479575291`/`35479575205` and merge-head workflows
+`35480547109`/`35480547104` passed before and after squash merge as
+[`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2).
+
+This slice does not claim arbitrary value-label metadata, the generic `label`
+command, DTA-imported labels, label persistence, lazy/materialized execution,
+panel metadata, output adapters, or broad transform sequencing.
 
 ## Verified slice: reproducible build baseline
 

@@ -1,7 +1,7 @@
 # Runtime decode evidence and migration record
 
-Status: implementation checkpoint on branch `feat/runtime-decode`; hosted
-acceptance and merge are pending.
+Status: accepted and verified on `main` at merge commit
+[`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2).
 
 ## Authority and oracle evidence
 
@@ -65,14 +65,23 @@ process exited zero.
 ## Hosted acceptance
 
 PR [#54](https://github.com/SaehwanPark/tabdat-explore-rs/pull/54) was opened
-as a draft at contract checkpoint [`5006f38`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/5006f38)
-and now contains the implementation checkpoint. PR-head workflow links,
-ready-for-review status, squash merge, merge-head checks, and branch cleanup
-will be recorded here during closeout.
+as a draft at contract checkpoint [`5006f38`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/5006f38),
+marked ready after the implementation/evidence checkpoints, and its final
+head [`1ffb845`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/1ffb84553f0b098f0b9b25ac589cdfaf2baccba7) passed:
+
+- [PR-head CI run 35479575291](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35479575291);
+- [PR-head runtime run 35479575205](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35479575205).
+
+The PR was squash-merged as
+[`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2).
+The merge-head workflows are recorded in
+[04-summary.md](04-summary.md); the documentation-head workflows will be
+appended after this closeout commit.
 
 ## Deviations and deferrals
 
-The Python oracle supports arbitrary label metadata, `label()`, DTA-imported
+The Python oracle supports arbitrary label metadata, the generic `label`
+command, DTA-imported
 value labels, variable labels, and broader transform metadata. This branch
 implements only encode-produced mappings in one eager session. Generic label
 metadata, DTA ingestion, lazy/materialized execution, panel metadata,

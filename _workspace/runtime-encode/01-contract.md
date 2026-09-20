@@ -25,10 +25,11 @@ The Rust slice supports:
   and eager execution metadata.
 
 The parser preserves the optional `label(<lblname>)` name in the owned command
-value. The runtime rejects that option explicitly because this Rust session does
-not yet own variable/value-label metadata. It must not silently claim that a
-label set was created or attached. The `decode` and `label` roadmap slices are
-the later owners of that metadata contract.
+value. The runtime rejects that option explicitly because this encode slice does
+not yet own general variable/value-label metadata. Ordinary encode now retains
+a private code-to-text map consumed by the separately accepted bounded decode
+slice; the generic `label` command and arbitrary label sets remain later owners
+of the public metadata contract.
 
 The generated code column uses DuckDB integer semantics: nonempty mappings
 produce `INTEGER` codes, while the empty-relation/null-only mapping follows the
@@ -129,6 +130,7 @@ Focused Rust coverage must include:
   published metadata and relation remain available.
 
 No new dependency, native backend, FFI, unsafe code, or ADR decision is
-required. Label metadata, decode, lazy/materialized execution, panel metadata,
-last-operation state, formatting, CLI/JSON/MCP, and broad transform sequencing
-remain deferred.
+required. General label metadata, the generic `label` command,
+lazy/materialized execution, panel metadata, last-operation state, formatting,
+CLI/JSON/MCP, and broad transform sequencing remain deferred; bounded decode is
+recorded separately in `_workspace/runtime-decode/`.

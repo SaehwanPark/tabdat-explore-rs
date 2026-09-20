@@ -524,11 +524,20 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [x] `encode` — bounded eager local-Parquet integer coding (`EncodeResult`; PR #53,
   squash merge `af3e3b2`). Sorted unique nonmissing string values receive
   one-based codes, NULLs are preserved, quoted/empty relations and
-  failure-atomic staged publication are covered, and the optional label name is
-  parsed but explicitly unsupported until label metadata exists. Decode, label
-  metadata, lazy/materialized execution, panel metadata, last_operation,
-  formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
-- [ ] `decode`
+  failure-atomic staged publication are covered, and ordinary encode retains a
+  private code-to-text map for the bounded decode slice. The optional label
+  name remains explicitly unsupported until general label metadata exists.
+  Generic label metadata, lazy/materialized execution, panel metadata,
+  last_operation, formatting, CLI, JSON, MCP, and broad transform sequencing
+  remain deferred.
+- [x] `decode` — bounded eager local-Parquet same-session decode
+  (`DecodeResult`; PR #54, squash merge `0845e6c`). Encode-produced integer
+  mappings decode known codes to strings, preserve NULL/unmapped values as
+  NULL, support quoted/empty relations, reconcile provenance across rename and
+  projections, and publish atomically. General value-label metadata, the
+  `label` command, DTA labels, persistence, lazy/materialized execution,
+  panel metadata, last_operation, formatting, CLI, JSON, MCP, and broad
+  transform sequencing remain deferred.
 - [ ] `label`
 
 ### 6.4 Combine and summarize

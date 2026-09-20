@@ -34,8 +34,10 @@ The implementation is the library-only eager local-Parquet path:
   stages the CASE projection, checks schema/count, and publishes atomically;
 - `EncodeResult` and `ExecutionResult::Encode` report the transformed dataset;
   and
-- label metadata, decode, lazy/materialized execution, panel metadata,
-  last-operation state, and output adapters remain deferred.
+- general label metadata, the generic `label` command, lazy/materialized
+  execution, panel metadata, last-operation state, and output adapters remain
+  deferred; bounded same-session decode is recorded separately in
+  `_workspace/runtime-decode/`.
 
 Focused Rust coverage is in
 `crates/tabdat-language/tests/parser_contract.rs` and
@@ -104,7 +106,8 @@ then passed:
 
 ## Deviations and deferrals
 
-This record does not claim value-label creation/attachment, `decode`, a usable
-TabDat CLI, Python/R runtime dependency parity, lazy or materialized execution,
-panel metadata, last-operation state, formatting, output adapters, or broad
-transform sequencing. Those remain separate roadmap slices.
+This record does not claim general value-label creation/attachment, the generic
+`label` command, a usable TabDat CLI, Python/R runtime dependency parity, lazy
+or materialized execution, panel metadata, last-operation state, formatting,
+output adapters, or broad transform sequencing. Bounded same-session `decode`
+is accepted separately in `_workspace/runtime-decode/`.

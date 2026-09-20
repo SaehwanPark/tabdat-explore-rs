@@ -1,6 +1,7 @@
 # Runtime decode review
 
-Status: local review checkpoint; hosted acceptance is pending for PR [#54](https://github.com/SaehwanPark/tabdat-explore-rs/pull/54).
+Status: accepted after PR [#54](https://github.com/SaehwanPark/tabdat-explore-rs/pull/54)
+and merge-head hosted verification.
 
 Review basis: [01-contract.md](01-contract.md), the pinned oracle evidence in
 [02-evidence-migration.md](02-evidence-migration.md), and the branch diff from
@@ -52,6 +53,6 @@ public label metadata serialization. Those are the next label/backend slices.
 
 ## Disposition
 
-The implementation is locally accepted for the bounded eager local-Parquet
-`encode` → `decode` session round trip, subject to green PR-head and merge-head
-hosted workflows.
+The implementation is accepted for the bounded eager local-Parquet `encode` →
+`decode` session round trip. PR-head and merge-head hosted workflows passed;
+the final documentation-head workflow remains part of the closeout evidence.
