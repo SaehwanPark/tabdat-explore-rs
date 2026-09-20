@@ -358,6 +358,11 @@ Port TabDat's language before implementing most execution.
   exogenous/instrument lists, endog/iv/robust/cluster/noconstant options,
   bounded diagnostics, and parser-only execution deferral are covered;
   estimation and model state remain deferred).
+- [x] Add the bounded direct `xtreg <y> <xvars>, fe|re` syntax slice
+  (PR #65, squash merge `c88d002`; typed fixed/random-effects estimators,
+  ordered predictors, robust/cluster options, bounded diagnostics, and
+  parser-only execution deferral are covered; panel metadata and runtime
+  execution remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -889,8 +894,10 @@ Port the econometric command families that currently rely on linearmodels, stats
 - [ ] `estat firststage`
 - [ ] `estat overid`
 - [ ] `estat endogenous`
-- [ ] `xtreg, fe`
-- [ ] `xtreg, re`
+- [ ] `xtreg, fe` — runtime remains deferred; the parser boundary is accepted
+  in the Phase 5.1 direct-language slice (PR #65, squash merge `c88d002`).
+- [ ] `xtreg, re` — runtime remains deferred; the parser boundary is accepted
+  in the Phase 5.1 direct-language slice (PR #65, squash merge `c88d002`).
 - [ ] `estat hausman`
 - [ ] `xtabond`
 - [ ] dynamic-panel prediction

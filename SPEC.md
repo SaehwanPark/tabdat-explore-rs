@@ -604,6 +604,33 @@ missingness, prediction, post-estimation state, labels, formatting, CLI, JSON,
 MCP, and broad Python `ivregress` parity deferred. Phase 11.1 runtime
 `ivregress 2sls` and `ivregress gmm` remain unchecked.
 
+## Verified slice: syntax-only `xtreg` command
+
+Merged [PR #65](https://github.com/SaehwanPark/tabdat-explore-rs/pull/65)
+([c88d002](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c88d0028395633d9353fbac7afc4b485231042e3))
+adds a bounded, backend-independent `xtreg` syntax boundary to
+`tabdat-language`. The parser returns an owned typed fixed- or random-effects
+command for `xtreg <y> <xvars>, fe|re`, preserves ordered and quoted
+predictors, and supports the bounded `robust` and one-variable `cluster`
+options with exact estimator-exclusivity and option-conflict validation.
+Runtime deliberately returns the typed unsupported-command result; it does not
+inspect panel metadata, fit a model, initialize DuckDB, or mutate session
+state.
+
+Evidence: [_workspace/runtime-xtreg/](_workspace/runtime-xtreg/), including
+the [migration evidence](_workspace/runtime-xtreg/02-evidence-migration.md),
+[review](_workspace/runtime-xtreg/03-review.md), and
+[summary](_workspace/runtime-xtreg/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head, squash merge, and merge-head workflows
+all passed.
+
+This accepted syntax slice leaves panel metadata ownership, fixed/random-effects
+transformation and estimation, Hausman comparisons, covariance and clustered
+degrees-of-freedom semantics, missingness, prediction, post-estimation state,
+labels, formatting, CLI, JSON, MCP, and broad Python `xtreg` parity deferred.
+Phase 11.1 runtime `xtreg, fe` and `xtreg, re` remain unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
