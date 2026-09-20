@@ -72,7 +72,9 @@ outside the tokenizer.
   they perform no I/O, execution, global-state access, or backend
   initialization.
 - `Token` text is decoded for quoted forms and preserves unquoted spelling.
-- `start` is inclusive and `end` is exclusive in Unicode-scalar offsets.
+- `start` and `end` use Unicode-scalar offsets matching the oracle's `_Token`
+  fields; for quoted strings, the recovered `start` is immediately after the
+  opening quote, while `end` remains exclusive after the closing quote.
 - `ParseError::message()` and `Display` expose the stable diagnostics listed
   above.
 - Existing option/expression parser behavior must remain green after the

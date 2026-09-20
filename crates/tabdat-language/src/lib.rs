@@ -679,13 +679,17 @@ pub enum TokenKind {
 }
 
 /// An owned lexical token from a command line.
+///
+/// Offsets mirror the Python oracle's `_Token` fields. In particular, a
+/// quoted-string token's `start` is the offset immediately after its opening
+/// quote because that is the recovered oracle contract.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
   /// The token category.
   pub kind: TokenKind,
   /// The decoded token text.
   pub text: String,
-  /// The inclusive Unicode-scalar start offset in the source text.
+  /// The recorded Unicode-scalar start offset in the source text.
   pub start: usize,
   /// The exclusive Unicode-scalar end offset in the source text.
   pub end: usize,
