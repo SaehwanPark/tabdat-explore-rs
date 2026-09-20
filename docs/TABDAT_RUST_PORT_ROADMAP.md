@@ -348,6 +348,11 @@ Port TabDat's language before implementing most execution.
   string/backtick `clear` boundary, distinct entity/time validation, and
   bounded diagnostics are covered; panel metadata and runtime execution
   remain deferred).
+- [x] Add the bounded direct `xtdata <varlist>, within|between` syntax slice
+  (PR #63, squash merge `74eea07`; typed within/between actions, flag-only
+  transform options, quoted variables, exact-one validation, and bounded
+  diagnostics are covered; panel metadata and runtime execution remain
+  deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -868,7 +873,8 @@ Port the econometric command families that currently rely on linearmodels, stats
 
 - [ ] `panel` — runtime remains deferred; the parser boundary is accepted
   in the Phase 5.1 direct-language slice (PR #62, squash merge `92e5d5e`).
-- [ ] `xtdata`
+- [ ] `xtdata` — runtime remains deferred; the parser boundary is accepted
+  in the Phase 5.1 direct-language slice (PR #63, squash merge `74eea07`).
 - [ ] `ivregress 2sls`
 - [ ] `ivregress gmm`
 - [ ] `estat firststage`

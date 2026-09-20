@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-- Status: `draft` at the contract checkpoint; acceptance follows the PR-head
-  implementation and merge-head workflow evidence.
+- Status: `accepted` after PR #63 and its PR-head and merge-head workflows
+  passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `xtdata` command boundary without
   claiming panel-index transforms, relation mutation, or active-session
@@ -85,3 +85,11 @@ parity. Those behaviors remain future runtime evidence, gated by a panel
 metadata/session contract and a dedicated transform execution contract. The
 parser can be merged without implying that a parsed `xtdata` command executes
 today.
+
+The contract checkpoint is
+[`32307dd`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/32307dd073cfc71150378fc0b2e2363fb0b3db5b);
+the implementation checkpoint is
+[`29b3d6d`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/29b3d6d2421bc69e32ebc20a3986b77e65d695d7); and PR
+[#63](https://github.com/SaehwanPark/tabdat-explore-rs/pull/63) was squash-merged
+to `main` as
+[`74eea071d118f3c97c931a9c9345c17293e56440`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/74eea071d118f3c97c931a9c9345c17293e56440).

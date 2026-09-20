@@ -553,6 +553,31 @@ ordering, missingness, relation publication, labels, lazy/materialized behavior,
 persistence, formatting, CLI, JSON, MCP, and broad Python `panel` parity
 deferred. Phase 11.1 runtime `panel` remains unchecked.
 
+## Verified slice: syntax-only `xtdata` command
+
+Merged [PR #63](https://github.com/SaehwanPark/tabdat-explore-rs/pull/63)
+([74eea07](https://github.com/SaehwanPark/tabdat-explore-rs/commit/74eea071d118f3c97c931a9c9345c17293e56440))
+adds a bounded, backend-independent `xtdata` syntax boundary to
+`tabdat-language`. The parser returns an owned typed within or between action
+for `xtdata <varlist>, within|between`, preserves quoted variable names and
+flag-only transform options, and requires exactly one transform. Runtime
+deliberately returns the typed unsupported-command result; it does not inspect
+panel metadata, initialize DuckDB, or mutate session state.
+
+Evidence: [_workspace/runtime-xtdata/](_workspace/runtime-xtdata/), including
+the [migration evidence](_workspace/runtime-xtdata/02-evidence-migration.md),
+[review](_workspace/runtime-xtdata/03-review.md), and
+[summary](_workspace/runtime-xtdata/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves panel metadata ownership, active-schema and
+numeric validation, within/between formulas, generated-column naming and
+collisions, missingness, ordering, relation publication, labels,
+lazy/materialized behavior, persistence, formatting, CLI, JSON, MCP, and broad
+Python `xtdata` parity deferred. Phase 11.1 runtime `xtdata` remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
