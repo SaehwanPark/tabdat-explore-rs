@@ -554,7 +554,17 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [ ] `join`
 - [ ] `append`
 - [ ] `reshape`
-- [ ] `tabulate`
+- [x] `tabulate` — bounded eager local-Parquet one- and two-way frequency
+  tables (TabulateResult; PR #56, squash merge 24405a6). Direct row/column
+  forms, count/percent output, row/column percentages, missing categories,
+  native deterministic ordering, session-local value-label display, nolabel,
+  owned results, and read-only state are covered. values/stat aggregation,
+  if predicates, by-prefixes, multi-dimensional forms, named tables,
+  lazy/materialized execution, persistence, formatting, CLI, JSON, MCP, and
+  broad Python parity remain deferred. PR-head workflows
+  35486898316/35486898348 and merge-head workflows
+  35487873526/35487873479 passed; detailed evidence is in
+  _workspace/runtime-tabulate/.
 - [ ] `collapse`
 - [ ] `by`
 

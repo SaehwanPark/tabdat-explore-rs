@@ -1,6 +1,6 @@
 # Bounded eager-runtime `tabulate` contract
 
-Status: contract checkpoint; implementation pending.
+Status: accepted and verified on main at merge commit 24405a6878034506e18086d5092d665b4dd25159.
 
 ## Authority
 

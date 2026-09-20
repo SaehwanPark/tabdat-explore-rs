@@ -369,6 +369,29 @@ labels, inspection/reporting rendering, lazy/materialized execution, panel
 metadata, output adapters, CLI, JSON, MCP, and broad transform sequencing
 remain deferred.
 
+## Verified slice: bounded eager runtime tabulate command
+
+Merged PR [#56](https://github.com/SaehwanPark/tabdat-explore-rs/pull/56)
+(24405a6) adds the bounded eager local-Parquet one- and two-way frequency
+table path to tabdat-runtime. Direct row and optional column variables are
+typed at the language boundary. One-way results return category, count, and
+percentage cells; two-way results return count cells with optional row and
+column percentages. The missing flag includes SQL NULL dimensions, nolabel
+suppresses attached session-local value labels, and failed validation or reads
+leave active state unchanged.
+
+Evidence: _workspace/runtime-tabulate/, the implementation, and focused
+parser/runtime contract tests. The pinned oracle focused checks, locked Rust
+baseline, dependency-policy, advisory, metadata-driven geiger checks,
+independent review, PR-head workflows, squash merge, and merge-head workflows
+all passed. The accepted merge commit is
+[24405a6](https://github.com/SaehwanPark/tabdat-explore-rs/commit/24405a6878034506e18086d5092d665b4dd25159).
+
+This accepted slice remains library-only. values/stat aggregation, if
+predicates, by-prefixes, multiple dimensions, named-table execution,
+lazy/materialized execution, persistence, formatting, CLI, JSON, MCP, and
+broad Python tabulate parity remain deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
