@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
@@ -261,6 +262,13 @@ pub struct EncodeResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after decoding one encode-produced numeric column.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodeResult {
+  /// Metadata for the newly active decoded dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -331,6 +339,8 @@ pub enum ExecutionResult {
   Recode(RecodeResult),
   /// Encodes one string column into a new integer-coded column.
   Encode(EncodeResult),
+  /// Decodes one encode-produced numeric column into a new string column.
+  Decode(DecodeResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -483,6 +493,16 @@ pub enum RuntimeError {
   EncodeTargetExists { variable: String },
   /// DuckDB could not stage or publish the encoded relation.
   EncodeFailed,
+  /// The decode source has no encode-produced value-label map in this session.
+  DecodeRequiresAttachedLabels { variable: String },
+  /// The decode request named a source column absent from the active schema.
+  DecodeUnknownVariable { variable: String },
+  /// The decode source column is not numeric.
+  DecodeRequiresNumeric { variable: String },
+  /// The decode target already exists in the active schema.
+  DecodeTargetExists { variable: String },
+  /// DuckDB could not stage or publish the decoded relation.
+  DecodeFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -720,6 +740,20 @@ impl fmt::Display for RuntimeError {
         write!(formatter, "encode target already exists: {variable}")
       }
       Self::EncodeFailed => formatter.write_str("encode failed"),
+      Self::DecodeRequiresAttachedLabels { variable } => write!(
+        formatter,
+        "decode requires attached value labels on {variable}"
+      ),
+      Self::DecodeUnknownVariable { variable } => {
+        write!(formatter, "decode unknown variable: {variable}")
+      }
+      Self::DecodeRequiresNumeric { variable } => {
+        write!(formatter, "decode requires a numeric variable: {variable}")
+      }
+      Self::DecodeTargetExists { variable } => {
+        write!(formatter, "decode target already exists: {variable}")
+      }
+      Self::DecodeFailed => formatter.write_str("decode failed"),
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -750,6 +784,7 @@ impl Error for RuntimeError {}
 pub struct Session {
   backend: Option<DuckDbBackend>,
   active_dataset: Option<DatasetInfo>,
+  generated_value_labels: BTreeMap<String, Vec<(i64, String)>>,
 }
 
 impl Session {
@@ -758,6 +793,7 @@ impl Session {
     Self {
       backend: None,
       active_dataset: None,
+      generated_value_labels: BTreeMap::new(),
     }
   }
 
@@ -803,6 +839,7 @@ impl Session {
         generate,
         label,
       } => self.execute_encode(source, generate, label),
+      Command::Decode { source, generate } => self.execute_decode(source, generate),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -1297,6 +1334,7 @@ impl Session {
         condition.as_ref(),
       )
       .map_err(|_| RuntimeError::ReplaceFailed)?;
+    self.generated_value_labels.remove(&variable);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Replace(ReplaceResult {
       dataset: next_dataset,
@@ -1324,6 +1362,11 @@ impl Session {
     let next_dataset = backend
       .rename_column(&dataset, &old_name, &new_name)
       .map_err(|_| RuntimeError::RenameFailed)?;
+    if let Some(mapping) = self.generated_value_labels.remove(&old_name) {
+      self
+        .generated_value_labels
+        .insert(new_name.clone(), mapping);
+    }
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Rename(RenameResult {
       dataset: next_dataset,
@@ -1486,6 +1529,11 @@ impl Session {
     let next_dataset = backend
       .recode_columns(&dataset, &variables, &rules, &target)
       .map_err(|_| RuntimeError::RecodeFailed)?;
+    if matches!(target, RecodeTarget::Replace) {
+      for variable in &variables {
+        self.generated_value_labels.remove(variable);
+      }
+    }
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Recode(RecodeResult {
       dataset: next_dataset,
@@ -1538,8 +1586,56 @@ impl Session {
     let next_dataset = backend
       .encode_column(&dataset, &source, &generate, &mapping)
       .map_err(|_| RuntimeError::EncodeFailed)?;
+    let decode_mapping = mapping
+      .into_iter()
+      .map(|(value, code)| (code, value))
+      .collect::<Vec<_>>();
+    self
+      .generated_value_labels
+      .insert(generate.clone(), decode_mapping);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Encode(EncodeResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  fn execute_decode(
+    &mut self,
+    source: String,
+    generate: String,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "decode" })?
+      .clone();
+    let mapping = self
+      .generated_value_labels
+      .get(&source)
+      .cloned()
+      .ok_or_else(|| RuntimeError::DecodeRequiresAttachedLabels {
+        variable: source.clone(),
+      })?;
+    let source_column = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == source)
+      .ok_or_else(|| RuntimeError::DecodeUnknownVariable {
+        variable: source.clone(),
+      })?;
+    if dataset.columns.iter().any(|column| column.name == generate) {
+      return Err(RuntimeError::DecodeTargetExists { variable: generate });
+    }
+    if data_type_expression_domain(&source_column.data_type) != ExpressionDomain::Numeric {
+      return Err(RuntimeError::DecodeRequiresNumeric { variable: source });
+    }
+
+    let backend = self.backend.as_mut().ok_or(RuntimeError::DecodeFailed)?;
+    let next_dataset = backend
+      .decode_column(&dataset, &source, &generate, &mapping)
+      .map_err(|_| RuntimeError::DecodeFailed)?;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Decode(DecodeResult {
       dataset: next_dataset,
     }))
   }
@@ -1570,6 +1666,7 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::KeepFailed)?;
+    self.retain_generated_value_labels(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Keep(KeepResult {
       dataset: next_dataset,
@@ -1611,6 +1708,7 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &remaining)
       .map_err(|_| RuntimeError::DropFailed)?;
+    self.retain_generated_value_labels(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Drop(DropResult {
       dataset: next_dataset,
@@ -1643,10 +1741,20 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::SelectFailed)?;
+    self.retain_generated_value_labels(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Select(SelectResult {
       dataset: next_dataset,
     }))
+  }
+
+  fn retain_generated_value_labels(&mut self, dataset: &DatasetInfo) {
+    self.generated_value_labels.retain(|variable, _| {
+      dataset
+        .columns
+        .iter()
+        .any(|column| column.name == *variable)
+    });
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -1727,6 +1835,7 @@ impl Session {
       self.backend = Some(backend);
       dataset
     };
+    self.generated_value_labels.clear();
     self.active_dataset = Some(dataset.clone());
     Ok(ExecutionResult::Load(LoadResult { dataset }))
   }
@@ -1761,6 +1870,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Gsort { .. } => "gsort",
     Command::Recode { .. } => "recode",
     Command::Encode { .. } => "encode",
+    Command::Decode { .. } => "decode",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
@@ -2902,6 +3012,92 @@ impl DuckDbBackend {
         .map(|(value, code)| {
           format!(
             "WHEN {quoted_source} = {} THEN {code}",
+            quote_recode_literal(value)
+          )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+      format!("CASE {whens} ELSE NULL END")
+    };
+    let select_items = dataset
+      .columns
+      .iter()
+      .map(|column| quote_identifier(&column.name))
+      .chain(std::iter::once(format!("{case_sql} AS {quoted_target}")))
+      .collect::<Vec<_>>()
+      .join(", ");
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_items} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let mut expected_names = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.clone())
+      .collect::<Vec<_>>();
+    expected_names.push(target.to_owned());
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names.iter().map(String::as_str))
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if row_count != dataset.row_count || self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn decode_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    source: &str,
+    target: &str,
+    mapping: &[(i64, String)],
+  ) -> Result<DatasetInfo, ()> {
+    self.drop_staging();
+    let quoted_source = quote_identifier(source);
+    let quoted_target = quote_identifier(target);
+    let case_sql = if mapping.is_empty() {
+      "CAST(NULL AS VARCHAR)".to_owned()
+    } else {
+      let whens = mapping
+        .iter()
+        .map(|(code, value)| {
+          format!(
+            "WHEN {quoted_source} = {code} THEN {}",
             quote_recode_literal(value)
           )
         })
