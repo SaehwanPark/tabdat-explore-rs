@@ -261,6 +261,14 @@ fn panel_parses_bounded_declaration_forms() {
     }
   );
   assert_eq!(
+    parse_command(r#"panel "clear""#).unwrap(),
+    Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Clear,
+      },
+    }
+  );
+  assert_eq!(
     parse_command("panel `clear` year").unwrap(),
     Command::Panel {
       command: PanelCommand {
