@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
@@ -11,8 +11,8 @@ use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LazyEngine, RecodeInput, RecodeRangeEndpoint,
-  RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
+  GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -269,6 +269,58 @@ pub struct DecodeResult {
   pub dataset: DatasetInfo,
 }
 
+/// A normalized named value-label set owned by the active session.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValueLabelSet {
+  /// The set name.
+  pub name: String,
+  /// Values and their display labels in deterministic order.
+  pub mappings: Vec<(LabelValue, String)>,
+}
+
+/// Session-local variable and value-label metadata.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LabelMetadata {
+  /// Variable names and their display labels.
+  pub variable_labels: Vec<(String, String)>,
+  /// Named value-label sets.
+  pub value_sets: Vec<ValueLabelSet>,
+  /// Variable names and their attached value-label set names.
+  pub attachments: Vec<(String, String)>,
+}
+
+impl LabelMetadata {
+  fn is_empty(&self) -> bool {
+    self.variable_labels.is_empty() && self.value_sets.is_empty() && self.attachments.is_empty()
+  }
+}
+
+/// The metadata mutation represented by a successful `label` result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LabelResultAction {
+  /// A variable display label was set or cleared.
+  Variable,
+  /// A named value-label set was defined or replaced.
+  Define,
+  /// A value-label set was attached or cleared.
+  Values,
+  /// Label metadata was listed.
+  List,
+  /// Named value-label sets were dropped.
+  Drop,
+}
+
+/// The owned result returned by a successful session-local `label` command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LabelResult {
+  /// The label action that completed.
+  pub action: LabelResultAction,
+  /// A deterministic human-readable completion message.
+  pub message: String,
+  /// The resulting metadata, or `None` when the session has no labels.
+  pub metadata: Option<LabelMetadata>,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -341,6 +393,8 @@ pub enum ExecutionResult {
   Encode(EncodeResult),
   /// Decodes one encode-produced numeric column into a new string column.
   Decode(DecodeResult),
+  /// Manages session-local variable and value-label metadata.
+  Label(LabelResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -483,8 +537,6 @@ pub enum RuntimeError {
   RecodeRangeRequiresNumeric { variable: String },
   /// DuckDB could not stage or publish the recoded relation.
   RecodeFailed,
-  /// The encode request named a value-label set outside this runtime slice.
-  EncodeLabelsUnsupported { label: String },
   /// The encode request named a source column absent from the active schema.
   EncodeUnknownVariable { variable: String },
   /// The encode source column is not a string variable.
@@ -503,6 +555,22 @@ pub enum RuntimeError {
   DecodeTargetExists { variable: String },
   /// DuckDB could not stage or publish the decoded relation.
   DecodeFailed,
+  /// The label request named a variable absent from the active schema.
+  LabelUnknownVariable { variable: String },
+  /// A label definition repeated an existing set without `, replace`.
+  LabelDefineSetExists { set_name: String },
+  /// A label definition repeated one value within a set.
+  LabelDefineDuplicateValue { set_name: String, value: LabelValue },
+  /// A label definition had no value mappings.
+  LabelDefineNoMappings,
+  /// A values attachment named a set that does not exist.
+  LabelValuesUnknownSet { set_name: String },
+  /// A label list request named unknown sets.
+  LabelListUnknownSet { names: Vec<String> },
+  /// A label drop request named unknown sets.
+  LabelDropUnknownSet { names: Vec<String> },
+  /// A decode attachment contains values outside the integer code domain.
+  DecodeRequiresIntegerLabels { variable: String },
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -726,10 +794,6 @@ impl fmt::Display for RuntimeError {
         "range recode rule not allowed on non-numeric column: {variable}"
       ),
       Self::RecodeFailed => formatter.write_str("recode failed"),
-      Self::EncodeLabelsUnsupported { label } => write!(
-        formatter,
-        "encode label metadata is not supported in this runtime slice: {label}"
-      ),
       Self::EncodeUnknownVariable { variable } => {
         write!(formatter, "encode unknown variable: {variable}")
       }
@@ -754,6 +818,41 @@ impl fmt::Display for RuntimeError {
         write!(formatter, "decode target already exists: {variable}")
       }
       Self::DecodeFailed => formatter.write_str("decode failed"),
+      Self::DecodeRequiresIntegerLabels { variable } => write!(
+        formatter,
+        "decode requires integer value labels on {variable}"
+      ),
+      Self::LabelUnknownVariable { variable } => {
+        write!(formatter, "label unknown variable: {variable}")
+      }
+      Self::LabelDefineSetExists { set_name } => write!(
+        formatter,
+        "label define set already exists: {set_name} (use , replace)"
+      ),
+      Self::LabelDefineDuplicateValue { set_name, value } => write!(
+        formatter,
+        "label define duplicate value in set {set_name}: {value:?}"
+      ),
+      Self::LabelDefineNoMappings => {
+        formatter.write_str("label define expects at least one mapping")
+      }
+      Self::LabelValuesUnknownSet { set_name } => {
+        write!(formatter, "label values unknown label set: {set_name}")
+      }
+      Self::LabelListUnknownSet { names } => {
+        write!(
+          formatter,
+          "label list unknown label set: {}",
+          names.join(", ")
+        )
+      }
+      Self::LabelDropUnknownSet { names } => {
+        write!(
+          formatter,
+          "label drop unknown label set: {}",
+          names.join(", ")
+        )
+      }
       Self::KeepUnknownVariable { variables } => {
         write!(formatter, "keep unknown variable: {}", variables.join(", "))
       }
@@ -784,7 +883,7 @@ impl Error for RuntimeError {}
 pub struct Session {
   backend: Option<DuckDbBackend>,
   active_dataset: Option<DatasetInfo>,
-  generated_value_labels: BTreeMap<String, Vec<(i64, String)>>,
+  label_metadata: LabelMetadata,
 }
 
 impl Session {
@@ -793,7 +892,7 @@ impl Session {
     Self {
       backend: None,
       active_dataset: None,
-      generated_value_labels: BTreeMap::new(),
+      label_metadata: LabelMetadata::default(),
     }
   }
 
@@ -840,6 +939,7 @@ impl Session {
         label,
       } => self.execute_encode(source, generate, label),
       Command::Decode { source, generate } => self.execute_decode(source, generate),
+      Command::Label { command } => self.execute_label(command),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -852,6 +952,11 @@ impl Session {
   /// Return the currently published dataset metadata, if any.
   pub fn active_dataset(&self) -> Option<&DatasetInfo> {
     self.active_dataset.as_ref()
+  }
+
+  /// Return the currently published session-local label metadata, if any.
+  pub fn active_label_metadata(&self) -> Option<&LabelMetadata> {
+    (!self.label_metadata.is_empty()).then_some(&self.label_metadata)
   }
 
   fn execute_describe(&self) -> Result<ExecutionResult, RuntimeError> {
@@ -1334,7 +1439,7 @@ impl Session {
         condition.as_ref(),
       )
       .map_err(|_| RuntimeError::ReplaceFailed)?;
-    self.generated_value_labels.remove(&variable);
+    self.remove_value_label_attachment(&variable);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Replace(ReplaceResult {
       dataset: next_dataset,
@@ -1362,11 +1467,7 @@ impl Session {
     let next_dataset = backend
       .rename_column(&dataset, &old_name, &new_name)
       .map_err(|_| RuntimeError::RenameFailed)?;
-    if let Some(mapping) = self.generated_value_labels.remove(&old_name) {
-      self
-        .generated_value_labels
-        .insert(new_name.clone(), mapping);
-    }
+    self.rename_label_metadata(&old_name, &new_name);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Rename(RenameResult {
       dataset: next_dataset,
@@ -1531,7 +1632,7 @@ impl Session {
       .map_err(|_| RuntimeError::RecodeFailed)?;
     if matches!(target, RecodeTarget::Replace) {
       for variable in &variables {
-        self.generated_value_labels.remove(variable);
+        self.remove_value_label_attachment(variable);
       }
     }
     self.active_dataset = Some(next_dataset.clone());
@@ -1551,9 +1652,6 @@ impl Session {
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "encode" })?
       .clone();
-    if let Some(label) = label {
-      return Err(RuntimeError::EncodeLabelsUnsupported { label });
-    }
     let source_column = dataset
       .columns
       .iter()
@@ -1586,13 +1684,27 @@ impl Session {
     let next_dataset = backend
       .encode_column(&dataset, &source, &generate, &mapping)
       .map_err(|_| RuntimeError::EncodeFailed)?;
-    let decode_mapping = mapping
+    let set_name = label.unwrap_or_else(|| generate.clone());
+    let value_mappings = mapping
       .into_iter()
       .map(|(value, code)| (code, value))
       .collect::<Vec<_>>();
-    self
-      .generated_value_labels
-      .insert(generate.clone(), decode_mapping);
+    let mut metadata = self.label_metadata.clone();
+    upsert_value_label_set(
+      &mut metadata,
+      ValueLabelSet {
+        name: set_name.clone(),
+        mappings: value_mappings
+          .into_iter()
+          .map(|(code, value)| (LabelValue::Integer(code), value))
+          .collect(),
+      },
+    );
+    upsert_attachment(&mut metadata, generate.clone(), set_name);
+    if let Some(source_label) = variable_label(&metadata, &source) {
+      upsert_variable_label(&mut metadata, generate.clone(), source_label);
+    }
+    self.label_metadata = normalize_label_metadata(metadata);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Encode(EncodeResult {
       dataset: next_dataset,
@@ -1609,13 +1721,35 @@ impl Session {
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "decode" })?
       .clone();
-    let mapping = self
-      .generated_value_labels
-      .get(&source)
-      .cloned()
+    let set_name = self
+      .label_metadata
+      .attachments
+      .iter()
+      .find(|(variable, _)| variable == &source)
+      .map(|(_, set_name)| set_name.clone())
       .ok_or_else(|| RuntimeError::DecodeRequiresAttachedLabels {
         variable: source.clone(),
       })?;
+    let value_set = self
+      .label_metadata
+      .value_sets
+      .iter()
+      .find(|value_set| value_set.name == set_name)
+      .ok_or_else(|| RuntimeError::DecodeRequiresAttachedLabels {
+        variable: source.clone(),
+      })?;
+    let mapping = value_set
+      .mappings
+      .iter()
+      .map(|(value, text)| match value {
+        LabelValue::Integer(code) => Ok((*code, text.clone())),
+        LabelValue::Number(_) | LabelValue::Text(_) => {
+          Err(RuntimeError::DecodeRequiresIntegerLabels {
+            variable: source.clone(),
+          })
+        }
+      })
+      .collect::<Result<Vec<_>, RuntimeError>>()?;
     let source_column = dataset
       .columns
       .iter()
@@ -1634,10 +1768,206 @@ impl Session {
     let next_dataset = backend
       .decode_column(&dataset, &source, &generate, &mapping)
       .map_err(|_| RuntimeError::DecodeFailed)?;
+    if let Some(source_label) = variable_label(&self.label_metadata, &source) {
+      let mut metadata = self.label_metadata.clone();
+      upsert_variable_label(&mut metadata, generate.clone(), source_label);
+      self.label_metadata = normalize_label_metadata(metadata);
+    }
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Decode(DecodeResult {
       dataset: next_dataset,
     }))
+  }
+
+  fn execute_label(&mut self, command: LabelCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "label" })?
+      .clone();
+    match command {
+      LabelCommand::Variable { variable, text } => {
+        ensure_label_variable(&dataset, &variable)?;
+        let mut metadata = self.label_metadata.clone();
+        metadata
+          .variable_labels
+          .retain(|(name, _)| name != &variable);
+        let (action, message) = if let Some(text) = text {
+          metadata.variable_labels.push((variable.clone(), text));
+          (
+            LabelResultAction::Variable,
+            format!("Labeled variable {variable}"),
+          )
+        } else {
+          (
+            LabelResultAction::Variable,
+            format!("Cleared variable label for {variable}"),
+          )
+        };
+        self.label_metadata = normalize_label_metadata(metadata);
+        Ok(self.label_result(action, message, &self.label_metadata))
+      }
+      LabelCommand::Define {
+        name,
+        mappings,
+        replace,
+      } => {
+        if mappings.is_empty() {
+          return Err(RuntimeError::LabelDefineNoMappings);
+        }
+        let mut seen = BTreeSet::new();
+        for (value, _) in &mappings {
+          if !seen.insert(value.clone()) {
+            return Err(RuntimeError::LabelDefineDuplicateValue {
+              set_name: name,
+              value: value.clone(),
+            });
+          }
+        }
+        if self
+          .label_metadata
+          .value_sets
+          .iter()
+          .any(|value_set| value_set.name == name)
+          && !replace
+        {
+          return Err(RuntimeError::LabelDefineSetExists { set_name: name });
+        }
+        let mut metadata = self.label_metadata.clone();
+        upsert_value_label_set(
+          &mut metadata,
+          ValueLabelSet {
+            name: name.clone(),
+            mappings,
+          },
+        );
+        self.label_metadata = normalize_label_metadata(metadata);
+        let verb = if replace { "Replaced" } else { "Defined" };
+        Ok(self.label_result(
+          LabelResultAction::Define,
+          format!("{verb} value label set {name}"),
+          &self.label_metadata,
+        ))
+      }
+      LabelCommand::Values { variable, set_name } => {
+        ensure_label_variable(&dataset, &variable)?;
+        let mut metadata = self.label_metadata.clone();
+        metadata.attachments.retain(|(name, _)| name != &variable);
+        let (message, action) = if let Some(set_name) = set_name {
+          if !metadata
+            .value_sets
+            .iter()
+            .any(|value_set| value_set.name == set_name)
+          {
+            return Err(RuntimeError::LabelValuesUnknownSet { set_name });
+          }
+          metadata
+            .attachments
+            .push((variable.clone(), set_name.clone()));
+          (
+            format!("Attached value label set {set_name} to {variable}"),
+            LabelResultAction::Values,
+          )
+        } else {
+          (
+            format!("Cleared value labels for {variable}"),
+            LabelResultAction::Values,
+          )
+        };
+        self.label_metadata = normalize_label_metadata(metadata);
+        Ok(self.label_result(action, message, &self.label_metadata))
+      }
+      LabelCommand::List { names } => {
+        let metadata = if names.is_empty() {
+          self.label_metadata.clone()
+        } else {
+          let available = self
+            .label_metadata
+            .value_sets
+            .iter()
+            .map(|value_set| value_set.name.as_str())
+            .collect::<BTreeSet<_>>();
+          let missing = names
+            .iter()
+            .filter(|name| !available.contains(name.as_str()))
+            .cloned()
+            .collect::<BTreeSet<_>>();
+          if !missing.is_empty() {
+            return Err(RuntimeError::LabelListUnknownSet {
+              names: missing.into_iter().collect(),
+            });
+          }
+          let wanted = names.iter().collect::<BTreeSet<_>>();
+          LabelMetadata {
+            variable_labels: self.label_metadata.variable_labels.clone(),
+            value_sets: self
+              .label_metadata
+              .value_sets
+              .iter()
+              .filter(|value_set| wanted.contains(&value_set.name))
+              .cloned()
+              .collect(),
+            attachments: self
+              .label_metadata
+              .attachments
+              .iter()
+              .filter(|(_, set_name)| wanted.contains(set_name))
+              .cloned()
+              .collect(),
+          }
+        };
+        Ok(self.label_result(
+          LabelResultAction::List,
+          "Label dictionary".to_owned(),
+          &normalize_label_metadata(metadata),
+        ))
+      }
+      LabelCommand::Drop { names } => {
+        let available = self
+          .label_metadata
+          .value_sets
+          .iter()
+          .map(|value_set| value_set.name.as_str())
+          .collect::<BTreeSet<_>>();
+        let missing = names
+          .iter()
+          .filter(|name| !available.contains(name.as_str()))
+          .cloned()
+          .collect::<BTreeSet<_>>();
+        if !missing.is_empty() {
+          return Err(RuntimeError::LabelDropUnknownSet {
+            names: missing.into_iter().collect(),
+          });
+        }
+        let dropped = names.iter().collect::<BTreeSet<_>>();
+        let mut metadata = self.label_metadata.clone();
+        metadata
+          .value_sets
+          .retain(|value_set| !dropped.contains(&value_set.name));
+        metadata
+          .attachments
+          .retain(|(_, set_name)| !dropped.contains(set_name));
+        self.label_metadata = normalize_label_metadata(metadata);
+        Ok(self.label_result(
+          LabelResultAction::Drop,
+          format!("Dropped label set(s): {}", names.join(", ")),
+          &self.label_metadata,
+        ))
+      }
+    }
+  }
+
+  fn label_result(
+    &self,
+    action: LabelResultAction,
+    message: String,
+    metadata: &LabelMetadata,
+  ) -> ExecutionResult {
+    ExecutionResult::Label(LabelResult {
+      action,
+      message,
+      metadata: (!metadata.is_empty()).then_some(metadata.clone()),
+    })
   }
 
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
@@ -1666,7 +1996,7 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::KeepFailed)?;
-    self.retain_generated_value_labels(&next_dataset);
+    self.retain_label_metadata(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Keep(KeepResult {
       dataset: next_dataset,
@@ -1708,7 +2038,7 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &remaining)
       .map_err(|_| RuntimeError::DropFailed)?;
-    self.retain_generated_value_labels(&next_dataset);
+    self.retain_label_metadata(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Drop(DropResult {
       dataset: next_dataset,
@@ -1741,20 +2071,50 @@ impl Session {
     let next_dataset = backend
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::SelectFailed)?;
-    self.retain_generated_value_labels(&next_dataset);
+    self.retain_label_metadata(&next_dataset);
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Select(SelectResult {
       dataset: next_dataset,
     }))
   }
 
-  fn retain_generated_value_labels(&mut self, dataset: &DatasetInfo) {
-    self.generated_value_labels.retain(|variable, _| {
-      dataset
-        .columns
-        .iter()
-        .any(|column| column.name == *variable)
-    });
+  fn retain_label_metadata(&mut self, dataset: &DatasetInfo) {
+    let columns = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<BTreeSet<_>>();
+    let mut metadata = self.label_metadata.clone();
+    metadata
+      .variable_labels
+      .retain(|(variable, _)| columns.contains(variable.as_str()));
+    metadata
+      .attachments
+      .retain(|(variable, _)| columns.contains(variable.as_str()));
+    self.label_metadata = normalize_label_metadata(metadata);
+  }
+
+  fn remove_value_label_attachment(&mut self, variable: &str) {
+    self
+      .label_metadata
+      .attachments
+      .retain(|(name, _)| name != variable);
+    self.label_metadata = normalize_label_metadata(self.label_metadata.clone());
+  }
+
+  fn rename_label_metadata(&mut self, old_name: &str, new_name: &str) {
+    let mut metadata = self.label_metadata.clone();
+    for (name, _) in &mut metadata.variable_labels {
+      if name == old_name {
+        *name = new_name.to_owned();
+      }
+    }
+    for (name, _) in &mut metadata.attachments {
+      if name == old_name {
+        *name = new_name.to_owned();
+      }
+    }
+    self.label_metadata = normalize_label_metadata(metadata);
   }
 
   fn execute_head(&self, limit: RowLimit) -> Result<ExecutionResult, RuntimeError> {
@@ -1835,10 +2195,60 @@ impl Session {
       self.backend = Some(backend);
       dataset
     };
-    self.generated_value_labels.clear();
+    self.label_metadata = LabelMetadata::default();
     self.active_dataset = Some(dataset.clone());
     Ok(ExecutionResult::Load(LoadResult { dataset }))
   }
+}
+
+fn ensure_label_variable(dataset: &DatasetInfo, variable: &str) -> Result<(), RuntimeError> {
+  if dataset.columns.iter().any(|column| column.name == variable) {
+    Ok(())
+  } else {
+    Err(RuntimeError::LabelUnknownVariable {
+      variable: variable.to_owned(),
+    })
+  }
+}
+
+fn normalize_label_metadata(mut metadata: LabelMetadata) -> LabelMetadata {
+  metadata
+    .variable_labels
+    .sort_by(|left, right| left.0.cmp(&right.0));
+  metadata
+    .value_sets
+    .sort_by(|left, right| left.name.cmp(&right.name));
+  metadata
+    .attachments
+    .sort_by(|left, right| left.0.cmp(&right.0));
+  metadata
+}
+
+fn variable_label(metadata: &LabelMetadata, variable: &str) -> Option<String> {
+  metadata
+    .variable_labels
+    .iter()
+    .find(|(name, _)| name == variable)
+    .map(|(_, text)| text.clone())
+}
+
+fn upsert_variable_label(metadata: &mut LabelMetadata, variable: String, text: String) {
+  metadata
+    .variable_labels
+    .retain(|(name, _)| name != &variable);
+  metadata.variable_labels.push((variable, text));
+}
+
+fn upsert_value_label_set(metadata: &mut LabelMetadata, value_set: ValueLabelSet) {
+  metadata
+    .value_sets
+    .retain(|existing| existing.name != value_set.name);
+  metadata.value_sets.push(value_set);
+}
+
+fn upsert_attachment(metadata: &mut LabelMetadata, variable: String, set_name: String) {
+  metadata.attachments.retain(|(name, _)| name != &variable);
+  metadata.attachments.push((variable, set_name));
 }
 
 impl Default for Session {
@@ -1871,6 +2281,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Recode { .. } => "recode",
     Command::Encode { .. } => "encode",
     Command::Decode { .. } => "decode",
+    Command::Label { .. } => "label",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",

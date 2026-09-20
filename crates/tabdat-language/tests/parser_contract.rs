@@ -1,7 +1,8 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LazyEngine, RecodeInput, RecodeRangeEndpoint,
-  RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName, SortKey, parse_command,
+  GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName, SortKey,
+  parse_command,
 };
 
 #[test]
@@ -1438,6 +1439,112 @@ fn decode_preserves_exact_bounded_diagnostics() {
     (
       "decode sex_n, generate(sex_str other)",
       "decode option generate expects exactly one variable",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn label_preserves_bounded_session_local_commands() {
+  assert_eq!(
+    parse_command("label variable age \"Age in years\"").unwrap(),
+    Command::Label {
+      command: LabelCommand::Variable {
+        variable: "age".to_owned(),
+        text: Some("Age in years".to_owned()),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label variable age, clear").unwrap(),
+    Command::Label {
+      command: LabelCommand::Variable {
+        variable: "age".to_owned(),
+        text: None,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label define sexlbl 0 \"Male\" 1 \"Female\", replace").unwrap(),
+    Command::Label {
+      command: LabelCommand::Define {
+        name: "sexlbl".to_owned(),
+        mappings: vec![
+          (LabelValue::Integer(0), "Male".to_owned()),
+          (LabelValue::Integer(1), "Female".to_owned()),
+        ],
+        replace: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label define status -1 \"Missing\" 1.5 \"Fraction\"").unwrap(),
+    Command::Label {
+      command: LabelCommand::Define {
+        name: "status".to_owned(),
+        mappings: vec![
+          (LabelValue::Integer(-1), "Missing".to_owned()),
+          (LabelValue::Number("1.5".to_owned()), "Fraction".to_owned()),
+        ],
+        replace: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label values sex sexlbl").unwrap(),
+    Command::Label {
+      command: LabelCommand::Values {
+        variable: "sex".to_owned(),
+        set_name: Some("sexlbl".to_owned()),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label list sexlbl other").unwrap(),
+    Command::Label {
+      command: LabelCommand::List {
+        names: vec!["sexlbl".to_owned(), "other".to_owned()],
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("label drop sexlbl").unwrap(),
+    Command::Label {
+      command: LabelCommand::Drop {
+        names: vec!["sexlbl".to_owned()],
+      },
+    }
+  );
+}
+
+#[test]
+fn label_preserves_bounded_diagnostics_and_persistence_deferral() {
+  let cases = [
+    (
+      "label variable age Age",
+      "label variable expects syntax: label variable <varname> \"text\"",
+    ),
+    (
+      "label define sexlbl 0 Male",
+      "label define text must be a quoted string",
+    ),
+    (
+      "label drop",
+      "label drop expects at least one label set name",
+    ),
+    (
+      "label save labels.json",
+      "label expects syntax: label variable|define|values|list|drop|save|use ...",
+    ),
+    (
+      "label define sexlbl 0 \"Male\" 0 \"Duplicate\"",
+      "label define duplicate value: 0",
     ),
   ];
   for (input, expected) in cases {
