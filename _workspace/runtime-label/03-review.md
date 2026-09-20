@@ -45,4 +45,3 @@ panel metadata, or broad transform sequencing. Those remain separate slices.
 The bounded eager local-Parquet session-local label contract is accepted. PR
 head, merge-head, and policy workflows passed; documentation-closeout workflow
 links are recorded in the companion summary.
-
