@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-- Status: `draft` at the contract checkpoint; acceptance follows the PR-head
-  implementation and merge-head workflow evidence.
+- Status: `accepted` after PR #64 and its PR-head and merge-head workflows
+  passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `ivregress` command boundary without
   claiming instrumental-variables estimation, covariance, model state, or
@@ -85,3 +85,11 @@ labels, formatting, CLI, JSON, MCP, or broad Python `ivregress` parity. Those
 behaviors remain future statistical evidence, gated by active-relation and
 typed model-state contracts. The parser can be merged without implying that a
 parsed `ivregress` command executes today.
+
+The contract checkpoint is
+[`a3c5d86`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/a3c5d86fa4df49f3a915214a28e8fb7591cfb2b9);
+the implementation checkpoint is
+[`8a67747`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/8a6774703c72470f174731ad1c488734dcfad7df); and PR
+[#64](https://github.com/SaehwanPark/tabdat-explore-rs/pull/64) was squash-merged
+to `main` as
+[`d35555111800b4655d30d1bc1448da8ba41d2f21`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/d35555111800b4655d30d1bc1448da8ba41d2f21).

@@ -353,6 +353,11 @@ Port TabDat's language before implementing most execution.
   transform options, quoted variables, exact-one validation, and bounded
   diagnostics are covered; panel metadata and runtime execution remain
   deferred).
+- [x] Add the bounded direct `ivregress 2sls|gmm` syntax slice
+  (PR #64, squash merge `d355551`; typed 2SLS/GMM estimators, ordered
+  exogenous/instrument lists, endog/iv/robust/cluster/noconstant options,
+  bounded diagnostics, and parser-only execution deferral are covered;
+  estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -875,8 +880,12 @@ Port the econometric command families that currently rely on linearmodels, stats
   in the Phase 5.1 direct-language slice (PR #62, squash merge `92e5d5e`).
 - [ ] `xtdata` — runtime remains deferred; the parser boundary is accepted
   in the Phase 5.1 direct-language slice (PR #63, squash merge `74eea07`).
-- [ ] `ivregress 2sls`
-- [ ] `ivregress gmm`
+- [ ] `ivregress 2sls` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #64, squash merge
+  `d355551`).
+- [ ] `ivregress gmm` — runtime remains deferred; the parser boundary is
+  accepted in the Phase 5.1 direct-language slice (PR #64, squash merge
+  `d355551`).
 - [ ] `estat firststage`
 - [ ] `estat overid`
 - [ ] `estat endogenous`

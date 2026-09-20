@@ -578,6 +578,32 @@ collisions, missingness, ordering, relation publication, labels,
 lazy/materialized behavior, persistence, formatting, CLI, JSON, MCP, and broad
 Python `xtdata` parity deferred. Phase 11.1 runtime `xtdata` remains unchecked.
 
+## Verified slice: syntax-only `ivregress` command
+
+Merged [PR #64](https://github.com/SaehwanPark/tabdat-explore-rs/pull/64)
+([d355551](https://github.com/SaehwanPark/tabdat-explore-rs/commit/d35555111800b4655d30d1bc1448da8ba41d2f21))
+adds a bounded, backend-independent `ivregress` syntax boundary to
+`tabdat-language`. The parser returns an owned typed 2SLS or GMM command for
+`ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)`, preserves
+ordered and quoted variables, and supports the bounded robust, cluster, and
+noconstant options with exact required-option and mutual-exclusion validation.
+Runtime deliberately returns the typed unsupported-command result; it does not
+fit a model, initialize DuckDB, or mutate session state.
+
+Evidence: [_workspace/runtime-ivregress/](_workspace/runtime-ivregress/),
+including the [migration evidence](_workspace/runtime-ivregress/02-evidence-migration.md),
+[review](_workspace/runtime-ivregress/03-review.md), and
+[summary](_workspace/runtime-ivregress/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves IV identification, first-stage and second-
+stage fitting, GMM weighting, robust/cluster covariance, degrees of freedom,
+missingness, prediction, post-estimation state, labels, formatting, CLI, JSON,
+MCP, and broad Python `ivregress` parity deferred. Phase 11.1 runtime
+`ivregress 2sls` and `ivregress gmm` remain unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
