@@ -1398,6 +1398,58 @@ fn save_and_export_preserve_exact_public_diagnostics() {
 }
 
 #[test]
+fn decode_preserves_source_and_target() {
+  assert_eq!(
+    parse_command("decode sex_n, generate(sex_str)").unwrap(),
+    Command::Decode {
+      source: "sex_n".to_owned(),
+      generate: "sex_str".to_owned(),
+    }
+  );
+  assert_eq!(
+    parse_command(r#"decode `region code`, generate(`region value`)"#).unwrap(),
+    Command::Decode {
+      source: "region code".to_owned(),
+      generate: "region value".to_owned(),
+    }
+  );
+}
+
+#[test]
+fn decode_preserves_exact_bounded_diagnostics() {
+  let cases = [
+    (
+      "decode",
+      "decode expects syntax: decode <numvar>, generate(<newvar>)",
+    ),
+    ("decode sex_n", "decode requires generate(<newvar>)"),
+    (
+      "decode sex_n, label(sex_label)",
+      "decode unsupported option: label",
+    ),
+    (
+      "decode sex_n, GENERATE(sex_str)",
+      "decode unsupported option: GENERATE",
+    ),
+    (
+      "decode sex_n, generate(sex_str) generate(other)",
+      "decode option generate can only be specified once",
+    ),
+    (
+      "decode sex_n, generate(sex_str other)",
+      "decode option generate expects exactly one variable",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
 fn rename_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command(" rename sex gender ").unwrap(),
