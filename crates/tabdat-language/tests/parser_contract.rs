@@ -1,8 +1,9 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
   ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow, LabelCommand,
-  LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
-  ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, parse_command,
+  LabelValue, LazyEngine, PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule,
+  RecodeTarget, RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey,
+  TabulateCommand, parse_command,
 };
 
 #[test]
@@ -221,6 +222,86 @@ fn reshape_preserves_bounded_parser_diagnostics() {
       "reshape unsupported option: replace",
     ),
   ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn panel_parses_bounded_declaration_forms() {
+  assert_eq!(
+    parse_command("panel").unwrap(),
+    Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Report,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("PANEL firm_id year").unwrap(),
+    Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Set {
+          id_variable: "firm_id".to_owned(),
+          time_variable: "year".to_owned(),
+        },
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("panel clear").unwrap(),
+    Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Clear,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("panel `clear` year").unwrap(),
+    Command::Panel {
+      command: PanelCommand {
+        action: PanelAction::Set {
+          id_variable: "clear".to_owned(),
+          time_variable: "year".to_owned(),
+        },
+      },
+    }
+  );
+}
+
+#[test]
+fn panel_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "panel firm_id year extra",
+      "panel expects syntax: panel [<id_var> <time_var>|clear]",
+    ),
+    (
+      "panel firm_id if year > 2020",
+      "panel expects syntax: panel [<id_var> <time_var>|clear]",
+    ),
+    (
+      "panel firm_id year, replace",
+      "panel expects syntax: panel [<id_var> <time_var>|clear]",
+    ),
+    (
+      "panel firm_id = year",
+      "panel expects syntax: panel [<id_var> <time_var>|clear]",
+    ),
+    (
+      "panel firm_id firm_id",
+      "panel id and time variables must be distinct",
+    ),
+    (
+      "panel clear now",
+      "panel expects syntax: panel [<id_var> <time_var>|clear]",
+    ),
+  ];
+
   for (input, expected) in cases {
     assert_eq!(
       parse_command(input).unwrap_err().message(),

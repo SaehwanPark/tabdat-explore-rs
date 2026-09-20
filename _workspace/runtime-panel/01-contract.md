@@ -21,9 +21,9 @@ The accepted forms are:
     panel clear
 
 The parser produces an owned typed action: report, clear, or set with distinct
-identifier and time variables. An unquoted `clear` is the control keyword;
-quoted/backtick `clear` remains a variable name, matching the recovered parser
-boundary.
+identifier and time variables. An unquoted or string-quoted `clear` is the
+control keyword; backtick-quoted `clear` remains a variable name, matching the
+recovered parser boundary.
 
 ## Authority and evidence inputs
 
@@ -48,8 +48,9 @@ publication semantics that do not yet exist in this Rust workspace.
    `Command::Panel` with a typed report, clear, or set action.
 2. Empty `panel` reports; exactly two variable arguments set panel identifiers;
    exactly one unquoted `clear` argument clears the panel declaration.
-3. Quoted/backtick identifiers retain decoded text. A quoted/backtick `clear`
-   is not treated as the clear keyword.
+3. Quoted/backtick identifiers retain decoded text. Backtick-quoted `clear` is
+   not treated as the clear keyword; string-quoted `clear` follows the oracle's
+   clear-action tokenization.
 4. Identifier and time-variable names must be distinct. Conditions, options,
    assignment syntax, extra arguments, and malformed boundaries preserve the
    bounded panel syntax diagnostic.
