@@ -106,6 +106,8 @@ pub enum Command {
   XtAbond { command: XtAbondCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
+  /// Run a bounded two-sample test (execution is deferred).
+  Ttest { command: TtestCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
   /// Replace the active dataset with a bounded grouped aggregate relation.
@@ -393,6 +395,21 @@ pub struct XtAbondCommand {
   pub lag_depth: i64,
   /// First lag used for the eventual instrument set.
   pub instrument_lag_start: i64,
+}
+
+/// The parser-only direct comparison forms accepted by `ttest`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TtestCommand {
+  /// The first variable in the comparison.
+  pub varname1: String,
+  /// The optional second variable for a paired comparison.
+  pub varname2: Option<String>,
+  /// The optional numeric value, retained as source spelling.
+  pub value: Option<String>,
+  /// The optional grouping variable for a two-sample comparison.
+  pub by_variable: Option<String>,
+  /// Whether unequal-variance inference was requested.
+  pub welch: bool,
 }
 
 /// The no-option post-estimation diagnostics accepted by this parser-only
@@ -972,6 +989,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtreg" => parse_xtreg_command(body),
     "xtabond" => parse_xtabond_command(body),
     "estat" => parse_estat_command(body),
+    "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
@@ -3310,6 +3328,160 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
 
   Ok(Command::Estat {
     command: EstatCommand { subcommand },
+  })
+}
+
+fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
+  let tokens = tokenize_use_options(body.trim_matches(is_command_whitespace))?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(
+      "ttest command expects a variable comparison or a variable with by() option",
+    ));
+  }
+
+  let comma_indices = tokens
+    .iter()
+    .enumerate()
+    .filter(|(_, token)| token.kind == UseTokenKind::Symbol && token.text == ",")
+    .map(|(index, _)| index)
+    .collect::<Vec<_>>();
+  if comma_indices.len() > 1 {
+    return Err(ParseError::new("ttest command: duplicate comma"));
+  }
+
+  if let Some(&comma_index) = comma_indices.first() {
+    let variable_tokens = &tokens[..comma_index];
+    if variable_tokens.len() != 1
+      || !matches!(variable_tokens[0].kind, UseTokenKind::Identifier { .. })
+    {
+      return Err(ParseError::new(
+        "ttest command: expects a single variable name before comma",
+      ));
+    }
+
+    let options = parse_use_option_tokens(tokens[comma_index + 1..].to_vec())?;
+    let by_options = options
+      .iter()
+      .filter(|option| option.name == "by")
+      .collect::<Vec<_>>();
+    if by_options.len() > 1 {
+      return Err(ParseError::new("ttest option by may only be supplied once"));
+    }
+    let Some(by_option) = by_options.first() else {
+      return Err(ParseError::new(
+        "ttest command requires option by(<variable>)",
+      ));
+    };
+    let by_variable = match &by_option.value {
+      UseOptionValue::Identifiers(values) if values.len() == 1 => values[0].clone(),
+      UseOptionValue::Identifiers(_) => {
+        return Err(ParseError::new(
+          "ttest command requires option by(<variable>)",
+        ));
+      }
+      _ => return Err(ParseError::new("ttest option by expects variables")),
+    };
+
+    let mut unsupported = options
+      .iter()
+      .filter(|option| !matches!(option.name.as_str(), "by" | "welch" | "unequal"))
+      .map(|option| option.name.clone())
+      .collect::<Vec<_>>();
+    unsupported.sort_unstable();
+    unsupported.dedup();
+    if !unsupported.is_empty() {
+      return Err(ParseError::new(format!(
+        "ttest unsupported option: {}",
+        unsupported.join(", ")
+      )));
+    }
+
+    for option in &options {
+      if matches!(option.name.as_str(), "welch" | "unequal") && option.value != UseOptionValue::Flag
+      {
+        return Err(ParseError::new(format!(
+          "ttest option {} does not accept a value",
+          option.name
+        )));
+      }
+    }
+
+    return Ok(Command::Ttest {
+      command: TtestCommand {
+        varname1: variable_tokens[0].text.clone(),
+        varname2: None,
+        value: None,
+        by_variable: Some(by_variable),
+        welch: options
+          .iter()
+          .any(|option| matches!(option.name.as_str(), "welch" | "unequal")),
+      },
+    });
+  }
+
+  let comparison_indices = tokens
+    .iter()
+    .enumerate()
+    .filter(|(_, token)| {
+      token.kind == UseTokenKind::Symbol && matches!(token.text.as_str(), "=" | "==")
+    })
+    .map(|(index, _)| index)
+    .collect::<Vec<_>>();
+  if comparison_indices.is_empty() {
+    return Err(ParseError::new(
+      "ttest command expects comparison (e.g. ttest var == value) or by() option",
+    ));
+  }
+  if comparison_indices.len() > 1 {
+    return Err(ParseError::new("ttest command: multiple comparisons"));
+  }
+
+  let comparison_index = comparison_indices[0];
+  let left = &tokens[..comparison_index];
+  if left.len() != 1 || !matches!(left[0].kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(
+      "ttest command: LHS must be a single variable name",
+    ));
+  }
+
+  let right = &tokens[comparison_index + 1..];
+  let (varname2, value) = match right {
+    [token] if matches!(token.kind, UseTokenKind::Number) => (None, Some(token.text.clone())),
+    [token] if matches!(token.kind, UseTokenKind::Identifier { .. }) => {
+      (Some(token.text.clone()), None)
+    }
+    [token]
+      if !matches!(
+        token.kind,
+        UseTokenKind::Identifier { .. } | UseTokenKind::Number
+      ) =>
+    {
+      return Err(ParseError::new(
+        "ttest command: RHS must be a variable name or a numeric value",
+      ));
+    }
+    [sign, token]
+      if sign.kind == UseTokenKind::Symbol
+        && matches!(sign.text.as_str(), "+" | "-")
+        && matches!(token.kind, UseTokenKind::Number) =>
+    {
+      (None, Some(format!("{}{}", sign.text, token.text)))
+    }
+    _ => {
+      return Err(ParseError::new(
+        "ttest command: RHS must be a single variable name or a numeric value",
+      ));
+    }
+  };
+
+  Ok(Command::Ttest {
+    command: TtestCommand {
+      varname1: left[0].text.clone(),
+      varname2,
+      value,
+      by_variable: None,
+      welch: false,
+    },
   })
 }
 
