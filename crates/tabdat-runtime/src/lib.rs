@@ -10,9 +10,10 @@ use duckdb::Connection;
 use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, Command, DataSource, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine, RecodeInput,
-  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey, TabulateCommand,
+  AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
+  ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine,
+  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
+  TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -330,6 +331,14 @@ pub struct TabulateResult {
   pub rows: Vec<Vec<CellValue>>,
 }
 
+/// The owned result returned after replacing the active relation with a
+/// grouped aggregate relation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollapseResult {
+  /// Metadata for the newly active collapsed dataset.
+  pub dataset: DatasetInfo,
+}
+
 struct TabulateCount {
   row: CellValue,
   column: Option<CellValue>,
@@ -412,6 +421,8 @@ pub enum ExecutionResult {
   Label(LabelResult),
   /// Reports a bounded one- or two-way frequency table.
   Tabulate(TabulateResult),
+  /// Replaces the active relation with a bounded grouped aggregate relation.
+  Collapse(CollapseResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -600,6 +611,16 @@ pub enum RuntimeError {
   TabulatePercentageRequiresTwoWay { option: &'static str },
   /// DuckDB could not produce or own the frequency table.
   TabulateFailed,
+  /// The collapse request did not name any aggregate variables.
+  CollapseNoVariables,
+  /// The collapse request did not name any grouping variables.
+  CollapseNoGroups,
+  /// The collapse request named variables absent from the active schema.
+  CollapseUnknownVariable { variables: Vec<String> },
+  /// A non-count collapse statistic was requested for non-numeric variables.
+  CollapseRequiresNumeric { variables: Vec<String> },
+  /// DuckDB could not stage or publish the collapsed relation.
+  CollapseFailed,
   /// The keep request named variables absent from the active schema.
   KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
@@ -872,6 +893,27 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::TabulateFailed => formatter.write_str("tabulate failed"),
+      Self::CollapseNoVariables => {
+        formatter.write_str("collapse expects at least one aggregate variable")
+      }
+      Self::CollapseNoGroups => {
+        formatter.write_str("collapse expects at least one grouping variable")
+      }
+      Self::CollapseUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "collapse unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::CollapseRequiresNumeric { variables } => {
+        write!(
+          formatter,
+          "collapse requires numeric variables: {}",
+          variables.join(", ")
+        )
+      }
+      Self::CollapseFailed => formatter.write_str("collapse failed"),
       Self::LabelUnknownVariable { variable } => {
         write!(formatter, "label unknown variable: {variable}")
       }
@@ -991,6 +1033,7 @@ impl Session {
       Command::Decode { source, generate } => self.execute_decode(source, generate),
       Command::Label { command } => self.execute_label(command),
       Command::Tabulate { command } => self.execute_tabulate(command),
+      Command::Collapse { command } => self.execute_collapse(command),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
@@ -2189,6 +2232,78 @@ impl Session {
     }))
   }
 
+  fn execute_collapse(
+    &mut self,
+    command: CollapseCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "collapse",
+      })?
+      .clone();
+    if command.variables.is_empty() {
+      return Err(RuntimeError::CollapseNoVariables);
+    }
+    if command.groups.is_empty() {
+      return Err(RuntimeError::CollapseNoGroups);
+    }
+
+    let known_columns = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<BTreeSet<_>>();
+    let unknown = command
+      .groups
+      .iter()
+      .chain(&command.variables)
+      .filter(|variable| !known_columns.contains(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::CollapseUnknownVariable { variables: unknown });
+    }
+
+    if command.statistic != CollapseStatistic::Count {
+      let non_numeric = command
+        .variables
+        .iter()
+        .filter(|variable| {
+          dataset
+            .columns
+            .iter()
+            .find(|column| column.name == **variable)
+            .is_some_and(|column| !is_numeric_data_type(&column.data_type))
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+      if !non_numeric.is_empty() {
+        return Err(RuntimeError::CollapseRequiresNumeric {
+          variables: non_numeric,
+        });
+      }
+    }
+
+    let next_dataset = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::CollapseFailed)?
+      .collapse(
+        &dataset,
+        command.statistic,
+        &command.variables,
+        &command.groups,
+      )
+      .map_err(|_| RuntimeError::CollapseFailed)?;
+    self.retain_label_metadata(&next_dataset);
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Collapse(CollapseResult {
+      dataset: next_dataset,
+    }))
+  }
+
   fn execute_keep(&mut self, variables: Vec<String>) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -2624,6 +2739,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Decode { .. } => "decode",
     Command::Label { .. } => "label",
     Command::Tabulate { .. } => "tabulate",
+    Command::Collapse { .. } => "collapse",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
     Command::Set { .. } => "set",
@@ -3291,6 +3407,16 @@ fn quote_identifier(identifier: &str) -> String {
   format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
+fn collapse_statistic_name(statistic: CollapseStatistic) -> &'static str {
+  match statistic {
+    CollapseStatistic::Count => "count",
+    CollapseStatistic::Mean => "mean",
+    CollapseStatistic::Sum => "sum",
+    CollapseStatistic::Min => "min",
+    CollapseStatistic::Max => "max",
+  }
+}
+
 fn quote_recode_literal(value: &str) -> String {
   format!("'{}'", value.replace('\'', "''"))
 }
@@ -3550,6 +3676,94 @@ impl DuckDbBackend {
         return Err(());
       }
     };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn collapse(
+    &mut self,
+    dataset: &DatasetInfo,
+    statistic: CollapseStatistic,
+    variables: &[String],
+    groups: &[String],
+  ) -> Result<DatasetInfo, ()> {
+    let statistic_name = collapse_statistic_name(statistic);
+    let group_sql = groups
+      .iter()
+      .map(|group| quote_identifier(group))
+      .collect::<Vec<_>>()
+      .join(", ");
+    let aggregate_sql = variables
+      .iter()
+      .map(|variable| {
+        let output_name = format!("{statistic_name}_{variable}");
+        format!(
+          "{statistic_name}({}) AS {}",
+          quote_identifier(variable),
+          quote_identifier(&output_name)
+        )
+      })
+      .collect::<Vec<_>>()
+      .join(", ");
+    let order_sql = groups
+      .iter()
+      .map(|group| format!("{} ASC NULLS LAST", quote_identifier(group)))
+      .collect::<Vec<_>>()
+      .join(", ");
+
+    self.drop_staging();
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {group_sql}, {aggregate_sql} FROM {ACTIVE_TABLE} GROUP BY {group_sql} ORDER BY {order_sql}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let expected_names = groups
+      .iter()
+      .cloned()
+      .chain(
+        variables
+          .iter()
+          .map(|variable| format!("{statistic_name}_{variable}")),
+      )
+      .collect::<Vec<_>>();
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names.iter().map(String::as_str))
+    {
+      self.drop_staging();
+      return Err(());
+    }
     let row_count = match self.staged_row_count() {
       Ok(row_count) => row_count,
       Err(()) => {
