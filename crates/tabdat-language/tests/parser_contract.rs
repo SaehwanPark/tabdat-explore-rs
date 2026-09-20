@@ -1,8 +1,8 @@
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
-  ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine,
-  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SettingName,
-  SortKey, TabulateCommand, parse_command,
+  ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow, LabelCommand,
+  LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
+  RowLimit, SettingName, SortKey, TabulateCommand, parse_command,
 };
 
 #[test]
@@ -143,6 +143,71 @@ fn collapse_preserves_bounded_parser_diagnostics() {
     (
       "collapse mean age if age > 0, by(sex)",
       "collapse does not accept if clauses or assignment syntax",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn join_parses_bounded_named_table_forms() {
+  assert_eq!(
+    parse_command("JOIN lookup ON firm_id year").unwrap(),
+    Command::Join {
+      command: JoinCommand {
+        table_name: "lookup".to_owned(),
+        keys: vec!["firm_id".to_owned(), "year".to_owned()],
+        how: JoinHow::Inner,
+        suffix: "_right".to_owned(),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("join `lookup` on `firm id` year, how=left suffix(_lookup)").unwrap(),
+    Command::Join {
+      command: JoinCommand {
+        table_name: "lookup".to_owned(),
+        keys: vec!["firm id".to_owned(), "year".to_owned()],
+        how: JoinHow::Left,
+        suffix: "_lookup".to_owned(),
+      },
+    }
+  );
+}
+
+#[test]
+fn join_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("join", "join expects syntax: join <table> on <keylist>"),
+    (
+      "join lookup id",
+      "join expects syntax: join <table> on <keylist>",
+    ),
+    ("join lookup on id id", "join key list contains duplicates"),
+    (
+      "join lookup `on` id",
+      "join expects syntax: join <table> on <keylist>",
+    ),
+    (
+      "join lookup on id, how=right",
+      "join how must be inner or left",
+    ),
+    (
+      "join lookup on id, suffix(_x) suffix(_y)",
+      "join option suffix may only be supplied once",
+    ),
+    (
+      "join lookup on id, replace",
+      "join unsupported option: replace",
+    ),
+    (
+      "join active on id",
+      "sql into cannot use reserved table name: active",
     ),
   ];
   for (input, expected) in cases {
