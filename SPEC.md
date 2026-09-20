@@ -446,6 +446,33 @@ commands, conditions, weights, named-table execution, lazy/materialized
 execution, panel propagation, persistence, formatting, CLI, JSON, MCP, and
 broad Python by parity remain deferred.
 
+## Verified slice: syntax-only `join` command
+
+Merged [PR #59](https://github.com/SaehwanPark/tabdat-explore-rs/pull/59)
+([585c53f](https://github.com/SaehwanPark/tabdat-explore-rs/commit/585c53fcdce135456abded9b27df75fbcbcda8cf))
+adds a bounded, backend-independent `join <table> on <keylist> [, how=inner|left suffix(_right)]`
+syntax boundary to `tabdat-language`. The parser returns owned table/key data,
+typed `inner`/`left` mode, and a non-empty suffix, applies the recovered
+`inner` and `_right` defaults, preserves key order, and covers bounded
+diagnostics for quoted separators, duplicate keys, reserved tables, and
+unsupported or duplicate options. Runtime deliberately returns the typed
+unsupported-command result; it does not initialize DuckDB, inspect files, or
+mutate session state.
+
+Evidence: [_workspace/runtime-join/](_workspace/runtime-join/), including the
+[migration evidence](_workspace/runtime-join/02-evidence-migration.md),
+[review](_workspace/runtime-join/03-review.md), and
+[summary](_workspace/runtime-join/04-summary.md). The pinned oracle parser
+selection, locked Rust baseline, dependency/advisory/unsafe-code policy,
+metadata-driven geiger checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves named-table registry and activation, SQL
+creation, DuckDB join execution, key type/null semantics, collision/order and
+publication rules, labels, lazy/materialized behavior, persistence, formatting,
+CLI, JSON, MCP, and broad Python `join` parity deferred. Phase 6.4 runtime
+`join` remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

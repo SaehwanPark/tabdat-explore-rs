@@ -332,6 +332,10 @@ Port TabDat's language before implementing most execution.
   optional condition, nested boundaries, and bounded diagnostics are retained
   syntax-only, while relation mutation, predicate/type semantics, and runtime
   surfaces remain deferred).
+- [x] Add the bounded direct `join <table> on <keylist> [, how=inner|left suffix(_right)]`
+  syntax slice (PR #59, squash merge `585c53f`; typed table/key/mode/suffix
+  parsing and bounded diagnostics are covered; named-table state, SQL, and
+  execution remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -551,7 +555,8 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.4 Combine and summarize
 
-- [ ] `join`
+- [ ] `join` — runtime remains deferred; the parser boundary is accepted in
+  the Phase 5.1 direct-language slice (PR #59, squash merge `585c53f`).
 - [ ] `append`
 - [ ] `reshape`
 - [x] `tabulate` — bounded eager local-Parquet one- and two-way frequency

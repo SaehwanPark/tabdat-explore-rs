@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-- Status: `in progress` at the contract checkpoint.
+- Status: `accepted` after PR #59 and its merge-head workflows passed.
 - Owner: the parent task owner; this slice is intentionally parser-only.
 - Target: recover and port the direct `join` command boundary without claiming
   named-table execution.
@@ -64,6 +64,13 @@ state model that does not yet exist in this Rust workspace.
 - Repository baseline: format, locked workspace check/test, and clippy with
   warnings denied pass before the PR is marked ready.
 - Documentation and `git diff --check` pass; only this slice's files are staged.
+
+The contract checkpoint was committed as
+[`c9cb448ff3d781a2f8ccb19f7f0adb6892bbfca6`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c9cb448ff3d781a2f8ccb19f7f0adb6892bbfca6).
+The implementation was committed as
+[`dfa1ecc72a99f8dac42170c4bc38cf840886bb74`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/dfa1ecc72a99f8dac42170c4bc38cf840886bb74)
+and merged to `main` as
+[`585c53fcdce135456abded9b27df75fbcbcda8cf`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/585c53fcdce135456abded9b27df75fbcbcda8cf).
 
 ## Known gaps and next dependency
 
