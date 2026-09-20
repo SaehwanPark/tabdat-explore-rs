@@ -58,7 +58,7 @@ isolated oracle confirmed, among other cases:
 | `α_1 ١٢` | identifier `α_1`, number `١٢`, with character offsets |
 | `1..2` | `malformed number: 1..2` |
 | `` ` `` | `unterminated quoted identifier` |
-| `''unterminated` | `unterminated quoted string` |
+| `'unterminated` | `unterminated quoted string` |
 | `` `` `` | `quoted identifier cannot be empty` |
 | `;` or `@` | `unsupported token in command: ;` / `unsupported token in command: @` |
 

@@ -665,6 +665,32 @@ pub struct ParseError {
   message: String,
 }
 
+/// The lexical categories emitted by [`tokenize`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TokenKind {
+  /// An identifier, optionally decoded from backtick quoting.
+  Identifier { quoted: bool },
+  /// A single- or double-quoted string.
+  String,
+  /// A decimal number spelling.
+  Number,
+  /// A command or expression operator.
+  Symbol,
+}
+
+/// An owned lexical token from a command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Token {
+  /// The token category.
+  pub kind: TokenKind,
+  /// The decoded token text.
+  pub text: String,
+  /// The inclusive Unicode-scalar start offset in the source text.
+  pub start: usize,
+  /// The exclusive Unicode-scalar end offset in the source text.
+  pub end: usize,
+}
+
 fn is_command_whitespace(character: char) -> bool {
   character.is_whitespace() || matches!(character, '\u{1c}'..='\u{1f}')
 }
@@ -4270,19 +4296,8 @@ fn first_unquoted_colon(text: &str) -> Option<usize> {
   None
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum UseTokenKind {
-  Identifier { quoted: bool },
-  String,
-  Number,
-  Symbol,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct UseToken {
-  kind: UseTokenKind,
-  text: String,
-}
+type UseTokenKind = TokenKind;
+type UseToken = Token;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum UseOptionValue {
@@ -4671,7 +4686,11 @@ impl UseTokenStream {
   }
 }
 
-fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
+/// Tokenize a command using the pinned Python parser's lexical rules.
+///
+/// Token offsets are Unicode-scalar offsets, matching Python string indexing
+/// rather than Rust UTF-8 byte offsets.
+pub fn tokenize(text: &str) -> Result<Vec<Token>, ParseError> {
   let characters: Vec<char> = text.chars().collect();
   let mut tokens = Vec::new();
   let mut index = 0;
@@ -4689,13 +4708,16 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
       {
         index += 1;
       }
-      tokens.push(UseToken {
-        kind: UseTokenKind::Identifier { quoted: false },
+      tokens.push(Token {
+        kind: TokenKind::Identifier { quoted: false },
         text: characters[start..index].iter().collect(),
+        start,
+        end: index,
       });
       continue;
     }
     if character == '`' {
+      let start = index;
       index += 1;
       let mut value = String::new();
       let mut content_nonempty = false;
@@ -4723,9 +4745,11 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
       if !content_nonempty {
         return Err(ParseError::new("quoted identifier cannot be empty"));
       }
-      tokens.push(UseToken {
-        kind: UseTokenKind::Identifier { quoted: true },
+      tokens.push(Token {
+        kind: TokenKind::Identifier { quoted: true },
         text: value,
+        start,
+        end: index,
       });
       continue;
     }
@@ -4745,35 +4769,43 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
       if text.chars().filter(|character| *character == '.').count() > 1 {
         return Err(ParseError::new(format!("malformed number: {text}")));
       }
-      tokens.push(UseToken {
-        kind: UseTokenKind::Number,
+      tokens.push(Token {
+        kind: TokenKind::Number,
         text,
+        start,
+        end: index,
       });
       continue;
     }
     if matches!(character, '\'' | '"') {
       let quote = character;
       index += 1;
-      let start = index;
+      let value_start = index;
       while index < characters.len() && characters[index] != quote {
         index += 1;
       }
       if index >= characters.len() {
         return Err(ParseError::new("unterminated quoted string"));
       }
-      let text: String = characters[start..index].iter().collect();
+      let text: String = characters[value_start..index].iter().collect();
       index += 1;
-      tokens.push(UseToken {
-        kind: UseTokenKind::String,
+      tokens.push(Token {
+        kind: TokenKind::String,
         text,
+        // Preserve the Python tokenizer's recovered string-token start,
+        // which points just after the opening quote.
+        start: value_start,
+        end: index,
       });
       continue;
     }
     let two_char: String = characters[index..].iter().take(2).collect();
     if matches!(two_char.as_str(), "==" | "!=" | "<=" | ">=") {
-      tokens.push(UseToken {
-        kind: UseTokenKind::Symbol,
+      tokens.push(Token {
+        kind: TokenKind::Symbol,
         text: two_char,
+        start: index,
+        end: index + 2,
       });
       index += 2;
       continue;
@@ -4782,9 +4814,11 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
       character,
       ',' | '=' | '<' | '>' | '+' | '-' | '*' | '/' | '(' | ')' | ':' | '.'
     ) {
-      tokens.push(UseToken {
-        kind: UseTokenKind::Symbol,
+      tokens.push(Token {
+        kind: TokenKind::Symbol,
         text: character.to_string(),
+        start: index,
+        end: index + 1,
       });
       index += 1;
       continue;
@@ -4794,6 +4828,10 @@ fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
     )));
   }
   Ok(tokens)
+}
+
+fn tokenize_use_options(text: &str) -> Result<Vec<UseToken>, ParseError> {
+  tokenize(text)
 }
 
 fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
