@@ -10,10 +10,10 @@ use duckdb::Connection;
 use duckdb::types::{TimeUnit, Value, ValueRef};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
-  ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue, LazyEngine,
-  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit, SortKey,
-  TabulateCommand,
+  AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
+  DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue,
+  LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit,
+  SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -331,6 +331,15 @@ pub struct TabulateResult {
   pub rows: Vec<Vec<CellValue>>,
 }
 
+/// The owned result returned by a bounded grouped read-only request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ByResult {
+  /// Group and aggregate headers in output order.
+  pub headers: Vec<String>,
+  /// Owned grouped rows in deterministic group order.
+  pub rows: Vec<Vec<CellValue>>,
+}
+
 /// The owned result returned after replacing the active relation with a
 /// grouped aggregate relation.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -421,6 +430,8 @@ pub enum ExecutionResult {
   Label(LabelResult),
   /// Reports a bounded one- or two-way frequency table.
   Tabulate(TabulateResult),
+  /// Reports a bounded grouped read-only table.
+  By(ByResult),
   /// Replaces the active relation with a bounded grouped aggregate relation.
   Collapse(CollapseResult),
   /// Projects an explicit ordered set of columns in the active dataset.
@@ -611,6 +622,19 @@ pub enum RuntimeError {
   TabulatePercentageRequiresTwoWay { option: &'static str },
   /// DuckDB could not produce or own the frequency table.
   TabulateFailed,
+  /// The by request did not name any grouping variables.
+  ByNoGroups,
+  /// The by request named variables absent from the active schema.
+  ByUnknownVariable { variables: Vec<String> },
+  /// A grouped summarize request named non-numeric variables.
+  BySummarizeRequiresNumeric { variables: Vec<String> },
+  /// The active schema contains no numeric non-group columns for a default
+  /// grouped summarize.
+  BySummarizeNoNumericColumns,
+  /// The child command is outside the bounded grouped runtime slice.
+  ByUnsupportedCommand,
+  /// DuckDB could not produce or own a grouped read-only table.
+  ByFailed,
   /// The collapse request did not name any aggregate variables.
   CollapseNoVariables,
   /// The collapse request did not name any grouping variables.
@@ -893,6 +917,22 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::TabulateFailed => formatter.write_str("tabulate failed"),
+      Self::ByNoGroups => formatter.write_str("by expects at least one grouping variable"),
+      Self::ByUnknownVariable { variables } => {
+        write!(formatter, "by unknown variable: {}", variables.join(", "))
+      }
+      Self::BySummarizeRequiresNumeric { variables } => write!(
+        formatter,
+        "by summarize requires numeric variables: {}",
+        variables.join(", ")
+      ),
+      Self::BySummarizeNoNumericColumns => {
+        formatter.write_str("by summarize found no numeric columns")
+      }
+      Self::ByUnsupportedCommand => {
+        formatter.write_str("by only supports summarize and count in the bounded runtime")
+      }
+      Self::ByFailed => formatter.write_str("by failed"),
       Self::CollapseNoVariables => {
         formatter.write_str("collapse expects at least one aggregate variable")
       }
@@ -1033,6 +1073,7 @@ impl Session {
       Command::Decode { source, generate } => self.execute_decode(source, generate),
       Command::Label { command } => self.execute_label(command),
       Command::Tabulate { command } => self.execute_tabulate(command),
+      Command::By { command } => self.execute_by(command),
       Command::Collapse { command } => self.execute_collapse(command),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
@@ -2232,6 +2273,108 @@ impl Session {
     }))
   }
 
+  fn execute_by(&self, command: ByCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "by" })?;
+    if command.groups.is_empty() {
+      return Err(RuntimeError::ByNoGroups);
+    }
+
+    let known_variables = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<BTreeSet<_>>();
+    let unknown_groups = command
+      .groups
+      .iter()
+      .filter(|group| !known_variables.contains(group.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown_groups.is_empty() {
+      return Err(RuntimeError::ByUnknownVariable {
+        variables: unknown_groups,
+      });
+    }
+
+    match *command.command {
+      Command::Summarize { variables } => {
+        let unknown_variables = variables
+          .iter()
+          .filter(|variable| !known_variables.contains(variable.as_str()))
+          .cloned()
+          .collect::<Vec<_>>();
+        if !unknown_variables.is_empty() {
+          return Err(RuntimeError::ByUnknownVariable {
+            variables: unknown_variables,
+          });
+        }
+
+        let requested = if variables.is_empty() {
+          dataset
+            .columns
+            .iter()
+            .filter(|column| {
+              is_numeric_data_type(&column.data_type)
+                && !command.groups.iter().any(|group| group == &column.name)
+            })
+            .map(|column| column.name.clone())
+            .collect::<Vec<_>>()
+        } else {
+          variables
+        };
+        if requested.is_empty() {
+          return Err(RuntimeError::BySummarizeNoNumericColumns);
+        }
+
+        let non_numeric = requested
+          .iter()
+          .filter(|variable| {
+            dataset
+              .columns
+              .iter()
+              .find(|column| column.name == **variable)
+              .is_none_or(|column| !is_numeric_data_type(&column.data_type))
+          })
+          .cloned()
+          .collect::<Vec<_>>();
+        if !non_numeric.is_empty() {
+          return Err(RuntimeError::BySummarizeRequiresNumeric {
+            variables: non_numeric,
+          });
+        }
+
+        let backend = self.backend.as_ref().ok_or(RuntimeError::ByFailed)?;
+        let rows = backend
+          .grouped_summarize(&command.groups, &requested)
+          .map_err(|_| RuntimeError::ByFailed)?;
+        let headers = command
+          .groups
+          .iter()
+          .cloned()
+          .chain(requested.iter().map(|variable| format!("mean_{variable}")))
+          .collect();
+        Ok(ExecutionResult::By(ByResult { headers, rows }))
+      }
+      Command::Count => {
+        let backend = self.backend.as_ref().ok_or(RuntimeError::ByFailed)?;
+        let rows = backend
+          .grouped_count(&command.groups)
+          .map_err(|_| RuntimeError::ByFailed)?;
+        let headers = command
+          .groups
+          .iter()
+          .cloned()
+          .chain(std::iter::once("Count".to_owned()))
+          .collect();
+        Ok(ExecutionResult::By(ByResult { headers, rows }))
+      }
+      _ => Err(RuntimeError::ByUnsupportedCommand),
+    }
+  }
+
   fn execute_collapse(
     &mut self,
     command: CollapseCommand,
@@ -2739,6 +2882,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Decode { .. } => "decode",
     Command::Label { .. } => "label",
     Command::Tabulate { .. } => "tabulate",
+    Command::By { .. } => "by",
     Command::Collapse { .. } => "collapse",
     Command::Rename { .. } => "rename",
     Command::Run { .. } => "run",
@@ -3959,6 +4103,83 @@ impl DuckDbBackend {
       .query_map([], |row| row.get::<_, String>(0))
       .map_err(|_| ())?;
     rows.map(|row| row.map_err(|_| ())).collect()
+  }
+
+  fn grouped_summarize(
+    &self,
+    groups: &[String],
+    variables: &[String],
+  ) -> Result<Vec<Vec<CellValue>>, ()> {
+    if groups.is_empty() || variables.is_empty() {
+      return Err(());
+    }
+    let group_columns = groups
+      .iter()
+      .map(|group| quote_identifier(group))
+      .collect::<Vec<_>>();
+    let aggregate_columns = variables
+      .iter()
+      .map(|variable| {
+        let quoted_variable = quote_identifier(variable);
+        format!(
+          "avg({quoted_variable}) AS {}",
+          quote_identifier(&format!("mean_{variable}"))
+        )
+      })
+      .collect::<Vec<_>>();
+    let order_columns = group_columns
+      .iter()
+      .map(|group| format!("{group} ASC NULLS LAST"))
+      .collect::<Vec<_>>();
+    let query = format!(
+      "SELECT {}, {} FROM {ACTIVE_TABLE} GROUP BY {} ORDER BY {}",
+      group_columns.join(", "),
+      aggregate_columns.join(", "),
+      group_columns.join(", "),
+      order_columns.join(", ")
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let mut grouped = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| ())? {
+      let mut values = Vec::with_capacity(groups.len() + variables.len());
+      for index in 0..(groups.len() + variables.len()) {
+        values.push(cell_value_from_ref(row.get_ref(index).map_err(|_| ())?)?);
+      }
+      grouped.push(values);
+    }
+    Ok(grouped)
+  }
+
+  fn grouped_count(&self, groups: &[String]) -> Result<Vec<Vec<CellValue>>, ()> {
+    if groups.is_empty() {
+      return Err(());
+    }
+    let group_columns = groups
+      .iter()
+      .map(|group| quote_identifier(group))
+      .collect::<Vec<_>>();
+    let order_columns = group_columns
+      .iter()
+      .map(|group| format!("{group} ASC NULLS LAST"))
+      .collect::<Vec<_>>();
+    let query = format!(
+      "SELECT {}, COUNT(*) FROM {ACTIVE_TABLE} GROUP BY {} ORDER BY {}",
+      group_columns.join(", "),
+      group_columns.join(", "),
+      order_columns.join(", ")
+    );
+    let mut statement = self.connection.prepare(&query).map_err(|_| ())?;
+    let mut rows = statement.query([]).map_err(|_| ())?;
+    let mut grouped = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| ())? {
+      let mut values = Vec::with_capacity(groups.len() + 1);
+      for index in 0..(groups.len() + 1) {
+        values.push(cell_value_from_ref(row.get_ref(index).map_err(|_| ())?)?);
+      }
+      grouped.push(values);
+    }
+    Ok(grouped)
   }
 
   fn tabulate_counts(
