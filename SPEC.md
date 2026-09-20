@@ -659,6 +659,34 @@ remaining `estat` subcommands, and broad Python `estat` parity deferred. Phase
 11.1 runtime `estat firststage`, `estat overid`, `estat endogenous`, and
 `estat hausman` remain unchecked.
 
+## Verified slice: syntax-only `xtabond` command
+
+Merged [PR #67](https://github.com/SaehwanPark/tabdat-explore-rs/pull/67)
+([820376d](https://github.com/SaehwanPark/tabdat-explore-rs/commit/820376d6c7ce3c4a4ff8abf24fe9a9b3ad84cea6))
+adds a bounded, backend-independent `xtabond` syntax boundary to
+`tabdat-language`. The parser returns an owned typed dynamic-panel command for
+`xtabond <y> [xvars] [, robust lags(#) instlag(#)]`, preserves ordered and
+quoted variables, supports the flag-only `robust` option, defaults `lags(1)`
+and `instlag(2)`, and enforces `instlag > lags` plus the recovered numeric
+bounds.
+Runtime deliberately returns the typed unsupported-command result; it does not
+inspect panel metadata, construct instruments, fit a model, initialize DuckDB,
+or mutate session state.
+
+Evidence: [_workspace/runtime-xtabond/](_workspace/runtime-xtabond/), including
+the [migration evidence](_workspace/runtime-xtabond/02-evidence-migration.md),
+[review](_workspace/runtime-xtabond/03-review.md), and
+[summary](_workspace/runtime-xtabond/04-summary.md). The pinned oracle parser
+selection, focused Rust parser/runtime tests, locked Rust baseline, dependency/
+advisory/unsafe-code policy, PR-head, squash merge, and merge-head workflows
+all passed.
+
+This accepted syntax slice leaves panel metadata ownership, dynamic-panel GMM,
+instrument matrices and lag construction, weighting, covariance, missingness,
+prediction, post-estimation state, labels, formatting, CLI, JSON, MCP, and
+broad Python `xtabond` parity deferred. Phase 11.1 runtime `xtabond` remains
+unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

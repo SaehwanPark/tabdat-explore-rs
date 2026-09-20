@@ -368,6 +368,11 @@ Port TabDat's language before implementing most execution.
   subcommands, case/quote normalization, bounded diagnostics, and parser-only
   execution deferral are covered; post-estimation state and calculations remain
   deferred).
+- [x] Add the bounded direct `xtabond <y> [xvars]` syntax slice (PR #67,
+  squash merge `820376d`; typed ordered predictors, robust flag, bounded
+  integer lag options, lag-order validation, exact diagnostics, and parser-only
+  execution deferral are covered; panel metadata and dynamic-panel estimation
+  remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -912,7 +917,8 @@ Port the econometric command families that currently rely on linearmodels, stats
 - [ ] `estat hausman` — runtime remains deferred; the parser boundary is
   accepted in the Phase 5.1 direct-language slice (PR #66, squash merge
   `484148e`).
-- [ ] `xtabond`
+- [ ] `xtabond` — runtime remains deferred; the parser boundary is accepted in
+  the Phase 5.1 direct-language slice (PR #67, squash merge `820376d`).
 - [ ] dynamic-panel prediction
 - [ ] dynamic-panel overidentification diagnostics
 
