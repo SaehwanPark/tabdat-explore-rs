@@ -524,21 +524,30 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [x] `encode` — bounded eager local-Parquet integer coding (`EncodeResult`; PR #53,
   squash merge `af3e3b2`). Sorted unique nonmissing string values receive
   one-based codes, NULLs are preserved, quoted/empty relations and
-  failure-atomic staged publication are covered, and ordinary encode retains a
-  private code-to-text map for the bounded decode slice. The optional label
-  name remains explicitly unsupported until general label metadata exists.
-  Generic label metadata, lazy/materialized execution, panel metadata,
-  last_operation, formatting, CLI, JSON, MCP, and broad transform sequencing
-  remain deferred.
+  failure-atomic staged publication are covered, and ordinary encode retains
+  session-owned label metadata for the bounded decode and label slices. The
+  optional label name selects the generated value-label set. Persistence,
+  rendering, lazy/materialized execution, panel metadata, last_operation,
+  formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
+  PR-head workflows `35483588143`/`35483588144` and merge-head workflows
+  `35484575373`/`35484575369` passed; documentation-closeout evidence is in
+  `_workspace/runtime-label/`.
 - [x] `decode` — bounded eager local-Parquet same-session decode
   (`DecodeResult`; PR #54, squash merge `0845e6c`). Encode-produced integer
   mappings decode known codes to strings, preserve NULL/unmapped values as
   NULL, support quoted/empty relations, reconcile provenance across rename and
-  projections, and publish atomically. General value-label metadata, the
-  `label` command, DTA labels, persistence, lazy/materialized execution,
-  panel metadata, last_operation, formatting, CLI, JSON, MCP, and broad
-  transform sequencing remain deferred.
-- [ ] `label`
+  projections, and publish atomically. Arbitrary imported value-label
+  metadata, DTA labels, persistence, lazy/materialized execution, panel
+  metadata, last_operation, formatting, CLI, JSON, MCP, and broad transform
+  sequencing remain deferred.
+- [x] `label` — bounded eager session-local variable/value labels
+  (`LabelResult`; PR #55, squash merge `70b9745`). Variable labels, named
+  integer/numeric/text value-label sets, attachments, list filtering, drop,
+  atomic validation, encode/decode integration, and reconciliation across
+  rename, projections, value-changing replace, recode, and `use` are covered.
+  `label save/use` persistence, DTA-imported labels, inspection/reporting
+  rendering, lazy/materialized execution, panel metadata, last_operation,
+  formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
 
 ### 6.4 Combine and summarize
 

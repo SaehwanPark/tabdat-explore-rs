@@ -34,7 +34,8 @@ Merged PR #52 (2e25cda) adds the bounded eager runtime subset for recode
 documented below; broader recode behavior remains deferred.
 
 Merged PR #53 (af3e3b2) adds the bounded eager runtime subset for encode
-documented below; broader encode/decode/label behavior remains deferred.
+documented below; broader encode/decode and label-dictionary behavior remains
+deferred until the later bounded slices.
 
 Merged PR #29 (`8b16223`) adds the bounded syntax-only `save <path> [, replace]` and
 `export <path> [, replace]` forms. The language layer owns the lexical path and
@@ -295,10 +296,9 @@ nonmissing source strings, assigns one-based integer codes, preserves source
 NULLs as target NULLs, appends the generated column, and publishes the staged
 projection atomically. Quoted identifiers, embedded identifier quotes, empty
 relations, source existence/type validation, target collisions, and backend
-failure preservation are covered. Ordinary encode also retains a private
-session-owned code-to-text map for the bounded decode slice; the optional
-`label(<lblname>)` name remains explicitly unsupported until general label
-metadata exists.
+failure preservation are covered. Ordinary encode also retains session-owned
+label metadata for the bounded decode and label slices; the optional
+`label(<lblname>)` name selects the generated value-label set.
 
 Evidence: `_workspace/runtime-encode/`, `crates/tabdat-language/src/lib.rs`,
 `crates/tabdat-language/tests/parser_contract.rs`,
@@ -312,12 +312,12 @@ passed its [PR-head CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions
 and [runtime workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35474913819)
 before squash merge as
 [`af3e3b2`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/af3e3b2726778af5c5f3b5c13c4ba84e5291da61).
-Merge-head and documentation-closeout workflow links are recorded in the
-companion evidence artifact.
+Merge-head workflows `35484575373`/`35484575369` passed; documentation-closeout
+workflow links are recorded in the companion evidence artifact.
 
-This accepted runtime subset is library-only. General value-label metadata, the
-`label` command, lazy/materialized execution, panel metadata, `last_operation`,
-formatting, CLI, JSON, MCP, and broad transform sequencing remain deferred.
+This accepted runtime subset is library-only. Label persistence and rendering,
+lazy/materialized execution, panel metadata, `last_operation`, formatting, CLI,
+JSON, MCP, and broad transform sequencing remain deferred.
 
 ## Verified slice: bounded eager runtime `decode` command
 
@@ -337,9 +337,36 @@ metadata-driven geiger checks passed; PR-head workflows
 `35480547109`/`35480547104` passed before and after squash merge as
 [`0845e6c`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/0845e6cf37a50c317d7ee30acee2d85474c7bcd2).
 
-This slice does not claim arbitrary value-label metadata, the generic `label`
-command, DTA-imported labels, label persistence, lazy/materialized execution,
-panel metadata, output adapters, or broad transform sequencing.
+This slice does not claim arbitrary imported value-label metadata, label
+persistence, lazy/materialized execution, panel metadata, output adapters, or
+broad transform sequencing.
+
+## Verified slice: bounded eager runtime session-local `label` metadata
+
+Merged PR [#55](https://github.com/SaehwanPark/tabdat-explore-rs/pull/55) adds
+the bounded eager local-Parquet session-local `label` forms for variable
+labels, named value-label definitions/replacement, variable attachments,
+listing, and dropping. `LabelMetadata`, `ValueLabelSet`, and `LabelResult` are
+owned Rust values; validation and metadata publication are atomic with respect
+to the active relation. Encode publishes default or explicit named sets,
+decode consumes attached integer sets, and successful `use`, rename,
+keep/drop/select, value-changing replace, and in-place recode reconcile the
+metadata that survives the new schema or values.
+
+Evidence: `_workspace/runtime-label/`, the typed parser and runtime
+implementations, and focused parser/runtime contract tests. The pinned oracle
+focused suites reported 6 label tests and 6 encode/decode tests passing. Local
+locked format/check/test/Clippy, dependency-policy, advisory, and
+metadata-driven geiger checks passed. PR-head workflows
+`35483588143`/`35483588144` passed before squash merge as
+[`70b9745`](https://github.com/SaehwanPark/tabdat-explore-rs/commit/70b9745ae7e22855c763bcb9e3ed40332646723c).
+Merge-head and documentation-closeout workflow links are recorded in the
+companion evidence artifact.
+
+This accepted slice remains library-only. `label save/use`, DTA-imported
+labels, inspection/reporting rendering, lazy/materialized execution, panel
+metadata, output adapters, CLI, JSON, MCP, and broad transform sequencing
+remain deferred.
 
 ## Verified slice: reproducible build baseline
 
