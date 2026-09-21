@@ -136,6 +136,17 @@ pub enum Command {
   Head { limit: RowLimit },
   /// Preview the last `limit` rows of the active dataset.
   Tail { limit: RowLimit },
+  /// Execute a SQL query (execution is deferred).
+  Sql { command: SqlCommand },
+}
+
+/// The bounded SQL command AST representation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SqlCommand {
+  /// The opaque SQL query text.
+  pub query: String,
+  /// The optional named-table target.
+  pub into: Option<String>,
 }
 
 /// A value accepted by a bounded `label define` command.
@@ -819,6 +830,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"sql"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   // `status` keeps the Python tokenizer's punctuation diagnostics for
   // attached unary-sign forms such as `status-1` and `status+1`.
@@ -903,6 +922,15 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       return Err(ParseError::new("unsupported token in command: =="));
     }
     return Err(ParseError::new("run assignment requires a target before ="));
+  }
+  if name.eq_ignore_ascii_case("sql") && delimiter == ',' {
+    return Err(ParseError::new("unknown command: sql"));
+  }
+  if name.eq_ignore_ascii_case("sql") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("sql assignment requires a target before ="));
   }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
@@ -1000,6 +1028,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "save" | "export" => parse_save_export_command(normalized_name.as_str(), body),
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
+    "sql" => parse_sql_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
@@ -3615,6 +3644,120 @@ fn validate_named_table_name(table_name: &str) -> Result<(), ParseError> {
   Ok(())
 }
 
+fn parse_sql_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_matches(is_command_whitespace);
+  if trimmed.is_empty() {
+    return Err(ParseError::new("sql expects a query"));
+  }
+
+  let (query, remainder) = if trimmed.starts_with("\"\"\"") {
+    parse_triple_quoted_sql(trimmed)?
+  } else {
+    split_sql_into(trimmed)?
+  };
+
+  let normalized_query = query.trim_matches(is_command_whitespace);
+  if normalized_query.is_empty() {
+    return Err(ParseError::new("sql expects a query"));
+  }
+
+  let into = parse_sql_into_remainder(remainder)?;
+  if let Some(ref target) = into {
+    validate_named_table_name(target)?;
+  }
+
+  Ok(Command::Sql {
+    command: SqlCommand {
+      query: normalized_query.to_owned(),
+      into,
+    },
+  })
+}
+
+fn parse_triple_quoted_sql(body: &str) -> Result<(&str, &str), ParseError> {
+  let closing = body[3..]
+    .find("\"\"\"")
+    .map(|offset| offset + 3)
+    .ok_or_else(|| ParseError::new("sql multiline query is missing closing \"\"\""))?;
+  let query = &body[3..closing];
+  let remainder = body[closing + 3..].trim_matches(is_command_whitespace);
+  Ok((query, remainder))
+}
+
+fn split_sql_into(body: &str) -> Result<(&str, &str), ParseError> {
+  let stripped_body = body.trim_end_matches(is_command_whitespace);
+  let words = split_whitespace_words(stripped_body);
+  if words
+    .last()
+    .is_some_and(|last| last.text.eq_ignore_ascii_case("into"))
+  {
+    return Err(ParseError::new(
+      "sql into expects syntax: sql <query> into <table>",
+    ));
+  }
+  if words.len() >= 3 {
+    let second_to_last = &words[words.len() - 2];
+    if second_to_last.text.eq_ignore_ascii_case("into") {
+      let into_start = second_to_last.start;
+      let query = stripped_body[..into_start].trim_end_matches(is_command_whitespace);
+      let remainder = &stripped_body[into_start..];
+      return Ok((query, remainder));
+    }
+  }
+  Ok((body, ""))
+}
+
+fn parse_sql_into_remainder(remainder: &str) -> Result<Option<String>, ParseError> {
+  let trimmed = remainder.trim_matches(is_command_whitespace);
+  if trimmed.is_empty() {
+    return Ok(None);
+  }
+  let parts: Vec<&str> = trimmed
+    .split(is_command_whitespace)
+    .filter(|part| !part.is_empty())
+    .collect();
+  if parts.len() != 2 || !parts[0].eq_ignore_ascii_case("into") {
+    return Err(ParseError::new(
+      "sql into expects syntax: sql <query> into <table>",
+    ));
+  }
+  Ok(Some(parts[1].to_owned()))
+}
+
+#[derive(Debug)]
+struct WordSpan<'a> {
+  text: &'a str,
+  start: usize,
+  #[allow(dead_code)]
+  end: usize,
+}
+
+fn split_whitespace_words(text: &str) -> Vec<WordSpan<'_>> {
+  let mut spans = Vec::new();
+  let mut start = None;
+  for (index, character) in text.char_indices() {
+    if is_command_whitespace(character) {
+      if let Some(word_start) = start.take() {
+        spans.push(WordSpan {
+          text: &text[word_start..index],
+          start: word_start,
+          end: index,
+        });
+      }
+    } else if start.is_none() {
+      start = Some(index);
+    }
+  }
+  if let Some(word_start) = start {
+    spans.push(WordSpan {
+      text: &text[word_start..],
+      start: word_start,
+      end: text.len(),
+    });
+  }
+  spans
+}
+
 fn join_single_text_option(
   options: &[UseOption],
   name: &str,
@@ -5297,7 +5440,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     ByCommand, Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName,
-    SortKey, TabulateCommand, parse_command,
+    SortKey, SqlCommand, TabulateCommand, parse_command,
   };
 
   #[test]
@@ -7160,6 +7303,161 @@ mod tests {
       (
         "by sex: doctor",
         "doctor is not supported inside by commands",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_sql_syntax() {
+    assert_eq!(
+      parse_command("sql select sex, avg(bmi) as mean_bmi from active group by sex").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select sex, avg(bmi) as mean_bmi from active group by sex".to_owned(),
+          into: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql select sex, avg(bmi) from active group by sex into summary").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select sex, avg(bmi) from active group by sex".to_owned(),
+          into: Some("summary".to_owned()),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql select * from active   into summary").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select * from active".to_owned(),
+          into: Some("summary".to_owned()),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql \"\"\"\nselect sex, count(*) as n\nfrom active\n\"\"\"").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select sex, count(*) as n\nfrom active".to_owned(),
+          into: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql \"\"\"\nselect sex, count(*) as n\nfrom active\n\"\"\" into grouped")
+        .unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select sex, count(*) as n\nfrom active".to_owned(),
+          into: Some("grouped".to_owned()),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command(
+        "sql \"\"\"\nselect value, label\nfrom active\norder by value desc, label\n\"\"\" into ordered"
+      )
+      .unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select value, label\nfrom active\norder by value desc, label".to_owned(),
+          into: Some("ordered".to_owned()),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql select * from active INTO summary").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select * from active".to_owned(),
+          into: Some("summary".to_owned()),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql into active").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "into active".to_owned(),
+          into: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql select 1 - 1").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select 1 - 1".to_owned(),
+          into: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("sql select 1; into foo").unwrap(),
+      Command::Sql {
+        command: SqlCommand {
+          query: "select 1;".to_owned(),
+          into: Some("foo".to_owned()),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_sql_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("sql", "sql expects a query"),
+      ("sql   ", "sql expects a query"),
+      (
+        "sql \"\"\"select * from active",
+        "sql multiline query is missing closing \"\"\"",
+      ),
+      ("sql \"\"\"\"\"\"", "sql expects a query"),
+      ("sql   \"\"\"   \"\"\"", "sql expects a query"),
+      (
+        "sql select * from active into",
+        "sql into expects syntax: sql <query> into <table>",
+      ),
+      (
+        "sql select * from into",
+        "sql into expects syntax: sql <query> into <table>",
+      ),
+      (
+        "sql select * from active into active",
+        "sql into cannot use reserved table name: active",
+      ),
+      (
+        "sql select * from active into __tabdat_next",
+        "sql into cannot use reserved table name: __tabdat_next",
+      ),
+      (
+        "sql select * from active into bad-name",
+        "sql into table name must be an identifier",
+      ),
+      ("sql:select 1", "unsupported token in command: :"),
+      ("sql,foo", "unknown command: sql"),
+      ("sql=1", "sql assignment requires a target before ="),
+      ("sql==1", "unsupported token in command: =="),
+      (
+        "sql \"\"\"select * from active\"\"\" extra",
+        "sql into expects syntax: sql <query> into <table>",
+      ),
+      (
+        "sql \"\"\"select * from active\"\"\" into",
+        "sql into expects syntax: sql <query> into <table>",
+      ),
+      (
+        "sql \"\"\"select * from active\"\"\" into foo bar",
+        "sql into expects syntax: sql <query> into <table>",
       ),
     ];
     for (input, expected) in cases {

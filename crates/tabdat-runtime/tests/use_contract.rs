@@ -2214,3 +2214,19 @@ fn export_requires_an_active_dataset() {
     RuntimeError::NoActiveDataset { command: "export" }
   );
 }
+
+#[test]
+fn leaves_sql_execution_deferred() {
+  let mut session = Session::new();
+  let command = Command::Sql {
+    command: tabdat_language::SqlCommand {
+      query: "select 1".to_owned(),
+      into: None,
+    },
+  };
+
+  assert_eq!(
+    session.execute(command).unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "sql" }
+  );
+}
