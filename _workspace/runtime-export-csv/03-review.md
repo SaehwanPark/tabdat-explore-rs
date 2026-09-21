@@ -1,7 +1,7 @@
 # Bounded eager-runtime CSV `export` review
 
 Reviewer: independent read-only review agent
-Scope: PR #72 implementation and focused contract tests through `55c805b`
+Scope: PR #72 implementation and focused contract tests through `cd3654c`
 
 ## Findings and resolution
 
@@ -25,8 +25,7 @@ output, and broader interfaces remain deferred.
 ## Review conclusion
 
 No P0/P1 or lower-severity implementation findings remain. The focused export
-suite passes `9 passed`; the implementation is ready for hosted acceptance once
-the PR workflows reach terminal green status.
+suite passes `9 passed`; PR-head workflows passed before the squash merge.
 
 ## Evidence reviewed
 
@@ -35,4 +34,4 @@ the PR workflows reach terminal green status.
   `crates/tabdat-runtime/src/lib.rs`;
 - focused tests in `crates/tabdat-runtime/tests/export_contract.rs`;
 - local locked workspace and policy checks; and
-- the draft PR #72 workflow status.
+- PR #72 PR-head workflow status and merge revision `5cb5b34`.

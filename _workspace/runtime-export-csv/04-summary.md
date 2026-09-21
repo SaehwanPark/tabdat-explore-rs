@@ -1,7 +1,6 @@
 # Bounded eager-runtime CSV `export` closeout
 
-Status: implementation and local review complete; hosted acceptance, merge, and
-post-merge verification remain in progress.
+Status: accepted and merged; post-merge verification remains in progress.
 
 ## Delivered slice
 
@@ -18,6 +17,8 @@ and failure/recovery paths.
 
 - contract: `3b09266`;
 - implementation and tests: `55c805b`.
+- evidence/review: `cd3654c`;
+- squash merge: `5cb5b34`.
 
 ## Validation
 
@@ -26,7 +27,8 @@ and failure/recovery paths.
 - focused Rust export suite: `9 passed`;
 - locked workspace format/check/test/Clippy and policy checks: passed locally;
 - independent review: no actionable findings; and
-- PR-head and main merge-head hosted workflow evidence: pending.
+- PR-head hosted workflows: all passed on `cd3654c`; and
+- main merge-head hosted workflow evidence: pending for `5cb5b34`.
 
 ## Explicit deferrals
 

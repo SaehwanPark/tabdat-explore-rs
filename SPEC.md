@@ -107,9 +107,36 @@ the parser/script oracle, locked workspace checks, policy checks, PR-head
 workflows, and merge-head workflows all passed for this bounded slice.
 
 This remains a library-only eager local-Parquet boundary, not a usable CLI.
-`export`, CSV/Feather/Arrow writers, lazy/materialized output, path `~`
+CSV-only `export`, Feather/Arrow writers, lazy/materialized output, path `~`
 expansion, atomic temporary-file replacement, metadata/label/panel persistence,
-and CLI/JSON/MCP surfaces remain deferred.
+and CLI/JSON/MCP surfaces remain separate bounded or deferred work.
+
+## Verified slice: bounded eager runtime CSV `export`
+
+Merged PR #72 (`5cb5b34`) adds the library-only runtime implementation of the
+already-parsed `export <path> [, replace]` form for an active eager local-Parquet
+DuckDB relation. It accepts a case-insensitive `.csv` destination, creates
+missing parent directories, rejects existing targets unless `replace` is
+requested, and writes a header-bearing CSV through a parameterized DuckDB copy.
+The owned `ExportResult` identifies the output path and output metadata; the
+active relation, metadata, and session-local labels remain unchanged. Exact
+schema/row order, decimal formatting, quoted text, SQL NULL fields, transformed
+data, empty relations, and backend-failure recovery are covered by focused
+contract tests.
+
+Evidence: `_workspace/runtime-export-csv/01-contract.md`,
+`_workspace/runtime-export-csv/02-evidence-migration.md`,
+`_workspace/runtime-export-csv/03-review.md`,
+`_workspace/runtime-export-csv/04-summary.md`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/export_contract.rs`. The pinned Python export
+probe, parser/script oracle, locked workspace checks, policy checks, PR-head
+workflows, and merge-head workflows all passed for this bounded slice.
+
+This remains a library-only eager local-Parquet boundary, not a usable CLI.
+Parquet aliasing through `export`, Feather/Arrow writers, lazy/materialized
+output, path `~` expansion, atomic temporary-file replacement,
+metadata/label/panel persistence, and CLI/JSON/MCP surfaces remain deferred.
 
 ## Verified slice: syntax-only `generate` command
 

@@ -1,6 +1,7 @@
 # Bounded eager-runtime CSV `export` contract
 
-Status: contract checkpoint; implementation and validation are in progress.
+Status: accepted after PR #72 (`5cb5b34`) squash merge; post-merge workflow
+verification is recorded in `02-evidence-migration.md`.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`.

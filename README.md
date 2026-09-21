@@ -44,8 +44,10 @@ Merged PR #29 (`8b16223`) adds the owned syntax-only `save <path> [, replace]`
 and `export <path> [, replace]` forms. PR #70 (`9bbf804`) adds a separate
 library-only eager runtime `save` path for active local-Parquet relations,
 including target validation, Parquet writing, and state-preserving round trips.
-`export`, broader output formats, and interface/persistence surfaces remain
-deferred.
+PR #72 (`5cb5b34`) adds the corresponding bounded CSV-only eager `export` path
+with target validation, header-bearing output, and state-preserving round trips.
+Parquet aliasing through `export`, broader output formats, and
+interface/persistence surfaces remain deferred.
 
 ## Development
 

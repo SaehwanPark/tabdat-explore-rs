@@ -1,7 +1,7 @@
 # Bounded eager-runtime CSV `export` migration evidence
 
-Status: implementation complete locally; hosted acceptance and merge evidence
-will be appended before closeout.
+Status: accepted after PR #72 (`5cb5b34`) squash merge; post-merge workflow
+verification is being recorded below.
 
 Producer: task owner
 Consumers: independent reviewer, PR reviewers, and the next maintainer
@@ -30,7 +30,9 @@ The execution authority is:
 ## Rust revisions and changed paths
 
 - `3b09266` — contract checkpoint and draft PR [#72](https://github.com/SaehwanPark/tabdat-explore-rs/pull/72);
-- `55c805b` — bounded runtime implementation and focused tests.
+- `55c805b` — bounded runtime implementation and focused tests;
+- `cd3654c` — evidence, review, and closeout artifacts on the PR head; and
+- `5cb5b34` — squash merge of PR #72 to `main`.
 
 Changed paths:
 
@@ -127,6 +129,13 @@ lazy/materialized, label/panel persistence, CLI, JSON, or MCP surface.
 
 ## Hosted acceptance
 
-PR #72 is still a draft while the implementation and review evidence are
-assembled. The PR-head workflow links and terminal conclusions will be recorded
-here before promotion and merge.
+PR [#72](https://github.com/SaehwanPark/tabdat-explore-rs/pull/72) was promoted
+from draft and squash merged as `5cb5b34` at `2026-09-21T03:02:46Z`. All
+required PR-head workflows passed on `cd3654c`:
+
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35554779193/job/106196209512);
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35554779193/job/106196209256); and
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35554779171/job/106196205667).
+
+The merge-head CI and runtime workflows for `5cb5b34` are currently in
+progress; their terminal results and links will be appended before closeout.
