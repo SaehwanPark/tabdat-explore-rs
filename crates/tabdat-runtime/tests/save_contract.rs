@@ -285,6 +285,20 @@ fn save_reports_backend_copy_failures_without_mutating_active_state() {
   );
   assert_eq!(session.active_dataset(), active_before.as_ref());
   assert!(!output.exists());
+
+  let recovery = fixture.root.join("recovery.parquet");
+  session
+    .execute(parse_command(&format!("save {}", recovery.display())).unwrap())
+    .expect("a later save should still observe the active relation");
+  let (_, rows) = read_back(&recovery);
+  assert_eq!(
+    rows,
+    vec![
+      (42, 25.0, "M".to_owned(), Some(150.0)),
+      (30, 22.5, "F".to_owned(), Some(100.0)),
+      (54, 27.5, "F".to_owned(), None),
+    ]
+  );
 }
 
 #[test]

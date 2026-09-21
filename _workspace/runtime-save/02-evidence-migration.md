@@ -27,7 +27,8 @@ The execution authority is:
 ## Rust revisions and changed paths
 
 - `a4bfbc2` — contract checkpoint and draft PR [#70](https://github.com/SaehwanPark/tabdat-explore-rs/pull/70);
-- `8a51881` — bounded runtime implementation and focused tests.
+- `8a51881` — bounded runtime implementation and focused tests; and
+- `e2ac065` — review-gap closure, focused evidence, and migration record.
 
 Changed paths:
 
@@ -35,7 +36,7 @@ Changed paths:
   save-specific typed errors, path validation, state-preserving dispatch, and
   parameterized DuckDB Parquet copy;
 - `crates/tabdat-runtime/tests/save_contract.rs` — eight success/failure and
-  round-trip tests; and
+  round-trip tests, including review-gap coverage; and
 - `crates/tabdat-runtime/tests/use_contract.rs` — updated no-active save
   regression while retaining export deferral.
 
@@ -126,7 +127,9 @@ panel persistence, CLI, JSON, or MCP surface.
 The independent review identified three bounded issues. The `~` expansion
 difference was already recorded as an accepted scope deviation. The focused
 suite now asserts row order without `ORDER BY` and adds a valid-parent,
-deliberately failing backend-copy case that proves active state is unchanged.
+deliberately failing backend-copy case that proves active state and rows remain
+unchanged; a recovery save/read-back also verifies the private relation after
+the failure.
 
 ## Hosted acceptance
 
