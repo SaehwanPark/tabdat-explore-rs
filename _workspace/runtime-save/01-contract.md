@@ -18,7 +18,7 @@ This slice will:
 - create missing parent directories;
 - reject an existing output unless `replace` is true;
 - write the currently published relation without changing active session state;
-- return an owned output path and the unchanged active dataset metadata; and
+- return an owned output path and output-oriented dataset metadata; and
 - preserve schema order, row order, row count, and SQL NULL values in the
   round-tripped Parquet file.
 
@@ -68,8 +68,10 @@ bounded Rust slice.
 ## Rust contract
 
 Add an owned `SaveResult` and `ExecutionResult::Save`. The result contains the
-requested output `PathBuf` and the unchanged `DatasetInfo` for the active
-relation. Add typed runtime errors for:
+requested output `PathBuf` and a `DatasetInfo` whose source is that output path,
+with schema, row count, and execution metadata copied from the active relation.
+The session's published `active_dataset` remains unchanged. Add typed runtime
+errors for:
 
 - no active dataset (`NoActiveDataset { command: "save" }`);
 - unsupported output format (`SaveUnsupportedFormat { path }`);

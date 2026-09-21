@@ -2158,7 +2158,7 @@ fn gsort_requires_an_active_dataset_before_execution() {
 }
 
 #[test]
-fn leaves_save_execution_deferred() {
+fn save_requires_an_active_dataset() {
   let mut session = Session::new();
   let command = Command::Save {
     path: "output.parquet".to_owned(),
@@ -2167,7 +2167,7 @@ fn leaves_save_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "save" }
+    RuntimeError::NoActiveDataset { command: "save" }
   );
 }
 
