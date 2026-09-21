@@ -1,7 +1,7 @@
 # Bounded eager-runtime CSV `export` migration evidence
 
 Status: accepted after PR #72 (`5cb5b34`) squash merge; post-merge workflow
-verification is being recorded below.
+verification is recorded below.
 
 Producer: task owner
 Consumers: independent reviewer, PR reviewers, and the next maintainer
@@ -137,5 +137,11 @@ required PR-head workflows passed on `cd3654c`:
 - [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35554779193/job/106196209256); and
 - [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35554779171/job/106196205667).
 
-The merge-head CI and runtime workflows for `5cb5b34` are currently in
-progress; their terminal results and links will be appended before closeout.
+The merge-head workflows for `5cb5b34` also passed:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35556151175)
+  — Rust baseline job `106200078563` and policy job `106200078640`;
+- [main tabdat-runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35556151230)
+  — Linux job `106200078731`.
+
+The accepted slice is now verified on `main` at `5cb5b34`.

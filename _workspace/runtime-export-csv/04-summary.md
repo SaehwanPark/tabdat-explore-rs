@@ -1,6 +1,6 @@
 # Bounded eager-runtime CSV `export` closeout
 
-Status: accepted and merged; post-merge verification remains in progress.
+Status: accepted, merged, and verified on `main`.
 
 ## Delivered slice
 
@@ -28,7 +28,9 @@ and failure/recovery paths.
 - locked workspace format/check/test/Clippy and policy checks: passed locally;
 - independent review: no actionable findings; and
 - PR-head hosted workflows: all passed on `cd3654c`; and
-- main merge-head hosted workflow evidence: pending for `5cb5b34`.
+- main merge-head workflows: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35556151175)
+  and [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35556151230)
+  both passed on `5cb5b34`.
 
 ## Explicit deferrals
 
