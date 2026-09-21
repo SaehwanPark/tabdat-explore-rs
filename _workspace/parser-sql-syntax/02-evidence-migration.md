@@ -30,8 +30,8 @@ The execution authority is:
 ## Rust revisions and changed paths
 
 - `9b2cc30` — contract checkpoint and draft PR [#77](https://github.com/SaehwanPark/tabdat-explore-rs/pull/77);
-- pending implementation commit — bounded SQL parser boundary, helper functions,
-  and focused tests.
+- `6085fda` — bounded SQL parser boundary, helper functions, and focused tests;
+- hosted PR workflows on `6085fda`: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35632824442) and [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35632824485) passed.
 
 Changed paths:
 
