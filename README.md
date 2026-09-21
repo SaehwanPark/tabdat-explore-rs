@@ -40,10 +40,12 @@ Merged PR #28 (`fd94133`) adds the owned syntax-only `gsort [+|-]varlist` form.
 Direction metadata is owned in typed keys, while active-schema lookup, ordering,
 relation mutation, and execution remain deferred.
 
-Merged PR #29 (`8b16223`) adds the owned syntax-only `save <path> [, replace]` and
-`export <path> [, replace]` forms. Path parsing and the replacement flag are
-typed, while filesystem checks, output formats, active-dataset access, writing,
-and persistence effects remain deferred.
+Merged PR #29 (`8b16223`) adds the owned syntax-only `save <path> [, replace]`
+and `export <path> [, replace]` forms. PR #70 (`9bbf804`) adds a separate
+library-only eager runtime `save` path for active local-Parquet relations,
+including target validation, Parquet writing, and state-preserving round trips.
+`export`, broader output formats, and interface/persistence surfaces remain
+deferred.
 
 ## Development
 

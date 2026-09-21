@@ -134,8 +134,24 @@ the failure.
 
 ## Hosted acceptance
 
-Pending at this evidence checkpoint. PR-head CI links and conclusions will be
-recorded here after the three required workflows complete.
+PR #70 was marked ready and all three required PR-head workflows passed on
+`8f40c2a`:
 
-Completion state remains `partial` until hosted checks, independent review,
-merge, and post-merge `main` verification are recorded.
+- [Rust baseline](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35549742114)
+  (job `106182183656`);
+- [tabdat-runtime on Linux](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35549742038)
+  (job `106182184129`); and
+- [dependency and unsafe-code policy](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35549742114)
+  (job `106182183788`).
+
+PR [#70](https://github.com/SaehwanPark/tabdat-explore-rs/pull/70) was squash
+merged as `9bbf804` at `2026-09-21T01:29:19Z`. Both merge-head workflows
+passed on `9bbf804`:
+
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053158)
+  (job `106185758109`); and
+- [main tabdat-runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053257)
+  (job `106185758619`).
+
+Completion state is `accepted` with PR-head and post-merge verification
+complete.

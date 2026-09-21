@@ -86,6 +86,31 @@ This slice does not inspect paths or active data, write files, validate output
 formats, mutate session state, initialize a backend, or claim persistence/output
 parity.
 
+## Verified slice: bounded eager runtime `save` command
+
+Merged PR #70 (`9bbf804`) adds the library-only runtime implementation of the
+already-parsed `save <path> [, replace]` form for an active eager local-Parquet
+DuckDB relation. It accepts a case-insensitive `.parquet` destination, creates
+missing parent directories, rejects existing targets unless `replace` is
+requested, and writes the currently published relation through a parameterized
+DuckDB copy. The owned `SaveResult` identifies the output path and output
+metadata; the active relation, metadata, and session-local labels remain
+unchanged. Schema order, row order, row count, and SQL NULLs are covered by
+round-trip tests, including backend-copy failure recovery.
+
+Evidence: `_workspace/runtime-save/01-contract.md`,
+`_workspace/runtime-save/02-evidence-migration.md`,
+`_workspace/runtime-save/03-review.md`,
+`crates/tabdat-runtime/src/lib.rs`, and
+`crates/tabdat-runtime/tests/save_contract.rs`. The pinned Python save probe,
+the parser/script oracle, locked workspace checks, policy checks, PR-head
+workflows, and merge-head workflows all passed for this bounded slice.
+
+This remains a library-only eager local-Parquet boundary, not a usable CLI.
+`export`, CSV/Feather/Arrow writers, lazy/materialized output, path `~`
+expansion, atomic temporary-file replacement, metadata/label/panel persistence,
+and CLI/JSON/MCP surfaces remain deferred.
+
 ## Verified slice: syntax-only `generate` command
 
 Add direct, backend-independent `generate <target> = <expression>` syntax. The
