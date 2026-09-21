@@ -4,10 +4,10 @@
 
 This document separates repository truth from the target architecture. The Rust
 repository currently contains an unpublished binary scaffold, a small
-`tabdat-language` crate, and the accepted bounded `tabdat-runtime` evaluation
-from PR #22, merged as `26dba2b`. The language crate remains a syntax-only parser; the runtime crate
-is a library-only eager local-Parquet boundary and not a usable TabDat command
-runtime.
+`tabdat-language` crate, and bounded `tabdat-runtime` evaluations from PR #22
+(`26dba2b`) and PR #70 (`9bbf804`). The language crate remains a syntax-only
+parser; the runtime crate is a library-only eager local-Parquet boundary and
+not a usable TabDat command runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
 names and product commands are not installed support. The [migration authority](docs/migration/README.md)
@@ -36,11 +36,13 @@ silently invent parity.
   persistence/output, summary execution, and script loading
   remain deferred.
 - `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
-  evaluation that accepts only an existing local `.parquet` through
-  `Command::Use` in eager mode, returns owned schema/row-count metadata, and
-  stages transactionally before publishing active state. This bounded evaluation
-  is not connected to the root binary and does not establish broad data-runtime
-  or DuckDB product support; see ADR 0007 and `_workspace/use-eager-parquet/`.
+  evaluations that accept only an existing local `.parquet` through
+  `Command::Use` in eager mode and can write the published eager relation
+  through the bounded `Command::Save` Parquet path. These paths return owned
+  metadata, preserve active state, and remain library-only; they are not
+  connected to the root binary and do not establish broad data-runtime or
+  DuckDB product support. See ADR 0007, `_workspace/use-eager-parquet/`, and
+  `_workspace/runtime-save/`.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no general session/data-relation model, statistical backend, REPL, MCP
@@ -54,10 +56,11 @@ Merged PR #28 (`fd94133`) records the accepted backend-independent syntax-only
 `gsort [+|-]varlist` form. Direction metadata is parsed, while row ordering and
 all relation effects remain deferred.
 
-Merged PR #29 (`8b16223`) records the bounded backend-independent syntax-only `save` and `export`
-forms. Their owned paths and `replace` flags are parsed without filesystem or
-active-relation effects; writing, format validation, and persistence remain
-deferred.
+Merged PR #29 (`8b16223`) records the bounded backend-independent syntax-only
+`save` and `export` forms. Their owned paths and `replace` flags are parsed in
+the language layer. Merged PR #70 (`9bbf804`) adds the separate bounded eager
+runtime `save` implementation for local Parquet; `export`, broader output
+formats, path normalization, and persistence remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
