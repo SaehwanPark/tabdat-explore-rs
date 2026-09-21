@@ -36,7 +36,7 @@ impl Fixture {
     let parquet_string = parquet.to_string_lossy().into_owned();
     connection
       .execute(
-        "COPY (SELECT * FROM (VALUES (30, 22.5, 'F', 100.0), (42, 25.0, 'M', 150.0), (54, 27.5, 'F', NULL)) AS patients(age, bmi, sex, cost)) TO ? (FORMAT PARQUET)",
+        "COPY (SELECT * FROM (VALUES (42, 25.0, 'M', 150.0), (30, 22.5, 'F', 100.0), (54, 27.5, 'F', NULL)) AS patients(age, bmi, sex, cost)) TO ? (FORMAT PARQUET)",
         [&parquet_string],
       )
       .expect("fixture Parquet should be written");
@@ -77,7 +77,7 @@ fn read_back(path: &Path) -> (SchemaColumns, PatientRows) {
     .collect::<Vec<_>>();
 
   let mut rows = connection
-    .prepare("SELECT age, bmi, sex, cost FROM read_parquet(?) ORDER BY age")
+    .prepare("SELECT age, bmi, sex, cost FROM read_parquet(?)")
     .expect("Parquet rows should be queryable");
   let rows = rows
     .query_map([&path_string], |row| {
@@ -143,8 +143,8 @@ fn parsed_save_writes_current_rows_and_preserves_active_state() {
   assert_eq!(
     rows,
     vec![
-      (30, 22.5, "F".to_owned(), Some(100.0)),
       (42, 25.0, "M".to_owned(), Some(150.0)),
+      (30, 22.5, "F".to_owned(), Some(100.0)),
       (54, 27.5, "F".to_owned(), None),
     ]
   );
@@ -169,14 +169,14 @@ fn save_writes_transformed_active_data() {
   let connection = Connection::open_in_memory().expect("read-back connection should open");
   let path_string = output.to_string_lossy().into_owned();
   let mut statement = connection
-    .prepare("SELECT age, age2 FROM read_parquet(?) ORDER BY age")
+    .prepare("SELECT age, age2 FROM read_parquet(?)")
     .expect("transformed Parquet should be queryable");
   let rows = statement
     .query_map([&path_string], |row| Ok((row.get(0)?, row.get(1)?)))
     .expect("transformed rows should be readable")
     .map(|row| row.expect("transformed row should be readable"))
     .collect::<Vec<(i32, i32)>>();
-  assert_eq!(rows, vec![(30, 31), (42, 43), (54, 55)]);
+  assert_eq!(rows, vec![(42, 43), (30, 31), (54, 55)]);
 }
 
 #[test]
@@ -261,6 +261,30 @@ fn save_rejects_directory_targets_and_reports_parent_failures_atomically() {
     }
   );
   assert_eq!(session.active_dataset(), active_before.as_ref());
+}
+
+#[test]
+fn save_reports_backend_copy_failures_without_mutating_active_state() {
+  let fixture = Fixture::new();
+  let output = fixture.root.join(format!("{}.parquet", "x".repeat(300)));
+  let mut session = Session::new();
+  session
+    .execute(fixture.command())
+    .expect("fixture should load");
+  let active_before = session.active_dataset().cloned();
+
+  let error = session
+    .execute(parse_command(&format!("save {}", output.display())).unwrap())
+    .unwrap_err();
+
+  assert_eq!(
+    error,
+    RuntimeError::SaveFailed {
+      path: output.clone()
+    }
+  );
+  assert_eq!(session.active_dataset(), active_before.as_ref());
+  assert!(!output.exists());
 }
 
 #[test]

@@ -109,7 +109,8 @@ Focused Rust coverage must include:
 - existing-file rejection without `replace` and successful replacement with it;
 - parent-directory creation and existing-directory rejection;
 - quoted/path-containing-space output names; and
-- failed output preparation or backend copy preserving active metadata and rows.
+- failed output preparation or backend copy preserving active metadata and rows;
+- deliberately non-sorted input proving that row order survives the round trip.
 
 The pinned oracle probes are:
 
@@ -131,8 +132,9 @@ runtime dependency.
 - DuckDB adapter: bound `COPY (SELECT * FROM __tabdat_active) TO ? (FORMAT
   PARQUET)` or the equivalent parameterized backend call.
 - Deferred: `export`, CSV/Feather/Arrow writers, lazy/materialized output,
-  label/panel persistence, atomic temporary-file replacement, CLI/JSON/MCP,
-  and general session/table registry semantics.
+  `~` expansion and broader path normalization, label/panel persistence,
+  atomic temporary-file replacement, CLI/JSON/MCP, and general session/table
+  registry semantics.
 
 Completion is `partial` until implementation, independent review, hosted
 acceptance, merge, and post-merge workflow evidence are recorded.
