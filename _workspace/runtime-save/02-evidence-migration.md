@@ -28,7 +28,8 @@ The execution authority is:
 
 - `a4bfbc2` — contract checkpoint and draft PR [#70](https://github.com/SaehwanPark/tabdat-explore-rs/pull/70);
 - `8a51881` — bounded runtime implementation and focused tests; and
-- `e2ac065` — review-gap closure, focused evidence, and migration record.
+- `e2ac065` — review-gap closure, focused evidence, and migration record; and
+- `e37a59f` — direct recovery/read-back evidence after a backend-copy failure.
 
 Changed paths:
 
