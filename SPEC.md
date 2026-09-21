@@ -15,9 +15,10 @@ forms, as well as the bounded direct `encode <strvar>, generate(<newvar>) [, lab
 form. Merged PR #25 (`89f6c14`) adds the
 verified direct `rename <old> <new>` form, and merged PR #26 (`5735b43`) adds
 the verified direct syntax-only `select <varlist>` form. Merged PR #22
-(`26dba2b`) accepted a separate library-only
-`tabdat-runtime` path for one eager local-Parquet `use` form; it is not wired into
-the binary and does not provide a usable TabDat CLI, general data runtime, or
+(`26dba2b`) accepted a separate library-only `tabdat-runtime` path for one
+eager local-Parquet `use` form, and merged PR #74 (`7a5b8d4`) adds the bounded
+eager local-CSV `use` form documented below. These paths are not wired into the
+binary and do not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
@@ -137,6 +138,32 @@ This remains a library-only eager local-Parquet boundary, not a usable CLI.
 Parquet aliasing through `export`, Feather/Arrow writers, lazy/materialized
 output, path `~` expansion, atomic temporary-file replacement,
 metadata/label/panel persistence, and CLI/JSON/MCP surfaces remain deferred.
+
+## Verified slice: bounded eager runtime CSV `use`
+
+Merged PR #74 (`7a5b8d4`) extends the separate library-only runtime boundary
+with eager local `.csv` input for the already-parsed `use <path>` form. The
+case-insensitive extension is validated before backend initialization;
+optional `delimiter` and `has_header` values are bound through DuckDB's
+`read_csv_auto`; and rows are staged, inspected, and published atomically.
+Successful loads return the existing owned `LoadResult` with source path,
+ordered schema, and row count, while failed reads and publication preserve the
+active relation, metadata, labels, and backend usability.
+
+Evidence: `_workspace/runtime-use-csv/01-contract.md`,
+`_workspace/runtime-use-csv/02-evidence-migration.md`,
+`_workspace/runtime-use-csv/03-review.md`,
+`_workspace/runtime-use-csv/04-summary.md`,
+`crates/tabdat-runtime/src/lib.rs`,
+`crates/tabdat-runtime/tests/use_contract.rs`, and
+`crates/tabdat-runtime/tests/use_csv_contract.rs`. Six focused CSV tests and
+the existing 65-test `use_contract` suite pass; locked workspace, policy, and
+hosted PR/merge-head checks are recorded in the evidence artifacts.
+
+This remains a library-only eager local Parquet/CSV boundary, not a usable CLI.
+Remote or URI sources, lazy/materialized execution, Feather/Arrow/DTA input,
+`~` expansion, broader path normalization, metadata serialization, atomic
+temporary-file replacement, and CLI/JSON/MCP surfaces remain deferred.
 
 ## Verified slice: syntax-only `generate` command
 

@@ -438,6 +438,9 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 - [x] Evaluate bounded eager local-Parquet session/adapter slice (PR #22;
   broad session, relation, and load gates below remain unchecked).
+- [x] Evaluate bounded eager local-CSV session/adapter slice (PR #74,
+  squash merge `7a5b8d4`; broader session, relation, and load gates remain
+  unchecked).
 - [ ] Implement persistent DuckDB session.
 - [ ] Implement active relation.
 - [ ] Implement named-table registry.
@@ -451,7 +454,9 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.2 Load and inspect commands
 
-- [ ] `use`
+- [x] `use` — bounded eager local Parquet/CSV source execution (PR #22 and
+  PR #74; broader loaders, lazy/materialized behavior, and interface surfaces
+  remain deferred).
 - [x] `describe` — bounded eager local-Parquet active-metadata execution
   (`DescribeResult`; PR #31, squash merge `6fccd5d`). Broader inspection,
   lazy/materialized behavior, labels, formatting, CLI, and MCP surfaces remain
