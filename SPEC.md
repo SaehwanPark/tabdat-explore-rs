@@ -104,7 +104,7 @@ Evidence: `_workspace/runtime-save/01-contract.md`,
 `crates/tabdat-runtime/src/lib.rs`, and
 `crates/tabdat-runtime/tests/save_contract.rs`. The pinned Python save probe,
 the parser/script oracle, locked workspace checks, policy checks, PR-head
-workflows, and merge-head workflows passed for this bounded slice.
+workflows, and merge-head workflows all passed for this bounded slice.
 
 This remains a library-only eager local-Parquet boundary, not a usable CLI.
 `export`, CSV/Feather/Arrow writers, lazy/materialized output, path `~`

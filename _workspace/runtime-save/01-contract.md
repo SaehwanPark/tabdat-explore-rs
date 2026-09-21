@@ -1,7 +1,7 @@
 # Bounded eager-runtime `save` contract
 
-Status: accepted bounded implementation in PR #70; post-merge verification is
-pending on `main`.
+Status: accepted bounded implementation in PR #70; post-merge verification on
+`main` passed.
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`.

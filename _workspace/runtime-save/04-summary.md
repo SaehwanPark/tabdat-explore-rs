@@ -1,6 +1,6 @@
 # Bounded eager-runtime `save` closeout
 
-Status: PR-head accepted and merged; merge-head verification pending.
+Status: accepted, merged, and verified on `main`.
 
 ## Delivered slice
 
@@ -27,7 +27,9 @@ failure/recovery paths.
 - focused Rust save suite: `8 passed`;
 - locked workspace format/check/test/Clippy and policy checks: passed locally;
 - PR-head hosted workflows: all passed on `8f40c2a`; and
-- main merge-head workflows: pending at the time of this closeout draft.
+- main merge-head workflows: [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053158)
+  and [tabdat-runtime](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053257)
+  both passed on `9bbf804`.
 
 ## Explicit deferrals
 

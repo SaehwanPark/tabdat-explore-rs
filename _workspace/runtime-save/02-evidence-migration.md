@@ -145,14 +145,13 @@ PR #70 was marked ready and all three required PR-head workflows passed on
   (job `106182183788`).
 
 PR [#70](https://github.com/SaehwanPark/tabdat-explore-rs/pull/70) was squash
-merged as `9bbf804` at `2026-09-21T01:29:19Z`. Merge-head verification is
-running on main:
+merged as `9bbf804` at `2026-09-21T01:29:19Z`. Both merge-head workflows
+passed on `9bbf804`:
 
-- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053158); and
-- [main tabdat-runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053257).
+- [main CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053158)
+  (job `106185758109`); and
+- [main tabdat-runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35551053257)
+  (job `106185758619`).
 
-Their terminal conclusions and the final summary will be appended after both
-merge-head runs complete.
-
-Completion state is `accepted` for the PR-head implementation and `pending`
-for the post-merge verification.
+Completion state is `accepted` with PR-head and post-merge verification
+complete.
