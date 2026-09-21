@@ -1,6 +1,7 @@
 # Bounded eager-runtime CSV `use` contract
 
-Status: contract checkpoint; implementation and validation are in progress.
+Status: accepted after PR #74 (`7a5b8d4`); post-merge workflow verification is
+recorded in [`02-evidence-migration.md`](02-evidence-migration.md).
 
 Producer: task owner, using `tabdat-migration`, `tabdat-data-semantics`, and
 `simple-code-writer`.

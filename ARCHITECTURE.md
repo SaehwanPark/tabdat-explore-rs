@@ -5,9 +5,10 @@
 This document separates repository truth from the target architecture. The Rust
 repository currently contains an unpublished binary scaffold, a small
 `tabdat-language` crate, and bounded `tabdat-runtime` evaluations from PR #22
-(`26dba2b`), PR #70 (`9bbf804`), and PR #72 (`5cb5b34`). The language crate
-remains a syntax-only parser; the runtime crate is a library-only eager
-local-Parquet boundary and not a usable TabDat command runtime.
+(`26dba2b`), PR #70 (`9bbf804`), PR #72 (`5cb5b34`), and PR #74 (`7a5b8d4`).
+The language crate remains a syntax-only parser; the runtime crate is a
+library-only eager local-Parquet/CSV boundary and not a usable TabDat command
+runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
 names and product commands are not installed support. The [migration authority](docs/migration/README.md)
@@ -36,14 +37,15 @@ silently invent parity.
   persistence/output, summary execution, and script loading
   remain deferred.
 - `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
-  evaluations that accept only an existing local `.parquet` through
+  evaluations that accept an existing local `.parquet` or `.csv` through
   `Command::Use` in eager mode and can write the published eager relation
   through bounded `Command::Save` Parquet and `Command::Export` CSV paths.
-  These paths return owned metadata, preserve active state, and remain
-  library-only; they are not connected to the root binary and do not establish
-  broad data-runtime or DuckDB product support. See ADR 0007,
-  `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`, and
-  `_workspace/runtime-export-csv/`.
+  CSV `use` accepts bound delimiter/header options and stages publication;
+  these paths return owned metadata, preserve active state on failure, and
+  remain library-only. They are not connected to the root binary and do not
+  establish broad data-runtime or DuckDB product support. See ADR 0007,
+  `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`,
+  `_workspace/runtime-export-csv/`, and `_workspace/runtime-use-csv/`.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no general session/data-relation model, statistical backend, REPL, MCP
@@ -63,6 +65,12 @@ the language layer. Merged PR #70 (`9bbf804`) adds the separate bounded eager
 runtime `save` implementation for local Parquet, and merged PR #72 (`5cb5b34`)
 adds CSV-only eager `export`; broader output formats, path normalization, and
 persistence remain deferred.
+
+Merged PR #74 (`7a5b8d4`) adds the separate bounded eager runtime local-CSV
+`use` path. It binds optional delimiter/header values through DuckDB, stages
+schema/count inspection before publication, returns owned load metadata, and
+clears labels only after successful replacement. Remote, lazy, Feather/Arrow,
+DTA, broader relation/session, and interface boundaries remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

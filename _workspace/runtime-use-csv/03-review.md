@@ -1,8 +1,8 @@
 # Bounded eager-runtime CSV `use` review
 
 Reviewer: independent read-only review agent
-Scope: PR #74 implementation and focused contract tests through the
-compatibility/error-boundary follow-up.
+Scope: PR #74 implementation and focused contract tests through the final
+compatibility coverage revision `2dcc9ea`.
 
 ## Findings and resolution
 
