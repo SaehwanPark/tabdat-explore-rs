@@ -2,10 +2,10 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
   EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
   IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
-  PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  SettingName, SortKey, TabulateCommand, XtAbondCommand, XtDataCommand, XtDataTransform,
-  XtRegCommand, XtRegEstimator, parse_command,
+  LogitCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint,
+  RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand,
+  ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, XtAbondCommand, XtDataCommand,
+  XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2874,6 +2874,206 @@ fn regress_preserves_bounded_parser_diagnostics() {
     ("regress=", "regress assignment requires a target before ="),
     ("regress==", "unsupported token in command: =="),
     ("regress:cost age", "unsupported token in command: :"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().to_string(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn logit_and_probit_parse_bounded_estimator_forms() {
+  assert_eq!(
+    parse_command("logit outcome x1 x2").unwrap(),
+    Command::Logit {
+      command: LogitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned(), "x2".to_owned()],
+        robust: false,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("logit outcome x1, robust").unwrap(),
+    Command::Logit {
+      command: LogitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: true,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("LOGIT outcome x1, cluster(group_id)").unwrap(),
+    Command::Logit {
+      command: LogitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: false,
+        cluster_variable: Some("group_id".to_owned()),
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("logit outcome x1, noconstant").unwrap(),
+    Command::Logit {
+      command: LogitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: false,
+        cluster_variable: None,
+        include_intercept: false,
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("probit outcome x1 x2").unwrap(),
+    Command::Probit {
+      command: ProbitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned(), "x2".to_owned()],
+        robust: false,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("probit outcome x1, robust").unwrap(),
+    Command::Probit {
+      command: ProbitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: true,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("PROBIT outcome x1, cluster(group_id)").unwrap(),
+    Command::Probit {
+      command: ProbitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: false,
+        cluster_variable: Some("group_id".to_owned()),
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("probit outcome x1, noconstant").unwrap(),
+    Command::Probit {
+      command: ProbitCommand {
+        outcome: "outcome".to_owned(),
+        predictors: vec!["x1".to_owned()],
+        robust: false,
+        cluster_variable: None,
+        include_intercept: false,
+      },
+    }
+  );
+}
+
+#[test]
+fn logit_and_probit_preserve_bounded_parser_diagnostics() {
+  let cases = [
+    ("logit", "logit expects syntax: logit <y> <xvars>"),
+    ("logit y", "logit expects syntax: logit <y> <xvars>"),
+    (
+      "logit y x if y == 1",
+      "logit expects syntax: logit <y> <xvars>",
+    ),
+    (
+      "logit y x, robust cluster(group)",
+      "logit cannot combine robust and cluster",
+    ),
+    (
+      "logit y x, cluster",
+      "logit option cluster expects variables",
+    ),
+    (
+      "logit y x, cluster()",
+      "option cluster expects at least one value",
+    ),
+    (
+      "logit y x, cluster(group firm)",
+      "logit option cluster expects one variable",
+    ),
+    (
+      "logit y x, cluster(a) cluster(b)",
+      "logit option cluster may only be supplied once",
+    ),
+    (
+      "logit y x, robust=true",
+      "logit option robust does not accept a value",
+    ),
+    (
+      "logit y x, noconstant=true",
+      "logit option noconstant does not accept a value",
+    ),
+    ("logit y x, invalid", "logit unsupported option: invalid"),
+    (
+      "logit y x,",
+      "comma must be followed by at least one option",
+    ),
+    ("logit,", "comma must be followed by at least one option"),
+    ("logit=", "logit assignment requires a target before ="),
+    ("logit==", "unsupported token in command: =="),
+    ("logit:y x", "unsupported token in command: :"),
+    ("probit", "probit expects syntax: probit <y> <xvars>"),
+    ("probit y", "probit expects syntax: probit <y> <xvars>"),
+    (
+      "probit y x if y == 1",
+      "probit expects syntax: probit <y> <xvars>",
+    ),
+    (
+      "probit y x, robust cluster(group)",
+      "probit cannot combine robust and cluster",
+    ),
+    (
+      "probit y x, cluster",
+      "probit option cluster expects variables",
+    ),
+    (
+      "probit y x, cluster()",
+      "option cluster expects at least one value",
+    ),
+    (
+      "probit y x, cluster(group firm)",
+      "probit option cluster expects one variable",
+    ),
+    (
+      "probit y x, cluster(a) cluster(b)",
+      "probit option cluster may only be supplied once",
+    ),
+    (
+      "probit y x, robust=true",
+      "probit option robust does not accept a value",
+    ),
+    (
+      "probit y x, noconstant=true",
+      "probit option noconstant does not accept a value",
+    ),
+    ("probit y x, invalid", "probit unsupported option: invalid"),
+    (
+      "probit y x,",
+      "comma must be followed by at least one option",
+    ),
+    ("probit,", "comma must be followed by at least one option"),
+    ("probit=", "probit assignment requires a target before ="),
+    ("probit==", "unsupported token in command: =="),
+    ("probit:y x", "unsupported token in command: :"),
   ];
   for (input, expected) in cases {
     assert_eq!(
