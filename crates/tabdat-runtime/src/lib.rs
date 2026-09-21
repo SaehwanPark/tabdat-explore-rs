@@ -3130,6 +3130,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Head { .. } => "head",
     Command::Tail { .. } => "tail",
     Command::Sql { .. } => "sql",
+    Command::Regress { .. } => "regress",
   }
 }
 
