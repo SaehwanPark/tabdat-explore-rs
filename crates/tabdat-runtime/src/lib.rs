@@ -498,6 +498,8 @@ pub enum RuntimeError {
   CsvSchemaRead { path: PathBuf },
   /// DuckDB returned an invalid CSV row count.
   CsvRowCount { path: PathBuf },
+  /// DuckDB could not atomically publish the staged CSV relation.
+  CsvTransaction { path: PathBuf },
   /// DuckDB could not atomically publish the staged relation.
   Transaction { path: PathBuf },
   /// DuckDB could not initialize its in-memory connection.
@@ -777,10 +779,15 @@ impl fmt::Display for RuntimeError {
           path.display()
         )
       }
-      Self::Transaction { path } => {
+      Self::Transaction { path } => write!(
+        formatter,
+        "use could not publish Parquet relation: {}",
+        path.display()
+      ),
+      Self::CsvTransaction { path } => {
         write!(
           formatter,
-          "use could not publish relation: {}",
+          "use could not publish CSV relation: {}",
           path.display()
         )
       }
@@ -2868,10 +2875,11 @@ impl Session {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     };
     let path = PathBuf::from(raw_path);
-    let input_format = validate_local_input_path(&path)?;
+    let input_format = local_input_format(&path)?;
     if input_format == LocalInputFormat::Parquet && (delimiter.is_some() || has_header.is_some()) {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     }
+    validate_local_input_path(&path)?;
 
     let dataset = if let Some(backend) = self.backend.as_mut() {
       backend.load_eager_input(&path, input_format, delimiter.as_deref(), has_header)?
@@ -3925,16 +3933,17 @@ enum LocalInputFormat {
   Csv,
 }
 
-fn validate_local_input_path(path: &Path) -> Result<LocalInputFormat, RuntimeError> {
-  let format = match path.extension().and_then(|extension| extension.to_str()) {
-    Some(extension) if extension.eq_ignore_ascii_case("parquet") => LocalInputFormat::Parquet,
-    Some(extension) if extension.eq_ignore_ascii_case("csv") => LocalInputFormat::Csv,
-    _ => {
-      return Err(RuntimeError::UnsupportedFormat {
-        path: path.to_owned(),
-      });
-    }
-  };
+fn local_input_format(path: &Path) -> Result<LocalInputFormat, RuntimeError> {
+  match path.extension().and_then(|extension| extension.to_str()) {
+    Some(extension) if extension.eq_ignore_ascii_case("parquet") => Ok(LocalInputFormat::Parquet),
+    Some(extension) if extension.eq_ignore_ascii_case("csv") => Ok(LocalInputFormat::Csv),
+    _ => Err(RuntimeError::UnsupportedFormat {
+      path: path.to_owned(),
+    }),
+  }
+}
+
+fn validate_local_input_path(path: &Path) -> Result<(), RuntimeError> {
   if !path.exists() {
     return Err(RuntimeError::FileNotFound {
       path: path.to_owned(),
@@ -3945,7 +3954,7 @@ fn validate_local_input_path(path: &Path) -> Result<LocalInputFormat, RuntimeErr
       path: path.to_owned(),
     });
   }
-  Ok(format)
+  Ok(())
 }
 
 struct DuckDbBackend {
@@ -4058,7 +4067,7 @@ impl DuckDbBackend {
 
     if self.publish_staging().is_err() {
       self.drop_staging();
-      return Err(RuntimeError::Transaction {
+      return Err(RuntimeError::CsvTransaction {
         path: path.to_owned(),
       });
     }

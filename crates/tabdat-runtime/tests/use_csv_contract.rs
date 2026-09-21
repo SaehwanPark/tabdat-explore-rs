@@ -246,6 +246,16 @@ fn loads_header_only_csv_as_an_empty_relation() {
       .collect::<Vec<_>>(),
     vec!["id", "note"]
   );
+
+  let empty = fixture.write("empty.csv", "");
+  let result = session
+    .execute(use_csv_command(&empty, None, None))
+    .expect("empty CSV should load as an empty relation");
+  let ExecutionResult::Load(load) = result else {
+    panic!("use should return a Load result");
+  };
+  assert_eq!(load.dataset.row_count, 0);
+  assert_eq!(load.dataset.columns[0].name, "column0");
 }
 
 #[test]
@@ -259,6 +269,20 @@ fn failed_csv_replacement_preserves_prior_relation_and_metadata() {
     .active_dataset()
     .expect("initial load should publish active metadata")
     .clone();
+  session
+    .execute(parse_command("label variable age \"Age\"").expect("label should parse"))
+    .expect("label should attach before the failed replacement");
+  let labels_before = session
+    .active_label_metadata()
+    .expect("label metadata should be present")
+    .clone();
+  let before_rows = match session
+    .execute(parse_command("head 3").expect("head should parse"))
+    .expect("the prior relation should be previewable")
+  {
+    ExecutionResult::Head(preview) => preview.rows,
+    _ => panic!("head should return a Head result"),
+  };
 
   let invalid = fixture.root.join("invalid.csv");
   fs::write(&invalid, b"id,note\n1,\xff\n").expect("invalid CSV fixture should be written");
@@ -269,12 +293,13 @@ fn failed_csv_replacement_preserves_prior_relation_and_metadata() {
     RuntimeError::CsvRead { path: invalid }
   );
   assert_eq!(session.active_dataset(), Some(&before));
+  assert_eq!(session.active_label_metadata(), Some(&labels_before));
 
   let preview = session
-    .execute(parse_command("head 1").expect("head should parse"))
+    .execute(parse_command("head 3").expect("head should parse"))
     .expect("the prior relation should remain queryable");
   let ExecutionResult::Head(preview) = preview else {
     panic!("head should return a Head result");
   };
-  assert_eq!(preview.rows[0][0], CellValue::SignedInteger(30));
+  assert_eq!(preview.rows, before_rows);
 }

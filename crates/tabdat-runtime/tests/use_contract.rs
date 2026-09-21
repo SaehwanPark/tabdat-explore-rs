@@ -215,6 +215,15 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
     }
   );
 
+  let mut missing_with_options = use_command(&fixture.root.join("missing-with-options.parquet"));
+  if let Command::Use { delimiter, .. } = &mut missing_with_options {
+    *delimiter = Some(";".to_owned());
+  }
+  assert_eq!(
+    session.execute(missing_with_options).unwrap_err(),
+    RuntimeError::UnsupportedUseConfiguration
+  );
+
   let missing_wrong_extension = use_command(&fixture.root.join("missing.csv"));
   assert_eq!(
     session.execute(missing_wrong_extension).unwrap_err(),
@@ -253,6 +262,16 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
     session.execute(wrong_extension).unwrap_err(),
     RuntimeError::CsvRead {
       path: wrong_extension_path
+    }
+  );
+
+  let unsupported_path = fixture.root.join("patients.txt");
+  fs::write(&unsupported_path, "not a supported input")
+    .expect("unsupported-format fixture should be written");
+  assert_eq!(
+    session.execute(use_command(&unsupported_path)).unwrap_err(),
+    RuntimeError::UnsupportedFormat {
+      path: unsupported_path
     }
   );
   assert!(session.active_dataset().is_none());
