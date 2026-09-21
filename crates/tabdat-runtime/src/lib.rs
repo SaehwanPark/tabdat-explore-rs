@@ -358,6 +358,15 @@ pub struct SaveResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after writing the active dataset to CSV.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportResult {
+  /// The output path requested by the caller.
+  pub path: PathBuf,
+  /// Output-oriented metadata for the dataset that was written.
+  pub dataset: DatasetInfo,
+}
+
 struct TabulateCount {
   row: CellValue,
   column: Option<CellValue>,
@@ -446,6 +455,8 @@ pub enum ExecutionResult {
   Collapse(CollapseResult),
   /// Writes the active relation to a Parquet file without changing state.
   Save(SaveResult),
+  /// Writes the active relation to a CSV file without changing state.
+  Export(ExportResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -495,6 +506,16 @@ pub enum RuntimeError {
   SaveParentFailed { path: PathBuf },
   /// DuckDB could not write the active relation to the save destination.
   SaveFailed { path: PathBuf },
+  /// The export destination is not a CSV path.
+  ExportUnsupportedFormat { path: PathBuf },
+  /// The export destination already exists and replacement was not requested.
+  ExportTargetExists { path: PathBuf },
+  /// The export destination exists but is not a regular file.
+  ExportTargetNotAFile { path: PathBuf },
+  /// The export destination's parent directory could not be created.
+  ExportParentFailed { path: PathBuf },
+  /// DuckDB could not write the active relation to the export destination.
+  ExportFailed { path: PathBuf },
   /// DuckDB could not produce the requested preview.
   PreviewFailed { command: &'static str },
   /// The summary request named variables absent from the active schema.
@@ -756,6 +777,27 @@ impl fmt::Display for RuntimeError {
         path.display()
       ),
       Self::SaveFailed { path } => write!(formatter, "save failed: {}", path.display()),
+      Self::ExportUnsupportedFormat { path } => write!(
+        formatter,
+        "export only supports .csv files: {}",
+        path.display()
+      ),
+      Self::ExportTargetExists { path } => {
+        write!(
+          formatter,
+          "export target already exists: {}",
+          path.display()
+        )
+      }
+      Self::ExportTargetNotAFile { path } => {
+        write!(formatter, "export target is not a file: {}", path.display())
+      }
+      Self::ExportParentFailed { path } => write!(
+        formatter,
+        "export could not create parent directories: {}",
+        path.display()
+      ),
+      Self::ExportFailed { path } => write!(formatter, "export failed: {}", path.display()),
       Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
       Self::SummaryUnknownVariable { variables } => write!(
         formatter,
@@ -1118,6 +1160,7 @@ impl Session {
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
       Command::Save { path, replace } => self.execute_save(path, replace),
+      Command::Export { path, replace } => self.execute_export(path, replace),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -2660,6 +2703,59 @@ impl Session {
     }))
   }
 
+  fn execute_export(
+    &self,
+    raw_path: String,
+    replace: bool,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "export" })?;
+    let path = PathBuf::from(raw_path);
+    let csv_extension = path
+      .extension()
+      .and_then(|extension| extension.to_str())
+      .is_some_and(|extension| extension.eq_ignore_ascii_case("csv"));
+    if !csv_extension {
+      return Err(RuntimeError::ExportUnsupportedFormat { path });
+    }
+    if path.exists() {
+      if !replace {
+        return Err(RuntimeError::ExportTargetExists { path });
+      }
+      if !path.is_file() {
+        return Err(RuntimeError::ExportTargetNotAFile { path });
+      }
+    }
+    if let Some(parent) = path
+      .parent()
+      .filter(|parent| !parent.as_os_str().is_empty())
+    {
+      fs::create_dir_all(parent)
+        .map_err(|_| RuntimeError::ExportParentFailed { path: path.clone() })?;
+    }
+
+    self
+      .backend
+      .as_ref()
+      .ok_or_else(|| RuntimeError::ExportFailed { path: path.clone() })?
+      .export_active_csv(&path)
+      .map_err(|_| RuntimeError::ExportFailed { path: path.clone() })?;
+
+    let exported_dataset = DatasetInfo {
+      source: path.clone(),
+      row_count: dataset.row_count,
+      columns: dataset.columns.clone(),
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    };
+    Ok(ExecutionResult::Export(ExportResult {
+      path,
+      dataset: exported_dataset,
+    }))
+  }
+
   fn remove_value_label_attachment(&mut self, variable: &str) {
     self
       .label_metadata
@@ -3841,6 +3937,18 @@ impl DuckDbBackend {
       .connection
       .execute(
         &format!("COPY (SELECT * FROM {ACTIVE_TABLE}) TO ? (FORMAT PARQUET)"),
+        [path_string],
+      )
+      .map(|_| ())
+      .map_err(|_| ())
+  }
+
+  fn export_active_csv(&self, path: &Path) -> Result<(), ()> {
+    let path_string = path.to_str().ok_or(())?;
+    self
+      .connection
+      .execute(
+        &format!("COPY (SELECT * FROM {ACTIVE_TABLE}) TO ? (FORMAT CSV, HEADER)"),
         [path_string],
       )
       .map(|_| ())

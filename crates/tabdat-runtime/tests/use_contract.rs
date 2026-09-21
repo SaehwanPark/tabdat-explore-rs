@@ -2172,7 +2172,7 @@ fn save_requires_an_active_dataset() {
 }
 
 #[test]
-fn leaves_export_execution_deferred() {
+fn export_requires_an_active_dataset() {
   let mut session = Session::new();
   let command = Command::Export {
     path: "output.csv".to_owned(),
@@ -2181,6 +2181,6 @@ fn leaves_export_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "export" }
+    RuntimeError::NoActiveDataset { command: "export" }
   );
 }
