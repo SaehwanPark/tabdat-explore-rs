@@ -3,8 +3,9 @@ use tabdat_language::{
   EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
   IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
   PanelAction, PanelCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
-  XtAbondCommand, XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
+  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
+  SettingName, SortKey, TabulateCommand, XtAbondCommand, XtDataCommand, XtDataTransform,
+  XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2681,4 +2682,204 @@ fn use_is_a_public_syntax_only_command() {
       has_header: Some(true),
     }
   );
+}
+
+#[test]
+fn regress_parses_bounded_estimator_forms() {
+  assert_eq!(
+    parse_command("regress cost age bmi").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned(), "bmi".to_owned()],
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: false,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("regress cost age, robust").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned()],
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: true,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("regress cost age, cluster(sex)").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned()],
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: false,
+        cluster_variable: Some("sex".to_owned()),
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("regress cost age, noconstant").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned()],
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: false,
+        cluster_variable: None,
+        include_intercept: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("regress cost age, wls(weight) cluster(firm)").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned()],
+        estimator: RegressEstimator::Wls,
+        weight_variable: Some("weight".to_owned()),
+        robust: false,
+        cluster_variable: Some("firm".to_owned()),
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("regress cost age, gls(sigma) robust").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "cost".to_owned(),
+        predictors: vec!["age".to_owned()],
+        estimator: RegressEstimator::Gls,
+        weight_variable: Some("sigma".to_owned()),
+        robust: true,
+        cluster_variable: None,
+        include_intercept: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("REGRESS `total cost` `age value` 'bmi value', noconstant robust").unwrap(),
+    Command::Regress {
+      command: RegressCommand {
+        outcome: "total cost".to_owned(),
+        predictors: vec!["age value".to_owned(), "bmi value".to_owned()],
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: true,
+        cluster_variable: None,
+        include_intercept: false,
+      },
+    }
+  );
+}
+
+#[test]
+fn regress_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("regress", "regress expects syntax: regress <y> <xvars>"),
+    (
+      "regress cost",
+      "regress expects syntax: regress <y> <xvars>",
+    ),
+    (
+      "regress cost age if age > 18",
+      "regress expects syntax: regress <y> <xvars>",
+    ),
+    (
+      "regress cost age, robust cluster(sex)",
+      "regress cannot combine robust and cluster",
+    ),
+    (
+      "regress cost age, cluster",
+      "regress option cluster expects variables",
+    ),
+    (
+      "regress cost age, cluster()",
+      "option cluster expects at least one value",
+    ),
+    (
+      "regress cost age, cluster(sex firm)",
+      "regress option cluster expects one variable",
+    ),
+    (
+      "regress cost age, cluster(a) cluster(b)",
+      "regress option cluster may only be supplied once",
+    ),
+    (
+      "regress cost age, wls",
+      "regress option wls expects variables",
+    ),
+    (
+      "regress cost age, wls()",
+      "option wls expects at least one value",
+    ),
+    (
+      "regress cost age, wls(age bmi)",
+      "regress option wls expects one variable",
+    ),
+    (
+      "regress cost age, wls(a) wls(b)",
+      "regress option wls may only be supplied once",
+    ),
+    (
+      "regress cost age, gls",
+      "regress option gls expects variables",
+    ),
+    (
+      "regress cost age, gls()",
+      "option gls expects at least one value",
+    ),
+    (
+      "regress cost age, gls(age bmi)",
+      "regress option gls expects one variable",
+    ),
+    (
+      "regress cost age, gls(a) gls(b)",
+      "regress option gls may only be supplied once",
+    ),
+    (
+      "regress cost age, wls(age) gls(sigma)",
+      "regress cannot combine wls and gls",
+    ),
+    (
+      "regress cost age, robust=true",
+      "regress option robust does not accept a value",
+    ),
+    (
+      "regress cost age, noconstant=true",
+      "regress option noconstant does not accept a value",
+    ),
+    (
+      "regress cost age, invalid",
+      "regress unsupported option: invalid",
+    ),
+    (
+      "regress cost age,",
+      "comma must be followed by at least one option",
+    ),
+    ("regress,", "comma must be followed by at least one option"),
+    ("regress=", "regress assignment requires a target before ="),
+    ("regress==", "unsupported token in command: =="),
+    ("regress:cost age", "unsupported token in command: :"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().to_string(),
+      expected,
+      "{input:?}"
+    );
+  }
 }

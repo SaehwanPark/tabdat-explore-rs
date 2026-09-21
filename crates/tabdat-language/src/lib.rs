@@ -138,6 +138,8 @@ pub enum Command {
   Tail { limit: RowLimit },
   /// Execute a SQL query (execution is deferred).
   Sql { command: SqlCommand },
+  /// Fit a linear regression model (execution is deferred).
+  Regress { command: RegressCommand },
 }
 
 /// The bounded SQL command AST representation.
@@ -334,6 +336,37 @@ pub struct XtDataCommand {
   pub variables: Vec<String>,
   /// The requested within- or between-entity transform.
   pub transform: XtDataTransform,
+}
+
+/// The estimator forms accepted by the parser-only `regress` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegressEstimator {
+  /// Ordinary least squares.
+  Ols,
+  /// Weighted least squares.
+  Wls,
+  /// Generalized least squares.
+  Gls,
+}
+
+/// The parser-only `regress` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegressCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// The requested estimator.
+  pub estimator: RegressEstimator,
+  /// Optional weight variable for WLS or GLS.
+  pub weight_variable: Option<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
 }
 
 /// The estimator forms accepted by the parser-only `ivregress` command.
@@ -838,6 +871,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"regress"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   // `status` keeps the Python tokenizer's punctuation diagnostics for
   // attached unary-sign forms such as `status-1` and `status+1`.
@@ -931,6 +972,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       return Err(ParseError::new("unsupported token in command: =="));
     }
     return Err(ParseError::new("sql assignment requires a target before ="));
+  }
+  if name.eq_ignore_ascii_case("regress") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "regress assignment requires a target before =",
+    ));
   }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
@@ -1029,6 +1078,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "use" => parse_use_command(body),
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "sql" => parse_sql_command(body),
+    "regress" => parse_regress_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
@@ -2953,6 +3003,136 @@ fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
         .map(|argument| argument.text)
         .collect(),
       transform,
+    },
+  })
+}
+
+fn regress_identifier_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<Vec<String>>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "regress option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
+    _ => Err(ParseError::new(format!(
+      "regress option {name} expects variables"
+    ))),
+  }
+}
+
+fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "regress expects syntax: regress <y> <xvars>";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "robust" | "cluster" | "noconstant" | "wls" | "gls"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "regress unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "regress option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let cluster_values = regress_identifier_option(&options, "cluster")?;
+  if cluster_values
+    .as_ref()
+    .is_some_and(|values| values.len() != 1)
+  {
+    return Err(ParseError::new(
+      "regress option cluster expects one variable",
+    ));
+  }
+  let cluster_variable = cluster_values.and_then(|mut values| values.pop());
+
+  let wls_values = regress_identifier_option(&options, "wls")?;
+  if wls_values.as_ref().is_some_and(|values| values.len() != 1) {
+    return Err(ParseError::new("regress option wls expects one variable"));
+  }
+
+  let gls_values = regress_identifier_option(&options, "gls")?;
+  if gls_values.as_ref().is_some_and(|values| values.len() != 1) {
+    return Err(ParseError::new("regress option gls expects one variable"));
+  }
+
+  if wls_values.is_some() && gls_values.is_some() {
+    return Err(ParseError::new("regress cannot combine wls and gls"));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new("regress cannot combine robust and cluster"));
+  }
+
+  let (estimator, weight_variable) = if let Some(mut wls) = wls_values {
+    (RegressEstimator::Wls, wls.pop())
+  } else if let Some(mut gls) = gls_values {
+    (RegressEstimator::Gls, gls.pop())
+  } else {
+    (RegressEstimator::Ols, None)
+  };
+
+  Ok(Command::Regress {
+    command: RegressCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|argument| argument.text.clone())
+        .collect(),
+      estimator,
+      weight_variable,
+      robust,
+      cluster_variable,
+      include_intercept: !options.iter().any(|option| option.name == "noconstant"),
     },
   })
 }
@@ -5439,8 +5619,8 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    ByCommand, Command, DataSource, ExecutionMode, LazyEngine, ParseError, RowLimit, SettingName,
-    SortKey, SqlCommand, TabulateCommand, parse_command,
+    ByCommand, Command, DataSource, ExecutionMode, LazyEngine, ParseError, RegressCommand,
+    RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, parse_command,
   };
 
   #[test]
@@ -7459,6 +7639,206 @@ mod tests {
         "sql \"\"\"select * from active\"\"\" into foo bar",
         "sql into expects syntax: sql <query> into <table>",
       ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_regress_syntax() {
+    assert_eq!(
+      parse_command("regress cost age bmi").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("regress cost age, robust").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("regress cost age, cluster(sex)").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: false,
+          cluster_variable: Some("sex".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("regress cost age, noconstant").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("regress cost age, wls(weight) cluster(firm)").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          estimator: RegressEstimator::Wls,
+          weight_variable: Some("weight".to_owned()),
+          robust: false,
+          cluster_variable: Some("firm".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("regress cost age, gls(sigma) robust").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          estimator: RegressEstimator::Gls,
+          weight_variable: Some("sigma".to_owned()),
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("REGRESS `total cost` `age value` 'bmi value', noconstant robust").unwrap(),
+      Command::Regress {
+        command: RegressCommand {
+          outcome: "total cost".to_owned(),
+          predictors: vec!["age value".to_owned(), "bmi value".to_owned()],
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: true,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_regress_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("regress", "regress expects syntax: regress <y> <xvars>"),
+      (
+        "regress cost",
+        "regress expects syntax: regress <y> <xvars>",
+      ),
+      (
+        "regress cost age if age > 18",
+        "regress expects syntax: regress <y> <xvars>",
+      ),
+      (
+        "regress cost age, robust cluster(sex)",
+        "regress cannot combine robust and cluster",
+      ),
+      (
+        "regress cost age, cluster",
+        "regress option cluster expects variables",
+      ),
+      (
+        "regress cost age, cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "regress cost age, cluster(sex firm)",
+        "regress option cluster expects one variable",
+      ),
+      (
+        "regress cost age, cluster(a) cluster(b)",
+        "regress option cluster may only be supplied once",
+      ),
+      (
+        "regress cost age, wls",
+        "regress option wls expects variables",
+      ),
+      (
+        "regress cost age, wls()",
+        "option wls expects at least one value",
+      ),
+      (
+        "regress cost age, wls(age bmi)",
+        "regress option wls expects one variable",
+      ),
+      (
+        "regress cost age, wls(a) wls(b)",
+        "regress option wls may only be supplied once",
+      ),
+      (
+        "regress cost age, gls",
+        "regress option gls expects variables",
+      ),
+      (
+        "regress cost age, gls()",
+        "option gls expects at least one value",
+      ),
+      (
+        "regress cost age, gls(age bmi)",
+        "regress option gls expects one variable",
+      ),
+      (
+        "regress cost age, gls(a) gls(b)",
+        "regress option gls may only be supplied once",
+      ),
+      (
+        "regress cost age, wls(age) gls(sigma)",
+        "regress cannot combine wls and gls",
+      ),
+      (
+        "regress cost age, robust=true",
+        "regress option robust does not accept a value",
+      ),
+      (
+        "regress cost age, noconstant=true",
+        "regress option noconstant does not accept a value",
+      ),
+      (
+        "regress cost age, invalid",
+        "regress unsupported option: invalid",
+      ),
+      (
+        "regress cost age,",
+        "comma must be followed by at least one option",
+      ),
+      ("regress,", "comma must be followed by at least one option"),
+      ("regress=", "regress assignment requires a target before ="),
+      ("regress==", "unsupported token in command: =="),
+      ("regress:cost age", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
