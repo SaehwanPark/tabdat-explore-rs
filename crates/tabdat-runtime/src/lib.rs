@@ -3131,6 +3131,8 @@ fn command_name(command: &Command) -> &'static str {
     Command::Tail { .. } => "tail",
     Command::Sql { .. } => "sql",
     Command::Regress { .. } => "regress",
+    Command::Logit { .. } => "logit",
+    Command::Probit { .. } => "probit",
   }
 }
 
