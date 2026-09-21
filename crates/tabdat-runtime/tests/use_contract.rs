@@ -151,7 +151,7 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   }
   assert_eq!(
     session.execute(lazy).unwrap_err().to_string(),
-    "use runtime slice supports only eager local Parquet loads"
+    "use runtime slice supports only eager local Parquet or CSV loads"
   );
 
   let uri = Command::Use {
@@ -163,7 +163,7 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   };
   assert_eq!(
     session.execute(uri).unwrap_err().to_string(),
-    "use runtime slice supports only eager local Parquet loads"
+    "use runtime slice supports only eager local Parquet or CSV loads"
   );
 
   let mut options = fixture.command();
@@ -172,7 +172,7 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   }
   assert_eq!(
     session.execute(options).unwrap_err().to_string(),
-    "use runtime slice supports only eager local Parquet loads"
+    "use runtime slice supports only eager local Parquet or CSV loads"
   );
 
   let mut header = fixture.command();
@@ -181,7 +181,7 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   }
   assert_eq!(
     session.execute(header).unwrap_err().to_string(),
-    "use runtime slice supports only eager local Parquet loads"
+    "use runtime slice supports only eager local Parquet or CSV loads"
   );
 
   let mut polars_lazy = fixture.command();
@@ -196,7 +196,7 @@ fn rejects_out_of_scope_use_forms_without_an_active_dataset() {
   }
   assert_eq!(
     session.execute(polars_lazy).unwrap_err().to_string(),
-    "use runtime slice supports only eager local Parquet loads"
+    "use runtime slice supports only eager local Parquet or CSV loads"
   );
 
   assert!(session.active_dataset().is_none());
@@ -217,11 +217,10 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
 
   let missing_wrong_extension = use_command(&fixture.root.join("missing.csv"));
   assert_eq!(
-    session
-      .execute(missing_wrong_extension)
-      .unwrap_err()
-      .to_string(),
-    "use runtime slice supports only local .parquet files"
+    session.execute(missing_wrong_extension).unwrap_err(),
+    RuntimeError::FileNotFound {
+      path: fixture.root.join("missing.csv")
+    }
   );
 
   let directory_path = fixture.root.join("directory.parquet");
@@ -241,17 +240,20 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
   assert_eq!(
     session
       .execute(directory_wrong_extension_command)
-      .unwrap_err()
-      .to_string(),
-    "use runtime slice supports only local .parquet files"
+      .unwrap_err(),
+    RuntimeError::NotAFile {
+      path: directory_wrong_extension
+    }
   );
 
   let wrong_extension_path = fixture.root.join("patients.csv");
   fs::write(&wrong_extension_path, "not csv").expect("wrong-extension fixture should be written");
   let wrong_extension = use_command(&wrong_extension_path);
   assert_eq!(
-    session.execute(wrong_extension).unwrap_err().to_string(),
-    "use runtime slice supports only local .parquet files"
+    session.execute(wrong_extension).unwrap_err(),
+    RuntimeError::CsvRead {
+      path: wrong_extension_path
+    }
   );
   assert!(session.active_dataset().is_none());
 }
