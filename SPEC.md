@@ -815,6 +815,32 @@ semantics, sample construction, inference, covariance, post-estimation state,
 reporting, CLI, JSON, MCP, and broad Python statistical parity deferred. The
 Phase 7 statistical `ttest` item remains unchecked.
 
+## Verified slice: syntax-only `sql` command
+
+Merged [PR #77](https://github.com/SaehwanPark/tabdat-explore-rs/pull/77)
+([feeeaf4](https://github.com/SaehwanPark/tabdat-explore-rs/commit/feeeaf4))
+adds a bounded, backend-independent `sql` syntax boundary to
+`tabdat-language`. The parser returns an owned `SqlCommand` for direct and
+triple-quoted queries (`"""..."""`), with optional trailing case-insensitive
+`into <table>` clauses. It validates table name identifiers and reserved names
+(`active`, `__tabdat_*`), preserves query text opaquely, and reports exact
+Python-compatible diagnostics. Runtime deliberately returns the typed unsupported
+command result; it does not execute SQL, initialize DuckDB, or mutate session
+state.
+
+Evidence: [_workspace/parser-sql-syntax/](_workspace/parser-sql-syntax/),
+including the
+[migration evidence](_workspace/parser-sql-syntax/02-evidence-migration.md),
+[review](_workspace/parser-sql-syntax/03-review.md), and
+[summary](_workspace/parser-sql-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves multiline script block grouping, SQL
+execution, named-table lifecycle, schema/type validation, reporting, CLI, JSON,
+MCP, and broad Python database parity deferred. The Phase 6.5 runtime `sql` item
+remains unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

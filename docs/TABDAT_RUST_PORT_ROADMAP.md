@@ -383,6 +383,11 @@ Port TabDat's language before implementing most execution.
   flags, recovered diagnostics, quoted names, and parser-only execution
   deferral are covered; numeric conversion and statistical inference remain
   deferred).
+- [x] Add the bounded direct `sql` syntax slice (PR #77, squash merge
+  `feeeaf4`; owned `SqlCommand { query, into }`, direct and triple-quoted
+  queries, trailing `into <table>` with identifier/reserved-name validation,
+  and parser-only execution deferral are covered; multiline script grouping,
+  SQL execution, and named-table lifecycle remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -393,7 +398,7 @@ Port TabDat's language before implementing most execution.
 - [ ] Port function-call syntax.
 - [ ] Port quoted/unquoted identifier behavior.
 - [ ] Port missing literal semantics.
-- [ ] Port SQL command boundary.
+- [x] Port SQL command boundary.
 - [ ] Port prefixed command syntax such as `bayes:`.
 
 ### 5.2 Script engine
