@@ -26,7 +26,7 @@ silently invent parity.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, and `export`, plus owned
+  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, and `sql`, plus owned
   command/error types and focused tests.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
@@ -71,6 +71,11 @@ Merged PR #74 (`7a5b8d4`) adds the separate bounded eager runtime local-CSV
 schema/count inspection before publication, returns owned load metadata, and
 clears labels only after successful replacement. Remote, lazy, Feather/Arrow,
 DTA, broader relation/session, and interface boundaries remain deferred.
+
+Merged PR #77 (`feeeaf4`) records the bounded backend-independent syntax-only
+`sql <query> [into <table>]` form. Owned query text and optional named-table
+target are parsed, while multiline script blocks, SQL execution, and named-table
+lifecycle remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
