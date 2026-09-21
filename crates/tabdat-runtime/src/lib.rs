@@ -3129,6 +3129,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Count => "count",
     Command::Head { .. } => "head",
     Command::Tail { .. } => "tail",
+    Command::Sql { .. } => "sql",
   }
 }
 
