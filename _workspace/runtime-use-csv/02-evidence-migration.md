@@ -31,8 +31,9 @@ The execution authority is:
 - `f0aa129` — contract checkpoint and draft PR [#74](https://github.com/SaehwanPark/tabdat-explore-rs/pull/74);
 - `de98fef` — bounded eager CSV implementation and focused tests;
 - `dcd33cf` — compatibility/error-boundary review fixes and expanded focused
-  coverage; and
-- the squash merge revision and closeout evidence will be added after PR #74.
+  coverage;
+- `2dcc9ea` — final compatibility coverage and evidence/review updates; and
+- `7a5b8d4` — squash merge of PR #74 onto `main`.
 
 Changed paths:
 
@@ -93,7 +94,7 @@ git diff --check
 
 Observed locally: format, check, the workspace suite (including 65 existing
 `use_contract` tests and the six CSV tests), Clippy, and diff checks pass on the
-final implementation revision `dcd33cf`.
+final implementation revision `2dcc9ea`.
 
 Dependency and unsafe-code policy checks:
 
@@ -128,6 +129,17 @@ deterministic read failure.
 
 ## Hosted acceptance
 
-Pending PR #74 final checks and merge-head workflow links. This section is
-completed only after the WIP PR is promoted, all required hosted jobs pass, and
-the squash merge is verified on `main`.
+PR #74 was promoted from draft and its exact-head pull-request workflows passed
+on `2dcc9ea`:
+
+- [CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35562235760)
+  (`Rust baseline` and `Dependency and unsafe-code policy`); and
+- [TabDat runtime boundary](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35562235734).
+
+The same SHA also passed the manually dispatched [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35562197645)
+and [runtime run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35562198903)
+used while the PR was still draft. PR #74 was squash-merged as `7a5b8d4`.
+
+Post-merge `main` verification is recorded by the merge-head [CI run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35563640913)
+and [TabDat runtime boundary run](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/35563640908),
+both for `7a5b8d4`.
