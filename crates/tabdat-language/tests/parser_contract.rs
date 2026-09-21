@@ -1,11 +1,11 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, CollapseCommand, CollapseStatistic, Command, DataSource,
-  EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
-  IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
-  LogitCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint,
-  RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand,
-  ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand, XtAbondCommand, XtDataCommand,
-  XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
+  AssertBinaryOperator, AssertExpression, BayesPrefixCommand, CollapseCommand, CollapseStatistic,
+  Command, DataSource, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
+  GenerateExpression, IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand,
+  LabelValue, LazyEngine, LogitCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
+  ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
+  XtAbondCommand, XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -3074,6 +3074,269 @@ fn logit_and_probit_preserve_bounded_parser_diagnostics() {
     ("probit=", "probit assignment requires a target before ="),
     ("probit==", "unsupported token in command: =="),
     ("probit:y x", "unsupported token in command: :"),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().to_string(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn bayes_prefix_parses_supported_commands_and_options() {
+  assert_eq!(
+    parse_command("bayes: regress y x").unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: None,
+        burnin: None,
+        chains: None,
+        thin: None,
+        seed: None,
+        priors: Vec::new(),
+      },
+    }
+  );
+
+  let cmd1 = "bayes, draws(500) burnin(200) chains(2) thin(2) seed(123): regress y x";
+  assert_eq!(
+    parse_command(cmd1).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: Some(500),
+        burnin: Some(200),
+        chains: Some(2),
+        thin: Some(2),
+        seed: Some(123),
+        priors: Vec::new(),
+      },
+    }
+  );
+
+  let cmd_rseed = "bayes, rseed(42): regress y x";
+  assert_eq!(
+    parse_command(cmd_rseed).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: None,
+        burnin: None,
+        chains: None,
+        thin: None,
+        seed: Some(42),
+        priors: Vec::new(),
+      },
+    }
+  );
+
+  let cmd_tune = "bayes, tune(100): regress y x";
+  assert_eq!(
+    parse_command(cmd_tune).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: None,
+        burnin: Some(100),
+        chains: None,
+        thin: None,
+        seed: None,
+        priors: Vec::new(),
+      },
+    }
+  );
+
+  let cmd2 = "bayes, prior(x, normal(0, 10)) prior(intercept, uniform(-5, 5)): logit y x";
+  assert_eq!(
+    parse_command(cmd2).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Logit {
+          command: LogitCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: None,
+        burnin: None,
+        chains: None,
+        thin: None,
+        seed: None,
+        priors: vec![
+          ("x".to_string(), "normal(0,10)".to_string()),
+          ("intercept".to_string(), "uniform(-5,5)".to_string()),
+        ],
+      },
+    }
+  );
+
+  let cmd_noconst = "bayes: regress y x, noconstant";
+  assert_eq!(
+    parse_command(cmd_noconst).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "y".to_string(),
+            predictors: vec!["x".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: false,
+          },
+        }),
+        draws: None,
+        burnin: None,
+        chains: None,
+        thin: None,
+        seed: None,
+        priors: Vec::new(),
+      },
+    }
+  );
+
+  let cmd_quoted = "bayes, prior(`x:y`, normal): regress `outcome col` `x:y`";
+  assert_eq!(
+    parse_command(cmd_quoted).unwrap(),
+    Command::BayesPrefix {
+      command: BayesPrefixCommand {
+        command: Box::new(Command::Regress {
+          command: RegressCommand {
+            outcome: "outcome col".to_string(),
+            predictors: vec!["x:y".to_string()],
+            estimator: RegressEstimator::Ols,
+            weight_variable: None,
+            robust: false,
+            cluster_variable: None,
+            include_intercept: true,
+          },
+        }),
+        draws: None,
+        burnin: None,
+        chains: None,
+        thin: None,
+        seed: None,
+        priors: vec![("x:y".to_string(), "normal".to_string())],
+      },
+    }
+  );
+}
+
+#[test]
+fn bayes_prefix_rejects_malformed_syntax_and_unsupported_commands() {
+  let cases = [
+    (
+      "bayes: codebook",
+      "bayes prefix only supports regress and logit commands",
+    ),
+    (
+      "bayes: summarize",
+      "bayes prefix only supports regress and logit commands",
+    ),
+    (
+      "bayes: probit y x",
+      "bayes prefix only supports regress and logit commands",
+    ),
+    ("bayes:", "bayes expects a command after :"),
+    ("bayes: ", "bayes expects a command after :"),
+    (
+      "bayes, draws(100)",
+      "bayes prefix expects syntax: bayes [, options]: command",
+    ),
+    (
+      "bayes draws(100): regress y x",
+      "bayes prefix options must start with a comma",
+    ),
+    (
+      "bayes, invalid(1): regress y x",
+      "option invalid values must be identifiers",
+    ),
+    (
+      "bayes, invalid: regress y x",
+      "unsupported bayes option: invalid",
+    ),
+    (
+      "bayes, draws(abc): regress y x",
+      "option draws expects a numeric value",
+    ),
+    (
+      "bayes, draws=abc: regress y x",
+      "draws must be a numeric value",
+    ),
+    (
+      "bayes, prior(x): regress y x",
+      "prior option expects prior(variable, distribution) syntax",
+    ),
+    (
+      "bayes, prior: regress y x",
+      "prior expects (variable, distribution)",
+    ),
+    (
+      "bayes, prior(x, normal): codebook",
+      "bayes prefix only supports regress and logit commands",
+    ),
+    (
+      "bayes,",
+      "bayes prefix expects syntax: bayes [, options]: command",
+    ),
+    (
+      "bayes, : regress y x",
+      "comma must be followed by at least one option",
+    ),
+    ("bayes", "bayes expects syntax: bayes linear <y> <xvars>"),
+    (
+      "bayes linear",
+      "bayes expects syntax: bayes linear <y> <xvars>",
+    ),
+    ("bayes = 1", "bayes assignment requires a target before ="),
+    ("bayes == 1", "unsupported token in command: =="),
   ];
   for (input, expected) in cases {
     assert_eq!(
