@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use duckdb::Connection;
@@ -348,6 +349,15 @@ pub struct CollapseResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after writing the active dataset to Parquet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveResult {
+  /// The output path requested by the caller.
+  pub path: PathBuf,
+  /// Output-oriented metadata for the dataset that was written.
+  pub dataset: DatasetInfo,
+}
+
 struct TabulateCount {
   row: CellValue,
   column: Option<CellValue>,
@@ -434,6 +444,8 @@ pub enum ExecutionResult {
   By(ByResult),
   /// Replaces the active relation with a bounded grouped aggregate relation.
   Collapse(CollapseResult),
+  /// Writes the active relation to a Parquet file without changing state.
+  Save(SaveResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.
@@ -473,6 +485,16 @@ pub enum RuntimeError {
   Transaction { path: PathBuf },
   /// DuckDB could not initialize its in-memory connection.
   BackendInitialization,
+  /// The save destination is not a Parquet path.
+  SaveUnsupportedFormat { path: PathBuf },
+  /// The save destination already exists and replacement was not requested.
+  SaveTargetExists { path: PathBuf },
+  /// The save destination exists but is not a regular file.
+  SaveTargetNotAFile { path: PathBuf },
+  /// The save destination's parent directory could not be created.
+  SaveParentFailed { path: PathBuf },
+  /// DuckDB could not write the active relation to the save destination.
+  SaveFailed { path: PathBuf },
   /// DuckDB could not produce the requested preview.
   PreviewFailed { command: &'static str },
   /// The summary request named variables absent from the active schema.
@@ -717,6 +739,23 @@ impl fmt::Display for RuntimeError {
         path.display()
       ),
       Self::BackendInitialization => formatter.write_str("use could not initialize DuckDB"),
+      Self::SaveUnsupportedFormat { path } => write!(
+        formatter,
+        "save only supports .parquet files: {}",
+        path.display()
+      ),
+      Self::SaveTargetExists { path } => {
+        write!(formatter, "save target already exists: {}", path.display())
+      }
+      Self::SaveTargetNotAFile { path } => {
+        write!(formatter, "save target is not a file: {}", path.display())
+      }
+      Self::SaveParentFailed { path } => write!(
+        formatter,
+        "save could not create parent directories: {}",
+        path.display()
+      ),
+      Self::SaveFailed { path } => write!(formatter, "save failed: {}", path.display()),
       Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
       Self::SummaryUnknownVariable { variables } => write!(
         formatter,
@@ -1078,6 +1117,7 @@ impl Session {
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),
+      Command::Save { path, replace } => self.execute_save(path, replace),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
@@ -2571,6 +2611,55 @@ impl Session {
     self.label_metadata = normalize_label_metadata(metadata);
   }
 
+  fn execute_save(&self, raw_path: String, replace: bool) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "save" })?;
+    let path = PathBuf::from(raw_path);
+    let parquet_extension = path
+      .extension()
+      .and_then(|extension| extension.to_str())
+      .is_some_and(|extension| extension.eq_ignore_ascii_case("parquet"));
+    if !parquet_extension {
+      return Err(RuntimeError::SaveUnsupportedFormat { path });
+    }
+    if path.exists() {
+      if !replace {
+        return Err(RuntimeError::SaveTargetExists { path });
+      }
+      if !path.is_file() {
+        return Err(RuntimeError::SaveTargetNotAFile { path });
+      }
+    }
+    if let Some(parent) = path
+      .parent()
+      .filter(|parent| !parent.as_os_str().is_empty())
+    {
+      fs::create_dir_all(parent)
+        .map_err(|_| RuntimeError::SaveParentFailed { path: path.clone() })?;
+    }
+
+    self
+      .backend
+      .as_ref()
+      .ok_or_else(|| RuntimeError::SaveFailed { path: path.clone() })?
+      .save_active_parquet(&path)
+      .map_err(|_| RuntimeError::SaveFailed { path: path.clone() })?;
+
+    let saved_dataset = DatasetInfo {
+      source: path.clone(),
+      row_count: dataset.row_count,
+      columns: dataset.columns.clone(),
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    };
+    Ok(ExecutionResult::Save(SaveResult {
+      path,
+      dataset: saved_dataset,
+    }))
+  }
+
   fn remove_value_label_attachment(&mut self, variable: &str) {
     self
       .label_metadata
@@ -3744,6 +3833,18 @@ impl DuckDbBackend {
       .execute_batch("SET preserve_insertion_order = true")
       .map_err(|_| RuntimeError::BackendInitialization)?;
     Ok(Self { connection })
+  }
+
+  fn save_active_parquet(&self, path: &Path) -> Result<(), ()> {
+    let path_string = path.to_str().ok_or(())?;
+    self
+      .connection
+      .execute(
+        &format!("COPY (SELECT * FROM {ACTIVE_TABLE}) TO ? (FORMAT PARQUET)"),
+        [path_string],
+      )
+      .map(|_| ())
+      .map_err(|_| ())
   }
 
   fn load_eager_parquet(&mut self, path: &Path) -> Result<DatasetInfo, RuntimeError> {
