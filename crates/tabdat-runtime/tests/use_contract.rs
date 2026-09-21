@@ -247,7 +247,7 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
   );
 
   let wrong_extension_path = fixture.root.join("patients.csv");
-  fs::write(&wrong_extension_path, "not csv").expect("wrong-extension fixture should be written");
+  fs::write(&wrong_extension_path, b"\xff").expect("invalid CSV fixture should be written");
   let wrong_extension = use_command(&wrong_extension_path);
   assert_eq!(
     session.execute(wrong_extension).unwrap_err(),
