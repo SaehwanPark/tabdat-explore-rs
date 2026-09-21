@@ -393,6 +393,10 @@ Port TabDat's language before implementing most execution.
   options `robust`, `cluster(<var>)`, `noconstant`, `wls(<var>)`, `gls(<var>)`,
   exact diagnostic parity, and parser-only execution deferral are covered;
   statistical estimation and model state remain deferred).
+- [x] Add the bounded direct `logit` and `probit` syntax slice (PR #81, squash
+  merge `a14d552`; typed `LogitCommand` and `ProbitCommand`, options `robust`,
+  `cluster(<var>)`, `noconstant`, exact diagnostic parity, and parser-only execution
+  deferral are covered; statistical estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
