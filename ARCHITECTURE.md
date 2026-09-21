@@ -26,7 +26,7 @@ silently invent parity.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, and `sql`, plus owned
+  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, `sql`, and `regress`, plus owned
   command/error types and focused tests.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
@@ -76,6 +76,11 @@ Merged PR #77 (`feeeaf4`) records the bounded backend-independent syntax-only
 `sql <query> [into <table>]` form. Owned query text and optional named-table
 target are parsed, while multiline script blocks, SQL execution, and named-table
 lifecycle remain deferred.
+
+Merged PR #79 (`e6b81d3`) records the bounded backend-independent syntax-only
+`regress <y> <xvars> [, robust] [, cluster(<var>)] [, noconstant] [, wls(<var>) | gls(<var>)]`
+form. Owned outcome, ordered predictors, typed estimator, weight variable, and covariance
+settings are parsed, while statistical estimation and post-estimation remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
