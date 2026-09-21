@@ -123,6 +123,14 @@ fn loads_default_csv_with_owned_schema_and_null_values() {
     ]
   );
   assert_eq!(session.active_dataset(), Some(&load.dataset));
+
+  session
+    .execute(parse_command("label variable age \"Age\"").expect("label should parse"))
+    .expect("label should attach before the successful replacement");
+  session
+    .execute(fixture.command())
+    .expect("a successful CSV replacement should load");
+  assert!(session.active_label_metadata().is_none());
 }
 
 #[test]
@@ -174,7 +182,7 @@ fn has_header_false_uses_generated_column_names() {
   let mut session = Session::new();
 
   let result = session
-    .execute(use_csv_command(&path, None, Some(false)))
+    .execute(use_csv_command(&path, Some(","), Some(false)))
     .expect("headerless CSV should load");
   let ExecutionResult::Load(load) = result else {
     panic!("use should return a Load result");

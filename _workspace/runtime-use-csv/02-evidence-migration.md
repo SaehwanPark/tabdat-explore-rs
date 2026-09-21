@@ -93,8 +93,7 @@ git diff --check
 
 Observed locally: format, check, the workspace suite (including 65 existing
 `use_contract` tests and the six CSV tests), Clippy, and diff checks pass on the
-final implementation revision. The exact post-review command run and revision
-will be retained in PR #74's final evidence update.
+final implementation revision `dcd33cf`.
 
 Dependency and unsafe-code policy checks:
 
@@ -113,11 +112,12 @@ reported by geiger, remain policy-reporting scope only.
 ## State and scope review inputs
 
 Focused tests cover default auto-detection, explicit semicolon delimiter and
-header options, `has_header(false)`, quoted fields, empty/NULL fields,
-case-insensitive `.CSV`, header-only and empty files, ordered schema/count/
-preview values, missing and non-file paths, unsupported suffixes, invalid
-UTF-8 CSV, Parquet option compatibility, and failed replacement preserving all
-prior rows, metadata, labels, and backend usability.
+header options, the combined delimiter/headerless branch, quoted fields,
+empty/NULL fields, case-insensitive `.CSV`, header-only and empty files, ordered
+schema/count/preview values, missing and non-file paths, unsupported suffixes,
+invalid UTF-8 CSV, Parquet/unsupported-suffix option compatibility, successful
+label clearing, and failed replacement preserving all prior rows, metadata,
+labels, and backend usability.
 
 Known bounded deviations are explicit: no remote or URI source, lazy or
 materialized execution, Feather/Arrow/DTA, `~` expansion, broader path

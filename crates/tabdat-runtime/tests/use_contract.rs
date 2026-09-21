@@ -274,6 +274,15 @@ fn rejects_invalid_paths_and_extensions_before_backend_read() {
       path: unsupported_path
     }
   );
+
+  let mut unsupported_with_options = use_command(&fixture.root.join("patients.txt"));
+  if let Command::Use { delimiter, .. } = &mut unsupported_with_options {
+    *delimiter = Some(";".to_owned());
+  }
+  assert_eq!(
+    session.execute(unsupported_with_options).unwrap_err(),
+    RuntimeError::UnsupportedUseConfiguration
+  );
   assert!(session.active_dataset().is_none());
 }
 

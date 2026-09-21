@@ -2875,7 +2875,15 @@ impl Session {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     };
     let path = PathBuf::from(raw_path);
-    let input_format = local_input_format(&path)?;
+    let input_format = match local_input_format(&path) {
+      Ok(input_format) => input_format,
+      Err(RuntimeError::UnsupportedFormat { .. })
+        if delimiter.is_some() || has_header.is_some() =>
+      {
+        return Err(RuntimeError::UnsupportedUseConfiguration);
+      }
+      Err(error) => return Err(error),
+    };
     if input_format == LocalInputFormat::Parquet && (delimiter.is_some() || has_header.is_some()) {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     }

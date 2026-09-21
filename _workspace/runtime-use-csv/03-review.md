@@ -14,9 +14,11 @@ compatibility/coverage issues:
 - the shared Parquet transaction diagnostic was restored, with a separate
   `CsvTransaction` error for CSV publication failures;
 - Parquet delimiter/header options are rejected before filesystem validation,
-  preserving the previous error precedence; and
+  and unsupported suffixes with options retain the previous configuration-first
+  behavior; and
 - focused coverage now includes an unsupported suffix, empty input, all prior
-  replacement rows, and label metadata preservation.
+  replacement rows, combined delimiter/header options, and label metadata
+  preservation/clearing.
 
 The reviewer found the core CSV implementation structurally sound: path,
 delimiter, and header values are bound; staging is cleaned on every failure;
