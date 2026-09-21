@@ -388,6 +388,11 @@ Port TabDat's language before implementing most execution.
   queries, trailing `into <table>` with identifier/reserved-name validation,
   and parser-only execution deferral are covered; multiline script grouping,
   SQL execution, and named-table lifecycle remain deferred).
+- [x] Add the bounded direct `regress` syntax slice (PR #79, squash merge
+  `e6b81d3`; typed `RegressEstimator` (`ols`, `wls`, `gls`), `RegressCommand`,
+  options `robust`, `cluster(<var>)`, `noconstant`, `wls(<var>)`, `gls(<var>)`,
+  exact diagnostic parity, and parser-only execution deferral are covered;
+  statistical estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

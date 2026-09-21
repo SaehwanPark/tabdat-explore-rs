@@ -841,6 +841,31 @@ execution, named-table lifecycle, schema/type validation, reporting, CLI, JSON,
 MCP, and broad Python database parity deferred. The Phase 6.5 runtime `sql` item
 remains unchecked.
 
+## Verified slice: syntax-only `regress` command
+
+Merged [PR #79](https://github.com/SaehwanPark/tabdat-explore-rs/pull/79)
+([e6b81d3](https://github.com/SaehwanPark/tabdat-explore-rs/commit/e6b81d3))
+adds a bounded, backend-independent `regress` syntax boundary to
+`tabdat-language`. The parser returns an owned `RegressCommand` with typed
+`RegressEstimator` (`ols`, `wls`, `gls`), ordered predictors, optional weight
+variable, robust covariance flag, optional cluster variable, and intercept
+inclusion flag. It validates mutual exclusions (`robust` vs `cluster`, `wls` vs
+`gls`), option single-use rules, variable count constraints, and flag option values,
+reporting exact Python-compatible diagnostics. Runtime deliberately returns the
+typed unsupported command result; it does not perform estimation, initialize backends,
+or mutate model state.
+
+Evidence: [_workspace/parser-regress-syntax/](_workspace/parser-regress-syntax/),
+including the [contract](_workspace/parser-regress-syntax/01-contract.md) and
+[summary](_workspace/parser-regress-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, linear algebra, FFI
+backends, model results, post-estimation, reporting, CLI, JSON, MCP, and broad
+estimator parity deferred. The Phase 7.1 linear model estimation items remain
+unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
