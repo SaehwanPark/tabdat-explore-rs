@@ -5,9 +5,9 @@
 This document separates repository truth from the target architecture. The Rust
 repository currently contains an unpublished binary scaffold, a small
 `tabdat-language` crate, and bounded `tabdat-runtime` evaluations from PR #22
-(`26dba2b`) and PR #70 (`9bbf804`). The language crate remains a syntax-only
-parser; the runtime crate is a library-only eager local-Parquet boundary and
-not a usable TabDat command runtime.
+(`26dba2b`), PR #70 (`9bbf804`), and PR #72 (`5cb5b34`). The language crate
+remains a syntax-only parser; the runtime crate is a library-only eager
+local-Parquet boundary and not a usable TabDat command runtime.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
 names and product commands are not installed support. The [migration authority](docs/migration/README.md)
@@ -38,11 +38,12 @@ silently invent parity.
 - `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
   evaluations that accept only an existing local `.parquet` through
   `Command::Use` in eager mode and can write the published eager relation
-  through the bounded `Command::Save` Parquet path. These paths return owned
-  metadata, preserve active state, and remain library-only; they are not
-  connected to the root binary and do not establish broad data-runtime or
-  DuckDB product support. See ADR 0007, `_workspace/use-eager-parquet/`, and
-  `_workspace/runtime-save/`.
+  through bounded `Command::Save` Parquet and `Command::Export` CSV paths.
+  These paths return owned metadata, preserve active state, and remain
+  library-only; they are not connected to the root binary and do not establish
+  broad data-runtime or DuckDB product support. See ADR 0007,
+  `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`, and
+  `_workspace/runtime-export-csv/`.
 - `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
   checks, and unsafe inventory are development controls, not runtime architecture.
 - There is no general session/data-relation model, statistical backend, REPL, MCP
@@ -59,8 +60,9 @@ all relation effects remain deferred.
 Merged PR #29 (`8b16223`) records the bounded backend-independent syntax-only
 `save` and `export` forms. Their owned paths and `replace` flags are parsed in
 the language layer. Merged PR #70 (`9bbf804`) adds the separate bounded eager
-runtime `save` implementation for local Parquet; `export`, broader output
-formats, path normalization, and persistence remain deferred.
+runtime `save` implementation for local Parquet, and merged PR #72 (`5cb5b34`)
+adds CSV-only eager `export`; broader output formats, path normalization, and
+persistence remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

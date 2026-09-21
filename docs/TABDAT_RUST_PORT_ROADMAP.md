@@ -649,18 +649,22 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 - [x] `save` — bounded eager local-Parquet output for an active relation
   (PR #70, squash merge `9bbf804`; detailed contract/evidence in
   `_workspace/runtime-save/`)
-- [ ] `export`
+- [x] `export` — bounded eager CSV output for an active local-Parquet relation
+  (PR #72, squash merge `5cb5b34`; detailed contract/evidence in
+  `_workspace/runtime-export-csv/`)
 - [x] Parquet output — bounded eager `save` path only (PR #70); broader output
   adapters remain deferred
-- [ ] CSV output
+- [x] CSV output — bounded eager `export` path only (PR #72); broader output
+  adapters remain deferred
 - [ ] Feather/Arrow output
 - [ ] DTA input through ReadStat
 
-The accepted `save` slice validates `.parquet` targets, creates missing parent
-directories, gates replacement, preserves the active session relation, and
-round-trips schema/order/count/NULL values. It is library-only; `export`,
-path normalization, lazy/materialized persistence, metadata/label/panel
-persistence, and interface surfaces remain outside this roadmap gate.
+The accepted `save` and CSV-only `export` slices validate their output targets,
+create missing parent directories, gate replacement, preserve the active session
+relation, and cover schema/order/count/NULL values. They are library-only eager
+local-Parquet boundaries; Parquet aliasing through `export`, path normalization,
+lazy/materialized persistence, metadata/label/panel persistence, Feather/Arrow,
+and interface surfaces remain outside this roadmap gate.
 
 ### 6.6 Semantic parity
 
