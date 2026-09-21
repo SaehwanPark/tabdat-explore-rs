@@ -7,8 +7,8 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use duckdb::Connection;
 use duckdb::types::{TimeUnit, Value, ValueRef};
+use duckdb::{Connection, params};
 use sha2::{Digest, Sha256};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
@@ -44,7 +44,7 @@ pub struct DatasetInfo {
   pub lazy_engine: Option<LazyEngine>,
 }
 
-/// The owned result returned after an eager Parquet load.
+/// The owned result returned after an eager local Parquet or CSV load.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoadResult {
   /// Metadata for the newly active dataset.
@@ -484,7 +484,7 @@ pub enum RuntimeError {
   FileNotFound { path: PathBuf },
   /// The source path exists but is not a regular file.
   NotAFile { path: PathBuf },
-  /// The source path is not a local Parquet file.
+  /// The source path is not a local Parquet or CSV file.
   UnsupportedFormat { path: PathBuf },
   /// DuckDB could not read the staged Parquet relation.
   ParquetRead { path: PathBuf },
@@ -492,6 +492,14 @@ pub enum RuntimeError {
   SchemaRead { path: PathBuf },
   /// DuckDB returned an invalid row count.
   RowCount { path: PathBuf },
+  /// DuckDB could not read the staged CSV relation.
+  CsvRead { path: PathBuf },
+  /// DuckDB could not inspect the staged CSV schema.
+  CsvSchemaRead { path: PathBuf },
+  /// DuckDB returned an invalid CSV row count.
+  CsvRowCount { path: PathBuf },
+  /// DuckDB could not atomically publish the staged CSV relation.
+  CsvTransaction { path: PathBuf },
   /// DuckDB could not atomically publish the staged relation.
   Transaction { path: PathBuf },
   /// DuckDB could not initialize its in-memory connection.
@@ -721,7 +729,7 @@ impl fmt::Display for RuntimeError {
         "{command} requires an active dataset; run use <path> first"
       ),
       Self::UnsupportedUseConfiguration => {
-        formatter.write_str("use runtime slice supports only eager local Parquet loads")
+        formatter.write_str("use runtime slice supports only eager local Parquet or CSV loads")
       }
       Self::NonUtf8Path { path } => {
         write!(formatter, "use path is not valid UTF-8: {}", path.display())
@@ -731,7 +739,7 @@ impl fmt::Display for RuntimeError {
       }
       Self::NotAFile { path } => write!(formatter, "use expected a file path: {}", path.display()),
       Self::UnsupportedFormat { path: _ } => {
-        formatter.write_str("use runtime slice supports only local .parquet files")
+        formatter.write_str("use runtime slice supports only local .parquet or .csv files")
       }
       Self::ParquetRead { path } => {
         write!(
@@ -754,11 +762,35 @@ impl fmt::Display for RuntimeError {
           path.display()
         )
       }
+      Self::CsvRead { path } => {
+        write!(formatter, "use could not read CSV file: {}", path.display())
+      }
+      Self::CsvSchemaRead { path } => {
+        write!(
+          formatter,
+          "use could not inspect CSV schema: {}",
+          path.display()
+        )
+      }
+      Self::CsvRowCount { path } => {
+        write!(
+          formatter,
+          "use could not count CSV rows: {}",
+          path.display()
+        )
+      }
       Self::Transaction { path } => write!(
         formatter,
         "use could not publish Parquet relation: {}",
         path.display()
       ),
+      Self::CsvTransaction { path } => {
+        write!(
+          formatter,
+          "use could not publish CSV relation: {}",
+          path.display()
+        )
+      }
       Self::BackendInitialization => formatter.write_str("use could not initialize DuckDB"),
       Self::SaveUnsupportedFormat { path } => write!(
         formatter,
@@ -2835,11 +2867,7 @@ impl Session {
     delimiter: Option<String>,
     has_header: Option<bool>,
   ) -> Result<ExecutionResult, RuntimeError> {
-    if execution_mode != ExecutionMode::Eager
-      || lazy_engine.is_some()
-      || delimiter.is_some()
-      || has_header.is_some()
-    {
+    if execution_mode != ExecutionMode::Eager || lazy_engine.is_some() {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     }
 
@@ -2847,13 +2875,26 @@ impl Session {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     };
     let path = PathBuf::from(raw_path);
-    validate_local_parquet_path(&path)?;
+    let input_format = match local_input_format(&path) {
+      Ok(input_format) => input_format,
+      Err(RuntimeError::UnsupportedFormat { .. })
+        if delimiter.is_some() || has_header.is_some() =>
+      {
+        return Err(RuntimeError::UnsupportedUseConfiguration);
+      }
+      Err(error) => return Err(error),
+    };
+    if input_format == LocalInputFormat::Parquet && (delimiter.is_some() || has_header.is_some()) {
+      return Err(RuntimeError::UnsupportedUseConfiguration);
+    }
+    validate_local_input_path(&path)?;
 
     let dataset = if let Some(backend) = self.backend.as_mut() {
-      backend.load_eager_parquet(&path)?
+      backend.load_eager_input(&path, input_format, delimiter.as_deref(), has_header)?
     } else {
       let mut backend = DuckDbBackend::new()?;
-      let dataset = backend.load_eager_parquet(&path)?;
+      let dataset =
+        backend.load_eager_input(&path, input_format, delimiter.as_deref(), has_header)?;
       self.backend = Some(backend);
       dataset
     };
@@ -3894,16 +3935,23 @@ fn compile_recode_output(value: &RecodeValue, output_is_text: bool) -> Result<St
   }
 }
 
-fn validate_local_parquet_path(path: &Path) -> Result<(), RuntimeError> {
-  let extension_is_parquet = path
-    .extension()
-    .and_then(|extension| extension.to_str())
-    .is_some_and(|extension| extension.eq_ignore_ascii_case("parquet"));
-  if !extension_is_parquet {
-    return Err(RuntimeError::UnsupportedFormat {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LocalInputFormat {
+  Parquet,
+  Csv,
+}
+
+fn local_input_format(path: &Path) -> Result<LocalInputFormat, RuntimeError> {
+  match path.extension().and_then(|extension| extension.to_str()) {
+    Some(extension) if extension.eq_ignore_ascii_case("parquet") => Ok(LocalInputFormat::Parquet),
+    Some(extension) if extension.eq_ignore_ascii_case("csv") => Ok(LocalInputFormat::Csv),
+    _ => Err(RuntimeError::UnsupportedFormat {
       path: path.to_owned(),
-    });
+    }),
   }
+}
+
+fn validate_local_input_path(path: &Path) -> Result<(), RuntimeError> {
   if !path.exists() {
     return Err(RuntimeError::FileNotFound {
       path: path.to_owned(),
@@ -3953,6 +4001,92 @@ impl DuckDbBackend {
       )
       .map(|_| ())
       .map_err(|_| ())
+  }
+
+  fn load_eager_input(
+    &mut self,
+    path: &Path,
+    input_format: LocalInputFormat,
+    delimiter: Option<&str>,
+    has_header: Option<bool>,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    match input_format {
+      LocalInputFormat::Parquet => self.load_eager_parquet(path),
+      LocalInputFormat::Csv => self.load_eager_csv(path, delimiter, has_header),
+    }
+  }
+
+  fn load_eager_csv(
+    &mut self,
+    path: &Path,
+    delimiter: Option<&str>,
+    has_header: Option<bool>,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    let path_string = path.to_str().ok_or_else(|| RuntimeError::NonUtf8Path {
+      path: path.to_owned(),
+    })?;
+
+    self.drop_staging();
+    let load_result = match (delimiter, has_header) {
+      (None, None) => self.connection.execute(
+        &format!("CREATE TEMP TABLE {STAGING_TABLE} AS SELECT * FROM read_csv_auto(?)"),
+        [path_string],
+      ),
+      (Some(delimiter), None) => self.connection.execute(
+        &format!("CREATE TEMP TABLE {STAGING_TABLE} AS SELECT * FROM read_csv_auto(?, delim=?)"),
+        params![path_string, delimiter],
+      ),
+      (None, Some(has_header)) => self.connection.execute(
+        &format!("CREATE TEMP TABLE {STAGING_TABLE} AS SELECT * FROM read_csv_auto(?, header=?)"),
+        params![path_string, has_header],
+      ),
+      (Some(delimiter), Some(has_header)) => self.connection.execute(
+        &format!(
+          "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT * FROM read_csv_auto(?, delim=?, header=?)"
+        ),
+        params![path_string, delimiter, has_header],
+      ),
+    };
+    if load_result.is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::CsvRead {
+        path: path.to_owned(),
+      });
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::CsvSchemaRead {
+          path: path.to_owned(),
+        });
+      }
+    };
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::CsvRowCount {
+          path: path.to_owned(),
+        });
+      }
+    };
+
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::CsvTransaction {
+        path: path.to_owned(),
+      });
+    }
+
+    Ok(DatasetInfo {
+      source: path.to_owned(),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
   }
 
   fn load_eager_parquet(&mut self, path: &Path) -> Result<DatasetInfo, RuntimeError> {
