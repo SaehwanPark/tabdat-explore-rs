@@ -866,6 +866,31 @@ backends, model results, post-estimation, reporting, CLI, JSON, MCP, and broad
 estimator parity deferred. The Phase 7.1 linear model estimation items remain
 unchecked.
 
+## Verified slice: syntax-only `logit` and `probit` commands
+
+Merged [PR #81](https://github.com/SaehwanPark/tabdat-explore-rs/pull/81)
+([a14d552](https://github.com/SaehwanPark/tabdat-explore-rs/commit/a14d552))
+adds bounded, backend-independent `logit` and `probit` syntax boundaries to
+`tabdat-language`. The parser returns owned `LogitCommand` and `ProbitCommand`
+types with ordered predictors, robust covariance flag, optional cluster
+variable, and intercept inclusion flag. It validates mutual exclusions
+(`robust` vs `cluster`), single-variable requirement for `cluster`, option
+single-use rules, variable count constraints, and flag option values,
+reporting exact Python-compatible diagnostics. Runtime deliberately returns
+the typed unsupported command result; it does not perform estimation,
+initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-logit-probit-syntax/](_workspace/parser-logit-probit-syntax/),
+including the [contract](_workspace/parser-logit-probit-syntax/01-contract.md) and
+[summary](_workspace/parser-logit-probit-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, optimization algorithms,
+link functions, FFI backends, model results, post-estimation, reporting, CLI,
+JSON, MCP, and broad binary response estimator parity deferred. The Phase 7.2
+binary model estimation items remain unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
