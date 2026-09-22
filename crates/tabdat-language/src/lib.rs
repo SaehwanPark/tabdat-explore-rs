@@ -144,6 +144,27 @@ pub enum Command {
   Logit { command: LogitCommand },
   /// Fit a probit regression model (execution is deferred).
   Probit { command: ProbitCommand },
+  /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
+  BayesPrefix { command: BayesPrefixCommand },
+}
+
+/// The bounded Bayesian estimation prefix command form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BayesPrefixCommand {
+  /// The inner estimation command (restricted to regress or logit).
+  pub command: Box<Command>,
+  /// The number of MCMC draws.
+  pub draws: Option<i64>,
+  /// The number of warmup/burn-in draws.
+  pub burnin: Option<i64>,
+  /// The number of MCMC chains.
+  pub chains: Option<i64>,
+  /// The thinning interval.
+  pub thin: Option<i64>,
+  /// The random seed for the sampler.
+  pub seed: Option<i64>,
+  /// The custom prior distribution specifications as `(variable, distribution)`.
+  pub priors: Vec<(String, String)>,
 }
 
 /// The bounded SQL command AST representation.
@@ -932,6 +953,19 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("unsupported token in command: :"));
   }
 
+  let first_word = command
+    .split(is_command_whitespace)
+    .next()
+    .unwrap_or("")
+    .to_ascii_lowercase();
+
+  if first_word == "bayes:"
+    || first_word.starts_with("bayes,")
+    || (first_word == "bayes" && first_unquoted_colon(command).is_some())
+  {
+    return parse_bayes_prefix_command(command);
+  }
+
   // `status` keeps the Python tokenizer's punctuation diagnostics for
   // attached unary-sign forms such as `status-1` and `status+1`.
   if command.len() > 6
@@ -1049,6 +1083,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "probit assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("bayes") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "bayes assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1149,6 +1191,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "regress" => parse_regress_command(body),
     "logit" => parse_binary_response_command("logit", body),
     "probit" => parse_binary_response_command("probit", body),
+    "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
@@ -3319,6 +3362,150 @@ fn parse_binary_response_command(command_name: &str, body: &str) -> Result<Comma
   }
 }
 
+fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
+  if body.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if body.starts_with('=') {
+    return Err(ParseError::new(
+      "bayes assignment requires a target before =",
+    ));
+  }
+  Err(ParseError::new(
+    "bayes expects syntax: bayes linear <y> <xvars>",
+  ))
+}
+
+fn parse_bayes_prefix_command(command: &str) -> Result<Command, ParseError> {
+  let Some(colon_index) = first_unquoted_colon(command) else {
+    return Err(ParseError::new(
+      "bayes prefix expects syntax: bayes [, options]: command",
+    ));
+  };
+
+  let before = command[..colon_index].trim_matches(is_command_whitespace);
+  let after = command[colon_index + 1..].trim_matches(is_command_whitespace);
+
+  let (draws, burnin, chains, thin, seed, priors) = if before.eq_ignore_ascii_case("bayes") {
+    (None, None, None, None, None, Vec::new())
+  } else {
+    if !before.to_ascii_lowercase().starts_with("bayes") {
+      return Err(ParseError::new("invalid bayes prefix"));
+    }
+    let options_part = before[5..].trim_matches(is_command_whitespace);
+    if !options_part.starts_with(',') {
+      return Err(ParseError::new(
+        "bayes prefix options must start with a comma",
+      ));
+    }
+
+    let parsed_options = parse_use_options(options_part[1..].trim_matches(is_command_whitespace))?;
+
+    let mut draws = None;
+    let mut burnin = None;
+    let mut chains = None;
+    let mut thin = None;
+    let mut seed = None;
+    let mut priors = Vec::new();
+
+    for option in parsed_options {
+      match option.name.as_str() {
+        "draws" => {
+          let value = parse_bayes_numeric_option(&option.name, &option.value, "draws")?;
+          draws = Some(value);
+        }
+        "burnin" | "tune" => {
+          let value = parse_bayes_numeric_option(&option.name, &option.value, "burnin")?;
+          burnin = Some(value);
+        }
+        "chains" => {
+          let value = parse_bayes_numeric_option(&option.name, &option.value, "chains")?;
+          chains = Some(value);
+        }
+        "thin" => {
+          let value = parse_bayes_numeric_option(&option.name, &option.value, "thin")?;
+          thin = Some(value);
+        }
+        "seed" | "rseed" => {
+          let value = parse_bayes_numeric_option(&option.name, &option.value, "seed")?;
+          seed = Some(value);
+        }
+        "prior" => match option.value {
+          UseOptionValue::Prior(var, dist) => {
+            priors.push((var, dist));
+          }
+          _ => {
+            return Err(ParseError::new("prior expects (variable, distribution)"));
+          }
+        },
+        other => {
+          return Err(ParseError::new(format!(
+            "unsupported bayes option: {other}"
+          )));
+        }
+      }
+    }
+
+    (draws, burnin, chains, thin, seed, priors)
+  };
+
+  if after.is_empty() {
+    return Err(ParseError::new("bayes expects a command after :"));
+  }
+
+  let inner_command = parse_command(after)?;
+  match &inner_command {
+    Command::Regress { .. } | Command::Logit { .. } => {}
+    _ => {
+      return Err(ParseError::new(
+        "bayes prefix only supports regress and logit commands",
+      ));
+    }
+  }
+
+  Ok(Command::BayesPrefix {
+    command: BayesPrefixCommand {
+      command: Box::new(inner_command),
+      draws,
+      burnin,
+      chains,
+      thin,
+      seed,
+      priors,
+    },
+  })
+}
+
+fn parse_bayes_numeric_option(
+  _option_name: &str,
+  value: &UseOptionValue,
+  error_name: &str,
+) -> Result<i64, ParseError> {
+  match value {
+    UseOptionValue::Number(text) => {
+      if let Ok(num) = text.parse::<f64>() {
+        Ok(num as i64)
+      } else {
+        Err(ParseError::new(format!(
+          "{error_name} must be a numeric value"
+        )))
+      }
+    }
+    UseOptionValue::String(text) => {
+      if let Ok(num) = text.parse::<f64>() {
+        Ok(num as i64)
+      } else {
+        Err(ParseError::new(format!(
+          "{error_name} must be a numeric value"
+        )))
+      }
+    }
+    _ => Err(ParseError::new(format!(
+      "{error_name} must be a numeric value"
+    ))),
+  }
+}
+
 fn ivregress_identifier_option(
   options: &[UseOption],
   name: &str,
@@ -4987,6 +5174,7 @@ enum UseOptionValue {
   Number(String),
   Boolean(bool),
   Identifiers(Vec<String>),
+  Prior(String, String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -5280,7 +5468,19 @@ fn parse_use_parenthesized_value(
         "prior option expects prior(variable, distribution) syntax",
       ));
     }
-    return Ok(UseOptionValue::Identifiers(Vec::new()));
+    let var_name = tokens[..comma_index]
+      .iter()
+      .map(|token| token.text.as_str())
+      .collect::<String>()
+      .trim()
+      .to_string();
+    let dist_expr = tokens[comma_index + 1..]
+      .iter()
+      .map(|token| token.text.as_str())
+      .collect::<String>()
+      .trim()
+      .to_string();
+    return Ok(UseOptionValue::Prior(var_name, dist_expr));
   }
 
   if name == "l1_ratio" {
@@ -5801,9 +6001,9 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand, ParseError,
-    ProbitCommand, RegressCommand, RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand,
-    TabulateCommand, parse_command,
+    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
+    ParseError, ProbitCommand, RegressCommand, RegressEstimator, RowLimit, SettingName, SortKey,
+    SqlCommand, TabulateCommand, parse_command,
   };
 
   #[test]
@@ -8222,6 +8422,165 @@ mod tests {
       ("probit=", "probit assignment requires a target before ="),
       ("probit==", "unsupported token in command: =="),
       ("probit:y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_bayes_prefix_syntax() {
+    assert_eq!(
+      parse_command("bayes: regress y x").unwrap(),
+      Command::BayesPrefix {
+        command: BayesPrefixCommand {
+          command: Box::new(Command::Regress {
+            command: RegressCommand {
+              outcome: "y".to_string(),
+              predictors: vec!["x".to_string()],
+              estimator: RegressEstimator::Ols,
+              weight_variable: None,
+              robust: false,
+              cluster_variable: None,
+              include_intercept: true,
+            },
+          }),
+          draws: None,
+          burnin: None,
+          chains: None,
+          thin: None,
+          seed: None,
+          priors: Vec::new(),
+        },
+      }
+    );
+
+    let cmd1 = "bayes, draws(500) burnin(200) chains(2) thin(2) seed(123): regress y x";
+    assert_eq!(
+      parse_command(cmd1).unwrap(),
+      Command::BayesPrefix {
+        command: BayesPrefixCommand {
+          command: Box::new(Command::Regress {
+            command: RegressCommand {
+              outcome: "y".to_string(),
+              predictors: vec!["x".to_string()],
+              estimator: RegressEstimator::Ols,
+              weight_variable: None,
+              robust: false,
+              cluster_variable: None,
+              include_intercept: true,
+            },
+          }),
+          draws: Some(500),
+          burnin: Some(200),
+          chains: Some(2),
+          thin: Some(2),
+          seed: Some(123),
+          priors: Vec::new(),
+        },
+      }
+    );
+
+    let cmd2 = "bayes, prior(x, normal(0, 10)) prior(intercept, uniform(-5, 5)): logit y x";
+    assert_eq!(
+      parse_command(cmd2).unwrap(),
+      Command::BayesPrefix {
+        command: BayesPrefixCommand {
+          command: Box::new(Command::Logit {
+            command: LogitCommand {
+              outcome: "y".to_string(),
+              predictors: vec!["x".to_string()],
+              robust: false,
+              cluster_variable: None,
+              include_intercept: true,
+            },
+          }),
+          draws: None,
+          burnin: None,
+          chains: None,
+          thin: None,
+          seed: None,
+          priors: vec![
+            ("x".to_string(), "normal(0,10)".to_string()),
+            ("intercept".to_string(), "uniform(-5,5)".to_string()),
+          ],
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_bayes_prefix_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "bayes: codebook",
+        "bayes prefix only supports regress and logit commands",
+      ),
+      (
+        "bayes: summarize",
+        "bayes prefix only supports regress and logit commands",
+      ),
+      (
+        "bayes: probit y x",
+        "bayes prefix only supports regress and logit commands",
+      ),
+      ("bayes:", "bayes expects a command after :"),
+      ("bayes: ", "bayes expects a command after :"),
+      (
+        "bayes, draws(100)",
+        "bayes prefix expects syntax: bayes [, options]: command",
+      ),
+      (
+        "bayes draws(100): regress y x",
+        "bayes prefix options must start with a comma",
+      ),
+      (
+        "bayes, invalid(1): regress y x",
+        "option invalid values must be identifiers",
+      ),
+      (
+        "bayes, invalid: regress y x",
+        "unsupported bayes option: invalid",
+      ),
+      (
+        "bayes, draws(abc): regress y x",
+        "option draws expects a numeric value",
+      ),
+      (
+        "bayes, draws=abc: regress y x",
+        "draws must be a numeric value",
+      ),
+      (
+        "bayes, prior(x): regress y x",
+        "prior option expects prior(variable, distribution) syntax",
+      ),
+      (
+        "bayes, prior: regress y x",
+        "prior expects (variable, distribution)",
+      ),
+      (
+        "bayes, prior(x, normal): codebook",
+        "bayes prefix only supports regress and logit commands",
+      ),
+      (
+        "bayes,",
+        "bayes prefix expects syntax: bayes [, options]: command",
+      ),
+      (
+        "bayes, : regress y x",
+        "comma must be followed by at least one option",
+      ),
+      ("bayes", "bayes expects syntax: bayes linear <y> <xvars>"),
+      (
+        "bayes linear",
+        "bayes expects syntax: bayes linear <y> <xvars>",
+      ),
+      ("bayes = 1", "bayes assignment requires a target before ="),
+      ("bayes == 1", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
       assert_eq!(
