@@ -430,6 +430,11 @@ Port TabDat's language before implementing most execution.
   calls, required `params(<params>)` and `start(<values>)`, flags `robust`, `noconstant`,
   exact diagnostic parity, and parser-only execution deferral are covered;
   nonlinear least squares optimization and model state remain deferred).
+- [x] Add the bounded direct `streg` syntax slice (PR #97, squash
+  merge `735e6a1`; typed `StregDistribution` enum, typed `StregCommand`, required
+  `failure(<event>)` and `dist(...)`, flags `robust`, `noconstant`, cluster variable,
+  exact diagnostic parity, and parser-only execution deferral are covered;
+  survival regression estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
