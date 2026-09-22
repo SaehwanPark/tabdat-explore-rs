@@ -158,6 +158,8 @@ pub enum Command {
   Tobit { command: TobitCommand },
   /// Fit a Heckman sample-selection regression model (execution is deferred).
   Heckman { command: HeckmanCommand },
+  /// Fit a nonlinear regression model (execution is deferred).
+  Nl { command: NlCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -560,6 +562,24 @@ pub struct HeckmanCommand {
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `nl` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NlCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// The nonlinear mathematical expression.
+  pub expression: GenerateExpression,
+  /// Ordered parameter names.
+  pub parameter_names: Vec<String>,
+  /// Starting values for the parameters.
+  pub start_values: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -1146,6 +1166,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..2)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"nl"))
+    && command.as_bytes().get(2) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1339,6 +1367,12 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "heckman assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("nl") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("nl assignment requires a target before ="));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1446,6 +1480,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "qreg" => parse_qreg_command(body),
     "tobit" => parse_tobit_command(body),
     "heckman" => parse_heckman_command(body),
+    "nl" => parse_nl_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -4210,6 +4245,206 @@ fn parse_heckman_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_nl_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)";
+  let tokens = tokenize_use_options(body)?;
+  if tokens.is_empty() {
+    return Err(ParseError::new(syntax));
+  }
+  if tokens
+    .iter()
+    .any(|token| token.kind == UseTokenKind::Symbol && token.text == "==")
+  {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if tokens
+    .first()
+    .is_some_and(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  {
+    return Err(ParseError::new("nl assignment requires a target before ="));
+  }
+
+  let Some(equal_index) = tokens
+    .iter()
+    .position(|token| token.kind == UseTokenKind::Symbol && token.text == "=")
+  else {
+    return Err(ParseError::new(syntax));
+  };
+
+  let target_tokens = &tokens[..equal_index];
+  if target_tokens.is_empty() {
+    return Err(ParseError::new("nl assignment requires a target before ="));
+  }
+  if target_tokens.len() != 1 || !matches!(target_tokens[0].kind, UseTokenKind::Identifier { .. }) {
+    return Err(ParseError::new(syntax));
+  }
+  let outcome = target_tokens[0].text.clone();
+
+  let remaining = &tokens[equal_index + 1..];
+  if remaining.is_empty() {
+    return Err(ParseError::new(
+      "nl assignment requires an expression after =",
+    ));
+  }
+
+  let mut depth = 0_i32;
+  let mut option_start = None;
+  for (index, token) in remaining.iter().enumerate() {
+    match (&token.kind, token.text.as_str()) {
+      (UseTokenKind::Symbol, "(") => depth += 1,
+      (UseTokenKind::Symbol, ")") => depth -= 1,
+      (UseTokenKind::Identifier { quoted: false }, name)
+        if depth == 0 && name.eq_ignore_ascii_case("if") =>
+      {
+        return Err(ParseError::new("duplicate if clause"));
+      }
+      (UseTokenKind::Symbol, ",") if depth == 0 => {
+        option_start = Some(index);
+        break;
+      }
+      _ => {}
+    }
+  }
+
+  let (expression_tokens, option_tokens) = match option_start {
+    Some(index) => (&remaining[..index], &remaining[index + 1..]),
+    None => (remaining, &[][..]),
+  };
+
+  if expression_tokens.is_empty() {
+    return Err(ParseError::new(
+      "nl assignment requires an expression after =",
+    ));
+  }
+
+  let expression = GenerateExpressionParser::new(expression_tokens.to_vec()).parse()?;
+
+  let options = if option_tokens.is_empty() {
+    Vec::new()
+  } else {
+    parse_use_option_tokens(option_tokens.to_vec())?
+  };
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "params" | "start" | "robust" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "nl unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "nl option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let params_matches = options
+    .iter()
+    .filter(|option| option.name == "params")
+    .collect::<Vec<_>>();
+  if params_matches.is_empty() {
+    return Err(ParseError::new(
+      "nl option params expects one-or-more parameter names",
+    ));
+  }
+  if params_matches.len() > 1 {
+    return Err(ParseError::new(
+      "nl option params may only be supplied once",
+    ));
+  }
+  let parameter_names = match &params_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.is_empty() {
+        return Err(ParseError::new(
+          "nl option params expects one-or-more parameter names",
+        ));
+      }
+      let mut seen = std::collections::HashSet::new();
+      for name in values {
+        if !seen.insert(name) {
+          return Err(ParseError::new(
+            "nl option params must not repeat parameter names",
+          ));
+        }
+      }
+      values.clone()
+    }
+    _ => {
+      return Err(ParseError::new("nl option params expects variables"));
+    }
+  };
+
+  let start_matches = options
+    .iter()
+    .filter(|option| option.name == "start")
+    .collect::<Vec<_>>();
+  if start_matches.is_empty() {
+    return Err(ParseError::new(
+      "nl option start expects one-or-more numeric values",
+    ));
+  }
+  if start_matches.len() > 1 {
+    return Err(ParseError::new("nl option start may only be supplied once"));
+  }
+  let start_values = match &start_matches[0].value {
+    UseOptionValue::Numbers(values) => {
+      if values.is_empty() {
+        return Err(ParseError::new(
+          "nl option start expects one-or-more numeric values",
+        ));
+      }
+      for val in values {
+        if val.parse::<f64>().is_err() {
+          return Err(ParseError::new(
+            "nl option start expects one-or-more numeric values",
+          ));
+        }
+      }
+      values.clone()
+    }
+    _ => {
+      return Err(ParseError::new("nl option start expects variables"));
+    }
+  };
+
+  if start_values.len() != parameter_names.len() {
+    return Err(ParseError::new(
+      "nl option start count must match params count",
+    ));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Nl {
+    command: NlCommand {
+      outcome,
+      expression,
+      parameter_names,
+      start_values,
+      robust,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   if body.starts_with("==") {
     return Err(ParseError::new("unsupported token in command: =="));
@@ -6022,6 +6257,7 @@ enum UseOptionValue {
   Number(String),
   Boolean(bool),
   Identifiers(Vec<String>),
+  Numbers(Vec<String>),
   Prior(String, String),
 }
 
@@ -6341,12 +6577,27 @@ fn parse_use_parenthesized_value(
   }
 
   if name == "start" {
-    if !use_numeric_list_is_valid(&tokens) {
+    let mut values = Vec::new();
+    let mut index = 0;
+    while index < tokens.len() {
+      if tokens[index].kind == UseTokenKind::Number {
+        values.push(tokens[index].text.clone());
+        index += 1;
+        continue;
+      }
+      if tokens[index].kind == UseTokenKind::Symbol
+        && matches!(tokens[index].text.as_str(), "-" | "+")
+        && tokens
+          .get(index + 1)
+          .is_some_and(|token| token.kind == UseTokenKind::Number)
+      {
+        values.push(format!("{}{}", tokens[index].text, tokens[index + 1].text));
+        index += 2;
+        continue;
+      }
       return Err(ParseError::new("option start values must be numeric"));
     }
-    return Ok(UseOptionValue::Number(
-      tokens.iter().map(|token| token.text.as_str()).collect(),
-    ));
+    return Ok(UseOptionValue::Numbers(values));
   }
 
   if tokens
@@ -6849,10 +7100,11 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, HeckmanCommand, LazyEngine,
-    LogitCommand, NbregCommand, ParseError, PoissonCommand, ProbitCommand, QregCommand,
-    RegressCommand, RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand,
-    TobitCommand, ZinbCommand, ZipCommand, parse_command,
+    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, GenerateBinaryOperator,
+    GenerateExpression, HeckmanCommand, LazyEngine, LogitCommand, NbregCommand, NlCommand,
+    ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
+    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, TobitCommand, ZinbCommand,
+    ZipCommand, parse_command,
   };
 
   #[test]
@@ -10291,6 +10543,216 @@ mod tests {
       (
         "heckman y x,",
         "comma must be followed by at least one option",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_nl_syntax() {
+    assert_eq!(
+      parse_command("nl y = a + b*x, params(a b) start(1 2)").unwrap(),
+      Command::Nl {
+        command: NlCommand {
+          outcome: "y".to_owned(),
+          expression: GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("a".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Identifier("b".to_owned())),
+              operator: GenerateBinaryOperator::Multiply,
+              right: Box::new(GenerateExpression::Identifier("x".to_owned())),
+            }),
+          },
+          parameter_names: vec!["a".to_owned(), "b".to_owned()],
+          start_values: vec!["1".to_owned(), "2".to_owned()],
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("nl outcome = -b0 + b1*x1, params(b0 b1) start(-0.5 1.5) robust noconstant")
+        .unwrap(),
+      Command::Nl {
+        command: NlCommand {
+          outcome: "outcome".to_owned(),
+          expression: GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::UnaryMinus(Box::new(
+              GenerateExpression::Identifier("b0".to_owned())
+            ))),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Identifier("b1".to_owned())),
+              operator: GenerateBinaryOperator::Multiply,
+              right: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+            }),
+          },
+          parameter_names: vec!["b0".to_owned(), "b1".to_owned()],
+          start_values: vec!["-0.5".to_owned(), "1.5".to_owned()],
+          robust: true,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("NL `y var` = exp(a + b*`x var`), params(a b) start(1 2) robust").unwrap(),
+      Command::Nl {
+        command: NlCommand {
+          outcome: "y var".to_owned(),
+          expression: GenerateExpression::FunctionCall {
+            name: "exp".to_owned(),
+            arguments: vec![GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Identifier("a".to_owned())),
+              operator: GenerateBinaryOperator::Add,
+              right: Box::new(GenerateExpression::Binary {
+                left: Box::new(GenerateExpression::Identifier("b".to_owned())),
+                operator: GenerateBinaryOperator::Multiply,
+                right: Box::new(GenerateExpression::Identifier("x var".to_owned())),
+              }),
+            }],
+          },
+          parameter_names: vec!["a".to_owned(), "b".to_owned()],
+          start_values: vec!["1".to_owned(), "2".to_owned()],
+          robust: true,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("nl y = a, start(1) params(a)").unwrap(),
+      Command::Nl {
+        command: NlCommand {
+          outcome: "y".to_owned(),
+          expression: GenerateExpression::Identifier("a".to_owned()),
+          parameter_names: vec!["a".to_owned()],
+          start_values: vec!["1".to_owned()],
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_nl_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "nl",
+        "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)",
+      ),
+      (
+        "nl y x",
+        "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)",
+      ),
+      (
+        "nl y",
+        "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)",
+      ),
+      (
+        "nl if y > 0",
+        "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)",
+      ),
+      (
+        "nl y if y > 0",
+        "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)",
+      ),
+      (
+        "nl y = x",
+        "nl option params expects one-or-more parameter names",
+      ),
+      (
+        "nl y = a + b*x, params(a b)",
+        "nl option start expects one-or-more numeric values",
+      ),
+      (
+        "nl y = a + b*x, start(1 2)",
+        "nl option params expects one-or-more parameter names",
+      ),
+      (
+        "nl y = a + b*x, params(a b) start(1)",
+        "nl option start count must match params count",
+      ),
+      (
+        "nl y = a + b*x, params(a b) start(1 two)",
+        "option start values must be numeric",
+      ),
+      (
+        "nl y = a + b*x, params(a a) start(1 2)",
+        "nl option params must not repeat parameter names",
+      ),
+      (
+        "nl y = a + b*x if y > 0, params(a b) start(1 2)",
+        "duplicate if clause",
+      ),
+      (
+        "nl y = a + b*x, robust=true params(a b) start(1 2)",
+        "nl option robust does not accept a value",
+      ),
+      (
+        "nl y = a + b*x, noconstant=true params(a b) start(1 2)",
+        "nl option noconstant does not accept a value",
+      ),
+      (
+        "nl y = a + b*x, params() start(1)",
+        "option params expects at least one value",
+      ),
+      (
+        "nl y = a + b*x, params(a) start()",
+        "option start expects at least one value",
+      ),
+      (
+        "nl y = a + b*x, params(a) start(1) cluster(c)",
+        "nl unsupported option: cluster",
+      ),
+      (
+        "nl y = a + b*x, params(a) start(1) params(b)",
+        "nl option params may only be supplied once",
+      ),
+      (
+        "nl y = a + b*x, params(a) start(1) start(2)",
+        "nl option start may only be supplied once",
+      ),
+      ("nl:", "unsupported token in command: :"),
+      ("nl=", "nl assignment requires a target before ="),
+      ("nl==", "unsupported token in command: =="),
+      ("nl = x", "nl assignment requires a target before ="),
+      ("nl y =", "nl assignment requires an expression after ="),
+      ("nl == x", "unsupported token in command: =="),
+      ("nl y == x", "unsupported token in command: =="),
+      (
+        "nl y = a + b*x,",
+        "nl option params expects one-or-more parameter names",
+      ),
+      (
+        "nl y = a + b*x, params",
+        "nl option params expects variables",
+      ),
+      (
+        "nl y = a + b*x, params=a start=1",
+        "nl option params expects variables",
+      ),
+      (
+        "nl y = a + b*x, params(a) start",
+        "nl option start expects variables",
+      ),
+      (
+        "nl y = a + b*x, params('a') start(1)",
+        "option params values must be identifiers",
+      ),
+      (
+        "nl y = a + b*x, params(a) start(1) foo",
+        "nl unsupported option: foo",
+      ),
+      (
+        "nl y = a + b*x, params(a) start(1) foo bar",
+        "nl unsupported option: bar, foo",
       ),
     ];
     for (input, expected) in cases {
