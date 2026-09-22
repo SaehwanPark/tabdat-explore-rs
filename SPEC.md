@@ -1075,6 +1075,36 @@ optimization, Gauss-Newton / Levenberg-Marquardt solvers, FFI backends, model
 results, post-estimation, reporting, CLI, JSON, MCP, and broad nonlinear
 regression estimator parity deferred.
 
+## Verified slice: syntax-only `streg` command
+
+Merged [PR #97](https://github.com/SaehwanPark/tabdat-explore-rs/pull/97)
+([735e6a1](https://github.com/SaehwanPark/tabdat-explore-rs/commit/735e6a1))
+adds bounded, backend-independent `streg` syntax boundaries to
+`tabdat-language`. The parser returns an owned `StregCommand` type with
+a survival time variable, ordered predictor list, required failure indicator
+variable (`failure`), required baseline distribution (`dist`, holding typed
+`StregDistribution`), robust covariance flag, single cluster variable, and
+intercept inclusion flag. It validates syntax structure, missing arguments,
+conditions and assignment syntax, missing required `failure` and `dist` options,
+case-insensitive `dist` values (`weibull` or `exponential`), option single-use
+rules, cluster variable count constraints, mutual exclusivity of `robust` and
+`cluster`, unsupported options, and flag option values, reporting exact
+Python-compatible diagnostics. Owned `String` and `Vec<String>` types are used
+so that the public `Command` enum retains its `Eq` derive. Runtime deliberately
+returns the typed unsupported command result; it does not perform estimation,
+initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-streg-syntax/](_workspace/parser-streg-syntax/),
+including the [contract](_workspace/parser-streg-syntax/01-contract.md) and
+[summary](_workspace/parser-streg-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, parametric survival
+distribution fitting, maximum likelihood optimization, FFI backends, model
+results, post-estimation, reporting, CLI, JSON, MCP, and broad survival regression
+estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
