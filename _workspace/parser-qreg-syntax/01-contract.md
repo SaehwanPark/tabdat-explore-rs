@@ -62,15 +62,19 @@ Exact error messages from Python oracle:
 
 In `tabdat-language`:
 ```rust
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QregCommand {
     pub outcome: String,
     pub predictors: Vec<String>,
-    pub quantile: f64,
+    pub quantile: String,
     pub robust: bool,
     pub include_intercept: bool,
 }
 ```
+Numeric text for `quantile` remains an owned `String` (default `"0.5"`) so the
+public `Command` enum retains its `Eq` derive; floating-point conversion and
+loss optimization belong to a future statistical boundary.
+
 Add `Command::Qreg { command: QregCommand }` to the `Command` enum.
 In `tabdat-runtime`:
 Update `command_name` to return `"qreg"`, ensuring `Session::execute` returns
