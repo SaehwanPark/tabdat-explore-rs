@@ -420,6 +420,11 @@ Port TabDat's language before implementing most execution.
   `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic parity, and
   parser-only execution deferral are covered; statistical estimation and model
   state remain deferred).
+- [x] Add the bounded direct `heckman` syntax slice (PR #93, squash
+  merge `b0dad85`; typed `HeckmanCommand`, options `selectdep(<var>)`,
+  `select(<vars>)`, `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic
+  parity, and parser-only execution deferral are covered; statistical estimation
+  and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

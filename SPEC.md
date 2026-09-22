@@ -1019,6 +1019,33 @@ This accepted syntax slice leaves statistical estimation, likelihood optimizatio
 FFI backends, model results, post-estimation, reporting, CLI, JSON, MCP, and broad
 censored regression estimator parity deferred.
 
+## Verified slice: syntax-only `heckman` command
+
+Merged [PR #93](https://github.com/SaehwanPark/tabdat-explore-rs/pull/93)
+([b0dad85](https://github.com/SaehwanPark/tabdat-explore-rs/commit/b0dad85))
+adds bounded, backend-independent `heckman` syntax boundaries to
+`tabdat-language`. The parser returns an owned `HeckmanCommand` type with
+ordered predictors, required selection dependent variable (`selectdep`),
+required selection predictors (`select`), robust covariance flag, cluster
+variable, and intercept inclusion flag. It validates syntax structure,
+missing `selectdep` and `select` requirements, option single-use rules, cluster
+variable count constraints, mutual exclusivity of `robust` and `cluster`,
+and flag option values, reporting exact Python-compatible diagnostics. Owned
+`String` and `Vec<String>` types are used so that the public `Command` enum retains
+its `Eq` derive. Runtime deliberately returns the typed unsupported command result;
+it does not perform estimation, initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-heckman-syntax/](_workspace/parser-heckman-syntax/),
+including the [contract](_workspace/parser-heckman-syntax/01-contract.md) and
+[summary](_workspace/parser-heckman-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, sample-selection
+likelihood optimization, two-step estimation, FFI backends, model results,
+post-estimation, reporting, CLI, JSON, MCP, and broad sample-selection regression
+estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
