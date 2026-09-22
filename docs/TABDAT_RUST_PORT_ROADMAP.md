@@ -397,6 +397,11 @@ Port TabDat's language before implementing most execution.
   merge `a14d552`; typed `LogitCommand` and `ProbitCommand`, options `robust`,
   `cluster(<var>)`, `noconstant`, exact diagnostic parity, and parser-only execution
   deferral are covered; statistical estimation and model state remain deferred).
+- [x] Add the bounded direct `bayes:` prefix syntax slice (PR #83, squash
+  merge `9e2ba7c`; typed `BayesPrefixCommand` holding inner `Command::Regress` or
+  `Command::Logit`, options `draws`, `burnin` (`tune`), `chains`, `thin`, `seed` (`rseed`),
+  and `prior`, exact diagnostic parity, and parser-only execution deferral are covered;
+  MCMC estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -408,7 +413,10 @@ Port TabDat's language before implementing most execution.
 - [ ] Port quoted/unquoted identifier behavior.
 - [ ] Port missing literal semantics.
 - [x] Port SQL command boundary.
-- [ ] Port prefixed command syntax such as `bayes:`.
+- [x] Port prefixed command syntax such as `bayes:` (PR #83, squash merge
+  `9e2ba7c`; typed `BayesPrefixCommand` holding inner `Command::Regress` or
+  `Command::Logit`, MCMC parameters, and custom priors, with exact diagnostics
+  and parser-only runtime deferral; MCMC estimation remains deferred).
 
 ### 5.2 Script engine
 
