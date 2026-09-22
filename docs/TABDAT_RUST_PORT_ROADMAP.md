@@ -402,6 +402,10 @@ Port TabDat's language before implementing most execution.
   `Command::Logit`, options `draws`, `burnin` (`tune`), `chains`, `thin`, `seed` (`rseed`),
   and `prior`, exact diagnostic parity, and parser-only execution deferral are covered;
   MCMC estimation and model state remain deferred).
+- [x] Add the bounded direct `poisson` and `nbreg` syntax slice (PR #85, squash
+  merge `4244936`; typed `PoissonCommand` and `NbregCommand`, options `robust`,
+  `cluster(<var>)`, `noconstant`, exact diagnostic parity, and parser-only execution
+  deferral are covered; statistical estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
