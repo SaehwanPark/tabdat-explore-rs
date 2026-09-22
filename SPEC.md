@@ -919,6 +919,30 @@ distribution calculus, model results, post-estimation, reporting, CLI, JSON,
 MCP, and broad Bayesian model family parity deferred. The Phase 7.3 Bayesian
 estimation items remain unchecked.
 
+## Verified slice: syntax-only `poisson` and `nbreg` commands
+
+Merged [PR #85](https://github.com/SaehwanPark/tabdat-explore-rs/pull/85)
+([4244936](https://github.com/SaehwanPark/tabdat-explore-rs/commit/4244936))
+adds bounded, backend-independent `poisson` and `nbreg` syntax boundaries to
+`tabdat-language`. The parser returns owned `PoissonCommand` and `NbregCommand`
+types with ordered predictors, robust covariance flag, optional cluster
+variable, and intercept inclusion flag. It validates mutual exclusions
+(`robust` vs `cluster`), single-variable requirement for `cluster`, option
+single-use rules, variable count constraints, and flag option values,
+reporting exact Python-compatible diagnostics. Runtime deliberately returns
+the typed unsupported command result; it does not perform estimation,
+initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-poisson-nbreg-syntax/](_workspace/parser-poisson-nbreg-syntax/),
+including the [contract](_workspace/parser-poisson-nbreg-syntax/01-contract.md) and
+[summary](_workspace/parser-poisson-nbreg-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, numerical optimization,
+dispersion parameter estimation, FFI backends, model results, post-estimation,
+reporting, CLI, JSON, MCP, and broad count model estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
