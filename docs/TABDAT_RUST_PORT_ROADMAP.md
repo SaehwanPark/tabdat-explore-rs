@@ -425,6 +425,11 @@ Port TabDat's language before implementing most execution.
   `select(<vars>)`, `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic
   parity, and parser-only execution deferral are covered; statistical estimation
   and model state remain deferred).
+- [x] Add the bounded direct `nl` syntax slice (PR #95, squash
+  merge `b0077ff`; typed `NlCommand`, expression parsing with operators and function
+  calls, required `params(<params>)` and `start(<values>)`, flags `robust`, `noconstant`,
+  exact diagnostic parity, and parser-only execution deferral are covered;
+  nonlinear least squares optimization and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

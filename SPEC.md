@@ -1046,6 +1046,35 @@ likelihood optimization, two-step estimation, FFI backends, model results,
 post-estimation, reporting, CLI, JSON, MCP, and broad sample-selection regression
 estimator parity deferred.
 
+## Verified slice: syntax-only `nl` command
+
+Merged [PR #95](https://github.com/SaehwanPark/tabdat-explore-rs/pull/95)
+([b0077ff](https://github.com/SaehwanPark/tabdat-explore-rs/commit/b0077ff))
+adds bounded, backend-independent `nl` syntax boundaries to
+`tabdat-language`. The parser returns an owned `NlCommand` type with
+an outcome variable, parsed expression tree (`GenerateExpression`), required
+parameter names (`params`), required starting values (`start`), robust
+covariance flag, and intercept inclusion flag. It validates syntax structure,
+missing expression after `=`, missing target before `=`, duplicate `if` clause,
+missing `params` and `start` requirements, duplicate parameter names,
+start value count matching parameter count, numeric start value formatting,
+option single-use rules, unsupported options, and flag option values, reporting
+exact Python-compatible diagnostics. Owned `String` and `Vec<String>` types are
+used so that the public `Command` enum retains its `Eq` derive. Runtime
+deliberately returns the typed unsupported command result; it does not perform
+estimation, initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-nl-syntax/](_workspace/parser-nl-syntax/),
+including the [contract](_workspace/parser-nl-syntax/01-contract.md) and
+[summary](_workspace/parser-nl-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, nonlinear least squares
+optimization, Gauss-Newton / Levenberg-Marquardt solvers, FFI backends, model
+results, post-estimation, reporting, CLI, JSON, MCP, and broad nonlinear
+regression estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
