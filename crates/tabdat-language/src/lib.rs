@@ -162,6 +162,8 @@ pub enum Command {
   Nl { command: NlCommand },
   /// Fit a parametric survival regression model (execution is deferred).
   Streg { command: StregCommand },
+  /// Fit a spatial autoregressive regression model (execution is deferred).
+  Spregress { command: SpregressCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -613,6 +615,50 @@ pub struct StregCommand {
   pub cluster_variable: Option<String>,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
+}
+
+/// The spatial model types accepted by the parser-only `spregress` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpregressModelType {
+  /// Spatial autoregressive model (lag of y).
+  Lag,
+  /// Spatial error model.
+  Error,
+  /// Spatial autoregressive combined with spatial error (SARAR).
+  Sarar,
+}
+
+/// The spatial contiguity types accepted by the parser-only `spregress` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpregressContiguity {
+  /// Queen contiguity (common edge or vertex).
+  Queen,
+  /// Rook contiguity (common edge only).
+  Rook,
+}
+
+/// The parser-only `spregress` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpregressCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// The spatial model specification (`lag`, `error`, or `sarar`).
+  pub model_type: SpregressModelType,
+  /// Optional latitude/longitude coordinate variable pair for distance-based weights.
+  pub coord_variables: Option<(String, String)>,
+  /// Number of nearest neighbors when `coord_variables` is used (default: 5).
+  pub knn: Option<i64>,
+  /// Optional path to external weights file (.gal, .gwt, or shapefile).
+  pub weights_file: Option<String>,
+  /// Entity ID variable name required when `weights_file` is specified.
+  pub id_variable: Option<String>,
+  /// Contiguity criterion when `weights_file` is specified (`queen` or `rook`, default: `queen`).
+  pub contiguity: Option<SpregressContiguity>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
 }
 
 /// The estimator forms accepted by the parser-only `ivregress` command.
@@ -1213,6 +1259,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..9)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"spregress"))
+    && command.as_bytes().get(9) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1420,6 +1474,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "streg assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("spregress") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "spregress assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1529,6 +1591,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "heckman" => parse_heckman_command(body),
     "nl" => parse_nl_command(body),
     "streg" => parse_streg_command(body),
+    "spregress" => parse_spregress_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -4660,6 +4723,294 @@ fn parse_streg_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_spregress_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "spregress assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "spregress expects syntax: spregress <y> <xvars>, [coord(<lat_var> <lon_var>) [knn(<k>)] | weights(<path_to_file>) id(<id_var>) [contiguity(queen|rook)]] [model(<lag|error|sarar>) robust]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "coord" | "model" | "knn" | "robust" | "weights" | "id" | "contiguity"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "spregress unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "robust" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "spregress option robust does not accept a value",
+      ));
+    }
+  }
+
+  let has_coord = options.iter().any(|option| option.name == "coord");
+  let has_weights = options.iter().any(|option| option.name == "weights");
+
+  if has_coord && has_weights {
+    return Err(ParseError::new(
+      "spregress option coord and weights are mutually exclusive",
+    ));
+  } else if !has_coord && !has_weights {
+    return Err(ParseError::new(
+      "spregress requires either coord() or weights() option",
+    ));
+  }
+
+  let model_matches = options
+    .iter()
+    .filter(|option| option.name == "model")
+    .collect::<Vec<_>>();
+  if model_matches.len() > 1 {
+    return Err(ParseError::new(
+      "spregress option model may only be supplied once",
+    ));
+  }
+  let model_type = match model_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new("spregress option model expects one value"));
+        }
+        match values[0].as_str() {
+          "lag" => SpregressModelType::Lag,
+          "error" => SpregressModelType::Error,
+          "sarar" => SpregressModelType::Sarar,
+          _ => {
+            return Err(ParseError::new(
+              "spregress option model must be 'lag', 'error', or 'sarar'",
+            ));
+          }
+        }
+      }
+      _ => {
+        return Err(ParseError::new("spregress option model expects a value"));
+      }
+    },
+    None => SpregressModelType::Lag,
+  };
+
+  let (coord_variables, knn, weights_file, id_variable, contiguity) = if has_coord {
+    if options.iter().any(|option| option.name == "id") {
+      return Err(ParseError::new(
+        "spregress option id can only be used with weights() option",
+      ));
+    }
+    if options.iter().any(|option| option.name == "contiguity") {
+      return Err(ParseError::new(
+        "spregress option contiguity can only be used with weights() option",
+      ));
+    }
+
+    let coord_matches = options
+      .iter()
+      .filter(|option| option.name == "coord")
+      .collect::<Vec<_>>();
+    if coord_matches.len() > 1 {
+      return Err(ParseError::new(
+        "spregress option coord may only be supplied once",
+      ));
+    }
+    let coord_vars = match &coord_matches[0].value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 2 {
+          return Err(ParseError::new(
+            "spregress option coord expects exactly two variables representing latitude and longitude coordinates",
+          ));
+        }
+        (values[0].clone(), values[1].clone())
+      }
+      _ => {
+        return Err(ParseError::new("spregress option coord expects variables"));
+      }
+    };
+
+    let knn_matches = options
+      .iter()
+      .filter(|option| option.name == "knn")
+      .collect::<Vec<_>>();
+    if knn_matches.len() > 1 {
+      return Err(ParseError::new(
+        "spregress option knn may only be supplied once",
+      ));
+    }
+    let knn_val = match knn_matches.first() {
+      Some(option) => match &option.value {
+        UseOptionValue::Number(text) => {
+          let Ok(val) = text.parse::<i64>() else {
+            return Err(ParseError::new(
+              "spregress option knn expects an integer value",
+            ));
+          };
+          if val < 1 {
+            return Err(ParseError::new("spregress option knn must be at least 1"));
+          }
+          val
+        }
+        _ => {
+          return Err(ParseError::new(
+            "spregress option knn expects an integer value",
+          ));
+        }
+      },
+      None => 5,
+    };
+
+    (Some(coord_vars), Some(knn_val), None, None, None)
+  } else {
+    if options.iter().any(|option| option.name == "knn") {
+      return Err(ParseError::new(
+        "spregress option knn/coord can only be used with coord() option",
+      ));
+    }
+
+    let weights_matches = options
+      .iter()
+      .filter(|option| option.name == "weights")
+      .collect::<Vec<_>>();
+    if weights_matches.len() > 1 {
+      return Err(ParseError::new(
+        "spregress option weights may only be supplied once",
+      ));
+    }
+    let weights_path = match &weights_matches[0].value {
+      UseOptionValue::String(path) => path.clone(),
+      _ => {
+        return Err(ParseError::new("spregress option weights expects a path"));
+      }
+    };
+
+    let id_matches = options
+      .iter()
+      .filter(|option| option.name == "id")
+      .collect::<Vec<_>>();
+    if id_matches.is_empty() {
+      return Err(ParseError::new(
+        "spregress option id() is required when weights() is specified",
+      ));
+    }
+    if id_matches.len() > 1 {
+      return Err(ParseError::new(
+        "spregress option id may only be supplied once",
+      ));
+    }
+    let id_var = match &id_matches[0].value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new("spregress option id expects one value"));
+        }
+        values[0].clone()
+      }
+      _ => {
+        return Err(ParseError::new("spregress option id expects a value"));
+      }
+    };
+
+    let contiguity_matches = options
+      .iter()
+      .filter(|option| option.name == "contiguity")
+      .collect::<Vec<_>>();
+    if contiguity_matches.len() > 1 {
+      return Err(ParseError::new(
+        "spregress option contiguity may only be supplied once",
+      ));
+    }
+    let contiguity_val = match contiguity_matches.first() {
+      Some(option) => match &option.value {
+        UseOptionValue::Identifiers(values) => {
+          if values.len() != 1 {
+            return Err(ParseError::new(
+              "spregress option contiguity expects one value",
+            ));
+          }
+          match values[0].as_str() {
+            "queen" => SpregressContiguity::Queen,
+            "rook" => SpregressContiguity::Rook,
+            _ => {
+              return Err(ParseError::new(
+                "spregress option contiguity must be 'queen' or 'rook'",
+              ));
+            }
+          }
+        }
+        _ => {
+          return Err(ParseError::new(
+            "spregress option contiguity expects a value",
+          ));
+        }
+      },
+      None => SpregressContiguity::Queen,
+    };
+
+    (
+      None,
+      None,
+      Some(weights_path),
+      Some(id_var),
+      Some(contiguity_val),
+    )
+  };
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+
+  Ok(Command::Spregress {
+    command: SpregressCommand {
+      outcome,
+      predictors,
+      model_type,
+      coord_variables,
+      knn,
+      weights_file,
+      id_variable,
+      contiguity,
+      robust,
+    },
+  })
+}
+
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   if body.starts_with("==") {
     return Err(ParseError::new("unsupported token in command: =="));
@@ -7318,8 +7669,9 @@ mod tests {
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, GenerateBinaryOperator,
     GenerateExpression, HeckmanCommand, LazyEngine, LogitCommand, NbregCommand, NlCommand,
     ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
-    RowLimit, SettingName, SortKey, SqlCommand, StregCommand, StregDistribution, TabulateCommand,
-    TobitCommand, ZinbCommand, ZipCommand, parse_command,
+    RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity, SpregressModelType,
+    SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand, ZinbCommand,
+    ZipCommand, parse_command,
   };
 
   #[test]
@@ -11186,6 +11538,320 @@ mod tests {
       (
         "streg time age, dist(weibull)",
         "streg option failure expects one variable",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_spregress_syntax() {
+    assert_eq!(
+      parse_command("spregress y x1 x2, coord(lat lon)").unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "y".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          model_type: SpregressModelType::Lag,
+          coord_variables: Some(("lat".to_owned(), "lon".to_owned())),
+          knn: Some(5),
+          weights_file: None,
+          id_variable: None,
+          contiguity: None,
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("spregress y x, coord(lat lon) model(error) knn(3) robust").unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "y".to_owned(),
+          predictors: vec!["x".to_owned()],
+          model_type: SpregressModelType::Error,
+          coord_variables: Some(("lat".to_owned(), "lon".to_owned())),
+          knn: Some(3),
+          weights_file: None,
+          id_variable: None,
+          contiguity: None,
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("spregress y x, coord(lat lon) model(sarar) knn(3) robust").unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "y".to_owned(),
+          predictors: vec!["x".to_owned()],
+          model_type: SpregressModelType::Sarar,
+          coord_variables: Some(("lat".to_owned(), "lon".to_owned())),
+          knn: Some(3),
+          weights_file: None,
+          id_variable: None,
+          contiguity: None,
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("spregress y x1 x2, weights(path/to/w.gal) id(station)").unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "y".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          model_type: SpregressModelType::Lag,
+          coord_variables: None,
+          knn: None,
+          weights_file: Some("path/to/w.gal".to_owned()),
+          id_variable: Some("station".to_owned()),
+          contiguity: Some(SpregressContiguity::Queen),
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command(
+        "spregress y x, weights(w.shp) id(station) contiguity(rook) model(error) robust"
+      )
+      .unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "y".to_owned(),
+          predictors: vec!["x".to_owned()],
+          model_type: SpregressModelType::Error,
+          coord_variables: None,
+          knn: None,
+          weights_file: Some("w.shp".to_owned()),
+          id_variable: Some("station".to_owned()),
+          contiguity: Some(SpregressContiguity::Rook),
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("SPREGRESS `outcome var` `pred var`, coord(`lat var` `lon var`)").unwrap(),
+      Command::Spregress {
+        command: SpregressCommand {
+          outcome: "outcome var".to_owned(),
+          predictors: vec!["pred var".to_owned()],
+          model_type: SpregressModelType::Lag,
+          coord_variables: Some(("lat var".to_owned(), "lon var".to_owned())),
+          knn: Some(5),
+          weights_file: None,
+          id_variable: None,
+          contiguity: None,
+          robust: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_spregress_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "spregress",
+        "spregress expects syntax: spregress <y> <xvars>, [coord(<lat_var> <lon_var>) [knn(<k>)] | weights(<path_to_file>) id(<id_var>) [contiguity(queen|rook)]] [model(<lag|error|sarar>) robust]",
+      ),
+      (
+        "spregress y",
+        "spregress expects syntax: spregress <y> <xvars>, [coord(<lat_var> <lon_var>) [knn(<k>)] | weights(<path_to_file>) id(<id_var>) [contiguity(queen|rook)]] [model(<lag|error|sarar>) robust]",
+      ),
+      (
+        "spregress y x",
+        "spregress requires either coord() or weights() option",
+      ),
+      (
+        "spregress y x if y > 0, coord(lat lon)",
+        "spregress expects syntax: spregress <y> <xvars>, [coord(<lat_var> <lon_var>) [knn(<k>)] | weights(<path_to_file>) id(<id_var>) [contiguity(queen|rook)]] [model(<lag|error|sarar>) robust]",
+      ),
+      (
+        "spregress y = x, coord(lat lon)",
+        "spregress expects syntax: spregress <y> <xvars>, [coord(<lat_var> <lon_var>) [knn(<k>)] | weights(<path_to_file>) id(<id_var>) [contiguity(queen|rook)]] [model(<lag|error|sarar>) robust]",
+      ),
+      ("spregress:", "unsupported token in command: :"),
+      (
+        "spregress=",
+        "spregress assignment requires a target before =",
+      ),
+      ("spregress==", "unsupported token in command: =="),
+      (
+        "spregress=foo",
+        "spregress assignment requires a target before =",
+      ),
+      (
+        "spregress = foo",
+        "spregress assignment requires a target before =",
+      ),
+      (
+        "spregress,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "spregress y x,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "spregress y x, coord(lat lon) weights(w.gal) id(station)",
+        "spregress option coord and weights are mutually exclusive",
+      ),
+      (
+        "spregress y x, coord(lat)",
+        "spregress option coord expects exactly two variables representing latitude and longitude coordinates",
+      ),
+      (
+        "spregress y x, coord(lat lon alt)",
+        "spregress option coord expects exactly two variables representing latitude and longitude coordinates",
+      ),
+      (
+        "spregress y x, coord",
+        "spregress option coord expects variables",
+      ),
+      (
+        "spregress y x, coord()",
+        "option coord expects at least one value",
+      ),
+      (
+        "spregress y x, coord(lat lon) coord(lat2 lon2)",
+        "spregress option coord may only be supplied once",
+      ),
+      (
+        "spregress y x, coord(lat lon) id(station)",
+        "spregress option id can only be used with weights() option",
+      ),
+      (
+        "spregress y x, coord(lat lon) contiguity(queen)",
+        "spregress option contiguity can only be used with weights() option",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn(-1)",
+        "spregress option knn must be at least 1",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn(0)",
+        "spregress option knn must be at least 1",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn(3.5)",
+        "spregress option knn expects an integer value",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn",
+        "spregress option knn expects an integer value",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn()",
+        "option knn expects at least one value",
+      ),
+      (
+        "spregress y x, coord(lat lon) knn(3) knn(4)",
+        "spregress option knn may only be supplied once",
+      ),
+      (
+        "spregress y x, coord(lat lon) model(invalid)",
+        "spregress option model must be 'lag', 'error', or 'sarar'",
+      ),
+      (
+        "spregress y x, coord(lat lon) model(LAG)",
+        "spregress option model must be 'lag', 'error', or 'sarar'",
+      ),
+      (
+        "spregress y x, coord(lat lon) model",
+        "spregress option model expects a value",
+      ),
+      (
+        "spregress y x, coord(lat lon) model()",
+        "option model expects at least one value",
+      ),
+      (
+        "spregress y x, coord(lat lon) model(lag error)",
+        "spregress option model expects one value",
+      ),
+      (
+        "spregress y x, coord(lat lon) model(lag) model(error)",
+        "spregress option model may only be supplied once",
+      ),
+      (
+        "spregress y x, weights(w.shp)",
+        "spregress option id() is required when weights() is specified",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) knn(3)",
+        "spregress option knn/coord can only be used with coord() option",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity(invalid)",
+        "spregress option contiguity must be 'queen' or 'rook'",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity(QUEEN)",
+        "spregress option contiguity must be 'queen' or 'rook'",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity",
+        "spregress option contiguity expects a value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity()",
+        "option contiguity expects at least one value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity(queen rook)",
+        "spregress option contiguity expects one value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station) contiguity(queen) contiguity(rook)",
+        "spregress option contiguity may only be supplied once",
+      ),
+      (
+        "spregress y x, weights(w.shp) id",
+        "spregress option id expects a value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id()",
+        "option id expects at least one value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station1 station2)",
+        "spregress option id expects one value",
+      ),
+      (
+        "spregress y x, weights(w.shp) id(station1) id(station2)",
+        "spregress option id may only be supplied once",
+      ),
+      (
+        "spregress y x, weights id(station)",
+        "spregress option weights expects a path",
+      ),
+      (
+        "spregress y x, weights() id(station)",
+        "option weights expects at least one value",
+      ),
+      (
+        "spregress y x, weights(w1) weights(w2) id(station)",
+        "spregress option weights may only be supplied once",
+      ),
+      (
+        "spregress y x, coord(lat lon) robust=true",
+        "spregress option robust does not accept a value",
+      ),
+      (
+        "spregress y x, coord(lat lon) robust(foo)",
+        "spregress option robust does not accept a value",
+      ),
+      (
+        "spregress y x, coord(lat lon) invalid_opt",
+        "spregress unsupported option: invalid_opt",
+      ),
+      (
+        "spregress y x, coord(lat lon) invalid_opt2 invalid_opt1",
+        "spregress unsupported option: invalid_opt1, invalid_opt2",
       ),
     ];
     for (input, expected) in cases {
