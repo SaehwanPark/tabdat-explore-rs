@@ -993,6 +993,32 @@ This accepted syntax slice leaves statistical estimation, linear programming,
 quantile loss optimization, FFI backends, model results, post-estimation,
 reporting, CLI, JSON, MCP, and broad quantile regression estimator parity deferred.
 
+## Verified slice: syntax-only `tobit` command
+
+Merged [PR #91](https://github.com/SaehwanPark/tabdat-explore-rs/pull/91)
+([708e64f](https://github.com/SaehwanPark/tabdat-explore-rs/commit/708e64f))
+adds bounded, backend-independent `tobit` syntax boundaries to
+`tabdat-language`. The parser returns an owned `TobitCommand` type with
+ordered predictors, required lower limit (`ll`), optional upper limit (`ul`),
+robust covariance flag, cluster variable, and intercept inclusion flag. It validates
+syntax structure, missing `ll` requirement, option single-use rules, cluster variable
+count constraints, mutual exclusivity of `robust` and `cluster`, numeric parsing,
+and flag option values, reporting exact Python-compatible diagnostics. Numeric text
+for `lower_limit` and `upper_limit` remains an owned `String` so that the public
+`Command` enum retains its `Eq` derive. Runtime deliberately returns the typed
+unsupported command result; it does not perform estimation, initialize backends,
+or mutate model state.
+
+Evidence: [_workspace/parser-tobit-syntax/](_workspace/parser-tobit-syntax/),
+including the [contract](_workspace/parser-tobit-syntax/01-contract.md) and
+[summary](_workspace/parser-tobit-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, likelihood optimization,
+FFI backends, model results, post-estimation, reporting, CLI, JSON, MCP, and broad
+censored regression estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
