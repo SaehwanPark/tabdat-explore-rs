@@ -144,6 +144,10 @@ pub enum Command {
   Logit { command: LogitCommand },
   /// Fit a probit regression model (execution is deferred).
   Probit { command: ProbitCommand },
+  /// Fit a Poisson regression model (execution is deferred).
+  Poisson { command: PoissonCommand },
+  /// Fit a negative binomial regression model (execution is deferred).
+  Nbreg { command: NbregCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -414,6 +418,38 @@ pub struct LogitCommand {
 /// slice.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProbitCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `poisson` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoissonCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `nbreg` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NbregCommand {
   /// The dependent variable.
   pub outcome: String,
   /// Ordered predictor variables.
@@ -952,6 +988,22 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"poisson"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"nbreg"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1091,6 +1143,22 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "bayes assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("poisson") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "poisson assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("nbreg") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "nbreg assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1189,8 +1257,10 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "count" | "head" | "tail" => parse_inspection_command(normalized_name.as_str(), body),
     "sql" => parse_sql_command(body),
     "regress" => parse_regress_command(body),
-    "logit" => parse_binary_response_command("logit", body),
-    "probit" => parse_binary_response_command("probit", body),
+    "logit" => parse_binary_or_count_response_command("logit", body),
+    "probit" => parse_binary_or_count_response_command("probit", body),
+    "poisson" => parse_binary_or_count_response_command("poisson", body),
+    "nbreg" => parse_binary_or_count_response_command("nbreg", body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -3250,7 +3320,10 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn parse_binary_response_command(command_name: &str, body: &str) -> Result<Command, ParseError> {
+fn parse_binary_or_count_response_command(
+  command_name: &str,
+  body: &str,
+) -> Result<Command, ParseError> {
   let syntax = format!("{command_name} expects syntax: {command_name} <y> <xvars>");
   let (argument_body, option_body) = match first_unquoted_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
@@ -3358,7 +3431,25 @@ fn parse_binary_response_command(command_name: &str, body: &str) -> Result<Comma
         include_intercept,
       },
     }),
-    _ => unreachable!("unsupported binary response command: {command_name}"),
+    "poisson" => Ok(Command::Poisson {
+      command: PoissonCommand {
+        outcome,
+        predictors,
+        robust,
+        cluster_variable: cluster_values,
+        include_intercept,
+      },
+    }),
+    "nbreg" => Ok(Command::Nbreg {
+      command: NbregCommand {
+        outcome,
+        predictors,
+        robust,
+        cluster_variable: cluster_values,
+        include_intercept,
+      },
+    }),
+    _ => unreachable!("unsupported binary or count response command: {command_name}"),
   }
 }
 
@@ -6002,8 +6093,8 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
-    ParseError, ProbitCommand, RegressCommand, RegressEstimator, RowLimit, SettingName, SortKey,
-    SqlCommand, TabulateCommand, parse_command,
+    NbregCommand, ParseError, PoissonCommand, ProbitCommand, RegressCommand, RegressEstimator,
+    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, parse_command,
   };
 
   #[test]
@@ -8422,6 +8513,233 @@ mod tests {
       ("probit=", "probit assignment requires a target before ="),
       ("probit==", "unsupported token in command: =="),
       ("probit:y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_poisson_and_nbreg_syntax() {
+    assert_eq!(
+      parse_command("poisson outcome x1 x2").unwrap(),
+      Command::Poisson {
+        command: PoissonCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("poisson outcome x1, robust").unwrap(),
+      Command::Poisson {
+        command: PoissonCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("POISSON outcome x1, cluster(group_id)").unwrap(),
+      Command::Poisson {
+        command: PoissonCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("poisson outcome x1, noconstant").unwrap(),
+      Command::Poisson {
+        command: PoissonCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("poisson `y var` 'x var', cluster(`firm id`)").unwrap(),
+      Command::Poisson {
+        command: PoissonCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          robust: false,
+          cluster_variable: Some("firm id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("nbreg outcome x1 x2").unwrap(),
+      Command::Nbreg {
+        command: NbregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("nbreg outcome x1, robust").unwrap(),
+      Command::Nbreg {
+        command: NbregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("NBREG outcome x1, cluster(group_id)").unwrap(),
+      Command::Nbreg {
+        command: NbregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("nbreg outcome x1, noconstant").unwrap(),
+      Command::Nbreg {
+        command: NbregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("nbreg `y var` 'x var', cluster(`firm id`)").unwrap(),
+      Command::Nbreg {
+        command: NbregCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          robust: false,
+          cluster_variable: Some("firm id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_poisson_and_nbreg_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("poisson", "poisson expects syntax: poisson <y> <xvars>"),
+      ("poisson y", "poisson expects syntax: poisson <y> <xvars>"),
+      (
+        "poisson y x if y > 0",
+        "poisson expects syntax: poisson <y> <xvars>",
+      ),
+      (
+        "poisson y x, robust cluster(group)",
+        "poisson cannot combine robust and cluster",
+      ),
+      (
+        "poisson y x, cluster",
+        "poisson option cluster expects variables",
+      ),
+      (
+        "poisson y x, cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "poisson y x, cluster(group firm)",
+        "poisson option cluster expects one variable",
+      ),
+      (
+        "poisson y x, cluster(a) cluster(b)",
+        "poisson option cluster may only be supplied once",
+      ),
+      (
+        "poisson y x, robust=true",
+        "poisson option robust does not accept a value",
+      ),
+      (
+        "poisson y x, noconstant=true",
+        "poisson option noconstant does not accept a value",
+      ),
+      (
+        "poisson y x, invalid",
+        "poisson unsupported option: invalid",
+      ),
+      (
+        "poisson y x,",
+        "comma must be followed by at least one option",
+      ),
+      ("poisson,", "comma must be followed by at least one option"),
+      ("poisson=", "poisson assignment requires a target before ="),
+      ("poisson==", "unsupported token in command: =="),
+      ("poisson:y x", "unsupported token in command: :"),
+      ("nbreg", "nbreg expects syntax: nbreg <y> <xvars>"),
+      ("nbreg y", "nbreg expects syntax: nbreg <y> <xvars>"),
+      (
+        "nbreg y x if y > 0",
+        "nbreg expects syntax: nbreg <y> <xvars>",
+      ),
+      (
+        "nbreg y x, robust cluster(group)",
+        "nbreg cannot combine robust and cluster",
+      ),
+      (
+        "nbreg y x, cluster",
+        "nbreg option cluster expects variables",
+      ),
+      (
+        "nbreg y x, cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "nbreg y x, cluster(group firm)",
+        "nbreg option cluster expects one variable",
+      ),
+      (
+        "nbreg y x, cluster(a) cluster(b)",
+        "nbreg option cluster may only be supplied once",
+      ),
+      (
+        "nbreg y x, robust=true",
+        "nbreg option robust does not accept a value",
+      ),
+      (
+        "nbreg y x, noconstant=true",
+        "nbreg option noconstant does not accept a value",
+      ),
+      ("nbreg y x, invalid", "nbreg unsupported option: invalid"),
+      (
+        "nbreg y x,",
+        "comma must be followed by at least one option",
+      ),
+      ("nbreg,", "comma must be followed by at least one option"),
+      ("nbreg=", "nbreg assignment requires a target before ="),
+      ("nbreg==", "unsupported token in command: =="),
+      ("nbreg:y x", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
