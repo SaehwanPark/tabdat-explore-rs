@@ -154,6 +154,8 @@ pub enum Command {
   Zinb { command: ZinbCommand },
   /// Fit a quantile regression model (execution is deferred).
   Qreg { command: QregCommand },
+  /// Fit a tobit (censored) regression model (execution is deferred).
+  Tobit { command: TobitCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -516,6 +518,26 @@ pub struct QregCommand {
   pub quantile: String,
   /// Request robust covariance in the eventual runtime.
   pub robust: bool,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `tobit` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TobitCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// The lower censoring limit, retained as string spelling.
+  pub lower_limit: String,
+  /// The optional upper censoring limit, retained as string spelling.
+  pub upper_limit: Option<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -1086,6 +1108,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"tobit"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1263,6 +1293,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "qreg assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("tobit") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "tobit assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1368,6 +1406,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "zip" => parse_zero_inflated_count_command("zip", body),
     "zinb" => parse_zero_inflated_count_command("zinb", body),
     "qreg" => parse_qreg_command(body),
+    "tobit" => parse_tobit_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -3809,6 +3848,163 @@ fn parse_qreg_command(body: &str) -> Result<Command, ParseError> {
       predictors,
       quantile,
       robust,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_tobit_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "ll" | "ul" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "tobit unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "tobit option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let ll_matches = options
+    .iter()
+    .filter(|option| option.name == "ll")
+    .collect::<Vec<_>>();
+  if ll_matches.is_empty() {
+    return Err(ParseError::new("tobit option ll expects one numeric value"));
+  }
+  if ll_matches.len() > 1 {
+    return Err(ParseError::new("tobit option ll may only be supplied once"));
+  }
+  let lower_limit = match &ll_matches[0].value {
+    UseOptionValue::Number(text) => {
+      if text.parse::<f64>().is_err() {
+        return Err(ParseError::new("tobit option ll expects a numeric value"));
+      }
+      text.clone()
+    }
+    UseOptionValue::String(text) => {
+      if text.parse::<f64>().is_err() {
+        return Err(ParseError::new("tobit option ll expects a numeric value"));
+      }
+      text.clone()
+    }
+    _ => {
+      return Err(ParseError::new("tobit option ll expects a numeric value"));
+    }
+  };
+
+  let ul_matches = options
+    .iter()
+    .filter(|option| option.name == "ul")
+    .collect::<Vec<_>>();
+  if ul_matches.len() > 1 {
+    return Err(ParseError::new("tobit option ul may only be supplied once"));
+  }
+  let upper_limit = match ul_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Number(text) => {
+        if text.parse::<f64>().is_err() {
+          return Err(ParseError::new("tobit option ul expects a numeric value"));
+        }
+        Some(text.clone())
+      }
+      UseOptionValue::String(text) => {
+        if text.parse::<f64>().is_err() {
+          return Err(ParseError::new("tobit option ul expects a numeric value"));
+        }
+        Some(text.clone())
+      }
+      _ => {
+        return Err(ParseError::new("tobit option ul expects a numeric value"));
+      }
+    },
+    None => None,
+  };
+
+  let cluster_matches = options
+    .iter()
+    .filter(|option| option.name == "cluster")
+    .collect::<Vec<_>>();
+  if cluster_matches.len() > 1 {
+    return Err(ParseError::new(
+      "tobit option cluster may only be supplied once",
+    ));
+  }
+  let cluster_variable = match cluster_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new("tobit option cluster expects one variable"));
+        }
+        Some(values[0].clone())
+      }
+      _ => {
+        return Err(ParseError::new("tobit option cluster expects variables"));
+      }
+    },
+    None => None,
+  };
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new("tobit cannot combine robust and cluster"));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Tobit {
+    command: TobitCommand {
+      outcome,
+      predictors,
+      lower_limit,
+      upper_limit,
+      robust,
+      cluster_variable,
       include_intercept,
     },
   })
@@ -6455,8 +6651,8 @@ mod tests {
   use super::{
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
     NbregCommand, ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand,
-    RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, ZinbCommand,
-    ZipCommand, parse_command,
+    RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, TobitCommand,
+    ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -9541,6 +9737,174 @@ mod tests {
       ("qreg=", "qreg assignment requires a target before ="),
       ("qreg==", "unsupported token in command: =="),
       ("qreg:y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_tobit_syntax() {
+    assert_eq!(
+      parse_command("tobit outcome x1, ll(0)").unwrap(),
+      Command::Tobit {
+        command: TobitCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          lower_limit: "0".to_owned(),
+          upper_limit: None,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("tobit outcome x1 x2, ll(-1) ul(10) robust").unwrap(),
+      Command::Tobit {
+        command: TobitCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          lower_limit: "-1".to_owned(),
+          upper_limit: Some("10".to_owned()),
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("tobit outcome x1, ll(0) cluster(group_id) noconstant").unwrap(),
+      Command::Tobit {
+        command: TobitCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          lower_limit: "0".to_owned(),
+          upper_limit: None,
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("tobit outcome x1, ll=0 ul=10").unwrap(),
+      Command::Tobit {
+        command: TobitCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          lower_limit: "0".to_owned(),
+          upper_limit: Some("10".to_owned()),
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("TOBIT `y var` 'x var', ll(0.5) ul(9.5) robust noconstant").unwrap(),
+      Command::Tobit {
+        command: TobitCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          lower_limit: "0.5".to_owned(),
+          upper_limit: Some("9.5".to_owned()),
+          robust: true,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_tobit_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "tobit",
+        "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]",
+      ),
+      (
+        "tobit y",
+        "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]",
+      ),
+      ("tobit y x", "tobit option ll expects one numeric value"),
+      (
+        "tobit y x if y > 0",
+        "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]",
+      ),
+      (
+        "tobit y x = 1",
+        "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]",
+      ),
+      ("tobit y x, ll()", "option ll expects at least one value"),
+      ("tobit y x, ll(low)", "option ll expects a numeric value"),
+      (
+        "tobit y x, ul(1)",
+        "tobit option ll expects one numeric value",
+      ),
+      (
+        "tobit y x, ll(0) robust cluster(group)",
+        "tobit cannot combine robust and cluster",
+      ),
+      (
+        "tobit y x, ll(0) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "tobit y x, ll(0) cluster(group firm)",
+        "tobit option cluster expects one variable",
+      ),
+      (
+        "tobit y x, ll(0) robust=true",
+        "tobit option robust does not accept a value",
+      ),
+      (
+        "tobit y x, ll(0) noconstant=true",
+        "tobit option noconstant does not accept a value",
+      ),
+      ("tobit y x, ll", "tobit option ll expects a numeric value"),
+      (
+        "tobit y x, ll(0) ul",
+        "tobit option ul expects a numeric value",
+      ),
+      (
+        "tobit y x, ll(0) ul()",
+        "option ul expects at least one value",
+      ),
+      (
+        "tobit y x, ll(0) ul(high)",
+        "option ul expects a numeric value",
+      ),
+      (
+        "tobit y x, ll(0) ll(1)",
+        "tobit option ll may only be supplied once",
+      ),
+      (
+        "tobit y x, ll(0) ul(1) ul(2)",
+        "tobit option ul may only be supplied once",
+      ),
+      (
+        "tobit y x, ll(0) cluster(c1) cluster(c2)",
+        "tobit option cluster may only be supplied once",
+      ),
+      (
+        "tobit y x, ll(0) cluster",
+        "tobit option cluster expects variables",
+      ),
+      ("tobit y x, ll(0) foo", "tobit unsupported option: foo"),
+      ("tobit:", "unsupported token in command: :"),
+      ("tobit=", "tobit assignment requires a target before ="),
+      ("tobit==", "unsupported token in command: =="),
+      ("tobit,", "comma must be followed by at least one option"),
+      (
+        "tobit y x,",
+        "comma must be followed by at least one option",
+      ),
     ];
     for (input, expected) in cases {
       assert_eq!(
