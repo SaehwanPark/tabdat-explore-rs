@@ -891,6 +891,34 @@ link functions, FFI backends, model results, post-estimation, reporting, CLI,
 JSON, MCP, and broad binary response estimator parity deferred. The Phase 7.2
 binary model estimation items remain unchecked.
 
+## Verified slice: syntax-only `bayes:` prefixed command
+
+Merged [PR #83](https://github.com/SaehwanPark/tabdat-explore-rs/pull/83)
+([9e2ba7c](https://github.com/SaehwanPark/tabdat-explore-rs/commit/9e2ba7c))
+adds a bounded, backend-independent `bayes:` prefixed command syntax boundary
+to `tabdat-language`. The parser returns an owned `BayesPrefixCommand` holding
+an inner estimation command (strictly validated to be `Command::Regress` or
+`Command::Logit`), MCMC parameters `draws`, `burnin` (with alias `tune`),
+`chains`, `thin`, `seed` (with alias `rseed`), and ordered custom prior
+specifications `Vec<(String, String)>`. It supports complex parenthesized
+expressions such as `prior(x, normal(0, 10))` and backtick-quoted identifiers,
+while enforcing exact Python-compatible diagnostics for missing commands,
+malformed prefix options, non-numeric values, unsupported options, and
+unsupported inner commands. Runtime deliberately returns the typed
+unsupported-command result; it does not perform MCMC sampling, initialize
+backends, or mutate model state.
+
+Evidence: [_workspace/parser-bayes-prefix-syntax/](_workspace/parser-bayes-prefix-syntax/),
+including the [contract](_workspace/parser-bayes-prefix-syntax/01-contract.md) and
+[summary](_workspace/parser-bayes-prefix-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves MCMC sampling engines, posterior storage,
+distribution calculus, model results, post-estimation, reporting, CLI, JSON,
+MCP, and broad Bayesian model family parity deferred. The Phase 7.3 Bayesian
+estimation items remain unchecked.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
