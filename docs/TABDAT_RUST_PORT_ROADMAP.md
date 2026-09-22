@@ -442,6 +442,13 @@ Port TabDat's language before implementing most execution.
   mutual exclusivity and required options validation, exact diagnostic parity,
   and parser-only execution deferral are covered; spatial regression estimation,
   spatial weight matrix construction, and model state remain deferred).
+- [x] Add the bounded direct regularized regression syntax slice for `lasso`,
+  `postlasso`, `ridge`, and `elasticnet` (PR #101, squash merge `477e815`;
+  typed `LassoCommand`, `PostlassoCommand`, `RidgeCommand`, and `ElasticnetCommand`
+  structs and AST variants, linear model specifier validation, options `alpha(<val>)`,
+  `l1_ratio(<val>)`, `robust`, `noconstant`, exact diagnostic parity, and
+  parser-only execution deferral are covered; numerical optimization, post-lasso
+  refitting, cross-validation search, and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
