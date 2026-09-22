@@ -406,6 +406,11 @@ Port TabDat's language before implementing most execution.
   merge `4244936`; typed `PoissonCommand` and `NbregCommand`, options `robust`,
   `cluster(<var>)`, `noconstant`, exact diagnostic parity, and parser-only execution
   deferral are covered; statistical estimation and model state remain deferred).
+- [x] Add the bounded direct `zip` and `zinb` syntax slice (PR #87, squash
+  merge `78cf4d8`; typed `ZipCommand` and `ZinbCommand`, required `inflate(<zvars>)`,
+  options `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic parity, and
+  parser-only execution deferral are covered; statistical estimation and model
+  state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
