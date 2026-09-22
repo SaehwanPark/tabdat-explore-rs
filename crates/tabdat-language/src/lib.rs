@@ -152,6 +152,8 @@ pub enum Command {
   Zip { command: ZipCommand },
   /// Fit a zero-inflated negative binomial regression model (execution is deferred).
   Zinb { command: ZinbCommand },
+  /// Fit a quantile regression model (execution is deferred).
+  Qreg { command: QregCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -498,6 +500,22 @@ pub struct ZinbCommand {
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `qreg` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QregCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// The requested quantile value, retained as string spelling.
+  pub quantile: String,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -1060,6 +1078,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..4)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"qreg"))
+    && command.as_bytes().get(4) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1229,6 +1255,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "zinb assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("qreg") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "qreg assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1333,6 +1367,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
     "zip" => parse_zero_inflated_count_command("zip", body),
     "zinb" => parse_zero_inflated_count_command("zinb", body),
+    "qreg" => parse_qreg_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -3676,6 +3711,107 @@ fn parse_zero_inflated_count_command(
     }),
     _ => unreachable!("unsupported zero-inflated count command: {command_name}"),
   }
+}
+
+fn parse_qreg_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "qreg expects syntax: qreg <y> <xvars>";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "quantile" | "robust" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "qreg unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "qreg option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let quantile_matches = options
+    .iter()
+    .filter(|option| option.name == "quantile")
+    .collect::<Vec<_>>();
+  if quantile_matches.len() > 1 {
+    return Err(ParseError::new(
+      "qreg option quantile may only be supplied once",
+    ));
+  }
+  let quantile = match quantile_matches.first() {
+    Some(option) => {
+      let num_str = match &option.value {
+        UseOptionValue::Number(text) => text.as_str(),
+        UseOptionValue::String(text) => text.as_str(),
+        _ => {
+          return Err(ParseError::new(
+            "qreg option quantile expects a numeric value",
+          ));
+        }
+      };
+      let Ok(val) = num_str.parse::<f64>() else {
+        return Err(ParseError::new(
+          "qreg option quantile expects a numeric value",
+        ));
+      };
+      if val <= 0.0 || val >= 1.0 {
+        return Err(ParseError::new(
+          "qreg option quantile must be between 0 and 1",
+        ));
+      }
+      num_str.to_owned()
+    }
+    None => "0.5".to_owned(),
+  };
+
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+  let robust = options.iter().any(|option| option.name == "robust");
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Qreg {
+    command: QregCommand {
+      outcome,
+      predictors,
+      quantile,
+      robust,
+      include_intercept,
+    },
+  })
 }
 
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
@@ -6318,9 +6454,9 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
-    NbregCommand, ParseError, PoissonCommand, ProbitCommand, RegressCommand, RegressEstimator,
-    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, ZinbCommand, ZipCommand,
-    parse_command,
+    NbregCommand, ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand,
+    RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, ZinbCommand,
+    ZipCommand, parse_command,
   };
 
   #[test]
@@ -9254,6 +9390,157 @@ mod tests {
       ("zinb=", "zinb assignment requires a target before ="),
       ("zinb==", "unsupported token in command: =="),
       ("zinb:y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_qreg_syntax() {
+    assert_eq!(
+      parse_command("qreg outcome x1 x2").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          quantile: "0.5".to_owned(),
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("qreg outcome x1, quantile(0.25)").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          quantile: "0.25".to_owned(),
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("qreg outcome x1, quantile=0.75").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          quantile: "0.75".to_owned(),
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("qreg outcome x1, robust").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          quantile: "0.5".to_owned(),
+          robust: true,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("qreg outcome x1, noconstant").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          quantile: "0.5".to_owned(),
+          robust: false,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("QREG `y var` 'x var', quantile(0.1) robust noconstant").unwrap(),
+      Command::Qreg {
+        command: QregCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          quantile: "0.1".to_owned(),
+          robust: true,
+          include_intercept: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_qreg_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("qreg", "qreg expects syntax: qreg <y> <xvars>"),
+      ("qreg y", "qreg expects syntax: qreg <y> <xvars>"),
+      ("qreg y x if y > 0", "qreg expects syntax: qreg <y> <xvars>"),
+      ("qreg y x = 1", "qreg expects syntax: qreg <y> <xvars>"),
+      (
+        "qreg y x, cluster(group)",
+        "qreg unsupported option: cluster",
+      ),
+      (
+        "qreg y x, quantile()",
+        "option quantile expects at least one value",
+      ),
+      (
+        "qreg y x, quantile",
+        "qreg option quantile expects a numeric value",
+      ),
+      (
+        "qreg y x, quantile(abc)",
+        "option quantile expects a numeric value",
+      ),
+      (
+        "qreg y x, quantile=abc",
+        "qreg option quantile expects a numeric value",
+      ),
+      (
+        "qreg y x, quantile(0)",
+        "qreg option quantile must be between 0 and 1",
+      ),
+      (
+        "qreg y x, quantile(1)",
+        "qreg option quantile must be between 0 and 1",
+      ),
+      (
+        "qreg y x, quantile(1.2)",
+        "qreg option quantile must be between 0 and 1",
+      ),
+      (
+        "qreg y x, quantile(-0.1)",
+        "qreg option quantile must be between 0 and 1",
+      ),
+      (
+        "qreg y x, quantile=1.2",
+        "qreg option quantile must be between 0 and 1",
+      ),
+      (
+        "qreg y x, quantile(0.25) quantile(0.5)",
+        "qreg option quantile may only be supplied once",
+      ),
+      (
+        "qreg y x, robust=true",
+        "qreg option robust does not accept a value",
+      ),
+      (
+        "qreg y x, noconstant=true",
+        "qreg option noconstant does not accept a value",
+      ),
+      ("qreg y x, invalid", "qreg unsupported option: invalid"),
+      ("qreg y x,", "comma must be followed by at least one option"),
+      ("qreg,", "comma must be followed by at least one option"),
+      ("qreg=", "qreg assignment requires a target before ="),
+      ("qreg==", "unsupported token in command: =="),
+      ("qreg:y x", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
