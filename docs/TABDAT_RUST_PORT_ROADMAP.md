@@ -435,6 +435,13 @@ Port TabDat's language before implementing most execution.
   `failure(<event>)` and `dist(...)`, flags `robust`, `noconstant`, cluster variable,
   exact diagnostic parity, and parser-only execution deferral are covered;
   survival regression estimation and model state remain deferred).
+- [x] Add the bounded direct `spregress` syntax slice (PR #99, squash
+  merge `eaee45c`; typed `SpregressModelType` and `SpregressContiguity` enums,
+  typed `SpregressCommand`, options `coord(<lat> <lon>)`, `knn(<k>)`, `weights(<path>)`,
+  `id(<var>)`, `contiguity(queen|rook)`, `model(lag|error|sarar)`, `robust`,
+  mutual exclusivity and required options validation, exact diagnostic parity,
+  and parser-only execution deferral are covered; spatial regression estimation,
+  spatial weight matrix construction, and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
