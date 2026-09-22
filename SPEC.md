@@ -1105,6 +1105,37 @@ distribution fitting, maximum likelihood optimization, FFI backends, model
 results, post-estimation, reporting, CLI, JSON, MCP, and broad survival regression
 estimator parity deferred.
 
+## Verified slice: syntax-only `spregress` command
+
+Merged [PR #99](https://github.com/SaehwanPark/tabdat-explore-rs/pull/99)
+([eaee45c](https://github.com/SaehwanPark/tabdat-explore-rs/commit/eaee45c))
+adds bounded, backend-independent `spregress` syntax boundaries to
+`tabdat-language`. The parser returns an owned `SpregressCommand` type with
+a dependent outcome variable, ordered predictor list, spatial model specification
+(`model`, holding typed `SpregressModelType`), coordinate variables (`coord`),
+nearest-neighbor count (`knn`), external spatial weights path (`weights`),
+required ID variable (`id`), spatial contiguity criterion (`contiguity`, holding
+typed `SpregressContiguity`), and robust covariance flag. It validates syntax
+structure, missing arguments, conditions and assignment syntax, missing spatial
+specifications, mutual exclusivity of `coord` and `weights`, option compatibility
+rules (`id`/`contiguity` only with `weights`; `knn` only with `coord`), single-use
+rules, unsupported options, flag option values, and punctuation guards, reporting
+exact Python-compatible diagnostics. Owned `String` and `Vec<String>` types are used
+so that the public `Command` enum retains its `Eq` derive. Runtime deliberately
+returns the typed unsupported command result; it does not perform estimation,
+initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-spregress-syntax/](_workspace/parser-spregress-syntax/),
+including the [contract](_workspace/parser-spregress-syntax/01-contract.md) and
+[summary](_workspace/parser-spregress-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, spatial weight matrix
+construction (k-NN / PySAL / Shapefile), 2SLS / GM / SARAR estimation, FFI backends,
+model results, post-estimation, reporting, CLI, JSON, MCP, and broad spatial regression
+estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
