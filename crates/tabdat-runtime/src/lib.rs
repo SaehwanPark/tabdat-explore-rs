@@ -3135,6 +3135,8 @@ fn command_name(command: &Command) -> &'static str {
     Command::Probit { .. } => "probit",
     Command::Poisson { .. } => "poisson",
     Command::Nbreg { .. } => "nbreg",
+    Command::Zip { .. } => "zip",
+    Command::Zinb { .. } => "zinb",
     Command::BayesPrefix { .. } => "bayes",
   }
 }
