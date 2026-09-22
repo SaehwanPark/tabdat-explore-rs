@@ -160,6 +160,8 @@ pub enum Command {
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
   Nl { command: NlCommand },
+  /// Fit a parametric survival regression model (execution is deferred).
+  Streg { command: StregCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -580,6 +582,35 @@ pub struct NlCommand {
   pub start_values: Vec<String>,
   /// Request robust covariance in the eventual runtime.
   pub robust: bool,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parametric distributions accepted by the parser-only `streg` command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StregDistribution {
+  /// Weibull proportional hazards / accelerated failure time model.
+  Weibull,
+  /// Exponential survival model.
+  Exponential,
+}
+
+/// The parser-only `streg` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StregCommand {
+  /// The survival time variable.
+  pub time_variable: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Event / failure indicator variable.
+  pub failure_variable: String,
+  /// The parametric baseline hazard distribution.
+  pub distribution: StregDistribution,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -1174,6 +1205,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"streg"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1373,6 +1412,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     }
     return Err(ParseError::new("nl assignment requires a target before ="));
   }
+  if name.eq_ignore_ascii_case("streg") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "streg assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1481,6 +1528,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "tobit" => parse_tobit_command(body),
     "heckman" => parse_heckman_command(body),
     "nl" => parse_nl_command(body),
+    "streg" => parse_streg_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -4445,6 +4493,173 @@ fn parse_nl_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_streg_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "streg assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "failure" | "dist" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "streg unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "streg option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let failure_matches = options
+    .iter()
+    .filter(|option| option.name == "failure")
+    .collect::<Vec<_>>();
+  if failure_matches.is_empty() {
+    return Err(ParseError::new("streg option failure expects one variable"));
+  }
+  if failure_matches.len() > 1 {
+    return Err(ParseError::new(
+      "streg option failure may only be supplied once",
+    ));
+  }
+  let failure_variable = match &failure_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.len() != 1 {
+        return Err(ParseError::new("streg option failure expects one variable"));
+      }
+      values[0].clone()
+    }
+    _ => {
+      return Err(ParseError::new("streg option failure expects variables"));
+    }
+  };
+
+  let dist_matches = options
+    .iter()
+    .filter(|option| option.name == "dist")
+    .collect::<Vec<_>>();
+  if dist_matches.is_empty() {
+    return Err(ParseError::new("streg option dist expects one value"));
+  }
+  if dist_matches.len() > 1 {
+    return Err(ParseError::new(
+      "streg option dist may only be supplied once",
+    ));
+  }
+  let distribution = match &dist_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.len() != 1 {
+        return Err(ParseError::new("streg option dist expects one value"));
+      }
+      match values[0].to_ascii_lowercase().as_str() {
+        "weibull" => StregDistribution::Weibull,
+        "exponential" => StregDistribution::Exponential,
+        _ => {
+          return Err(ParseError::new(
+            "streg option dist must be weibull or exponential",
+          ));
+        }
+      }
+    }
+    _ => {
+      return Err(ParseError::new("streg option dist expects variables"));
+    }
+  };
+
+  let cluster_matches = options
+    .iter()
+    .filter(|option| option.name == "cluster")
+    .collect::<Vec<_>>();
+  if cluster_matches.len() > 1 {
+    return Err(ParseError::new(
+      "streg option cluster may only be supplied once",
+    ));
+  }
+  let cluster_variable = match cluster_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new("streg option cluster expects one variable"));
+        }
+        Some(values[0].clone())
+      }
+      _ => {
+        return Err(ParseError::new("streg option cluster expects variables"));
+      }
+    },
+    None => None,
+  };
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new("streg cannot combine robust and cluster"));
+  }
+
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+  let time_variable = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+
+  Ok(Command::Streg {
+    command: StregCommand {
+      time_variable,
+      predictors,
+      failure_variable,
+      distribution,
+      robust,
+      cluster_variable,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   if body.starts_with("==") {
     return Err(ParseError::new("unsupported token in command: =="));
@@ -7103,8 +7318,8 @@ mod tests {
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, GenerateBinaryOperator,
     GenerateExpression, HeckmanCommand, LazyEngine, LogitCommand, NbregCommand, NlCommand,
     ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
-    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, TobitCommand, ZinbCommand,
-    ZipCommand, parse_command,
+    RowLimit, SettingName, SortKey, SqlCommand, StregCommand, StregDistribution, TabulateCommand,
+    TobitCommand, ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -10753,6 +10968,224 @@ mod tests {
       (
         "nl y = a + b*x, params(a) start(1) foo bar",
         "nl unsupported option: bar, foo",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_streg_syntax() {
+    assert_eq!(
+      parse_command("streg time age income, failure(died) dist(weibull)").unwrap(),
+      Command::Streg {
+        command: StregCommand {
+          time_variable: "time".to_owned(),
+          predictors: vec!["age".to_owned(), "income".to_owned()],
+          failure_variable: "died".to_owned(),
+          distribution: StregDistribution::Weibull,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("streg time age, failure(died) dist(exponential) robust").unwrap(),
+      Command::Streg {
+        command: StregCommand {
+          time_variable: "time".to_owned(),
+          predictors: vec!["age".to_owned()],
+          failure_variable: "died".to_owned(),
+          distribution: StregDistribution::Exponential,
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("streg time age, failure(died) dist(weibull) cluster(group_id) noconstant")
+        .unwrap(),
+      Command::Streg {
+        command: StregCommand {
+          time_variable: "time".to_owned(),
+          predictors: vec!["age".to_owned()],
+          failure_variable: "died".to_owned(),
+          distribution: StregDistribution::Weibull,
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("STREG `time var` `age var`, failure(`event var`) dist(Weibull)").unwrap(),
+      Command::Streg {
+        command: StregCommand {
+          time_variable: "time var".to_owned(),
+          predictors: vec!["age var".to_owned()],
+          failure_variable: "event var".to_owned(),
+          distribution: StregDistribution::Weibull,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("streg time age, dist(EXPONENTIAL) failure(died)").unwrap(),
+      Command::Streg {
+        command: StregCommand {
+          time_variable: "time".to_owned(),
+          predictors: vec!["age".to_owned()],
+          failure_variable: "died".to_owned(),
+          distribution: StregDistribution::Exponential,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_streg_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "streg",
+        "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)",
+      ),
+      (
+        "streg time",
+        "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)",
+      ),
+      (
+        "streg time age",
+        "streg option failure expects one variable",
+      ),
+      (
+        "streg time age if time > 0, failure(event) dist(weibull)",
+        "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)",
+      ),
+      (
+        "streg time = age",
+        "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)",
+      ),
+      (
+        "streg time age, failure() dist(weibull)",
+        "option failure expects at least one value",
+      ),
+      (
+        "streg time age, failure(event event2) dist(weibull)",
+        "streg option failure expects one variable",
+      ),
+      (
+        "streg time age, failure(event) dist()",
+        "option dist expects at least one value",
+      ),
+      (
+        "streg time age, failure(event) dist(loglogistic)",
+        "streg option dist must be weibull or exponential",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) robust cluster(group)",
+        "streg cannot combine robust and cluster",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster(group firm)",
+        "streg option cluster expects one variable",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) robust=true",
+        "streg option robust does not accept a value",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) noconstant=true",
+        "streg option noconstant does not accept a value",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) failure(event2)",
+        "streg option failure may only be supplied once",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) dist(exponential)",
+        "streg option dist may only be supplied once",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster(a) cluster(b)",
+        "streg option cluster may only be supplied once",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) foo",
+        "streg unsupported option: foo",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) foo bar",
+        "streg unsupported option: bar, foo",
+      ),
+      ("streg:", "unsupported token in command: :"),
+      ("streg=", "streg assignment requires a target before ="),
+      ("streg==", "unsupported token in command: =="),
+      ("streg=foo", "streg assignment requires a target before ="),
+      ("streg = foo", "streg assignment requires a target before ="),
+      ("streg,", "comma must be followed by at least one option"),
+      (
+        "streg time age,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "streg time age, failure",
+        "streg option failure expects variables",
+      ),
+      (
+        "streg time age, failure=event dist=weibull",
+        "streg option failure expects variables",
+      ),
+      (
+        "streg time age, failure(event) dist",
+        "streg option dist expects variables",
+      ),
+      (
+        "streg time age, failure(event) dist=weibull",
+        "streg option dist expects variables",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster",
+        "streg option cluster expects variables",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster=group",
+        "streg option cluster expects variables",
+      ),
+      (
+        "streg time age, failure('event') dist(weibull)",
+        "option failure values must be identifiers",
+      ),
+      (
+        "streg time age, failure(event) dist('weibull')",
+        "option dist values must be identifiers",
+      ),
+      (
+        "streg time age, failure(event) dist(weibull) cluster('group')",
+        "option cluster values must be identifiers",
+      ),
+      (
+        "streg time age, failure(event)",
+        "streg option dist expects one value",
+      ),
+      (
+        "streg time age, dist(weibull)",
+        "streg option failure expects one variable",
       ),
     ];
     for (input, expected) in cases {
