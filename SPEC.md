@@ -1136,6 +1136,34 @@ construction (k-NN / PySAL / Shapefile), 2SLS / GM / SARAR estimation, FFI backe
 model results, post-estimation, reporting, CLI, JSON, MCP, and broad spatial regression
 estimator parity deferred.
 
+## Verified slice: syntax-only regularized regression commands (lasso, postlasso, ridge, elasticnet)
+
+Merged [PR #101](https://github.com/SaehwanPark/tabdat-explore-rs/pull/101)
+([477e815](https://github.com/SaehwanPark/tabdat-explore-rs/commit/477e815))
+adds bounded, backend-independent regularized linear regression syntax boundaries to
+`tabdat-language`. The parser returns owned `LassoCommand`, `PostlassoCommand`, `RidgeCommand`,
+and `ElasticnetCommand` types with a dependent outcome variable, ordered predictor list,
+regularization penalty parameter (`alpha`, defaulting to `"1.0"` and validated positive),
+elastic net mixing parameter (`l1_ratio` for elastic net, defaulting to `"0.5"` and validated
+in `[0.0, 1.0]`), robust covariance flag (`robust` on postlasso), and intercept inclusion flag
+(`noconstant`). It validates syntax structure, requiring the unquoted `linear` model specifier,
+at least one predictor variable, rejects conditions and assignment syntax, single-use rules,
+unsupported options, flag option values, numeric ranges, and punctuation guards, reporting
+exact Python-compatible diagnostics. Owned `String` and `Vec<String>` types are used
+so that the public `Command` enum retains its `Eq` derive. Runtime deliberately returns the
+typed unsupported command result; it does not perform estimation, initialize backends,
+or mutate model state.
+
+Evidence: [_workspace/parser-regularized-regression-syntax/](_workspace/parser-regularized-regression-syntax/),
+including the [contract](_workspace/parser-regularized-regression-syntax/01-contract.md) and
+[summary](_workspace/parser-regularized-regression-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, coordinate descent / proximal gradient
+optimization, post-lasso refitting, cross-validation search, FFI backends, model results,
+post-estimation, reporting, CLI, JSON, MCP, and broad regularized regression estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
