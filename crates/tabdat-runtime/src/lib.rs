@@ -3150,6 +3150,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Cvlasso { .. } => "cvlasso",
     Command::Cvridge { .. } => "cvridge",
     Command::Cvelasticnet { .. } => "cvelasticnet",
+    Command::Bayes { .. } => "bayes",
     Command::BayesPrefix { .. } => "bayes",
   }
 }
