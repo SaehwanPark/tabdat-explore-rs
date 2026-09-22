@@ -449,6 +449,13 @@ Port TabDat's language before implementing most execution.
   `l1_ratio(<val>)`, `robust`, `noconstant`, exact diagnostic parity, and
   parser-only execution deferral are covered; numerical optimization, post-lasso
   refitting, cross-validation search, and model state remain deferred).
+- [x] Add the bounded direct cross-validation regularized regression syntax slice
+  for `cvlasso`, `cvridge`, and `cvelasticnet` (PR #103, squash merge `cc08faa`;
+  typed `CvlassoCommand`, `CvridgeCommand`, `CvelasticnetL1Ratio`, and `CvelasticnetCommand`
+  structs and AST variants, linear model specifier validation, options `cv(<val>)`,
+  `l1_ratio(<val|vals>)`, `noconstant`, exact diagnostic parity, and parser-only
+  execution deferral are covered; cross-validation fold splitting, grid search,
+  scikit-learn optimization, and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

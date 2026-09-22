@@ -1164,6 +1164,34 @@ This accepted syntax slice leaves statistical estimation, coordinate descent / p
 optimization, post-lasso refitting, cross-validation search, FFI backends, model results,
 post-estimation, reporting, CLI, JSON, MCP, and broad regularized regression estimator parity deferred.
 
+## Verified slice: syntax-only cross-validation regularized regression commands (cvlasso, cvridge, cvelasticnet)
+
+Merged [PR #103](https://github.com/SaehwanPark/tabdat-explore-rs/pull/103)
+([cc08faa](https://github.com/SaehwanPark/tabdat-explore-rs/commit/cc08faa))
+adds bounded, backend-independent cross-validation regularized linear regression syntax boundaries to
+`tabdat-language`. The parser returns owned `CvlassoCommand`, `CvridgeCommand`, `CvelasticnetL1Ratio`,
+and `CvelasticnetCommand` types with a dependent outcome variable, ordered predictor list,
+cross-validation folds (`cv`, defaulting to `5` and validated integer >= 2), elastic net mixing
+parameter (`l1_ratio` for cvelasticnet, defaulting to `(0.1, 0.5, 0.7, 0.9, 0.95, 0.99, 1.0)` and
+validated in `[0.0, 1.0]`), and intercept inclusion flag (`noconstant`). It validates syntax structure,
+requiring the unquoted `linear` model specifier, at least one predictor variable, rejects conditions
+and assignment syntax, single-use rules, unsupported options, flag option values, numeric ranges, and
+punctuation guards, reporting exact Python-compatible diagnostics. Owned `String`, `Vec<String>`, and
+`i64` types are used so that the public `Command` enum retains its `Eq` derive. Runtime deliberately
+returns the typed unsupported command result; it does not perform estimation, initialize backends,
+or mutate model state.
+
+Evidence: [_workspace/parser-cv-regularized-regression-syntax/](_workspace/parser-cv-regularized-regression-syntax/),
+including the [contract](_workspace/parser-cv-regularized-regression-syntax/01-contract.md) and
+[summary](_workspace/parser-cv-regularized-regression-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, coordinate descent / scikit-learn optimization,
+K-fold splitting, cross-validation grid search, report generation, FFI backends, model results,
+post-estimation, reporting, CLI, JSON, MCP, and broad cross-validation regularized regression estimator
+parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
