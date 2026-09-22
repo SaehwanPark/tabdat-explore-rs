@@ -968,6 +968,31 @@ This accepted syntax slice leaves statistical estimation, numerical optimization
 zero-inflation parameter estimation, FFI backends, model results, post-estimation,
 reporting, CLI, JSON, MCP, and broad zero-inflated count model estimator parity deferred.
 
+## Verified slice: syntax-only `qreg` command
+
+Merged [PR #89](https://github.com/SaehwanPark/tabdat-explore-rs/pull/89)
+([cc6e656](https://github.com/SaehwanPark/tabdat-explore-rs/commit/cc6e656))
+adds bounded, backend-independent `qreg` syntax boundaries to
+`tabdat-language`. The parser returns an owned `QregCommand` type with
+ordered predictors, quantile numeric string spelling (default `"0.5"`),
+robust covariance flag, and intercept inclusion flag. It validates syntax
+structure, quantile numeric bounds (`0 < quantile < 1`), option single-use
+rules, variable count constraints, and flag option values, reporting exact
+Python-compatible diagnostics. Numeric text for `quantile` remains an owned
+`String` so that the public `Command` enum retains its `Eq` derive. Runtime
+deliberately returns the typed unsupported command result; it does not perform
+estimation, initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-qreg-syntax/](_workspace/parser-qreg-syntax/),
+including the [contract](_workspace/parser-qreg-syntax/01-contract.md) and
+[summary](_workspace/parser-qreg-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, linear programming,
+quantile loss optimization, FFI backends, model results, post-estimation,
+reporting, CLI, JSON, MCP, and broad quantile regression estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

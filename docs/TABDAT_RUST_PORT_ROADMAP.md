@@ -411,6 +411,10 @@ Port TabDat's language before implementing most execution.
   options `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic parity, and
   parser-only execution deferral are covered; statistical estimation and model
   state remain deferred).
+- [x] Add the bounded direct `qreg` syntax slice (PR #89, squash
+  merge `cc6e656`; typed `QregCommand`, options `quantile(<num>)`,
+  `robust`, `noconstant`, exact diagnostic parity, and parser-only execution
+  deferral are covered; statistical estimation and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
