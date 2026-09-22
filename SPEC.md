@@ -943,6 +943,31 @@ This accepted syntax slice leaves statistical estimation, numerical optimization
 dispersion parameter estimation, FFI backends, model results, post-estimation,
 reporting, CLI, JSON, MCP, and broad count model estimator parity deferred.
 
+## Verified slice: syntax-only `zip` and `zinb` commands
+
+Merged [PR #87](https://github.com/SaehwanPark/tabdat-explore-rs/pull/87)
+([78cf4d8](https://github.com/SaehwanPark/tabdat-explore-rs/commit/78cf4d8))
+adds bounded, backend-independent `zip` and `zinb` syntax boundaries to
+`tabdat-language`. The parser returns owned `ZipCommand` and `ZinbCommand`
+types with ordered predictors, ordered zero-inflation predictors (`inflate_predictors`),
+robust covariance flag, optional cluster variable, and intercept inclusion flag.
+It validates syntax structure, mandatory `inflate(<zvars>)`, mutual exclusions
+(`robust` vs `cluster`), single-variable requirement for `cluster`, option
+single-use rules, variable count constraints, and flag option values,
+reporting exact Python-compatible diagnostics. Runtime deliberately returns
+the typed unsupported command result; it does not perform estimation,
+initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-zip-zinb-syntax/](_workspace/parser-zip-zinb-syntax/),
+including the [contract](_workspace/parser-zip-zinb-syntax/01-contract.md) and
+[summary](_workspace/parser-zip-zinb-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, numerical optimization,
+zero-inflation parameter estimation, FFI backends, model results, post-estimation,
+reporting, CLI, JSON, MCP, and broad zero-inflated count model estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
