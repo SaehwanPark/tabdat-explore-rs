@@ -148,6 +148,10 @@ pub enum Command {
   Poisson { command: PoissonCommand },
   /// Fit a negative binomial regression model (execution is deferred).
   Nbreg { command: NbregCommand },
+  /// Fit a zero-inflated Poisson regression model (execution is deferred).
+  Zip { command: ZipCommand },
+  /// Fit a zero-inflated negative binomial regression model (execution is deferred).
+  Zinb { command: ZinbCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -454,6 +458,42 @@ pub struct NbregCommand {
   pub outcome: String,
   /// Ordered predictor variables.
   pub predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `zip` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZipCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Ordered zero-inflation predictor variables.
+  pub inflate_predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `zinb` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZinbCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Ordered zero-inflation predictor variables.
+  pub inflate_predictors: Vec<String>,
   /// Request robust covariance in the eventual runtime.
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
@@ -1004,6 +1044,22 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"zip"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..4)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"zinb"))
+    && command.as_bytes().get(4) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1159,6 +1215,20 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "nbreg assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("zip") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("zip assignment requires a target before ="));
+  }
+  if name.eq_ignore_ascii_case("zinb") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "zinb assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1261,6 +1331,8 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "probit" => parse_binary_or_count_response_command("probit", body),
     "poisson" => parse_binary_or_count_response_command("poisson", body),
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
+    "zip" => parse_zero_inflated_count_command("zip", body),
+    "zinb" => parse_zero_inflated_count_command("zinb", body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -3450,6 +3522,159 @@ fn parse_binary_or_count_response_command(
       },
     }),
     _ => unreachable!("unsupported binary or count response command: {command_name}"),
+  }
+}
+
+fn parse_zero_inflated_count_command(
+  command_name: &str,
+  body: &str,
+) -> Result<Command, ParseError> {
+  let syntax =
+    format!("{command_name} expects syntax: {command_name} <y> <xvars>, inflate(<zvars>)");
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "inflate" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "{command_name} unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "{command_name} option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let inflate_matches = options
+    .iter()
+    .filter(|option| option.name == "inflate")
+    .collect::<Vec<_>>();
+  if inflate_matches.is_empty() {
+    return Err(ParseError::new(format!(
+      "{command_name} option inflate expects one-or-more variables"
+    )));
+  }
+  if inflate_matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option inflate may only be supplied once"
+    )));
+  }
+  let inflate_predictors = match &inflate_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.is_empty() {
+        return Err(ParseError::new(format!(
+          "{command_name} option inflate expects one-or-more variables"
+        )));
+      }
+      values.clone()
+    }
+    _ => {
+      return Err(ParseError::new(format!(
+        "{command_name} option inflate expects variables"
+      )));
+    }
+  };
+
+  let cluster_matches = options
+    .iter()
+    .filter(|option| option.name == "cluster")
+    .collect::<Vec<_>>();
+  if cluster_matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option cluster may only be supplied once"
+    )));
+  }
+  let cluster_values = match cluster_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new(format!(
+            "{command_name} option cluster expects one variable"
+          )));
+        }
+        Some(values[0].clone())
+      }
+      _ => {
+        return Err(ParseError::new(format!(
+          "{command_name} option cluster expects variables"
+        )));
+      }
+    },
+    None => None,
+  };
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_values.is_some() {
+    return Err(ParseError::new(format!(
+      "{command_name} cannot combine robust and cluster"
+    )));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  match command_name {
+    "zip" => Ok(Command::Zip {
+      command: ZipCommand {
+        outcome,
+        predictors,
+        inflate_predictors,
+        robust,
+        cluster_variable: cluster_values,
+        include_intercept,
+      },
+    }),
+    "zinb" => Ok(Command::Zinb {
+      command: ZinbCommand {
+        outcome,
+        predictors,
+        inflate_predictors,
+        robust,
+        cluster_variable: cluster_values,
+        include_intercept,
+      },
+    }),
+    _ => unreachable!("unsupported zero-inflated count command: {command_name}"),
   }
 }
 
@@ -6094,7 +6319,8 @@ mod tests {
   use super::{
     BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
     NbregCommand, ParseError, PoissonCommand, ProbitCommand, RegressCommand, RegressEstimator,
-    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, parse_command,
+    RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, ZinbCommand, ZipCommand,
+    parse_command,
   };
 
   #[test]
@@ -8740,6 +8966,294 @@ mod tests {
       ("nbreg=", "nbreg assignment requires a target before ="),
       ("nbreg==", "unsupported token in command: =="),
       ("nbreg:y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_zip_and_zinb_syntax() {
+    assert_eq!(
+      parse_command("zip outcome x1 x2, inflate(z1 z2)").unwrap(),
+      Command::Zip {
+        command: ZipCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          inflate_predictors: vec!["z1".to_owned(), "z2".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zip outcome x1, inflate(z1) robust").unwrap(),
+      Command::Zip {
+        command: ZipCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("ZIP outcome x1, inflate(z1) cluster(group_id)").unwrap(),
+      Command::Zip {
+        command: ZipCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zip outcome x1, inflate(z1) noconstant").unwrap(),
+      Command::Zip {
+        command: ZipCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zip `y var` 'x var', inflate(`z var`) cluster(`firm id`)").unwrap(),
+      Command::Zip {
+        command: ZipCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          inflate_predictors: vec!["z var".to_owned()],
+          robust: false,
+          cluster_variable: Some("firm id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("zinb outcome x1 x2, inflate(z1 z2)").unwrap(),
+      Command::Zinb {
+        command: ZinbCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          inflate_predictors: vec!["z1".to_owned(), "z2".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zinb outcome x1, inflate(z1) robust").unwrap(),
+      Command::Zinb {
+        command: ZinbCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("ZINB outcome x1, inflate(z1) cluster(group_id)").unwrap(),
+      Command::Zinb {
+        command: ZinbCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zinb outcome x1, inflate(z1) noconstant").unwrap(),
+      Command::Zinb {
+        command: ZinbCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          inflate_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("zinb `y var` 'x var', inflate(`z var`) cluster(`firm id`)").unwrap(),
+      Command::Zinb {
+        command: ZinbCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          inflate_predictors: vec!["z var".to_owned()],
+          robust: false,
+          cluster_variable: Some("firm id".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_zip_and_zinb_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "zip",
+        "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zip y",
+        "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zip y x",
+        "zip option inflate expects one-or-more variables",
+      ),
+      (
+        "zip y x if y > 0",
+        "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zip y x if y > 0, inflate(z)",
+        "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zip y x = 1",
+        "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)",
+      ),
+      ("zip y x, inflate", "zip option inflate expects variables"),
+      (
+        "zip y x, inflate()",
+        "option inflate expects at least one value",
+      ),
+      (
+        "zip y x, inflate(z1) inflate(z2)",
+        "zip option inflate may only be supplied once",
+      ),
+      (
+        "zip y x, inflate(z) robust cluster(group)",
+        "zip cannot combine robust and cluster",
+      ),
+      (
+        "zip y x, inflate(z) cluster",
+        "zip option cluster expects variables",
+      ),
+      (
+        "zip y x, inflate(z) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "zip y x, inflate(z) cluster(group firm)",
+        "zip option cluster expects one variable",
+      ),
+      (
+        "zip y x, inflate(z) cluster(a) cluster(b)",
+        "zip option cluster may only be supplied once",
+      ),
+      (
+        "zip y x, inflate(z) robust=true",
+        "zip option robust does not accept a value",
+      ),
+      (
+        "zip y x, inflate(z) noconstant=true",
+        "zip option noconstant does not accept a value",
+      ),
+      (
+        "zip y x, inflate(z) invalid",
+        "zip unsupported option: invalid",
+      ),
+      ("zip y x,", "comma must be followed by at least one option"),
+      ("zip,", "comma must be followed by at least one option"),
+      ("zip=", "zip assignment requires a target before ="),
+      ("zip==", "unsupported token in command: =="),
+      ("zip:y x", "unsupported token in command: :"),
+      (
+        "zinb",
+        "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zinb y",
+        "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zinb y x",
+        "zinb option inflate expects one-or-more variables",
+      ),
+      (
+        "zinb y x if y > 0",
+        "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zinb y x if y > 0, inflate(z)",
+        "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)",
+      ),
+      (
+        "zinb y x = 1",
+        "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)",
+      ),
+      ("zinb y x, inflate", "zinb option inflate expects variables"),
+      (
+        "zinb y x, inflate()",
+        "option inflate expects at least one value",
+      ),
+      (
+        "zinb y x, inflate(z1) inflate(z2)",
+        "zinb option inflate may only be supplied once",
+      ),
+      (
+        "zinb y x, inflate(z) robust cluster(group)",
+        "zinb cannot combine robust and cluster",
+      ),
+      (
+        "zinb y x, inflate(z) cluster",
+        "zinb option cluster expects variables",
+      ),
+      (
+        "zinb y x, inflate(z) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "zinb y x, inflate(z) cluster(group firm)",
+        "zinb option cluster expects one variable",
+      ),
+      (
+        "zinb y x, inflate(z) cluster(a) cluster(b)",
+        "zinb option cluster may only be supplied once",
+      ),
+      (
+        "zinb y x, inflate(z) robust=true",
+        "zinb option robust does not accept a value",
+      ),
+      (
+        "zinb y x, inflate(z) noconstant=true",
+        "zinb option noconstant does not accept a value",
+      ),
+      (
+        "zinb y x, inflate(z) invalid",
+        "zinb unsupported option: invalid",
+      ),
+      ("zinb y x,", "comma must be followed by at least one option"),
+      ("zinb,", "comma must be followed by at least one option"),
+      ("zinb=", "zinb assignment requires a target before ="),
+      ("zinb==", "unsupported token in command: =="),
+      ("zinb:y x", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
