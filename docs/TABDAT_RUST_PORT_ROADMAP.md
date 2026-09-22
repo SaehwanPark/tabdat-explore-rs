@@ -415,6 +415,11 @@ Port TabDat's language before implementing most execution.
   merge `cc6e656`; typed `QregCommand`, options `quantile(<num>)`,
   `robust`, `noconstant`, exact diagnostic parity, and parser-only execution
   deferral are covered; statistical estimation and model state remain deferred).
+- [x] Add the bounded direct `tobit` syntax slice (PR #91, squash
+  merge `708e64f`; typed `TobitCommand`, options `ll(<num>)`, `ul(<num>)`,
+  `robust`, `cluster(<var>)`, `noconstant`, exact diagnostic parity, and
+  parser-only execution deferral are covered; statistical estimation and model
+  state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
