@@ -3142,6 +3142,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Heckman { .. } => "heckman",
     Command::Nl { .. } => "nl",
     Command::Streg { .. } => "streg",
+    Command::Spregress { .. } => "spregress",
     Command::BayesPrefix { .. } => "bayes",
   }
 }
