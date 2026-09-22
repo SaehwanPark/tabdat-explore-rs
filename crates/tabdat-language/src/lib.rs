@@ -178,6 +178,8 @@ pub enum Command {
   Cvridge { command: CvridgeCommand },
   /// Fit a cross-validated elastic net model (execution is deferred).
   Cvelasticnet { command: CvelasticnetCommand },
+  /// Fit a direct Bayesian linear regression model (execution is deferred).
+  Bayes { command: BayesCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -784,6 +786,22 @@ pub struct CvelasticnetCommand {
   pub cv: i64,
   /// Elastic net mixing parameter or candidate list, retained as string spellings.
   pub l1_ratio: CvelasticnetL1Ratio,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only direct `bayes` linear regression form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BayesCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Maximum number of iterations for evidence maximization (default: 300).
+  pub n_iter: i64,
+  /// Convergence tolerance for evidence maximization, retained as string spelling (default: "0.001").
+  pub tol: String,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -5763,18 +5781,109 @@ fn parse_cvelasticnet_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
-  if body.starts_with("==") {
-    return Err(ParseError::new("unsupported token in command: =="));
-  }
-  if body.starts_with('=') {
+fn extract_n_iter_option(options: &[UseOption]) -> Result<i64, ParseError> {
+  let matches = options
+    .iter()
+    .filter(|option| option.name == "n_iter")
+    .collect::<Vec<_>>();
+  if matches.len() > 1 {
     return Err(ParseError::new(
-      "bayes assignment requires a target before =",
+      "bayes option n_iter may only be supplied once",
     ));
   }
-  Err(ParseError::new(
-    "bayes expects syntax: bayes linear <y> <xvars>",
-  ))
+  match matches.first() {
+    Some(option) => {
+      let UseOptionValue::Number(value) = &option.value else {
+        return Err(ParseError::new(
+          "bayes option n_iter expects an integer value",
+        ));
+      };
+      let parsed = value.parse::<f64>().ok().filter(|val| val.is_finite());
+      let Some(parsed) = parsed.filter(|val| val.fract() == 0.0) else {
+        return Err(ParseError::new(
+          "bayes option n_iter expects an integer value",
+        ));
+      };
+      if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+        return Err(ParseError::new(
+          "bayes option n_iter expects an integer value",
+        ));
+      }
+      let parsed = parsed as i64;
+      if parsed < 1 {
+        return Err(ParseError::new("bayes option n_iter must be at least 1"));
+      }
+      Ok(parsed)
+    }
+    None => Ok(300),
+  }
+}
+
+fn extract_tol_option(options: &[UseOption]) -> Result<String, ParseError> {
+  let matches = options
+    .iter()
+    .filter(|option| option.name == "tol")
+    .collect::<Vec<_>>();
+  if matches.len() > 1 {
+    return Err(ParseError::new(
+      "bayes option tol may only be supplied once",
+    ));
+  }
+  match matches.first() {
+    Some(option) => {
+      let UseOptionValue::Number(value) = &option.value else {
+        return Err(ParseError::new("bayes option tol expects a numeric value"));
+      };
+      let Some(parsed) = value.parse::<f64>().ok().filter(|val| val.is_finite()) else {
+        return Err(ParseError::new("bayes option tol expects a numeric value"));
+      };
+      if parsed <= 0.0 {
+        return Err(ParseError::new("bayes option tol must be positive"));
+      }
+      Ok(value.clone())
+    }
+    None => Ok("0.001".to_string()),
+  }
+}
+
+fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("bayes", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "n_iter" | "tol" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "bayes unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "bayes option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let n_iter = extract_n_iter_option(&options)?;
+  let tol = extract_tol_option(&options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Bayes {
+    command: BayesCommand {
+      outcome,
+      predictors,
+      n_iter,
+      tol,
+      include_intercept,
+    },
+  })
 }
 
 fn parse_bayes_prefix_command(command: &str) -> Result<Command, ParseError> {
@@ -8415,7 +8524,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
+    BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
     CvlassoCommand, CvridgeCommand, DataSource, ElasticnetCommand, ExecutionMode,
     GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
     LogitCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
@@ -13533,6 +13642,187 @@ mod tests {
         "cvelasticnet assignment requires a target before =",
       ),
       ("cvelasticnet==", "unsupported token in command: =="),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_bayes_linear_command_syntax() {
+    assert_eq!(
+      parse_command("bayes linear cost age bmi").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "cost".to_string(),
+          predictors: vec!["age".to_string(), "bmi".to_string()],
+          n_iter: 300,
+          tol: "0.001".to_string(),
+          include_intercept: true,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("bayes linear cost age, n_iter(500)").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "cost".to_string(),
+          predictors: vec!["age".to_string()],
+          n_iter: 500,
+          tol: "0.001".to_string(),
+          include_intercept: true,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("bayes linear cost age, tol(1e-4)").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "cost".to_string(),
+          predictors: vec!["age".to_string()],
+          n_iter: 300,
+          tol: "1e-4".to_string(),
+          include_intercept: true,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("bayes linear cost age, n_iter(100) tol(1e-5) noconstant").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "cost".to_string(),
+          predictors: vec!["age".to_string()],
+          n_iter: 100,
+          tol: "1e-5".to_string(),
+          include_intercept: false,
+        },
+      }
+    );
+
+    // Case insensitivity
+    assert_eq!(
+      parse_command("BAYES LINEAR cost age").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "cost".to_string(),
+          predictors: vec!["age".to_string()],
+          n_iter: 300,
+          tol: "0.001".to_string(),
+          include_intercept: true,
+        },
+      }
+    );
+
+    // Backtick quoting
+    assert_eq!(
+      parse_command("bayes linear `total cost` `patient age`").unwrap(),
+      Command::Bayes {
+        command: BayesCommand {
+          outcome: "total cost".to_string(),
+          predictors: vec!["patient age".to_string()],
+          n_iter: 300,
+          tol: "0.001".to_string(),
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_bayes_linear_syntax() {
+    let cases = [
+      ("bayes", "bayes expects syntax: bayes linear <y> <xvars>"),
+      (
+        "bayes linear",
+        "bayes expects syntax: bayes linear <y> <xvars>",
+      ),
+      (
+        "bayes linear y",
+        "bayes expects syntax: bayes linear <y> <xvars>",
+      ),
+      ("bayes logistic y x", "bayes model must be linear"),
+      (
+        "bayes linear y x if y > 0",
+        "bayes expects syntax: bayes linear <y> <xvars>",
+      ),
+      (
+        "bayes linear y x, n_iter()",
+        "option n_iter expects at least one value",
+      ),
+      (
+        "bayes linear y x, n_iter(-10)",
+        "bayes option n_iter must be at least 1",
+      ),
+      (
+        "bayes linear y x, n_iter(0)",
+        "bayes option n_iter must be at least 1",
+      ),
+      (
+        "bayes linear y x, n_iter(1.5)",
+        "bayes option n_iter expects an integer value",
+      ),
+      (
+        "bayes linear y x, n_iter(foo)",
+        "option n_iter expects a numeric value",
+      ),
+      (
+        "bayes linear y x, n_iter",
+        "bayes option n_iter expects an integer value",
+      ),
+      (
+        "bayes linear y x, n_iter(100) n_iter(200)",
+        "bayes option n_iter may only be supplied once",
+      ),
+      (
+        "bayes linear y x, tol()",
+        "option tol expects at least one value",
+      ),
+      (
+        "bayes linear y x, tol(-0.5)",
+        "bayes option tol must be positive",
+      ),
+      (
+        "bayes linear y x, tol(0)",
+        "bayes option tol must be positive",
+      ),
+      (
+        "bayes linear y x, tol(foo)",
+        "option tol expects a numeric value",
+      ),
+      (
+        "bayes linear y x, tol",
+        "bayes option tol expects a numeric value",
+      ),
+      (
+        "bayes linear y x, tol(0.01) tol(0.02)",
+        "bayes option tol may only be supplied once",
+      ),
+      (
+        "bayes linear y x, noconstant(1)",
+        "option noconstant values must be identifiers",
+      ),
+      (
+        "bayes linear y x, noconstant=true",
+        "bayes option noconstant does not accept a value",
+      ),
+      (
+        "bayes linear y x, alpha(1)",
+        "bayes unsupported option: alpha",
+      ),
+      (
+        "bayes linear y x, robust",
+        "bayes unsupported option: robust",
+      ),
+      ("bayes=", "bayes assignment requires a target before ="),
+      ("bayes = 1", "bayes assignment requires a target before ="),
+      ("bayes==", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
       assert_eq!(
