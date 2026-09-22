@@ -172,6 +172,12 @@ pub enum Command {
   Ridge { command: RidgeCommand },
   /// Fit an elastic net regularized regression model (execution is deferred).
   Elasticnet { command: ElasticnetCommand },
+  /// Fit a cross-validated lasso model (execution is deferred).
+  Cvlasso { command: CvlassoCommand },
+  /// Fit a cross-validated ridge model (execution is deferred).
+  Cvridge { command: CvridgeCommand },
+  /// Fit a cross-validated elastic net model (execution is deferred).
+  Cvelasticnet { command: CvelasticnetCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -725,6 +731,59 @@ pub struct ElasticnetCommand {
   pub alpha: String,
   /// Elastic net mixing parameter between 0 and 1 inclusive, retained as string spelling.
   pub l1_ratio: String,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `cvlasso` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CvlassoCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Cross-validation folds (must be at least 2, default: 5).
+  pub cv: i64,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `cvridge` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CvridgeCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Cross-validation folds (must be at least 2, default: 5).
+  pub cv: i64,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The elastic net mixing parameter forms accepted by `cvelasticnet`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CvelasticnetL1Ratio {
+  /// Single mixing parameter value retained as string spelling.
+  Single(String),
+  /// Multiple candidate mixing parameter values retained as string spellings.
+  Multiple(Vec<String>),
+}
+
+/// The parser-only `cvelasticnet` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CvelasticnetCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Cross-validation folds (must be at least 2, default: 5).
+  pub cv: i64,
+  /// Elastic net mixing parameter or candidate list, retained as string spellings.
+  pub l1_ratio: CvelasticnetL1Ratio,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
@@ -1367,6 +1426,30 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvlasso"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvridge"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..12)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvelasticnet"))
+    && command.as_bytes().get(12) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1614,6 +1697,30 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "elasticnet assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("cvlasso") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "cvlasso assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("cvridge") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "cvridge assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("cvelasticnet") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "cvelasticnet assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1728,6 +1835,9 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "postlasso" => parse_postlasso_command(body),
     "ridge" => parse_ridge_command(body),
     "elasticnet" => parse_elasticnet_command(body),
+    "cvlasso" => parse_cvlasso_command(body),
+    "cvridge" => parse_cvridge_command(body),
+    "cvelasticnet" => parse_cvelasticnet_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -5436,6 +5546,223 @@ fn parse_elasticnet_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn extract_cv_option(command_name: &str, options: &[UseOption]) -> Result<i64, ParseError> {
+  let cv_matches = options
+    .iter()
+    .filter(|option| option.name == "cv")
+    .collect::<Vec<_>>();
+  if cv_matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option cv may only be supplied once"
+    )));
+  }
+  match cv_matches.first() {
+    Some(option) => {
+      let UseOptionValue::Number(value) = &option.value else {
+        return Err(ParseError::new(format!(
+          "{command_name} option cv expects an integer value"
+        )));
+      };
+      let parsed = value.parse::<f64>().ok().filter(|val| val.is_finite());
+      let Some(parsed) = parsed.filter(|val| val.fract() == 0.0) else {
+        return Err(ParseError::new(format!(
+          "{command_name} option cv expects an integer value"
+        )));
+      };
+      if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+        return Err(ParseError::new(format!(
+          "{command_name} option cv expects an integer value"
+        )));
+      }
+      let parsed = parsed as i64;
+      if parsed < 2 {
+        return Err(ParseError::new(format!(
+          "{command_name} option cv must be at least 2"
+        )));
+      }
+      Ok(parsed)
+    }
+    None => Ok(5),
+  }
+}
+
+fn extract_cvelasticnet_l1_ratio(options: &[UseOption]) -> Result<CvelasticnetL1Ratio, ParseError> {
+  let l1_matches = options
+    .iter()
+    .filter(|option| option.name == "l1_ratio")
+    .collect::<Vec<_>>();
+  if l1_matches.len() > 1 {
+    return Err(ParseError::new(
+      "cvelasticnet option l1_ratio may only be supplied once",
+    ));
+  }
+  match l1_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Number(text) => {
+        let Ok(val) = text.parse::<f64>() else {
+          return Err(ParseError::new(
+            "cvelasticnet option l1_ratio expects a numeric value or list of numeric values",
+          ));
+        };
+        if !(0.0..=1.0).contains(&val) {
+          return Err(ParseError::new(
+            "cvelasticnet option l1_ratio values must be between 0 and 1 inclusive",
+          ));
+        }
+        Ok(CvelasticnetL1Ratio::Single(text.clone()))
+      }
+      UseOptionValue::Numbers(values) => {
+        if values.is_empty() {
+          return Err(ParseError::new(
+            "cvelasticnet option l1_ratio cannot be empty",
+          ));
+        }
+        for item in values {
+          let Ok(val) = item.parse::<f64>() else {
+            return Err(ParseError::new(
+              "cvelasticnet option l1_ratio values must be numeric",
+            ));
+          };
+          if !(0.0..=1.0).contains(&val) {
+            return Err(ParseError::new(
+              "cvelasticnet option l1_ratio values must be between 0 and 1 inclusive",
+            ));
+          }
+        }
+        Ok(CvelasticnetL1Ratio::Multiple(values.clone()))
+      }
+      _ => Err(ParseError::new(
+        "cvelasticnet option l1_ratio expects a numeric value or list of numeric values",
+      )),
+    },
+    None => Ok(CvelasticnetL1Ratio::Multiple(vec![
+      "0.1".to_owned(),
+      "0.5".to_owned(),
+      "0.7".to_owned(),
+      "0.9".to_owned(),
+      "0.95".to_owned(),
+      "0.99".to_owned(),
+      "1.0".to_owned(),
+    ])),
+  }
+}
+
+fn parse_cvlasso_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("cvlasso", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "cv" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "cvlasso unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "cvlasso option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let cv = extract_cv_option("cvlasso", &options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Cvlasso {
+    command: CvlassoCommand {
+      outcome,
+      predictors,
+      cv,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_cvridge_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("cvridge", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "cv" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "cvridge unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "cvridge option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let cv = extract_cv_option("cvridge", &options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Cvridge {
+    command: CvridgeCommand {
+      outcome,
+      predictors,
+      cv,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_cvelasticnet_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("cvelasticnet", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "cv" | "l1_ratio" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "cvelasticnet unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "cvelasticnet option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let cv = extract_cv_option("cvelasticnet", &options)?;
+  let l1_ratio = extract_cvelasticnet_l1_ratio(&options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Cvelasticnet {
+    command: CvelasticnetCommand {
+      outcome,
+      predictors,
+      cv,
+      l1_ratio,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   if body.starts_with("==") {
     return Err(ParseError::new("unsupported token in command: =="));
@@ -8088,7 +8415,8 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesPrefixCommand, ByCommand, Command, DataSource, ElasticnetCommand, ExecutionMode,
+    BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
+    CvlassoCommand, CvridgeCommand, DataSource, ElasticnetCommand, ExecutionMode,
     GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
     LogitCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
     ProbitCommand, QregCommand, RegressCommand, RegressEstimator, RidgeCommand, RowLimit,
@@ -12842,6 +13170,369 @@ mod tests {
         "elasticnet assignment requires a target before =",
       ),
       ("elasticnet==", "unsupported token in command: =="),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_cv_regularized_regression_syntax() {
+    assert_eq!(
+      parse_command("cvlasso linear cost age bmi").unwrap(),
+      Command::Cvlasso {
+        command: CvlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          cv: 5,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvlasso linear cost age, cv(10)").unwrap(),
+      Command::Cvlasso {
+        command: CvlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 10,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvlasso linear cost age, cv(2.0)").unwrap(),
+      Command::Cvlasso {
+        command: CvlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 2,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvlasso linear cost age, noconstant").unwrap(),
+      Command::Cvlasso {
+        command: CvlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 5,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("CVLASSO linear `cost var` `age var`, cv(3) noconstant").unwrap(),
+      Command::Cvlasso {
+        command: CvlassoCommand {
+          outcome: "cost var".to_owned(),
+          predictors: vec!["age var".to_owned()],
+          cv: 3,
+          include_intercept: false,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("cvridge linear cost age bmi").unwrap(),
+      Command::Cvridge {
+        command: CvridgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          cv: 5,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvridge linear cost age, cv(4)").unwrap(),
+      Command::Cvridge {
+        command: CvridgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 4,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvridge linear cost age, noconstant").unwrap(),
+      Command::Cvridge {
+        command: CvridgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 5,
+          include_intercept: false,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("cvelasticnet linear cost age bmi").unwrap(),
+      Command::Cvelasticnet {
+        command: CvelasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          cv: 5,
+          l1_ratio: CvelasticnetL1Ratio::Multiple(vec![
+            "0.1".to_owned(),
+            "0.5".to_owned(),
+            "0.7".to_owned(),
+            "0.9".to_owned(),
+            "0.95".to_owned(),
+            "0.99".to_owned(),
+            "1.0".to_owned(),
+          ]),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvelasticnet linear cost age, cv(8) l1_ratio(0.5)").unwrap(),
+      Command::Cvelasticnet {
+        command: CvelasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 8,
+          l1_ratio: CvelasticnetL1Ratio::Single("0.5".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvelasticnet linear cost age, l1_ratio(0.2 0.4 0.6 0.8)").unwrap(),
+      Command::Cvelasticnet {
+        command: CvelasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 5,
+          l1_ratio: CvelasticnetL1Ratio::Multiple(vec![
+            "0.2".to_owned(),
+            "0.4".to_owned(),
+            "0.6".to_owned(),
+            "0.8".to_owned(),
+          ]),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvelasticnet linear cost age, l1_ratio(0.0) noconstant").unwrap(),
+      Command::Cvelasticnet {
+        command: CvelasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 5,
+          l1_ratio: CvelasticnetL1Ratio::Single("0.0".to_owned()),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cvelasticnet linear cost age, l1_ratio(1.0)").unwrap(),
+      Command::Cvelasticnet {
+        command: CvelasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          cv: 5,
+          l1_ratio: CvelasticnetL1Ratio::Single("1.0".to_owned()),
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_cv_regularized_regression_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "cvlasso",
+        "cvlasso expects syntax: cvlasso linear <y> <xvars>",
+      ),
+      (
+        "cvlasso linear",
+        "cvlasso expects syntax: cvlasso linear <y> <xvars>",
+      ),
+      (
+        "cvlasso linear y",
+        "cvlasso expects syntax: cvlasso linear <y> <xvars>",
+      ),
+      ("cvlasso logistic y x", "cvlasso model must be linear"),
+      ("cvlasso `linear` y x", "cvlasso model must be linear"),
+      (
+        "cvlasso linear y x if y > 0",
+        "cvlasso expects syntax: cvlasso linear <y> <xvars>",
+      ),
+      (
+        "cvlasso linear y x, cv()",
+        "option cv expects at least one value",
+      ),
+      (
+        "cvlasso linear y x, cv(1)",
+        "cvlasso option cv must be at least 2",
+      ),
+      (
+        "cvlasso linear y x, cv(0)",
+        "cvlasso option cv must be at least 2",
+      ),
+      (
+        "cvlasso linear y x, cv(-1)",
+        "cvlasso option cv must be at least 2",
+      ),
+      (
+        "cvlasso linear y x, cv(2.5)",
+        "cvlasso option cv expects an integer value",
+      ),
+      (
+        "cvlasso linear y x, cv(foo)",
+        "option cv expects a numeric value",
+      ),
+      (
+        "cvlasso linear y x, cv",
+        "cvlasso option cv expects an integer value",
+      ),
+      (
+        "cvlasso linear y x, cv(3) cv(5)",
+        "cvlasso option cv may only be supplied once",
+      ),
+      (
+        "cvlasso linear y x, noconstant(1)",
+        "option noconstant values must be identifiers",
+      ),
+      (
+        "cvlasso linear y x, noconstant(foo)",
+        "cvlasso option noconstant does not accept a value",
+      ),
+      (
+        "cvlasso linear y x, alpha(1)",
+        "cvlasso unsupported option: alpha",
+      ),
+      ("cvlasso:", "unsupported token in command: :"),
+      ("cvlasso=", "cvlasso assignment requires a target before ="),
+      ("cvlasso==", "unsupported token in command: =="),
+      (
+        "cvlasso = y x",
+        "cvlasso assignment requires a target before =",
+      ),
+      (
+        "cvridge",
+        "cvridge expects syntax: cvridge linear <y> <xvars>",
+      ),
+      (
+        "cvridge linear",
+        "cvridge expects syntax: cvridge linear <y> <xvars>",
+      ),
+      (
+        "cvridge linear y",
+        "cvridge expects syntax: cvridge linear <y> <xvars>",
+      ),
+      ("cvridge logistic y x", "cvridge model must be linear"),
+      (
+        "cvridge linear y x if y > 0",
+        "cvridge expects syntax: cvridge linear <y> <xvars>",
+      ),
+      (
+        "cvridge linear y x, cv(1)",
+        "cvridge option cv must be at least 2",
+      ),
+      (
+        "cvridge linear y x, cv(2.5)",
+        "cvridge option cv expects an integer value",
+      ),
+      (
+        "cvridge linear y x, cv",
+        "cvridge option cv expects an integer value",
+      ),
+      (
+        "cvridge linear y x, cv(3) cv(5)",
+        "cvridge option cv may only be supplied once",
+      ),
+      (
+        "cvridge linear y x, alpha(1)",
+        "cvridge unsupported option: alpha",
+      ),
+      ("cvridge:", "unsupported token in command: :"),
+      ("cvridge=", "cvridge assignment requires a target before ="),
+      ("cvridge==", "unsupported token in command: =="),
+      (
+        "cvelasticnet",
+        "cvelasticnet expects syntax: cvelasticnet linear <y> <xvars>",
+      ),
+      (
+        "cvelasticnet linear",
+        "cvelasticnet expects syntax: cvelasticnet linear <y> <xvars>",
+      ),
+      (
+        "cvelasticnet linear y",
+        "cvelasticnet expects syntax: cvelasticnet linear <y> <xvars>",
+      ),
+      (
+        "cvelasticnet logistic y x",
+        "cvelasticnet model must be linear",
+      ),
+      (
+        "cvelasticnet linear y x if y > 0",
+        "cvelasticnet expects syntax: cvelasticnet linear <y> <xvars>",
+      ),
+      (
+        "cvelasticnet linear y x, cv(1)",
+        "cvelasticnet option cv must be at least 2",
+      ),
+      (
+        "cvelasticnet linear y x, cv(2.5)",
+        "cvelasticnet option cv expects an integer value",
+      ),
+      (
+        "cvelasticnet linear y x, cv",
+        "cvelasticnet option cv expects an integer value",
+      ),
+      (
+        "cvelasticnet linear y x, cv(3) cv(5)",
+        "cvelasticnet option cv may only be supplied once",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio()",
+        "option l1_ratio expects at least one value",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio(-0.1)",
+        "cvelasticnet option l1_ratio values must be between 0 and 1 inclusive",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio(1.1)",
+        "cvelasticnet option l1_ratio values must be between 0 and 1 inclusive",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio(0.2 1.5)",
+        "cvelasticnet option l1_ratio values must be between 0 and 1 inclusive",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio(foo)",
+        "option l1_ratio values must be numeric",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio",
+        "cvelasticnet option l1_ratio expects a numeric value or list of numeric values",
+      ),
+      (
+        "cvelasticnet linear y x, l1_ratio(0.2) l1_ratio(0.4)",
+        "cvelasticnet option l1_ratio may only be supplied once",
+      ),
+      (
+        "cvelasticnet linear y x, alpha(1)",
+        "cvelasticnet unsupported option: alpha",
+      ),
+      ("cvelasticnet:", "unsupported token in command: :"),
+      (
+        "cvelasticnet=",
+        "cvelasticnet assignment requires a target before =",
+      ),
+      ("cvelasticnet==", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
       assert_eq!(
