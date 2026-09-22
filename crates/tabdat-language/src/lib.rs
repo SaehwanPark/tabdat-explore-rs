@@ -164,6 +164,14 @@ pub enum Command {
   Streg { command: StregCommand },
   /// Fit a spatial autoregressive regression model (execution is deferred).
   Spregress { command: SpregressCommand },
+  /// Fit a lasso regularized regression model (execution is deferred).
+  Lasso { command: LassoCommand },
+  /// Fit a post-lasso OLS regression model (execution is deferred).
+  Postlasso { command: PostlassoCommand },
+  /// Fit a ridge regularized regression model (execution is deferred).
+  Ridge { command: RidgeCommand },
+  /// Fit an elastic net regularized regression model (execution is deferred).
+  Elasticnet { command: ElasticnetCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -659,6 +667,66 @@ pub struct SpregressCommand {
   pub contiguity: Option<SpregressContiguity>,
   /// Request robust covariance in the eventual runtime.
   pub robust: bool,
+}
+
+/// The parser-only `lasso` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LassoCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Regularization penalty parameter, retained as string spelling.
+  pub alpha: String,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `postlasso` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PostlassoCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Regularization penalty parameter, retained as string spelling.
+  pub alpha: String,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `ridge` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RidgeCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Regularization penalty parameter, retained as string spelling.
+  pub alpha: String,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `elasticnet` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ElasticnetCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Regularization penalty parameter, retained as string spelling.
+  pub alpha: String,
+  /// Elastic net mixing parameter between 0 and 1 inclusive, retained as string spelling.
+  pub l1_ratio: String,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
 }
 
 /// The estimator forms accepted by the parser-only `ivregress` command.
@@ -1267,6 +1335,38 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"lasso"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..9)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"postlasso"))
+    && command.as_bytes().get(9) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"ridge"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
+  if command
+    .as_bytes()
+    .get(..10)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"elasticnet"))
+    && command.as_bytes().get(10) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1482,6 +1582,38 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "spregress assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("lasso") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "lasso assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("postlasso") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "postlasso assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("ridge") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "ridge assignment requires a target before =",
+    ));
+  }
+  if name.eq_ignore_ascii_case("elasticnet") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "elasticnet assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1592,6 +1724,10 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "nl" => parse_nl_command(body),
     "streg" => parse_streg_command(body),
     "spregress" => parse_spregress_command(body),
+    "lasso" => parse_lasso_command(body),
+    "postlasso" => parse_postlasso_command(body),
+    "ridge" => parse_ridge_command(body),
+    "elasticnet" => parse_elasticnet_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -5011,6 +5147,295 @@ fn parse_spregress_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_regularized_linear_command(
+  command_name: &str,
+  body: &str,
+) -> Result<(String, Vec<String>, Vec<UseOption>), ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(format!(
+      "{command_name} assignment requires a target before ="
+    )));
+  }
+
+  let syntax = format!("{command_name} expects syntax: {command_name} linear <y> <xvars>");
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 3
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let model_spec = &parts.arguments[0];
+  if model_spec.backtick_quoted || !model_spec.text.eq_ignore_ascii_case("linear") {
+    return Err(ParseError::new(format!(
+      "{command_name} model must be linear"
+    )));
+  }
+
+  let outcome = parts.arguments[1].text.clone();
+  let predictors = parts.arguments[2..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+
+  Ok((outcome, predictors, options))
+}
+
+fn extract_alpha_option(command_name: &str, options: &[UseOption]) -> Result<String, ParseError> {
+  let alpha_matches = options
+    .iter()
+    .filter(|option| option.name == "alpha")
+    .collect::<Vec<_>>();
+  if alpha_matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option alpha may only be supplied once"
+    )));
+  }
+  match alpha_matches.first() {
+    Some(option) => {
+      let num_str = match &option.value {
+        UseOptionValue::Number(text) => text.as_str(),
+        UseOptionValue::String(text) => text.as_str(),
+        _ => {
+          return Err(ParseError::new(format!(
+            "{command_name} option alpha expects a numeric value"
+          )));
+        }
+      };
+      let Ok(val) = num_str.parse::<f64>() else {
+        return Err(ParseError::new(format!(
+          "{command_name} option alpha expects a numeric value"
+        )));
+      };
+      if val <= 0.0 {
+        return Err(ParseError::new(format!(
+          "{command_name} option alpha must be positive"
+        )));
+      }
+      Ok(num_str.to_owned())
+    }
+    None => Ok("1.0".to_owned()),
+  }
+}
+
+fn parse_lasso_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("lasso", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "alpha" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "lasso unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "lasso option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let alpha = extract_alpha_option("lasso", &options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Lasso {
+    command: LassoCommand {
+      outcome,
+      predictors,
+      alpha,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_postlasso_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("postlasso", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "alpha" | "robust" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "postlasso unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "postlasso option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let alpha = extract_alpha_option("postlasso", &options)?;
+  let robust = options.iter().any(|option| option.name == "robust");
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Postlasso {
+    command: PostlassoCommand {
+      outcome,
+      predictors,
+      alpha,
+      robust,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_ridge_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("ridge", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "alpha" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "ridge unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "ridge option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let alpha = extract_alpha_option("ridge", &options)?;
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Ridge {
+    command: RidgeCommand {
+      outcome,
+      predictors,
+      alpha,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_elasticnet_command(body: &str) -> Result<Command, ParseError> {
+  let (outcome, predictors, options) = parse_regularized_linear_command("elasticnet", body)?;
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "alpha" | "l1_ratio" | "noconstant"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "elasticnet unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "elasticnet option noconstant does not accept a value",
+      ));
+    }
+  }
+
+  let alpha = extract_alpha_option("elasticnet", &options)?;
+
+  let l1_matches = options
+    .iter()
+    .filter(|option| option.name == "l1_ratio")
+    .collect::<Vec<_>>();
+  if l1_matches.len() > 1 {
+    return Err(ParseError::new(
+      "elasticnet option l1_ratio may only be supplied once",
+    ));
+  }
+  let l1_ratio = match l1_matches.first() {
+    Some(option) => {
+      let num_str = match &option.value {
+        UseOptionValue::Number(text) => text.as_str(),
+        UseOptionValue::Numbers(values) => {
+          if values.len() != 1 {
+            return Err(ParseError::new(
+              "elasticnet option l1_ratio expects one value",
+            ));
+          }
+          values[0].as_str()
+        }
+        _ => {
+          return Err(ParseError::new(
+            "elasticnet option l1_ratio expects a numeric value",
+          ));
+        }
+      };
+      let Ok(val) = num_str.parse::<f64>() else {
+        return Err(ParseError::new(
+          "elasticnet option l1_ratio expects a numeric value",
+        ));
+      };
+      if !(0.0..=1.0).contains(&val) {
+        return Err(ParseError::new(
+          "elasticnet option l1_ratio must be between 0 and 1 inclusive",
+        ));
+      }
+      num_str.to_owned()
+    }
+    None => "0.5".to_owned(),
+  };
+
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Elasticnet {
+    command: ElasticnetCommand {
+      outcome,
+      predictors,
+      alpha,
+      l1_ratio,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   if body.starts_with("==") {
     return Err(ParseError::new("unsupported token in command: =="));
@@ -7134,12 +7559,30 @@ fn parse_use_parenthesized_value(
   }
 
   if name == "l1_ratio" {
-    if !use_numeric_list_is_valid(&tokens) {
+    let mut values = Vec::new();
+    let mut index = 0;
+    while index < tokens.len() {
+      if tokens[index].kind == UseTokenKind::Number {
+        values.push(tokens[index].text.clone());
+        index += 1;
+        continue;
+      }
+      if tokens[index].kind == UseTokenKind::Symbol
+        && matches!(tokens[index].text.as_str(), "-" | "+")
+        && tokens
+          .get(index + 1)
+          .is_some_and(|token| token.kind == UseTokenKind::Number)
+      {
+        values.push(format!("{}{}", tokens[index].text, tokens[index + 1].text));
+        index += 2;
+        continue;
+      }
       return Err(ParseError::new("option l1_ratio values must be numeric"));
     }
-    return Ok(UseOptionValue::Number(
-      tokens.iter().map(|token| token.text.as_str()).collect(),
-    ));
+    if values.len() == 1 {
+      return Ok(UseOptionValue::Number(values.remove(0)));
+    }
+    return Ok(UseOptionValue::Numbers(values));
   }
 
   if name == "start" {
@@ -7177,27 +7620,6 @@ fn parse_use_parenthesized_value(
   Err(ParseError::new(format!(
     "option {name} values must be identifiers"
   )))
-}
-
-fn use_numeric_list_is_valid(tokens: &[UseToken]) -> bool {
-  let mut index = 0;
-  while index < tokens.len() {
-    if tokens[index].kind == UseTokenKind::Number {
-      index += 1;
-      continue;
-    }
-    if tokens[index].kind == UseTokenKind::Symbol
-      && matches!(tokens[index].text.as_str(), "-" | "+")
-      && tokens
-        .get(index + 1)
-        .is_some_and(|token| token.kind == UseTokenKind::Number)
-    {
-      index += 2;
-      continue;
-    }
-    return false;
-  }
-  true
 }
 
 #[derive(Debug)]
@@ -7666,12 +8088,13 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, GenerateBinaryOperator,
-    GenerateExpression, HeckmanCommand, LazyEngine, LogitCommand, NbregCommand, NlCommand,
-    ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
-    RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity, SpregressModelType,
-    SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand, ZinbCommand,
-    ZipCommand, parse_command,
+    BayesPrefixCommand, ByCommand, Command, DataSource, ElasticnetCommand, ExecutionMode,
+    GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
+    LogitCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
+    ProbitCommand, QregCommand, RegressCommand, RegressEstimator, RidgeCommand, RowLimit,
+    SettingName, SortKey, SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand,
+    StregCommand, StregDistribution, TabulateCommand, TobitCommand, ZinbCommand, ZipCommand,
+    parse_command,
   };
 
   #[test]
@@ -12012,6 +12435,413 @@ mod tests {
       ),
       ("bayes = 1", "bayes assignment requires a target before ="),
       ("bayes == 1", "unsupported token in command: =="),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_regularized_regression_syntax() {
+    assert_eq!(
+      parse_command("lasso linear cost age bmi").unwrap(),
+      Command::Lasso {
+        command: LassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          alpha: "1.0".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("lasso linear cost age, alpha(0.25)").unwrap(),
+      Command::Lasso {
+        command: LassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "0.25".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("lasso linear cost age, noconstant").unwrap(),
+      Command::Lasso {
+        command: LassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("LASSO linear `cost var` `age var`, alpha(0.5) noconstant").unwrap(),
+      Command::Lasso {
+        command: LassoCommand {
+          outcome: "cost var".to_owned(),
+          predictors: vec!["age var".to_owned()],
+          alpha: "0.5".to_owned(),
+          include_intercept: false,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("postlasso linear cost age bmi").unwrap(),
+      Command::Postlasso {
+        command: PostlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          alpha: "1.0".to_owned(),
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("postlasso linear cost age, alpha(0.25)").unwrap(),
+      Command::Postlasso {
+        command: PostlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "0.25".to_owned(),
+          robust: false,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("postlasso linear cost age, robust").unwrap(),
+      Command::Postlasso {
+        command: PostlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          robust: true,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("postlasso linear cost age, noconstant").unwrap(),
+      Command::Postlasso {
+        command: PostlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          robust: false,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("postlasso linear cost age, robust alpha(0.1) noconstant").unwrap(),
+      Command::Postlasso {
+        command: PostlassoCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "0.1".to_owned(),
+          robust: true,
+          include_intercept: false,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("ridge linear cost age bmi").unwrap(),
+      Command::Ridge {
+        command: RidgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          alpha: "1.0".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("ridge linear cost age, alpha(0.25)").unwrap(),
+      Command::Ridge {
+        command: RidgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "0.25".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("ridge linear cost age, noconstant").unwrap(),
+      Command::Ridge {
+        command: RidgeCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          include_intercept: false,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("elasticnet linear cost age bmi").unwrap(),
+      Command::Elasticnet {
+        command: ElasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned(), "bmi".to_owned()],
+          alpha: "1.0".to_owned(),
+          l1_ratio: "0.5".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("elasticnet linear cost age, alpha(0.25) l1_ratio(0.75)").unwrap(),
+      Command::Elasticnet {
+        command: ElasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "0.25".to_owned(),
+          l1_ratio: "0.75".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("elasticnet linear cost age, noconstant").unwrap(),
+      Command::Elasticnet {
+        command: ElasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          l1_ratio: "0.5".to_owned(),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("elasticnet linear cost age, l1_ratio(0.0)").unwrap(),
+      Command::Elasticnet {
+        command: ElasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          l1_ratio: "0.0".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("elasticnet linear cost age, l1_ratio(1.0)").unwrap(),
+      Command::Elasticnet {
+        command: ElasticnetCommand {
+          outcome: "cost".to_owned(),
+          predictors: vec!["age".to_owned()],
+          alpha: "1.0".to_owned(),
+          l1_ratio: "1.0".to_owned(),
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_regularized_regression_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("lasso", "lasso expects syntax: lasso linear <y> <xvars>"),
+      (
+        "lasso linear",
+        "lasso expects syntax: lasso linear <y> <xvars>",
+      ),
+      (
+        "lasso linear y",
+        "lasso expects syntax: lasso linear <y> <xvars>",
+      ),
+      ("lasso logistic y x", "lasso model must be linear"),
+      ("lasso `linear` y x", "lasso model must be linear"),
+      (
+        "lasso linear y x if y > 0",
+        "lasso expects syntax: lasso linear <y> <xvars>",
+      ),
+      (
+        "lasso linear y x, alpha()",
+        "option alpha expects at least one value",
+      ),
+      (
+        "lasso linear y x, alpha(0)",
+        "lasso option alpha must be positive",
+      ),
+      (
+        "lasso linear y x, alpha(-1)",
+        "lasso option alpha must be positive",
+      ),
+      (
+        "lasso linear y x, alpha(foo)",
+        "option alpha expects a numeric value",
+      ),
+      (
+        "lasso linear y x, alpha",
+        "lasso option alpha expects a numeric value",
+      ),
+      (
+        "lasso linear y x, alpha(1) alpha(2)",
+        "lasso option alpha may only be supplied once",
+      ),
+      (
+        "lasso linear y x, robust",
+        "lasso unsupported option: robust",
+      ),
+      (
+        "lasso linear y x, noconstant(1)",
+        "option noconstant values must be identifiers",
+      ),
+      (
+        "lasso linear y x, noconstant(foo)",
+        "lasso option noconstant does not accept a value",
+      ),
+      ("lasso:", "unsupported token in command: :"),
+      ("lasso=", "lasso assignment requires a target before ="),
+      ("lasso==", "unsupported token in command: =="),
+      ("lasso = y x", "lasso assignment requires a target before ="),
+      (
+        "postlasso",
+        "postlasso expects syntax: postlasso linear <y> <xvars>",
+      ),
+      (
+        "postlasso linear",
+        "postlasso expects syntax: postlasso linear <y> <xvars>",
+      ),
+      (
+        "postlasso linear y",
+        "postlasso expects syntax: postlasso linear <y> <xvars>",
+      ),
+      ("postlasso logistic y x", "postlasso model must be linear"),
+      (
+        "postlasso linear y x if y > 0",
+        "postlasso expects syntax: postlasso linear <y> <xvars>",
+      ),
+      (
+        "postlasso linear y x, alpha()",
+        "option alpha expects at least one value",
+      ),
+      (
+        "postlasso linear y x, alpha(-1)",
+        "postlasso option alpha must be positive",
+      ),
+      (
+        "postlasso linear y x, robust(1)",
+        "option robust values must be identifiers",
+      ),
+      (
+        "postlasso linear y x, robust(foo)",
+        "postlasso option robust does not accept a value",
+      ),
+      (
+        "postlasso linear y x, cv(5)",
+        "postlasso unsupported option: cv",
+      ),
+      ("postlasso:", "unsupported token in command: :"),
+      (
+        "postlasso=",
+        "postlasso assignment requires a target before =",
+      ),
+      ("postlasso==", "unsupported token in command: =="),
+      ("ridge", "ridge expects syntax: ridge linear <y> <xvars>"),
+      (
+        "ridge linear",
+        "ridge expects syntax: ridge linear <y> <xvars>",
+      ),
+      (
+        "ridge linear y",
+        "ridge expects syntax: ridge linear <y> <xvars>",
+      ),
+      ("ridge logistic y x", "ridge model must be linear"),
+      (
+        "ridge linear y x if y > 0",
+        "ridge expects syntax: ridge linear <y> <xvars>",
+      ),
+      (
+        "ridge linear y x, alpha()",
+        "option alpha expects at least one value",
+      ),
+      (
+        "ridge linear y x, alpha(-1)",
+        "ridge option alpha must be positive",
+      ),
+      (
+        "ridge linear y x, robust",
+        "ridge unsupported option: robust",
+      ),
+      ("ridge:", "unsupported token in command: :"),
+      ("ridge=", "ridge assignment requires a target before ="),
+      ("ridge==", "unsupported token in command: =="),
+      (
+        "elasticnet",
+        "elasticnet expects syntax: elasticnet linear <y> <xvars>",
+      ),
+      (
+        "elasticnet linear",
+        "elasticnet expects syntax: elasticnet linear <y> <xvars>",
+      ),
+      (
+        "elasticnet linear y",
+        "elasticnet expects syntax: elasticnet linear <y> <xvars>",
+      ),
+      ("elasticnet logistic y x", "elasticnet model must be linear"),
+      (
+        "elasticnet linear y x if y > 0",
+        "elasticnet expects syntax: elasticnet linear <y> <xvars>",
+      ),
+      (
+        "elasticnet linear y x, alpha()",
+        "option alpha expects at least one value",
+      ),
+      (
+        "elasticnet linear y x, alpha(-1)",
+        "elasticnet option alpha must be positive",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio()",
+        "option l1_ratio expects at least one value",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio(-0.1)",
+        "elasticnet option l1_ratio must be between 0 and 1 inclusive",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio(1.1)",
+        "elasticnet option l1_ratio must be between 0 and 1 inclusive",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio(foo)",
+        "option l1_ratio values must be numeric",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio",
+        "elasticnet option l1_ratio expects a numeric value",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio(0.2) l1_ratio(0.4)",
+        "elasticnet option l1_ratio may only be supplied once",
+      ),
+      (
+        "elasticnet linear y x, l1_ratio(0.2 0.5)",
+        "elasticnet option l1_ratio expects one value",
+      ),
+      (
+        "elasticnet linear y x, robust",
+        "elasticnet unsupported option: robust",
+      ),
+      ("elasticnet:", "unsupported token in command: :"),
+      (
+        "elasticnet=",
+        "elasticnet assignment requires a target before =",
+      ),
+      ("elasticnet==", "unsupported token in command: =="),
     ];
     for (input, expected) in cases {
       assert_eq!(

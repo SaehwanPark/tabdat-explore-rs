@@ -3143,6 +3143,10 @@ fn command_name(command: &Command) -> &'static str {
     Command::Nl { .. } => "nl",
     Command::Streg { .. } => "streg",
     Command::Spregress { .. } => "spregress",
+    Command::Lasso { .. } => "lasso",
+    Command::Postlasso { .. } => "postlasso",
+    Command::Ridge { .. } => "ridge",
+    Command::Elasticnet { .. } => "elasticnet",
     Command::BayesPrefix { .. } => "bayes",
   }
 }
