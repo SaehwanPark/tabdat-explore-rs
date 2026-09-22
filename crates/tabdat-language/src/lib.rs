@@ -156,6 +156,8 @@ pub enum Command {
   Qreg { command: QregCommand },
   /// Fit a tobit (censored) regression model (execution is deferred).
   Tobit { command: TobitCommand },
+  /// Fit a Heckman sample-selection regression model (execution is deferred).
+  Heckman { command: HeckmanCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
 }
@@ -534,6 +536,26 @@ pub struct TobitCommand {
   pub lower_limit: String,
   /// The optional upper censoring limit, retained as string spelling.
   pub upper_limit: Option<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Optional cluster variable for the eventual runtime.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// The parser-only `heckman` form retained for a later statistical runtime
+/// slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeckmanCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Selection equation dependent variable.
+  pub selection_dependent: String,
+  /// Selection equation predictor variables.
+  pub selection_predictors: Vec<String>,
   /// Request robust covariance in the eventual runtime.
   pub robust: bool,
   /// Optional cluster variable for the eventual runtime.
@@ -1116,6 +1138,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"heckman"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1301,6 +1331,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "tobit assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("heckman") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "heckman assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1407,6 +1445,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "zinb" => parse_zero_inflated_count_command("zinb", body),
     "qreg" => parse_qreg_command(body),
     "tobit" => parse_tobit_command(body),
+    "heckman" => parse_heckman_command(body),
     "bayes" => parse_bayes_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
@@ -4003,6 +4042,167 @@ fn parse_tobit_command(body: &str) -> Result<Command, ParseError> {
       predictors,
       lower_limit,
       upper_limit,
+      robust,
+      cluster_variable,
+      include_intercept,
+    },
+  })
+}
+
+fn parse_heckman_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "selectdep" | "select" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "heckman unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "heckman option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let selectdep_matches = options
+    .iter()
+    .filter(|option| option.name == "selectdep")
+    .collect::<Vec<_>>();
+  if selectdep_matches.is_empty() {
+    return Err(ParseError::new(
+      "heckman option selectdep expects one variable",
+    ));
+  }
+  if selectdep_matches.len() > 1 {
+    return Err(ParseError::new(
+      "heckman option selectdep may only be supplied once",
+    ));
+  }
+  let selection_dependent = match &selectdep_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.len() != 1 {
+        return Err(ParseError::new(
+          "heckman option selectdep expects one variable",
+        ));
+      }
+      values[0].clone()
+    }
+    _ => {
+      return Err(ParseError::new(
+        "heckman option selectdep expects variables",
+      ));
+    }
+  };
+
+  let select_matches = options
+    .iter()
+    .filter(|option| option.name == "select")
+    .collect::<Vec<_>>();
+  if select_matches.is_empty() {
+    return Err(ParseError::new(
+      "heckman option select expects at least one variable",
+    ));
+  }
+  if select_matches.len() > 1 {
+    return Err(ParseError::new(
+      "heckman option select may only be supplied once",
+    ));
+  }
+  let selection_predictors = match &select_matches[0].value {
+    UseOptionValue::Identifiers(values) => {
+      if values.is_empty() {
+        return Err(ParseError::new(
+          "heckman option select expects at least one variable",
+        ));
+      }
+      values.clone()
+    }
+    _ => {
+      return Err(ParseError::new("heckman option select expects variables"));
+    }
+  };
+
+  let cluster_matches = options
+    .iter()
+    .filter(|option| option.name == "cluster")
+    .collect::<Vec<_>>();
+  if cluster_matches.len() > 1 {
+    return Err(ParseError::new(
+      "heckman option cluster may only be supplied once",
+    ));
+  }
+  let cluster_variable = match cluster_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) => {
+        if values.len() != 1 {
+          return Err(ParseError::new(
+            "heckman option cluster expects one variable",
+          ));
+        }
+        Some(values[0].clone())
+      }
+      _ => {
+        return Err(ParseError::new("heckman option cluster expects variables"));
+      }
+    },
+    None => None,
+  };
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new("heckman cannot combine robust and cluster"));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect();
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Heckman {
+    command: HeckmanCommand {
+      outcome,
+      predictors,
+      selection_dependent,
+      selection_predictors,
       robust,
       cluster_variable,
       include_intercept,
@@ -6649,10 +6849,10 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, LazyEngine, LogitCommand,
-    NbregCommand, ParseError, PoissonCommand, ProbitCommand, QregCommand, RegressCommand,
-    RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand, TobitCommand,
-    ZinbCommand, ZipCommand, parse_command,
+    BayesPrefixCommand, ByCommand, Command, DataSource, ExecutionMode, HeckmanCommand, LazyEngine,
+    LogitCommand, NbregCommand, ParseError, PoissonCommand, ProbitCommand, QregCommand,
+    RegressCommand, RegressEstimator, RowLimit, SettingName, SortKey, SqlCommand, TabulateCommand,
+    TobitCommand, ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -9903,6 +10103,193 @@ mod tests {
       ("tobit,", "comma must be followed by at least one option"),
       (
         "tobit y x,",
+        "comma must be followed by at least one option",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_heckman_syntax() {
+    assert_eq!(
+      parse_command("heckman outcome x1, selectdep(selected) select(z1)").unwrap(),
+      Command::Heckman {
+        command: HeckmanCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          selection_dependent: "selected".to_owned(),
+          selection_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("heckman outcome x1 x2, selectdep(selected) select(z1 z2) robust").unwrap(),
+      Command::Heckman {
+        command: HeckmanCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          selection_dependent: "selected".to_owned(),
+          selection_predictors: vec!["z1".to_owned(), "z2".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command(
+        "heckman outcome x1, selectdep(selected) select(z1) cluster(group_id) noconstant"
+      )
+      .unwrap(),
+      Command::Heckman {
+        command: HeckmanCommand {
+          outcome: "outcome".to_owned(),
+          predictors: vec!["x1".to_owned()],
+          selection_dependent: "selected".to_owned(),
+          selection_predictors: vec!["z1".to_owned()],
+          robust: false,
+          cluster_variable: Some("group_id".to_owned()),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command(
+        "HECKMAN `y var` 'x var', selectdep(`sel var`) select(`z var`) robust noconstant"
+      )
+      .unwrap(),
+      Command::Heckman {
+        command: HeckmanCommand {
+          outcome: "y var".to_owned(),
+          predictors: vec!["x var".to_owned()],
+          selection_dependent: "sel var".to_owned(),
+          selection_predictors: vec!["z var".to_owned()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_heckman_syntax_with_exact_diagnostics() {
+    let cases = [
+      (
+        "heckman",
+        "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)",
+      ),
+      (
+        "heckman y",
+        "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)",
+      ),
+      (
+        "heckman y x",
+        "heckman option selectdep expects one variable",
+      ),
+      (
+        "heckman y x if y > 0",
+        "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)",
+      ),
+      (
+        "heckman y x = 1",
+        "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)",
+      ),
+      (
+        "heckman y x, selectdep() select(z)",
+        "option selectdep expects at least one value",
+      ),
+      (
+        "heckman y x, selectdep(s t) select(z)",
+        "heckman option selectdep expects one variable",
+      ),
+      (
+        "heckman y x, selectdep(s)",
+        "heckman option select expects at least one variable",
+      ),
+      (
+        "heckman y x, select(s)",
+        "heckman option selectdep expects one variable",
+      ),
+      (
+        "heckman y x, selectdep(s) select()",
+        "option select expects at least one value",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) robust cluster(group)",
+        "heckman cannot combine robust and cluster",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) cluster(group firm)",
+        "heckman option cluster expects one variable",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) robust=true",
+        "heckman option robust does not accept a value",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) noconstant=true",
+        "heckman option noconstant does not accept a value",
+      ),
+      (
+        "heckman y x, selectdep select(z)",
+        "heckman option selectdep expects variables",
+      ),
+      (
+        "heckman y x, selectdep(s) select",
+        "heckman option select expects variables",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) cluster",
+        "heckman option cluster expects variables",
+      ),
+      (
+        "heckman y x, selectdep(s) selectdep(s2) select(z)",
+        "heckman option selectdep may only be supplied once",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) select(z2)",
+        "heckman option select may only be supplied once",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) cluster(c1) cluster(c2)",
+        "heckman option cluster may only be supplied once",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) foo",
+        "heckman unsupported option: foo",
+      ),
+      (
+        "heckman y x, selectdep('s var') select(z)",
+        "option selectdep values must be identifiers",
+      ),
+      (
+        "heckman y x, selectdep(s) select('z var')",
+        "option select values must be identifiers",
+      ),
+      (
+        "heckman y x, selectdep(s) select(z) cluster('c var')",
+        "option cluster values must be identifiers",
+      ),
+      ("heckman:", "unsupported token in command: :"),
+      ("heckman=", "heckman assignment requires a target before ="),
+      ("heckman==", "unsupported token in command: =="),
+      ("heckman,", "comma must be followed by at least one option"),
+      (
+        "heckman y x,",
         "comma must be followed by at least one option",
       ),
     ];
