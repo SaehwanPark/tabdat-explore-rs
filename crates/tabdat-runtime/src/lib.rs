@@ -3133,6 +3133,8 @@ fn command_name(command: &Command) -> &'static str {
     Command::Regress { .. } => "regress",
     Command::Logit { .. } => "logit",
     Command::Probit { .. } => "probit",
+    Command::Poisson { .. } => "poisson",
+    Command::Nbreg { .. } => "nbreg",
     Command::BayesPrefix { .. } => "bayes",
   }
 }
