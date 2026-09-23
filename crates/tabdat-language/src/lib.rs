@@ -108,6 +108,8 @@ pub enum Command {
   XtLogit { command: XtLogitCommand },
   /// Fit a locally weighted regression smoother (execution is deferred).
   Lowess { command: LowessCommand },
+  /// Fit a difference-in-differences model (execution is deferred).
+  Did { command: DidCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -943,6 +945,22 @@ pub struct LowessCommand {
   pub bandwidth: String,
 }
 
+/// The parser-only `did` difference-in-differences estimator form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DidCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Optional control variables.
+  pub controls: Vec<String>,
+  /// Treatment indicator variable.
+  pub treatment_variable: String,
+  /// Post-treatment time period indicator variable.
+  pub post_variable: String,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1557,6 +1575,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"did"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1852,6 +1878,12 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "lowess assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("did") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("did assignment requires a target before ="));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1938,6 +1970,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtabond" => parse_xtabond_command(body),
     "xtlogit" => parse_xtlogit_command(body),
     "lowess" => parse_lowess_command(body),
+    "did" => parse_did_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -6880,6 +6913,124 @@ fn parse_lowess_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_did_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new("did assignment requires a target before ="));
+  }
+
+  let syntax = "did expects syntax: did <y> [controls], treat(<var>) post(<var>)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.is_empty()
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "treat" | "post" | "robust"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "did unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "robust" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new("did option robust does not accept a value"));
+    }
+  }
+
+  let parse_var_option = |opt_name: &str| -> Result<String, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == opt_name)
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(format!(
+        "did option {opt_name} may only be supplied once"
+      )));
+    }
+    let Some(option) = matches.first() else {
+      return Err(ParseError::new(format!(
+        "did option {opt_name} expects one variable"
+      )));
+    };
+    match &option.value {
+      UseOptionValue::Identifiers(vars) => {
+        if vars.len() != 1 {
+          return Err(ParseError::new(format!(
+            "did option {opt_name} expects one variable"
+          )));
+        }
+        Ok(vars[0].clone())
+      }
+      _ => Err(ParseError::new(format!(
+        "did option {opt_name} expects variables"
+      ))),
+    }
+  };
+
+  let treatment_variable = parse_var_option("treat")?;
+  let post_variable = parse_var_option("post")?;
+
+  if treatment_variable == post_variable {
+    return Err(ParseError::new(
+      "did treatment and post variables must be distinct",
+    ));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let controls = parts.arguments[1..]
+    .iter()
+    .map(|arg| arg.text.clone())
+    .collect::<Vec<_>>();
+
+  if treatment_variable == outcome || post_variable == outcome {
+    return Err(ParseError::new(
+      "did treatment and post variables must differ from outcome",
+    ));
+  }
+
+  if controls.contains(&treatment_variable) || controls.contains(&post_variable) {
+    return Err(ParseError::new(
+      "did treatment and post variables must not appear in controls",
+    ));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+
+  Ok(Command::Did {
+    command: DidCommand {
+      outcome,
+      controls,
+      treatment_variable,
+      post_variable,
+      robust,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -9031,7 +9182,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
-    CvlassoCommand, CvridgeCommand, DataSource, ElasticnetCommand, ExecutionMode,
+    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, ElasticnetCommand, ExecutionMode,
     GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
     LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
     PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
@@ -15069,6 +15220,190 @@ mod tests {
       ("lowess == 1", "unsupported token in command: =="),
       ("lowess:", "unsupported token in command: :"),
       ("lowess: regress y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_did_syntax() {
+    assert_eq!(
+      parse_command("did y, treat(d) post(t)").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y".to_string(),
+          controls: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("did y x1 x2, treat(d) post(t) robust").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string(), "x2".to_string()],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("did y, post(t) treat(d)").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y".to_string(),
+          controls: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("DID y, treat(d) post(t)").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y".to_string(),
+          controls: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("did `y var` `x var`, treat(`d var`) post(`t var`)").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y var".to_string(),
+          controls: vec!["x var".to_string()],
+          treatment_variable: "d var".to_string(),
+          post_variable: "t var".to_string(),
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("did \"y var\" \"x var\", treat(d) post(t)").unwrap(),
+      Command::Did {
+        command: DidCommand {
+          outcome: "y var".to_string(),
+          controls: vec!["x var".to_string()],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          robust: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_did_syntax() {
+    let cases = [
+      (
+        "did",
+        "did expects syntax: did <y> [controls], treat(<var>) post(<var>)",
+      ),
+      (
+        "did if x > 0, treat(d) post(t)",
+        "did expects syntax: did <y> [controls], treat(<var>) post(<var>)",
+      ),
+      (
+        "did = 1, treat(d) post(t)",
+        "did assignment requires a target before =",
+      ),
+      (
+        "did y = 1, treat(d) post(t)",
+        "did expects syntax: did <y> [controls], treat(<var>) post(<var>)",
+      ),
+      (
+        "did y if x > 0, treat(d) post(t)",
+        "did expects syntax: did <y> [controls], treat(<var>) post(<var>)",
+      ),
+      ("did y", "did option treat expects one variable"),
+      ("did y,", "comma must be followed by at least one option"),
+      ("did y, treat", "did option treat expects variables"),
+      ("did y, treat()", "option treat expects at least one value"),
+      (
+        "did y, treat(d1 d2) post(t)",
+        "did option treat expects one variable",
+      ),
+      (
+        "did y, treat(d) treat(d2) post(t)",
+        "did option treat may only be supplied once",
+      ),
+      ("did y, treat(d)", "did option post expects one variable"),
+      ("did y, treat(d) post", "did option post expects variables"),
+      (
+        "did y, treat(d) post()",
+        "option post expects at least one value",
+      ),
+      (
+        "did y, treat(d) post(t1 t2)",
+        "did option post expects one variable",
+      ),
+      (
+        "did y, treat(d) post(t) post(t2)",
+        "did option post may only be supplied once",
+      ),
+      (
+        "did y, treat(d) post(t) extra",
+        "did unsupported option: extra",
+      ),
+      (
+        "did y, TREAT(d) POST(t)",
+        "did unsupported option: POST, TREAT",
+      ),
+      (
+        "did y, treat(d) post(t) robust=1",
+        "did option robust does not accept a value",
+      ),
+      (
+        "did y, treat(d) post(t) robust(1)",
+        "option robust values must be identifiers",
+      ),
+      (
+        "did y, treat(d) post(t) robust(foo)",
+        "did option robust does not accept a value",
+      ),
+      (
+        "did y, treat(d) post(d)",
+        "did treatment and post variables must be distinct",
+      ),
+      (
+        "did y, treat(y) post(t)",
+        "did treatment and post variables must differ from outcome",
+      ),
+      (
+        "did y, treat(d) post(y)",
+        "did treatment and post variables must differ from outcome",
+      ),
+      (
+        "did y d, treat(d) post(t)",
+        "did treatment and post variables must not appear in controls",
+      ),
+      (
+        "did y t, treat(d) post(t)",
+        "did treatment and post variables must not appear in controls",
+      ),
+      ("did=", "did assignment requires a target before ="),
+      ("did = 1", "did assignment requires a target before ="),
+      ("did==", "unsupported token in command: =="),
+      ("did == 1", "unsupported token in command: =="),
+      ("did:", "unsupported token in command: :"),
+      (
+        "did: y, treat(d) post(t)",
+        "unsupported token in command: :",
+      ),
     ];
     for (input, expected) in cases {
       assert_eq!(
