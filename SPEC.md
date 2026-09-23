@@ -1344,6 +1344,35 @@ workflows all passed.
 This accepted syntax slice leaves doubly robust estimation, propensity score modeling, outcome regression,
 bootstrapping, statistical validation, FFI backends, reporting, CLI, JSON, MCP, and broad causal execution parity deferred.
 
+## Verified slice: syntax-only double machine learning command
+
+Merged [PR #117](https://github.com/SaehwanPark/tabdat-explore-rs/pull/117)
+([f2e537c](https://github.com/SaehwanPark/tabdat-explore-rs/commit/f2e537c44ea092a95c4794e7df6504a794cb1f0e))
+adds bounded, backend-independent double machine learning syntax boundaries to
+`tabdat-language`. The parser returns an owned `DmlCommand` type with a dependent variable (`outcome`),
+control variables (`controls`), treatment indicator variable (`treatment_variable`),
+cross-fitting folds count (`folds`, defaulting to `5`), regularization penalty parameter (`alpha: String`,
+retained as source spelling, defaulting to `"1.0"`), robust covariance flag (`robust`),
+random seed (`seed: Option<i64>`), and intercept inclusion flag (`include_intercept: bool`).
+It validates syntax structure, requiring at least 3 arguments (model identifier `linear`, outcome, and controls),
+rejects non-linear models, rejects conditions (`if ...`), assignment syntax (`dml=`),
+delimiter guards (`dml==`, `dml:`), required option `treat(<var>)` expecting strictly 1 variable name,
+numeric bounds for folds ($\ge 2$), alpha ($> 0.0$), and seed ($\ge 0$), single-use rules, unsupported options,
+and enforces variable relationship constraints (`treat != outcome`, `treat not in controls`).
+Owned `String`, `Vec<String>`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform cross-fitting,
+regularized nuisance estimation, Neyman-orthogonal scoring, or mutate datasets.
+
+Evidence: [_workspace/parser-dml-syntax/](_workspace/parser-dml-syntax/),
+including the [contract](_workspace/parser-dml-syntax/01-contract.md) and
+[summary](_workspace/parser-dml-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves double machine learning estimation, cross-fitting nuisance modeling,
+Lasso regularized regressions, score evaluation, statistical validation, FFI backends, reporting, CLI,
+JSON, MCP, and broad causal execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
