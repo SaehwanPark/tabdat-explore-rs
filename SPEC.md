@@ -1401,6 +1401,29 @@ This accepted syntax slice leaves control function estimation, first-stage model
 second-stage estimation, standard error corrections, statistical validation, FFI backends, reporting, CLI,
 JSON, MCP, and broad causal execution parity deferred.
 
+## Verified slice: post-estimation linear combination syntax
+
+The post-estimation linear combination hypothesis testing syntax slice (Phase 9)
+adds bounded, backend-independent linear combination testing syntax boundaries to
+`tabdat-language`. The parser returns an owned `LincomCommand` type with a linear combination
+expression (`expression: GenerateExpression`).
+It validates expression syntax structure, requiring a non-empty expression,
+rejects incomplete expressions (`incomplete expression after <op>`), missing closing parentheses
+(`missing closing ) in expression`), unsupported tokens in expression (`unsupported token in expression: <token>`),
+and delimiter guards (`lincom:`, `lincom=`, `lincom==`, `lincom,`).
+Owned `String`, `GenerateExpression`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform parameter retrieval,
+symbolic differentiation, covariance matrix transformation, standard error computation, or hypothesis testing.
+
+Evidence: [_workspace/parser-lincom-syntax/](_workspace/parser-lincom-syntax/),
+including the [contract](_workspace/parser-lincom-syntax/01-contract.md) and
+[summary](_workspace/parser-lincom-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves post-estimation parameter retrieval, covariance calculations,
+inference statistics, p-values, confidence intervals, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
