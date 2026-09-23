@@ -1290,6 +1290,31 @@ workflows all passed.
 This accepted syntax slice leaves non-parametric regression smoothing, tricube kernel weighting,
 local polynomial fitting, FFI backends, reporting, CLI, JSON, MCP, and broad smoothing execution parity deferred.
 
+## Verified slice: syntax-only difference-in-differences command
+
+Merged [PR #113](https://github.com/SaehwanPark/tabdat-explore-rs/pull/113)
+([5c6a469](https://github.com/SaehwanPark/tabdat-explore-rs/commit/5c6a469ed17ecbb2718e811ce7ce56ef84497a13))
+adds bounded, backend-independent difference-in-differences syntax boundaries to
+`tabdat-language`. The parser returns an owned `DidCommand` type with a dependent variable (`outcome`),
+optional control variables (`controls`), treatment indicator variable (`treatment_variable`),
+post-treatment time period indicator variable (`post_variable`), and robust covariance flag (`robust`).
+It validates syntax structure, requiring at least 1 argument (outcome and optional controls), rejects conditions
+(`if ...`), assignment syntax (`did=`), delimiter guards (`did==`, `did:`), required options `treat(<var>)` and
+`post(<var>)` each expecting strictly 1 variable name, single-use rules, unsupported options, and enforces variable
+relationship constraints (`treat != post`, `treat != outcome`, `post != outcome`, `treat not in controls`, `post not in controls`).
+Owned `String` and `Vec<String>` types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform two-way fixed effects estimation,
+evaluate parallel trends, or mutate datasets.
+
+Evidence: [_workspace/parser-did-syntax/](_workspace/parser-did-syntax/),
+including the [contract](_workspace/parser-did-syntax/01-contract.md) and
+[summary](_workspace/parser-did-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves two-way fixed effects estimation, parallel trends diagnostics,
+interaction modeling, parameter inference, FFI backends, reporting, CLI, JSON, MCP, and broad causal execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
