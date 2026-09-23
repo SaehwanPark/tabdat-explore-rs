@@ -106,6 +106,8 @@ pub enum Command {
   XtAbond { command: XtAbondCommand },
   /// Fit a fixed-effects panel logit model (execution is deferred).
   XtLogit { command: XtLogitCommand },
+  /// Fit a locally weighted regression smoother (execution is deferred).
+  Lowess { command: LowessCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -927,6 +929,20 @@ pub struct XtLogitCommand {
   pub robust: bool,
 }
 
+/// The parser-only `lowess` locally weighted regression smoother form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LowessCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// The predictor variable.
+  pub predictor: String,
+  /// The target smoothed variable name.
+  pub target_variable: String,
+  /// The bandwidth smoothing parameter, retained as string spelling.
+  pub bandwidth: String,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1533,6 +1549,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..6)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"lowess"))
+    && command.as_bytes().get(6) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1820,6 +1844,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "xtlogit assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("lowess") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "lowess assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1905,6 +1937,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtreg" => parse_xtreg_command(body),
     "xtabond" => parse_xtabond_command(body),
     "xtlogit" => parse_xtlogit_command(body),
+    "lowess" => parse_lowess_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -6730,6 +6763,123 @@ fn parse_xtlogit_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_lowess_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "lowess assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() != 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "gen" | "bandwidth"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "lowess unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let gen_matches = options
+    .iter()
+    .filter(|option| option.name == "gen")
+    .collect::<Vec<_>>();
+  if gen_matches.len() > 1 {
+    return Err(ParseError::new(
+      "lowess option gen may only be supplied once",
+    ));
+  }
+  let target_variable = match gen_matches.first() {
+    None => return Err(ParseError::new("lowess option gen expects one variable")),
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(vars) => {
+        if vars.len() != 1 {
+          return Err(ParseError::new("lowess option gen expects one variable"));
+        }
+        vars[0].clone()
+      }
+      _ => return Err(ParseError::new("lowess option gen expects variables")),
+    },
+  };
+
+  let bandwidth_matches = options
+    .iter()
+    .filter(|option| option.name == "bandwidth")
+    .collect::<Vec<_>>();
+  if bandwidth_matches.len() > 1 {
+    return Err(ParseError::new(
+      "lowess option bandwidth may only be supplied once",
+    ));
+  }
+  let bandwidth = match bandwidth_matches.first() {
+    Some(option) => {
+      let num_str = match &option.value {
+        UseOptionValue::Number(text) => text.as_str(),
+        UseOptionValue::String(text) => text.as_str(),
+        UseOptionValue::Identifiers(vars) => {
+          if vars.len() != 1 {
+            return Err(ParseError::new("lowess option bandwidth expects one value"));
+          }
+          vars[0].as_str()
+        }
+        _ => {
+          return Err(ParseError::new(
+            "lowess option bandwidth expects a numeric value",
+          ));
+        }
+      };
+      let Ok(val) = num_str.parse::<f64>() else {
+        return Err(ParseError::new(
+          "lowess option bandwidth expects a numeric value",
+        ));
+      };
+      if !val.is_finite() || val <= 0.0 || val >= 1.0 {
+        return Err(ParseError::new(
+          "lowess option bandwidth must be between 0 and 1",
+        ));
+      }
+      num_str.to_string()
+    }
+    None => (2.0f64 / 3.0f64).to_string(),
+  };
+
+  Ok(Command::Lowess {
+    command: LowessCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictor: parts.arguments[1].text.clone(),
+      target_variable,
+      bandwidth,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -8883,11 +9033,11 @@ mod tests {
     BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
     CvlassoCommand, CvridgeCommand, DataSource, ElasticnetCommand, ExecutionMode,
     GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
-    LogitCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
-    PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
-    RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity,
-    SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand,
-    XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
+    LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
+    PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
+    RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand,
+    SpregressContiguity, SpregressModelType, SqlCommand, StregCommand, StregDistribution,
+    TabulateCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -14766,6 +14916,159 @@ mod tests {
       ("xtlogit == 1", "unsupported token in command: =="),
       ("xtlogit:", "unsupported token in command: :"),
       ("xtlogit: regress y x", "unsupported token in command: :"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_lowess_syntax() {
+    assert_eq!(
+      parse_command("lowess y x, gen(y_hat)").unwrap(),
+      Command::Lowess {
+        command: LowessCommand {
+          outcome: "y".to_string(),
+          predictor: "x".to_string(),
+          target_variable: "y_hat".to_string(),
+          bandwidth: (2.0f64 / 3.0f64).to_string(),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("lowess y x, gen(y_hat) bandwidth=0.5").unwrap(),
+      Command::Lowess {
+        command: LowessCommand {
+          outcome: "y".to_string(),
+          predictor: "x".to_string(),
+          target_variable: "y_hat".to_string(),
+          bandwidth: "0.5".to_string(),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("LOWESS y x, gen(y_hat) bandwidth=0.8").unwrap(),
+      Command::Lowess {
+        command: LowessCommand {
+          outcome: "y".to_string(),
+          predictor: "x".to_string(),
+          target_variable: "y_hat".to_string(),
+          bandwidth: "0.8".to_string(),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("lowess `y var` `x var`, gen(y_hat)").unwrap(),
+      Command::Lowess {
+        command: LowessCommand {
+          outcome: "y var".to_string(),
+          predictor: "x var".to_string(),
+          target_variable: "y_hat".to_string(),
+          bandwidth: (2.0f64 / 3.0f64).to_string(),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("lowess \"y var\" \"x var\", gen(y_hat)").unwrap(),
+      Command::Lowess {
+        command: LowessCommand {
+          outcome: "y var".to_string(),
+          predictor: "x var".to_string(),
+          target_variable: "y_hat".to_string(),
+          bandwidth: (2.0f64 / 3.0f64).to_string(),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_lowess_syntax() {
+    let cases = [
+      (
+        "lowess",
+        "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]",
+      ),
+      (
+        "lowess y",
+        "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]",
+      ),
+      (
+        "lowess y x z, gen(y_hat)",
+        "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]",
+      ),
+      (
+        "lowess y x if y > 0, gen(y_hat)",
+        "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]",
+      ),
+      ("lowess y x", "lowess option gen expects one variable"),
+      (
+        "lowess y x,",
+        "comma must be followed by at least one option",
+      ),
+      ("lowess y x, gen", "lowess option gen expects variables"),
+      ("lowess y x, gen()", "option gen expects at least one value"),
+      (
+        "lowess y x, gen(y1 y2)",
+        "lowess option gen expects one variable",
+      ),
+      (
+        "lowess y x, gen(y1) gen(y2)",
+        "lowess option gen may only be supplied once",
+      ),
+      (
+        "lowess y x, gen(y_hat) extra",
+        "lowess unsupported option: extra",
+      ),
+      (
+        "lowess y x, GEN(y_hat) BANDWIDTH=0.8",
+        "lowess unsupported option: BANDWIDTH, GEN",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth",
+        "lowess option bandwidth expects a numeric value",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth=0",
+        "lowess option bandwidth must be between 0 and 1",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth=1",
+        "lowess option bandwidth must be between 0 and 1",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth=1.5",
+        "lowess option bandwidth must be between 0 and 1",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth=abc",
+        "lowess option bandwidth expects a numeric value",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth(0.5)",
+        "option bandwidth values must be identifiers",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth(abc)",
+        "lowess option bandwidth expects a numeric value",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth(a b)",
+        "lowess option bandwidth expects one value",
+      ),
+      (
+        "lowess y x, gen(y_hat) bandwidth=0.5 bandwidth=0.6",
+        "lowess option bandwidth may only be supplied once",
+      ),
+      ("lowess=", "lowess assignment requires a target before ="),
+      ("lowess = 1", "lowess assignment requires a target before ="),
+      ("lowess==", "unsupported token in command: =="),
+      ("lowess == 1", "unsupported token in command: =="),
+      ("lowess:", "unsupported token in command: :"),
+      ("lowess: regress y x", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
