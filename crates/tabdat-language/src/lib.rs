@@ -114,6 +114,8 @@ pub enum Command {
   DrDid { command: DrDidCommand },
   /// Fit a double machine learning model (execution is deferred).
   Dml { command: DmlCommand },
+  /// Fit a control function regression model (execution is deferred).
+  CfRegress { command: CfRegressCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -1020,6 +1022,26 @@ pub struct DmlCommand {
   pub include_intercept: bool,
 }
 
+/// The parser-only `cfregress` control function estimator form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CfRegressCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Exogenous covariate variables.
+  pub exogenous: Vec<String>,
+  /// Endogenous variable.
+  pub endogenous: String,
+  /// Instrumental variables.
+  pub instruments: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Cluster identifier variable.
+  pub cluster_variable: Option<String>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1658,6 +1680,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..9)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cfregress"))
+    && command.as_bytes().get(9) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1973,6 +2003,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     }
     return Err(ParseError::new("dml assignment requires a target before ="));
   }
+  if name.eq_ignore_ascii_case("cfregress") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "cfregress assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -2062,6 +2100,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "did" => parse_did_command(body),
     "drdid" => parse_drdid_command(body),
     "dml" => parse_dml_command(body),
+    "cfregress" => parse_cfregress_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -7499,6 +7538,149 @@ fn parse_dml_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn cfregress_identifier_option(
+  options: &[UseOption],
+  name: &str,
+) -> Result<Option<Vec<String>>, ParseError> {
+  let matching = options
+    .iter()
+    .filter(|option| option.name == name)
+    .collect::<Vec<_>>();
+  if matching.len() > 1 {
+    return Err(ParseError::new(format!(
+      "cfregress option {name} may only be supplied once"
+    )));
+  }
+  let Some(option) = matching.first() else {
+    return Ok(None);
+  };
+  match &option.value {
+    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
+    _ => Err(ParseError::new(format!(
+      "cfregress option {name} expects variables"
+    ))),
+  }
+}
+
+fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "cfregress assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "cfregress expects syntax: cfregress <y> [exog_vars], endog(<var>) iv(<vars>)";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.is_empty()
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "endog" | "iv" | "robust" | "cluster" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "cfregress unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "cfregress option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let endog_values = cfregress_identifier_option(&options, "endog")?;
+  let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
+    return Err(ParseError::new(
+      "cfregress option endog expects one variable",
+    ));
+  };
+  let endogenous = endog_values
+    .into_iter()
+    .next()
+    .expect("cfregress endog option arity checked before extracting the variable");
+
+  let instrument_values = cfregress_identifier_option(&options, "iv")?;
+  let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
+    return Err(ParseError::new(
+      "cfregress option iv expects at least one variable",
+    ));
+  };
+
+  let cluster_values = cfregress_identifier_option(&options, "cluster")?;
+  if cluster_values
+    .as_ref()
+    .is_some_and(|values| values.len() != 1)
+  {
+    return Err(ParseError::new(
+      "cfregress option cluster expects one variable",
+    ));
+  }
+  let cluster_variable = cluster_values.and_then(|mut values| values.pop());
+  let robust = options.iter().any(|option| option.name == "robust");
+  if robust && cluster_variable.is_some() {
+    return Err(ParseError::new(
+      "cfregress cannot combine robust and cluster",
+    ));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let exogenous = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect::<Vec<_>>();
+  if exogenous.iter().any(|variable| variable == &endogenous) {
+    return Err(ParseError::new(
+      "cfregress endog variable must not appear in exogenous variables",
+    ));
+  }
+
+  Ok(Command::CfRegress {
+    command: CfRegressCommand {
+      outcome,
+      exogenous,
+      endogenous,
+      instruments,
+      robust,
+      cluster_variable,
+      include_intercept: !options.iter().any(|option| option.name == "noconstant"),
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -9649,15 +9831,15 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
-    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DmlCommand, DrDidCommand, DrDidMethod,
-    ElasticnetCommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression, HeckmanCommand,
-    LassoCommand, LazyEngine, LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError,
-    PoissonCommand, PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand,
-    RegressCommand, RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey,
-    SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand, StregCommand,
-    StregDistribution, TabulateCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand,
-    parse_command,
+    BayesCommand, BayesPrefixCommand, ByCommand, CfRegressCommand, Command, CvelasticnetCommand,
+    CvelasticnetL1Ratio, CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DmlCommand,
+    DrDidCommand, DrDidMethod, ElasticnetCommand, ExecutionMode, GenerateBinaryOperator,
+    GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine, LogitCommand, LowessCommand,
+    NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand, PredictCommand,
+    PredictKind, ProbitCommand, QregCommand, RegressCommand, RegressEstimator, RidgeCommand,
+    RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity, SpregressModelType,
+    SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand, XtLogitCommand,
+    ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -16538,6 +16720,218 @@ mod tests {
       ("dml:", "unsupported token in command: :"),
       (
         "dml: linear y x, treat(d)",
+        "unsupported token in command: :",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_cfregress_syntax() {
+    assert_eq!(
+      parse_command("cfregress cost age bmi, endog(hours) iv(distance policy)").unwrap(),
+      Command::CfRegress {
+        command: CfRegressCommand {
+          outcome: "cost".to_string(),
+          exogenous: vec!["age".to_string(), "bmi".to_string()],
+          endogenous: "hours".to_string(),
+          instruments: vec!["distance".to_string(), "policy".to_string()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cfregress cost, endog(hours) iv(distance) robust").unwrap(),
+      Command::CfRegress {
+        command: CfRegressCommand {
+          outcome: "cost".to_string(),
+          exogenous: vec![],
+          endogenous: "hours".to_string(),
+          instruments: vec!["distance".to_string()],
+          robust: true,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cfregress cost age, endog(hours) iv(distance) cluster(group_id) noconstant")
+        .unwrap(),
+      Command::CfRegress {
+        command: CfRegressCommand {
+          outcome: "cost".to_string(),
+          exogenous: vec!["age".to_string()],
+          endogenous: "hours".to_string(),
+          instruments: vec!["distance".to_string()],
+          robust: false,
+          cluster_variable: Some("group_id".to_string()),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cfregress `cost var` `age var`, endog(`hours var`) iv(`dist var`)").unwrap(),
+      Command::CfRegress {
+        command: CfRegressCommand {
+          outcome: "cost var".to_string(),
+          exogenous: vec!["age var".to_string()],
+          endogenous: "hours var".to_string(),
+          instruments: vec!["dist var".to_string()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("cfregress \"cost var\" \"age var\", endog(hours) iv(distance)").unwrap(),
+      Command::CfRegress {
+        command: CfRegressCommand {
+          outcome: "cost var".to_string(),
+          exogenous: vec!["age var".to_string()],
+          endogenous: "hours".to_string(),
+          instruments: vec!["distance".to_string()],
+          robust: false,
+          cluster_variable: None,
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_cfregress_syntax() {
+    let cases = [
+      (
+        "cfregress",
+        "cfregress expects syntax: cfregress <y> [exog_vars], endog(<var>) iv(<vars>)",
+      ),
+      (
+        "cfregress if x > 0, endog(d) iv(z)",
+        "cfregress expects syntax: cfregress <y> [exog_vars], endog(<var>) iv(<vars>)",
+      ),
+      (
+        "cfregress y = 1, endog(d) iv(z)",
+        "cfregress expects syntax: cfregress <y> [exog_vars], endog(<var>) iv(<vars>)",
+      ),
+      (
+        "cfregress y == 1, endog(d) iv(z)",
+        "unsupported token in command: ==",
+      ),
+      (
+        "cfregress y,",
+        "comma must be followed by at least one option",
+      ),
+      ("cfregress y", "cfregress option endog expects one variable"),
+      (
+        "cfregress y, endog(d)",
+        "cfregress option iv expects at least one variable",
+      ),
+      (
+        "cfregress y, iv(z)",
+        "cfregress option endog expects one variable",
+      ),
+      (
+        "cfregress y, endog() iv(z)",
+        "option endog expects at least one value",
+      ),
+      (
+        "cfregress y, endog(d1 d2) iv(z)",
+        "cfregress option endog expects one variable",
+      ),
+      (
+        "cfregress y, endog iv(z)",
+        "cfregress option endog expects variables",
+      ),
+      (
+        "cfregress y, endog(d) iv()",
+        "option iv expects at least one value",
+      ),
+      (
+        "cfregress y, endog(d) iv",
+        "cfregress option iv expects variables",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) cluster",
+        "cfregress option cluster expects variables",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) cluster()",
+        "option cluster expects at least one value",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) cluster(c1 c2)",
+        "cfregress option cluster expects one variable",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) robust cluster(c)",
+        "cfregress cannot combine robust and cluster",
+      ),
+      (
+        "cfregress y, endog(d) endog(d2) iv(z)",
+        "cfregress option endog may only be supplied once",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) iv(z2)",
+        "cfregress option iv may only be supplied once",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) cluster(c1) cluster(c2)",
+        "cfregress option cluster may only be supplied once",
+      ),
+      (
+        "cfregress y d, endog(d) iv(z)",
+        "cfregress endog variable must not appear in exogenous variables",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) robust=true",
+        "cfregress option robust does not accept a value",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) robust(foo)",
+        "cfregress option robust does not accept a value",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) noconstant=true",
+        "cfregress option noconstant does not accept a value",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) noconstant(foo)",
+        "cfregress option noconstant does not accept a value",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) extra",
+        "cfregress unsupported option: extra",
+      ),
+      (
+        "cfregress y, endog(d) iv(z) extra2 extra1",
+        "cfregress unsupported option: extra1, extra2",
+      ),
+      (
+        "cfregress y, ENDOG(d) IV(z)",
+        "cfregress unsupported option: ENDOG, IV",
+      ),
+      (
+        "cfregress=",
+        "cfregress assignment requires a target before =",
+      ),
+      (
+        "cfregress = 1",
+        "cfregress assignment requires a target before =",
+      ),
+      ("cfregress==", "unsupported token in command: =="),
+      ("cfregress == 1", "unsupported token in command: =="),
+      ("cfregress:", "unsupported token in command: :"),
+      (
+        "cfregress: y, endog(d) iv(z)",
         "unsupported token in command: :",
       ),
     ];
