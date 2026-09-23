@@ -469,6 +469,12 @@ Port TabDat's language before implementing most execution.
   `level(<val>)`, `std`, `saving(<path>)`, interdependency rules, exact diagnostic parity,
   and parser-only execution deferral are covered; model scoring, post-estimation state,
   dataset mutation, and persistence remain deferred).
+- [x] Add the bounded panel fixed-effects logit syntax slice for `xtlogit`
+  (PR #109, squash merge `c36d92a`; typed `XtLogitCommand` struct and `Command::XtLogit`
+  AST variant, outcome and predictors validation, required option `fe`, optional flag `robust`,
+  flag-only validation, exact diagnostic parity, and parser-only execution deferral are
+  covered; conditional logit optimization, numerical estimation, panel grouping, and model
+  state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
