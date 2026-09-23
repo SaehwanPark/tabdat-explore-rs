@@ -488,6 +488,15 @@ Port TabDat's language before implementing most execution.
   constraints validation, exact diagnostic parity, and parser-only execution deferral are
   covered; two-way fixed effects estimation, parallel trends testing, interaction modeling,
   and model state remain deferred).
+- [x] Add the bounded doubly robust difference-in-differences syntax slice for `drdid`
+  (PR #115, squash merge `063bc3b`; typed `DrDidMethod` enum, `DrDidCommand` struct, and
+  `Command::DrDid` AST variant, outcome and optional covariates validation, required options
+  `treat(<var>)` and `post(<var>)` with strictly 1 variable name, estimation method enum
+  `method(or|ipw|aipw)` defaulting to `aipw`, optional flag `robust`, optional integer `bootstrap`
+  replications ($\ge 1$), optional integer `seed` ($\ge 0$) requiring `bootstrap`, relationship
+  constraints validation, exact diagnostic parity, and parser-only execution deferral are covered;
+  doubly robust estimation, propensity score modeling, outcome regression, bootstrapping, and
+  model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

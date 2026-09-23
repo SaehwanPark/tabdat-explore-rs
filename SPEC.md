@@ -1315,6 +1315,35 @@ workflows all passed.
 This accepted syntax slice leaves two-way fixed effects estimation, parallel trends diagnostics,
 interaction modeling, parameter inference, FFI backends, reporting, CLI, JSON, MCP, and broad causal execution parity deferred.
 
+## Verified slice: syntax-only doubly robust difference-in-differences command
+
+Merged [PR #115](https://github.com/SaehwanPark/tabdat-explore-rs/pull/115)
+([063bc3b](https://github.com/SaehwanPark/tabdat-explore-rs/commit/063bc3b940989f64bf74d75432616231d6d84877))
+adds bounded, backend-independent doubly robust difference-in-differences syntax boundaries to
+`tabdat-language`. The parser returns an owned `DrDidCommand` type with a dependent variable (`outcome`),
+optional covariate variables (`covariates`), treatment indicator variable (`treatment_variable`),
+post-treatment time period indicator variable (`post_variable`), estimation method enum (`method`: `Or`, `Ipw`, `Aipw`),
+robust covariance flag (`robust`), bootstrap replications count (`bootstrap: Option<i64>`), and random seed
+(`seed: Option<i64>`).
+It validates syntax structure, requiring at least 1 argument (outcome and optional covariates), rejects conditions
+(`if ...`), assignment syntax (`drdid=`), delimiter guards (`drdid==`, `drdid:`), required options `treat(<var>)` and
+`post(<var>)` each expecting strictly 1 variable name, method enum validation (`or`, `ipw`, `aipw`, defaulting to `aipw`),
+numeric bounds for bootstrap ($\ge 1$) and seed ($\ge 0$), seed dependency on bootstrap, single-use rules, unsupported options,
+and enforces variable relationship constraints (`treat != post`, `treat != outcome`, `post != outcome`, `treat not in covariates`,
+`post not in covariates`).
+Owned `String`, `Vec<String>`, and enum/primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform propensity score estimation,
+evaluate outcome regressions, run bootstrap iterations, or mutate datasets.
+
+Evidence: [_workspace/parser-drdid-syntax/](_workspace/parser-drdid-syntax/),
+including the [contract](_workspace/parser-drdid-syntax/01-contract.md) and
+[summary](_workspace/parser-drdid-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves doubly robust estimation, propensity score modeling, outcome regression,
+bootstrapping, statistical validation, FFI backends, reporting, CLI, JSON, MCP, and broad causal execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
