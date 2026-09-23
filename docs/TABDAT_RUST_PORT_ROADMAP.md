@@ -475,6 +475,12 @@ Port TabDat's language before implementing most execution.
   flag-only validation, exact diagnostic parity, and parser-only execution deferral are
   covered; conditional logit optimization, numerical estimation, panel grouping, and model
   state remain deferred).
+- [x] Add the bounded locally weighted regression smoother syntax slice for `lowess`
+  (PR #111, squash merge `d188b33`; typed `LowessCommand` struct and `Command::Lowess`
+  AST variant, outcome and predictor validation, required option `gen(<newvar>)`, optional
+  smoothing bandwidth `bandwidth=<0,1>` defaulting to `2/3`, exact diagnostic parity, and
+  parser-only execution deferral are covered; non-parametric smoothing, tricube kernel weighting,
+  local polynomial fitting, and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

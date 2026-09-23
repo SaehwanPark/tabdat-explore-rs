@@ -1266,6 +1266,30 @@ This accepted syntax slice leaves conditional logit estimation, panel grouping v
 numerical optimization, robust covariance estimation, FFI backends, reporting, CLI, JSON, MCP,
 and broad panel logit execution parity deferred.
 
+## Verified slice: syntax-only locally weighted regression smoother command
+
+Merged [PR #111](https://github.com/SaehwanPark/tabdat-explore-rs/pull/111)
+([d188b33](https://github.com/SaehwanPark/tabdat-explore-rs/commit/d188b338cb88f21950e8d048ba8c3e8a4a580663))
+adds bounded, backend-independent locally weighted regression smoothing syntax boundaries to
+`tabdat-language`. The parser returns an owned `LowessCommand` type with a dependent variable (`outcome`),
+single predictor variable (`predictor`), target smoothed variable name (`target_variable`), and smoothing bandwidth
+(`bandwidth`, defaulting to `"0.6666666666666666"`).
+It validates syntax structure, requiring strictly 2 arguments (outcome and 1 predictor), rejects conditions
+(`if ...`), assignment syntax (`lowess=`), delimiter guards (`lowess==`, `lowess:`), required option `gen(<newvar>)`
+with strictly 1 variable name, single-use rules, unsupported options, and validates smoothing bandwidth strictly
+between 0 and 1 exclusive. Owned `String` types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform non-parametric smoothing,
+evaluate kernel weights, or mutate datasets.
+
+Evidence: [_workspace/parser-lowess-syntax/](_workspace/parser-lowess-syntax/),
+including the [contract](_workspace/parser-lowess-syntax/01-contract.md) and
+[summary](_workspace/parser-lowess-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves non-parametric regression smoothing, tricube kernel weighting,
+local polynomial fitting, FFI backends, reporting, CLI, JSON, MCP, and broad smoothing execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
