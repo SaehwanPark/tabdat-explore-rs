@@ -3152,6 +3152,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Cvelasticnet { .. } => "cvelasticnet",
     Command::Bayes { .. } => "bayes",
     Command::BayesPrefix { .. } => "bayes",
+    Command::Predict { .. } => "predict",
   }
 }
 
