@@ -5,7 +5,8 @@ use tabdat_language::{
   LabelValue, LazyEngine, LogitCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput,
   RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
   ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
-  XtAbondCommand, XtDataCommand, XtDataTransform, XtRegCommand, XtRegEstimator, parse_command,
+  XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator,
+  parse_command,
 };
 
 #[test]
@@ -735,6 +736,169 @@ fn xtabond_preserves_bounded_parser_diagnostics() {
       "XTABOND wage, LAGS(2)",
       "option LAGS values must be identifiers",
     ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtlogit_parses_bounded_panel_fixed_effects_forms() {
+  assert_eq!(
+    parse_command("xtlogit y x, fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x".to_owned()],
+        robust: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit y x1 x2, fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x1".to_owned(), "x2".to_owned()],
+        robust: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit y x, fe robust").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x".to_owned()],
+        robust: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit y x, robust fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x".to_owned()],
+        robust: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit `y var` `x var`, fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y var".to_owned(),
+        predictors: vec!["x var".to_owned()],
+        robust: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit \"y var\" \"x var\", fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y var".to_owned(),
+        predictors: vec!["x var".to_owned()],
+        robust: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtlogit y x, fe fe").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x".to_owned()],
+        robust: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("XTLOGIT y x, fe robust").unwrap(),
+    Command::XtLogit {
+      command: XtLogitCommand {
+        outcome: "y".to_owned(),
+        predictors: vec!["x".to_owned()],
+        robust: true,
+      },
+    }
+  );
+}
+
+#[test]
+fn xtlogit_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "xtlogit",
+      "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+    ),
+    (
+      "xtlogit, fe",
+      "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+    ),
+    (
+      "xtlogit y, fe",
+      "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+    ),
+    ("xtlogit y x", "xtlogit requires option fe"),
+    ("xtlogit y x, robust", "xtlogit requires option fe"),
+    (
+      "xtlogit y x,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "xtlogit y x if y > 0, fe",
+      "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+    ),
+    ("xtlogit y x, fe extra", "xtlogit unsupported option: extra"),
+    (
+      "xtlogit y x, fe foo bar",
+      "xtlogit unsupported option: bar, foo",
+    ),
+    (
+      "xtlogit y x, FE ROBUST",
+      "xtlogit unsupported option: FE, ROBUST",
+    ),
+    ("xtlogit y x, fe(1)", "option fe values must be identifiers"),
+    (
+      "xtlogit y x, fe(a)",
+      "xtlogit option fe does not accept a value",
+    ),
+    (
+      "xtlogit y x, fe=1",
+      "xtlogit option fe does not accept a value",
+    ),
+    (
+      "xtlogit y x, fe=a",
+      "xtlogit option fe does not accept a value",
+    ),
+    (
+      "xtlogit y x, fe robust(1)",
+      "option robust values must be identifiers",
+    ),
+    (
+      "xtlogit y x, fe robust(a)",
+      "xtlogit option robust does not accept a value",
+    ),
+    (
+      "xtlogit y x, fe robust=1",
+      "xtlogit option robust does not accept a value",
+    ),
+    ("xtlogit=", "xtlogit assignment requires a target before ="),
+    (
+      "xtlogit = 1",
+      "xtlogit assignment requires a target before =",
+    ),
+    ("xtlogit==", "unsupported token in command: =="),
+    ("xtlogit == 1", "unsupported token in command: =="),
+    ("xtlogit:", "unsupported token in command: :"),
+    ("xtlogit: regress y x", "unsupported token in command: :"),
   ];
 
   for (input, expected) in cases {

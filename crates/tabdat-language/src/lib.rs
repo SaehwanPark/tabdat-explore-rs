@@ -104,6 +104,8 @@ pub enum Command {
   XtReg { command: XtRegCommand },
   /// Fit a dynamic-panel Arellano-Bond model (execution is deferred).
   XtAbond { command: XtAbondCommand },
+  /// Fit a fixed-effects panel logit model (execution is deferred).
+  XtLogit { command: XtLogitCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -913,6 +915,18 @@ pub struct XtAbondCommand {
   pub instrument_lag_start: i64,
 }
 
+/// The parser-only `xtlogit` fixed-effects panel logit estimator form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct XtLogitCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Ordered predictor variables.
+  pub predictors: Vec<String>,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1511,6 +1525,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"xtlogit"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1790,6 +1812,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "predict assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("xtlogit") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "xtlogit assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1874,6 +1904,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "ivregress" => parse_ivregress_command(body),
     "xtreg" => parse_xtreg_command(body),
     "xtabond" => parse_xtabond_command(body),
+    "xtlogit" => parse_xtlogit_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -6627,6 +6658,78 @@ fn parse_xtabond_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_xtlogit_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "xtlogit assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "fe" | "robust"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "xtlogit unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "fe" | "robust") && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(format!(
+        "xtlogit option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let has_fe = options.iter().any(|option| option.name == "fe");
+  if !has_fe {
+    return Err(ParseError::new("xtlogit requires option fe"));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+
+  Ok(Command::XtLogit {
+    command: XtLogitCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|argument| argument.text.clone())
+        .collect(),
+      robust,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -8784,7 +8887,7 @@ mod tests {
     PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
     RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity,
     SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand,
-    ZinbCommand, ZipCommand, parse_command,
+    XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -14501,6 +14604,168 @@ mod tests {
         "predict cost_hat, posterior_predictive interval saving(draws.parquet)",
         "predict saving option cannot be combined with std or interval options",
       ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_xtlogit_syntax() {
+    assert_eq!(
+      parse_command("xtlogit y x, fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x".to_string()],
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit y x1 x2, fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x1".to_string(), "x2".to_string()],
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit y x, fe robust").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x".to_string()],
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit y x, robust fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x".to_string()],
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit y x, fe fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x".to_string()],
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("XTLOGIT y x, fe robust").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y".to_string(),
+          predictors: vec!["x".to_string()],
+          robust: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit `y var` `x var`, fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y var".to_string(),
+          predictors: vec!["x var".to_string()],
+          robust: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("xtlogit \"y var\" \"x var\", fe").unwrap(),
+      Command::XtLogit {
+        command: XtLogitCommand {
+          outcome: "y var".to_string(),
+          predictors: vec!["x var".to_string()],
+          robust: false,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_xtlogit_syntax() {
+    let cases = [
+      (
+        "xtlogit",
+        "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+      ),
+      (
+        "xtlogit, fe",
+        "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+      ),
+      (
+        "xtlogit y, fe",
+        "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+      ),
+      ("xtlogit y x", "xtlogit requires option fe"),
+      ("xtlogit y x, robust", "xtlogit requires option fe"),
+      (
+        "xtlogit y x,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "xtlogit y x if y > 0, fe",
+        "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]",
+      ),
+      ("xtlogit y x, fe extra", "xtlogit unsupported option: extra"),
+      (
+        "xtlogit y x, fe foo bar",
+        "xtlogit unsupported option: bar, foo",
+      ),
+      (
+        "xtlogit y x, FE ROBUST",
+        "xtlogit unsupported option: FE, ROBUST",
+      ),
+      ("xtlogit y x, fe(1)", "option fe values must be identifiers"),
+      (
+        "xtlogit y x, fe(a)",
+        "xtlogit option fe does not accept a value",
+      ),
+      (
+        "xtlogit y x, fe=1",
+        "xtlogit option fe does not accept a value",
+      ),
+      (
+        "xtlogit y x, fe=a",
+        "xtlogit option fe does not accept a value",
+      ),
+      (
+        "xtlogit y x, fe robust(1)",
+        "option robust values must be identifiers",
+      ),
+      (
+        "xtlogit y x, fe robust(a)",
+        "xtlogit option robust does not accept a value",
+      ),
+      (
+        "xtlogit y x, fe robust=1",
+        "xtlogit option robust does not accept a value",
+      ),
+      ("xtlogit=", "xtlogit assignment requires a target before ="),
+      (
+        "xtlogit = 1",
+        "xtlogit assignment requires a target before =",
+      ),
+      ("xtlogit==", "unsupported token in command: =="),
+      ("xtlogit == 1", "unsupported token in command: =="),
+      ("xtlogit:", "unsupported token in command: :"),
+      ("xtlogit: regress y x", "unsupported token in command: :"),
     ];
     for (input, expected) in cases {
       assert_eq!(
