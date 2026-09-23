@@ -1192,6 +1192,31 @@ K-fold splitting, cross-validation grid search, report generation, FFI backends,
 post-estimation, reporting, CLI, JSON, MCP, and broad cross-validation regularized regression estimator
 parity deferred.
 
+## Verified slice: syntax-only direct Bayesian linear regression command (bayes linear)
+
+Merged [PR #105](https://github.com/SaehwanPark/tabdat-explore-rs/pull/105)
+([79f0bc4](https://github.com/SaehwanPark/tabdat-explore-rs/commit/79f0bc49c65972a1f4e31c6174f7c6e250560b88))
+adds bounded, backend-independent direct Bayesian linear regression syntax boundaries to
+`tabdat-language`. The parser returns an owned `BayesCommand` type with a dependent outcome variable,
+ordered predictor list, maximum iteration count (`n_iter`, defaulting to `300` and validated integer >= 1),
+convergence tolerance (`tol`, defaulting to `"0.001"` and validated positive finite float), and intercept
+inclusion flag (`noconstant`). It validates syntax structure, requiring the unquoted `linear` model
+specifier, at least one predictor variable, rejects conditions and assignment syntax, single-use rules,
+unsupported options, flag option values, numeric ranges, and delimiter guards, while preserving prefix
+disambiguation (`bayes:`). Owned `String`, `Vec<String>`, and `i64` types are used so that the public
+`Command` enum retains its `Eq` derive. Runtime deliberately returns the typed unsupported command
+result; it does not perform estimation, initialize backends, or mutate model state.
+
+Evidence: [_workspace/parser-bayes-linear-syntax/](_workspace/parser-bayes-linear-syntax/),
+including the [contract](_workspace/parser-bayes-linear-syntax/01-contract.md) and
+[summary](_workspace/parser-bayes-linear-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves statistical estimation, Bayesian evidence maximization / conjugate
+linear regression, scikit-learn BayesianRidge optimization, FFI backends, model results, post-estimation,
+reporting, CLI, JSON, MCP, and broad Bayesian linear regression estimator parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.

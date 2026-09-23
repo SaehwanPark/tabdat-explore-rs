@@ -456,6 +456,12 @@ Port TabDat's language before implementing most execution.
   `l1_ratio(<val|vals>)`, `noconstant`, exact diagnostic parity, and parser-only
   execution deferral are covered; cross-validation fold splitting, grid search,
   scikit-learn optimization, and model state remain deferred).
+- [x] Add the bounded direct Bayesian linear regression syntax slice for `bayes linear`
+  (PR #105, squash merge `79f0bc4`; typed `BayesCommand` struct and `Command::Bayes`
+  AST variant, linear model specifier validation, options `n_iter(<val>)`, `tol(<val>)`,
+  `noconstant`, exact diagnostic parity, and parser-only execution deferral are
+  covered; Bayesian evidence maximization, conjugate estimation, scikit-learn
+  optimization, and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
