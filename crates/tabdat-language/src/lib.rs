@@ -112,6 +112,8 @@ pub enum Command {
   Did { command: DidCommand },
   /// Fit a doubly robust difference-in-differences model (execution is deferred).
   DrDid { command: DrDidCommand },
+  /// Fit a double machine learning model (execution is deferred).
+  Dml { command: DmlCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -996,6 +998,28 @@ pub struct DrDidCommand {
   pub seed: Option<i64>,
 }
 
+/// The parser-only `dml` double machine learning estimator form retained for a later
+/// statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DmlCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Control variables.
+  pub controls: Vec<String>,
+  /// Treatment indicator variable.
+  pub treatment_variable: String,
+  /// Number of cross-fitting folds (default: 5).
+  pub folds: i64,
+  /// Regularization penalty parameter, retained as string spelling (default: "1.0").
+  pub alpha: String,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Random seed for cross-fitting splits.
+  pub seed: Option<i64>,
+  /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1626,6 +1650,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"dml"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1935,6 +1967,12 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "drdid assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("dml") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("dml assignment requires a target before ="));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -2023,6 +2061,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "lowess" => parse_lowess_command(body),
     "did" => parse_did_command(body),
     "drdid" => parse_drdid_command(body),
+    "dml" => parse_dml_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -7297,6 +7336,169 @@ fn parse_drdid_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_dml_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new("dml assignment requires a target before ="));
+  }
+
+  let syntax = "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 3
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  if parts.arguments[0].backtick_quoted || !parts.arguments[0].text.eq_ignore_ascii_case("linear") {
+    return Err(ParseError::new("dml model must be linear"));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "treat" | "folds" | "alpha" | "robust" | "seed" | "noconstant"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "dml unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(option.name.as_str(), "robust" | "noconstant")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "dml option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let treat_matches = options
+    .iter()
+    .filter(|option| option.name == "treat")
+    .collect::<Vec<_>>();
+  if treat_matches.len() > 1 {
+    return Err(ParseError::new(
+      "dml option treat may only be supplied once",
+    ));
+  }
+  let Some(treat_option) = treat_matches.first() else {
+    return Err(ParseError::new("dml option treat expects one variable"));
+  };
+  let treatment_variable = match &treat_option.value {
+    UseOptionValue::Identifiers(vars) => {
+      if vars.len() != 1 {
+        return Err(ParseError::new("dml option treat expects one variable"));
+      }
+      vars[0].clone()
+    }
+    _ => {
+      return Err(ParseError::new("dml option treat expects variables"));
+    }
+  };
+
+  let outcome = parts.arguments[1].text.clone();
+  let controls = parts.arguments[2..]
+    .iter()
+    .map(|arg| arg.text.clone())
+    .collect::<Vec<_>>();
+
+  if treatment_variable == outcome {
+    return Err(ParseError::new(
+      "dml treatment variable must differ from outcome",
+    ));
+  }
+
+  if controls.contains(&treatment_variable) {
+    return Err(ParseError::new(
+      "dml treatment variable must not appear in controls",
+    ));
+  }
+
+  let parse_int_option = |opt_name: &str, minimum: i64| -> Result<Option<i64>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == opt_name)
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(format!(
+        "dml option {opt_name} may only be supplied once"
+      )));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    let UseOptionValue::Number(value) = &option.value else {
+      return Err(ParseError::new(format!(
+        "dml option {opt_name} expects an integer value"
+      )));
+    };
+    let parsed = value.parse::<f64>().ok().filter(|val| val.is_finite());
+    let Some(parsed) = parsed.filter(|val| val.fract() == 0.0) else {
+      return Err(ParseError::new(format!(
+        "dml option {opt_name} expects an integer value"
+      )));
+    };
+    if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+      return Err(ParseError::new(format!(
+        "dml option {opt_name} expects an integer value"
+      )));
+    }
+    let parsed = parsed as i64;
+    if parsed < minimum {
+      return Err(ParseError::new(format!(
+        "dml option {opt_name} must be at least {minimum}"
+      )));
+    }
+    Ok(Some(parsed))
+  };
+
+  let folds = parse_int_option("folds", 2)?.unwrap_or(5);
+  let alpha = extract_alpha_option("dml", &options)?;
+  let seed = parse_int_option("seed", 0)?;
+
+  let robust = options.iter().any(|option| option.name == "robust");
+  let include_intercept = !options.iter().any(|option| option.name == "noconstant");
+
+  Ok(Command::Dml {
+    command: DmlCommand {
+      outcome,
+      controls,
+      treatment_variable,
+      folds,
+      alpha,
+      robust,
+      seed,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -9448,7 +9650,7 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
-    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DrDidCommand, DrDidMethod,
+    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DmlCommand, DrDidCommand, DrDidMethod,
     ElasticnetCommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression, HeckmanCommand,
     LassoCommand, LazyEngine, LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError,
     PoissonCommand, PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand,
@@ -16023,6 +16225,319 @@ mod tests {
       ("drdid:", "unsupported token in command: :"),
       (
         "drdid: y, treat(d) post(t)",
+        "unsupported token in command: :",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_dml_syntax() {
+    assert_eq!(
+      parse_command("dml linear y x1 x2, treat(d)").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string(), "x2".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 5,
+          alpha: "1.0".to_string(),
+          robust: false,
+          seed: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear y x1, treat(d) folds(3)").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 3,
+          alpha: "1.0".to_string(),
+          robust: false,
+          seed: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear y x1 x2, treat(d) alpha(0.5)").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string(), "x2".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 5,
+          alpha: "0.5".to_string(),
+          robust: false,
+          seed: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear y x1, treat(d) robust").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 5,
+          alpha: "1.0".to_string(),
+          robust: true,
+          seed: None,
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear y x1, treat(d) seed(42)").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 5,
+          alpha: "1.0".to_string(),
+          robust: false,
+          seed: Some(42),
+          include_intercept: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear y x1, treat(d) noconstant").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 5,
+          alpha: "1.0".to_string(),
+          robust: false,
+          seed: None,
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command(
+        "dml LINEAR y x1 x2, treat(d) folds(10) alpha(0.1) robust seed(123) noconstant"
+      )
+      .unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y".to_string(),
+          controls: vec!["x1".to_string(), "x2".to_string()],
+          treatment_variable: "d".to_string(),
+          folds: 10,
+          alpha: "0.1".to_string(),
+          robust: true,
+          seed: Some(123),
+          include_intercept: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("dml linear `y var` `x var`, treat(`d var`)").unwrap(),
+      Command::Dml {
+        command: DmlCommand {
+          outcome: "y var".to_string(),
+          controls: vec!["x var".to_string()],
+          treatment_variable: "d var".to_string(),
+          folds: 5,
+          alpha: "1.0".to_string(),
+          robust: false,
+          seed: None,
+          include_intercept: true,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_dml_syntax() {
+    let cases = [
+      (
+        "dml",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      (
+        "dml linear",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      (
+        "dml linear y",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      (
+        "dml linear y, treat(d)",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      (
+        "dml linear y x if y > 0, treat(d)",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      ("dml logistic y x, treat(d)", "dml model must be linear"),
+      ("dml `linear` y x, treat(d)", "dml model must be linear"),
+      (
+        "dml linear y x = 1, treat(d)",
+        "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]",
+      ),
+      (
+        "dml linear y x == 1, treat(d)",
+        "unsupported token in command: ==",
+      ),
+      (
+        "dml linear y x,",
+        "comma must be followed by at least one option",
+      ),
+      ("dml linear y x", "dml option treat expects one variable"),
+      (
+        "dml linear y x, treat",
+        "dml option treat expects variables",
+      ),
+      (
+        "dml linear y x, treat()",
+        "option treat expects at least one value",
+      ),
+      (
+        "dml linear y x, treat(d1 d2)",
+        "dml option treat expects one variable",
+      ),
+      (
+        "dml linear y x, treat(d) treat(d2)",
+        "dml option treat may only be supplied once",
+      ),
+      (
+        "dml linear y x, treat(y)",
+        "dml treatment variable must differ from outcome",
+      ),
+      (
+        "dml linear y x, treat(x)",
+        "dml treatment variable must not appear in controls",
+      ),
+      (
+        "dml linear y x, treat(d) folds(1)",
+        "dml option folds must be at least 2",
+      ),
+      (
+        "dml linear y x, treat(d) folds(0)",
+        "dml option folds must be at least 2",
+      ),
+      (
+        "dml linear y x, treat(d) folds(-1)",
+        "dml option folds must be at least 2",
+      ),
+      (
+        "dml linear y x, treat(d) folds(1.5)",
+        "dml option folds expects an integer value",
+      ),
+      (
+        "dml linear y x, treat(d) folds(abc)",
+        "option folds expects a numeric value",
+      ),
+      (
+        "dml linear y x, treat(d) folds",
+        "dml option folds expects an integer value",
+      ),
+      (
+        "dml linear y x, treat(d) folds()",
+        "option folds expects at least one value",
+      ),
+      (
+        "dml linear y x, treat(d) folds(5) folds(10)",
+        "dml option folds may only be supplied once",
+      ),
+      (
+        "dml linear y x, treat(d) alpha(-1)",
+        "dml option alpha must be positive",
+      ),
+      (
+        "dml linear y x, treat(d) alpha(0)",
+        "dml option alpha must be positive",
+      ),
+      (
+        "dml linear y x, treat(d) alpha(abc)",
+        "option alpha expects a numeric value",
+      ),
+      (
+        "dml linear y x, treat(d) alpha",
+        "dml option alpha expects a numeric value",
+      ),
+      (
+        "dml linear y x, treat(d) alpha()",
+        "option alpha expects at least one value",
+      ),
+      (
+        "dml linear y x, treat(d) alpha(1) alpha(2)",
+        "dml option alpha may only be supplied once",
+      ),
+      (
+        "dml linear y x, treat(d) seed(-1)",
+        "dml option seed must be at least 0",
+      ),
+      (
+        "dml linear y x, treat(d) seed(1.5)",
+        "dml option seed expects an integer value",
+      ),
+      (
+        "dml linear y x, treat(d) seed(abc)",
+        "option seed expects a numeric value",
+      ),
+      (
+        "dml linear y x, treat(d) seed",
+        "dml option seed expects an integer value",
+      ),
+      (
+        "dml linear y x, treat(d) seed()",
+        "option seed expects at least one value",
+      ),
+      (
+        "dml linear y x, treat(d) seed(1) seed(2)",
+        "dml option seed may only be supplied once",
+      ),
+      (
+        "dml linear y x, treat(d) robust=true",
+        "dml option robust does not accept a value",
+      ),
+      (
+        "dml linear y x, treat(d) robust(foo)",
+        "dml option robust does not accept a value",
+      ),
+      (
+        "dml linear y x, treat(d) noconstant=true",
+        "dml option noconstant does not accept a value",
+      ),
+      (
+        "dml linear y x, treat(d) noconstant(foo)",
+        "dml option noconstant does not accept a value",
+      ),
+      (
+        "dml linear y x, treat(d) extra",
+        "dml unsupported option: extra",
+      ),
+      (
+        "dml linear y x, treat(d) extra2 extra1",
+        "dml unsupported option: extra1, extra2",
+      ),
+      ("dml linear y x, TREAT(d)", "dml unsupported option: TREAT"),
+      ("dml=", "dml assignment requires a target before ="),
+      ("dml = 1", "dml assignment requires a target before ="),
+      ("dml==", "unsupported token in command: =="),
+      ("dml == 1", "unsupported token in command: =="),
+      ("dml:", "unsupported token in command: :"),
+      (
+        "dml: linear y x, treat(d)",
         "unsupported token in command: :",
       ),
     ];

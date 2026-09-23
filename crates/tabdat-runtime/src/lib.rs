@@ -3120,6 +3120,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Lowess { .. } => "lowess",
     Command::Did { .. } => "did",
     Command::DrDid { .. } => "drdid",
+    Command::Dml { .. } => "dml",
     Command::Estat { .. } => "estat",
     Command::Ttest { .. } => "ttest",
     Command::By { .. } => "by",
