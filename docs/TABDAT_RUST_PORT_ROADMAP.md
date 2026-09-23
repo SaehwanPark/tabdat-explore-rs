@@ -462,6 +462,13 @@ Port TabDat's language before implementing most execution.
   `noconstant`, exact diagnostic parity, and parser-only execution deferral are
   covered; Bayesian evidence maximization, conjugate estimation, scikit-learn
   optimization, and model state remain deferred).
+- [x] Add the bounded direct post-estimation prediction syntax slice for `predict`
+  (PR #107, squash merge `aba64a8`; typed `PredictKind` and `PredictCommand` structs
+  and `Command::Predict` AST variant, single target variable validation, prediction kinds
+  `xb`, `residuals`, `pr`, `spatial_lag`, `posterior_predictive`, auxiliary options `interval`,
+  `level(<val>)`, `std`, `saving(<path>)`, interdependency rules, exact diagnostic parity,
+  and parser-only execution deferral are covered; model scoring, post-estimation state,
+  dataset mutation, and persistence remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
