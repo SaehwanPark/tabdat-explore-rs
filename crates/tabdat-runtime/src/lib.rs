@@ -3119,6 +3119,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::XtLogit { .. } => "xtlogit",
     Command::Lowess { .. } => "lowess",
     Command::Did { .. } => "did",
+    Command::DrDid { .. } => "drdid",
     Command::Estat { .. } => "estat",
     Command::Ttest { .. } => "ttest",
     Command::By { .. } => "by",

@@ -110,6 +110,8 @@ pub enum Command {
   Lowess { command: LowessCommand },
   /// Fit a difference-in-differences model (execution is deferred).
   Did { command: DidCommand },
+  /// Fit a doubly robust difference-in-differences model (execution is deferred).
+  DrDid { command: DrDidCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -961,6 +963,39 @@ pub struct DidCommand {
   pub robust: bool,
 }
 
+/// The doubly robust difference-in-differences estimator methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DrDidMethod {
+  /// Outcome regression.
+  Or,
+  /// Inverse probability weighting.
+  Ipw,
+  /// Augmented inverse probability weighting (doubly robust).
+  Aipw,
+}
+
+/// The parser-only `drdid` doubly robust difference-in-differences estimator form retained
+/// for a later statistical runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DrDidCommand {
+  /// The dependent variable.
+  pub outcome: String,
+  /// Optional covariate control variables.
+  pub covariates: Vec<String>,
+  /// Treatment indicator variable.
+  pub treatment_variable: String,
+  /// Post-treatment time period indicator variable.
+  pub post_variable: String,
+  /// Estimation method.
+  pub method: DrDidMethod,
+  /// Request robust covariance in the eventual runtime.
+  pub robust: bool,
+  /// Number of bootstrap replications.
+  pub bootstrap: Option<i64>,
+  /// Random seed for bootstrap.
+  pub seed: Option<i64>,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1583,6 +1618,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..5)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"drdid"))
+    && command.as_bytes().get(5) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1884,6 +1927,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     }
     return Err(ParseError::new("did assignment requires a target before ="));
   }
+  if name.eq_ignore_ascii_case("drdid") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "drdid assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1971,6 +2022,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "xtlogit" => parse_xtlogit_command(body),
     "lowess" => parse_lowess_command(body),
     "did" => parse_did_command(body),
+    "drdid" => parse_drdid_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -7031,6 +7083,220 @@ fn parse_did_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_drdid_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "drdid assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(argument_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.is_empty()
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "treat" | "post" | "method" | "robust" | "bootstrap" | "seed"
+      )
+    })
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "drdid unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "robust" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "drdid option robust does not accept a value",
+      ));
+    }
+  }
+
+  let parse_var_option = |opt_name: &str| -> Result<String, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == opt_name)
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} may only be supplied once"
+      )));
+    }
+    let Some(option) = matches.first() else {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} expects one variable"
+      )));
+    };
+    match &option.value {
+      UseOptionValue::Identifiers(vars) => {
+        if vars.len() != 1 {
+          return Err(ParseError::new(format!(
+            "drdid option {opt_name} expects one variable"
+          )));
+        }
+        Ok(vars[0].clone())
+      }
+      _ => Err(ParseError::new(format!(
+        "drdid option {opt_name} expects variables"
+      ))),
+    }
+  };
+
+  let treatment_variable = parse_var_option("treat")?;
+  let post_variable = parse_var_option("post")?;
+
+  if treatment_variable == post_variable {
+    return Err(ParseError::new(
+      "drdid treatment and post variables must be distinct",
+    ));
+  }
+
+  let outcome = parts.arguments[0].text.clone();
+  let covariates = parts.arguments[1..]
+    .iter()
+    .map(|arg| arg.text.clone())
+    .collect::<Vec<_>>();
+
+  if treatment_variable == outcome || post_variable == outcome {
+    return Err(ParseError::new(
+      "drdid treatment and post variables must differ from outcome",
+    ));
+  }
+
+  if covariates.contains(&treatment_variable) || covariates.contains(&post_variable) {
+    return Err(ParseError::new(
+      "drdid treatment and post variables must not appear in covariates",
+    ));
+  }
+
+  let method_matches = options
+    .iter()
+    .filter(|option| option.name == "method")
+    .collect::<Vec<_>>();
+  if method_matches.len() > 1 {
+    return Err(ParseError::new(
+      "drdid option method may only be supplied once",
+    ));
+  }
+  let method = match method_matches.first() {
+    None => DrDidMethod::Aipw,
+    Some(option) => {
+      let raw_val = match &option.value {
+        UseOptionValue::Identifiers(vars) => {
+          if vars.len() != 1 {
+            return Err(ParseError::new("drdid option method expects one value"));
+          }
+          vars[0].as_str()
+        }
+        UseOptionValue::String(s) => s.as_str(),
+        _ => {
+          return Err(ParseError::new("drdid option method expects a value"));
+        }
+      };
+      match raw_val {
+        "or" => DrDidMethod::Or,
+        "ipw" => DrDidMethod::Ipw,
+        "aipw" => DrDidMethod::Aipw,
+        _ => {
+          return Err(ParseError::new(
+            "drdid option method must be one of: or, ipw, aipw",
+          ));
+        }
+      }
+    }
+  };
+
+  let parse_int_option = |opt_name: &str, minimum: i64| -> Result<Option<i64>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == opt_name)
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} may only be supplied once"
+      )));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    let UseOptionValue::Number(value) = &option.value else {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} expects an integer value"
+      )));
+    };
+    let parsed = value.parse::<f64>().ok().filter(|val| val.is_finite());
+    let Some(parsed) = parsed.filter(|val| val.fract() == 0.0) else {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} expects an integer value"
+      )));
+    };
+    if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} expects an integer value"
+      )));
+    }
+    let parsed = parsed as i64;
+    if parsed < minimum {
+      return Err(ParseError::new(format!(
+        "drdid option {opt_name} must be at least {minimum}"
+      )));
+    }
+    Ok(Some(parsed))
+  };
+
+  let bootstrap = parse_int_option("bootstrap", 1)?;
+  let seed = parse_int_option("seed", 0)?;
+
+  if seed.is_some() && bootstrap.is_none() {
+    return Err(ParseError::new(
+      "drdid option seed requires option bootstrap",
+    ));
+  }
+
+  let robust = options.iter().any(|option| option.name == "robust");
+
+  Ok(Command::DrDid {
+    command: DrDidCommand {
+      outcome,
+      covariates,
+      treatment_variable,
+      post_variable,
+      method,
+      robust,
+      bootstrap,
+      seed,
+    },
+  })
+}
+
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
@@ -9182,13 +9448,14 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 mod tests {
   use super::{
     BayesCommand, BayesPrefixCommand, ByCommand, Command, CvelasticnetCommand, CvelasticnetL1Ratio,
-    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, ElasticnetCommand, ExecutionMode,
-    GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
-    LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
-    PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
-    RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand,
-    SpregressContiguity, SpregressModelType, SqlCommand, StregCommand, StregDistribution,
-    TabulateCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
+    CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DrDidCommand, DrDidMethod,
+    ElasticnetCommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression, HeckmanCommand,
+    LassoCommand, LazyEngine, LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError,
+    PoissonCommand, PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand,
+    RegressCommand, RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey,
+    SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand, StregCommand,
+    StregDistribution, TabulateCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand,
+    parse_command,
   };
 
   #[test]
@@ -15402,6 +15669,360 @@ mod tests {
       ("did:", "unsupported token in command: :"),
       (
         "did: y, treat(d) post(t)",
+        "unsupported token in command: :",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_drdid_syntax() {
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y x1 x2, treat(d) post(t)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec!["x1".to_string(), "x2".to_string()],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) method(or)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Or,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) method(ipw)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Ipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) method(aipw)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) method=or").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Or,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) robust").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: true,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) bootstrap(100)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: Some(100),
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid y, treat(d) post(t) bootstrap(100) seed(42)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y".to_string(),
+          covariates: vec![],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: Some(100),
+          seed: Some(42),
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid `y var` `x var`, treat(`d var`) post(`t var`)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y var".to_string(),
+          covariates: vec!["x var".to_string()],
+          treatment_variable: "d var".to_string(),
+          post_variable: "t var".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("drdid \"y var\" \"x var\", treat(d) post(t)").unwrap(),
+      Command::DrDid {
+        command: DrDidCommand {
+          outcome: "y var".to_string(),
+          covariates: vec!["x var".to_string()],
+          treatment_variable: "d".to_string(),
+          post_variable: "t".to_string(),
+          method: DrDidMethod::Aipw,
+          robust: false,
+          bootstrap: None,
+          seed: None,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_drdid_syntax() {
+    let cases = [
+      (
+        "drdid",
+        "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]",
+      ),
+      (
+        "drdid if x > 0, treat(d) post(t)",
+        "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]",
+      ),
+      (
+        "drdid = 1, treat(d) post(t)",
+        "drdid assignment requires a target before =",
+      ),
+      (
+        "drdid y = 1, treat(d) post(t)",
+        "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]",
+      ),
+      (
+        "drdid y if x > 0, treat(d) post(t)",
+        "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]",
+      ),
+      ("drdid y", "drdid option treat expects one variable"),
+      ("drdid y,", "comma must be followed by at least one option"),
+      ("drdid y, treat", "drdid option treat expects variables"),
+      (
+        "drdid y, treat()",
+        "option treat expects at least one value",
+      ),
+      (
+        "drdid y, treat(d1 d2) post(t)",
+        "drdid option treat expects one variable",
+      ),
+      (
+        "drdid y, treat(d) treat(d2) post(t)",
+        "drdid option treat may only be supplied once",
+      ),
+      (
+        "drdid y, treat(d)",
+        "drdid option post expects one variable",
+      ),
+      (
+        "drdid y, treat(d) post",
+        "drdid option post expects variables",
+      ),
+      (
+        "drdid y, treat(d) post()",
+        "option post expects at least one value",
+      ),
+      (
+        "drdid y, treat(d) post(t1 t2)",
+        "drdid option post expects one variable",
+      ),
+      (
+        "drdid y, treat(d) post(t) post(t2)",
+        "drdid option post may only be supplied once",
+      ),
+      (
+        "drdid y, treat(d) post(t) method(bad)",
+        "drdid option method must be one of: or, ipw, aipw",
+      ),
+      (
+        "drdid y, treat(d) post(t) method",
+        "drdid option method expects a value",
+      ),
+      (
+        "drdid y, treat(d) post(t) method()",
+        "option method expects at least one value",
+      ),
+      (
+        "drdid y, treat(d) post(t) method(or ipw)",
+        "drdid option method expects one value",
+      ),
+      (
+        "drdid y, treat(d) post(t) method(or) method(ipw)",
+        "drdid option method may only be supplied once",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(0)",
+        "drdid option bootstrap must be at least 1",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(-1)",
+        "drdid option bootstrap must be at least 1",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(abc)",
+        "option bootstrap expects a numeric value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap",
+        "drdid option bootstrap expects an integer value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap()",
+        "option bootstrap expects at least one value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) bootstrap(20)",
+        "drdid option bootstrap may only be supplied once",
+      ),
+      (
+        "drdid y, treat(d) post(t) seed(42)",
+        "drdid option seed requires option bootstrap",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) seed(-1)",
+        "drdid option seed must be at least 0",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) seed(abc)",
+        "option seed expects a numeric value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) seed",
+        "drdid option seed expects an integer value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) seed()",
+        "option seed expects at least one value",
+      ),
+      (
+        "drdid y, treat(d) post(t) bootstrap(10) seed(10) seed(20)",
+        "drdid option seed may only be supplied once",
+      ),
+      (
+        "drdid y, treat(d) post(t) robust=1",
+        "drdid option robust does not accept a value",
+      ),
+      (
+        "drdid y, treat(d) post(t) robust(1)",
+        "option robust values must be identifiers",
+      ),
+      (
+        "drdid y, treat(d) post(t) robust(foo)",
+        "drdid option robust does not accept a value",
+      ),
+      (
+        "drdid y, treat(d) post(t) extra",
+        "drdid unsupported option: extra",
+      ),
+      (
+        "drdid y, TREAT(d) POST(t)",
+        "drdid unsupported option: POST, TREAT",
+      ),
+      (
+        "drdid y, treat(d) post(d)",
+        "drdid treatment and post variables must be distinct",
+      ),
+      (
+        "drdid y, treat(y) post(t)",
+        "drdid treatment and post variables must differ from outcome",
+      ),
+      (
+        "drdid y, treat(d) post(y)",
+        "drdid treatment and post variables must differ from outcome",
+      ),
+      (
+        "drdid y d, treat(d) post(t)",
+        "drdid treatment and post variables must not appear in covariates",
+      ),
+      (
+        "drdid y t, treat(d) post(t)",
+        "drdid treatment and post variables must not appear in covariates",
+      ),
+      ("drdid=", "drdid assignment requires a target before ="),
+      ("drdid = 1", "drdid assignment requires a target before ="),
+      ("drdid==", "unsupported token in command: =="),
+      ("drdid == 1", "unsupported token in command: =="),
+      ("drdid:", "unsupported token in command: :"),
+      (
+        "drdid: y, treat(d) post(t)",
         "unsupported token in command: :",
       ),
     ];
