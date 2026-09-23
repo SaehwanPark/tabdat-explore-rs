@@ -516,6 +516,13 @@ Port TabDat's language before implementing most execution.
   exact diagnostic parity, and parser-only execution deferral are covered; first-stage residual
   modeling, second-stage control function augmentation, bootstrapped standard errors, and
   model state remain deferred).
+- [x] Add the bounded linear combination hypothesis testing syntax slice for `lincom`
+  (PR #121, squash merge `939bdd7`; typed `LincomCommand` struct and
+  `Command::Lincom` AST variant, linear combination expression parsing via `tokenize` and
+  `GenerateExpressionParser`, colon and delimiter guards, exact diagnostic parity, and parser-only
+  execution deferral are covered; post-estimation parameter evaluation, symbolic differentiation,
+  covariance matrix transformation, standard error computation, t/z statistics, p-values, and
+  confidence intervals remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
