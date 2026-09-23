@@ -497,6 +497,15 @@ Port TabDat's language before implementing most execution.
   constraints validation, exact diagnostic parity, and parser-only execution deferral are covered;
   doubly robust estimation, propensity score modeling, outcome regression, bootstrapping, and
   model state remain deferred).
+- [x] Add the bounded double machine learning syntax slice for `dml`
+  (PR #117, squash merge `f2e537c`; typed `DmlCommand` struct and
+  `Command::Dml` AST variant, linear model identifier, outcome and controls validation,
+  required option `treat(<var>)` with strictly 1 variable name, optional integer `folds` ($\ge 2$)
+  defaulting to 5, optional numeric `alpha` ($> 0$) defaulting to `"1.0"`, optional flag `robust`,
+  optional integer `seed` ($\ge 0$), optional flag `noconstant`, relationship constraints validation,
+  exact diagnostic parity, and parser-only execution deferral are covered; double machine learning
+  cross-fitting, Lasso regularized nuisance estimation, Neyman-orthogonal score construction, and
+  model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
