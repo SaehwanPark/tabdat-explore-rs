@@ -182,6 +182,8 @@ pub enum Command {
   Bayes { command: BayesCommand },
   /// Run a Bayesian estimation model using MCMC sampling (execution is deferred).
   BayesPrefix { command: BayesPrefixCommand },
+  /// Predict post-estimation values (execution is deferred).
+  Predict { command: PredictCommand },
 }
 
 /// The bounded Bayesian estimation prefix command form.
@@ -804,6 +806,39 @@ pub struct BayesCommand {
   pub tol: String,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
+}
+
+/// The requested prediction mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PredictKind {
+  /// Linear prediction (fitted values $X\hat{\beta}$).
+  Xb,
+  /// Residuals ($y - X\hat{\beta}$).
+  Residuals,
+  /// Predicted probabilities for binary choice models.
+  Pr,
+  /// Predicted spatial lag for spatial models.
+  SpatialLag,
+  /// Posterior predictive draws for Bayesian models.
+  PosteriorPredictive,
+}
+
+/// The parser-only `predict` form retained for a later post-estimation
+/// runtime slice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredictCommand {
+  /// Target variable name to store predictions.
+  pub target_variable: String,
+  /// Prediction kind.
+  pub kind: PredictKind,
+  /// Whether interval bounds are requested.
+  pub interval: bool,
+  /// Credible interval level, retained as string spelling.
+  pub level: String,
+  /// Whether standard deviation of posterior predictive draws is requested.
+  pub std: bool,
+  /// Optional file path to save posterior draws.
+  pub saving: Option<String>,
 }
 
 /// The estimator forms accepted by the parser-only `ivregress` command.
@@ -1468,6 +1503,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"predict"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -1739,6 +1782,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "cvelasticnet assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("predict") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "predict assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -1857,6 +1908,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "cvridge" => parse_cvridge_command(body),
     "cvelasticnet" => parse_cvelasticnet_command(body),
     "bayes" => parse_bayes_command(body),
+    "predict" => parse_predict_command(body),
     "exit" | "quit" => {
       if body.is_empty() {
         Ok(Command::Exit)
@@ -5886,6 +5938,207 @@ fn parse_bayes_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
+  let trimmed = body.trim_start();
+  if trimmed.starts_with("==") {
+    return Err(ParseError::new("unsupported token in command: =="));
+  }
+  if trimmed.starts_with('=') {
+    return Err(ParseError::new(
+      "predict assignment requires a target before =",
+    ));
+  }
+
+  let syntax = "predict expects syntax: predict <newvar>";
+  let (argument_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let argument_body = argument_body.trim_matches(is_command_whitespace);
+  let simple_parts = parse_simple_body(argument_body, false)?;
+  if simple_parts.has_condition
+    || simple_parts.has_assignment
+    || simple_parts.missing_condition_expression
+    || simple_parts.arguments.len() != 1
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let target_variable = simple_parts
+    .arguments
+    .into_iter()
+    .next()
+    .expect("argument count verified")
+    .text;
+
+  let options = match option_body {
+    Some(options_str) => parse_use_options(options_str)?,
+    None => Vec::new(),
+  };
+
+  let mut unsupported = options
+    .iter()
+    .filter(|opt| {
+      !matches!(
+        opt.name.as_str(),
+        "xb"
+          | "residuals"
+          | "pr"
+          | "spatial_lag"
+          | "posterior_predictive"
+          | "interval"
+          | "level"
+          | "std"
+          | "saving"
+      )
+    })
+    .map(|opt| opt.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "predict unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if matches!(
+      option.name.as_str(),
+      "xb" | "residuals" | "pr" | "spatial_lag" | "posterior_predictive" | "interval" | "std"
+    ) && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "predict option {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let mut kinds_present = Vec::new();
+  for opt in &options {
+    if matches!(
+      opt.name.as_str(),
+      "xb" | "residuals" | "pr" | "spatial_lag" | "posterior_predictive"
+    ) && !kinds_present.contains(&opt.name.as_str())
+    {
+      kinds_present.push(opt.name.as_str());
+    }
+  }
+  if kinds_present.len() > 1 {
+    return Err(ParseError::new(
+      "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+    ));
+  }
+
+  let kind = if options.iter().any(|opt| opt.name == "residuals") {
+    PredictKind::Residuals
+  } else if options.iter().any(|opt| opt.name == "pr") {
+    PredictKind::Pr
+  } else if options.iter().any(|opt| opt.name == "spatial_lag") {
+    PredictKind::SpatialLag
+  } else if options.iter().any(|opt| opt.name == "posterior_predictive") {
+    PredictKind::PosteriorPredictive
+  } else {
+    PredictKind::Xb
+  };
+
+  let interval = options.iter().any(|opt| opt.name == "interval");
+
+  let level_options = options
+    .iter()
+    .filter(|opt| opt.name == "level")
+    .collect::<Vec<_>>();
+  if level_options.len() > 1 {
+    return Err(ParseError::new(
+      "predict option level may only be supplied once",
+    ));
+  }
+  let level_opt = level_options.into_iter().next();
+  let (level_str, level_supplied) = match level_opt {
+    Some(opt) => match &opt.value {
+      UseOptionValue::Flag => {
+        return Err(ParseError::new(
+          "predict option level expects a numeric value",
+        ));
+      }
+      UseOptionValue::Number(num) => (num.clone(), true),
+      _ => {
+        return Err(ParseError::new(
+          "predict option level expects a numeric value",
+        ));
+      }
+    },
+    None => ("95.0".to_string(), false),
+  };
+
+  let saving_options = options
+    .iter()
+    .filter(|opt| opt.name == "saving")
+    .collect::<Vec<_>>();
+  if saving_options.len() > 1 {
+    return Err(ParseError::new(
+      "predict option saving may only be supplied once",
+    ));
+  }
+  let saving_opt = saving_options.into_iter().next();
+  let saving = match saving_opt {
+    Some(opt) => match &opt.value {
+      UseOptionValue::Flag => {
+        return Err(ParseError::new("predict option saving expects a path"));
+      }
+      UseOptionValue::String(path) => Some(path.clone()),
+      _ => return Err(ParseError::new("predict option saving expects a path")),
+    },
+    None => None,
+  };
+
+  if (interval || level_supplied) && kind != PredictKind::PosteriorPredictive {
+    return Err(ParseError::new(
+      "predict interval options require posterior_predictive",
+    ));
+  }
+  if level_supplied && !interval {
+    return Err(ParseError::new("predict option level requires interval"));
+  }
+  if level_supplied {
+    let parsed_level = level_str
+      .parse::<f64>()
+      .map_err(|_| ParseError::new("predict option level expects a numeric value"))?;
+    if parsed_level <= 0.0 || parsed_level >= 100.0 {
+      return Err(ParseError::new(
+        "predict option level must be between 0 and 100",
+      ));
+    }
+  }
+
+  let std = options.iter().any(|opt| opt.name == "std");
+
+  if (std || saving.is_some()) && kind != PredictKind::PosteriorPredictive {
+    return Err(ParseError::new(
+      "predict std and saving options require posterior_predictive",
+    ));
+  }
+
+  if saving.is_some() && (std || interval) {
+    return Err(ParseError::new(
+      "predict saving option cannot be combined with std or interval options",
+    ));
+  }
+
+  Ok(Command::Predict {
+    command: PredictCommand {
+      target_variable,
+      kind,
+      interval,
+      level: level_str,
+      std,
+      saving,
+    },
+  })
+}
+
 fn parse_bayes_prefix_command(command: &str) -> Result<Command, ParseError> {
   let Some(colon_index) = first_unquoted_colon(command) else {
     return Err(ParseError::new(
@@ -8528,10 +8781,10 @@ mod tests {
     CvlassoCommand, CvridgeCommand, DataSource, ElasticnetCommand, ExecutionMode,
     GenerateBinaryOperator, GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine,
     LogitCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
-    ProbitCommand, QregCommand, RegressCommand, RegressEstimator, RidgeCommand, RowLimit,
-    SettingName, SortKey, SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand,
-    StregCommand, StregDistribution, TabulateCommand, TobitCommand, ZinbCommand, ZipCommand,
-    parse_command,
+    PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
+    RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity,
+    SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TobitCommand,
+    ZinbCommand, ZipCommand, parse_command,
   };
 
   #[test]
@@ -13823,6 +14076,431 @@ mod tests {
       ("bayes=", "bayes assignment requires a target before ="),
       ("bayes = 1", "bayes assignment requires a target before ="),
       ("bayes==", "unsupported token in command: =="),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_predict_command_syntax() {
+    assert_eq!(
+      parse_command("predict cost_hat").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "cost_hat".to_string(),
+          kind: PredictKind::Xb,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict resid, residuals").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "resid".to_string(),
+          kind: PredictKind::Residuals,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict p_hat, pr").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "p_hat".to_string(),
+          kind: PredictKind::Pr,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict spatial_hat, spatial_lag").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "spatial_hat".to_string(),
+          kind: PredictKind::SpatialLag,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive interval").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: true,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive interval level(90)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: true,
+          level: "90".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive interval level(95.5)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: true,
+          level: "95.5".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive std").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: false,
+          level: "95.0".to_string(),
+          std: true,
+          saving: None,
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive saving(draws.parquet)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: Some("draws.parquet".to_string()),
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive saving(subdir/draws.parquet)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: Some("subdir/draws.parquet".to_string()),
+        },
+      }
+    );
+
+    assert_eq!(
+      parse_command("predict y_pp, posterior_predictive std interval level(90)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "y_pp".to_string(),
+          kind: PredictKind::PosteriorPredictive,
+          interval: true,
+          level: "90".to_string(),
+          std: true,
+          saving: None,
+        },
+      }
+    );
+
+    // Case insensitivity
+    assert_eq!(
+      parse_command("PREDICT cost_hat").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "cost_hat".to_string(),
+          kind: PredictKind::Xb,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    // Backtick quoting
+    assert_eq!(
+      parse_command("predict `cost hat`, residuals").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "cost hat".to_string(),
+          kind: PredictKind::Residuals,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    // Double quotes
+    assert_eq!(
+      parse_command("predict \"cost hat\", pr").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "cost hat".to_string(),
+          kind: PredictKind::Pr,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+
+    // Repeated allowed flags
+    assert_eq!(
+      parse_command("predict cost_hat, xb xb").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "cost_hat".to_string(),
+          kind: PredictKind::Xb,
+          interval: false,
+          level: "95.0".to_string(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_predict_syntax() {
+    let cases = [
+      ("predict", "predict expects syntax: predict <newvar>"),
+      ("predict a b", "predict expects syntax: predict <newvar>"),
+      (
+        "predict cost_hat if age > 18",
+        "predict expects syntax: predict <newvar>",
+      ),
+      (
+        "predict cost_hat if age > 18, residuals",
+        "predict expects syntax: predict <newvar>",
+      ),
+      (
+        "predict cost_hat = 1",
+        "predict expects syntax: predict <newvar>",
+      ),
+      ("predict,", "predict expects syntax: predict <newvar>"),
+      (
+        "predict, residuals",
+        "predict expects syntax: predict <newvar>",
+      ),
+      (
+        "predict cost_hat,",
+        "comma must be followed by at least one option",
+      ),
+      ("predict=", "predict assignment requires a target before ="),
+      (
+        "predict = 1",
+        "predict assignment requires a target before =",
+      ),
+      ("predict==", "unsupported token in command: =="),
+      ("predict == 1", "unsupported token in command: =="),
+      ("predict:", "unsupported token in command: :"),
+      ("predict: cost_hat", "unsupported token in command: :"),
+      ("predict cost_hat, foo", "predict unsupported option: foo"),
+      (
+        "predict cost_hat, foo bar",
+        "predict unsupported option: bar, foo",
+      ),
+      (
+        "predict cost_hat, RESIDUALS",
+        "predict unsupported option: RESIDUALS",
+      ),
+      (
+        "predict cost_hat, xb=true",
+        "predict option xb does not accept a value",
+      ),
+      (
+        "predict cost_hat, residuals=true",
+        "predict option residuals does not accept a value",
+      ),
+      (
+        "predict cost_hat, pr=true",
+        "predict option pr does not accept a value",
+      ),
+      (
+        "predict cost_hat, spatial_lag=true",
+        "predict option spatial_lag does not accept a value",
+      ),
+      (
+        "predict cost_hat, posterior_predictive=true",
+        "predict option posterior_predictive does not accept a value",
+      ),
+      (
+        "predict cost_hat, interval=true",
+        "predict option interval does not accept a value",
+      ),
+      (
+        "predict cost_hat, std=true",
+        "predict option std does not accept a value",
+      ),
+      (
+        "predict cost_hat, xb residuals",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, xb spatial_lag",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, xb posterior_predictive",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, pr residuals",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, pr spatial_lag",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, pr posterior_predictive",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, residuals spatial_lag",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, residuals posterior_predictive",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, spatial_lag posterior_predictive",
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
+      ),
+      (
+        "predict cost_hat, xb interval",
+        "predict interval options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, xb level(90)",
+        "predict interval options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, residuals interval",
+        "predict interval options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, posterior_predictive level(90)",
+        "predict option level requires interval",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level(0)",
+        "predict option level must be between 0 and 100",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level(100)",
+        "predict option level must be between 0 and 100",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level(-5)",
+        "predict option level must be between 0 and 100",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level",
+        "predict option level expects a numeric value",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level(abc)",
+        "option level expects a numeric value",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level()",
+        "option level expects at least one value",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval level(90) level(95)",
+        "predict option level may only be supplied once",
+      ),
+      (
+        "predict cost_hat, xb std",
+        "predict std and saving options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, xb saving(draws.parquet)",
+        "predict std and saving options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, residuals saving(draws.parquet)",
+        "predict std and saving options require posterior_predictive",
+      ),
+      (
+        "predict cost_hat, posterior_predictive saving",
+        "predict option saving expects a path",
+      ),
+      (
+        "predict cost_hat, posterior_predictive saving()",
+        "option saving expects at least one value",
+      ),
+      (
+        "predict cost_hat, posterior_predictive saving(a) saving(b)",
+        "predict option saving may only be supplied once",
+      ),
+      (
+        "predict cost_hat, posterior_predictive std saving(draws.parquet)",
+        "predict saving option cannot be combined with std or interval options",
+      ),
+      (
+        "predict cost_hat, posterior_predictive interval saving(draws.parquet)",
+        "predict saving option cannot be combined with std or interval options",
+      ),
     ];
     for (input, expected) in cases {
       assert_eq!(
