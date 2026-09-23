@@ -1217,6 +1217,32 @@ This accepted syntax slice leaves statistical estimation, Bayesian evidence maxi
 linear regression, scikit-learn BayesianRidge optimization, FFI backends, model results, post-estimation,
 reporting, CLI, JSON, MCP, and broad Bayesian linear regression estimator parity deferred.
 
+## Verified slice: syntax-only direct predict post-estimation command
+
+Merged [PR #107](https://github.com/SaehwanPark/tabdat-explore-rs/pull/107)
+([aba64a8](https://github.com/SaehwanPark/tabdat-explore-rs/commit/aba64a8a07f7c469fefb3d1b72e5dcce251df83e))
+adds bounded, backend-independent direct post-estimation prediction syntax boundaries to
+`tabdat-language`. The parser returns an owned `PredictCommand` type with a target variable name,
+prediction kind (`Xb`, `Residuals`, `Pr`, `SpatialLag`, `PosteriorPredictive`, defaulting to `Xb`),
+interval flag (`interval`, defaulting to `false`), credible interval level (`level`, defaulting to `"95.0"` and
+validated `0 < level < 100`), standard deviation flag (`std`), and optional file destination path (`saving`).
+It validates syntax structure, requiring exactly one target variable name, rejects conditions and assignment syntax,
+single-use rules, unsupported options, flag option values, numeric ranges, and delimiter guards (`predict:`, `predict=`, `predict==`).
+It validates interdependencies: `interval`, `level`, `std`, and `saving` require `posterior_predictive`; `level` requires `interval`;
+`saving` cannot combine with `std` or `interval`. Owned `String` and enum types are used so that the public `Command`
+enum retains its `Eq` derive. Runtime deliberately returns the typed unsupported command result; it does not perform
+model scoring, initialize backends, lookup post-estimation state, or mutate datasets.
+
+Evidence: [_workspace/parser-predict-syntax/](_workspace/parser-predict-syntax/),
+including the [contract](_workspace/parser-predict-syntax/01-contract.md) and
+[summary](_workspace/parser-predict-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves model scoring, post-estimation state lookup, dataset mutation,
+DuckDB column generation, Parquet draws persistence, FFI backends, reporting, CLI, JSON, MCP,
+and broad post-estimation prediction execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
