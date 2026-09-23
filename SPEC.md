@@ -1243,6 +1243,29 @@ This accepted syntax slice leaves model scoring, post-estimation state lookup, d
 DuckDB column generation, Parquet draws persistence, FFI backends, reporting, CLI, JSON, MCP,
 and broad post-estimation prediction execution parity deferred.
 
+## Verified slice: syntax-only panel fixed-effects logit command
+
+Merged [PR #109](https://github.com/SaehwanPark/tabdat-explore-rs/pull/109)
+([c36d92a](https://github.com/SaehwanPark/tabdat-explore-rs/commit/c36d92a04860457d7aa1317fbdc67f8ded8e9217))
+adds bounded, backend-independent panel fixed-effects logit syntax boundaries to
+`tabdat-language`. The parser returns an owned `XtLogitCommand` type with a dependent variable (`outcome`),
+ordered predictor variables (`predictors`), and a robust covariance flag (`robust`, defaulting to `false`).
+It validates syntax structure, requiring at least 2 arguments (outcome and >= 1 predictors), rejects conditions
+(`if ...`), assignment syntax (`xtlogit=`), delimiter guards (`xtlogit==`, `xtlogit:`), flag option values,
+unsupported options, and requires the fixed-effects flag option `fe`. Owned `String` and `Vec<String>` types are used
+so that the public `Command` enum retains its `Eq` derive. Runtime deliberately returns the typed unsupported command
+result; it does not perform conditional logit optimization, compute standard errors, or mutate datasets.
+
+Evidence: [_workspace/parser-xtlogit-syntax/](_workspace/parser-xtlogit-syntax/),
+including the [contract](_workspace/parser-xtlogit-syntax/01-contract.md) and
+[summary](_workspace/parser-xtlogit-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves conditional logit estimation, panel grouping validation,
+numerical optimization, robust covariance estimation, FFI backends, reporting, CLI, JSON, MCP,
+and broad panel logit execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
