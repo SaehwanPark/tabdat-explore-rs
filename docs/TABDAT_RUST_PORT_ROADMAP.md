@@ -481,6 +481,13 @@ Port TabDat's language before implementing most execution.
   smoothing bandwidth `bandwidth=<0,1>` defaulting to `2/3`, exact diagnostic parity, and
   parser-only execution deferral are covered; non-parametric smoothing, tricube kernel weighting,
   local polynomial fitting, and model state remain deferred).
+- [x] Add the bounded difference-in-differences syntax slice for `did`
+  (PR #113, squash merge `5c6a469`; typed `DidCommand` struct and `Command::Did`
+  AST variant, outcome and optional controls validation, required options `treat(<var>)`
+  and `post(<var>)` with strictly 1 variable name, optional flag `robust`, relationship
+  constraints validation, exact diagnostic parity, and parser-only execution deferral are
+  covered; two-way fixed effects estimation, parallel trends testing, interaction modeling,
+  and model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
