@@ -506,6 +506,16 @@ Port TabDat's language before implementing most execution.
   exact diagnostic parity, and parser-only execution deferral are covered; double machine learning
   cross-fitting, Lasso regularized nuisance estimation, Neyman-orthogonal score construction, and
   model state remain deferred).
+- [x] Add the bounded control function regression syntax slice for `cfregress`
+  (PR #119, squash merge `b800fda`; typed `CfRegressCommand` struct and
+  `Command::CfRegress` AST variant, outcome and optional exogenous variables validation,
+  required option `endog(<var>)` with strictly 1 variable name, required option `iv(<vars>)`
+  with $\ge 1$ variable names, optional flag `robust`, optional option `cluster(<var>)`
+  with strictly 1 variable name, conflict check between `robust` and `cluster`, optional
+  flag `noconstant`, relationship constraint validation (`endog` not in exogenous variables),
+  exact diagnostic parity, and parser-only execution deferral are covered; first-stage residual
+  modeling, second-stage control function augmentation, bootstrapped standard errors, and
+  model state remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

@@ -1373,6 +1373,34 @@ This accepted syntax slice leaves double machine learning estimation, cross-fitt
 Lasso regularized regressions, score evaluation, statistical validation, FFI backends, reporting, CLI,
 JSON, MCP, and broad causal execution parity deferred.
 
+## Verified slice: syntax-only control function regression command
+
+Merged [PR #119](https://github.com/SaehwanPark/tabdat-explore-rs/pull/119)
+([b800fda](https://github.com/SaehwanPark/tabdat-explore-rs/commit/b800fda0610f438cb56d2e67a030ef5ea7aa4486))
+adds bounded, backend-independent control function regression syntax boundaries to
+`tabdat-language`. The parser returns an owned `CfRegressCommand` type with a dependent variable (`outcome`),
+optional exogenous variables (`exogenous`), endogenous regressor variable (`endogenous`),
+instrumental variables (`instruments`), robust covariance flag (`robust`), cluster variable
+(`cluster_variable: Option<String>`), and intercept inclusion flag (`include_intercept: bool`).
+It validates syntax structure, requiring at least 1 argument (outcome and optional exogenous variables),
+rejects conditions (`if ...`), assignment syntax (`cfregress=`), delimiter guards (`cfregress==`, `cfregress:`),
+required option `endog(<var>)` expecting strictly 1 variable name, required option `iv(<vars>)` expecting $\ge 1$
+variable names, cluster variable arity, option conflict (disallowing combining `robust` and `cluster`), single-use rules,
+unsupported options, and enforces variable relationship constraints (`endog not in exogenous`).
+Owned `String`, `Vec<String>`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform first-stage residual
+calculation, second-stage control function augmentation, bootstrapped standard errors, or mutate datasets.
+
+Evidence: [_workspace/parser-cfregress-syntax/](_workspace/parser-cfregress-syntax/),
+including the [contract](_workspace/parser-cfregress-syntax/01-contract.md) and
+[summary](_workspace/parser-cfregress-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves control function estimation, first-stage modeling, residual generation,
+second-stage estimation, standard error corrections, statistical validation, FFI backends, reporting, CLI,
+JSON, MCP, and broad causal execution parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
