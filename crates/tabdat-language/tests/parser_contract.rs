@@ -3,11 +3,11 @@ use tabdat_language::{
   CollapseStatistic, Command, DataSource, DidCommand, DmlCommand, DrDidCommand, DrDidMethod,
   EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
   IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
-  LogitCommand, LowessCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput,
-  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
-  ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey, TabulateCommand,
-  XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator,
-  parse_command,
+  LincomCommand, LogitCommand, LowessCommand, PanelAction, PanelCommand, ProbitCommand,
+  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand,
+  RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey,
+  TabulateCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand,
+  XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2134,6 +2134,117 @@ fn cfregress_preserves_bounded_parser_diagnostics() {
       "cfregress: y, endog(d) iv(z)",
       "unsupported token in command: :",
     ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn lincom_parses_supported_linear_expressions() {
+  assert_eq!(
+    parse_command("lincom x1 - x2").unwrap(),
+    Command::Lincom {
+      command: LincomCommand {
+        expression: GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        },
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("lincom x1 + 2 * x2").unwrap(),
+    Command::Lincom {
+      command: LincomCommand {
+        expression: GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Add,
+          right: Box::new(GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Number("2".to_owned())),
+            operator: GenerateBinaryOperator::Multiply,
+            right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+          }),
+        },
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("lincom (x1 + x2) * 3").unwrap(),
+    Command::Lincom {
+      command: LincomCommand {
+        expression: GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+          }),
+          operator: GenerateBinaryOperator::Multiply,
+          right: Box::new(GenerateExpression::Number("3".to_owned())),
+        },
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("lincom `wage rate` + 2 * `hours worked`").unwrap(),
+    Command::Lincom {
+      command: LincomCommand {
+        expression: GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("wage rate".to_owned())),
+          operator: GenerateBinaryOperator::Add,
+          right: Box::new(GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Number("2".to_owned())),
+            operator: GenerateBinaryOperator::Multiply,
+            right: Box::new(GenerateExpression::Identifier("hours worked".to_owned())),
+          }),
+        },
+      },
+    }
+  );
+}
+
+#[test]
+fn lincom_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "lincom",
+      "lincom command expects a linear combination expression",
+    ),
+    (
+      "lincom   ",
+      "lincom command expects a linear combination expression",
+    ),
+    ("lincom:", "unsupported token in command: :"),
+    ("lincom: x1 + x2", "unsupported token in command: :"),
+    ("lincom;", "unknown command: lincom;"),
+    ("lincom x1;", "unsupported token in command: ;"),
+    ("lincom=", "lincom assignment requires a target before ="),
+    ("lincom=1", "lincom assignment requires a target before ="),
+    ("lincom==", "unsupported token in command: =="),
+    ("lincom==1", "unsupported token in command: =="),
+    ("lincom,", "comma must be followed by at least one option"),
+    ("lincom, level(95)", "unknown command: lincom"),
+    ("lincom ,", "unsupported token in expression: ,"),
+    ("lincom , level(95)", "unsupported token in expression: ,"),
+    ("lincom = 1", "unsupported token in expression: ="),
+    ("lincom == 1", "unsupported token in expression: =="),
+    ("lincom x1 +", "incomplete expression after +"),
+    ("lincom x1 *", "incomplete expression after *"),
+    ("lincom (x1 + x2", "missing closing ) in expression"),
+    ("lincom x1 + x2)", "unsupported token in expression: )"),
+    ("lincom x1 + + x2", "unsupported token in expression: +"),
+    ("lincom x1.x2", "unsupported token in expression: ."),
+    ("lincom x1[0]", "unsupported token in command: ["),
+    ("lincom x1 if x2 > 0", "unsupported token in expression: if"),
   ];
 
   for (input, expected) in cases {
