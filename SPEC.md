@@ -1454,6 +1454,34 @@ workflows all passed.
 This accepted syntax slice leaves post-estimation parameter retrieval, restriction matrix construction,
 Wald/F/chi-squared statistics, degrees of freedom, p-values, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: visualization histogram syntax
+
+The visualization histogram syntax slice (Phase 7 §7.4)
+adds bounded, backend-independent visualization histogram syntax boundaries to
+`tabdat-language`. The parser returns an owned `HistogramCommand` type with
+target variable (`variable: String`), optional bin count (`bins: Option<i64>`),
+optional save path (`saving: Option<String>`), and open-in-viewer flag (`open_artifact: bool`, defaulting to `true` unless `noopen` is supplied).
+It enforces exact Python-compatible diagnostics for missing or multiple variables (`histogram expects exactly one variable`),
+if clauses and assignment syntax (`histogram does not accept if clauses or assignment syntax`), assignment missing target or expression
+(`histogram assignment requires a target before =` and `histogram assignment requires an expression after =`),
+attached colons and double equals (`unsupported token in command: :` and `unsupported token in command: ==`),
+trailing commas without options (`comma must be followed by at least one option`), unsupported options (`histogram unsupported option: <sorted_opts>`),
+flag option values (`histogram option noopen does not accept a value`), bins validation (`histogram option bins must be at least 1`,
+`histogram option bins expects an integer value`, `histogram option bins may only be supplied once`), and saving validation
+(`histogram option saving expects a path`, `histogram option saving may only be supplied once`).
+Owned `String`, `Option<i64>`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform DuckDB binned frequency aggregation,
+plot SVG/PNG rendering, artifact filesystem emission, or browser/viewer interaction.
+
+Evidence: [_workspace/parser-histogram-syntax/](_workspace/parser-histogram-syntax/),
+including the [contract](_workspace/parser-histogram-syntax/01-contract.md) and
+[summary](_workspace/parser-histogram-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves DuckDB binned frequency aggregation, plot SVG/PNG rendering,
+artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
