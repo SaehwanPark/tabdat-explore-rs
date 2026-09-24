@@ -2203,7 +2203,7 @@ fn export_requires_an_active_dataset() {
 }
 
 #[test]
-fn leaves_sql_execution_deferred() {
+fn sql_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = Command::Sql {
     command: tabdat_language::SqlCommand {
@@ -2214,6 +2214,6 @@ fn leaves_sql_execution_deferred() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "sql" }
+    RuntimeError::NoActiveDataset { command: "sql" }
   );
 }
