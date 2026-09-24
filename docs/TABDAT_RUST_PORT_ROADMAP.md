@@ -530,6 +530,12 @@ Port TabDat's language before implementing most execution.
   delimiter guards, exact diagnostic parity, and parser-only execution deferral are covered;
   post-estimation parameter evaluation, restriction matrix $R$ and vector $r$ construction,
   Wald/F/chi-squared test statistics, degrees of freedom, and p-values remain deferred).
+- [x] Add the bounded visualization histogram syntax slice for `histogram`
+  (PR #125, squash merge `8b768b6`; typed `HistogramCommand` struct and
+  `Command::Histogram` AST variant, target variable, options `bins=<int>`, `saving(<path>)`,
+  `noopen`, exact diagnostic parity, and parser-only execution deferral are covered;
+  DuckDB binned frequency aggregation, plot SVG/PNG rendering, artifact persistence,
+  and viewer interaction remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -882,7 +888,7 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 
 ### 7.4 Visualization
 
-- [ ] Port `histogram`.
+- [ ] Port `histogram` (bounded syntax slice accepted in PR #125; DuckDB binned aggregation, rendering engines, and artifact display remain deferred).
 - [ ] Port `scatter`.
 - [ ] Port `bar`.
 - [ ] Generate Vega-Lite specs in Rust.
