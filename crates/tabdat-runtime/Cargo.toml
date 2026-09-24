@@ -8,3 +8,4 @@ publish = false
 duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
 sha2 = "0.10"
 tabdat-language = { path = "../tabdat-language", version = "0.1.0" }
+tabdat-stats = { path = "../tabdat-stats", version = "0.1.0" }

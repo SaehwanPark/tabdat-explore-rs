@@ -2,16 +2,34 @@
 
 use std::f64::consts::PI;
 
+use serde::{Deserialize, Serialize};
+
 use crate::error::StatsError;
 use crate::estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
 };
 use crate::matrix::{
-  multiply_vector, qr_decompose_with_response, scale, solve_upper_triangular, xtx_inverse_from_r,
+  multiply_vector, qr_decompose_with_response, sandwich, scale, solve_upper_triangular,
+  student_t_pvalue, xtx_inverse_from_r,
 };
 use crate::problem::EstimationProblem;
 use crate::result::LeastSquaresResult;
 use crate::traits::Estimator;
+
+/// Options for linear least squares estimation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LeastSquaresOptions {
+  /// Requested parameter covariance matrix type.
+  pub covariance_type: CovarianceType,
+}
+
+impl Default for LeastSquaresOptions {
+  fn default() -> Self {
+    Self {
+      covariance_type: CovarianceType::NonRobust,
+    }
+  }
+}
 
 /// Pure Rust baseline linear least squares estimator (OLS and WLS).
 #[derive(Debug, Default, Clone, Copy)]
@@ -49,8 +67,16 @@ pub fn predict_linear_response(
   multiply_vector(design_matrix, parameters)
 }
 
-/// Fit an estimation problem using ordinary or weighted least squares.
+/// Fit an estimation problem using ordinary or weighted least squares (defaulting to non-robust covariance).
 pub fn fit_least_squares(problem: &EstimationProblem) -> Result<LeastSquaresResult, StatsError> {
+  fit_least_squares_with_options(problem, &LeastSquaresOptions::default())
+}
+
+/// Fit an estimation problem using ordinary or weighted least squares with explicit estimation options.
+pub fn fit_least_squares_with_options(
+  problem: &EstimationProblem,
+  options: &LeastSquaresOptions,
+) -> Result<LeastSquaresResult, StatsError> {
   problem.validate()?;
 
   let nobs = problem.observation_count();
@@ -175,11 +201,104 @@ pub fn fit_least_squares(problem: &EstimationProblem) -> Result<LeastSquaresResu
     None
   };
 
-  // Parameter covariance matrix: V = sigma^2 * (X'X)^(-1)
-  let cov_matrix = scale(&xtx_inv, sigma_sq);
+  // Parameter covariance matrix calculation
+  let (cov_matrix, inference_df) = match &options.covariance_type {
+    CovarianceType::NonRobust => {
+      let mat = scale(&xtx_inv, sigma_sq);
+      (mat, df as f64)
+    }
+    CovarianceType::RobustHc1 => {
+      // S_hc1 = (n / (n - k)) * sum_{i} (w_i * e_i)^2 * (x_i * x_i')
+      let df_corr = (nobs as f64) / (df as f64);
+      let mut meat = vec![vec![0.0; n_params]; n_params];
+      for i in 0..nobs {
+        let e_i = residuals[i];
+        let w_i = weights[i];
+        let score_scale = df_corr * (w_i * e_i).powi(2);
+        let x_i = &design_matrix[i];
+        for j in 0..n_params {
+          let s_j = x_i[j];
+          if s_j == 0.0 {
+            continue;
+          }
+          for l in 0..n_params {
+            meat[j][l] += score_scale * s_j * x_i[l];
+          }
+        }
+      }
+      let v = sandwich(&xtx_inv, &meat)?;
+      (v, df as f64)
+    }
+    CovarianceType::Cluster(cluster_var) => {
+      let sample = problem.sample.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(
+          "cluster covariance requires an estimation sample with cluster identifiers".into(),
+        )
+      })?;
+      let cluster_groups = sample.cluster_groups.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(format!(
+          "cluster covariance on variable '{cluster_var}' requires cluster group identifiers"
+        ))
+      })?;
+      if cluster_groups.len() != nobs {
+        return Err(StatsError::DimensionMismatch(format!(
+          "cluster group identifier count ({}) does not match retained observations ({nobs})",
+          cluster_groups.len()
+        )));
+      }
+
+      // Group observations by cluster ID
+      let mut cluster_map: std::collections::HashMap<&str, Vec<usize>> =
+        std::collections::HashMap::new();
+      for (idx, cluster_id) in cluster_groups.iter().enumerate() {
+        cluster_map
+          .entry(cluster_id.as_str())
+          .or_default()
+          .push(idx);
+      }
+
+      let n_groups = cluster_map.len();
+      if n_groups < 2 {
+        return Err(StatsError::InsufficientObservations(
+          "cluster covariance requires at least 2 distinct clusters".into(),
+        ));
+      }
+
+      // Small sample correction: (G / (G - 1)) * ((n - 1) / (n - k))
+      let g_f = n_groups as f64;
+      let n_f = nobs as f64;
+      let k_f = n_params as f64;
+      let cluster_corr = (g_f / (g_f - 1.0)) * ((n_f - 1.0) / (n_f - k_f));
+
+      let mut meat = vec![vec![0.0; n_params]; n_params];
+      for (_, obs_indices) in cluster_map {
+        // u_g = sum_{i in g} w_i * e_i * x_i
+        let mut u_g = vec![0.0; n_params];
+        for &idx in &obs_indices {
+          let factor = weights[idx] * residuals[idx];
+          let x_i = &design_matrix[idx];
+          for j in 0..n_params {
+            u_g[j] += factor * x_i[j];
+          }
+        }
+        for j in 0..n_params {
+          let u_j = u_g[j];
+          if u_j == 0.0 {
+            continue;
+          }
+          for l in 0..n_params {
+            meat[j][l] += cluster_corr * u_j * u_g[l];
+          }
+        }
+      }
+      let v = sandwich(&xtx_inv, &meat)?;
+      (v, (n_groups - 1) as f64)
+    }
+  };
+
   let covariance = CovarianceMatrix::new(
     parameter_names.clone(),
-    CovarianceType::NonRobust,
+    options.covariance_type.clone(),
     cov_matrix,
   )?;
 
@@ -188,7 +307,14 @@ pub fn fit_least_squares(problem: &EstimationProblem) -> Result<LeastSquaresResu
   for (idx, name) in parameter_names.iter().enumerate() {
     let b = beta[idx];
     let se = standard_errors[idx];
-    coefficients.push(CoefficientEstimate::new(name, b, Some(se), None));
+    let p_val = if se > 0.0 {
+      let t_stat = b / se;
+      let p = student_t_pvalue(t_stat, inference_df);
+      if p.is_nan() { None } else { Some(p) }
+    } else {
+      None
+    };
+    coefficients.push(CoefficientEstimate::new(name, b, Some(se), p_val));
   }
 
   let diagnostics = EstimationDiagnostics {
