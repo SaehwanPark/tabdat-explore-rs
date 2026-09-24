@@ -18,11 +18,13 @@ silently invent parity.
 ## Current implementation
 
 - `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
-  `tabdat-language`, and the bounded `tabdat-runtime` evaluation.
-- `src/main.rs` contains the scaffold entry point, forbids unsafe code, and prints
-  `Hello, world!`.
-- `tests/scaffold.rs` characterizes that placeholder output, successful exit, and
-  empty stderr.
+  `tabdat-language`, and `tabdat-runtime`.
+- `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
+  parser, forbidding unsafe code, supporting `--version`, `--help`, repeated `-c`,
+  `-f`, and positional script execution, while preserving the scaffold greeting
+  when called without arguments until the interactive shell REPL is implemented.
+- `tests/scaffold.rs` and `tests/cli_contract.rs` characterize CLI execution,
+  argument parsing, flag conflict rejection, and exit codes.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
