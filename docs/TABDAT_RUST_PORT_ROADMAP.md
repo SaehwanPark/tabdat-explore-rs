@@ -793,8 +793,15 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.4 Combine and summarize
 
-- [ ] `join` — runtime remains deferred; the parser boundary is accepted in
-  the Phase 5.1 direct-language slice (PR #59, squash merge `585c53f`).
+- [x] `join` — bounded eager runtime join command execution against an active
+  relation and named table (`JoinResult`; PR #139, squash merge `56babda`).
+  Inner and left join modes (`how=inner|left`), custom or default suffixing
+  (`suffix(_right)`), multi-key joins, deterministic row ordering, collision
+  deduplication, surviving label retention, active named table synchronization,
+  and atomic staging table publication are covered. Remote DuckDB sessions,
+  external databases, right/full outer joins (not supported in TabDat language),
+  and CLI/JSON/MCP rendering remain deferred; detailed contract/evidence in
+  `_workspace/runtime-join-execution/`.
 - [ ] `append` — runtime remains deferred; the parser boundary is accepted in
   the Phase 5.1 direct-language slice (PR #60, squash merge `8ab016f`).
 - [ ] `reshape` — runtime remains deferred; the parser boundary is accepted in
