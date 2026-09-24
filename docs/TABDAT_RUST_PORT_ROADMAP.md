@@ -914,11 +914,11 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 
 ### 7.1 CLI
 
-- [ ] Implement CLI argument parsing.
-- [ ] Implement repeated `-c`.
-- [ ] Implement `-f`.
-- [ ] Implement positional script execution.
-- [ ] Implement `--version`.
+- [x] Implement CLI argument parsing (PR #145, squash merge `231613f`; `src/cli.rs`, `src/main.rs`; options `-v`, `--version`, `-h`, `--help`, `-c`, `--command`, `-f`, `--file`, positional `<script>`, conflict validation, and exact exit codes).
+- [x] Implement repeated `-c` (PR #145, squash merge `231613f`; sequential batch execution on `Session` stopping on first error).
+- [x] Implement `-f` (PR #145, squash merge `231613f`; TabDat `.td` script execution via `Session::execute_run`).
+- [x] Implement positional script execution (PR #145, squash merge `231613f`; positional `<script>` path execution and doctor shortcut).
+- [x] Implement `--version` (PR #145, squash merge `231613f`; reports `tabdat 0.1.0` and exits 0).
 - [ ] Implement `--json`.
 - [ ] Implement `--list-commands`.
 - [ ] Implement `--help-topic`.

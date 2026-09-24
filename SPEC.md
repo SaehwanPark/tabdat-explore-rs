@@ -1838,6 +1838,42 @@ and squash merge passed.
 This accepted runtime `reshape` execution slice leaves remote DuckDB sessions, external databases,
 complex nested stubs, and CLI/JSON/MCP rendering deferred.
 
+## Verified slice: bounded CLI argument parsing and batch execution
+
+Merged PR #145 (`231613f`) wires the root binary (`src/main.rs`) to `tabdat-language` and
+`tabdat-runtime` for bounded CLI argument parsing and batch execution (Roadmap Phase 5 §7.1):
+- **Workspace Wiring**: Connects root package `tabdat-explore-rs` to `tabdat-language` and
+  `tabdat-runtime` via explicit path dependencies with versions, compliant with `deny.toml`
+  wildcard dependency policies.
+- **CLI Argument Parsing (`src/cli.rs`)**:
+  - `-v`, `--version`: Prints `tabdat 0.1.0\n` and exits 0.
+  - `-h`, `--help`: Prints standard usage and option summaries and exits 0.
+  - `-c`, `--command <CMD>`: Repeated batch command execution against a `Session`.
+  - `-f`, `--file <PATH>` and positional `<script>`: Executes TabDat `.td` script files.
+  - Conflict detection: Rejects `-c` combined with script execution, `-f` combined with
+    positional scripts, missing arguments, and unrecognized flags with exact Python-compatible
+    diagnostics on stderr and exit code 2.
+- **Execution Dispatch**:
+  - Dispatches batch commands and script execution with exact error diagnostics and exit
+    code conventions (0 for success, 1 for runtime error, 2 for parse/syntax/CLI error,
+    3 for script file not found).
+  - Preserves scaffold greeting (`Hello, world!\n`) when run with no arguments until
+    interactive shell REPL is implemented in Phase 5 §7.2.
+- **Testing**:
+  - 10 unit tests in `src/cli.rs`.
+  - 8 integration tests in `tests/cli_contract.rs`.
+  - Original scaffold smoke test in `tests/scaffold.rs` continues to pass.
+
+Evidence: [_workspace/cli-argument-parsing/](_workspace/cli-argument-parsing/),
+including the [contract](_workspace/cli-argument-parsing/01-contract.md) and
+[summary](_workspace/cli-argument-parsing/04-summary.md), `src/cli.rs`, `src/main.rs`,
+and `tests/cli_contract.rs`. Locked workspace checks, policy checks, PR-head workflows,
+and squash merge passed.
+
+This accepted CLI slice leaves interactive REPL shell (§7.2), JSON serialization and
+terminal table rendering (§7.3), visualization (§7.4), MCP server (§7.5), and discovery
+flags deferred.
+
 ## Verified slice: reproducible build baseline
 
 
