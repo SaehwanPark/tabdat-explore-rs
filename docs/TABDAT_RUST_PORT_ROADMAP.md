@@ -584,10 +584,13 @@ Port TabDat's language before implementing most execution.
   `$macro` substitution, undefined macro diagnostics, and literal `$` preservation).
 - [x] Port `if` / `else` / `end` (PR #133, squash merge `7ee3055`; typed control flow directives,
   branch activation tracking, expression condition evaluation, and block validation).
-- [ ] Port nested `run`.
-- [ ] Port recursion rejection.
-- [x] Port file/line diagnostics (PR #133, squash merge `7ee3055`; `<path>:<line>: <error>`
-  reporting on all directives, unterminated SQL, undefined macros, and control flow blocks).
+- [x] Port nested `run` (PR #135, squash merge `4717a09`; relative path resolution
+  against enclosing script directory, nested command execution, and shared context inheritance).
+- [x] Port recursion rejection (PR #135, squash merge `4717a09`; canonical path call-stack
+  cycle tracking and exact `<path>:1: recursive script inclusion is not supported` diagnostic).
+- [x] Port file/line diagnostics (PR #133, squash merge `7ee3055`; PR #135, squash merge
+  `4717a09`; `<path>:<line>: <error>` reporting on all directives, unterminated SQL, undefined macros,
+  control flow blocks, and runtime command failures).
 
 ### 5.3 Test migration
 
