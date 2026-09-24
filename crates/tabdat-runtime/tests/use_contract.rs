@@ -2092,19 +2092,6 @@ fn tail_after_failed_replacement_keeps_the_prior_dataset() {
 }
 
 #[test]
-fn leaves_run_execution_deferred() {
-  let mut session = Session::new();
-  let command = Command::Run {
-    path: "analysis.td".to_owned(),
-  };
-
-  assert_eq!(
-    session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "run" }
-  );
-}
-
-#[test]
 fn rename_requires_an_active_dataset_before_execution() {
   let mut session = Session::new();
   let command = Command::Rename {
