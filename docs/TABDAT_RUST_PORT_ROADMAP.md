@@ -548,6 +548,12 @@ Port TabDat's language before implementing most execution.
   `missing`, `noopen`, exact diagnostic parity, and parser-only execution deferral are covered;
   DuckDB category aggregation, Vega-Lite spec generation, plot SVG/PNG rendering,
   artifact persistence, and viewer interaction remain deferred).
+- [x] Add the bounded visualization bayesplot syntax slice for `bayesplot`
+  (PR #131, squash merge `bacf757`; typed `BayesPlotKind` and `BayesPlotCommand` structs and
+  `Command::BayesPlot` AST variant, target MCMC plot kinds `trace`, `density`, `autocorrelation`,
+  options `saving(<path>)`, `noopen`, exact diagnostic parity, and parser-only execution deferral are covered;
+  MCMC posterior draw extraction, chain iteration processing, Vega-Lite spec generation,
+  plot SVG/PNG rendering, artifact persistence, and viewer interaction remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -903,6 +909,7 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 - [ ] Port `histogram` (bounded syntax slice accepted in PR #125; DuckDB binned aggregation, rendering engines, and artifact display remain deferred).
 - [ ] Port `scatter` (bounded syntax slice accepted in PR #127; DuckDB data extraction, rendering engines, and artifact display remain deferred).
 - [ ] Port `bar` (bounded syntax slice accepted in PR #129; DuckDB category aggregation, rendering engines, and artifact display remain deferred).
+- [ ] Port `bayesplot` (bounded syntax slice accepted in PR #131; MCMC draw extraction, rendering engines, and artifact display remain deferred).
 - [ ] Generate Vega-Lite specs in Rust.
 - [ ] Render SVG.
 - [ ] Render PNG.
