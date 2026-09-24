@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
@@ -23,6 +23,7 @@ use tabdat_language::{
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
 const STAGING_TABLE: &str = "__tabdat_next";
+const ACTIVE_VIEW: &str = "active";
 
 /// A column in the loaded dataset schema.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -419,6 +420,33 @@ pub struct RunResult {
   pub executed_commands: usize,
 }
 
+/// The owned result returned by a direct `sql <query>` request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableResult {
+  /// Column headers in query projection order.
+  pub headers: Vec<String>,
+  /// Owned table rows in deterministic query result order.
+  pub rows: Vec<Vec<CellValue>>,
+}
+
+/// The owned result returned by `sql <query> into <table>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SqlCreateResult {
+  /// The destination named table name.
+  pub table_name: String,
+  /// Metadata for the newly created and activated relation.
+  pub dataset: DatasetInfo,
+}
+
+/// The owned result returned after activating a registered named table with `use <table>`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivateResult {
+  /// The activated table name.
+  pub table_name: String,
+  /// Metadata for the activated relation.
+  pub dataset: DatasetInfo,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
@@ -482,6 +510,12 @@ pub enum ExecutionResult {
   Tail(PreviewResult),
   /// The result of executing a script file.
   Run(RunResult),
+  /// The result of executing a direct SQL query.
+  Table(TableResult),
+  /// The result of creating a named table from a SQL query.
+  SqlCreate(SqlCreateResult),
+  /// The result of activating a registered named table.
+  Activate(ActivateResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -733,6 +767,16 @@ pub enum RuntimeError {
   SelectFailed,
   /// A script parsing or execution error with source file and line diagnostics.
   ScriptError(ScriptError),
+  /// The SQL query does not begin with SELECT or WITH.
+  SqlNotSelectOrWith,
+  /// DuckDB could not execute the SQL query.
+  SqlFailed,
+  /// The SQL query did not produce any result columns.
+  SqlNoTableResult,
+  /// Options were provided when activating a registered named table.
+  UseOptionsNotSupportedForNamedTable,
+  /// The requested named table does not exist in the session registry.
+  UnknownTable { name: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -1136,6 +1180,15 @@ impl fmt::Display for RuntimeError {
       Self::SelectNoVariables => formatter.write_str("select expects a variable list"),
       Self::SelectFailed => formatter.write_str("select failed"),
       Self::ScriptError(error) => write!(formatter, "{error}"),
+      Self::SqlNotSelectOrWith => {
+        formatter.write_str("sql only supports select or with queries in Phase 4")
+      }
+      Self::SqlFailed => formatter.write_str("sql failed"),
+      Self::SqlNoTableResult => formatter.write_str("sql must produce a table result"),
+      Self::UseOptionsNotSupportedForNamedTable => {
+        formatter.write_str("use options are not supported for named table activation")
+      }
+      Self::UnknownTable { name } => write!(formatter, "unknown table: {name}"),
     }
   }
 }
@@ -1152,6 +1205,8 @@ impl From<ScriptError> for RuntimeError {
 pub struct Session {
   backend: Option<DuckDbBackend>,
   active_dataset: Option<DatasetInfo>,
+  active_table_name: Option<String>,
+  named_tables: HashMap<String, DatasetInfo>,
   label_metadata: LabelMetadata,
 }
 
@@ -1161,6 +1216,8 @@ impl Session {
     Self {
       backend: None,
       active_dataset: None,
+      active_table_name: None,
+      named_tables: HashMap::new(),
       label_metadata: LabelMetadata::default(),
     }
   }
@@ -1220,6 +1277,7 @@ impl Session {
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       Command::Run { path } => self.execute_run(path),
+      Command::Sql { command } => self.execute_sql(&command.query, command.into.as_deref()),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1229,9 +1287,73 @@ impl Session {
     self.active_dataset.as_ref()
   }
 
+  /// Return the currently published named table registry.
+  pub fn named_tables(&self) -> &HashMap<String, DatasetInfo> {
+    &self.named_tables
+  }
+
+  /// Return the name of the currently active named table, if active dataset was loaded from one.
+  pub fn active_table_name(&self) -> Option<&str> {
+    self.active_table_name.as_deref()
+  }
+
   /// Return the currently published session-local label metadata, if any.
   pub fn active_label_metadata(&self) -> Option<&LabelMetadata> {
     (!self.label_metadata.is_empty()).then_some(&self.label_metadata)
+  }
+
+  /// Execute a SQL query, either returning a TableResult or registering and activating a named table.
+  pub fn execute_sql(
+    &mut self,
+    query: &str,
+    into: Option<&str>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    if self.active_dataset.is_none() {
+      return Err(RuntimeError::NoActiveDataset { command: "sql" });
+    }
+    validate_sql_query(query)?;
+
+    if let Some(target_table) = into {
+      let backend = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::BackendInitialization)?;
+      let next_dataset = backend.create_named_table_from_sql(query, target_table)?;
+      self.label_metadata = LabelMetadata::default();
+      self.active_dataset = Some(next_dataset.clone());
+      self.active_table_name = Some(target_table.to_owned());
+      self
+        .named_tables
+        .insert(target_table.to_owned(), next_dataset.clone());
+      Ok(ExecutionResult::SqlCreate(SqlCreateResult {
+        table_name: target_table.to_owned(),
+        dataset: next_dataset,
+      }))
+    } else {
+      let backend = self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::BackendInitialization)?;
+      let (headers, rows) = backend.run_sql(query)?;
+      Ok(ExecutionResult::Table(TableResult { headers, rows }))
+    }
+  }
+
+  fn sync_active_dataset(&mut self, dataset: DatasetInfo) -> Result<DatasetInfo, RuntimeError> {
+    if let Some(ref current_table_name) = self.active_table_name {
+      let backend = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::BackendInitialization)?;
+      backend
+        .store_active_as_named_table(current_table_name)
+        .map_err(|_| RuntimeError::BackendInitialization)?;
+      self
+        .named_tables
+        .insert(current_table_name.clone(), dataset.clone());
+    }
+    self.active_dataset = Some(dataset.clone());
+    Ok(dataset)
   }
 
   fn execute_describe(&self) -> Result<ExecutionResult, RuntimeError> {
@@ -1619,7 +1741,7 @@ impl Session {
     let next_dataset = backend
       .generate_column(&dataset, &variable, &expression)
       .map_err(|_| RuntimeError::GenerateFailed)?;
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Generate(GenerateResult {
       dataset: next_dataset,
     }))
@@ -1715,7 +1837,7 @@ impl Session {
       )
       .map_err(|_| RuntimeError::ReplaceFailed)?;
     self.remove_value_label_attachment(&variable);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Replace(ReplaceResult {
       dataset: next_dataset,
     }))
@@ -1743,7 +1865,7 @@ impl Session {
       .rename_column(&dataset, &old_name, &new_name)
       .map_err(|_| RuntimeError::RenameFailed)?;
     self.rename_label_metadata(&old_name, &new_name);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Rename(RenameResult {
       dataset: next_dataset,
     }))
@@ -1776,7 +1898,7 @@ impl Session {
     let next_dataset = backend
       .sort_rows(&dataset, &variables)
       .map_err(|_| RuntimeError::SortFailed)?;
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Sort(SortResult {
       dataset: next_dataset,
     }))
@@ -1814,7 +1936,7 @@ impl Session {
     let next_dataset = backend
       .sort_rows_directed(&dataset, &variables, &directions)
       .map_err(|_| RuntimeError::GsortFailed)?;
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Gsort(GsortResult {
       dataset: next_dataset,
     }))
@@ -1910,7 +2032,7 @@ impl Session {
         self.remove_value_label_attachment(variable);
       }
     }
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Recode(RecodeResult {
       dataset: next_dataset,
     }))
@@ -1980,7 +2102,7 @@ impl Session {
       upsert_variable_label(&mut metadata, generate.clone(), source_label);
     }
     self.label_metadata = normalize_label_metadata(metadata);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Encode(EncodeResult {
       dataset: next_dataset,
     }))
@@ -2048,7 +2170,7 @@ impl Session {
       upsert_variable_label(&mut metadata, generate.clone(), source_label);
       self.label_metadata = normalize_label_metadata(metadata);
     }
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Decode(DecodeResult {
       dataset: next_dataset,
     }))
@@ -2581,7 +2703,7 @@ impl Session {
       )
       .map_err(|_| RuntimeError::CollapseFailed)?;
     self.retain_label_metadata(&next_dataset);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Collapse(CollapseResult {
       dataset: next_dataset,
     }))
@@ -2614,7 +2736,7 @@ impl Session {
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::KeepFailed)?;
     self.retain_label_metadata(&next_dataset);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Keep(KeepResult {
       dataset: next_dataset,
     }))
@@ -2656,7 +2778,7 @@ impl Session {
       .project_columns(&dataset, &remaining)
       .map_err(|_| RuntimeError::DropFailed)?;
     self.retain_label_metadata(&next_dataset);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Drop(DropResult {
       dataset: next_dataset,
     }))
@@ -2689,7 +2811,7 @@ impl Session {
       .project_columns(&dataset, &variables)
       .map_err(|_| RuntimeError::SelectFailed)?;
     self.retain_label_metadata(&next_dataset);
-    self.active_dataset = Some(next_dataset.clone());
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Select(SelectResult {
       dataset: next_dataset,
     }))
@@ -2892,14 +3014,52 @@ impl Session {
     delimiter: Option<String>,
     has_header: Option<bool>,
   ) -> Result<ExecutionResult, RuntimeError> {
+    let DataSource::LocalPath(raw_path) = source else {
+      return Err(RuntimeError::UnsupportedUseConfiguration);
+    };
+
+    let path = PathBuf::from(&raw_path);
+    if self.named_tables.contains_key(&raw_path) {
+      if execution_mode != ExecutionMode::Eager
+        || lazy_engine.is_some()
+        || delimiter.is_some()
+        || has_header.is_some()
+      {
+        return Err(RuntimeError::UseOptionsNotSupportedForNamedTable);
+      }
+      let backend = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::BackendInitialization)?;
+      let activated = backend.activate_named_table(&raw_path)?;
+      self.label_metadata = LabelMetadata::default();
+      self.active_dataset = Some(activated.clone());
+      self.active_table_name = Some(raw_path.clone());
+      self
+        .named_tables
+        .insert(raw_path.clone(), activated.clone());
+      return Ok(ExecutionResult::Activate(ActivateResult {
+        table_name: raw_path,
+        dataset: activated,
+      }));
+    }
+
+    if execution_mode == ExecutionMode::Eager
+      && lazy_engine.is_none()
+      && delimiter.is_none()
+      && has_header.is_none()
+      && !path.exists()
+      && path.extension().is_none()
+      && !raw_path.contains('/')
+      && !raw_path.contains('\\')
+    {
+      return Err(RuntimeError::UnknownTable { name: raw_path });
+    }
+
     if execution_mode != ExecutionMode::Eager || lazy_engine.is_some() {
       return Err(RuntimeError::UnsupportedUseConfiguration);
     }
 
-    let DataSource::LocalPath(raw_path) = source else {
-      return Err(RuntimeError::UnsupportedUseConfiguration);
-    };
-    let path = PathBuf::from(raw_path);
     let input_format = match local_input_format(&path) {
       Ok(input_format) => input_format,
       Err(RuntimeError::UnsupportedFormat { .. })
@@ -2924,6 +3084,7 @@ impl Session {
       dataset
     };
     self.label_metadata = LabelMetadata::default();
+    self.active_table_name = None;
     self.active_dataset = Some(dataset.clone());
     Ok(ExecutionResult::Load(LoadResult { dataset }))
   }
@@ -5265,10 +5426,10 @@ impl DuckDbBackend {
     })
   }
 
-  fn staged_columns(&self) -> Result<Vec<ColumnInfo>, ()> {
+  fn table_columns(&self, table_name: &str) -> Result<Vec<ColumnInfo>, ()> {
     let mut statement = self
       .connection
-      .prepare(&format!("DESCRIBE {STAGING_TABLE}"))
+      .prepare(&format!("DESCRIBE {table_name}"))
       .map_err(|_| ())?;
     let rows = statement
       .query_map([], |row| {
@@ -5281,16 +5442,126 @@ impl DuckDbBackend {
     rows.map(|row| row.map_err(|_| ())).collect()
   }
 
-  fn staged_row_count(&self) -> Result<u64, ()> {
+  fn table_row_count(&self, table_name: &str) -> Result<u64, ()> {
     let row_count: i64 = self
       .connection
-      .query_row(
-        &format!("SELECT COUNT(*) FROM {STAGING_TABLE}"),
-        [],
-        |row| row.get(0),
-      )
+      .query_row(&format!("SELECT COUNT(*) FROM {table_name}"), [], |row| {
+        row.get(0)
+      })
       .map_err(|_| ())?;
     u64::try_from(row_count).map_err(|_| ())
+  }
+
+  fn staged_columns(&self) -> Result<Vec<ColumnInfo>, ()> {
+    self.table_columns(STAGING_TABLE)
+  }
+
+  fn staged_row_count(&self) -> Result<u64, ()> {
+    self.table_row_count(STAGING_TABLE)
+  }
+
+  fn bind_active_view(&self) -> Result<(), RuntimeError> {
+    self
+      .connection
+      .execute_batch(&format!(
+        "CREATE OR REPLACE TEMP VIEW {ACTIVE_VIEW} AS SELECT * FROM {ACTIVE_TABLE}"
+      ))
+      .map_err(|_| RuntimeError::SqlFailed)
+  }
+
+  fn run_sql(&self, query: &str) -> Result<(Vec<String>, Vec<Vec<CellValue>>), RuntimeError> {
+    self.bind_active_view()?;
+    let mut statement = self
+      .connection
+      .prepare(query)
+      .map_err(|_| RuntimeError::SqlFailed)?;
+    statement.execute([]).map_err(|_| RuntimeError::SqlFailed)?;
+    let headers = statement.column_names();
+    if headers.is_empty() {
+      return Err(RuntimeError::SqlNoTableResult);
+    }
+    let column_count = headers.len();
+    let mut rows_iter = statement.query([]).map_err(|_| RuntimeError::SqlFailed)?;
+    let mut rows = Vec::new();
+    while let Some(row) = rows_iter.next().map_err(|_| RuntimeError::SqlFailed)? {
+      let mut row_values = Vec::with_capacity(column_count);
+      for col_idx in 0..column_count {
+        let val_ref = row.get_ref(col_idx).map_err(|_| RuntimeError::SqlFailed)?;
+        row_values.push(cell_value_from_ref(val_ref).map_err(|_| RuntimeError::SqlFailed)?);
+      }
+      rows.push(row_values);
+    }
+    Ok((headers, rows))
+  }
+
+  fn create_named_table_from_sql(
+    &mut self,
+    query: &str,
+    table_name: &str,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    self.bind_active_view()?;
+    let internal_name = named_table_identifier(table_name);
+    self
+      .connection
+      .execute_batch(&format!(
+        "CREATE OR REPLACE TEMP TABLE {internal_name} AS {query}"
+      ))
+      .map_err(|_| RuntimeError::SqlFailed)?;
+    self
+      .connection
+      .execute_batch(&format!(
+        "CREATE OR REPLACE TEMP TABLE {ACTIVE_TABLE} AS SELECT * FROM {internal_name}"
+      ))
+      .map_err(|_| RuntimeError::SqlFailed)?;
+    let columns = self
+      .table_columns(ACTIVE_TABLE)
+      .map_err(|_| RuntimeError::SqlFailed)?;
+    if columns.is_empty() {
+      return Err(RuntimeError::SqlNoTableResult);
+    }
+    let row_count = self
+      .table_row_count(ACTIVE_TABLE)
+      .map_err(|_| RuntimeError::SqlFailed)?;
+    Ok(DatasetInfo {
+      source: PathBuf::from(table_name),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
+  }
+
+  fn store_active_as_named_table(&mut self, table_name: &str) -> Result<(), ()> {
+    let internal_name = named_table_identifier(table_name);
+    self
+      .connection
+      .execute_batch(&format!(
+        "CREATE OR REPLACE TEMP TABLE {internal_name} AS SELECT * FROM {ACTIVE_TABLE}"
+      ))
+      .map_err(|_| ())
+  }
+
+  fn activate_named_table(&mut self, table_name: &str) -> Result<DatasetInfo, RuntimeError> {
+    let internal_name = named_table_identifier(table_name);
+    self
+      .connection
+      .execute_batch(&format!(
+        "CREATE OR REPLACE TEMP TABLE {ACTIVE_TABLE} AS SELECT * FROM {internal_name}"
+      ))
+      .map_err(|_| RuntimeError::BackendInitialization)?;
+    let columns = self
+      .table_columns(ACTIVE_TABLE)
+      .map_err(|_| RuntimeError::BackendInitialization)?;
+    let row_count = self
+      .table_row_count(ACTIVE_TABLE)
+      .map_err(|_| RuntimeError::BackendInitialization)?;
+    Ok(DatasetInfo {
+      source: PathBuf::from(table_name),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
   }
 
   fn publish_staging(&mut self) -> Result<(), ()> {
@@ -6144,6 +6415,22 @@ fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
     ValueRef::Blob(value) => Ok(CellValue::Bytes(value.to_vec())),
     _ => Err(()),
   }
+}
+
+fn named_table_identifier(table_name: &str) -> String {
+  format!("__tabdat_named_{table_name}")
+}
+
+fn validate_sql_query(query: &str) -> Result<(), RuntimeError> {
+  let first_word = query
+    .split_whitespace()
+    .next()
+    .unwrap_or("")
+    .to_ascii_lowercase();
+  if first_word != "select" && first_word != "with" {
+    return Err(RuntimeError::SqlNotSelectOrWith);
+  }
+  Ok(())
 }
 
 #[cfg(test)]
