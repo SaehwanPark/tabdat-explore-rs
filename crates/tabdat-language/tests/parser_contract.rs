@@ -1,14 +1,14 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, BarCommand, BayesPrefixCommand, ByCommand,
-  CfRegressCommand, CollapseCommand, CollapseStatistic, Command, DataSource, DidCommand,
-  DmlCommand, DrDidCommand, DrDidMethod, EstatCommand, EstatSubcommand, ExecutionMode,
-  GenerateBinaryOperator, GenerateExpression, HistogramCommand, IvEstimator, IvRegressCommand,
-  JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand, LogitCommand,
-  LowessCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint,
-  RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand,
-  ReshapeDirection, RowLimit, ScatterCommand, SettingName, SortKey, TabulateCommand, TestCommand,
-  XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator,
-  parse_command,
+  AssertBinaryOperator, AssertExpression, BarCommand, BayesPlotCommand, BayesPlotKind,
+  BayesPrefixCommand, ByCommand, CfRegressCommand, CollapseCommand, CollapseStatistic, Command,
+  DataSource, DidCommand, DmlCommand, DrDidCommand, DrDidMethod, EstatCommand, EstatSubcommand,
+  ExecutionMode, GenerateBinaryOperator, GenerateExpression, HistogramCommand, IvEstimator,
+  IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand,
+  LogitCommand, LowessCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
+  ReshapeCommand, ReshapeDirection, RowLimit, ScatterCommand, SettingName, SortKey,
+  TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand,
+  XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -5570,6 +5570,175 @@ fn bayes_prefix_rejects_malformed_syntax_and_unsupported_commands() {
     ),
     ("bayes = 1", "bayes assignment requires a target before ="),
     ("bayes == 1", "unsupported token in command: =="),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().to_string(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn bayesplot_parses_supported_options_and_targets() {
+  assert_eq!(
+    parse_command("bayesplot trace").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Trace,
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bayesplot density").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Density,
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bayesplot autocorrelation").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Autocorrelation,
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bayesplot trace, noopen").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Trace,
+        saving: None,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bayesplot density, saving(figures/posterior.svg)").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Density,
+        saving: Some("figures/posterior.svg".into()),
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bayesplot autocorrelation, saving(\"my plot.png\") noopen").unwrap(),
+    Command::BayesPlot {
+      command: BayesPlotCommand {
+        kind: BayesPlotKind::Autocorrelation,
+        saving: Some("my plot.png".into()),
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("by foreign: bayesplot trace, noopen").unwrap(),
+    Command::By {
+      command: ByCommand {
+        groups: vec!["foreign".into()],
+        command: Box::new(Command::BayesPlot {
+          command: BayesPlotCommand {
+            kind: BayesPlotKind::Trace,
+            saving: None,
+            open_artifact: false,
+          },
+        }),
+      },
+    }
+  );
+}
+
+#[test]
+fn bayesplot_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "bayesplot",
+      "bayesplot expects syntax: bayesplot <trace|density|autocorrelation>",
+    ),
+    (
+      "bayesplot trace density",
+      "bayesplot expects syntax: bayesplot <trace|density|autocorrelation>",
+    ),
+    (
+      "bayesplot, noopen",
+      "bayesplot expects syntax: bayesplot <trace|density|autocorrelation>",
+    ),
+    ("bayesplot:", "unsupported token in command: :"),
+    ("bayesplot: trace", "unsupported token in command: :"),
+    (
+      "bayesplot=",
+      "bayesplot assignment requires a target before =",
+    ),
+    (
+      "bayesplot=1",
+      "bayesplot assignment requires a target before =",
+    ),
+    (
+      "bayesplot = 1",
+      "bayesplot assignment requires a target before =",
+    ),
+    ("bayesplot==", "unsupported token in command: =="),
+    ("bayesplot==1", "unsupported token in command: =="),
+    (
+      "bayesplot,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "bayesplot foo",
+      "bayesplot kind must be trace, density, or autocorrelation",
+    ),
+    (
+      "bayesplot TRACE",
+      "bayesplot kind must be trace, density, or autocorrelation",
+    ),
+    (
+      "bayesplot trace = 1",
+      "bayesplot does not accept if clauses or assignment syntax",
+    ),
+    (
+      "bayesplot trace =",
+      "bayesplot assignment requires an expression after =",
+    ),
+    (
+      "bayesplot trace if x > 0",
+      "bayesplot does not accept if clauses or assignment syntax",
+    ),
+    ("bayesplot trace, foo", "bayesplot unsupported option: foo"),
+    (
+      "bayesplot trace, zebra apple",
+      "bayesplot unsupported option: apple, zebra",
+    ),
+    (
+      "bayesplot trace, bins=20",
+      "bayesplot unsupported option: bins",
+    ),
+    (
+      "bayesplot trace, saving",
+      "bayesplot option saving expects a path",
+    ),
+    (
+      "bayesplot trace, saving(a) saving(b)",
+      "bayesplot option saving may only be supplied once",
+    ),
+    (
+      "bayesplot trace, noopen=1",
+      "bayesplot option noopen does not accept a value",
+    ),
+    (
+      "bayesplot trace, noopen(yes)",
+      "bayesplot option noopen does not accept a value",
+    ),
   ];
   for (input, expected) in cases {
     assert_eq!(
