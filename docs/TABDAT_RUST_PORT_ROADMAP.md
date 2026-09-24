@@ -542,6 +542,12 @@ Port TabDat's language before implementing most execution.
   `noopen`, exact diagnostic parity, and parser-only execution deferral are covered;
   DuckDB data extraction, Vega-Lite spec generation, plot SVG/PNG rendering,
   artifact persistence, and viewer interaction remain deferred).
+- [x] Add the bounded visualization bar chart syntax slice for `bar`
+  (PR #129, squash merge `8f5dcfb`; typed `BarCommand` struct and
+  `Command::Bar` AST variant, target variable, options `saving(<path>)`,
+  `missing`, `noopen`, exact diagnostic parity, and parser-only execution deferral are covered;
+  DuckDB category aggregation, Vega-Lite spec generation, plot SVG/PNG rendering,
+  artifact persistence, and viewer interaction remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.
@@ -896,7 +902,7 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 
 - [ ] Port `histogram` (bounded syntax slice accepted in PR #125; DuckDB binned aggregation, rendering engines, and artifact display remain deferred).
 - [ ] Port `scatter` (bounded syntax slice accepted in PR #127; DuckDB data extraction, rendering engines, and artifact display remain deferred).
-- [ ] Port `bar`.
+- [ ] Port `bar` (bounded syntax slice accepted in PR #129; DuckDB category aggregation, rendering engines, and artifact display remain deferred).
 - [ ] Generate Vega-Lite specs in Rust.
 - [ ] Render SVG.
 - [ ] Render PNG.
