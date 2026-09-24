@@ -572,16 +572,22 @@ Port TabDat's language before implementing most execution.
 
 ### 5.2 Script engine
 
-- [ ] Port `.td` line-oriented execution syntax.
-- [ ] Port comments.
-- [ ] Port multiline SQL.
-- [ ] Port `seed`.
-- [ ] Port `let`.
-- [ ] Port macro expansion.
-- [ ] Port `if` / `else` / `end`.
+- [x] Port `.td` line-oriented execution syntax (PR #133, squash merge `7ee3055`;
+  typed `ScriptCommand`, 1-based start line tracking, and `parse_script` / `read_script` streams).
+- [x] Port comments (PR #133, squash merge `7ee3055`; `#` comment stripping and empty-line skipping).
+- [x] Port multiline SQL (PR #133, squash merge `7ee3055`; triple-quoted `sql """ ... """` block
+  grouping with newline accumulation, start line preservation, and unterminated query diagnostics).
+- [x] Port `seed` (PR #133, squash merge `7ee3055`; typed `SeedDirective` and context seed update).
+- [x] Port `let` (PR #133, squash merge `7ee3055`; typed `LetDirective`, macro name validation,
+  and context macro update).
+- [x] Port macro expansion (PR #133, squash merge `7ee3055`; `expand_script_macros`, Stata-style
+  `$macro` substitution, undefined macro diagnostics, and literal `$` preservation).
+- [x] Port `if` / `else` / `end` (PR #133, squash merge `7ee3055`; typed control flow directives,
+  branch activation tracking, expression condition evaluation, and block validation).
 - [ ] Port nested `run`.
 - [ ] Port recursion rejection.
-- [ ] Port file/line diagnostics.
+- [x] Port file/line diagnostics (PR #133, squash merge `7ee3055`; `<path>:<line>: <error>`
+  reporting on all directives, unterminated SQL, undefined macros, and control flow blocks).
 
 ### 5.3 Test migration
 
