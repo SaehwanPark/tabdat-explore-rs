@@ -3,21 +3,12 @@
 ## Current behavior
 
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
-successfully. The workspace also contains a backend-independent `tabdat-language`
-crate with a deliberately small syntax-only parser for `help`/`?`, `status`,
-`exit`/`quit`, `describe`, `doctor`, `set`, `datasignature`, `count`, `head`,
-`tail`, `run <script-path>`, `save <path> [, replace]`, `export <path> [, replace]`,
-and syntax-only `generate <target> = <expression>` and
-`replace <target> = <expression> [if <condition>]`, plus the verified direct `use`, `codebook [varlist]`,
-`missing [varlist]`, `duplicates [report] [varlist]`, `summarize [varlist]`,
-`isid [varlist] [, missok]`, and bounded direct `assert <boolean-expression>`
-forms, as well as the bounded direct `encode <strvar>, generate(<newvar>) [, label(<lblname>)]`
-form. Merged PR #25 (`89f6c14`) adds the
-verified direct `rename <old> <new>` form, and merged PR #26 (`5735b43`) adds
-the verified direct syntax-only `select <varlist>` form. Merged PR #22
-(`26dba2b`) accepted a separate library-only `tabdat-runtime` path for one
-eager local-Parquet `use` form, and merged PR #74 (`7a5b8d4`) adds the bounded
-eager local-CSV `use` form documented below. These paths are not wired into the
+successfully. The workspace contains a backend-independent `tabdat-language`
+crate with a syntax-only parser, a library-only `tabdat-runtime` crate for eager
+DuckDB tabular relations and data commands, and a pure, safe `tabdat-stats` crate
+for statistical problem specifications, explicit sample tracking, parameter inference,
+covariance representation, post-estimation state, and Householder QR least squares baseline
+fitting. These paths are not wired into the
 binary and do not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
@@ -1908,6 +1899,39 @@ checks, PR-head workflows, and squash merge passed.
 This accepted CLI discovery slice leaves interactive REPL shell (§7.2), runtime
 execution JSON result serialization and terminal table rendering (§7.3), visualization
 (§7.4), and MCP server (§7.5) deferred.
+
+## Verified slice: statistical contracts substrate (tabdat-stats)
+
+Create `crates/tabdat-stats` (`#![forbid(unsafe_code)]`) as an independent workspace
+member crate implementing foundational statistical contracts and pure baseline inference
+(Roadmap Phase 7 §9.1 and Phase 2 §4.1):
+- **Core Domain Types (`crates/tabdat-stats/src/`)**:
+  - `EstimationProblem`: Typed problem specification (`outcome`, `predictor_names`, `response`, `design_matrix`, `include_intercept`, `intercept_name`, `sample`, `weights`).
+  - `EstimationSample`: Explicit sample provenance tracking (`retained_indices`, `total_observations`, `dropped_observations`, `weights`, `cluster_groups`).
+  - `CoefficientEstimate`: Individual parameter estimate with name, value, standard error, test statistic ($t$/$z$), p-value.
+  - `CovarianceMatrix` & `CovarianceType`: Symmetric parameter covariance representation supporting `NonRobust`, `RobustHc1`, and `Cluster(var)`.
+  - `EstimationDiagnostics`: Estimation convergence metadata (`method`, `converged`, `iterations`, `objective_value`, `residual_sum_of_squares`).
+  - `FitStatistics`: Goodness-of-fit statistics ($N$, degrees of freedom, R², adjusted R², Root MSE, RSS, TSS, F-statistic, log-likelihood).
+  - `LeastSquaresResult`: Owned result struct for linear estimation.
+  - `PredictionContract` (`predict_linear_response`): Out-of-sample and in-sample linear prediction.
+  - `PostEstimationModel`: Post-estimation parameter access, linear combinations (`lincom`), and Wald linear hypothesis tests ($R \beta = r$).
+  - `Estimator` trait: Backend capability trait.
+  - `StatsError`: Normalized typed statistical error hierarchy.
+  - `fit_least_squares`: Pure Rust baseline linear least squares fitting using Householder QR decomposition with back-substitution and triangular inverse computation for numerical backward stability.
+- **Differential Validation & Testing**:
+  - NIST Longley benchmark certified reference values matched to $< 10^{-9}$ relative tolerance (observed: $\sim 10^{-13}$ to $10^{-15}$).
+  - Pinned Python TabDat oracle (`16b45d9`) matched to $< 10^{-9}$ relative tolerance.
+  - 10 unit, contract, and differential tests in `crates/tabdat-stats/tests/`.
+
+Evidence: [_workspace/statistical-contracts/](_workspace/statistical-contracts/),
+including the [contract](_workspace/statistical-contracts/01-contract.md),
+[design](_workspace/statistical-contracts/02-design.md),
+[implementation](_workspace/statistical-contracts/03-implementation.md), and
+[summary](_workspace/statistical-contracts/04-summary.md), `crates/tabdat-stats/`,
+and PR #149 (squash merge `8370622`).
+
+This accepted statistical contracts substrate slice leaves specific estimator command
+dispatch (`regress`, `ivregress`, `logit`, etc.) and backend integration deferred.
 
 ## Verified slice: reproducible build baseline
 

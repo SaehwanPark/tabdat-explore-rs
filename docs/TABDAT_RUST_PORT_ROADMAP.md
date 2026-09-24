@@ -237,7 +237,7 @@ Build the domain model before substantial runtime implementation.
 - [ ] Create `tabdat-execution`.
 - [ ] Create `tabdat-data`.
 - [ ] Create `tabdat-io`.
-- [ ] Create `tabdat-stats`.
+- [x] Create `tabdat-stats` (PR #149, squash merge `8370622`; foundational statistical contracts, explicit inspectable sample tracking, Householder QR baseline OLS fitting, and linear hypothesis testing; `forbid(unsafe_code)`).
 - [ ] Create `tabdat-reporting`.
 - [ ] Create `tabdat-shell`.
 - [ ] Create `tabdat-mcp`.
@@ -1031,16 +1031,16 @@ Port foundational statistical inference and establish the stable estimator backe
 
 ### 9.1 Statistical contracts
 
-- [ ] Define `EstimationProblem`.
-- [ ] Define `EstimationSample`.
-- [ ] Define `CoefficientEstimate`.
-- [ ] Define covariance representation.
-- [ ] Define model metadata.
-- [ ] Define convergence metadata.
-- [ ] Define prediction contract.
-- [ ] Define post-estimation state contract.
-- [ ] Define backend capability trait.
-- [ ] Define backend error normalization.
+- [x] Define `EstimationProblem` (PR #149, squash merge `8370622`; typed problem specification in `tabdat-stats`).
+- [x] Define `EstimationSample` (PR #149, squash merge `8370622`; inspectable sample tracking with retained/dropped rows in `tabdat-stats`).
+- [x] Define `CoefficientEstimate` (PR #149, squash merge `8370622`; point estimates, standard errors, $t$/$z$ statistics, p-values).
+- [x] Define covariance representation (PR #149, squash merge `8370622`; `CovarianceMatrix`, `CovarianceType` supporting non-robust, HC1, and cluster).
+- [x] Define model metadata (PR #149, squash merge `8370622`; `FitStatistics` with $N$, $df$, $R^2$, adj-$R^2$, root MSE, RSS, TSS, $F$, log-likelihood).
+- [x] Define convergence metadata (PR #149, squash merge `8370622`; `EstimationDiagnostics` with method, converged, iterations, objective value).
+- [x] Define prediction contract (PR #149, squash merge `8370622`; `predict_linear_response` with in-sample and out-of-sample prediction).
+- [x] Define post-estimation state contract (PR #149, squash merge `8370622`; `PostEstimationModel`, `lincom`, and Wald linear hypothesis tests $R \beta = r$).
+- [x] Define backend capability trait (PR #149, squash merge `8370622`; `Estimator` trait in `tabdat-stats`).
+- [x] Define backend error normalization (PR #149, squash merge `8370622`; typed `StatsError` for collinearity, singular matrices, zero df, empty samples).
 
 ### 9.2 Linear regression
 

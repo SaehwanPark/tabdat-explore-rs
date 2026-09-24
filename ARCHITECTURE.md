@@ -18,7 +18,16 @@ silently invent parity.
 ## Current implementation
 
 - `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
-  `tabdat-language`, and `tabdat-runtime`.
+  `tabdat-language`, `tabdat-runtime`, and `tabdat-stats`.
+- `crates/tabdat-stats` contains pure, safe (`#![forbid(unsafe_code)]`) statistical
+  problem contracts (`EstimationProblem`), explicit inspectable sample tracking
+  (`EstimationSample`), parameter estimates (`CoefficientEstimate`), covariance
+  representations (`CovarianceMatrix`, `CovarianceType`), convergence and model
+  diagnostics (`EstimationDiagnostics`, `FitStatistics`), post-estimation state and
+  linear hypothesis testing (`PostEstimationModel`), backend capability trait
+  (`Estimator`), normalized errors (`StatsError`), and a backward-stable Householder QR
+  baseline OLS kernel (`fit_least_squares`, `predict_linear_response`). It has zero runtime
+  backend dependencies (no DuckDB, no C FFI).
 - `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
   parser, forbidding unsafe code, supporting `--version`, `--help`, repeated `-c`,
   `-f`, and positional script execution, while preserving the scaffold greeting
