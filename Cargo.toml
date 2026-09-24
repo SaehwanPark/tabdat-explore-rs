@@ -9,9 +9,15 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tabdat-language = { path = "crates/tabdat-language", version = "0.1.0" }
 tabdat-runtime = { path = "crates/tabdat-runtime", version = "0.1.0" }
+tabdat-stats = { path = "crates/tabdat-stats", version = "0.1.0" }
 
 [workspace]
-members = [".", "crates/tabdat-language", "crates/tabdat-runtime"]
+members = [
+  ".",
+  "crates/tabdat-language",
+  "crates/tabdat-runtime",
+  "crates/tabdat-stats",
+]
 exclude = [
   "spikes/duckdb-prototype",
   "spikes/readstat-prototype",

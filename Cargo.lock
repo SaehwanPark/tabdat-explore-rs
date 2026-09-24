@@ -1190,6 +1190,7 @@ dependencies = [
  "serde_json",
  "tabdat-language",
  "tabdat-runtime",
+ "tabdat-stats",
 ]
 
 [[package]]
@@ -1203,6 +1204,14 @@ dependencies = [
  "duckdb",
  "sha2",
  "tabdat-language",
+]
+
+[[package]]
+name = "tabdat-stats"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
