@@ -1204,6 +1204,7 @@ dependencies = [
  "duckdb",
  "sha2",
  "tabdat-language",
+ "tabdat-stats",
 ]
 
 [[package]]

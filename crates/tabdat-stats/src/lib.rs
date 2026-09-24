@@ -21,7 +21,10 @@ pub use error::StatsError;
 pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
 };
-pub use least_squares::{PureLeastSquaresEstimator, fit_least_squares, predict_linear_response};
+pub use least_squares::{
+  LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
+  fit_least_squares_with_options, predict_linear_response,
+};
 pub use matrix::{
   covariance_matrix, invert, mean, multiply, multiply_vector, sample_covariance, sample_variance,
   scale, transpose,

@@ -28,6 +28,8 @@ pub enum StatsError {
   UnknownParameter(String),
   /// The hypothesis restriction matrix or vector is incompatible with model parameters.
   IncompatibleHypothesis(String),
+  /// Insufficient observations or clusters for estimation or inference.
+  InsufficientObservations(String),
 }
 
 impl fmt::Display for StatsError {
@@ -49,6 +51,7 @@ impl fmt::Display for StatsError {
       Self::CollinearPredictors(msg) => write!(f, "collinear predictors: {msg}"),
       Self::UnknownParameter(name) => write!(f, "unknown parameter: {name}"),
       Self::IncompatibleHypothesis(msg) => write!(f, "incompatible hypothesis test: {msg}"),
+      Self::InsufficientObservations(msg) => write!(f, "insufficient observations: {msg}"),
     }
   }
 }

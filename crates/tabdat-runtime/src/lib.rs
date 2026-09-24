@@ -18,7 +18,8 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
   DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow,
   LabelCommand, LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SortKey, TabulateCommand,
+  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
+  SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -468,6 +469,33 @@ pub struct ActivateResult {
   pub dataset: DatasetInfo,
 }
 
+/// The typed result of executing a linear regression command.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RegressionResult {
+  /// Outcome (dependent) variable name.
+  pub outcome: String,
+  /// Ordered predictor variable names.
+  pub predictors: Vec<String>,
+  /// Estimator type ("ols", "wls", "gls").
+  pub estimator: String,
+  /// Covariance description (e.g. "nonrobust", "robust", "cluster(<var>)").
+  pub covariance: String,
+  /// Number of observations in the estimation sample.
+  pub observation_count: usize,
+  /// Whether an intercept was included.
+  pub include_intercept: bool,
+  /// R-squared goodness of fit (if computed).
+  pub r_squared: Option<f64>,
+  /// Adjusted R-squared (if computed).
+  pub adjusted_r_squared: Option<f64>,
+  /// Root mean squared error (if computed).
+  pub root_mse: Option<f64>,
+  /// Estimated coefficients and inference.
+  pub coefficients: Vec<tabdat_stats::CoefficientEstimate>,
+  /// Underlying complete least squares result.
+  pub least_squares: tabdat_stats::LeastSquaresResult,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
@@ -543,6 +571,8 @@ pub enum ExecutionResult {
   Append(AppendResult),
   /// Replaces the active relation with a reshaped dataset.
   Reshape(ReshapeResult),
+  /// The result of executing a linear regression command.
+  Regression(Box<RegressionResult>),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -842,6 +872,18 @@ pub enum RuntimeError {
   ReshapeWideOutputColumnExists { variable: String },
   /// DuckDB could not stage or publish the reshaped relation.
   ReshapeFailed,
+  /// One or more variables or identifiers for regress were not found in the active dataset.
+  RegressUnknownVariable { variables: Vec<String> },
+  /// The regress request named variables that are not numeric.
+  RegressRequiresNumeric { variables: Vec<String> },
+  /// The regress sample contained no complete observations.
+  RegressNoObservations,
+  /// The regress request required positive weight values.
+  RegressRequiresPositiveWeights,
+  /// The regress request required positive sigma values.
+  RegressRequiresPositiveSigma,
+  /// The regress estimation failed.
+  RegressFailed { message: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -1323,6 +1365,30 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::ReshapeFailed => formatter.write_str("reshape failed"),
+      Self::RegressUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "regress unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::RegressRequiresNumeric { variables } => {
+        write!(
+          formatter,
+          "regress requires numeric variables: {}",
+          variables.join(", ")
+        )
+      }
+      Self::RegressNoObservations => {
+        formatter.write_str("regress requires at least one complete observation")
+      }
+      Self::RegressRequiresPositiveWeights => {
+        formatter.write_str("regress requires positive weights values")
+      }
+      Self::RegressRequiresPositiveSigma => {
+        formatter.write_str("regress requires positive sigma values")
+      }
+      Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
     }
   }
 }
@@ -1342,6 +1408,7 @@ pub struct Session {
   active_table_name: Option<String>,
   named_tables: HashMap<String, DatasetInfo>,
   label_metadata: LabelMetadata,
+  last_regression: Option<tabdat_stats::LeastSquaresResult>,
 }
 
 impl Session {
@@ -1353,6 +1420,7 @@ impl Session {
       active_table_name: None,
       named_tables: HashMap::new(),
       label_metadata: LabelMetadata::default(),
+      last_regression: None,
     }
   }
 
@@ -1415,6 +1483,7 @@ impl Session {
       Command::Join { command } => self.execute_join(&command),
       Command::Append { table_name } => self.execute_append(&table_name),
       Command::Reshape { command } => self.execute_reshape(&command),
+      Command::Regress { command } => self.execute_regress(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1422,6 +1491,11 @@ impl Session {
   /// Return the currently published dataset metadata, if any.
   pub fn active_dataset(&self) -> Option<&DatasetInfo> {
     self.active_dataset.as_ref()
+  }
+
+  /// Return the result of the most recently executed regression model, if any.
+  pub fn last_regression(&self) -> Option<&tabdat_stats::LeastSquaresResult> {
+    self.last_regression.as_ref()
   }
 
   /// Return the currently published named table registry.
@@ -3494,6 +3568,326 @@ impl Session {
       path: resolved_path,
       executed_commands,
     })
+  }
+
+  /// Execute a linear regression command (OLS, WLS, GLS, robust, cluster).
+  pub fn execute_regress(
+    &mut self,
+    command: &RegressCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "regress" })?
+      .clone();
+
+    let mut referenced_variables = Vec::new();
+    referenced_variables.push(command.outcome.clone());
+    referenced_variables.extend(command.predictors.iter().cloned());
+    if let Some(w) = &command.weight_variable {
+      referenced_variables.push(w.clone());
+    }
+    if let Some(c) = &command.cluster_variable {
+      referenced_variables.push(c.clone());
+    }
+
+    let column_types: HashMap<&str, &str> = dataset
+      .columns
+      .iter()
+      .map(|col| (col.name.as_str(), col.data_type.as_str()))
+      .collect();
+
+    let missing = referenced_variables
+      .iter()
+      .filter(|var| !column_types.contains_key(var.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::RegressUnknownVariable { variables: missing });
+    }
+
+    // Verify outcome, predictors, and weight (if present) are numeric
+    let mut numeric_candidates = Vec::new();
+    numeric_candidates.push(command.outcome.clone());
+    numeric_candidates.extend(command.predictors.iter().cloned());
+    if let Some(w) = &command.weight_variable {
+      numeric_candidates.push(w.clone());
+    }
+
+    let non_numeric = numeric_candidates
+      .iter()
+      .filter(|var| {
+        column_types
+          .get(var.as_str())
+          .is_none_or(|data_type| !is_numeric_data_type(data_type))
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !non_numeric.is_empty() {
+      return Err(RuntimeError::RegressRequiresNumeric {
+        variables: non_numeric,
+      });
+    }
+
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "regress" })?;
+
+    // Prepare SELECT query
+    let mut select_columns = Vec::new();
+    select_columns.push(quote_identifier(&command.outcome));
+    for p in &command.predictors {
+      select_columns.push(quote_identifier(p));
+    }
+    if let Some(c) = &command.cluster_variable {
+      select_columns.push(quote_identifier(c));
+    }
+    if let Some(w) = &command.weight_variable {
+      select_columns.push(quote_identifier(w));
+    }
+
+    let select_sql = select_columns.join(", ");
+    let query = format!("SELECT {select_sql} FROM {ACTIVE_TABLE}");
+
+    let mut statement =
+      backend
+        .connection
+        .prepare(&query)
+        .map_err(|e| RuntimeError::RegressFailed {
+          message: e.to_string(),
+        })?;
+
+    let mut rows = statement
+      .query([])
+      .map_err(|e| RuntimeError::RegressFailed {
+        message: e.to_string(),
+      })?;
+
+    let p_count = command.predictors.len();
+    let has_cluster = command.cluster_variable.is_some();
+    let has_weight = command.weight_variable.is_some();
+    let cluster_idx = 1 + p_count;
+    let weight_idx = 1 + p_count + if has_cluster { 1 } else { 0 };
+
+    let mut total_rows = 0usize;
+    let mut retained_indices = Vec::new();
+    let mut response = Vec::new();
+    let mut design_matrix = Vec::new();
+    let mut cluster_groups = Vec::new();
+    let mut weights = Vec::new();
+
+    while let Some(row) = rows.next().map_err(|e| RuntimeError::RegressFailed {
+      message: e.to_string(),
+    })? {
+      let row_idx = total_rows;
+      total_rows += 1;
+
+      // Extract outcome
+      let outcome_cell =
+        cell_value_from_ref(row.get_ref(0).map_err(|e| RuntimeError::RegressFailed {
+          message: e.to_string(),
+        })?)
+        .map_err(|_| RuntimeError::RegressFailed {
+          message: "could not read outcome cell".into(),
+        })?;
+      let outcome_val = match cell_to_f64(&outcome_cell) {
+        Some(v) if v.is_finite() => v,
+        _ => continue,
+      };
+
+      // Extract predictors
+      let mut pred_vals = Vec::with_capacity(p_count);
+      let mut pred_valid = true;
+      for j in 0..p_count {
+        let cell =
+          cell_value_from_ref(
+            row
+              .get_ref(1 + j)
+              .map_err(|e| RuntimeError::RegressFailed {
+                message: e.to_string(),
+              })?,
+          )
+          .map_err(|_| RuntimeError::RegressFailed {
+            message: "could not read predictor cell".into(),
+          })?;
+        match cell_to_f64(&cell) {
+          Some(v) if v.is_finite() => pred_vals.push(v),
+          _ => {
+            pred_valid = false;
+            break;
+          }
+        }
+      }
+      if !pred_valid {
+        continue;
+      }
+
+      // Extract cluster if present
+      let cluster_val = if has_cluster {
+        let cell = cell_value_from_ref(row.get_ref(cluster_idx).map_err(|e| {
+          RuntimeError::RegressFailed {
+            message: e.to_string(),
+          }
+        })?)
+        .map_err(|_| RuntimeError::RegressFailed {
+          message: "could not read cluster cell".into(),
+        })?;
+        match cell_to_string(&cell) {
+          Some(s) => s,
+          None => continue,
+        }
+      } else {
+        String::new()
+      };
+
+      // Extract weight if present
+      let weight_val = if has_weight {
+        let cell = cell_value_from_ref(row.get_ref(weight_idx).map_err(|e| {
+          RuntimeError::RegressFailed {
+            message: e.to_string(),
+          }
+        })?)
+        .map_err(|_| RuntimeError::RegressFailed {
+          message: "could not read weight cell".into(),
+        })?;
+        let raw_w = match cell_to_f64(&cell) {
+          Some(v) if v.is_finite() => v,
+          _ => continue,
+        };
+        match command.estimator {
+          RegressEstimator::Wls => {
+            if raw_w <= 0.0 {
+              return Err(RuntimeError::RegressRequiresPositiveWeights);
+            }
+            raw_w
+          }
+          RegressEstimator::Gls => {
+            if raw_w <= 0.0 {
+              return Err(RuntimeError::RegressRequiresPositiveSigma);
+            }
+            1.0 / raw_w
+          }
+          RegressEstimator::Ols => raw_w,
+        }
+      } else {
+        1.0
+      };
+
+      retained_indices.push(row_idx);
+      response.push(outcome_val);
+      design_matrix.push(pred_vals);
+      if has_cluster {
+        cluster_groups.push(cluster_val);
+      }
+      if has_weight {
+        weights.push(weight_val);
+      }
+    }
+
+    if retained_indices.is_empty() {
+      return Err(RuntimeError::RegressNoObservations);
+    }
+
+    let dropped_observations = total_rows - retained_indices.len();
+    let sample = tabdat_stats::EstimationSample::new(
+      retained_indices,
+      total_rows,
+      dropped_observations,
+      has_weight.then_some(weights.clone()),
+      has_cluster.then_some(cluster_groups),
+    )
+    .map_err(|e| RuntimeError::RegressFailed {
+      message: e.to_string(),
+    })?;
+
+    let mut problem = tabdat_stats::EstimationProblem::new(
+      command.outcome.clone(),
+      command.predictors.clone(),
+      response,
+      design_matrix,
+    )
+    .map_err(|e| RuntimeError::RegressFailed {
+      message: e.to_string(),
+    })?
+    .with_intercept(command.include_intercept)
+    .with_sample(sample);
+
+    if has_weight {
+      problem = problem.with_weights(weights);
+    }
+
+    let covariance_type = if let Some(cluster_var) = &command.cluster_variable {
+      tabdat_stats::CovarianceType::Cluster(cluster_var.clone())
+    } else if command.robust {
+      tabdat_stats::CovarianceType::RobustHc1
+    } else {
+      tabdat_stats::CovarianceType::NonRobust
+    };
+
+    let options = tabdat_stats::LeastSquaresOptions { covariance_type };
+    let least_squares_result = tabdat_stats::fit_least_squares_with_options(&problem, &options)
+      .map_err(|e| RuntimeError::RegressFailed {
+        message: e.to_string(),
+      })?;
+
+    self.last_regression = Some(least_squares_result.clone());
+
+    let covariance_str = match &least_squares_result.covariance.covariance_type {
+      tabdat_stats::CovarianceType::NonRobust => "nonrobust".to_string(),
+      tabdat_stats::CovarianceType::RobustHc1 => "robust".to_string(),
+      tabdat_stats::CovarianceType::Cluster(var) => format!("cluster({var})"),
+    };
+    let estimator_str = match command.estimator {
+      RegressEstimator::Ols => "ols".to_string(),
+      RegressEstimator::Wls => "wls".to_string(),
+      RegressEstimator::Gls => "gls".to_string(),
+    };
+
+    let result = RegressionResult {
+      outcome: command.outcome.clone(),
+      predictors: command.predictors.clone(),
+      estimator: estimator_str,
+      covariance: covariance_str,
+      observation_count: least_squares_result.fit_statistics.observation_count,
+      include_intercept: command.include_intercept,
+      r_squared: least_squares_result.fit_statistics.r_squared,
+      adjusted_r_squared: least_squares_result.fit_statistics.adjusted_r_squared,
+      root_mse: least_squares_result.fit_statistics.root_mse,
+      coefficients: least_squares_result.coefficients.clone(),
+      least_squares: least_squares_result,
+    };
+
+    Ok(ExecutionResult::Regression(Box::new(result)))
+  }
+}
+
+fn cell_to_f64(cell: &CellValue) -> Option<f64> {
+  match cell {
+    CellValue::Float(f) => Some(*f),
+    CellValue::SignedInteger(i) => Some(*i as f64),
+    CellValue::UnsignedInteger(u) => Some(*u as f64),
+    CellValue::Decimal { value, scale, .. } => {
+      let divisor = 10f64.powi(*scale as i32);
+      Some(*value as f64 / divisor)
+    }
+    _ => None,
+  }
+}
+
+fn cell_to_string(cell: &CellValue) -> Option<String> {
+  match cell {
+    CellValue::Null => None,
+    CellValue::Text(s) => Some(s.clone()),
+    CellValue::SignedInteger(i) => Some(i.to_string()),
+    CellValue::UnsignedInteger(u) => Some(u.to_string()),
+    CellValue::Float(f) => Some(f.to_string()),
+    CellValue::Boolean(b) => Some(b.to_string()),
+    CellValue::Decimal { value, scale, .. } => {
+      let divisor = 10f64.powi(*scale as i32);
+      Some(((*value as f64) / divisor).to_string())
+    }
+    _ => None,
   }
 }
 

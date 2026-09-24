@@ -431,3 +431,119 @@ pub fn xtx_inverse_from_r(r: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   }
   Ok(xtx_inv)
 }
+
+/// Compute sandwich quadratic form: V = A * B * A'.
+pub fn sandwich(a: &[Vec<f64>], b: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
+  let ab = multiply(a, b)?;
+  let a_t = transpose(a)?;
+  multiply(&ab, &a_t)
+}
+
+/// Lanczos approximation for log-gamma ln(Gamma(z)) for z > 0.
+#[allow(clippy::excessive_precision)]
+pub fn lgamma(z: f64) -> f64 {
+  const COEFFS: [f64; 9] = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109583652625,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7,
+  ];
+
+  if z < 0.5 {
+    let pi = std::f64::consts::PI;
+    (pi / (pi * z).sin()).ln() - lgamma(1.0 - z)
+  } else {
+    let z_adj = z - 1.0;
+    let mut x = COEFFS[0];
+    for (i, &c) in COEFFS[1..].iter().enumerate() {
+      x += c / (z_adj + (i as f64) + 1.0);
+    }
+    let t = z_adj + 7.5;
+    0.5 * (2.0 * std::f64::consts::PI).ln() + (z_adj + 0.5) * t.ln() - t + x.ln()
+  }
+}
+
+fn beta_continued_fraction(a: f64, b: f64, x: f64) -> f64 {
+  let qab = a + b;
+  let qap = a + 1.0;
+  let qam = a - 1.0;
+  let mut c = 1.0;
+  let mut d = 1.0 - qab * x / qap;
+  if d.abs() < 1e-30 {
+    d = 1e-30;
+  }
+  d = 1.0 / d;
+  let mut h = d;
+
+  for m in 1..200 {
+    let m_f = m as f64;
+    let m2 = 2.0 * m_f;
+
+    // Even step
+    let aa_even = m_f * (b - m_f) * x / ((qam + m2) * (a + m2));
+    d = 1.0 + aa_even * d;
+    if d.abs() < 1e-30 {
+      d = 1e-30;
+    }
+    c = 1.0 + aa_even / c;
+    if c.abs() < 1e-30 {
+      c = 1e-30;
+    }
+    d = 1.0 / d;
+    h *= d * c;
+
+    // Odd step
+    let aa_odd = -(a + m_f) * (qab + m_f) * x / ((a + m2) * (qap + m2));
+    d = 1.0 + aa_odd * d;
+    if d.abs() < 1e-30 {
+      d = 1e-30;
+    }
+    c = 1.0 + aa_odd / c;
+    if c.abs() < 1e-30 {
+      c = 1e-30;
+    }
+    d = 1.0 / d;
+    let del_h = d * c;
+    h *= del_h;
+
+    if (del_h - 1.0).abs() < 1e-15 {
+      break;
+    }
+  }
+  h
+}
+
+/// Regularized incomplete beta function I_x(a, b).
+pub fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
+  if x <= 0.0 {
+    return 0.0;
+  }
+  if x >= 1.0 {
+    return 1.0;
+  }
+  let ln_beta = lgamma(a) + lgamma(b) - lgamma(a + b);
+  if x < (a + 1.0) / (a + b + 2.0) {
+    let factor = (a * x.ln() + b * (1.0 - x).ln() - ln_beta).exp() / a;
+    (factor * beta_continued_fraction(a, b, x)).clamp(0.0, 1.0)
+  } else {
+    let factor = (b * (1.0 - x).ln() + a * x.ln() - ln_beta).exp() / b;
+    (1.0 - factor * beta_continued_fraction(b, a, 1.0 - x)).clamp(0.0, 1.0)
+  }
+}
+
+/// Two-tailed p-value for Student's t distribution with `df` degrees of freedom.
+pub fn student_t_pvalue(t: f64, df: f64) -> f64 {
+  if df <= 0.0 || t.is_nan() {
+    return f64::NAN;
+  }
+  if t == 0.0 {
+    return 1.0;
+  }
+  let x = df / (df + t * t);
+  regularized_incomplete_beta(df / 2.0, 0.5, x)
+}
