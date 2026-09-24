@@ -1566,7 +1566,37 @@ workflows all passed.
 This accepted syntax slice leaves posterior draw extraction, chain iteration processing, Vega-Lite spec generation,
 plot SVG/PNG rendering, artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: script engine
+
+The script engine slice (Phase 5 §5.2) adds bounded, backend-independent `.td`
+script parsing, macro expansion, directive evaluation, and conditional control
+flow boundaries to `tabdat-language::script`. It provides `ScriptCommand` with
+1-based start line tracking, `ScriptContext` for session macro definitions and
+random seed state, and typed directive representations:
+- Directives: `ScriptDirective::Seed(SeedDirective)`, `ScriptDirective::Let(LetDirective)`.
+- Control flow: `ControlFlowDirective::If(IfDirective)`, `ControlFlowDirective::Else(ElseDirective)`, `ControlFlowDirective::End(EndDirective)`.
+- Block execution tracking: `ScriptBlockState` with active status, match tracking, and else presence.
+- Direct entry points: `parse_script(source, path)` and `read_script(path)` for streaming executable commands.
+- Macro expansion: `expand_script_macros` expanding `$macro` against context while preserving literal `$` patterns.
+- Expression evaluation: `evaluate_script_condition` evaluating truthiness and comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+
+It enforces exact Python-compatible behavior and diagnostics: comment stripping (`#`),
+multiline triple-quoted SQL grouping (`sql """ ... """`) with internal newline preservation and opening line reporting,
+unterminated SQL syntax errors (`<path>:<line>: unterminated triple-quoted sql command`),
+directive syntax and value validation (`seed requires an integer value`, `invalid seed: ...`, `let expects syntax: let <macro> = <value>`, `invalid macro name: ...`),
+undefined macro reporting (`<path>:<line>: undefined macro: <name>`),
+and control flow block validation (`if requires a condition expression`, `else without matching if`, `end without matching if`, `else already defined for if block`, `unclosed if block`).
+
+Evidence: [_workspace/script-engine/](_workspace/script-engine/),
+including the [contract](_workspace/script-engine/01-contract.md) and
+[summary](_workspace/script-engine/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted script engine slice leaves runtime script execution (`run <path>`), call stack recursion limits, DuckDB session integration, and CLI execution deferred.
+
 ## Verified slice: reproducible build baseline
+
 
 - Pin a Rust toolchain and commit the binary's lockfile.
 - Enforce two-space indentation using rustfmt and EditorConfig.
