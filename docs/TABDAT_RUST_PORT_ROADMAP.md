@@ -523,6 +523,13 @@ Port TabDat's language before implementing most execution.
   execution deferral are covered; post-estimation parameter evaluation, symbolic differentiation,
   covariance matrix transformation, standard error computation, t/z statistics, p-values, and
   confidence intervals remain deferred).
+- [x] Add the bounded classical linear hypothesis testing syntax slice for `test`
+  (PR #123, squash merge `c9d846e`; typed `TestCommand` struct and
+  `Command::Test` AST variant, variable list testing, single unparenthesized constraints,
+  multiple parenthesized constraints, equality subtraction normalization, colon and
+  delimiter guards, exact diagnostic parity, and parser-only execution deferral are covered;
+  post-estimation parameter evaluation, restriction matrix $R$ and vector $r$ construction,
+  Wald/F/chi-squared test statistics, degrees of freedom, and p-values remain deferred).
 - [ ] Port tokenizer behavior.
 - [ ] Port command parsing.
 - [ ] Port varlist parsing.

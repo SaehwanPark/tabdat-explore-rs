@@ -1424,6 +1424,36 @@ workflows all passed.
 This accepted syntax slice leaves post-estimation parameter retrieval, covariance calculations,
 inference statistics, p-values, confidence intervals, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: classical linear hypothesis testing syntax
+
+The classical linear hypothesis testing syntax slice (Phase 9)
+adds bounded, backend-independent linear hypothesis testing syntax boundaries to
+`tabdat-language`. The parser returns an owned `TestCommand` type with a list of
+linear constraints (`constraints: Vec<GenerateExpression>`).
+It parses variable list testing (`test <varlist>`), single unparenthesized constraints
+(`test lhs = rhs` or `test lhs == rhs`), and multiple parenthesized constraints (`test (c1) (c2)`).
+Equalities are normalized to subtraction expressions (`lhs - rhs`), and bare identifiers are retained
+as `GenerateExpression::Identifier`. It enforces exact Python-compatible diagnostics for empty command
+bodies (`test command expects a list of variables or constraints`), unexpected tokens outside parentheses
+(`test command: unexpected tokens outside parentheses`), mismatched parentheses (`test command: mismatched parentheses`),
+empty constraints in parentheses (`test command: empty constraint inside parentheses`), multiple equals
+(`test command: multiple '=' in a constraint` or `test command: multiple '=' in a single constraint (use parentheses for multiple constraints)`),
+missing operands around equals (`test command: missing left-hand side of constraint` or `test command: missing right-hand side of constraint`),
+malformed constraints (`test command: malformed constraint`), expected variable names in varlist mode (`test command: expected variable name, got '<token>'`),
+and delimiter guards (`test:`, `test=`, `test==`, `test,`).
+Owned `String`, `GenerateExpression`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform parameter retrieval,
+linear restriction matrix $R$ and vector $r$ construction, Wald/F/chi-squared test statistics, or p-value computation.
+
+Evidence: [_workspace/parser-test-syntax/](_workspace/parser-test-syntax/),
+including the [contract](_workspace/parser-test-syntax/01-contract.md) and
+[summary](_workspace/parser-test-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves post-estimation parameter retrieval, restriction matrix construction,
+Wald/F/chi-squared statistics, degrees of freedom, p-values, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
