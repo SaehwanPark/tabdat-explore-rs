@@ -1509,6 +1509,34 @@ workflows all passed.
 This accepted syntax slice leaves DuckDB data extraction, Vega-Lite spec generation, plot SVG/PNG rendering,
 artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: visualization bar chart syntax
+
+The visualization bar chart syntax slice (Phase 7 §7.4)
+adds bounded, backend-independent visualization bar chart syntax boundaries to
+`tabdat-language`. The parser returns an owned `BarCommand` type with
+target variable (`variable: String`),
+optional save path (`saving: Option<String>`), flag to include missing values as a category (`include_missing: bool`, defaulting to `false` unless `missing` is supplied),
+and open-in-viewer flag (`open_artifact: bool`, defaulting to `true` unless `noopen` is supplied).
+It enforces exact Python-compatible diagnostics for missing or multiple variables (`bar expects exactly one variable`),
+if clauses and assignment syntax (`bar does not accept if clauses or assignment syntax`), assignment missing target or expression
+(`bar assignment requires a target before =` and `bar assignment requires an expression after =`),
+attached colons and double equals (`unsupported token in command: :` and `unsupported token in command: ==`),
+trailing commas without options (`comma must be followed by at least one option`), unsupported options (`bar unsupported option: <sorted_opts>`),
+flag option values (`bar option missing does not accept a value`, `bar option noopen does not accept a value`), and saving validation
+(`bar option saving expects a path`, `bar option saving may only be supplied once`).
+Owned `String` and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform DuckDB category aggregation,
+Vega-Lite spec generation, plot SVG/PNG rendering, artifact filesystem emission, or browser/viewer interaction.
+
+Evidence: [_workspace/parser-bar-syntax/](_workspace/parser-bar-syntax/),
+including the [contract](_workspace/parser-bar-syntax/01-contract.md) and
+[summary](_workspace/parser-bar-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves DuckDB category aggregation, Vega-Lite spec generation, plot SVG/PNG rendering,
+artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
