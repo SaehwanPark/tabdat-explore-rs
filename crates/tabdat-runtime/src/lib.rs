@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
@@ -16,9 +16,9 @@ use tabdat_language::script::{
 };
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
-  DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue,
-  LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RowLimit,
-  SortKey, TabulateCommand,
+  DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow,
+  LabelCommand, LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
+  RecodeValue, RowLimit, SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -276,6 +276,13 @@ pub struct DecodeResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after joining the active relation with a named table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JoinResult {
+  /// Metadata for the newly active joined dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// A normalized named value-label set owned by the active session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValueLabelSet {
@@ -516,6 +523,8 @@ pub enum ExecutionResult {
   SqlCreate(SqlCreateResult),
   /// The result of activating a registered named table.
   Activate(ActivateResult),
+  /// Replaces the active relation with a joined dataset from a named table.
+  Join(JoinResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -777,6 +786,15 @@ pub enum RuntimeError {
   UseOptionsNotSupportedForNamedTable,
   /// The requested named table does not exist in the session registry.
   UnknownTable { name: String },
+  /// One or more join keys were not found in the active dataset.
+  JoinUnknownVariable { variables: Vec<String> },
+  /// One or more join keys were not found in the right named table.
+  JoinUnknownVariableInTable {
+    table_name: String,
+    variables: Vec<String>,
+  },
+  /// DuckDB could not stage or publish the joined relation.
+  JoinFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -1189,6 +1207,20 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("use options are not supported for named table activation")
       }
       Self::UnknownTable { name } => write!(formatter, "unknown table: {name}"),
+      Self::JoinUnknownVariable { variables } => {
+        write!(formatter, "join unknown variable: {}", variables.join(", "))
+      }
+      Self::JoinUnknownVariableInTable {
+        table_name,
+        variables,
+      } => {
+        write!(
+          formatter,
+          "join unknown variable in {table_name}: {}",
+          variables.join(", ")
+        )
+      }
+      Self::JoinFailed => formatter.write_str("join failed"),
     }
   }
 }
@@ -1278,6 +1310,7 @@ impl Session {
       Command::Tail { limit } => self.execute_tail(limit),
       Command::Run { path } => self.execute_run(path),
       Command::Sql { command } => self.execute_sql(&command.query, command.into.as_deref()),
+      Command::Join { command } => self.execute_join(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1337,6 +1370,33 @@ impl Session {
       let (headers, rows) = backend.run_sql(query)?;
       Ok(ExecutionResult::Table(TableResult { headers, rows }))
     }
+  }
+
+  /// Execute a join command against an active dataset and a named table.
+  pub fn execute_join(&mut self, command: &JoinCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "join" })?
+      .clone();
+    let right_dataset = self
+      .named_tables
+      .get(&command.table_name)
+      .ok_or_else(|| RuntimeError::UnknownTable {
+        name: command.table_name.clone(),
+      })?
+      .clone();
+
+    let backend = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::BackendInitialization)?;
+
+    let next_dataset = backend.join_named_table(&dataset, &right_dataset, command)?;
+
+    self.retain_label_metadata(&next_dataset);
+    let synced = self.sync_active_dataset(next_dataset)?;
+    Ok(ExecutionResult::Join(JoinResult { dataset: synced }))
   }
 
   fn sync_active_dataset(&mut self, dataset: DatasetInfo) -> Result<DatasetInfo, RuntimeError> {
@@ -5564,6 +5624,150 @@ impl DuckDbBackend {
     })
   }
 
+  fn join_named_table(
+    &mut self,
+    dataset: &DatasetInfo,
+    right_dataset: &DatasetInfo,
+    command: &JoinCommand,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    let active_columns = &dataset.columns;
+    let table_name = &command.table_name;
+    let keys = &command.keys;
+    let how = command.how;
+    let suffix = &command.suffix;
+    let source = dataset.source.clone();
+    let left_names: HashSet<&str> = active_columns.iter().map(|c| c.name.as_str()).collect();
+    let missing_left: Vec<String> = keys
+      .iter()
+      .filter(|key| !left_names.contains(key.as_str()))
+      .cloned()
+      .collect();
+    if !missing_left.is_empty() {
+      return Err(RuntimeError::JoinUnknownVariable {
+        variables: missing_left,
+      });
+    }
+
+    let right_names: HashSet<&str> = right_dataset
+      .columns
+      .iter()
+      .map(|c| c.name.as_str())
+      .collect();
+    let missing_right: Vec<String> = keys
+      .iter()
+      .filter(|key| !right_names.contains(key.as_str()))
+      .cloned()
+      .collect();
+    if !missing_right.is_empty() {
+      return Err(RuntimeError::JoinUnknownVariableInTable {
+        table_name: table_name.to_owned(),
+        variables: missing_right,
+      });
+    }
+
+    let mut used_names: HashSet<String> = active_columns.iter().map(|c| c.name.clone()).collect();
+    for c in &right_dataset.columns {
+      used_names.insert(c.name.clone());
+    }
+    let left_order_name = unique_internal_name("__tabdat_join_order", &used_names);
+    used_names.insert(left_order_name.clone());
+    let right_order_name = unique_internal_name("__tabdat_join_right_order", &used_names);
+
+    let mut used_output_names: HashSet<String> =
+      active_columns.iter().map(|c| c.name.clone()).collect();
+    let mut right_selects = Vec::new();
+    for column in &right_dataset.columns {
+      if keys.contains(&column.name) {
+        continue;
+      }
+      let base_output_name = if used_output_names.contains(&column.name) {
+        format!("{}{suffix}", column.name)
+      } else {
+        column.name.clone()
+      };
+      let output_name = unique_output_name(&base_output_name, &used_output_names);
+      used_output_names.insert(output_name.clone());
+      right_selects.push(format!(
+        "right_table.{} AS {}",
+        quote_identifier(&column.name),
+        quote_identifier(&output_name)
+      ));
+    }
+
+    let mut select_parts: Vec<String> = active_columns
+      .iter()
+      .map(|c| format!("left_table.{}", quote_identifier(&c.name)))
+      .collect();
+    select_parts.extend(right_selects);
+    let select_sql = select_parts.join(", ");
+
+    let predicates: Vec<String> = keys
+      .iter()
+      .map(|key| {
+        format!(
+          "left_table.{} = right_table.{}",
+          quote_identifier(key),
+          quote_identifier(key)
+        )
+      })
+      .collect();
+    let predicates_sql = predicates.join(" AND ");
+
+    let how_sql = match how {
+      JoinHow::Inner => "INNER",
+      JoinHow::Left => "LEFT",
+    };
+
+    let internal_name = named_table_identifier(table_name);
+
+    let join_query = format!(
+      "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT {select_sql} \
+       FROM (SELECT row_number() OVER () AS {}, * FROM {ACTIVE_TABLE}) AS left_table \
+       {how_sql} JOIN (SELECT row_number() OVER () AS {}, * FROM {}) AS right_table \
+       ON {predicates_sql} \
+       ORDER BY left_table.{}, right_table.{}",
+      quote_identifier(&left_order_name),
+      quote_identifier(&right_order_name),
+      quote_identifier(&internal_name),
+      quote_identifier(&left_order_name),
+      quote_identifier(&right_order_name),
+    );
+
+    self.drop_staging();
+    if self.connection.execute_batch(&join_query).is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::JoinFailed);
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(cols) => cols,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::JoinFailed);
+      }
+    };
+
+    let row_count = match self.staged_row_count() {
+      Ok(rc) => rc,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::JoinFailed);
+      }
+    };
+
+    if self.publish_staging().is_err() {
+      return Err(RuntimeError::JoinFailed);
+    }
+
+    Ok(DatasetInfo {
+      source,
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
+  }
+
   fn publish_staging(&mut self) -> Result<(), ()> {
     self
       .connection
@@ -6419,6 +6623,35 @@ fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, ()> {
 
 fn named_table_identifier(table_name: &str) -> String {
   format!("__tabdat_named_{table_name}")
+}
+
+fn unique_internal_name(candidate: &str, used_names: &HashSet<String>) -> String {
+  let normalized: HashSet<String> = used_names.iter().map(|n| n.to_ascii_lowercase()).collect();
+  if !normalized.contains(&candidate.to_ascii_lowercase()) {
+    return candidate.to_owned();
+  }
+  let mut counter = 2;
+  loop {
+    let name = format!("{candidate}_{counter}");
+    if !normalized.contains(&name.to_ascii_lowercase()) {
+      return name;
+    }
+    counter += 1;
+  }
+}
+
+fn unique_output_name(candidate: &str, used_names: &HashSet<String>) -> String {
+  if !used_names.contains(candidate) {
+    return candidate.to_owned();
+  }
+  let mut counter = 2;
+  loop {
+    let name = format!("{candidate}_{counter}");
+    if !used_names.contains(&name) {
+      return name;
+    }
+    counter += 1;
+  }
 }
 
 fn validate_sql_query(query: &str) -> Result<(), RuntimeError> {
