@@ -812,8 +812,16 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   DuckDB sessions, external databases, schema evolution/union of mismatched
   columns, and CLI/JSON/MCP rendering remain deferred; detailed contract/evidence
   in `_workspace/runtime-append-execution/`.
-- [ ] `reshape` — runtime remains deferred; the parser boundary is accepted in
-  the Phase 5.1 direct-language slice (PR #61, squash merge `e6cc4f1`).
+- [x] `reshape` — bounded eager runtime reshape command execution against an active
+  relation (`ReshapeResult`; PR #143, squash merge `4d90584`).
+  `reshape long` (stub discovery in column appearance order, full presence validation across
+  discovered j-values, unpivot via `UNION ALL` preserving row order primary and stub discovery
+  order secondary) and `reshape wide` (distinct non-null j-value extraction, output column collision
+  validation, pivot aggregation via `MAX(CASE WHEN ... END)` preserving initial identifier appearance order)
+  are covered. Collision-free internal ordering columns, surviving label retention, detached transform
+  (`active_table_name = None`) preserving named table snapshots, and atomic staging table publication
+  are enforced. Remote DuckDB sessions, external databases, complex nested stubs, and CLI/JSON/MCP rendering
+  remain deferred; detailed contract/evidence in `_workspace/runtime-reshape-execution/`.
 - [x] `tabulate` — bounded eager local-Parquet one- and two-way frequency
   tables (TabulateResult; PR #56, squash merge 24405a6). Direct row/column
   forms, count/percent output, row/column percentages, missing categories,

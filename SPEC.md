@@ -576,7 +576,7 @@ This accepted syntax slice leaves named-table registry and activation, SQL
 creation, DuckDB append execution, schema compatibility, column union/type and
 missingness semantics, row ordering/publication, labels, lazy/materialized
 behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `append`
-parity deferred. Phase 6.4 runtime `append` remains unchecked.
+parity deferred. Phase 6.4 runtime `append` was subsequently implemented in PR #141 (squash merge `800a231`).
 
 ## Verified slice: syntax-only `reshape` command
 
@@ -604,7 +604,7 @@ This accepted syntax slice leaves long/wide relation execution, identifier-group
 and missingness semantics, wide-column naming and collision rules, row ordering,
 row counts, type coercion, relation publication, labels, lazy/materialized
 behavior, persistence, formatting, CLI, JSON, MCP, and broad Python `reshape`
-parity deferred. Phase 6.4 runtime `reshape` remains unchecked.
+parity deferred. Phase 6.4 runtime `reshape` was subsequently implemented in PR #143 (squash merge `4d90584`).
 
 ## Verified slice: syntax-only `panel` command
 
@@ -1779,6 +1779,64 @@ locked workspace checks, policy checks, PR-head workflows, and squash merge pass
 
 This accepted runtime `append` execution slice leaves remote DuckDB sessions, external databases,
 schema evolution/union of mismatched columns, and CLI/JSON/MCP rendering deferred.
+
+## Verified slice: bounded eager runtime `reshape` command execution
+
+Merged PR #143 (`4d90584`) extends the runtime boundary with bounded `reshape` command
+execution against an active eager relation for `reshape long|wide <stubs>, i(<identifiers>) j(<j_variable>)`
+(Roadmap Phase 4 §6.4 & §6.1). It exposes typed execution results and error diagnostics in
+`tabdat-runtime`:
+- `ReshapeResult { dataset: DatasetInfo }` representing the transformed dataset
+  resulting from unpivoting (long) or pivoting (wide) the active relation.
+- `ExecutionResult::Reshape(ReshapeResult)` variant added to the typed public execution
+  result model.
+- Typed runtime error variants matching exact Python parity:
+  - `RuntimeError::ReshapeUnknownVariable { variables: Vec<String> }`
+  - `RuntimeError::ReshapeOutputColumnExists { variable: String }`
+  - `RuntimeError::ReshapeLongFoundNoColumnsForStub { stub: String }`
+  - `RuntimeError::ReshapeLongMissingColumn { stub: String, j_value: String }`
+  - `RuntimeError::ReshapeWideFoundNoJValues`
+  - `RuntimeError::ReshapeWideOutputColumnExists { variable: String }`
+  - `RuntimeError::ReshapeFailed`
+- `Session::execute_reshape(&mut self, command: &ReshapeCommand)` entry point, also
+  routed from `Session::execute`.
+
+The runtime reshape engine enforces exact Python-compatible behavior and invariants:
+- **Reshape Long (`reshape long`)**: discovers stub `j_values` in column appearance order,
+  validates that every stub column exists across all discovered `j_values` (erroring with
+  `reshape long missing column <stub><j> for stub <stub>` on ragged stubs), ensures stubs
+  match at least one column, and unpivots stubs via `UNION ALL` preserving row order primary
+  (`row_order`) and stub discovery order secondary (`j_order`).
+- **Reshape Wide (`reshape wide`)**: extracts distinct non-null `j_values` ordered
+  lexicographically, errors if all `j` values are null (`reshape wide found no j values`),
+  validates that output columns (`<stub><j>`) do not collide with non-participating columns,
+  and pivots values via `MAX(CASE WHEN ... END)` grouped by identifier columns (`id_vars`),
+  preserving initial identifier appearance order via `MIN(source_order)`.
+- **Shared Invariants**:
+  - Collision-free internal ordering columns: uses `unique_internal_name` to avoid
+    colliding with existing columns named `__tabdat_reshape_row_order`, `__tabdat_reshape_j_order`,
+    `__tabdat_reshape_group_order`, or `__tabdat_reshape_source_order`.
+  - Detached transform behavior: sets `active_table_name = None` so that subsequent mutations
+    on the active relation do not overwrite the named table from which active was originally
+    loaded, preserving the named table snapshot.
+  - Variable label retention: preserves surviving variable labels from the active relation
+    via `self.retain_label_metadata`.
+  - Atomic staging table lifecycle: builds the reshaped relation in `__tabdat_staging`
+    and atomically publishes it to `__tabdat_active`, cleaning up staging on failure
+    without altering session state.
+  - Multi-statement `.td` script integration: scripts can execute `reshape` commands
+    seamlessly alongside other transformation and inspection commands.
+
+Evidence: [_workspace/runtime-reshape-execution/](_workspace/runtime-reshape-execution/),
+including the [contract](_workspace/runtime-reshape-execution/01-contract.md) and
+[summary](_workspace/runtime-reshape-execution/04-summary.md), `crates/tabdat-runtime/src/lib.rs`,
+and `crates/tabdat-runtime/tests/reshape_contract.rs`. All 12 focused integration tests,
+the existing `sql_contract`, `join_contract`, `append_contract`, `use_contract`, and
+`run_contract` suites, locked workspace checks, policy checks, PR-head workflows,
+and squash merge passed.
+
+This accepted runtime `reshape` execution slice leaves remote DuckDB sessions, external databases,
+complex nested stubs, and CLI/JSON/MCP rendering deferred.
 
 ## Verified slice: reproducible build baseline
 
