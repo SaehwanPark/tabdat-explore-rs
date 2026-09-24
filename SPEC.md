@@ -1595,6 +1595,46 @@ workflows all passed.
 
 This accepted script engine slice leaves runtime script execution (`run <path>`), call stack recursion limits, DuckDB session integration, and CLI execution deferred.
 
+## Verified slice: bounded runtime script execution
+
+Merged PR #135 (`4717a09`) extends the runtime boundary with eager script execution
+for the `run <path>` command (Roadmap Phase 5 §5.2). It exposes typed execution results
+and error diagnostics in `tabdat-runtime`:
+- `RunResult { path: PathBuf, executed_commands: usize }` representing the canonicalized
+  script path and total executed command count.
+- `ExecutionResult::Run(RunResult)` in the typed public execution result model.
+- `RuntimeError::ScriptError(ScriptError)` wrapping script errors with source path and
+  1-based line diagnostics.
+- `Session::execute_run(&mut self, path)` entry point and recursive `execute_script_file`
+  handler.
+
+The runtime script engine enforces exact Python-compatible behavior and diagnostics:
+- Script loading and parsing via `tabdat_language::script::read_script` with comment
+  stripping and multiline triple-quoted SQL grouping.
+- Sequential command execution on mutable active `Session` state.
+- Nested `run <nested_path>` execution with relative path resolution against the
+  enclosing script's parent directory.
+- Recursion rejection: active canonical path call-stack cycle tracking returning exact
+  diagnostic `<path>:1: recursive script inclusion is not supported`.
+- Shared context inheritance: macros and random seed state defined or mutated in nested
+  scripts propagate across child scripts and back to the parent.
+- Control flow evaluation: `if` / `else` / `end` directives evaluate conditions and skip
+  execution of inactive branches while honoring nested block constraints.
+- Directives: `seed` sets the context random seed; `let` defines macros; `exit` cleanly
+  terminates script execution early without error.
+- Exact diagnostics: runtime execution failures encountered inside scripts are wrapped
+  with the script file path and 1-based start line.
+
+Evidence: [_workspace/runtime-run-execution/](_workspace/runtime-run-execution/),
+including the [contract](_workspace/runtime-run-execution/01-contract.md) and
+[summary](_workspace/runtime-run-execution/04-summary.md), `crates/tabdat-runtime/src/lib.rs`,
+and `crates/tabdat-runtime/tests/run_contract.rs`. All 14 focused integration tests,
+the updated 65-test `use_contract` suite, locked workspace checks, policy checks,
+PR-head workflows, and squash merge passed.
+
+This accepted runtime script execution slice leaves interactive REPL loop, terminal CLI runner,
+and external script fixtures deferred.
+
 ## Verified slice: reproducible build baseline
 
 
