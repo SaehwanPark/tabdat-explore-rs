@@ -626,7 +626,10 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   unchecked).
 - [ ] Implement persistent DuckDB session.
 - [ ] Implement active relation.
-- [ ] Implement named-table registry.
+- [x] Implement named-table registry (PR #137, squash merge `44686be`;
+  in-memory table map, temporary table creation from SQL `into`, dataset sync
+  across transforms, and activation via `use`; broader persistent databases and
+  external tables remain deferred).
 - [ ] Implement eager load.
 - [ ] Implement lazy Parquet scan.
 - [ ] Implement remote Parquet.
@@ -833,7 +836,13 @@ Reach end-to-end parity for ordinary data exploration and transformation without
 
 ### 6.5 Persistence and SQL
 
-- [ ] `sql`
+- [x] `sql` — bounded eager SQL query execution and named-table lifecycle
+  (PR #137, squash merge `44686be`; direct SELECT/WITH query execution,
+  `TableResult`, `into <table>` target table creation, active dataset
+  synchronization across transforms, named table activation via `use`, and
+  multi-statement script execution; multi-database connections, remote DuckDB
+  sessions, and CLI/JSON/MCP rendering remain deferred; detailed contract/evidence
+  in `_workspace/runtime-sql/`)
 - [x] `save` — bounded eager local-Parquet output for an active relation
   (PR #70, squash merge `9bbf804`; detailed contract/evidence in
   `_workspace/runtime-save/`)
