@@ -1732,6 +1732,54 @@ policy checks, PR-head workflows, and squash merge passed.
 This accepted runtime `join` execution slice leaves remote DuckDB sessions, external databases,
 right/full outer joins (not supported in TabDat language), and CLI/JSON/MCP rendering deferred.
 
+## Verified slice: bounded eager runtime `append` command execution
+
+Merged PR #141 (`800a231`) extends the runtime boundary with bounded `append` command
+execution against an active relation and a registered named table for the
+`append <table>` command (Roadmap Phase 4 §6.4 & §6.1). It exposes typed execution results
+and error diagnostics in `tabdat-runtime`:
+- `AppendResult { dataset: DatasetInfo }` representing the combined dataset
+  resulting from appending named-table rows to the active relation.
+- `ExecutionResult::Append(AppendResult)` variant added to the typed public execution
+  result model.
+- Typed runtime error variants matching exact Python parity:
+  - `RuntimeError::AppendUnknownVariable { variables: Vec<String> }`
+  - `RuntimeError::AppendUnknownVariableInTable { table_name: String, variables: Vec<String> }`
+  - `RuntimeError::AppendTypeMismatch { variable: String, left_type: String, right_type: String }`
+  - `RuntimeError::AppendFailed`
+- `Session::execute_append(&mut self, table_name: &str)` entry point, also
+  routed from `Session::execute`.
+
+The runtime append engine enforces exact Python-compatible behavior and invariants:
+- Row order preservation: preserves active table row order primary (`side = 0`) and
+  append table row sequence secondary (`side = 1`), preserving internal row sequence
+  within each side via `row_number() OVER ()`.
+- Column alignment: projects columns by explicit active dataset schema name on both
+  sides before `UNION ALL`, guaranteeing correct alignment even if the named table
+  columns were defined in a different order.
+- Collision-free internal ordering columns: uses `unique_internal_name` to avoid
+  colliding with existing columns named `__tabdat_append_side` or `__tabdat_append_row`.
+- Detached transform behavior: sets `active_table_name = None` so that subsequent
+  mutations on the active relation do not overwrite the named table from which active
+  was originally loaded, preserving the named table snapshot.
+- Variable label retention: preserves surviving variable labels from the active relation
+  via `self.retain_label_metadata`.
+- Atomic staging table lifecycle: builds the appended relation in `__tabdat_staging`
+  and atomically publishes it to `__tabdat_active`, cleaning up staging on failure
+  without altering session state.
+- Multi-statement `.td` script integration: scripts can execute `append` commands
+  seamlessly alongside `sql ... into <table>` and other transformation commands.
+
+Evidence: [_workspace/runtime-append-execution/](_workspace/runtime-append-execution/),
+including the [contract](_workspace/runtime-append-execution/01-contract.md) and
+[summary](_workspace/runtime-append-execution/04-summary.md), `crates/tabdat-runtime/src/lib.rs`,
+and `crates/tabdat-runtime/tests/append_contract.rs`. All 11 focused integration tests,
+the existing `sql_contract`, `join_contract`, `use_contract`, and `run_contract` suites,
+locked workspace checks, policy checks, PR-head workflows, and squash merge passed.
+
+This accepted runtime `append` execution slice leaves remote DuckDB sessions, external databases,
+schema evolution/union of mismatched columns, and CLI/JSON/MCP rendering deferred.
+
 ## Verified slice: reproducible build baseline
 
 
