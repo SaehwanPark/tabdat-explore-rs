@@ -1635,6 +1635,56 @@ PR-head workflows, and squash merge passed.
 This accepted runtime script execution slice leaves interactive REPL loop, terminal CLI runner,
 and external script fixtures deferred.
 
+## Verified slice: bounded runtime SQL query and named table execution
+
+Merged PR #137 (`44686be`) extends the runtime boundary with bounded SQL query
+execution and named-table lifecycle management for the `sql <query> [into <table>]`
+command (Roadmap Phase 4 §6.5 & §6.1). It exposes typed execution results and error
+diagnostics in `tabdat-runtime`:
+- `TableResult { headers: Vec<String>, rows: Vec<Vec<CellValue>> }` representing typed
+  tabular query results from direct `SELECT` or `WITH` queries.
+- `SqlCreateResult { table_name: String, dataset: DatasetInfo }` representing target
+  named table creation and active dataset publishing.
+- `ActivateResult { table_name: String, dataset: DatasetInfo }` representing named table
+  activation into the active relation.
+- `ExecutionResult::Table`, `ExecutionResult::SqlCreate`, and `ExecutionResult::Activate`
+  variants added to the typed public execution result model.
+- `RuntimeError::SqlNotSelectOrWith`, `RuntimeError::SqlFailed`,
+  `RuntimeError::SqlNoTableResult`, `RuntimeError::UseOptionsNotSupportedForNamedTable`,
+  and `RuntimeError::UnknownTable { name }` with exact Python-parity diagnostics.
+- `Session::execute_sql(&mut self, query, into)` entry point, `Session::named_tables()`,
+  and `Session::active_table_name()` accessors.
+
+The runtime SQL engine enforces exact Python-compatible behavior and diagnostics:
+- Direct query execution (`sql <query>`): evaluates against DuckDB with the `active`
+  view bound, returning headers and cell values without modifying the active dataset.
+- Target query execution (`sql <query> into <table>`): evaluates query into temporary table
+  `__tabdat_named_<table>`, updates `__tabdat_active`, registers the table in `named_tables`,
+  and tracks `active_table_name`.
+- Active named table synchronization: subsequent transforms (`keep`, `drop`, `generate`,
+  `replace`, `rename`, `sort`, `gsort`, `recode`, `encode`, `decode`, `collapse`) that
+  mutate `__tabdat_active` automatically update the underlying `__tabdat_named_<name>`
+  table and in-memory registry.
+- Named table activation: `use <table>` resolves against `named_tables`, publishes the
+  relation as active, and rejects loader options (`delimiter`, `lazy`, etc.) with
+  `use options are not supported for named table activation`.
+- Query validation: ensures queries begin with `select` or `with` (case-insensitive);
+  non-query statements return `sql only supports select or with queries in Phase 4`.
+- Unresolved table diagnostics: `use <missing>` without file extension or path
+  separators produces `unknown table: <name>`.
+- Multi-statement `.td` script integration: scripts can execute multiline triple-quoted
+  SQL queries and `into <table>` workflows seamlessly.
+
+Evidence: [_workspace/runtime-sql/](_workspace/runtime-sql/),
+including the [contract](_workspace/runtime-sql/01-contract.md) and
+[summary](_workspace/runtime-sql/04-summary.md), `crates/tabdat-runtime/src/lib.rs`,
+and `crates/tabdat-runtime/tests/sql_contract.rs`. All 10 focused integration tests,
+the updated `use_contract` suite, locked workspace checks, policy checks, PR-head
+workflows, and squash merge passed.
+
+This accepted runtime SQL query and named table execution slice leaves multi-database
+connections, remote DuckDB sessions, and CLI/JSON/MCP rendering deferred.
+
 ## Verified slice: reproducible build baseline
 
 
