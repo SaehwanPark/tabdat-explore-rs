@@ -122,6 +122,8 @@ pub enum Command {
   Test { command: TestCommand },
   /// Compute a histogram of a variable (visualization execution is deferred).
   Histogram { command: HistogramCommand },
+  /// Compute a scatter plot of two variables (visualization execution is deferred).
+  Scatter { command: ScatterCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -1075,6 +1077,19 @@ pub struct HistogramCommand {
   pub open_artifact: bool,
 }
 
+/// Parsed `scatter` visualization specification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScatterCommand {
+  /// The y-axis variable to plot.
+  pub y_variable: String,
+  /// The x-axis variable to plot.
+  pub x_variable: String,
+  /// Optional file path to save the generated plot.
+  pub saving: Option<String>,
+  /// Whether to open the generated artifact in the browser/viewer (default true).
+  pub open_artifact: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1745,6 +1760,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..7)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"scatter"))
+    && command.as_bytes().get(7) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -2114,6 +2137,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "histogram assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("scatter") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "scatter assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -2207,6 +2238,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "lincom" => parse_lincom_command(body),
     "test" => parse_test_command(body),
     "histogram" => parse_histogram_command(body),
+    "scatter" => parse_scatter_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -8147,6 +8179,100 @@ fn parse_histogram_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_scatter_command(body: &str) -> Result<Command, ParseError> {
+  let (path_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(path_body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "scatter assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && path_body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "scatter assignment requires an expression after =",
+    ));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  if parts.has_condition || parts.has_assignment {
+    return Err(ParseError::new(
+      "scatter does not accept if clauses or assignment syntax",
+    ));
+  }
+  if parts.arguments.len() != 2 {
+    return Err(ParseError::new(
+      "scatter expects syntax: scatter y_var x_var",
+    ));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "saving" | "noopen"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "scatter unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noopen" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "scatter option noopen does not accept a value",
+      ));
+    }
+  }
+
+  let parse_saving_option = || -> Result<Option<String>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == "saving")
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(
+        "scatter option saving may only be supplied once",
+      ));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    match &option.value {
+      UseOptionValue::String(s) => Ok(Some(s.clone())),
+      _ => Err(ParseError::new("scatter option saving expects a path")),
+    }
+  };
+
+  let saving = parse_saving_option()?;
+  let open_artifact = !options.iter().any(|option| option.name == "noopen");
+
+  let mut args = parts.arguments.into_iter();
+  let y_variable = args.next().unwrap().text;
+  let x_variable = args.next().unwrap().text;
+
+  Ok(Command::Scatter {
+    command: ScatterCommand {
+      y_variable,
+      x_variable,
+      saving,
+      open_artifact,
+    },
+  })
+}
+
 fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
   let tokens = tokenize_use_options(body.trim_matches(is_command_whitespace))?;
   if tokens.is_empty() {
@@ -10258,10 +10384,10 @@ mod tests {
     GenerateExpression, HeckmanCommand, HistogramCommand, LassoCommand, LazyEngine, LincomCommand,
     LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
     PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
-    RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand,
-    SpregressContiguity, SpregressModelType, SqlCommand, StregCommand, StregDistribution,
-    TabulateCommand, TestCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand,
-    parse_command,
+    RegressEstimator, RidgeCommand, RowLimit, ScatterCommand, SettingName, SortKey,
+    SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand, StregCommand,
+    StregDistribution, TabulateCommand, TestCommand, TobitCommand, XtLogitCommand, ZinbCommand,
+    ZipCommand, parse_command,
   };
 
   #[test]
@@ -17955,6 +18081,154 @@ mod tests {
       (
         "histogram x, noopen(true)",
         "histogram option noopen does not accept a value",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_scatter_syntax() {
+    assert_eq!(
+      parse_command("scatter y x").unwrap(),
+      Command::Scatter {
+        command: ScatterCommand {
+          y_variable: "y".into(),
+          x_variable: "x".into(),
+          saving: None,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("scatter price weight, saving(plot.png)").unwrap(),
+      Command::Scatter {
+        command: ScatterCommand {
+          y_variable: "price".into(),
+          x_variable: "weight".into(),
+          saving: Some("plot.png".into()),
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("scatter price weight, saving(\"my plot.png\")").unwrap(),
+      Command::Scatter {
+        command: ScatterCommand {
+          y_variable: "price".into(),
+          x_variable: "weight".into(),
+          saving: Some("my plot.png".into()),
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("scatter price weight, noopen").unwrap(),
+      Command::Scatter {
+        command: ScatterCommand {
+          y_variable: "price".into(),
+          x_variable: "weight".into(),
+          saving: None,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("scatter price weight, saving(out.png) noopen").unwrap(),
+      Command::Scatter {
+        command: ScatterCommand {
+          y_variable: "price".into(),
+          x_variable: "weight".into(),
+          saving: Some("out.png".into()),
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by foreign: scatter price weight, noopen").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["foreign".into()],
+          command: Box::new(Command::Scatter {
+            command: ScatterCommand {
+              y_variable: "price".into(),
+              x_variable: "weight".into(),
+              saving: None,
+              open_artifact: false,
+            },
+          }),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_scatter_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("scatter", "scatter expects syntax: scatter y_var x_var"),
+      (
+        "scatter price",
+        "scatter expects syntax: scatter y_var x_var",
+      ),
+      (
+        "scatter price weight extra",
+        "scatter expects syntax: scatter y_var x_var",
+      ),
+      (
+        "scatter, noopen",
+        "scatter expects syntax: scatter y_var x_var",
+      ),
+      ("scatter:", "unsupported token in command: :"),
+      ("scatter: price weight", "unsupported token in command: :"),
+      ("scatter=", "scatter assignment requires a target before ="),
+      ("scatter=1", "scatter assignment requires a target before ="),
+      (
+        "scatter = 1",
+        "scatter assignment requires a target before =",
+      ),
+      ("scatter==", "unsupported token in command: =="),
+      ("scatter==1", "unsupported token in command: =="),
+      ("scatter,", "comma must be followed by at least one option"),
+      (
+        "scatter price weight = 2",
+        "scatter does not accept if clauses or assignment syntax",
+      ),
+      (
+        "scatter price weight =",
+        "scatter assignment requires an expression after =",
+      ),
+      (
+        "scatter price weight if price > 0",
+        "scatter does not accept if clauses or assignment syntax",
+      ),
+      (
+        "scatter price weight, foo",
+        "scatter unsupported option: foo",
+      ),
+      (
+        "scatter price weight, zebra apple",
+        "scatter unsupported option: apple, zebra",
+      ),
+      (
+        "scatter price weight, saving",
+        "scatter option saving expects a path",
+      ),
+      (
+        "scatter price weight, saving(a) saving(b)",
+        "scatter option saving may only be supplied once",
+      ),
+      (
+        "scatter price weight, noopen=1",
+        "scatter option noopen does not accept a value",
+      ),
+      (
+        "scatter price weight, noopen(true)",
+        "scatter option noopen does not accept a value",
       ),
     ];
     for (input, expected) in cases {
