@@ -918,12 +918,11 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 - [x] Implement repeated `-c` (PR #145, squash merge `231613f`; sequential batch execution on `Session` stopping on first error).
 - [x] Implement `-f` (PR #145, squash merge `231613f`; TabDat `.td` script execution via `Session::execute_run`).
 - [x] Implement positional script execution (PR #145, squash merge `231613f`; positional `<script>` path execution and doctor shortcut).
-- [x] Implement `--version` (PR #145, squash merge `231613f`; reports `tabdat 0.1.0` and exits 0).
-- [ ] Implement `--json`.
-- [ ] Implement `--list-commands`.
-- [ ] Implement `--help-topic`.
-- [ ] Implement `--explain`.
-- [ ] Implement command-effect discovery.
+- [x] Implement `--json` (PR #147, squash merge `c3ff323`; JSON error envelopes and machine-readable output mode).
+- [x] Implement `--list-commands` (PR #147, squash merge `c3ff323`; canonical 81-command catalog in versioned JSON format).
+- [x] Implement `--help-topic` (PR #147, squash merge `c3ff323`; packaged in-app markdown help topics retrieval in versioned JSON format).
+- [x] Implement `--explain` (PR #147, squash merge `c3ff323`; syntax-only command parsing and preview without starting a session or initializing duckdb).
+- [x] Implement command-effect discovery (PR #147, squash merge `c3ff323`; `--list-command-effects` and `--describe-command <cmd>` in versioned JSON format).
 
 ### 7.2 REPL
 

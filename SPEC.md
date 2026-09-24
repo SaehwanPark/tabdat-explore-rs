@@ -1874,6 +1874,41 @@ This accepted CLI slice leaves interactive REPL shell (§7.2), JSON serializatio
 terminal table rendering (§7.3), visualization (§7.4), MCP server (§7.5), and discovery
 flags deferred.
 
+## Verified slice: CLI JSON and command discovery interfaces
+
+Merged PR #147 (`c3ff323`) implements CLI discovery flags, in-app help topic retrieval,
+syntax-only command explanation, and versioned JSON output envelopes (Roadmap Phase 5 §7.1):
+- **Command Discovery & Schemas (`src/catalog.rs`)**:
+  - `COMMAND_NAMES`: Canonical 81-command catalog sorted alphabetically.
+  - `COMMAND_EFFECTS`: Declared command effects mapped across canonical categories (`read`, `write`, `control`, `plot`, `unknown`).
+  - `COMMAND_SCHEMAS`: Complete syntax, argument descriptors, option descriptors, and help topic associations for all 81 commands.
+  - `ResultEnvelope<T>` and `ErrorEnvelope`: Versioned machine-readable envelopes (`schema_version: 1`) with exact key-ordered serialization matching Python oracle `16b45d9`.
+- **In-App Help Topics (`src/help.rs`, `src/help/topics/`)**:
+  - Packaged all 79 canonical help topic markdown files.
+  - Case-insensitive lookup via `load_help_topic_text()`.
+- **CLI Discovery Flags (`src/cli.rs`)**:
+  - `--json`: Machine-readable output mode; produces JSON error envelopes on execution and discovery errors.
+  - `--list-commands`: Emits `CommandCatalogResult` (requires `--json`).
+  - `--list-command-effects`: Emits `CommandEffectCatalogResult` (requires `--json`).
+  - `--help-topic <topic>`: Emits `HelpTopicResult` with topic documentation (requires `--json`).
+  - `--describe-command <cmd>`: Emits `CommandSchemaResult` (requires `--json`).
+  - `--explain`: Syntax-only parsing and command preview via `-c`/`--command` without starting a session or initializing `duckdb` (requires `--json`).
+  - Full mutual exclusivity and argument requirements validation matching Python `argparse` with exit code 2 on CLI errors.
+- **Testing**:
+  - 19 unit tests across `cli.rs`, `catalog.rs`, and `help.rs`.
+  - 17 integration contract tests in `tests/cli_discovery_contract.rs`.
+  - Backwards compatibility confirmed with `tests/cli_contract.rs` and `tests/scaffold.rs`.
+
+Evidence: [_workspace/cli-json-discovery/](_workspace/cli-json-discovery/),
+including the [contract](_workspace/cli-json-discovery/01-contract.md) and
+[summary](_workspace/cli-json-discovery/04-summary.md), `src/catalog.rs`, `src/help.rs`,
+`src/cli.rs`, and `tests/cli_discovery_contract.rs`. Locked workspace checks, policy
+checks, PR-head workflows, and squash merge passed.
+
+This accepted CLI discovery slice leaves interactive REPL shell (§7.2), runtime
+execution JSON result serialization and terminal table rendering (§7.3), visualization
+(§7.4), and MCP server (§7.5) deferred.
+
 ## Verified slice: reproducible build baseline
 
 
