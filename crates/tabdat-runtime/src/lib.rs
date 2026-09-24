@@ -10,6 +10,10 @@ use std::path::{Path, PathBuf};
 use duckdb::types::{TimeUnit, Value, ValueRef};
 use duckdb::{Connection, params};
 use sha2::{Digest, Sha256};
+use tabdat_language::script::{
+  ControlFlowDirective, ScriptBlockState, ScriptContext, ScriptDirective, ScriptError,
+  expand_script_macros, parse_control_flow_directive, parse_script_directive, read_script,
+};
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
   DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, LabelCommand, LabelValue,
@@ -406,6 +410,15 @@ pub struct PreviewResult {
   pub rows: Vec<Vec<CellValue>>,
 }
 
+/// The owned result returned after executing a .td script.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunResult {
+  /// The resolved path of the executed script.
+  pub path: PathBuf,
+  /// Total count of successfully executed commands in the script and nested scripts.
+  pub executed_commands: usize,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
@@ -467,6 +480,8 @@ pub enum ExecutionResult {
   Head(PreviewResult),
   /// The requested suffix of rows from the currently active dataset.
   Tail(PreviewResult),
+  /// The result of executing a script file.
+  Run(RunResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -716,6 +731,8 @@ pub enum RuntimeError {
   SelectNoVariables,
   /// DuckDB could not stage or publish the projected relation.
   SelectFailed,
+  /// A script parsing or execution error with source file and line diagnostics.
+  ScriptError(ScriptError),
 }
 
 impl fmt::Display for RuntimeError {
@@ -1118,11 +1135,18 @@ impl fmt::Display for RuntimeError {
       }
       Self::SelectNoVariables => formatter.write_str("select expects a variable list"),
       Self::SelectFailed => formatter.write_str("select failed"),
+      Self::ScriptError(error) => write!(formatter, "{error}"),
     }
   }
 }
 
 impl Error for RuntimeError {}
+
+impl From<ScriptError> for RuntimeError {
+  fn from(error: ScriptError) -> Self {
+    Self::ScriptError(error)
+  }
+}
 
 /// A session holding optional active metadata and a private DuckDB adapter.
 pub struct Session {
@@ -1195,6 +1219,7 @@ impl Session {
       Command::Export { path, replace } => self.execute_export(path, replace),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
+      Command::Run { path } => self.execute_run(path),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1398,7 +1423,7 @@ impl Session {
             .ok_or(RuntimeError::MissingFailed)?,
         ))
       })
-      .collect::<Result<Vec<_>, _>>()?;
+      .collect::<Result<Vec<_>, RuntimeError>>()?;
     let backend = self.backend.as_ref().ok_or(RuntimeError::MissingFailed)?;
     let rows = backend
       .missingness(&typed_requested)
@@ -2902,6 +2927,219 @@ impl Session {
     self.active_dataset = Some(dataset.clone());
     Ok(ExecutionResult::Load(LoadResult { dataset }))
   }
+
+  /// Execute a .td script file against this session.
+  pub fn execute_run(
+    &mut self,
+    raw_path: impl AsRef<Path>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let mut active_stack = Vec::new();
+    let mut context = ScriptContext::empty();
+    let result =
+      self.execute_script_file(raw_path.as_ref(), None, &mut active_stack, &mut context)?;
+    Ok(ExecutionResult::Run(result))
+  }
+
+  fn execute_script_file(
+    &mut self,
+    path: &Path,
+    base_dir: Option<&Path>,
+    active_stack: &mut Vec<PathBuf>,
+    context: &mut ScriptContext,
+  ) -> Result<RunResult, RuntimeError> {
+    let resolved_path = resolve_script_path(path, base_dir);
+    if active_stack.contains(&resolved_path) {
+      return Err(RuntimeError::ScriptError(ScriptError::new(
+        resolved_path,
+        1,
+        "recursive script inclusion is not supported",
+      )));
+    }
+
+    let commands = read_script(&resolved_path)?;
+    active_stack.push(resolved_path.clone());
+
+    let mut block_state: Option<ScriptBlockState> = None;
+    let mut executed_commands = 0;
+
+    for script_command in commands {
+      let line = script_command.start_line;
+      let raw_text = script_command.text;
+
+      // In an inactive branch, only control-flow directives are evaluated.
+      if let Some(ref state) = block_state
+        && !state.current_branch_active()
+      {
+        let stripped = raw_text.trim();
+        let first_token = stripped
+          .split_whitespace()
+          .next()
+          .unwrap_or("")
+          .to_ascii_lowercase();
+        if first_token != "if" && first_token != "else" && first_token != "end" {
+          continue;
+        }
+      }
+
+      let expanded_text = expand_script_macros(&raw_text, context, &resolved_path, line)?;
+
+      // Control flow directives: if, else, end
+      if let Some(control) = parse_control_flow_directive(&expanded_text, &resolved_path, line)? {
+        match control {
+          ControlFlowDirective::If(directive) => {
+            if block_state.is_some() {
+              return Err(RuntimeError::ScriptError(ScriptError::new(
+                &resolved_path,
+                line,
+                "nested if blocks are not supported",
+              )));
+            }
+            block_state = Some(ScriptBlockState::new(line, directive.active));
+          }
+          ControlFlowDirective::Else(_) => {
+            let Some(ref mut state) = block_state else {
+              return Err(RuntimeError::ScriptError(ScriptError::new(
+                &resolved_path,
+                line,
+                "else without matching if",
+              )));
+            };
+            if state.in_else {
+              return Err(RuntimeError::ScriptError(ScriptError::new(
+                &resolved_path,
+                line,
+                "if block already has an else branch",
+              )));
+            }
+            state.in_else = true;
+          }
+          ControlFlowDirective::End(_) => {
+            if block_state.is_none() {
+              return Err(RuntimeError::ScriptError(ScriptError::new(
+                &resolved_path,
+                line,
+                "end without matching if",
+              )));
+            }
+            block_state = None;
+          }
+        }
+        continue;
+      }
+
+      // Script directives: seed, let
+      if let Some(directive) =
+        parse_script_directive(&expanded_text, context, &resolved_path, line)?
+      {
+        match directive {
+          ScriptDirective::Seed(seed_dir) => {
+            context.seed = Some(seed_dir.value);
+          }
+          ScriptDirective::Let(let_dir) => {
+            context.macros.insert(let_dir.name, let_dir.value);
+          }
+        }
+        continue;
+      }
+
+      // Parse and execute command
+      let command = match tabdat_language::parse_command(&expanded_text) {
+        Ok(cmd) => cmd,
+        Err(err) => {
+          return Err(RuntimeError::ScriptError(ScriptError::new(
+            &resolved_path,
+            line,
+            err.to_string(),
+          )));
+        }
+      };
+
+      match command {
+        Command::Exit => {
+          break;
+        }
+        Command::Run { path: nested_path } => {
+          let nested_base = resolved_path.parent();
+          let nested_result = self.execute_script_file(
+            Path::new(&nested_path),
+            nested_base,
+            active_stack,
+            context,
+          )?;
+          executed_commands += nested_result.executed_commands;
+        }
+        other => match self.execute(other) {
+          Ok(_) => {
+            executed_commands += 1;
+          }
+          Err(RuntimeError::ScriptError(err)) => {
+            return Err(RuntimeError::ScriptError(err));
+          }
+          Err(err) => {
+            return Err(RuntimeError::ScriptError(ScriptError::new(
+              &resolved_path,
+              line,
+              err.to_string(),
+            )));
+          }
+        },
+      }
+    }
+
+    if let Some(state) = block_state {
+      return Err(RuntimeError::ScriptError(ScriptError::new(
+        &resolved_path,
+        state.start_line,
+        "if block is missing end",
+      )));
+    }
+
+    active_stack.pop();
+
+    Ok(RunResult {
+      path: resolved_path,
+      executed_commands,
+    })
+  }
+}
+
+fn resolve_script_path(path: &Path, base_dir: Option<&Path>) -> PathBuf {
+  let path_str = path.to_string_lossy();
+  let clean_str = path_str.trim_matches(['"', '\'']);
+  let clean_path = Path::new(clean_str);
+  let candidate = if clean_path.is_absolute() {
+    clean_path.to_path_buf()
+  } else if let Some(dir) = base_dir {
+    dir.join(clean_path)
+  } else {
+    std::env::current_dir()
+      .unwrap_or_else(|_| PathBuf::from("."))
+      .join(clean_path)
+  };
+  if let Ok(canonical) = candidate.canonicalize() {
+    canonical
+  } else {
+    normalize_path(&candidate)
+  }
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+  use std::path::Component;
+  let mut components = Vec::new();
+  for component in path.components() {
+    match component {
+      Component::CurDir => {}
+      Component::ParentDir => {
+        if let Some(Component::Normal(_)) = components.last() {
+          components.pop();
+        } else {
+          components.push(component);
+        }
+      }
+      c => components.push(c),
+    }
+  }
+  components.into_iter().collect()
 }
 
 fn ensure_label_variable(dataset: &DatasetInfo, variable: &str) -> Result<(), RuntimeError> {
