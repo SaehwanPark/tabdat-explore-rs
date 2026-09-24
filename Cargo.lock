@@ -1185,6 +1185,10 @@ dependencies = [
 [[package]]
 name = "tabdat-explore-rs"
 version = "0.1.0"
+dependencies = [
+ "tabdat-language",
+ "tabdat-runtime",
+]
 
 [[package]]
 name = "tabdat-language"

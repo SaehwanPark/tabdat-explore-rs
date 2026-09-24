@@ -5,6 +5,8 @@ edition = "2024"
 publish = false
 
 [dependencies]
+tabdat-language = { path = "crates/tabdat-language", version = "0.1.0" }
+tabdat-runtime = { path = "crates/tabdat-runtime", version = "0.1.0" }
 
 [workspace]
 members = [".", "crates/tabdat-language", "crates/tabdat-runtime"]
