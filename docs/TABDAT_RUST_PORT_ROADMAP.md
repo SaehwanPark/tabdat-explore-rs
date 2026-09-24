@@ -802,8 +802,16 @@ Reach end-to-end parity for ordinary data exploration and transformation without
   external databases, right/full outer joins (not supported in TabDat language),
   and CLI/JSON/MCP rendering remain deferred; detailed contract/evidence in
   `_workspace/runtime-join-execution/`.
-- [ ] `append` — runtime remains deferred; the parser boundary is accepted in
-  the Phase 5.1 direct-language slice (PR #60, squash merge `8ab016f`).
+- [x] `append` — bounded eager runtime append command execution against an active
+  relation and named table (`AppendResult`; PR #141, squash merge `800a231`).
+  Full column parity validation, canonical data type compatibility, column
+  alignment by name, deterministic row order (active table primary, append table
+  secondary), collision-free internal ordering columns, surviving label
+  retention, detached transform (`active_table_name = None`) preserving named
+  table snapshots, and atomic staging table publication are covered. Remote
+  DuckDB sessions, external databases, schema evolution/union of mismatched
+  columns, and CLI/JSON/MCP rendering remain deferred; detailed contract/evidence
+  in `_workspace/runtime-append-execution/`.
 - [ ] `reshape` — runtime remains deferred; the parser boundary is accepted in
   the Phase 5.1 direct-language slice (PR #61, squash merge `e6cc4f1`).
 - [x] `tabulate` — bounded eager local-Parquet one- and two-way frequency
