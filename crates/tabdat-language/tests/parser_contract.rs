@@ -1,13 +1,14 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, BayesPrefixCommand, ByCommand, CfRegressCommand,
-  CollapseCommand, CollapseStatistic, Command, DataSource, DidCommand, DmlCommand, DrDidCommand,
-  DrDidMethod, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
-  GenerateExpression, HistogramCommand, IvEstimator, IvRegressCommand, JoinCommand, JoinHow,
-  LabelCommand, LabelValue, LazyEngine, LincomCommand, LogitCommand, LowessCommand, PanelAction,
-  PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  ScatterCommand, SettingName, SortKey, TabulateCommand, TestCommand, XtAbondCommand,
-  XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
+  AssertBinaryOperator, AssertExpression, BarCommand, BayesPrefixCommand, ByCommand,
+  CfRegressCommand, CollapseCommand, CollapseStatistic, Command, DataSource, DidCommand,
+  DmlCommand, DrDidCommand, DrDidMethod, EstatCommand, EstatSubcommand, ExecutionMode,
+  GenerateBinaryOperator, GenerateExpression, HistogramCommand, IvEstimator, IvRegressCommand,
+  JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand, LogitCommand,
+  LowessCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint,
+  RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand,
+  ReshapeDirection, RowLimit, ScatterCommand, SettingName, SortKey, TabulateCommand, TestCommand,
+  XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator,
+  parse_command,
 };
 
 #[test]
@@ -2808,6 +2809,164 @@ fn scatter_preserves_bounded_parser_diagnostics() {
     (
       "scatter price weight, noopen(true)",
       "scatter option noopen does not accept a value",
+    ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn bar_parses_supported_options_and_targets() {
+  assert_eq!(
+    parse_command("bar sex").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: None,
+        include_missing: false,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, missing noopen").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: None,
+        include_missing: true,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, saving(out.png)").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: Some("out.png".into()),
+        include_missing: false,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, saving(\"my bar.png\")").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: Some("my bar.png".into()),
+        include_missing: false,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, missing").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: None,
+        include_missing: true,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, noopen").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: None,
+        include_missing: false,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("bar sex, saving(out.png) missing noopen").unwrap(),
+    Command::Bar {
+      command: BarCommand {
+        variable: "sex".into(),
+        saving: Some("out.png".into()),
+        include_missing: true,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("by foreign: bar sex, missing noopen").unwrap(),
+    Command::By {
+      command: ByCommand {
+        groups: vec!["foreign".into()],
+        command: Box::new(Command::Bar {
+          command: BarCommand {
+            variable: "sex".into(),
+            saving: None,
+            include_missing: true,
+            open_artifact: false,
+          },
+        }),
+      },
+    }
+  );
+}
+
+#[test]
+fn bar_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("bar", "bar expects exactly one variable"),
+    ("bar sex age", "bar expects exactly one variable"),
+    ("bar, missing", "bar expects exactly one variable"),
+    ("bar:", "unsupported token in command: :"),
+    ("bar: sex", "unsupported token in command: :"),
+    ("bar=", "bar assignment requires a target before ="),
+    ("bar=1", "bar assignment requires a target before ="),
+    ("bar = 1", "bar assignment requires a target before ="),
+    ("bar==", "unsupported token in command: =="),
+    ("bar==1", "unsupported token in command: =="),
+    ("bar,", "comma must be followed by at least one option"),
+    (
+      "bar sex = 1",
+      "bar does not accept if clauses or assignment syntax",
+    ),
+    ("bar sex =", "bar assignment requires an expression after ="),
+    (
+      "bar sex if age > 18",
+      "bar does not accept if clauses or assignment syntax",
+    ),
+    ("bar sex, foo", "bar unsupported option: foo"),
+    (
+      "bar sex, zebra apple",
+      "bar unsupported option: apple, zebra",
+    ),
+    ("bar sex, bins=20", "bar unsupported option: bins"),
+    ("bar sex, saving", "bar option saving expects a path"),
+    (
+      "bar sex, saving(a) saving(b)",
+      "bar option saving may only be supplied once",
+    ),
+    (
+      "bar sex, missing=true",
+      "bar option missing does not accept a value",
+    ),
+    (
+      "bar sex, missing(a)",
+      "bar option missing does not accept a value",
+    ),
+    (
+      "bar sex, noopen=1",
+      "bar option noopen does not accept a value",
+    ),
+    (
+      "bar sex, noopen(true)",
+      "bar option noopen does not accept a value",
     ),
   ];
 
