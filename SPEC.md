@@ -1482,6 +1482,33 @@ workflows all passed.
 This accepted syntax slice leaves DuckDB binned frequency aggregation, plot SVG/PNG rendering,
 artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: visualization scatter plot syntax
+
+The visualization scatter plot syntax slice (Phase 7 §7.4)
+adds bounded, backend-independent visualization scatter plot syntax boundaries to
+`tabdat-language`. The parser returns an owned `ScatterCommand` type with
+target y-variable (`y_variable: String`), target x-variable (`x_variable: String`),
+optional save path (`saving: Option<String>`), and open-in-viewer flag (`open_artifact: bool`, defaulting to `true` unless `noopen` is supplied).
+It enforces exact Python-compatible diagnostics for missing or extraneous variables (`scatter expects syntax: scatter y_var x_var`),
+if clauses and assignment syntax (`scatter does not accept if clauses or assignment syntax`), assignment missing target or expression
+(`scatter assignment requires a target before =` and `scatter assignment requires an expression after =`),
+attached colons and double equals (`unsupported token in command: :` and `unsupported token in command: ==`),
+trailing commas without options (`comma must be followed by at least one option`), unsupported options (`scatter unsupported option: <sorted_opts>`),
+flag option values (`scatter option noopen does not accept a value`), and saving validation
+(`scatter option saving expects a path`, `scatter option saving may only be supplied once`).
+Owned `String` and primitive types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform DuckDB data extraction,
+Vega-Lite spec generation, plot SVG/PNG rendering, artifact filesystem emission, or browser/viewer interaction.
+
+Evidence: [_workspace/parser-scatter-syntax/](_workspace/parser-scatter-syntax/),
+including the [contract](_workspace/parser-scatter-syntax/01-contract.md) and
+[summary](_workspace/parser-scatter-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves DuckDB data extraction, Vega-Lite spec generation, plot SVG/PNG rendering,
+artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
