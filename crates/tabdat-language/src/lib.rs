@@ -1,5 +1,13 @@
 #![forbid(unsafe_code)]
 
+pub mod script;
+pub use script::{
+  ControlFlowDirective, ElseDirective, EndDirective, IfDirective, LetDirective, ScriptBlockState,
+  ScriptCommand, ScriptContext, ScriptDirective, ScriptError, SeedDirective,
+  evaluate_script_condition, expand_script_macros, parse_control_flow_directive, parse_script,
+  parse_script_directive, read_script,
+};
+
 use std::error::Error;
 use std::fmt;
 
