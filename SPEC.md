@@ -550,7 +550,7 @@ This accepted syntax slice leaves named-table registry and activation, SQL
 creation, DuckDB join execution, key type/null semantics, collision/order and
 publication rules, labels, lazy/materialized behavior, persistence, formatting,
 CLI, JSON, MCP, and broad Python `join` parity deferred. Phase 6.4 runtime
-`join` remains unchecked.
+`join` was subsequently implemented in PR #139 (squash merge `56babda`).
 
 ## Verified slice: syntax-only `append` command
 
@@ -1684,6 +1684,53 @@ workflows, and squash merge passed.
 
 This accepted runtime SQL query and named table execution slice leaves multi-database
 connections, remote DuckDB sessions, and CLI/JSON/MCP rendering deferred.
+
+## Verified slice: bounded eager runtime `join` command execution
+
+Merged PR #139 (`56babda`) extends the runtime boundary with bounded `join` command
+execution against an active relation and a registered named table for the
+`join <table> on <keylist> [, how=inner|left suffix(_right)]` command
+(Roadmap Phase 4 §6.4 & §6.1). It exposes typed execution results and error
+diagnostics in `tabdat-runtime`:
+- `JoinResult { dataset: DatasetInfo }` representing the transformed dataset
+  resulting from the join operation.
+- `ExecutionResult::Join(JoinResult)` variant added to the typed public execution
+  result model.
+- `RuntimeError::JoinUnknownVariable { variables: Vec<String> }` and
+  `RuntimeError::JoinUnknownVariableInTable { table_name: String, variables: Vec<String> }`
+  with exact Python-parity diagnostics.
+- `Session::execute_join(&mut self, command: &JoinCommand)` entry point, also
+  routed from `Session::execute`.
+
+The runtime join engine enforces exact Python-compatible behavior and invariants:
+- Row order preservation: preserves active table row order primary and matching
+  named-table row sequence secondary using collision-free internal row order
+  identifiers (`__tabdat_join_order`, `__tabdat_join_right_order`).
+- Right-side column collision handling: renames colliding columns from the right-hand
+  relation using default suffix `_right` or user-specified `suffix(...)`, ensuring
+  collision-free output identifiers via incremental suffix dedup.
+- Inner and Left joins: supports `how=inner` (filtering to matching keys) and
+  `how=left` (preserving all active rows, filling missing right columns with NULL).
+- Multi-key joins: supports joining on multiple key columns (`join <table> on key1 key2`).
+- Surviving label metadata retention: preserves left-table variable labels for
+  surviving columns via `self.retain_label_metadata`.
+- Active named table synchronization: updates underlying named table and registry if the
+  active dataset was loaded from a named table.
+- Atomic staging table lifecycle: builds the joined relation in `__tabdat_staging`
+  and atomically publishes it to `__tabdat_active`, cleaning up staging on failure
+  without altering session state.
+- Multi-statement `.td` script integration: scripts can execute `join` commands
+  seamlessly alongside `sql ... into <table>` and other transformation commands.
+
+Evidence: [_workspace/runtime-join-execution/](_workspace/runtime-join-execution/),
+including the [contract](_workspace/runtime-join-execution/01-contract.md) and
+[summary](_workspace/runtime-join-execution/04-summary.md), `crates/tabdat-runtime/src/lib.rs`,
+and `crates/tabdat-runtime/tests/join_contract.rs`. All 13 focused integration tests,
+the existing `sql_contract`, `use_contract`, and `run_contract` suites, locked workspace checks,
+policy checks, PR-head workflows, and squash merge passed.
+
+This accepted runtime `join` execution slice leaves remote DuckDB sessions, external databases,
+right/full outer joins (not supported in TabDat language), and CLI/JSON/MCP rendering deferred.
 
 ## Verified slice: reproducible build baseline
 
