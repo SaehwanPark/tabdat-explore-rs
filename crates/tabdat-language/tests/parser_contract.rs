@@ -6,8 +6,8 @@ use tabdat_language::{
   LabelCommand, LabelValue, LazyEngine, LincomCommand, LogitCommand, LowessCommand, PanelAction,
   PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
   RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  SettingName, SortKey, TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand,
-  XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
+  ScatterCommand, SettingName, SortKey, TabulateCommand, TestCommand, XtAbondCommand,
+  XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2670,6 +2670,144 @@ fn histogram_preserves_bounded_parser_diagnostics() {
     (
       "histogram x, noopen(true)",
       "histogram option noopen does not accept a value",
+    ),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn scatter_parses_supported_options_and_targets() {
+  assert_eq!(
+    parse_command("scatter y x").unwrap(),
+    Command::Scatter {
+      command: ScatterCommand {
+        y_variable: "y".into(),
+        x_variable: "x".into(),
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("scatter price weight, saving(plot.png)").unwrap(),
+    Command::Scatter {
+      command: ScatterCommand {
+        y_variable: "price".into(),
+        x_variable: "weight".into(),
+        saving: Some("plot.png".into()),
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("scatter price weight, noopen").unwrap(),
+    Command::Scatter {
+      command: ScatterCommand {
+        y_variable: "price".into(),
+        x_variable: "weight".into(),
+        saving: None,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("scatter price weight, saving(\"out.png\") noopen").unwrap(),
+    Command::Scatter {
+      command: ScatterCommand {
+        y_variable: "price".into(),
+        x_variable: "weight".into(),
+        saving: Some("out.png".into()),
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("by foreign: scatter price weight, noopen").unwrap(),
+    Command::By {
+      command: ByCommand {
+        groups: vec!["foreign".into()],
+        command: Box::new(Command::Scatter {
+          command: ScatterCommand {
+            y_variable: "price".into(),
+            x_variable: "weight".into(),
+            saving: None,
+            open_artifact: false,
+          },
+        }),
+      },
+    }
+  );
+}
+
+#[test]
+fn scatter_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("scatter", "scatter expects syntax: scatter y_var x_var"),
+    (
+      "scatter price",
+      "scatter expects syntax: scatter y_var x_var",
+    ),
+    (
+      "scatter price weight extra",
+      "scatter expects syntax: scatter y_var x_var",
+    ),
+    (
+      "scatter, noopen",
+      "scatter expects syntax: scatter y_var x_var",
+    ),
+    ("scatter:", "unsupported token in command: :"),
+    ("scatter: price weight", "unsupported token in command: :"),
+    ("scatter=", "scatter assignment requires a target before ="),
+    ("scatter=1", "scatter assignment requires a target before ="),
+    (
+      "scatter = 1",
+      "scatter assignment requires a target before =",
+    ),
+    ("scatter==", "unsupported token in command: =="),
+    ("scatter==1", "unsupported token in command: =="),
+    ("scatter,", "comma must be followed by at least one option"),
+    (
+      "scatter price weight = 2",
+      "scatter does not accept if clauses or assignment syntax",
+    ),
+    (
+      "scatter price weight =",
+      "scatter assignment requires an expression after =",
+    ),
+    (
+      "scatter price weight if price > 0",
+      "scatter does not accept if clauses or assignment syntax",
+    ),
+    (
+      "scatter price weight, foo",
+      "scatter unsupported option: foo",
+    ),
+    (
+      "scatter price weight, zebra apple",
+      "scatter unsupported option: apple, zebra",
+    ),
+    (
+      "scatter price weight, saving",
+      "scatter option saving expects a path",
+    ),
+    (
+      "scatter price weight, saving(a) saving(b)",
+      "scatter option saving may only be supplied once",
+    ),
+    (
+      "scatter price weight, noopen=1",
+      "scatter option noopen does not accept a value",
+    ),
+    (
+      "scatter price weight, noopen(true)",
+      "scatter option noopen does not accept a value",
     ),
   ];
 
