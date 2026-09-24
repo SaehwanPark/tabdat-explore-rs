@@ -24,10 +24,11 @@ silently invent parity.
   (`EstimationSample`), parameter estimates (`CoefficientEstimate`), covariance
   representations (`CovarianceMatrix`, `CovarianceType`), convergence and model
   diagnostics (`EstimationDiagnostics`, `FitStatistics`), post-estimation state and
-  linear hypothesis testing (`PostEstimationModel`), backend capability trait
-  (`Estimator`), normalized errors (`StatsError`), and a backward-stable Householder QR
-  baseline OLS kernel (`fit_least_squares`, `predict_linear_response`). It has zero runtime
-  backend dependencies (no DuckDB, no C FFI).
+  linear hypothesis testing (`PostEstimationModel`), backend capability trait (`Estimator`),
+  normalized errors (`StatsError`), matrix sandwich quadratic form (`sandwich`), Lanczos log-gamma and regularized incomplete beta Student's $t$
+  p-values, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
+  `fit_least_squares_with_options`, `predict_linear_response`) supporting classical, robust HC1,
+  and clustered covariance. It has zero runtime backend dependencies (no DuckDB, no C FFI).
 - `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
   parser, forbidding unsafe code, supporting `--version`, `--help`, repeated `-c`,
   `-f`, and positional script execution, while preserving the scaffold greeting
@@ -90,8 +91,12 @@ lifecycle remain deferred.
 
 Merged PR #79 (`e6b81d3`) records the bounded backend-independent syntax-only
 `regress <y> <xvars> [, robust] [, cluster(<var>)] [, noconstant] [, wls(<var>) | gls(<var>)]`
-form. Owned outcome, ordered predictors, typed estimator, weight variable, and covariance
-settings are parsed, while statistical estimation and post-estimation remain deferred.
+form. Merged PR #151 (`9476053`) implements runtime linear regression execution in
+`crates/tabdat-runtime` via `tabdat-stats`, executing OLS, WLS, GLS (1D sigma scaled to
+precision weights $w_i = 1 / \sigma_i$), classical, robust HC1, and clustered covariance,
+with exact sample missingness tracking in `EstimationSample` and session post-estimation
+persistence in `Session::last_regression`. Broader post-estimation commands (`predict`, `test`,
+`lincom`, etc.) remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

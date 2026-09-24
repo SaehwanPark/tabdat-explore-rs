@@ -854,8 +854,9 @@ workflows all passed.
 
 This accepted syntax slice leaves statistical estimation, linear algebra, FFI
 backends, model results, post-estimation, reporting, CLI, JSON, MCP, and broad
-estimator parity deferred. The Phase 7.1 linear model estimation items remain
-unchecked.
+estimator parity deferred. Runtime linear regression execution (OLS, WLS, GLS,
+robust, and cluster covariance) is implemented in PR #151; broader post-estimation,
+reporting, CLI, JSON, and MCP remain deferred.
 
 ## Verified slice: syntax-only `logit` and `probit` commands
 
@@ -1932,6 +1933,38 @@ and PR #149 (squash merge `8370622`).
 
 This accepted statistical contracts substrate slice leaves specific estimator command
 dispatch (`regress`, `ivregress`, `logit`, etc.) and backend integration deferred.
+
+## Verified slice: linear regression runtime execution (`regress`)
+
+Implement end-to-end runtime execution of linear regression (`regress`) connecting
+DuckDB tabular relations in `tabdat-runtime` with numerical estimation kernels in
+`tabdat-stats` (Roadmap Phase 7 §9.2):
+- **Core Estimators & Modes (`crates/tabdat-runtime/src/lib.rs`, `crates/tabdat-stats/src/`)**:
+  - OLS `regress`: Ordinary least squares estimation using Householder QR decomposition with back-substitution.
+  - WLS: Weighted least squares with precision weights ($w_i > 0$).
+  - GLS: Generalized least squares with 1D variance specification ($\sigma_i > 0$) translated to precision weights $w_i = 1 / \sigma_i$.
+  - Robust Covariance (`robust`): Stata HC1 robust sandwich covariance matrix $\frac{n}{n - k} (X^T W X)^{-1} \left(\sum_i (w_i e_i)^2 x_i x_i^T\right) (X^T W X)^{-1}$.
+  - Clustered Covariance (`cluster(var)`): Cluster-robust sandwich covariance matrix with degrees-of-freedom correction $\frac{G}{G - 1} \frac{n - 1}{n - k} (X^T W X)^{-1} \left(\sum_g u_g u_g^T\right) (X^T W X)^{-1}$.
+  - Intercept Suppression (`noconstant`): Fits models through the origin without constant term.
+- **Data Extraction & Missingness Invariants**:
+  - Requires active dataset; checks existence and numeric types for outcome, predictors, and weights.
+  - Row missingness tracking: drops observations with null/NaN in outcome, any predictor, weight, or cluster variable while recording provenance in `EstimationSample` (`retained_indices`, `total_observations`, `dropped_observations`, `weights`, `cluster_groups`).
+  - Strict validation of strictly positive weights ($w_i > 0$) and sigma ($\sigma_i > 0$).
+  - Stores estimation state in `Session::last_regression` for post-estimation inspection.
+  - Returns `ExecutionResult::Regression(Box<RegressionResult>)`.
+- **Differential Validation & Testing**:
+  - Classical, robust HC1, and clustered covariance verified against statsmodels and Python TabDat oracle (`16b45d9`) certified values ($< 10^{-13}$ observed relative error) in `crates/tabdat-stats/tests/robust_cluster_tests.rs`.
+  - 12 comprehensive integration tests in `crates/tabdat-runtime/tests/regress_contract.rs`.
+
+Evidence: [_workspace/linear-regression-runtime/](_workspace/linear-regression-runtime/),
+including the [contract](_workspace/linear-regression-runtime/01-contract.md),
+[design](_workspace/linear-regression-runtime/02-design.md),
+[implementation](_workspace/linear-regression-runtime/03-implementation.md), and
+[summary](_workspace/linear-regression-runtime/04-summary.md), `crates/tabdat-runtime/`,
+`crates/tabdat-stats/`, and PR #151 (squash merge `9476053`).
+
+This accepted runtime regression slice leaves broader post-estimation commands (`predict`,
+`test`, `lincom`, etc.), reporting, CLI table rendering, JSON, and MCP deferred.
 
 ## Verified slice: reproducible build baseline
 

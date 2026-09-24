@@ -1044,11 +1044,11 @@ Port foundational statistical inference and establish the stable estimator backe
 
 ### 9.2 Linear regression
 
-- [ ] Port OLS `regress`.
-- [ ] Port WLS.
-- [ ] Port current GLS semantics.
-- [ ] Port robust covariance.
-- [ ] Port clustered covariance.
+- [x] Port OLS `regress` (PR #151, squash merge `9476053`; classical OLS via Householder QR in `tabdat-stats`, `Session::execute_regress` in `tabdat-runtime`).
+- [x] Port WLS (PR #151, squash merge `9476053`; precision-weighted least squares with strictly positive weight validation).
+- [x] Port current GLS semantics (PR #151, squash merge `9476053`; 1D sigma scaled to $w_i = 1 / \sigma_i$ precision weights with strictly positive sigma validation).
+- [x] Port robust covariance (PR #151, squash merge `9476053`; Stata HC1 robust sandwich covariance matrix).
+- [x] Port clustered covariance (PR #151, squash merge `9476053`; cluster-robust sandwich covariance matrix with degrees-of-freedom correction).
 - [ ] Port `predict, xb`.
 - [ ] Port `predict, residuals`.
 - [ ] Port VIF.
