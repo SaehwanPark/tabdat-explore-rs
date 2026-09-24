@@ -2,12 +2,12 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, BayesPrefixCommand, ByCommand, CfRegressCommand,
   CollapseCommand, CollapseStatistic, Command, DataSource, DidCommand, DmlCommand, DrDidCommand,
   DrDidMethod, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
-  GenerateExpression, IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand,
-  LabelValue, LazyEngine, LincomCommand, LogitCommand, LowessCommand, PanelAction, PanelCommand,
-  ProbitCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
-  RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SettingName,
-  SortKey, TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform,
-  XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
+  GenerateExpression, HistogramCommand, IvEstimator, IvRegressCommand, JoinCommand, JoinHow,
+  LabelCommand, LabelValue, LazyEngine, LincomCommand, LogitCommand, LowessCommand, PanelAction,
+  PanelCommand, ProbitCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
+  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
+  SettingName, SortKey, TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand,
+  XtDataTransform, XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2505,6 +2505,172 @@ fn test_preserves_bounded_parser_diagnostics() {
       "unsupported token in expression: ,",
     ),
     ("test ((x1 = 0))", "missing closing ) in expression"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn histogram_parses_supported_options_and_targets() {
+  assert_eq!(
+    parse_command("histogram x").unwrap(),
+    Command::Histogram {
+      command: HistogramCommand {
+        variable: "x".into(),
+        bins: None,
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("histogram price, bins=30").unwrap(),
+    Command::Histogram {
+      command: HistogramCommand {
+        variable: "price".into(),
+        bins: Some(30),
+        saving: None,
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("histogram weight, saving(plot.png)").unwrap(),
+    Command::Histogram {
+      command: HistogramCommand {
+        variable: "weight".into(),
+        bins: None,
+        saving: Some("plot.png".into()),
+        open_artifact: true,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("histogram x, noopen").unwrap(),
+    Command::Histogram {
+      command: HistogramCommand {
+        variable: "x".into(),
+        bins: None,
+        saving: None,
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("histogram x, bins=15 saving(\"out.png\") noopen").unwrap(),
+    Command::Histogram {
+      command: HistogramCommand {
+        variable: "x".into(),
+        bins: Some(15),
+        saving: Some("out.png".into()),
+        open_artifact: false,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("by foreign: histogram mpg, bins=10").unwrap(),
+    Command::By {
+      command: ByCommand {
+        groups: vec!["foreign".into()],
+        command: Box::new(Command::Histogram {
+          command: HistogramCommand {
+            variable: "mpg".into(),
+            bins: Some(10),
+            saving: None,
+            open_artifact: true,
+          },
+        }),
+      },
+    }
+  );
+}
+
+#[test]
+fn histogram_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    ("histogram", "histogram expects exactly one variable"),
+    ("histogram   ", "histogram expects exactly one variable"),
+    ("histogram x y", "histogram expects exactly one variable"),
+    ("histogram x y z", "histogram expects exactly one variable"),
+    ("histogram:", "unsupported token in command: :"),
+    ("histogram: x", "unsupported token in command: :"),
+    (
+      "histogram=",
+      "histogram assignment requires a target before =",
+    ),
+    (
+      "histogram=1",
+      "histogram assignment requires a target before =",
+    ),
+    (
+      "histogram = 1",
+      "histogram assignment requires a target before =",
+    ),
+    ("histogram==", "unsupported token in command: =="),
+    ("histogram==1", "unsupported token in command: =="),
+    (
+      "histogram,",
+      "comma must be followed by at least one option",
+    ),
+    (
+      "histogram, bins=10",
+      "histogram expects exactly one variable",
+    ),
+    (
+      "histogram x = 2",
+      "histogram does not accept if clauses or assignment syntax",
+    ),
+    (
+      "histogram x =",
+      "histogram assignment requires an expression after =",
+    ),
+    (
+      "histogram x if x > 0",
+      "histogram does not accept if clauses or assignment syntax",
+    ),
+    ("histogram x, foo", "histogram unsupported option: foo"),
+    (
+      "histogram x, zebra apple",
+      "histogram unsupported option: apple, zebra",
+    ),
+    (
+      "histogram x, bins=0",
+      "histogram option bins must be at least 1",
+    ),
+    (
+      "histogram x, bins=1.5",
+      "histogram option bins expects an integer value",
+    ),
+    (
+      "histogram x, bins=abc",
+      "histogram option bins expects an integer value",
+    ),
+    (
+      "histogram x, bins=10 bins=20",
+      "histogram option bins may only be supplied once",
+    ),
+    (
+      "histogram x, saving",
+      "histogram option saving expects a path",
+    ),
+    (
+      "histogram x, saving(a) saving(b)",
+      "histogram option saving may only be supplied once",
+    ),
+    (
+      "histogram x, noopen=1",
+      "histogram option noopen does not accept a value",
+    ),
+    (
+      "histogram x, noopen(true)",
+      "histogram option noopen does not accept a value",
+    ),
   ];
 
   for (input, expected) in cases {

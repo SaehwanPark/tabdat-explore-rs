@@ -120,6 +120,8 @@ pub enum Command {
   Lincom { command: LincomCommand },
   /// Test linear hypotheses after estimation (execution is deferred).
   Test { command: TestCommand },
+  /// Compute a histogram of a variable (visualization execution is deferred).
+  Histogram { command: HistogramCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -1060,6 +1062,19 @@ pub struct TestCommand {
   pub constraints: Vec<GenerateExpression>,
 }
 
+/// Parsed `histogram` visualization specification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistogramCommand {
+  /// The single variable to plot.
+  pub variable: String,
+  /// Optional bin count.
+  pub bins: Option<i64>,
+  /// Optional file path to save the generated plot.
+  pub saving: Option<String>,
+  /// Whether to open the generated artifact in the browser/viewer (default true).
+  pub open_artifact: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1722,6 +1737,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..9)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"histogram"))
+    && command.as_bytes().get(9) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -2083,6 +2106,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "test assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("histogram") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new(
+      "histogram assignment requires a target before =",
+    ));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -2175,6 +2206,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "cfregress" => parse_cfregress_command(body),
     "lincom" => parse_lincom_command(body),
     "test" => parse_test_command(body),
+    "histogram" => parse_histogram_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -7966,6 +7998,155 @@ fn parse_single_constraint(tokens: Vec<Token>) -> Result<GenerateExpression, Par
   }
 }
 
+fn parse_histogram_command(body: &str) -> Result<Command, ParseError> {
+  let (path_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(path_body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new(
+      "histogram assignment requires a target before =",
+    ));
+  }
+  if parts.has_assignment && path_body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "histogram assignment requires an expression after =",
+    ));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  if parts.has_condition || parts.has_assignment {
+    return Err(ParseError::new(
+      "histogram does not accept if clauses or assignment syntax",
+    ));
+  }
+  if parts.arguments.len() != 1 {
+    return Err(ParseError::new("histogram expects exactly one variable"));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "bins" | "saving" | "noopen"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "histogram unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "noopen" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "histogram option noopen does not accept a value",
+      ));
+    }
+  }
+
+  let parse_bins_option = || -> Result<Option<i64>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == "bins")
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(
+        "histogram option bins may only be supplied once",
+      ));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    let parsed = match &option.value {
+      UseOptionValue::Number(value) => {
+        let parsed = value.parse::<f64>().ok().filter(|val| val.is_finite());
+        let Some(parsed) = parsed.filter(|val| val.fract() == 0.0) else {
+          return Err(ParseError::new(
+            "histogram option bins expects an integer value",
+          ));
+        };
+        if parsed < i64::MIN as f64 || parsed > i64::MAX as f64 {
+          return Err(ParseError::new(
+            "histogram option bins expects an integer value",
+          ));
+        }
+        parsed as i64
+      }
+      UseOptionValue::Identifiers(ids) => {
+        if ids.len() != 1 {
+          return Err(ParseError::new(
+            "histogram option bins expects one integer value",
+          ));
+        }
+        if !ids[0].is_ascii() || !ids[0].chars().all(|c| c.is_ascii_digit()) {
+          return Err(ParseError::new(
+            "histogram option bins expects an integer value",
+          ));
+        }
+        let Ok(val) = ids[0].parse::<i64>() else {
+          return Err(ParseError::new(
+            "histogram option bins expects an integer value",
+          ));
+        };
+        val
+      }
+      _ => {
+        return Err(ParseError::new(
+          "histogram option bins expects an integer value",
+        ));
+      }
+    };
+    if parsed < 1 {
+      return Err(ParseError::new("histogram option bins must be at least 1"));
+    }
+    Ok(Some(parsed))
+  };
+
+  let parse_saving_option = || -> Result<Option<String>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == "saving")
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(
+        "histogram option saving may only be supplied once",
+      ));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    match &option.value {
+      UseOptionValue::String(s) => Ok(Some(s.clone())),
+      _ => Err(ParseError::new("histogram option saving expects a path")),
+    }
+  };
+
+  let bins = parse_bins_option()?;
+  let saving = parse_saving_option()?;
+  let open_artifact = !options.iter().any(|option| option.name == "noopen");
+
+  let variable = parts.arguments.into_iter().next().unwrap().text;
+
+  Ok(Command::Histogram {
+    command: HistogramCommand {
+      variable,
+      bins,
+      saving,
+      open_artifact,
+    },
+  })
+}
+
 fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
   let tokens = tokenize_use_options(body.trim_matches(is_command_whitespace))?;
   if tokens.is_empty() {
@@ -10074,12 +10255,13 @@ mod tests {
     BayesCommand, BayesPrefixCommand, ByCommand, CfRegressCommand, Command, CvelasticnetCommand,
     CvelasticnetL1Ratio, CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DmlCommand,
     DrDidCommand, DrDidMethod, ElasticnetCommand, ExecutionMode, GenerateBinaryOperator,
-    GenerateExpression, HeckmanCommand, LassoCommand, LazyEngine, LincomCommand, LogitCommand,
-    LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand, PostlassoCommand,
-    PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand, RegressEstimator,
-    RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand, SpregressContiguity,
-    SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TestCommand,
-    TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
+    GenerateExpression, HeckmanCommand, HistogramCommand, LassoCommand, LazyEngine, LincomCommand,
+    LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
+    PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
+    RegressEstimator, RidgeCommand, RowLimit, SettingName, SortKey, SpregressCommand,
+    SpregressContiguity, SpregressModelType, SqlCommand, StregCommand, StregDistribution,
+    TabulateCommand, TestCommand, TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand,
+    parse_command,
   };
 
   #[test]
@@ -17576,6 +17758,204 @@ mod tests {
         "unsupported token in expression: ,",
       ),
       ("test ((x1 = 0))", "missing closing ) in expression"),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_histogram_syntax() {
+    assert_eq!(
+      parse_command("histogram x").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: None,
+          saving: None,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram price, bins=20").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "price".into(),
+          bins: Some(20),
+          saving: None,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram weight, bins = 15").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "weight".into(),
+          bins: Some(15),
+          saving: None,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram x, saving(plot.png)").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: None,
+          saving: Some("plot.png".into()),
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram x, saving(\"my plot.png\")").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: None,
+          saving: Some("my plot.png".into()),
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram x, noopen").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: None,
+          saving: None,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram x, bins=25 saving(out.png) noopen").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: Some(25),
+          saving: Some("out.png".into()),
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("histogram x, noopen bins=10 saving(\"path/to/plot.png\")").unwrap(),
+      Command::Histogram {
+        command: HistogramCommand {
+          variable: "x".into(),
+          bins: Some(10),
+          saving: Some("path/to/plot.png".into()),
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by foreign: histogram mpg, bins=10").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["foreign".into()],
+          command: Box::new(Command::Histogram {
+            command: HistogramCommand {
+              variable: "mpg".into(),
+              bins: Some(10),
+              saving: None,
+              open_artifact: true,
+            },
+          }),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_histogram_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("histogram", "histogram expects exactly one variable"),
+      ("histogram   ", "histogram expects exactly one variable"),
+      ("histogram x y", "histogram expects exactly one variable"),
+      ("histogram x y z", "histogram expects exactly one variable"),
+      ("histogram:", "unsupported token in command: :"),
+      ("histogram: x", "unsupported token in command: :"),
+      (
+        "histogram=",
+        "histogram assignment requires a target before =",
+      ),
+      (
+        "histogram=1",
+        "histogram assignment requires a target before =",
+      ),
+      (
+        "histogram = 1",
+        "histogram assignment requires a target before =",
+      ),
+      ("histogram==", "unsupported token in command: =="),
+      ("histogram==1", "unsupported token in command: =="),
+      (
+        "histogram,",
+        "comma must be followed by at least one option",
+      ),
+      (
+        "histogram, bins=10",
+        "histogram expects exactly one variable",
+      ),
+      (
+        "histogram x = 2",
+        "histogram does not accept if clauses or assignment syntax",
+      ),
+      (
+        "histogram x =",
+        "histogram assignment requires an expression after =",
+      ),
+      (
+        "histogram x if x > 0",
+        "histogram does not accept if clauses or assignment syntax",
+      ),
+      ("histogram x, foo", "histogram unsupported option: foo"),
+      (
+        "histogram x, zebra apple",
+        "histogram unsupported option: apple, zebra",
+      ),
+      (
+        "histogram x, bins=0",
+        "histogram option bins must be at least 1",
+      ),
+      (
+        "histogram x, bins=1.5",
+        "histogram option bins expects an integer value",
+      ),
+      (
+        "histogram x, bins=abc",
+        "histogram option bins expects an integer value",
+      ),
+      (
+        "histogram x, bins=10 bins=20",
+        "histogram option bins may only be supplied once",
+      ),
+      (
+        "histogram x, saving",
+        "histogram option saving expects a path",
+      ),
+      (
+        "histogram x, saving(a) saving(b)",
+        "histogram option saving may only be supplied once",
+      ),
+      (
+        "histogram x, noopen=1",
+        "histogram option noopen does not accept a value",
+      ),
+      (
+        "histogram x, noopen(true)",
+        "histogram option noopen does not accept a value",
+      ),
     ];
     for (input, expected) in cases {
       assert_eq!(
