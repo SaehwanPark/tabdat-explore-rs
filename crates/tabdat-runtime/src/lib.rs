@@ -18,7 +18,7 @@ use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
   DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow,
   LabelCommand, LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, RowLimit, SortKey, TabulateCommand,
+  RecodeValue, ReshapeCommand, ReshapeDirection, RowLimit, SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -290,6 +290,13 @@ pub struct AppendResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after reshaping the active dataset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReshapeResult {
+  /// Metadata for the newly active reshaped dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// A normalized named value-label set owned by the active session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValueLabelSet {
@@ -534,6 +541,8 @@ pub enum ExecutionResult {
   Join(JoinResult),
   /// Replaces the active relation with an appended dataset from a named table.
   Append(AppendResult),
+  /// Replaces the active relation with a reshaped dataset.
+  Reshape(ReshapeResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -819,6 +828,20 @@ pub enum RuntimeError {
   },
   /// DuckDB could not stage or publish the appended relation.
   AppendFailed,
+  /// One or more variables or identifiers for reshape were not found in the active dataset.
+  ReshapeUnknownVariable { variables: Vec<String> },
+  /// The long reshape output j-variable already exists in the active dataset.
+  ReshapeOutputColumnExists { variable: String },
+  /// No columns matched the given stub prefix in a long reshape.
+  ReshapeLongFoundNoColumnsForStub { stub: String },
+  /// A required column for a discovered j value was missing from a stub in a long reshape.
+  ReshapeLongMissingColumn { column: String },
+  /// No non-null j values were found for a wide reshape.
+  ReshapeWideFoundNoJValues,
+  /// A generated wide output column name already exists in non-participating columns.
+  ReshapeWideOutputColumnExists { variable: String },
+  /// DuckDB could not stage or publish the reshaped relation.
+  ReshapeFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -1273,6 +1296,33 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::AppendFailed => formatter.write_str("append failed"),
+      Self::ReshapeUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "reshape unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::ReshapeOutputColumnExists { variable } => {
+        write!(
+          formatter,
+          "reshape output column already exists: {variable}"
+        )
+      }
+      Self::ReshapeLongFoundNoColumnsForStub { stub } => {
+        write!(formatter, "reshape long found no columns for stub: {stub}")
+      }
+      Self::ReshapeLongMissingColumn { column } => {
+        write!(formatter, "reshape long missing column: {column}")
+      }
+      Self::ReshapeWideFoundNoJValues => formatter.write_str("reshape wide found no j values"),
+      Self::ReshapeWideOutputColumnExists { variable } => {
+        write!(
+          formatter,
+          "reshape wide output column already exists: {variable}"
+        )
+      }
+      Self::ReshapeFailed => formatter.write_str("reshape failed"),
     }
   }
 }
@@ -1364,6 +1414,7 @@ impl Session {
       Command::Sql { command } => self.execute_sql(&command.query, command.into.as_deref()),
       Command::Join { command } => self.execute_join(&command),
       Command::Append { table_name } => self.execute_append(&table_name),
+      Command::Reshape { command } => self.execute_reshape(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1478,6 +1529,45 @@ impl Session {
     self.active_table_name = None;
     self.active_dataset = Some(next_dataset.clone());
     Ok(ExecutionResult::Append(AppendResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  /// Execute a reshape command against the active dataset.
+  pub fn execute_reshape(
+    &mut self,
+    command: &ReshapeCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "reshape" })?
+      .clone();
+
+    let backend = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::BackendInitialization)?;
+
+    let next_dataset = match command.direction {
+      ReshapeDirection::Long => backend.reshape_long(
+        &dataset,
+        &command.variables,
+        &command.identifiers,
+        &command.j_variable,
+      )?,
+      ReshapeDirection::Wide => backend.reshape_wide(
+        &dataset,
+        &command.variables,
+        &command.identifiers,
+        &command.j_variable,
+      )?,
+    };
+
+    self.retain_label_metadata(&next_dataset);
+    self.active_table_name = None;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Reshape(ReshapeResult {
       dataset: next_dataset,
     }))
   }
@@ -4365,6 +4455,10 @@ fn quote_identifier(identifier: &str) -> String {
   format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
+fn quote_sql_literal(value: &str) -> String {
+  format!("'{}'", value.replace('\'', "''"))
+}
+
 fn collapse_statistic_name(statistic: CollapseStatistic) -> &'static str {
   match statistic {
     CollapseStatistic::Count => "count",
@@ -5967,6 +6061,321 @@ impl DuckDbBackend {
 
     if self.publish_staging().is_err() {
       return Err(RuntimeError::AppendFailed);
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
+  }
+
+  fn reshape_long(
+    &mut self,
+    dataset: &DatasetInfo,
+    variables: &[String],
+    identifiers: &[String],
+    j_variable: &str,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    let column_names: HashSet<&str> = dataset.columns.iter().map(|c| c.name.as_str()).collect();
+
+    let missing_ids: Vec<String> = identifiers
+      .iter()
+      .filter(|id| !column_names.contains(id.as_str()))
+      .cloned()
+      .collect();
+    if !missing_ids.is_empty() {
+      return Err(RuntimeError::ReshapeUnknownVariable {
+        variables: missing_ids,
+      });
+    }
+
+    if column_names.contains(j_variable) {
+      return Err(RuntimeError::ReshapeOutputColumnExists {
+        variable: j_variable.to_owned(),
+      });
+    }
+
+    let mut j_values: Vec<String> = Vec::new();
+    let mut seen_j: HashSet<String> = HashSet::new();
+
+    for variable in variables {
+      let prefix = format!("{variable}_");
+      let mut found_any = false;
+      for column in &dataset.columns {
+        if column.name.starts_with(&prefix) && column.name.len() > prefix.len() {
+          found_any = true;
+          let suffix = &column.name[prefix.len()..];
+          if seen_j.insert(suffix.to_owned()) {
+            j_values.push(suffix.to_owned());
+          }
+        }
+      }
+      if !found_any {
+        return Err(RuntimeError::ReshapeLongFoundNoColumnsForStub {
+          stub: variable.clone(),
+        });
+      }
+    }
+
+    for variable in variables {
+      for j_val in &j_values {
+        let col_name = format!("{variable}_{j_val}");
+        if !column_names.contains(col_name.as_str()) {
+          return Err(RuntimeError::ReshapeLongMissingColumn { column: col_name });
+        }
+      }
+    }
+
+    let mut used_names: HashSet<String> = dataset.columns.iter().map(|c| c.name.clone()).collect();
+    for id in identifiers {
+      used_names.insert(id.clone());
+    }
+    used_names.insert(j_variable.to_owned());
+    for v in variables {
+      used_names.insert(v.clone());
+    }
+    let row_order_col = unique_internal_name("__tabdat_reshape_row_order", &used_names);
+    used_names.insert(row_order_col.clone());
+    let j_order_col = unique_internal_name("__tabdat_reshape_j_order", &used_names);
+
+    let id_sql = identifiers
+      .iter()
+      .map(|id| format!("reshape_source.{}", quote_identifier(id)))
+      .collect::<Vec<_>>()
+      .join(", ");
+
+    let mut selects: Vec<String> = Vec::new();
+    for (j_index, j_value) in j_values.iter().enumerate() {
+      let mut value_parts: Vec<String> = Vec::new();
+      for variable in variables {
+        let src_col = format!("{variable}_{j_value}");
+        value_parts.push(format!(
+          "reshape_source.{} AS {}",
+          quote_identifier(&src_col),
+          quote_identifier(variable),
+        ));
+      }
+      let value_sql = value_parts.join(", ");
+      let id_prefix = if id_sql.is_empty() {
+        String::new()
+      } else {
+        format!("{id_sql}, ")
+      };
+      let value_suffix = if value_sql.is_empty() {
+        String::new()
+      } else {
+        format!(", {value_sql}")
+      };
+      selects.push(format!(
+        "SELECT reshape_source.{}, {id_prefix}{} AS {}{value_suffix}, {} AS {} FROM reshape_source",
+        quote_identifier(&row_order_col),
+        quote_sql_literal(j_value),
+        quote_identifier(j_variable),
+        j_index,
+        quote_identifier(&j_order_col),
+      ));
+    }
+
+    let union_query = selects.join(" UNION ALL ");
+    let reshape_query = format!(
+      "CREATE TEMP TABLE {STAGING_TABLE} AS \
+       WITH reshape_source AS ( \
+         SELECT row_number() OVER () AS {}, * \
+         FROM {ACTIVE_TABLE} \
+       ) \
+       SELECT * EXCLUDE ({}, {}) \
+       FROM ( \
+         {union_query} \
+       ) AS reshape_long_rows \
+       ORDER BY {}, {}",
+      quote_identifier(&row_order_col),
+      quote_identifier(&row_order_col),
+      quote_identifier(&j_order_col),
+      quote_identifier(&row_order_col),
+      quote_identifier(&j_order_col),
+    );
+
+    self.drop_staging();
+    if self.connection.execute_batch(&reshape_query).is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::ReshapeFailed);
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(cols) => cols,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::ReshapeFailed);
+      }
+    };
+
+    let row_count = match self.staged_row_count() {
+      Ok(rc) => rc,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::ReshapeFailed);
+      }
+    };
+
+    if self.publish_staging().is_err() {
+      return Err(RuntimeError::ReshapeFailed);
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
+  }
+
+  fn reshape_wide(
+    &mut self,
+    dataset: &DatasetInfo,
+    variables: &[String],
+    identifiers: &[String],
+    j_variable: &str,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    let column_names: HashSet<&str> = dataset.columns.iter().map(|c| c.name.as_str()).collect();
+
+    let mut missing: Vec<String> = Vec::new();
+    for id in identifiers {
+      if !column_names.contains(id.as_str()) && !missing.contains(id) {
+        missing.push(id.clone());
+      }
+    }
+    if !column_names.contains(j_variable) && !missing.contains(&j_variable.to_string()) {
+      missing.push(j_variable.to_string());
+    }
+    for var in variables {
+      if !column_names.contains(var.as_str()) && !missing.contains(var) {
+        missing.push(var.clone());
+      }
+    }
+    if !missing.is_empty() {
+      return Err(RuntimeError::ReshapeUnknownVariable { variables: missing });
+    }
+
+    let j_sql = format!(
+      "SELECT DISTINCT CAST({} AS VARCHAR) AS j_value FROM {ACTIVE_TABLE} WHERE {} IS NOT NULL ORDER BY j_value",
+      quote_identifier(j_variable),
+      quote_identifier(j_variable),
+    );
+    let mut stmt = self
+      .connection
+      .prepare(&j_sql)
+      .map_err(|_| RuntimeError::ReshapeFailed)?;
+    let mut rows = stmt.query([]).map_err(|_| RuntimeError::ReshapeFailed)?;
+    let mut j_values: Vec<String> = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| RuntimeError::ReshapeFailed)? {
+      let val: String = row.get(0).map_err(|_| RuntimeError::ReshapeFailed)?;
+      j_values.push(val);
+    }
+    if j_values.is_empty() {
+      return Err(RuntimeError::ReshapeWideFoundNoJValues);
+    }
+
+    let mut source_columns: HashSet<&str> = identifiers.iter().map(|s| s.as_str()).collect();
+    source_columns.insert(j_variable);
+    for var in variables {
+      source_columns.insert(var.as_str());
+    }
+
+    for variable in variables {
+      for j_value in &j_values {
+        let output_name = format!("{variable}_{j_value}");
+        if column_names.contains(output_name.as_str())
+          && !source_columns.contains(output_name.as_str())
+        {
+          return Err(RuntimeError::ReshapeWideOutputColumnExists {
+            variable: output_name,
+          });
+        }
+      }
+    }
+
+    let mut used_names: HashSet<String> = dataset.columns.iter().map(|c| c.name.clone()).collect();
+    for id in identifiers {
+      used_names.insert(id.clone());
+    }
+    for var in variables {
+      for j_val in &j_values {
+        used_names.insert(format!("{var}_{j_val}"));
+      }
+    }
+    let group_order_name = unique_internal_name("__tabdat_reshape_group_order", &used_names);
+    used_names.insert(group_order_name.clone());
+    let source_order_name = unique_internal_name("__tabdat_reshape_source_order", &used_names);
+
+    let id_sql = identifiers
+      .iter()
+      .map(|id| format!("reshape_source.{}", quote_identifier(id)))
+      .collect::<Vec<_>>()
+      .join(", ");
+
+    let mut aggregates: Vec<String> = Vec::new();
+    for variable in variables {
+      for j_value in &j_values {
+        let out_col = format!("{variable}_{j_value}");
+        aggregates.push(format!(
+          "MAX(CASE WHEN CAST(reshape_source.{} AS VARCHAR) = {} THEN reshape_source.{} END) AS {}",
+          quote_identifier(j_variable),
+          quote_sql_literal(j_value),
+          quote_identifier(variable),
+          quote_identifier(&out_col),
+        ));
+      }
+    }
+    let aggregate_sql = aggregates.join(", ");
+
+    let reshape_query = format!(
+      "CREATE TEMP TABLE {STAGING_TABLE} AS \
+       SELECT * EXCLUDE ({}) \
+       FROM ( \
+         SELECT {id_sql}, {aggregate_sql}, \
+           MIN(reshape_source.{}) AS {} \
+         FROM ( \
+           SELECT row_number() OVER () AS {}, * \
+           FROM {ACTIVE_TABLE} \
+         ) AS reshape_source \
+         GROUP BY {id_sql} \
+       ) AS reshape_wide_rows \
+       ORDER BY {}",
+      quote_identifier(&group_order_name),
+      quote_identifier(&source_order_name),
+      quote_identifier(&group_order_name),
+      quote_identifier(&source_order_name),
+      quote_identifier(&group_order_name),
+    );
+
+    self.drop_staging();
+    if self.connection.execute_batch(&reshape_query).is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::ReshapeFailed);
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(cols) => cols,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::ReshapeFailed);
+      }
+    };
+
+    let row_count = match self.staged_row_count() {
+      Ok(rc) => rc,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::ReshapeFailed);
+      }
+    };
+
+    if self.publish_staging().is_err() {
+      return Err(RuntimeError::ReshapeFailed);
     }
 
     Ok(DatasetInfo {
