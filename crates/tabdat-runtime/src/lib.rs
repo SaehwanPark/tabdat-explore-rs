@@ -3126,6 +3126,7 @@ fn command_name(command: &Command) -> &'static str {
     Command::Test { .. } => "test",
     Command::Histogram { .. } => "histogram",
     Command::Scatter { .. } => "scatter",
+    Command::Bar { .. } => "bar",
     Command::Estat { .. } => "estat",
     Command::Ttest { .. } => "ttest",
     Command::By { .. } => "by",

@@ -124,6 +124,8 @@ pub enum Command {
   Histogram { command: HistogramCommand },
   /// Compute a scatter plot of two variables (visualization execution is deferred).
   Scatter { command: ScatterCommand },
+  /// Compute a bar chart of a categorical variable (visualization execution is deferred).
+  Bar { command: BarCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
   /// Run a bounded two-sample test (execution is deferred).
@@ -1090,6 +1092,19 @@ pub struct ScatterCommand {
   pub open_artifact: bool,
 }
 
+/// Parsed `bar` visualization specification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BarCommand {
+  /// The variable to plot frequency categories for.
+  pub variable: String,
+  /// Optional file path to save the generated plot.
+  pub saving: Option<String>,
+  /// Whether to include missing values as a category in the bar chart.
+  pub include_missing: bool,
+  /// Whether to open the generated artifact in the browser/viewer (default true).
+  pub open_artifact: bool,
+}
+
 /// The parser-only direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
@@ -1768,6 +1783,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
+  if command
+    .as_bytes()
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"bar"))
+    && command.as_bytes().get(3) == Some(&b':')
+  {
+    return Err(ParseError::new("unsupported token in command: :"));
+  }
 
   let first_word = command
     .split(is_command_whitespace)
@@ -2145,6 +2168,12 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       "scatter assignment requires a target before =",
     ));
   }
+  if name.eq_ignore_ascii_case("bar") && delimiter == '=' {
+    if command[command_end..].starts_with("==") {
+      return Err(ParseError::new("unsupported token in command: =="));
+    }
+    return Err(ParseError::new("bar assignment requires a target before ="));
+  }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
@@ -2239,6 +2268,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "test" => parse_test_command(body),
     "histogram" => parse_histogram_command(body),
     "scatter" => parse_scatter_command(body),
+    "bar" => parse_bar_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
     "by" => parse_by_command(body),
@@ -8273,6 +8303,98 @@ fn parse_scatter_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_bar_command(body: &str) -> Result<Command, ParseError> {
+  let (path_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(path_body, false)?;
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  if parts.assignment_target_missing {
+    return Err(ParseError::new("bar assignment requires a target before ="));
+  }
+  if parts.has_assignment && path_body.trim_matches(is_command_whitespace).ends_with('=') {
+    return Err(ParseError::new(
+      "bar assignment requires an expression after =",
+    ));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+
+  if parts.has_condition || parts.has_assignment {
+    return Err(ParseError::new(
+      "bar does not accept if clauses or assignment syntax",
+    ));
+  }
+  if parts.arguments.len() != 1 {
+    return Err(ParseError::new("bar expects exactly one variable"));
+  }
+
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "saving" | "missing" | "noopen"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "bar unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  for option in &options {
+    if option.name == "missing" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "bar option missing does not accept a value",
+      ));
+    }
+    if option.name == "noopen" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new("bar option noopen does not accept a value"));
+    }
+  }
+
+  let parse_saving_option = || -> Result<Option<String>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == "saving")
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(
+        "bar option saving may only be supplied once",
+      ));
+    }
+    let Some(option) = matches.first() else {
+      return Ok(None);
+    };
+    match &option.value {
+      UseOptionValue::String(s) => Ok(Some(s.clone())),
+      _ => Err(ParseError::new("bar option saving expects a path")),
+    }
+  };
+
+  let saving = parse_saving_option()?;
+  let include_missing = options.iter().any(|option| option.name == "missing");
+  let open_artifact = !options.iter().any(|option| option.name == "noopen");
+
+  let variable = parts.arguments.into_iter().next().unwrap().text;
+
+  Ok(Command::Bar {
+    command: BarCommand {
+      variable,
+      saving,
+      include_missing,
+      open_artifact,
+    },
+  })
+}
+
 fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
   let tokens = tokenize_use_options(body.trim_matches(is_command_whitespace))?;
   if tokens.is_empty() {
@@ -10378,13 +10500,13 @@ fn parse_help(body: &str) -> Result<Command, ParseError> {
 #[cfg(test)]
 mod tests {
   use super::{
-    BayesCommand, BayesPrefixCommand, ByCommand, CfRegressCommand, Command, CvelasticnetCommand,
-    CvelasticnetL1Ratio, CvlassoCommand, CvridgeCommand, DataSource, DidCommand, DmlCommand,
-    DrDidCommand, DrDidMethod, ElasticnetCommand, ExecutionMode, GenerateBinaryOperator,
-    GenerateExpression, HeckmanCommand, HistogramCommand, LassoCommand, LazyEngine, LincomCommand,
-    LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError, PoissonCommand,
-    PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand, RegressCommand,
-    RegressEstimator, RidgeCommand, RowLimit, ScatterCommand, SettingName, SortKey,
+    BarCommand, BayesCommand, BayesPrefixCommand, ByCommand, CfRegressCommand, Command,
+    CvelasticnetCommand, CvelasticnetL1Ratio, CvlassoCommand, CvridgeCommand, DataSource,
+    DidCommand, DmlCommand, DrDidCommand, DrDidMethod, ElasticnetCommand, ExecutionMode,
+    GenerateBinaryOperator, GenerateExpression, HeckmanCommand, HistogramCommand, LassoCommand,
+    LazyEngine, LincomCommand, LogitCommand, LowessCommand, NbregCommand, NlCommand, ParseError,
+    PoissonCommand, PostlassoCommand, PredictCommand, PredictKind, ProbitCommand, QregCommand,
+    RegressCommand, RegressEstimator, RidgeCommand, RowLimit, ScatterCommand, SettingName, SortKey,
     SpregressCommand, SpregressContiguity, SpregressModelType, SqlCommand, StregCommand,
     StregDistribution, TabulateCommand, TestCommand, TobitCommand, XtLogitCommand, ZinbCommand,
     ZipCommand, parse_command,
@@ -18229,6 +18351,185 @@ mod tests {
       (
         "scatter price weight, noopen(true)",
         "scatter option noopen does not accept a value",
+      ),
+    ];
+    for (input, expected) in cases {
+      assert_eq!(
+        parse_command(input).unwrap_err().to_string(),
+        expected,
+        "{input:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_valid_bar_syntax() {
+    assert_eq!(
+      parse_command("bar sex").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: false,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, missing noopen").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: true,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, saving(out.png)").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: Some("out.png".into()),
+          include_missing: false,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, saving(\"my bar.png\")").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: Some("my bar.png".into()),
+          include_missing: false,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, missing").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: true,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, noopen").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: false,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, saving(out.png) missing noopen").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: Some("out.png".into()),
+          include_missing: true,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, missing missing").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: true,
+          open_artifact: true,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("bar sex, noopen noopen").unwrap(),
+      Command::Bar {
+        command: BarCommand {
+          variable: "sex".into(),
+          saving: None,
+          include_missing: false,
+          open_artifact: false,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("by foreign: bar sex, missing noopen").unwrap(),
+      Command::By {
+        command: ByCommand {
+          groups: vec!["foreign".into()],
+          command: Box::new(Command::Bar {
+            command: BarCommand {
+              variable: "sex".into(),
+              saving: None,
+              include_missing: true,
+              open_artifact: false,
+            },
+          }),
+        },
+      }
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_bar_syntax_with_exact_diagnostics() {
+    let cases = [
+      ("bar", "bar expects exactly one variable"),
+      ("bar sex age", "bar expects exactly one variable"),
+      ("bar, missing", "bar expects exactly one variable"),
+      ("bar:", "unsupported token in command: :"),
+      ("bar: sex", "unsupported token in command: :"),
+      ("bar=", "bar assignment requires a target before ="),
+      ("bar=1", "bar assignment requires a target before ="),
+      ("bar = 1", "bar assignment requires a target before ="),
+      ("bar==", "unsupported token in command: =="),
+      ("bar==1", "unsupported token in command: =="),
+      ("bar,", "comma must be followed by at least one option"),
+      (
+        "bar sex = 1",
+        "bar does not accept if clauses or assignment syntax",
+      ),
+      ("bar sex =", "bar assignment requires an expression after ="),
+      (
+        "bar sex if age > 18",
+        "bar does not accept if clauses or assignment syntax",
+      ),
+      ("bar sex, foo", "bar unsupported option: foo"),
+      (
+        "bar sex, zebra apple",
+        "bar unsupported option: apple, zebra",
+      ),
+      ("bar sex, bins=20", "bar unsupported option: bins"),
+      ("bar sex, saving", "bar option saving expects a path"),
+      (
+        "bar sex, saving(a) saving(b)",
+        "bar option saving may only be supplied once",
+      ),
+      (
+        "bar sex, missing=true",
+        "bar option missing does not accept a value",
+      ),
+      (
+        "bar sex, missing(a)",
+        "bar option missing does not accept a value",
+      ),
+      (
+        "bar sex, noopen=1",
+        "bar option noopen does not accept a value",
+      ),
+      (
+        "bar sex, noopen(true)",
+        "bar option noopen does not accept a value",
       ),
     ];
     for (input, expected) in cases {
