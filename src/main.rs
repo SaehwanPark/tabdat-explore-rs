@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 
-mod cli;
+pub mod catalog;
+pub mod cli;
+pub mod help;
 
 fn main() {
   let args = std::env::args_os()

@@ -1186,6 +1186,8 @@ dependencies = [
 name = "tabdat-explore-rs"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "tabdat-language",
  "tabdat-runtime",
 ]

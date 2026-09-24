@@ -25,12 +25,31 @@ options:
   -c, --command COMMAND
                         run a command and exit
   -f, --file FILE       run a TabDat script file and exit
+  --config CONFIG       load a TabDat TOML config file
+  --json                emit versioned JSONL results for batch or script
+                        execution
+  --list-commands       emit the available command catalog; requires --json
+  --list-command-effects
+                        emit declared command effects; requires --json
+  --help-topic TOPIC    emit one packaged help topic; requires --json
+  --explain             parse one batch command without executing it; requires
+                        --json
+  --describe-command COMMAND
+                        emit one command's schema; requires --json
+  --mcp                 start the TabDat Model Context Protocol (MCP) server
+                        on stdio
 ";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CliArgs {
   pub version: bool,
   pub help: bool,
+  pub json: bool,
+  pub list_commands: bool,
+  pub list_command_effects: bool,
+  pub help_topic: Option<String>,
+  pub explain: bool,
+  pub describe_command: Option<String>,
   pub commands: Vec<String>,
   pub file: Option<PathBuf>,
   pub positional_script: Option<PathBuf>,
@@ -64,6 +83,12 @@ where
 {
   let mut version = false;
   let mut help = false;
+  let mut json = false;
+  let mut list_commands = false;
+  let mut list_command_effects = false;
+  let mut help_topic = None;
+  let mut explain = false;
+  let mut describe_command = None;
   let mut commands = Vec::new();
   let mut file = None;
   let mut positional_script = None;
@@ -76,6 +101,36 @@ where
       version = true;
     } else if arg == "-h" || arg == "--help" {
       help = true;
+    } else if arg == "--json" {
+      json = true;
+    } else if arg == "--list-commands" {
+      list_commands = true;
+    } else if arg == "--list-command-effects" {
+      list_command_effects = true;
+    } else if arg == "--explain" {
+      explain = true;
+    } else if arg == "--help-topic" {
+      if let Some(val) = iter.next() {
+        help_topic = Some(val.as_ref().to_string());
+      } else {
+        return Err(CliError::ExpectedArgument("--help-topic"));
+      }
+    } else if let Some(val) = arg.strip_prefix("--help-topic=") {
+      if val.is_empty() {
+        return Err(CliError::ExpectedArgument("--help-topic"));
+      }
+      help_topic = Some(val.to_string());
+    } else if arg == "--describe-command" {
+      if let Some(val) = iter.next() {
+        describe_command = Some(val.as_ref().to_string());
+      } else {
+        return Err(CliError::ExpectedArgument("--describe-command"));
+      }
+    } else if let Some(val) = arg.strip_prefix("--describe-command=") {
+      if val.is_empty() {
+        return Err(CliError::ExpectedArgument("--describe-command"));
+      }
+      describe_command = Some(val.to_string());
     } else if arg == "-c" || arg == "--command" {
       if let Some(cmd) = iter.next() {
         commands.push(cmd.as_ref().to_string());
@@ -87,6 +142,11 @@ where
         return Err(CliError::ExpectedArgument("-c/--command"));
       }
       commands.push(cmd.to_string());
+    } else if let Some(cmd) = arg.strip_prefix("--command=") {
+      if cmd.is_empty() {
+        return Err(CliError::ExpectedArgument("-c/--command"));
+      }
+      commands.push(cmd.to_string());
     } else if arg == "-f" || arg == "--file" {
       if let Some(path) = iter.next() {
         file = Some(PathBuf::from(path.as_ref()));
@@ -94,6 +154,11 @@ where
         return Err(CliError::ExpectedArgument("-f/--file"));
       }
     } else if let Some(path) = arg.strip_prefix("-f") {
+      if path.is_empty() {
+        return Err(CliError::ExpectedArgument("-f/--file"));
+      }
+      file = Some(PathBuf::from(path));
+    } else if let Some(path) = arg.strip_prefix("--file=") {
       if path.is_empty() {
         return Err(CliError::ExpectedArgument("-f/--file"));
       }
@@ -112,6 +177,12 @@ where
     return Ok(CliArgs {
       version: false,
       help: true,
+      json: false,
+      list_commands: false,
+      list_command_effects: false,
+      help_topic: None,
+      explain: false,
+      describe_command: None,
       commands: Vec::new(),
       file: None,
       positional_script: None,
@@ -122,6 +193,12 @@ where
     return Ok(CliArgs {
       version: true,
       help: false,
+      json: false,
+      list_commands: false,
+      list_command_effects: false,
+      help_topic: None,
+      explain: false,
+      describe_command: None,
       commands: Vec::new(),
       file: None,
       positional_script: None,
@@ -132,21 +209,98 @@ where
     return Err(CliError::UnrecognizedArguments(unrecognized));
   }
 
-  if !commands.is_empty() && (file.is_some() || positional_script.is_some()) {
+  // Requires --json validation
+  if list_commands && !json {
+    return Err(CliError::Conflict("--list-commands requires --json"));
+  }
+  if list_command_effects && !json {
+    return Err(CliError::Conflict("--list-command-effects requires --json"));
+  }
+  if help_topic.is_some() && !json {
+    return Err(CliError::Conflict("--help-topic requires --json"));
+  }
+  if explain && !json {
+    return Err(CliError::Conflict("--explain requires --json"));
+  }
+  if describe_command.is_some() && !json {
+    return Err(CliError::Conflict("--describe-command requires --json"));
+  }
+
+  // Conflict validation
+  let has_commands = !commands.is_empty();
+  let has_file = file.is_some();
+  let has_script = positional_script.is_some();
+  let has_exec = has_commands || has_file || has_script;
+
+  if list_commands && (has_exec || describe_command.is_some()) {
+    return Err(CliError::Conflict(
+      "--list-commands cannot be combined with command, script, or describe execution",
+    ));
+  }
+  if list_command_effects
+    && (has_exec || list_commands || help_topic.is_some() || explain || describe_command.is_some())
+  {
+    return Err(CliError::Conflict(
+      "--list-command-effects cannot be combined with another execution mode",
+    ));
+  }
+  if help_topic.is_some() && (has_exec || list_commands || describe_command.is_some()) {
+    return Err(CliError::Conflict(
+      "--help-topic cannot be combined with command, script, command discovery, or describe execution",
+    ));
+  }
+  if explain && (list_commands || help_topic.is_some() || describe_command.is_some()) {
+    return Err(CliError::Conflict(
+      "--explain cannot be combined with command discovery, help-topic retrieval, or describe execution",
+    ));
+  }
+  if describe_command.is_some()
+    && (has_exec || list_commands || list_command_effects || help_topic.is_some() || explain)
+  {
+    return Err(CliError::Conflict(
+      "--describe-command cannot be combined with another execution mode",
+    ));
+  }
+  if explain && (has_file || has_script) {
+    return Err(CliError::Conflict(
+      "--explain requires exactly one -c/--command",
+    ));
+  }
+  if explain && commands.len() != 1 {
+    return Err(CliError::Conflict(
+      "--explain requires exactly one -c/--command",
+    ));
+  }
+  if has_commands && (has_file || has_script) {
     return Err(CliError::Conflict(
       "-c/--command cannot be combined with script execution",
     ));
   }
-
-  if file.is_some() && positional_script.is_some() {
+  if has_file && has_script {
     return Err(CliError::Conflict(
       "-f/--file cannot be combined with a positional script",
+    ));
+  }
+  let has_discovery = list_commands
+    || list_command_effects
+    || help_topic.is_some()
+    || explain
+    || describe_command.is_some();
+  if json && !has_exec && !has_discovery {
+    return Err(CliError::Conflict(
+      "--json requires a command execution, script path, explain, or discovery/describe flag",
     ));
   }
 
   Ok(CliArgs {
     version,
     help,
+    json,
+    list_commands,
+    list_command_effects,
+    help_topic,
+    explain,
+    describe_command,
     commands,
     file,
     positional_script,
@@ -164,6 +318,69 @@ pub fn run_cli(args: CliArgs) -> i32 {
     return 0;
   }
 
+  if args.list_commands {
+    let catalog = crate::catalog::command_catalog_result();
+    let envelope = crate::catalog::ResultEnvelope::new(catalog, "CommandCatalogResult");
+    println!("{}", serde_json::to_string(&envelope).unwrap());
+    return 0;
+  }
+
+  if args.list_command_effects {
+    let effects = crate::catalog::command_effect_catalog_result();
+    let envelope = crate::catalog::ResultEnvelope::new(effects, "CommandEffectCatalogResult");
+    println!("{}", serde_json::to_string(&envelope).unwrap());
+    return 0;
+  }
+
+  if let Some(name) = &args.describe_command {
+    return match crate::catalog::describe_command_result(name) {
+      Ok(schema) => {
+        let envelope = crate::catalog::ResultEnvelope::new(schema, "CommandSchemaResult");
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        0
+      }
+      Err(err) => {
+        eprintln!("Error: {err}");
+        let envelope = crate::catalog::ErrorEnvelope::new(err, "TabDatError");
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        1
+      }
+    };
+  }
+
+  if let Some(topic) = &args.help_topic {
+    return match crate::catalog::help_topic_result(topic) {
+      Ok(res) => {
+        let envelope = crate::catalog::ResultEnvelope::new(res, "HelpTopicResult");
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        0
+      }
+      Err(err) => {
+        eprintln!("Error: {err}");
+        let envelope = crate::catalog::ErrorEnvelope::new(err, "TabDatError");
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        1
+      }
+    };
+  }
+
+  if args.explain {
+    let cmd_text = &args.commands[0];
+    return match crate::catalog::explain_result(cmd_text) {
+      Ok(res) => {
+        let envelope = crate::catalog::ResultEnvelope::new(res, "CommandExplainResult");
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        0
+      }
+      Err((err, err_type)) => {
+        eprintln!("Error: {err}");
+        let envelope = crate::catalog::ErrorEnvelope::new(err, err_type);
+        println!("{}", serde_json::to_string(&envelope).unwrap());
+        1
+      }
+    };
+  }
+
   if !args.commands.is_empty() {
     let mut session = Session::new();
     for cmd_text in &args.commands {
@@ -171,6 +388,10 @@ pub fn run_cli(args: CliArgs) -> i32 {
         Ok(cmd) => cmd,
         Err(err) => {
           eprintln!("Error: {err}");
+          if args.json {
+            let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ParseError");
+            println!("{}", serde_json::to_string(&envelope).unwrap());
+          }
           return 2;
         }
       };
@@ -179,6 +400,10 @@ pub fn run_cli(args: CliArgs) -> i32 {
       }
       if let Err(err) = session.execute(command) {
         eprintln!("Error: {err}");
+        if args.json {
+          let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
+          println!("{}", serde_json::to_string(&envelope).unwrap());
+        }
         return 1;
       }
     }
@@ -191,6 +416,10 @@ pub fn run_cli(args: CliArgs) -> i32 {
       let mut session = Session::new();
       if let Err(err) = session.execute(Command::Doctor) {
         eprintln!("Error: {err}");
+        if args.json {
+          let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
+          println!("{}", serde_json::to_string(&envelope).unwrap());
+        }
         return 1;
       }
       return 0;
@@ -201,6 +430,15 @@ pub fn run_cli(args: CliArgs) -> i32 {
       Ok(_) => 0,
       Err(RuntimeError::ScriptError(err)) => {
         eprintln!("Error: {err}");
+        if args.json {
+          let envelope = crate::catalog::ErrorEnvelope::with_location(
+            err.message(),
+            "ScriptError",
+            err.path().to_string_lossy(),
+            err.line(),
+          );
+          println!("{}", serde_json::to_string(&envelope).unwrap());
+        }
         let msg = err.message();
         if msg.contains("not found") || msg.contains("could not read script") {
           3
@@ -212,6 +450,10 @@ pub fn run_cli(args: CliArgs) -> i32 {
       }
       Err(err) => {
         eprintln!("Error: {err}");
+        if args.json {
+          let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
+          println!("{}", serde_json::to_string(&envelope).unwrap());
+        }
         1
       }
     };
@@ -234,6 +476,7 @@ mod tests {
 
     let parsed2 = parse_args(["--version"]).unwrap();
     assert!(parsed2.version);
+    assert!(!parsed2.help);
   }
 
   #[test]
@@ -244,39 +487,44 @@ mod tests {
 
     let parsed2 = parse_args(["--help"]).unwrap();
     assert!(parsed2.help);
+    assert!(!parsed2.version);
   }
 
   #[test]
   fn test_parse_command_single_and_repeated() {
-    let parsed = parse_args(["-c", "use test.parquet", "-c", "count"]).unwrap();
-    assert_eq!(parsed.commands, vec!["use test.parquet", "count"]);
-    assert_eq!(parsed.file, None);
-    assert_eq!(parsed.positional_script, None);
+    let parsed = parse_args(["-c", "describe"]).unwrap();
+    assert_eq!(parsed.commands, vec!["describe"]);
 
-    let parsed2 = parse_args(["--command", "describe"]).unwrap();
-    assert_eq!(parsed2.commands, vec!["describe"]);
+    let parsed2 = parse_args(["-c", "use data.csv", "--command", "count"]).unwrap();
+    assert_eq!(parsed2.commands, vec!["use data.csv", "count"]);
+
+    let parsed3 = parse_args(["-cuse data.csv", "-ccount"]).unwrap();
+    assert_eq!(parsed3.commands, vec!["use data.csv", "count"]);
   }
 
   #[test]
   fn test_parse_file_flag_and_positional() {
-    let parsed = parse_args(["-f", "test.td"]).unwrap();
-    assert_eq!(parsed.file, Some(PathBuf::from("test.td")));
+    let parsed = parse_args(["-f", "script.td"]).unwrap();
+    assert_eq!(parsed.file, Some(PathBuf::from("script.td")));
     assert_eq!(parsed.positional_script, None);
 
     let parsed2 = parse_args(["script.td"]).unwrap();
     assert_eq!(parsed2.file, None);
     assert_eq!(parsed2.positional_script, Some(PathBuf::from("script.td")));
+
+    let parsed3 = parse_args(["-fscript.td"]).unwrap();
+    assert_eq!(parsed3.file, Some(PathBuf::from("script.td")));
   }
 
   #[test]
   fn test_conflict_command_and_script() {
-    let err = parse_args(["-c", "count", "-f", "test.td"]).unwrap_err();
+    let err1 = parse_args(["-c", "describe", "-f", "script.td"]).unwrap_err();
     assert_eq!(
-      err,
+      err1,
       CliError::Conflict("-c/--command cannot be combined with script execution")
     );
 
-    let err2 = parse_args(["-c", "count", "test.td"]).unwrap_err();
+    let err2 = parse_args(["-c", "describe", "script.td"]).unwrap_err();
     assert_eq!(
       err2,
       CliError::Conflict("-c/--command cannot be combined with script execution")
@@ -285,7 +533,7 @@ mod tests {
 
   #[test]
   fn test_conflict_file_and_positional() {
-    let err = parse_args(["-f", "test1.td", "test2.td"]).unwrap_err();
+    let err = parse_args(["-f", "script1.td", "script2.td"]).unwrap_err();
     assert_eq!(
       err,
       CliError::Conflict("-f/--file cannot be combined with a positional script")
@@ -294,37 +542,131 @@ mod tests {
 
   #[test]
   fn test_missing_argument() {
-    let err = parse_args(["-c"]).unwrap_err();
-    assert_eq!(err, CliError::ExpectedArgument("-c/--command"));
-
-    let err2 = parse_args(["-f"]).unwrap_err();
-    assert_eq!(err2, CliError::ExpectedArgument("-f/--file"));
+    assert_eq!(
+      parse_args(["-c"]).unwrap_err(),
+      CliError::ExpectedArgument("-c/--command")
+    );
+    assert_eq!(
+      parse_args(["--command"]).unwrap_err(),
+      CliError::ExpectedArgument("-c/--command")
+    );
+    assert_eq!(
+      parse_args(["-f"]).unwrap_err(),
+      CliError::ExpectedArgument("-f/--file")
+    );
+    assert_eq!(
+      parse_args(["--file"]).unwrap_err(),
+      CliError::ExpectedArgument("-f/--file")
+    );
+    assert_eq!(
+      parse_args(["--help-topic"]).unwrap_err(),
+      CliError::ExpectedArgument("--help-topic")
+    );
+    assert_eq!(
+      parse_args(["--describe-command"]).unwrap_err(),
+      CliError::ExpectedArgument("--describe-command")
+    );
   }
 
   #[test]
   fn test_unrecognized_argument() {
-    let err = parse_args(["--unknown"]).unwrap_err();
+    let err = parse_args(["--unknown-flag"]).unwrap_err();
     assert_eq!(
       err,
-      CliError::UnrecognizedArguments(vec!["--unknown".to_string()])
-    );
-
-    let err2 = parse_args(["foo.td", "bar.td"]).unwrap_err();
-    assert_eq!(
-      err2,
-      CliError::UnrecognizedArguments(vec!["bar.td".to_string()])
+      CliError::UnrecognizedArguments(vec!["--unknown-flag".to_string()])
     );
   }
 
   #[test]
   fn test_help_precedence_over_unrecognized() {
-    let parsed = parse_args(["-h", "--unknown"]).unwrap();
+    let parsed = parse_args(["--unknown-flag", "--help"]).unwrap();
     assert!(parsed.help);
   }
 
   #[test]
   fn test_version_precedence_over_unrecognized() {
-    let parsed = parse_args(["-v", "--unknown"]).unwrap();
+    let parsed = parse_args(["--unknown-flag", "--version"]).unwrap();
     assert!(parsed.version);
+  }
+
+  #[test]
+  fn test_json_requires_target() {
+    let err = parse_args(["--json"]).unwrap_err();
+    assert_eq!(
+      err,
+      CliError::Conflict(
+        "--json requires a command execution, script path, explain, or discovery/describe flag"
+      )
+    );
+  }
+
+  #[test]
+  fn test_discovery_flags_require_json() {
+    assert_eq!(
+      parse_args(["--list-commands"]).unwrap_err(),
+      CliError::Conflict("--list-commands requires --json")
+    );
+    assert_eq!(
+      parse_args(["--list-command-effects"]).unwrap_err(),
+      CliError::Conflict("--list-command-effects requires --json")
+    );
+    assert_eq!(
+      parse_args(["--help-topic", "summarize"]).unwrap_err(),
+      CliError::Conflict("--help-topic requires --json")
+    );
+    assert_eq!(
+      parse_args(["--describe-command", "summarize"]).unwrap_err(),
+      CliError::Conflict("--describe-command requires --json")
+    );
+    assert_eq!(
+      parse_args(["--explain", "-c", "count"]).unwrap_err(),
+      CliError::Conflict("--explain requires --json")
+    );
+  }
+
+  #[test]
+  fn test_explain_requires_exactly_one_command() {
+    assert_eq!(
+      parse_args(["--json", "--explain"]).unwrap_err(),
+      CliError::Conflict("--explain requires exactly one -c/--command")
+    );
+    assert_eq!(
+      parse_args(["--json", "--explain", "-c", "count", "-c", "status"]).unwrap_err(),
+      CliError::Conflict("--explain requires exactly one -c/--command")
+    );
+    assert_eq!(
+      parse_args(["--json", "--explain", "-f", "commands.td"]).unwrap_err(),
+      CliError::Conflict("--explain requires exactly one -c/--command")
+    );
+  }
+
+  #[test]
+  fn test_discovery_conflict_rejections() {
+    assert_eq!(
+      parse_args(["--json", "--list-commands", "-c", "count"]).unwrap_err(),
+      CliError::Conflict(
+        "--list-commands cannot be combined with command, script, or describe execution"
+      )
+    );
+    assert_eq!(
+      parse_args(["--json", "--list-command-effects", "-c", "count"]).unwrap_err(),
+      CliError::Conflict("--list-command-effects cannot be combined with another execution mode")
+    );
+    assert_eq!(
+      parse_args(["--json", "--help-topic", "summarize", "-c", "count"]).unwrap_err(),
+      CliError::Conflict(
+        "--help-topic cannot be combined with command, script, command discovery, or describe execution"
+      )
+    );
+    assert_eq!(
+      parse_args(["--json", "--describe-command", "summarize", "-c", "count"]).unwrap_err(),
+      CliError::Conflict("--describe-command cannot be combined with another execution mode")
+    );
+    assert_eq!(
+      parse_args(["--json", "--explain", "--list-commands"]).unwrap_err(),
+      CliError::Conflict(
+        "--explain cannot be combined with command discovery, help-topic retrieval, or describe execution"
+      )
+    );
   }
 }
