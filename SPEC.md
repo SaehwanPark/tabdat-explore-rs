@@ -1537,6 +1537,35 @@ workflows all passed.
 This accepted syntax slice leaves DuckDB category aggregation, Vega-Lite spec generation, plot SVG/PNG rendering,
 artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
 
+## Verified slice: visualization bayesplot syntax
+
+The visualization bayesplot syntax slice (Phase 7 §7.4)
+adds bounded, backend-independent visualization bayesplot syntax boundaries to
+`tabdat-language`. The parser returns an owned `BayesPlotCommand` type with
+target diagnostic plot kind (`kind: BayesPlotKind`),
+optional save path (`saving: Option<String>`),
+and open-in-viewer flag (`open_artifact: bool`, defaulting to `true` unless `noopen` is supplied).
+It enforces exact Python-compatible diagnostics for missing or multiple arguments (`bayesplot expects syntax: bayesplot <trace|density|autocorrelation>`),
+unrecognized or uppercase plot kinds (`bayesplot kind must be trace, density, or autocorrelation`),
+if clauses and assignment syntax (`bayesplot does not accept if clauses or assignment syntax`), assignment missing target or expression
+(`bayesplot assignment requires a target before =` and `bayesplot assignment requires an expression after =`),
+attached colons and double equals (`unsupported token in command: :` and `unsupported token in command: ==`),
+trailing commas without options (`comma must be followed by at least one option`), unsupported options (`bayesplot unsupported option: <sorted_opts>`),
+flag option values (`bayesplot option noopen does not accept a value`), and saving validation
+(`bayesplot option saving expects a path`, `bayesplot option saving may only be supplied once`).
+Owned `String` and primitive/enum types are used so that the public `Command` enum retains its `Eq` derive.
+Runtime deliberately returns the typed unsupported command result; it does not perform posterior draw extraction,
+chain iteration processing, Vega-Lite spec generation, plot SVG/PNG rendering, artifact filesystem emission, or browser/viewer interaction.
+
+Evidence: [_workspace/parser-bayesplot-syntax/](_workspace/parser-bayesplot-syntax/),
+including the [contract](_workspace/parser-bayesplot-syntax/01-contract.md) and
+[summary](_workspace/parser-bayesplot-syntax/04-summary.md). The pinned oracle probes,
+locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
+workflows all passed.
+
+This accepted syntax slice leaves posterior draw extraction, chain iteration processing, Vega-Lite spec generation,
+plot SVG/PNG rendering, artifact filesystem persistence, browser/viewer opening, reporting, CLI, JSON, and MCP parity deferred.
+
 ## Verified slice: reproducible build baseline
 
 - Pin a Rust toolchain and commit the binary's lockfile.
