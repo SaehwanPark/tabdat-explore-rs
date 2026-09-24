@@ -283,6 +283,13 @@ pub struct JoinResult {
   pub dataset: DatasetInfo,
 }
 
+/// The owned result returned after appending rows from a named table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppendResult {
+  /// Metadata for the newly active combined dataset.
+  pub dataset: DatasetInfo,
+}
+
 /// A normalized named value-label set owned by the active session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValueLabelSet {
@@ -525,6 +532,8 @@ pub enum ExecutionResult {
   Activate(ActivateResult),
   /// Replaces the active relation with a joined dataset from a named table.
   Join(JoinResult),
+  /// Replaces the active relation with an appended dataset from a named table.
+  Append(AppendResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -795,6 +804,21 @@ pub enum RuntimeError {
   },
   /// DuckDB could not stage or publish the joined relation.
   JoinFailed,
+  /// The table to append contains variables not in the active dataset.
+  AppendUnknownVariable { variables: Vec<String> },
+  /// The table to append is missing variables present in the active dataset.
+  AppendUnknownVariableInTable {
+    table_name: String,
+    variables: Vec<String>,
+  },
+  /// An appended variable has a data type incompatible with the active variable.
+  AppendTypeMismatch {
+    variable: String,
+    left_type: String,
+    right_type: String,
+  },
+  /// DuckDB could not stage or publish the appended relation.
+  AppendFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -1221,6 +1245,34 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::JoinFailed => formatter.write_str("join failed"),
+      Self::AppendUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "append unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::AppendUnknownVariableInTable {
+        table_name,
+        variables,
+      } => {
+        write!(
+          formatter,
+          "append unknown variable in {table_name}: {}",
+          variables.join(", ")
+        )
+      }
+      Self::AppendTypeMismatch {
+        variable,
+        left_type,
+        right_type,
+      } => {
+        write!(
+          formatter,
+          "append type mismatch for {variable}: {left_type} vs {right_type}"
+        )
+      }
+      Self::AppendFailed => formatter.write_str("append failed"),
     }
   }
 }
@@ -1311,6 +1363,7 @@ impl Session {
       Command::Run { path } => self.execute_run(path),
       Command::Sql { command } => self.execute_sql(&command.query, command.into.as_deref()),
       Command::Join { command } => self.execute_join(&command),
+      Command::Append { table_name } => self.execute_append(&table_name),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1397,6 +1450,36 @@ impl Session {
     self.retain_label_metadata(&next_dataset);
     let synced = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Join(JoinResult { dataset: synced }))
+  }
+
+  /// Execute an append command against an active dataset and a named table.
+  pub fn execute_append(&mut self, table_name: &str) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "append" })?
+      .clone();
+    let append_dataset = self
+      .named_tables
+      .get(table_name)
+      .ok_or_else(|| RuntimeError::UnknownTable {
+        name: table_name.to_owned(),
+      })?
+      .clone();
+
+    let backend = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::BackendInitialization)?;
+
+    let next_dataset = backend.append_named_table(&dataset, &append_dataset, table_name)?;
+
+    self.retain_label_metadata(&next_dataset);
+    self.active_table_name = None;
+    self.active_dataset = Some(next_dataset.clone());
+    Ok(ExecutionResult::Append(AppendResult {
+      dataset: next_dataset,
+    }))
   }
 
   fn sync_active_dataset(&mut self, dataset: DatasetInfo) -> Result<DatasetInfo, RuntimeError> {
@@ -5768,6 +5851,133 @@ impl DuckDbBackend {
     })
   }
 
+  fn append_named_table(
+    &mut self,
+    dataset: &DatasetInfo,
+    append_dataset: &DatasetInfo,
+    table_name: &str,
+  ) -> Result<DatasetInfo, RuntimeError> {
+    let left_names: HashSet<&str> = dataset.columns.iter().map(|c| c.name.as_str()).collect();
+    let right_names: HashSet<&str> = append_dataset
+      .columns
+      .iter()
+      .map(|c| c.name.as_str())
+      .collect();
+
+    let mut extra: Vec<String> = Vec::new();
+    for c in &append_dataset.columns {
+      if !left_names.contains(c.name.as_str()) {
+        extra.push(c.name.clone());
+      }
+    }
+    if !extra.is_empty() {
+      return Err(RuntimeError::AppendUnknownVariable { variables: extra });
+    }
+
+    let mut missing_right: Vec<String> = Vec::new();
+    for c in &dataset.columns {
+      if !right_names.contains(c.name.as_str()) {
+        missing_right.push(c.name.clone());
+      }
+    }
+    if !missing_right.is_empty() {
+      return Err(RuntimeError::AppendUnknownVariableInTable {
+        table_name: table_name.to_owned(),
+        variables: missing_right,
+      });
+    }
+
+    for left_col in &dataset.columns {
+      let right_col = append_dataset
+        .columns
+        .iter()
+        .find(|c| c.name == left_col.name)
+        .expect("column existence verified above");
+      let left_canonical = canonical_append_type(&left_col.data_type);
+      let right_canonical = canonical_append_type(&right_col.data_type);
+      if left_canonical.to_uppercase() != right_canonical.to_uppercase() {
+        return Err(RuntimeError::AppendTypeMismatch {
+          variable: left_col.name.clone(),
+          left_type: left_canonical,
+          right_type: right_canonical,
+        });
+      }
+    }
+
+    let mut used_names: HashSet<String> = dataset.columns.iter().map(|c| c.name.clone()).collect();
+    for c in &append_dataset.columns {
+      used_names.insert(c.name.clone());
+    }
+    let side_col = unique_internal_name("__tabdat_append_side", &used_names);
+    used_names.insert(side_col.clone());
+    let row_col = unique_internal_name("__tabdat_append_row", &used_names);
+
+    let select_sql = dataset
+      .columns
+      .iter()
+      .map(|c| quote_identifier(&c.name))
+      .collect::<Vec<_>>()
+      .join(", ");
+
+    let internal_name = named_table_identifier(table_name);
+
+    let append_query = format!(
+      "CREATE TEMP TABLE {STAGING_TABLE} AS \
+       SELECT * EXCLUDE ({}, {}) \
+       FROM ( \
+         SELECT 0 AS {}, row_number() OVER () AS {}, {select_sql} \
+         FROM {ACTIVE_TABLE} \
+         UNION ALL \
+         SELECT 1 AS {}, row_number() OVER () AS {}, {select_sql} \
+         FROM {} \
+       ) AS append_rows \
+       ORDER BY {}, {}",
+      quote_identifier(&side_col),
+      quote_identifier(&row_col),
+      quote_identifier(&side_col),
+      quote_identifier(&row_col),
+      quote_identifier(&side_col),
+      quote_identifier(&row_col),
+      quote_identifier(&internal_name),
+      quote_identifier(&side_col),
+      quote_identifier(&row_col),
+    );
+
+    self.drop_staging();
+    if self.connection.execute_batch(&append_query).is_err() {
+      self.drop_staging();
+      return Err(RuntimeError::AppendFailed);
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(cols) => cols,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::AppendFailed);
+      }
+    };
+
+    let row_count = match self.staged_row_count() {
+      Ok(rc) => rc,
+      Err(()) => {
+        self.drop_staging();
+        return Err(RuntimeError::AppendFailed);
+      }
+    };
+
+    if self.publish_staging().is_err() {
+      return Err(RuntimeError::AppendFailed);
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    })
+  }
+
   fn publish_staging(&mut self) -> Result<(), ()> {
     self
       .connection
@@ -6498,6 +6708,35 @@ fn civil_from_days(days_since_epoch: i64) -> (i64, u32, u32) {
     u32::try_from(month).expect("civil month is positive"),
     u32::try_from(day).expect("civil day is positive"),
   )
+}
+
+fn canonical_append_type(data_type: &str) -> String {
+  let normalized = data_type
+    .chars()
+    .filter(|character| !character.is_whitespace())
+    .flat_map(|character| character.to_uppercase())
+    .collect::<String>();
+  let alias = match normalized.as_str() {
+    "INT8" => Some("TINYINT"),
+    "INT16" => Some("SMALLINT"),
+    "INT32" => Some("INTEGER"),
+    "INT64" => Some("BIGINT"),
+    "UINT8" => Some("UTINYINT"),
+    "UINT16" => Some("USMALLINT"),
+    "UINT32" => Some("UINTEGER"),
+    "UINT64" => Some("UBIGINT"),
+    "UINT128" => Some("UHUGEINT"),
+    "FLOAT32" => Some("FLOAT"),
+    "FLOAT64" => Some("DOUBLE"),
+    "TEXT" | "STRING" => Some("VARCHAR"),
+    "BOOL" => Some("BOOLEAN"),
+    _ => None,
+  };
+  if let Some(alias) = alias {
+    alias.to_owned()
+  } else {
+    normalized
+  }
 }
 
 fn canonical_signature_type(data_type: &str) -> String {
