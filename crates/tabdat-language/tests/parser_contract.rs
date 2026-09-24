@@ -1,13 +1,13 @@
 use tabdat_language::{
-  AssertBinaryOperator, AssertExpression, BayesPrefixCommand, CfRegressCommand, CollapseCommand,
-  CollapseStatistic, Command, DataSource, DidCommand, DmlCommand, DrDidCommand, DrDidMethod,
-  EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator, GenerateExpression,
-  IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine,
-  LincomCommand, LogitCommand, LowessCommand, PanelAction, PanelCommand, ProbitCommand,
-  RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand,
-  RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SettingName, SortKey,
-  TabulateCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand, XtRegCommand,
-  XtRegEstimator, parse_command,
+  AssertBinaryOperator, AssertExpression, BayesPrefixCommand, ByCommand, CfRegressCommand,
+  CollapseCommand, CollapseStatistic, Command, DataSource, DidCommand, DmlCommand, DrDidCommand,
+  DrDidMethod, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
+  GenerateExpression, IvEstimator, IvRegressCommand, JoinCommand, JoinHow, LabelCommand,
+  LabelValue, LazyEngine, LincomCommand, LogitCommand, LowessCommand, PanelAction, PanelCommand,
+  ProbitCommand, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
+  RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SettingName,
+  SortKey, TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform,
+  XtLogitCommand, XtRegCommand, XtRegEstimator, parse_command,
 };
 
 #[test]
@@ -2245,6 +2245,266 @@ fn lincom_preserves_bounded_parser_diagnostics() {
     ("lincom x1.x2", "unsupported token in expression: ."),
     ("lincom x1[0]", "unsupported token in command: ["),
     ("lincom x1 if x2 > 0", "unsupported token in expression: if"),
+  ];
+
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn test_parses_classical_linear_hypothesis_testing_specifications() {
+  assert_eq!(
+    parse_command("test x1").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Identifier("x1".to_owned())],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test x1 x2").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![
+          GenerateExpression::Identifier("x1".to_owned()),
+          GenerateExpression::Identifier("x2".to_owned()),
+        ],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test x1 = x2").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test x1 == x2").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test x1 + 2 * x2 = 0").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+            operator: GenerateBinaryOperator::Add,
+            right: Box::new(GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Number("2".to_owned())),
+              operator: GenerateBinaryOperator::Multiply,
+              right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+            }),
+          }),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Number("0".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test (x1 = x2) (x3 = 0)").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![
+          GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+            operator: GenerateBinaryOperator::Subtract,
+            right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+          },
+          GenerateExpression::Binary {
+            left: Box::new(GenerateExpression::Identifier("x3".to_owned())),
+            operator: GenerateBinaryOperator::Subtract,
+            right: Box::new(GenerateExpression::Number("0".to_owned())),
+          },
+        ],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test (x1 = x2)").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test (x1)").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Identifier("x1".to_owned())],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test (x1 + x2)").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Add,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test (x1 == 1)").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Number("1".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("test ( (x1) = 0 )").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Number("0".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("TEST x1 = x2").unwrap(),
+    Command::Test {
+      command: TestCommand {
+        constraints: vec![GenerateExpression::Binary {
+          left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+          operator: GenerateBinaryOperator::Subtract,
+          right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+        }],
+      },
+    }
+  );
+
+  assert_eq!(
+    parse_command("by group: test x1 = x2").unwrap(),
+    Command::By {
+      command: ByCommand {
+        groups: vec!["group".to_owned()],
+        command: Box::new(Command::Test {
+          command: TestCommand {
+            constraints: vec![GenerateExpression::Binary {
+              left: Box::new(GenerateExpression::Identifier("x1".to_owned())),
+              operator: GenerateBinaryOperator::Subtract,
+              right: Box::new(GenerateExpression::Identifier("x2".to_owned())),
+            }],
+          },
+        }),
+      },
+    }
+  );
+}
+
+#[test]
+fn test_preserves_bounded_parser_diagnostics() {
+  let cases = [
+    (
+      "test",
+      "test command expects a list of variables or constraints",
+    ),
+    (
+      "test   ",
+      "test command expects a list of variables or constraints",
+    ),
+    ("test:", "unsupported token in command: :"),
+    ("test: x1", "unsupported token in command: :"),
+    ("test;", "unknown command: test;"),
+    ("test x1;", "unsupported token in command: ;"),
+    ("test=", "test assignment requires a target before ="),
+    ("test=1", "test assignment requires a target before ="),
+    ("test==", "unsupported token in command: =="),
+    ("test==1", "unsupported token in command: =="),
+    ("test,", "comma must be followed by at least one option"),
+    ("test, replace", "unknown command: test"),
+    (
+      "test ()",
+      "test command: empty constraint inside parentheses",
+    ),
+    ("test (x1 = )", "test command: malformed constraint"),
+    ("test ( = x1)", "test command: malformed constraint"),
+    (
+      "test (x1 = x2 = x3)",
+      "test command: multiple '=' in a constraint",
+    ),
+    (
+      "test x1 = x2 = x3",
+      "test command: multiple '=' in a single constraint (use parentheses for multiple constraints)",
+    ),
+    (
+      "test x1 =",
+      "test command: missing right-hand side of constraint",
+    ),
+    (
+      "test = x2",
+      "test command: missing left-hand side of constraint",
+    ),
+    (
+      "test (x1) extra",
+      "test command: unexpected tokens outside parentheses",
+    ),
+    ("test (x1) (x2", "test command: mismatched parentheses"),
+    ("test (x1))", "test command: mismatched parentheses"),
+    (
+      "test 123",
+      "test command: expected variable name, got '123'",
+    ),
+    (
+      "test x1, replace",
+      "test command: expected variable name, got ','",
+    ),
+    (
+      "test x1 if y > 0",
+      "test command: expected variable name, got '>'",
+    ),
+    (
+      "test (x1 = x2, replace)",
+      "unsupported token in expression: ,",
+    ),
+    ("test ((x1 = 0))", "missing closing ) in expression"),
   ];
 
   for (input, expected) in cases {
