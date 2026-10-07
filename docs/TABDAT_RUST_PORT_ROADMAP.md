@@ -1049,8 +1049,8 @@ Port foundational statistical inference and establish the stable estimator backe
 - [x] Port current GLS semantics (PR #151, squash merge `9476053`; 1D sigma scaled to $w_i = 1 / \sigma_i$ precision weights with strictly positive sigma validation).
 - [x] Port robust covariance (PR #151, squash merge `9476053`; Stata HC1 robust sandwich covariance matrix).
 - [x] Port clustered covariance (PR #151, squash merge `9476053`; cluster-robust sandwich covariance matrix with degrees-of-freedom correction).
-- [ ] Port `predict, xb`.
-- [ ] Port `predict, residuals`.
+- [x] Port linear-regression `predict, xb` (PR #153; eager DuckDB runtime after OLS/WLS/GLS only; other model families remain deferred).
+- [x] Port linear-regression `predict, residuals` (PR #153; observed outcome minus stored fitted values; other model families remain deferred).
 - [ ] Port VIF.
 - [ ] Port residual diagnostics.
 - [ ] Port `test`.
@@ -1065,7 +1065,8 @@ Port foundational statistical inference and establish the stable estimator backe
 - [ ] Validate coefficients.
 - [ ] Validate standard errors.
 - [ ] Validate covariance corrections.
-- [ ] Validate predictions.
+- [x] Validate the bounded linear-regression `xb` and residual predictions (PR #153; pinned Python tests and NIST Longley fitted-value reference; broader prediction validation remains open).
+- [ ] Extend prediction validation to other model families and prediction kinds.
 - [ ] Validate sample exclusion.
 - [ ] Validate failure behavior.
 

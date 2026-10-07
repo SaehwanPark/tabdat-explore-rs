@@ -3,7 +3,7 @@
 ## Status and scope
 
 - **Producer / consumer:** main agent / implementation, reviewer, and next maintainer.
-- **State:** in progress; implementation and validation are not complete.
+- **State:** implementation and focused validation complete; full hosted PR-head checks and independent review are pending.
 - **Rust base:** `origin/main` at `8d18678` (`8d18678…`); working branch `feat/runtime-linear-predict`.
 - **Python oracle:** TabDat `0.25.0`, commit `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`, tree `601b236788872323af9277d2276a236154a0f129`; clean checkout and pinned `uv.lock` SHA-256 verified against `docs/migration/python-baseline.toml`.
 - **Roadmap:** Phase 7 §9.2 (`predict, xb`, `predict, residuals`) and §9.3 (prediction validation).
@@ -65,4 +65,7 @@ Acceptance requires the focused runtime contract tests and all root locked Rust 
 - `Session` stores `Option<LeastSquaresResult>` but not the model's outcome/predictor mapping, which is necessary for residual and out-of-sample prediction.
 - `tabdat-stats` already retains fitted values, residuals, ordered parameter names, and coefficients; `tabdat-runtime` has staged relation publication and active named-table synchronization helpers.
 - Baseline `cargo fmt --all -- --check` and `cargo check --locked --workspace --all-targets` pass on this Rust base revision.
-- Test-first evidence: `cargo test --locked -p tabdat-runtime --test predict_runtime_contract` compiles and reaches runtime. The first attempt exposed a DuckDB fixture issue (the table-function input path was incorrectly bound inside `COPY`); the test now quotes that generated local path and still binds the output path. Re-run: the three positive prediction tests fail with `UnsupportedCommand { name: "predict" }` as expected; the no-active and failure-atomicity guard tests pass their current broad error assertions. Tighten those assertions to the new typed error cases during implementation.
+- Test-first evidence: `cargo test --locked -p tabdat-runtime --test predict_runtime_contract` compiled and reached runtime before implementation. The first attempt exposed a DuckDB fixture issue (the table-function input path was incorrectly bound inside `COPY`); the test then quoted that generated local path and still bound the output path. Three positive prediction tests failed with `UnsupportedCommand { name: "predict" }` as expected; the no-active and failure-atomicity guard tests ran. The tests now assert exact typed errors.
+- Implemented validation: focused Rust prediction/parser suites pass (9 tests total); the pinned Python selection passes (3 passed, 414 deselected); the Longley runtime comparison passes against the NIST certified coefficient vector. `cargo fmt`, workspace `cargo check`, and workspace `cargo clippy -D warnings` pass locally.
+- Platform note: serial full-workspace tests on Windows stop in the unchanged `export_contract` suite because existing tests feed absolute backslash paths to the language parser (`unsupported token in command: \\`). This failure is outside the changed files; Linux hosted checks are still required for acceptance.
+- See [evidence and migration record](02-evidence-migration.md); hosted PR-head checks and independent review remain pending.
