@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
 use tabdat_language::parse_command;
-use tabdat_runtime::{CellValue, ExecutionResult, Session};
+use tabdat_runtime::{CellValue, ExecutionResult, PredictionResult, RuntimeError, Session};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -40,9 +40,7 @@ impl Fixture {
     let escaped_csv_path = csv_string.replace('\'', "''");
     connection
       .execute(
-        &format!(
-          "COPY (SELECT * FROM read_csv_auto('{escaped_csv_path}')) TO ? (FORMAT PARQUET)"
-        ),
+        &format!("COPY (SELECT * FROM read_csv_auto('{escaped_csv_path}')) TO ? (FORMAT PARQUET)"),
         [&parquet_string],
       )
       .expect("fixture CSV should write to Parquet");
@@ -81,14 +79,17 @@ fn number(value: &CellValue) -> Option<f64> {
     CellValue::Float(value) => Some(*value),
     CellValue::SignedInteger(value) => Some(*value as f64),
     CellValue::UnsignedInteger(value) => Some(*value as f64),
-    CellValue::Decimal { value, scale, .. } => {
-      Some(*value as f64 / 10_f64.powi(*scale as i32))
-    }
+    CellValue::Decimal { value, scale, .. } => Some(*value as f64 / 10_f64.powi(*scale as i32)),
     CellValue::Null | CellValue::Boolean(_) | CellValue::Text(_) | CellValue::Bytes(_) => None,
   }
 }
 
-fn close_with_tolerance(actual: f64, expected: f64, absolute_tolerance: f64, relative_tolerance: f64) {
+fn close_with_tolerance(
+  actual: f64,
+  expected: f64,
+  absolute_tolerance: f64,
+  relative_tolerance: f64,
+) {
   let allowed = absolute_tolerance.max(relative_tolerance * expected.abs());
   assert!(
     (actual - expected).abs() <= allowed,
@@ -117,18 +118,36 @@ fn regression_xb_and_residual_predictions_preserve_rows_and_missingness() {
     .expect("regression should fit");
   let model = session.last_regression().unwrap().clone();
 
-  let xb_result = session.execute(parse_command("predict fitted").unwrap());
-  assert!(xb_result.is_ok(), "default xb prediction should execute: {xb_result:?}");
-  let residual_result = session.execute(parse_command("predict residual, residuals").unwrap());
-  assert!(
-    residual_result.is_ok(),
-    "residual prediction should execute: {residual_result:?}"
-  );
+  let xb_result = session
+    .execute(parse_command("predict fitted").unwrap())
+    .expect("default xb prediction should execute");
+  let ExecutionResult::Prediction(PredictionResult {
+    dataset: xb_dataset,
+  }) = xb_result
+  else {
+    panic!("xb should return a prediction result");
+  };
+  assert_eq!(xb_dataset.columns.last().unwrap().name, "fitted");
+
+  let residual_result = session
+    .execute(parse_command("predict residual, residuals").unwrap())
+    .expect("residual prediction should execute");
+  let ExecutionResult::Prediction(PredictionResult {
+    dataset: residual_dataset,
+  }) = residual_result
+  else {
+    panic!("residuals should return a prediction result");
+  };
+  assert_eq!(residual_dataset.columns.last().unwrap().name, "residual");
 
   let metadata = session.active_dataset().unwrap();
   assert_eq!(metadata.row_count, 7);
   assert_eq!(
-    metadata.columns.iter().map(|column| column.name.as_str()).collect::<Vec<_>>(),
+    metadata
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .collect::<Vec<_>>(),
     vec!["x", "y", "fitted", "residual"]
   );
   assert_eq!(metadata.columns[2].data_type, "DOUBLE");
@@ -145,7 +164,10 @@ fn regression_xb_and_residual_predictions_preserve_rows_and_missingness() {
   for (index, row) in preview.rows.iter().enumerate() {
     match number(&row[2]) {
       Some(actual) => close_with_tolerance(actual, expected_xb[index], 1e-12, 1e-12),
-      None => assert!(expected_xb[index].is_nan(), "unexpected missing xb at row {index}"),
+      None => assert!(
+        expected_xb[index].is_nan(),
+        "unexpected missing xb at row {index}"
+      ),
     }
     match number(&row[3]) {
       Some(actual) => close_with_tolerance(actual, expected_residual[index], 1e-12, 1e-12),
@@ -182,10 +204,21 @@ fn weighted_regression_predictions_do_not_require_weight_columns_after_fit() {
       .execute(parse_command("select x y").unwrap())
       .expect("weight columns should be removable after fitting");
 
-    let result = session.execute(parse_command(&format!("predict {target}")).unwrap());
-    assert!(result.is_ok(), "weighted prediction should execute: {result:?}");
+    let result = session
+      .execute(parse_command(&format!("predict {target}")).unwrap())
+      .expect("weighted prediction should execute");
+    assert!(matches!(result, ExecutionResult::Prediction(_)));
     assert_eq!(session.active_dataset().unwrap().row_count, 5);
-    assert_eq!(session.active_dataset().unwrap().columns.last().unwrap().name, target);
+    assert_eq!(
+      session
+        .active_dataset()
+        .unwrap()
+        .columns
+        .last()
+        .unwrap()
+        .name,
+      target
+    );
   }
 }
 
@@ -255,21 +288,30 @@ fn prediction_uses_nist_certified_longley_coefficients_as_reference() {
 
 #[test]
 fn failed_prediction_does_not_change_dataset_or_regression_state() {
-  let fixture = Fixture::new_with_sql(
-    "SELECT * FROM (VALUES (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)) AS t(x, y)",
-  );
+  let fixture =
+    Fixture::new_with_sql("SELECT * FROM (VALUES (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)) AS t(x, y)");
   let mut session = Session::new();
   fixture.load(&mut session);
-  let no_model = session.execute(parse_command("predict fitted").unwrap());
-  assert!(no_model.is_err());
+  assert_eq!(
+    session
+      .execute(parse_command("predict fitted").unwrap())
+      .unwrap_err(),
+    RuntimeError::PredictRequiresPriorRegression
+  );
 
   session
     .execute(parse_command("regress y x").unwrap())
     .expect("regression should fit");
   let dataset_before = session.active_dataset().unwrap().clone();
   let model_before = session.last_regression().unwrap().clone();
-  let collision = session.execute(parse_command("predict x").unwrap());
-  assert!(collision.is_err());
+  assert_eq!(
+    session
+      .execute(parse_command("predict x").unwrap())
+      .unwrap_err(),
+    RuntimeError::PredictTargetExists {
+      variable: "x".to_owned(),
+    }
+  );
   assert_eq!(session.active_dataset(), Some(&dataset_before));
   assert_eq!(session.last_regression(), Some(&model_before));
 
@@ -278,16 +320,103 @@ fn failed_prediction_does_not_change_dataset_or_regression_state() {
     .expect("predictor can be removed after fitting");
   let dataset_before = session.active_dataset().unwrap().clone();
   let model_before = session.last_regression().unwrap().clone();
-  let missing_predictor = session.execute(parse_command("predict fitted").unwrap());
-  assert!(missing_predictor.is_err());
+  assert_eq!(
+    session
+      .execute(parse_command("predict fitted").unwrap())
+      .unwrap_err(),
+    RuntimeError::PredictUnknownVariable {
+      variables: vec!["x".to_owned()],
+    }
+  );
   assert_eq!(session.active_dataset(), Some(&dataset_before));
   assert_eq!(session.last_regression(), Some(&model_before));
 }
 
 #[test]
-fn prediction_requires_active_data_before_model_lookup() {
+fn prediction_synchronizes_an_active_named_table() {
+  let fixture =
+    Fixture::new_with_sql("SELECT * FROM (VALUES (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)) AS t(x, y)");
   let mut session = Session::new();
-  let result = session.execute(parse_command("predict fitted").unwrap());
-  assert!(result.is_err());
+  fixture.load(&mut session);
+  session
+    .execute(parse_command("sql select * from active into analysis").unwrap())
+    .expect("named table should be created");
+  session
+    .execute(parse_command("regress y x").unwrap())
+    .expect("regression should fit");
+
+  let result = session
+    .execute(parse_command("predict fitted").unwrap())
+    .expect("prediction should execute");
+  assert!(matches!(result, ExecutionResult::Prediction(_)));
+  assert_eq!(session.active_table_name(), Some("analysis"));
+  let named_dataset = session.named_tables().get("analysis").unwrap().clone();
+  assert_eq!(named_dataset.columns.last().unwrap().name, "fitted");
+
+  assert_eq!(
+    session
+      .execute(parse_command("predict x").unwrap())
+      .unwrap_err(),
+    RuntimeError::PredictTargetExists {
+      variable: "x".to_owned(),
+    }
+  );
+  assert_eq!(session.active_dataset(), Some(&named_dataset));
+  assert_eq!(session.named_tables().get("analysis"), Some(&named_dataset));
 }
 
+#[test]
+fn residual_prediction_requires_the_outcome_column() {
+  let fixture =
+    Fixture::new_with_sql("SELECT * FROM (VALUES (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)) AS t(x, y)");
+  let mut session = Session::new();
+  fixture.load(&mut session);
+  session
+    .execute(parse_command("regress y x").unwrap())
+    .expect("regression should fit");
+  session
+    .execute(parse_command("select x").unwrap())
+    .expect("outcome column can be removed after fitting");
+  let dataset_before = session.active_dataset().unwrap().clone();
+  let model_before = session.last_regression().unwrap().clone();
+
+  assert_eq!(
+    session
+      .execute(parse_command("predict residual, residuals").unwrap())
+      .unwrap_err(),
+    RuntimeError::PredictUnknownVariable {
+      variables: vec!["y".to_owned()],
+    }
+  );
+  assert_eq!(session.active_dataset(), Some(&dataset_before));
+  assert_eq!(session.last_regression(), Some(&model_before));
+}
+
+#[test]
+fn unsupported_prediction_kinds_remain_deferred() {
+  let fixture =
+    Fixture::new_with_sql("SELECT * FROM (VALUES (1.0, 3.0), (2.0, 5.0), (3.0, 7.0)) AS t(x, y)");
+  let mut session = Session::new();
+  fixture.load(&mut session);
+  session
+    .execute(parse_command("regress y x").unwrap())
+    .expect("regression should fit");
+
+  assert_eq!(
+    session
+      .execute(parse_command("predict probability, pr").unwrap())
+      .unwrap_err(),
+    RuntimeError::UnsupportedCommand { name: "predict" }
+  );
+}
+
+#[test]
+fn prediction_requires_active_data_before_model_lookup() {
+  let mut session = Session::new();
+  assert_eq!(
+    session
+      .execute(parse_command("predict fitted").unwrap())
+      .unwrap_err(),
+    RuntimeError::NoActiveDataset { command: "predict" }
+  );
+}

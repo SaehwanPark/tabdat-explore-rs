@@ -17,9 +17,9 @@ use tabdat_language::script::{
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
   DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow,
-  LabelCommand, LabelValue, LazyEngine, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
-  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  SortKey, TabulateCommand,
+  LabelCommand, LabelValue, LazyEngine, PredictCommand, PredictKind, RecodeInput,
+  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
+  ReshapeCommand, ReshapeDirection, RowLimit, SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -496,6 +496,13 @@ pub struct RegressionResult {
   pub least_squares: tabdat_stats::LeastSquaresResult,
 }
 
+/// The owned result returned after adding fitted values or residuals to the active dataset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredictionResult {
+  /// Metadata for the newly active dataset with the appended prediction column.
+  pub dataset: DatasetInfo,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
@@ -573,6 +580,8 @@ pub enum ExecutionResult {
   Reshape(ReshapeResult),
   /// The result of executing a linear regression command.
   Regression(Box<RegressionResult>),
+  /// The result of appending linear fitted values or residuals.
+  Prediction(PredictionResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -884,6 +893,14 @@ pub enum RuntimeError {
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
   RegressFailed { message: String },
+  /// Prediction requires a preceding supported linear regression.
+  PredictRequiresPriorRegression,
+  /// The prediction target already exists in the active schema.
+  PredictTargetExists { variable: String },
+  /// One or more required model variables are absent from the active schema.
+  PredictUnknownVariable { variables: Vec<String> },
+  /// DuckDB could not stage or publish fitted values or residuals.
+  PredictFailed,
 }
 
 impl fmt::Display for RuntimeError {
@@ -1389,6 +1406,20 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::PredictRequiresPriorRegression => {
+        formatter.write_str("predict requires a prior regress model")
+      }
+      Self::PredictTargetExists { variable } => {
+        write!(formatter, "predict target already exists: {variable}")
+      }
+      Self::PredictUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "predict unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::PredictFailed => formatter.write_str("predict failed"),
     }
   }
 }
@@ -1401,6 +1432,22 @@ impl From<ScriptError> for RuntimeError {
   }
 }
 
+struct LinearRegressionState {
+  outcome: String,
+  predictors: Vec<String>,
+  include_intercept: bool,
+  result: tabdat_stats::LeastSquaresResult,
+}
+
+struct LinearPrediction<'a> {
+  target_variable: &'a str,
+  predictor_names: &'a [String],
+  predictor_coefficients: &'a [f64],
+  intercept: Option<f64>,
+  outcome_variable: &'a str,
+  residuals: bool,
+}
+
 /// A session holding optional active metadata and a private DuckDB adapter.
 pub struct Session {
   backend: Option<DuckDbBackend>,
@@ -1408,7 +1455,7 @@ pub struct Session {
   active_table_name: Option<String>,
   named_tables: HashMap<String, DatasetInfo>,
   label_metadata: LabelMetadata,
-  last_regression: Option<tabdat_stats::LeastSquaresResult>,
+  last_regression: Option<LinearRegressionState>,
 }
 
 impl Session {
@@ -1484,6 +1531,7 @@ impl Session {
       Command::Append { table_name } => self.execute_append(&table_name),
       Command::Reshape { command } => self.execute_reshape(&command),
       Command::Regress { command } => self.execute_regress(&command),
+      Command::Predict { command } => self.execute_predict(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -1495,7 +1543,7 @@ impl Session {
 
   /// Return the result of the most recently executed regression model, if any.
   pub fn last_regression(&self) -> Option<&tabdat_stats::LeastSquaresResult> {
-    self.last_regression.as_ref()
+    self.last_regression.as_ref().map(|state| &state.result)
   }
 
   /// Return the currently published named table registry.
@@ -3831,7 +3879,12 @@ impl Session {
         message: e.to_string(),
       })?;
 
-    self.last_regression = Some(least_squares_result.clone());
+    self.last_regression = Some(LinearRegressionState {
+      outcome: command.outcome.clone(),
+      predictors: command.predictors.clone(),
+      include_intercept: command.include_intercept,
+      result: least_squares_result.clone(),
+    });
 
     let covariance_str = match &least_squares_result.covariance.covariance_type {
       tabdat_stats::CovarianceType::NonRobust => "nonrobust".to_string(),
@@ -3859,6 +3912,89 @@ impl Session {
     };
 
     Ok(ExecutionResult::Regression(Box::new(result)))
+  }
+
+  fn execute_predict(&mut self, command: &PredictCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "predict" })?
+      .clone();
+
+    if !matches!(command.kind, PredictKind::Xb | PredictKind::Residuals) {
+      return Err(RuntimeError::UnsupportedCommand { name: "predict" });
+    }
+
+    let (outcome, predictors, intercept, coefficients) = {
+      let model = self
+        .last_regression
+        .as_ref()
+        .ok_or(RuntimeError::PredictRequiresPriorRegression)?;
+      if dataset
+        .columns
+        .iter()
+        .any(|column| column.name == command.target_variable)
+      {
+        return Err(RuntimeError::PredictTargetExists {
+          variable: command.target_variable.clone(),
+        });
+      }
+
+      let mut required = model.predictors.clone();
+      if command.kind == PredictKind::Residuals {
+        required.push(model.outcome.clone());
+      }
+      let missing = required
+        .iter()
+        .filter(|variable| {
+          !dataset
+            .columns
+            .iter()
+            .any(|column| column.name == **variable)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+      if !missing.is_empty() {
+        return Err(RuntimeError::PredictUnknownVariable { variables: missing });
+      }
+
+      let coefficient_offset = usize::from(model.include_intercept);
+      if model.result.coefficients.len() != model.predictors.len() + coefficient_offset {
+        return Err(RuntimeError::PredictFailed);
+      }
+      let intercept = model
+        .include_intercept
+        .then(|| model.result.coefficients[0].value);
+      let coefficients = model.result.coefficients[coefficient_offset..]
+        .iter()
+        .map(|coefficient| coefficient.value)
+        .collect::<Vec<_>>();
+      (
+        model.outcome.clone(),
+        model.predictors.clone(),
+        intercept,
+        coefficients,
+      )
+    };
+
+    let prediction = LinearPrediction {
+      target_variable: &command.target_variable,
+      predictor_names: &predictors,
+      predictor_coefficients: &coefficients,
+      intercept,
+      outcome_variable: &outcome,
+      residuals: command.kind == PredictKind::Residuals,
+    };
+    let next_dataset = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::PredictFailed)?
+      .add_linear_prediction_column(&dataset, &prediction)
+      .map_err(|_| RuntimeError::PredictFailed)?;
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
+    Ok(ExecutionResult::Prediction(PredictionResult {
+      dataset: next_dataset,
+    }))
   }
 }
 
@@ -4843,6 +4979,14 @@ fn safe_numeric_sql(expression: &str) -> String {
   format!(
     "(SELECT CASE WHEN isfinite(CAST(__tabdat_numeric_value AS DOUBLE)) THEN __tabdat_numeric_value ELSE NULL END FROM (SELECT try({expression}) AS __tabdat_numeric_value) AS __tabdat_numeric_result)"
   )
+}
+
+fn finite_float_sql_literal(value: f64) -> Result<String, ()> {
+  if !value.is_finite() {
+    return Err(());
+  }
+  // Rust's shortest-round-trip representation preserves the fitted coefficient as a double.
+  Ok(value.to_string())
 }
 
 fn quote_identifier(identifier: &str) -> String {
@@ -5970,6 +6114,107 @@ impl DuckDbBackend {
       }
     };
     if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(());
+    }
+
+    Ok(DatasetInfo {
+      source: dataset.source.clone(),
+      row_count,
+      columns,
+      execution_mode: dataset.execution_mode,
+      lazy_engine: dataset.lazy_engine,
+    })
+  }
+
+  fn add_linear_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+  ) -> Result<DatasetInfo, ()> {
+    if prediction.predictor_names.len() != prediction.predictor_coefficients.len() {
+      return Err(());
+    }
+
+    let mut terms = Vec::with_capacity(
+      prediction.predictor_names.len() + usize::from(prediction.intercept.is_some()),
+    );
+    if let Some(intercept) = prediction.intercept {
+      terms.push(format!(
+        "CAST({} AS DOUBLE)",
+        finite_float_sql_literal(intercept)?
+      ));
+    }
+    for (predictor, coefficient) in prediction
+      .predictor_names
+      .iter()
+      .zip(prediction.predictor_coefficients)
+    {
+      terms.push(format!(
+        "CAST({} AS DOUBLE) * CAST({} AS DOUBLE)",
+        finite_float_sql_literal(*coefficient)?,
+        quote_identifier(predictor),
+      ));
+    }
+    let prediction_sql = if terms.is_empty() {
+      "0.0".to_owned()
+    } else {
+      terms.join(" + ")
+    };
+    let expression_sql = if prediction.residuals {
+      format!(
+        "CAST({} AS DOUBLE) - ({prediction_sql})",
+        quote_identifier(prediction.outcome_variable)
+      )
+    } else {
+      prediction_sql
+    };
+    let target_sql = quote_identifier(prediction.target_variable);
+
+    self.drop_staging();
+    if self
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT *, {expression_sql} AS {target_sql} FROM {ACTIVE_TABLE}"
+      ))
+      .is_err()
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let columns = match self.staged_columns() {
+      Ok(columns) => columns,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    let expected_names = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .chain(std::iter::once(prediction.target_variable));
+    if columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .ne(expected_names)
+      || columns
+        .last()
+        .is_none_or(|column| column.data_type != "DOUBLE")
+    {
+      self.drop_staging();
+      return Err(());
+    }
+
+    let row_count = match self.staged_row_count() {
+      Ok(row_count) => row_count,
+      Err(()) => {
+        self.drop_staging();
+        return Err(());
+      }
+    };
+    if row_count != dataset.row_count || self.publish_staging().is_err() {
       self.drop_staging();
       return Err(());
     }
