@@ -9,10 +9,10 @@ quality, or latency benefit clearly outweighs the extra model-turn cost.
 * Default to one active model-backed child at a time.
 * Use two concurrent children only for clearly independent tasks when parallelism has a concrete benefit and subscription usage has healthy headroom.
 * Do not recursively spawn model-backed grandchildren unless explicitly authorized by the change owner or user.
-* Never spawn a model-backed agent solely to monitor subscription usage, run `codexbar`, or perform another cheap local observation.
+* Never spawn a model-backed agent solely to monitor subscription usage.
 * Children should inherit the exact parent model route unless a specific route is intentionally configured.
 * Do not silently upgrade a child to a more expensive model tier. Sol/Astra-class routes require explicit user authorization for repository development.
-* If current usage is at or above the soft-stop threshold in `docs/codexbar.md`, do not start new delegated work.
+* If current usage is at or above the soft-stop threshold in `docs/ai-usage-policy.md`, do not start new delegated work.
 
 ### When to spawn a subagent
 

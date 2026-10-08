@@ -42,7 +42,7 @@ Record conflicts or intentional deviations rather than silently choosing a behav
   `docs/adr/` when the first decision is needed). Review native dependency license
   compatibility and redistribution obligations against the proposal's AGPL intent.
 - Be aware of AI subscription usage limits and reset windows. The parent/current
-  agent checks limits directly per `docs/codexbar.md`; never spawn a model-backed
+  agent checks limits directly per `docs/ai-usage-policy.md`; never spawn a model-backed
   subagent solely to monitor usage.
 
 ## Checks and change discipline
@@ -83,16 +83,20 @@ Skills are portable markdown; no particular agent runtime or delegation is requi
 
 ## Subagents
 
-Use subagents proactively to reduce main-context growth.
+Stay single-agent by default. Delegate only when the context, specialization, or
+parallel-latency benefit clearly outweighs the additional model-turn cost.
 
+* Default to at most one active model-backed child. Use two concurrently only for clearly independent work with an explicit benefit and healthy usage headroom.
 * Delegate bounded, self-contained investigation or implementation tasks when the parent mainly needs the result, not the working process.
-* Prefer subagents for work that requires reading many files, logs, tests, documentation, or other large intermediate context.
+* Prefer a child for unusually read-heavy or specialized work, not as the default way to run tests, inspect a few files, monitor quota, or perform routine verification.
 * Give subagents only the context and scope needed for their task; avoid copying the full parent conversation unless necessary.
 * Ask subagents to return concise findings, evidence/references, risks, and recommended actions rather than raw working context.
-* Keep architectural decisions, cross-component integration, and final verification with the parent agent.
+* Keep architectural decisions, cross-component integration, final verification, and usage monitoring with the parent agent.
+* Do not recursively spawn model-backed grandchildren unless the user or change owner explicitly authorizes that topology.
+* Do not silently escalate a child to a more expensive model tier. Inherit the exact parent route or use an explicitly configured same/lower-cost route. Sol/Astra-class routes require explicit user authorization for repository development.
 * Avoid redundant subagents inspecting the same scope unless independent review is intentional.
 * If a subagent's scope expands substantially, it should escalate back to the parent rather than absorbing unrelated work.
-* Use the main context for decisions; use subagent contexts for discovery.
+* Use the main context for decisions; use subagent contexts only where they provide a clear net benefit.
 
 See `docs/subagents_policy.md` for detailed delegation patterns and guidance.
 
