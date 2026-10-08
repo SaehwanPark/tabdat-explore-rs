@@ -223,7 +223,25 @@ impl PostEstimationModel {
     let r_v = multiply(r_matrix, &self.covariance.matrix)?;
     let r_t = transpose(r_matrix)?;
     let r_v_rt = multiply(&r_v, &r_t)?;
-    let r_v_rt_inv = invert(&r_v_rt)?;
+    if r_v_rt.iter().flatten().any(|value| !value.is_finite()) {
+      return Err(StatsError::SingularMatrix(
+        "restriction covariance matrix is non-finite".into(),
+      ));
+    }
+    let covariance_scale = r_v_rt
+      .iter()
+      .flatten()
+      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+    if covariance_scale == 0.0 {
+      return Err(StatsError::SingularMatrix(
+        "restriction covariance matrix is zero".into(),
+      ));
+    }
+    let normalized_r_v_rt = r_v_rt
+      .iter()
+      .map(|row| row.iter().map(|value| value / covariance_scale).collect())
+      .collect::<Vec<Vec<_>>>();
+    let r_v_rt_inv = invert(&normalized_r_v_rt)?;
 
     // W = diff' * middle * diff
     let inv_diff = multiply_vector(&r_v_rt_inv, &diff)?;
@@ -231,7 +249,8 @@ impl PostEstimationModel {
       .iter()
       .zip(inv_diff.iter())
       .map(|(&d, &id)| d * id)
-      .sum();
+      .sum::<f64>()
+      / covariance_scale;
     let f_stat = chi2 / (q as f64);
 
     Ok(WaldTestResult {

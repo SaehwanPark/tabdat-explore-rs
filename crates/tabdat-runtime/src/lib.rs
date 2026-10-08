@@ -20,7 +20,7 @@ use tabdat_language::{
   GenerateExpression, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand,
   PredictCommand, PredictKind, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
   RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  SortKey, TabulateCommand,
+  SortKey, TabulateCommand, TestCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -520,6 +520,23 @@ pub struct LincomResult {
   pub df_residual: Option<usize>,
 }
 
+/// The owned result returned after testing linear restrictions on a fitted model.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TestResult {
+  /// Formatted restrictions in their requested order.
+  pub constraints: Vec<String>,
+  /// Wald F statistic or chi-square statistic for the tested restrictions.
+  pub statistic: f64,
+  /// Upper-tail probability for the selected reference distribution.
+  pub p_value: f64,
+  /// Numerator degrees of freedom (the number of restrictions).
+  pub df: usize,
+  /// Residual degrees of freedom for an F test, if available.
+  pub df_residual: Option<usize>,
+  /// Whether `statistic` follows a chi-square rather than F distribution.
+  pub is_chi2: bool,
+}
+
 /// The owned result returned after adding fitted values or residuals to the active dataset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictionResult {
@@ -608,6 +625,8 @@ pub enum ExecutionResult {
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.
   Lincom(LincomResult),
+  /// The result of testing linear restrictions on regression coefficients.
+  Test(TestResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -927,6 +946,10 @@ pub enum RuntimeError {
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
   LincomFailed { message: String },
+  /// `test` requires a preceding supported linear regression.
+  TestRequiresPriorEstimation,
+  /// An expression or inference error while evaluating `test`.
+  TestFailed { message: String },
   /// Prediction requires a preceding supported linear regression.
   PredictRequiresPriorRegression,
   /// The prediction target already exists in the active schema.
@@ -1448,6 +1471,10 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("no active estimation results found")
       }
       Self::LincomFailed { message } => formatter.write_str(message),
+      Self::TestRequiresPriorEstimation => {
+        formatter.write_str("no active estimation results found")
+      }
+      Self::TestFailed { message } => formatter.write_str(message),
       Self::PredictRequiresPriorRegression => {
         formatter.write_str("predict requires a prior regress model")
       }
@@ -1581,6 +1608,7 @@ impl Session {
       Command::Regress { command } => self.execute_regress(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
+      Command::Test { command } => self.execute_test(&command),
       Command::Estat { command } => self.execute_estat(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
@@ -4002,6 +4030,71 @@ impl Session {
     }))
   }
 
+  fn execute_test(&self, command: &TestCommand) -> Result<ExecutionResult, RuntimeError> {
+    let model = self
+      .last_regression
+      .as_ref()
+      .ok_or(RuntimeError::TestRequiresPriorEstimation)?;
+    if command.constraints.is_empty() {
+      return Err(RuntimeError::TestFailed {
+        message: "test command expects a list of variables or constraints".to_owned(),
+      });
+    }
+
+    let parameter_indices = model
+      .result
+      .parameter_names
+      .iter()
+      .enumerate()
+      .map(|(index, name)| (name.clone(), index))
+      .collect::<HashMap<_, _>>();
+    let mut r_matrix = Vec::with_capacity(command.constraints.len());
+    let mut r_vector = Vec::with_capacity(command.constraints.len());
+    let mut constraints = Vec::with_capacity(command.constraints.len());
+    for constraint in &command.constraints {
+      let affine = affine_test_expression(
+        constraint,
+        &parameter_indices,
+        model.result.parameter_names.len(),
+      )
+      .map_err(|message| RuntimeError::TestFailed { message })?;
+      r_matrix.push(affine.weights);
+      r_vector.push(-affine.offset);
+      constraints.push(format_test_constraint(constraint));
+    }
+
+    let post_estimation = tabdat_stats::PostEstimationModel::from_least_squares(&model.result);
+    let wald = post_estimation
+      .test_linear_hypothesis(&r_matrix, &r_vector)
+      .map_err(|error| RuntimeError::TestFailed {
+        message: match error {
+          tabdat_stats::StatsError::SingularMatrix(_) => {
+            "constraints are collinear or singular".to_owned()
+          }
+          other => other.to_string(),
+        },
+      })?;
+    if wald.df_denom == 0 {
+      return Err(RuntimeError::TestFailed {
+        message: "test requires positive residual degrees of freedom".to_owned(),
+      });
+    }
+
+    let p_value = tabdat_stats::f_distribution_survival_probability(
+      wald.f_statistic,
+      wald.df_num as f64,
+      wald.df_denom as f64,
+    );
+    Ok(ExecutionResult::Test(TestResult {
+      constraints,
+      statistic: wald.f_statistic,
+      p_value,
+      df: wald.df_num,
+      df_residual: Some(wald.df_denom),
+      is_chi2: false,
+    }))
+  }
+
   fn execute_estat(&self, command: &EstatCommand) -> Result<ExecutionResult, RuntimeError> {
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
@@ -4240,6 +4333,18 @@ fn affine_lincom_expression(
   }
 }
 
+fn affine_test_expression(
+  expression: &GenerateExpression,
+  parameter_indices: &HashMap<String, usize>,
+  parameter_count: usize,
+) -> Result<AffineCombination, String> {
+  match affine_lincom_expression(expression, parameter_indices, parameter_count) {
+    Ok(affine) => Ok(affine),
+    Err(RuntimeError::LincomFailed { message }) => Err(message),
+    Err(error) => Err(error.to_string()),
+  }
+}
+
 fn combine_affine(
   left: AffineCombination,
   right: AffineCombination,
@@ -4309,6 +4414,21 @@ fn format_lincom_expression(expression: &GenerateExpression) -> String {
     GenerateExpression::String(_)
     | GenerateExpression::Null
     | GenerateExpression::FunctionCall { .. } => "<expr>".to_owned(),
+  }
+}
+
+fn format_test_constraint(expression: &GenerateExpression) -> String {
+  match expression {
+    GenerateExpression::Binary {
+      left,
+      operator: GenerateBinaryOperator::Subtract,
+      right,
+    } => format!(
+      "{} = {}",
+      format_lincom_expression(left),
+      format_lincom_expression(right)
+    ),
+    _ => format!("{} = 0", format_lincom_expression(expression)),
   }
 }
 

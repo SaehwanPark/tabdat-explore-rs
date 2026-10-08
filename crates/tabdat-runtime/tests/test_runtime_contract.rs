@@ -4,7 +4,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use duckdb::Connection;
-use tabdat_language::{Command, GenerateBinaryOperator, GenerateExpression, TestCommand, parse_command};
+use tabdat_language::{
+  Command, GenerateBinaryOperator, GenerateExpression, TestCommand, parse_command,
+};
 use tabdat_runtime::{ExecutionResult, Session, TestResult};
 
 static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
@@ -16,6 +18,10 @@ struct Fixture {
 
 impl Fixture {
   fn new() -> Self {
+    Self::with_outcome_scale(1.0)
+  }
+
+  fn with_outcome_scale(outcome_scale: f64) -> Self {
     let nonce = SystemTime::now()
       .duration_since(UNIX_EPOCH)
       .expect("system clock should be after Unix epoch")
@@ -27,19 +33,22 @@ impl Fixture {
     ));
     fs::create_dir_all(&root).expect("fixture directory should be created");
     let parquet = root.join("fixture.parquet");
-    let parquet_string = parquet.to_string_lossy().into_owned();
+    let parquet_string = parquet.to_string_lossy().replace('\'', "''");
+    let outcome_scale = outcome_scale.to_string();
     let connection = Connection::open_in_memory().expect("fixture connection should open");
     connection
       .execute(
-        "COPY (SELECT * FROM (VALUES \
+        &format!(
+          "COPY (SELECT x1, x2, y * {outcome_scale} AS y, w, sigma, grp FROM (VALUES \
           (1.0, 10.0, 5.0, 1.0, 1.0, 'a'), \
           (2.0, 12.0, 6.0, 2.0, 2.0, 'a'), \
           (3.0, 15.0, 8.0, 3.0, 1.5, 'b'), \
           (4.0, 18.0, 9.0, 1.0, 1.0, 'c'), \
           (5.0, 20.0, 11.0, 4.0, 3.0, 'c'), \
           (6.0, 25.0, 12.0, 2.0, 2.0, 'd') \
-        ) AS t(x1, x2, y, w, sigma, grp)) TO ? (FORMAT PARQUET)",
-        [&parquet_string],
+        ) AS t(x1, x2, y, w, sigma, grp)) TO '{parquet_string}' (FORMAT PARQUET)"
+        ),
+        [],
       )
       .expect("fixture should write to Parquet");
     Self { root, parquet }
@@ -86,7 +95,10 @@ fn assert_result(
 ) {
   assert_eq!(
     result.constraints,
-    constraints.iter().map(|constraint| (*constraint).to_owned()).collect::<Vec<_>>()
+    constraints
+      .iter()
+      .map(|constraint| (*constraint).to_owned())
+      .collect::<Vec<_>>()
   );
   close(result.statistic, statistic);
   close(result.p_value, p_value);
@@ -125,7 +137,7 @@ fn parsed_linear_hypothesis_tests_match_python_and_statsmodels_scipy() {
   );
   assert_result(
     &execute_test(&mut session, "test (x1 = x2) (x2 = 2)"),
-    &["x1 = x2", "x2 = 2.0"],
+    &["x1 = x2", "x2 = 2"],
     3537.89080459769,
     0.000008724571601717684,
     2,
@@ -196,6 +208,25 @@ fn tests_use_the_fitted_covariance_for_each_supported_linear_regression_mode() {
 }
 
 #[test]
+fn test_remains_scale_invariant_for_small_covariance_values() {
+  let fixture = Fixture::with_outcome_scale(1e-8);
+  let mut session = Session::new();
+  fixture.load(&mut session);
+  session
+    .execute(parse_command("regress y x1 x2, cluster(grp)").unwrap())
+    .expect("regression should fit");
+
+  assert_result(
+    &execute_test(&mut session, "test x1 = x2"),
+    &["x1 = x2"],
+    8.789886334525322,
+    0.05931620014242662,
+    1,
+    3,
+  );
+}
+
+#[test]
 fn test_errors_match_python_and_leave_session_state_unchanged() {
   let fixture = Fixture::new();
   let mut session = Session::new();
@@ -203,7 +234,10 @@ fn test_errors_match_python_and_leave_session_state_unchanged() {
   let missing_model = session
     .execute(parse_command("test x1").unwrap())
     .unwrap_err();
-  assert_eq!(missing_model.to_string(), "no active estimation results found");
+  assert_eq!(
+    missing_model.to_string(),
+    "no active estimation results found"
+  );
 
   fixture.load(&mut session);
   session
@@ -213,7 +247,10 @@ fn test_errors_match_python_and_leave_session_state_unchanged() {
   let model_before = session.last_regression().cloned();
 
   for (command, expected) in [
-    ("test missing", "variable 'missing' not found in active model coefficients"),
+    (
+      "test missing",
+      "variable 'missing' not found in active model coefficients",
+    ),
     ("test x1 x1", "constraints are collinear or singular"),
   ] {
     let error = session

@@ -126,7 +126,7 @@ pub enum Command {
   CfRegress { command: CfRegressCommand },
   /// Compute a linear combination of fitted model parameters.
   Lincom { command: LincomCommand },
-  /// Test linear hypotheses after estimation (execution is deferred).
+  /// Test linear hypotheses after estimation.
   Test { command: TestCommand },
   /// Compute a histogram of a variable (visualization execution is deferred).
   Histogram { command: HistogramCommand },

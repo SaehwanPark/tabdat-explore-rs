@@ -28,7 +28,10 @@ fn f_distribution_survival_probability_matches_scipy_reference_values() {
 fn f_distribution_survival_probability_handles_boundaries() {
   assert_eq!(f_distribution_survival_probability(0.0, 2.0, 3.0), 1.0);
   assert_eq!(f_distribution_survival_probability(-1.0, 2.0, 3.0), 1.0);
-  assert_eq!(f_distribution_survival_probability(f64::INFINITY, 2.0, 3.0), 0.0);
+  assert_eq!(
+    f_distribution_survival_probability(f64::INFINITY, 2.0, 3.0),
+    0.0
+  );
   assert!(f_distribution_survival_probability(f64::NAN, 2.0, 3.0).is_nan());
   assert!(f_distribution_survival_probability(1.0, 0.0, 3.0).is_nan());
   assert!(f_distribution_survival_probability(1.0, 1.0, 0.0).is_nan());

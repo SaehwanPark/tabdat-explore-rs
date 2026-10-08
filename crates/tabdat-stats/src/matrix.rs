@@ -536,6 +536,34 @@ pub fn regularized_incomplete_beta(a: f64, b: f64, x: f64) -> f64 {
   }
 }
 
+/// Upper-tail probability for an F statistic with numerator and denominator degrees of freedom.
+///
+/// Returns NaN when the statistic is NaN or either degree of freedom is non-finite or non-positive.
+/// Negative statistics have survival probability one; positive infinity has probability zero.
+pub fn f_distribution_survival_probability(
+  statistic: f64,
+  numerator_df: f64,
+  denominator_df: f64,
+) -> f64 {
+  if statistic.is_nan()
+    || !numerator_df.is_finite()
+    || numerator_df <= 0.0
+    || !denominator_df.is_finite()
+    || denominator_df <= 0.0
+  {
+    return f64::NAN;
+  }
+  if statistic <= 0.0 {
+    return 1.0;
+  }
+  if statistic.is_infinite() {
+    return 0.0;
+  }
+
+  let x = denominator_df / (denominator_df + numerator_df * statistic);
+  regularized_incomplete_beta(denominator_df / 2.0, numerator_df / 2.0, x)
+}
+
 /// Two-tailed p-value for Student's t distribution with `df` degrees of freedom.
 pub fn student_t_pvalue(t: f64, df: f64) -> f64 {
   if df <= 0.0 || t.is_nan() {

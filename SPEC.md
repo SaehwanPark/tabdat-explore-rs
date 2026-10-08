@@ -1475,7 +1475,7 @@ No data relation or fitted state is mutated.
 
 The implementation intentionally covers only regression results represented by the current
 Rust runtime and assumes their positive residual df. Other Python estimator families, the
-normal-reference fallback for absent/non-positive df, CLI/JSON/MCP rendering, and `test` remain
+normal-reference fallback for absent/non-positive df, and CLI/JSON/MCP rendering remain
 deferred; the broad Phase 7 `Port lincom` item is therefore still unchecked.
 
 Evidence: [_workspace/runtime-lincom/](_workspace/runtime-lincom/), including the
@@ -1485,6 +1485,24 @@ statsmodels/SciPy comparison, and the Rust contract tests. The checked fixture's
 statsmodels/SciPy reference within the predeclared hybrid tolerance.
 
 Reporting and CLI, JSON, and MCP result surfaces remain deferred.
+
+## Verified slice: linear-regression `test` runtime
+
+The bounded runtime slice adds read-only Wald/F tests for parsed linear restrictions after
+successful Rust OLS/WLS/GLS regression commands, including the existing classical, robust
+HC1, and cluster covariance modes. It builds restrictions in the fitted parameter order,
+uses the stored covariance matrix, returns Python-compatible constraint labels and errors,
+and computes upper-tail F probabilities with the regularized incomplete beta function.
+Successful and failed tests leave the active data and fitted model unchanged. The current
+regression fitter requires positive residual df, so the zero-df chi-square fallback is
+unreachable and remains deferred. Other model families and CLI/JSON/MCP rendering are also
+deferred.
+
+Evidence is recorded in [_workspace/runtime-test/](_workspace/runtime-test/), including the
+[contract](_workspace/runtime-test/01-contract.md), the pinned Python and statsmodels/SciPy
+comparisons, small-covariance scaling coverage, and focused runtime/statistics tests. The
+full Windows workspace suite retains seven unrelated `export_contract` backslash-path
+failures; hosted Linux acceptance remains required before merge.
 
 ## Verified slice: classical linear hypothesis testing syntax
 
@@ -1504,8 +1522,8 @@ missing operands around equals (`test command: missing left-hand side of constra
 malformed constraints (`test command: malformed constraint`), expected variable names in varlist mode (`test command: expected variable name, got '<token>'`),
 and delimiter guards (`test:`, `test=`, `test==`, `test,`).
 Owned `String`, `GenerateExpression`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
-Runtime deliberately returns the typed unsupported command result; it does not perform parameter retrieval,
-linear restriction matrix $R$ and vector $r$ construction, Wald/F/chi-squared test statistics, or p-value computation.
+This parser slice is backend-independent; the separately documented bounded runtime slice now evaluates
+these constraints for stored OLS/WLS/GLS regression results.
 
 Evidence: [_workspace/parser-test-syntax/](_workspace/parser-test-syntax/),
 including the [contract](_workspace/parser-test-syntax/01-contract.md) and
@@ -1513,8 +1531,9 @@ including the [contract](_workspace/parser-test-syntax/01-contract.md) and
 locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
 workflows all passed.
 
-This accepted syntax slice leaves post-estimation parameter retrieval, restriction matrix construction,
-Wald/F/chi-squared statistics, degrees of freedom, p-values, reporting, CLI, JSON, and MCP parity deferred.
+This parser slice does not provide general post-estimation behavior. Runtime support is limited to the
+linear-regression cases documented above; other estimator families, the zero-residual-df chi-square
+fallback, reporting, CLI, JSON, and MCP parity remain deferred.
 
 ## Verified slice: visualization histogram syntax
 
@@ -2034,10 +2053,10 @@ including the [contract](_workspace/linear-regression-runtime/01-contract.md),
 [summary](_workspace/linear-regression-runtime/04-summary.md), `crates/tabdat-runtime/`,
 `crates/tabdat-stats/`, and PR #151 (squash merge `9476053`).
 
-This regression runtime slice leaves broader post-estimation commands (`test`, `ttest`,
-other estimator-family `lincom`, and additional prediction kinds), reporting, CLI table
-rendering, JSON, and MCP deferred. The bounded linear-regression `lincom` support is recorded
-in the dedicated section above.
+This regression runtime slice leaves `ttest`, other-estimator-family `test` and `lincom`,
+and additional prediction kinds, reporting, CLI table rendering, JSON, and MCP deferred.
+The bounded linear-regression `lincom` and `test` support is recorded in the dedicated
+sections above.
 
 ## Verified slice: reproducible build baseline
 
