@@ -124,7 +124,7 @@ pub enum Command {
   Dml { command: DmlCommand },
   /// Fit a control function regression model (execution is deferred).
   CfRegress { command: CfRegressCommand },
-  /// Compute linear combination of model parameters (execution is deferred).
+  /// Compute a linear combination of fitted model parameters.
   Lincom { command: LincomCommand },
   /// Test linear hypotheses after estimation (execution is deferred).
   Test { command: TestCommand },
@@ -1199,11 +1199,11 @@ pub enum AssertExpression {
   },
 }
 
-/// An expression retained by the syntax-only `generate` and `replace` commands.
+/// An expression AST shared by data and statistical command forms.
 ///
-/// This deliberately remains separate from [`AssertExpression`]: the bounded
-/// assert runtime does not claim function-call support, while the language
-/// layer must preserve calls for a later generate execution slice.
+/// The parser preserves a broader syntax than each runtime executes. This remains
+/// separate from [`AssertExpression`], which models only the bounded predicate forms
+/// accepted by `assert` and does not represent function calls.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerateExpression {
   /// A dataset column reference.

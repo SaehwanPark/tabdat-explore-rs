@@ -17,10 +17,10 @@ use tabdat_language::script::{
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
   DataSource, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
-  GenerateExpression, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, PredictCommand,
-  PredictKind, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
-  RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SortKey,
-  TabulateCommand,
+  GenerateExpression, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand,
+  PredictCommand, PredictKind, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
+  RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
+  SortKey, TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -497,6 +497,29 @@ pub struct RegressionResult {
   pub least_squares: tabdat_stats::LeastSquaresResult,
 }
 
+/// The owned result of estimating one affine combination of regression coefficients.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LincomResult {
+  /// Human-readable form of the requested expression.
+  pub label: String,
+  /// Estimated combination, including any coefficient-independent constant.
+  pub estimate: f64,
+  /// Covariance-based standard error.
+  pub standard_error: f64,
+  /// Student-t statistic against a zero combination, or NaN for zero standard error.
+  pub statistic: f64,
+  /// Two-sided Student-t p-value, or NaN for zero standard error.
+  pub p_value: f64,
+  /// Lower endpoint of the 95% confidence interval.
+  pub ci_lower: f64,
+  /// Upper endpoint of the 95% confidence interval.
+  pub ci_upper: f64,
+  /// Confidence level in percent.
+  pub ci_level: f64,
+  /// Residual degrees of freedom used for inference.
+  pub df_residual: Option<usize>,
+}
+
 /// The owned result returned after adding fitted values or residuals to the active dataset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictionResult {
@@ -583,6 +606,8 @@ pub enum ExecutionResult {
   Regression(Box<RegressionResult>),
   /// The result of appending linear fitted values or residuals.
   Prediction(PredictionResult),
+  /// The result of estimating an affine linear combination of regression coefficients.
+  Lincom(LincomResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -898,6 +923,10 @@ pub enum RuntimeError {
   EstatRequiresPriorRegression,
   /// DuckDB-independent auxiliary fits for VIF could not be computed.
   EstatVifFailed,
+  /// `lincom` requires a preceding supported linear regression.
+  LincomRequiresPriorEstimation,
+  /// An expression or inference error while evaluating `lincom`.
+  LincomFailed { message: String },
   /// Prediction requires a preceding supported linear regression.
   PredictRequiresPriorRegression,
   /// The prediction target already exists in the active schema.
@@ -1415,6 +1444,10 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("estat requires a prior regress model")
       }
       Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
+      Self::LincomRequiresPriorEstimation => {
+        formatter.write_str("no active estimation results found")
+      }
+      Self::LincomFailed { message } => formatter.write_str(message),
       Self::PredictRequiresPriorRegression => {
         formatter.write_str("predict requires a prior regress model")
       }
@@ -1447,6 +1480,11 @@ struct LinearRegressionState {
   predictor_design: Vec<Vec<f64>>,
   include_intercept: bool,
   result: tabdat_stats::LeastSquaresResult,
+}
+
+struct AffineCombination {
+  offset: f64,
+  weights: Vec<f64>,
 }
 
 struct LinearPrediction<'a> {
@@ -1542,6 +1580,7 @@ impl Session {
       Command::Reshape { command } => self.execute_reshape(&command),
       Command::Regress { command } => self.execute_regress(&command),
       Command::Predict { command } => self.execute_predict(&command),
+      Command::Lincom { command } => self.execute_lincom(&command),
       Command::Estat { command } => self.execute_estat(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
@@ -3926,6 +3965,43 @@ impl Session {
     Ok(ExecutionResult::Regression(Box::new(result)))
   }
 
+  fn execute_lincom(&self, command: &LincomCommand) -> Result<ExecutionResult, RuntimeError> {
+    let model = self
+      .last_regression
+      .as_ref()
+      .ok_or(RuntimeError::LincomRequiresPriorEstimation)?;
+    let parameter_indices = model
+      .result
+      .parameter_names
+      .iter()
+      .enumerate()
+      .map(|(index, name)| (name.clone(), index))
+      .collect::<HashMap<_, _>>();
+    let combination = affine_lincom_expression(
+      &command.expression,
+      &parameter_indices,
+      model.result.parameter_names.len(),
+    )?;
+    let post_estimation = tabdat_stats::PostEstimationModel::from_least_squares(&model.result);
+    let inference = post_estimation
+      .linear_combination_with_inference(&combination.weights, combination.offset, 95.0)
+      .map_err(|error| RuntimeError::LincomFailed {
+        message: error.to_string(),
+      })?;
+
+    Ok(ExecutionResult::Lincom(LincomResult {
+      label: format_lincom_expression(&command.expression),
+      estimate: inference.estimate,
+      standard_error: inference.standard_error,
+      statistic: inference.statistic.unwrap_or(f64::NAN),
+      p_value: inference.p_value,
+      ci_lower: inference.ci_lower,
+      ci_upper: inference.ci_upper,
+      ci_level: inference.confidence_level,
+      df_residual: Some(inference.degrees_of_freedom),
+    }))
+  }
+
   fn execute_estat(&self, command: &EstatCommand) -> Result<ExecutionResult, RuntimeError> {
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
@@ -4055,6 +4131,260 @@ impl Session {
       dataset: next_dataset,
     }))
   }
+}
+
+fn affine_lincom_expression(
+  expression: &GenerateExpression,
+  parameter_indices: &HashMap<String, usize>,
+  parameter_count: usize,
+) -> Result<AffineCombination, RuntimeError> {
+  match expression {
+    GenerateExpression::Identifier(name) => {
+      let Some(&index) = parameter_indices.get(name) else {
+        return Err(RuntimeError::LincomFailed {
+          message: format!("variable '{name}' not found in active model coefficients"),
+        });
+      };
+      let mut weights = vec![0.0; parameter_count];
+      weights[index] = 1.0;
+      Ok(AffineCombination {
+        offset: 0.0,
+        weights,
+      })
+    }
+    GenerateExpression::Number(text) => {
+      let value = text
+        .parse::<f64>()
+        .map_err(|_| RuntimeError::LincomFailed {
+          message: "unsupported expression type in linear testing".to_owned(),
+        })?;
+      Ok(AffineCombination {
+        offset: value,
+        weights: vec![0.0; parameter_count],
+      })
+    }
+    GenerateExpression::UnaryMinus(operand) => {
+      let mut affine = affine_lincom_expression(operand, parameter_indices, parameter_count)?;
+      affine.offset = -affine.offset;
+      for weight in &mut affine.weights {
+        *weight = -*weight;
+      }
+      Ok(affine)
+    }
+    GenerateExpression::Binary {
+      left,
+      operator,
+      right,
+    } => {
+      let left_depends = lincom_expression_depends_on_coefficients(left);
+      let right_depends = lincom_expression_depends_on_coefficients(right);
+      if *operator == GenerateBinaryOperator::Multiply && left_depends && right_depends {
+        return Err(RuntimeError::LincomFailed {
+          message: "nonlinear coefficient multiplication is not supported in linear testing"
+            .to_owned(),
+        });
+      }
+      if *operator == GenerateBinaryOperator::Divide && right_depends {
+        return Err(RuntimeError::LincomFailed {
+          message: "nonlinear coefficient division is not supported in linear testing".to_owned(),
+        });
+      }
+
+      let left = affine_lincom_expression(left, parameter_indices, parameter_count)?;
+      let right = affine_lincom_expression(right, parameter_indices, parameter_count)?;
+      match operator {
+        GenerateBinaryOperator::Add => Ok(combine_affine(left, right, false)),
+        GenerateBinaryOperator::Subtract => Ok(combine_affine(left, right, true)),
+        GenerateBinaryOperator::Multiply => {
+          let (mut affine, scale) = if left_depends {
+            (left, right.offset)
+          } else if right_depends {
+            (right, left.offset)
+          } else {
+            (left, right.offset)
+          };
+          affine.offset *= scale;
+          for weight in &mut affine.weights {
+            *weight *= scale;
+          }
+          Ok(affine)
+        }
+        GenerateBinaryOperator::Divide => {
+          if right.offset == 0.0 {
+            return Err(RuntimeError::LincomFailed {
+              message: "division by zero in expression".to_owned(),
+            });
+          }
+          let scale = 1.0 / right.offset;
+          let mut affine = left;
+          affine.offset *= scale;
+          for weight in &mut affine.weights {
+            *weight *= scale;
+          }
+          Ok(affine)
+        }
+        unsupported => Err(RuntimeError::LincomFailed {
+          message: format!(
+            "unsupported binary operator: {}",
+            lincom_operator_text(*unsupported)
+          ),
+        }),
+      }
+    }
+    GenerateExpression::FunctionCall { .. } => Err(RuntimeError::LincomFailed {
+      message: "functions are not supported in linear testing".to_owned(),
+    }),
+    GenerateExpression::String(_) | GenerateExpression::Null => Err(RuntimeError::LincomFailed {
+      message: "unsupported expression type in linear testing".to_owned(),
+    }),
+  }
+}
+
+fn combine_affine(
+  left: AffineCombination,
+  right: AffineCombination,
+  subtract: bool,
+) -> AffineCombination {
+  let sign = if subtract { -1.0 } else { 1.0 };
+  AffineCombination {
+    offset: left.offset + sign * right.offset,
+    weights: left
+      .weights
+      .iter()
+      .zip(right.weights.iter())
+      .map(|(&left, &right)| left + sign * right)
+      .collect(),
+  }
+}
+
+fn lincom_expression_depends_on_coefficients(expression: &GenerateExpression) -> bool {
+  match expression {
+    GenerateExpression::Identifier(_) => true,
+    GenerateExpression::UnaryMinus(operand) => lincom_expression_depends_on_coefficients(operand),
+    GenerateExpression::Binary { left, right, .. } => {
+      lincom_expression_depends_on_coefficients(left)
+        || lincom_expression_depends_on_coefficients(right)
+    }
+    GenerateExpression::FunctionCall { arguments, .. } => arguments
+      .iter()
+      .any(lincom_expression_depends_on_coefficients),
+    GenerateExpression::Number(_) | GenerateExpression::String(_) | GenerateExpression::Null => {
+      false
+    }
+  }
+}
+
+fn lincom_operator_text(operator: GenerateBinaryOperator) -> &'static str {
+  match operator {
+    GenerateBinaryOperator::Add => "+",
+    GenerateBinaryOperator::Subtract => "-",
+    GenerateBinaryOperator::Multiply => "*",
+    GenerateBinaryOperator::Divide => "/",
+    GenerateBinaryOperator::Equal => "==",
+    GenerateBinaryOperator::NotEqual => "!=",
+    GenerateBinaryOperator::Less => "<",
+    GenerateBinaryOperator::LessOrEqual => "<=",
+    GenerateBinaryOperator::Greater => ">",
+    GenerateBinaryOperator::GreaterOrEqual => ">=",
+  }
+}
+
+fn format_lincom_expression(expression: &GenerateExpression) -> String {
+  match expression {
+    GenerateExpression::Identifier(name) => name.clone(),
+    GenerateExpression::Number(text) => format_lincom_number(text),
+    GenerateExpression::UnaryMinus(operand) => {
+      format!("-({})", format_lincom_expression(operand))
+    }
+    GenerateExpression::Binary {
+      left,
+      operator,
+      right,
+    } => format!(
+      "({} {} {})",
+      format_lincom_expression(left),
+      lincom_operator_text(*operator),
+      format_lincom_expression(right)
+    ),
+    GenerateExpression::String(_)
+    | GenerateExpression::Null
+    | GenerateExpression::FunctionCall { .. } => "<expr>".to_owned(),
+  }
+}
+
+fn format_lincom_number(text: &str) -> String {
+  if !text.contains('.') {
+    let integer = text.trim_start_matches('0');
+    return if integer.is_empty() {
+      "0".to_owned()
+    } else {
+      integer.to_owned()
+    };
+  }
+  let Ok(value) = text.parse::<f64>() else {
+    return text.to_owned();
+  };
+  python_float_literal(value)
+}
+
+fn python_float_literal(value: f64) -> String {
+  if !value.is_finite() {
+    return value.to_string();
+  }
+  if value == 0.0 {
+    return "0.0".to_owned();
+  }
+
+  let rendered = value.to_string();
+  let (mantissa, exponent) = rendered
+    .split_once('e')
+    .or_else(|| rendered.split_once('E'))
+    .map(|(mantissa, exponent)| (mantissa, exponent.parse::<i32>().unwrap_or(0)))
+    .unwrap_or((&rendered, 0));
+  let (sign, unsigned_mantissa) = mantissa
+    .strip_prefix('-')
+    .map(|unsigned| ("-", unsigned))
+    .unwrap_or(("", mantissa));
+  let decimal_position = unsigned_mantissa
+    .find('.')
+    .unwrap_or(unsigned_mantissa.len()) as i32;
+  let digits = unsigned_mantissa
+    .chars()
+    .filter(char::is_ascii_digit)
+    .collect::<String>();
+  let Some(first_nonzero) = digits.bytes().position(|digit| digit != b'0') else {
+    return "0.0".to_owned();
+  };
+  let order = exponent + decimal_position - first_nonzero as i32 - 1;
+  let significant = digits[first_nonzero..].trim_end_matches('0');
+
+  // Python keeps this exponent range in fixed notation when formatting float literals.
+  if !(-4..16).contains(&order) {
+    let mantissa = if significant.len() == 1 {
+      significant.to_owned()
+    } else {
+      format!("{}.{}", &significant[..1], &significant[1..])
+    };
+    return format!("{sign}{mantissa}e{order:+03}");
+  }
+
+  let decimal_position = order + 1;
+  let fixed = if decimal_position <= 0 {
+    format!(
+      "0.{}{significant}",
+      "0".repeat((-decimal_position) as usize)
+    )
+  } else if decimal_position as usize >= significant.len() {
+    format!(
+      "{}{zeros}.0",
+      significant,
+      zeros = "0".repeat(decimal_position as usize - significant.len())
+    )
+  } else {
+    let split = decimal_position as usize;
+    format!("{}.{}", &significant[..split], &significant[split..])
+  };
+  format!("{sign}{fixed}")
 }
 
 fn cell_to_f64(cell: &CellValue) -> Option<f64> {

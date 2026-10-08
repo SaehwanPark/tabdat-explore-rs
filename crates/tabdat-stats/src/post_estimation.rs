@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::StatsError;
 use crate::estimates::CovarianceMatrix;
-use crate::matrix::{invert, multiply, multiply_vector, transpose};
+use crate::matrix::{
+  invert, multiply, multiply_vector, student_t_pvalue, student_t_quantile, transpose,
+};
 use crate::result::LeastSquaresResult;
 
 /// Owned post-estimation model state for hypothesis testing, predictions, and combinations.
@@ -29,6 +31,27 @@ pub struct LinearCombinationResult {
   pub standard_error: f64,
   /// Test statistic against null hypothesis c' * beta = 0.
   pub statistic: Option<f64>,
+}
+
+/// Result of a linear combination with Student-t inference and a confidence interval.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LinearCombinationInferenceResult {
+  /// Estimated point combination value, including any constant offset.
+  pub estimate: f64,
+  /// Standard error sqrt(c' * V * c).
+  pub standard_error: f64,
+  /// Test statistic against the null hypothesis that the combination equals zero.
+  pub statistic: Option<f64>,
+  /// Two-sided Student-t p-value, or NaN when the standard error is zero.
+  pub p_value: f64,
+  /// Lower confidence interval endpoint.
+  pub ci_lower: f64,
+  /// Upper confidence interval endpoint.
+  pub ci_upper: f64,
+  /// Confidence level in percent.
+  pub confidence_level: f64,
+  /// Residual degrees of freedom used for inference.
+  pub degrees_of_freedom: usize,
 }
 
 /// Result of testing a joint linear hypothesis R * beta = r.
@@ -68,6 +91,17 @@ impl PostEstimationModel {
   ///
   /// `weights` must match parameter count and ordering.
   pub fn linear_combination(&self, weights: &[f64]) -> Result<LinearCombinationResult, StatsError> {
+    self.linear_combination_with_offset(weights, 0.0)
+  }
+
+  /// Evaluate a linear combination with a constant offset: a + c' * beta.
+  ///
+  /// The offset shifts the estimate and null statistic, but does not change variance.
+  pub fn linear_combination_with_offset(
+    &self,
+    weights: &[f64],
+    offset: f64,
+  ) -> Result<LinearCombinationResult, StatsError> {
     let p = self.parameters.len();
     if weights.len() != p {
       return Err(StatsError::DimensionMismatch(format!(
@@ -76,13 +110,14 @@ impl PostEstimationModel {
       )));
     }
 
-    let estimate: f64 = weights
-      .iter()
-      .zip(self.parameters.iter())
-      .map(|(&c, &b)| c * b)
-      .sum();
+    let estimate = offset
+      + weights
+        .iter()
+        .zip(self.parameters.iter())
+        .map(|(&c, &b)| c * b)
+        .sum::<f64>();
 
-    // Variance = c' * V * c
+    // Variance = c' * V * c; the constant offset has no variance.
     let v_c = multiply_vector(&self.covariance.matrix, weights)?;
     let variance: f64 = weights.iter().zip(v_c.iter()).map(|(&c, &vc)| c * vc).sum();
     let se = variance.max(0.0).sqrt();
@@ -93,6 +128,57 @@ impl PostEstimationModel {
       estimate,
       standard_error: se,
       statistic,
+    })
+  }
+
+  /// Evaluate a linear combination and compute its two-sided Student-t inference.
+  ///
+  /// `weights` follow parameter order; `offset` is a coefficient-independent constant. The
+  /// confidence level is expressed as a percentage in the open interval `(0, 100)`. Returns
+  /// `IncompatibleHypothesis` for an invalid level and `InsufficientObservations` when the model
+  /// has no positive residual degrees of freedom; callers needing a normal-reference fallback
+  /// must select that policy explicitly.
+  pub fn linear_combination_with_inference(
+    &self,
+    weights: &[f64],
+    offset: f64,
+    confidence_level: f64,
+  ) -> Result<LinearCombinationInferenceResult, StatsError> {
+    if !confidence_level.is_finite() || confidence_level <= 0.0 || confidence_level >= 100.0 {
+      return Err(StatsError::IncompatibleHypothesis(
+        "confidence level must be between 0 and 100".into(),
+      ));
+    }
+    if self.degrees_of_freedom == 0 {
+      return Err(StatsError::InsufficientObservations(
+        "linear combination inference requires positive residual degrees of freedom".into(),
+      ));
+    }
+
+    let combination = self.linear_combination_with_offset(weights, offset)?;
+    let (p_value, ci_lower, ci_upper) = if combination.standard_error == 0.0 {
+      (f64::NAN, combination.estimate, combination.estimate)
+    } else {
+      let statistic = combination.estimate / combination.standard_error;
+      let df = self.degrees_of_freedom as f64;
+      let p_value = student_t_pvalue(statistic, df);
+      let critical_value = student_t_quantile(0.5 + confidence_level / 200.0, df);
+      (
+        p_value,
+        combination.estimate - critical_value * combination.standard_error,
+        combination.estimate + critical_value * combination.standard_error,
+      )
+    };
+
+    Ok(LinearCombinationInferenceResult {
+      estimate: combination.estimate,
+      standard_error: combination.standard_error,
+      statistic: combination.statistic,
+      p_value,
+      ci_lower,
+      ci_upper,
+      confidence_level,
+      degrees_of_freedom: self.degrees_of_freedom,
     })
   }
 

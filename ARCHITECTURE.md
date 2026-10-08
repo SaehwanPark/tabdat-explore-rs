@@ -23,10 +23,11 @@ silently invent parity.
   problem contracts (`EstimationProblem`), explicit inspectable sample tracking
   (`EstimationSample`), parameter estimates (`CoefficientEstimate`), covariance
   representations (`CovarianceMatrix`, `CovarianceType`), convergence and model
-  diagnostics (`EstimationDiagnostics`, `FitStatistics`), post-estimation state and
-  linear hypothesis testing (`PostEstimationModel`), backend capability trait (`Estimator`),
-  normalized errors (`StatsError`), matrix sandwich quadratic form (`sandwich`), Lanczos log-gamma and regularized incomplete beta Student's $t$
-  p-values, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
+  diagnostics (`EstimationDiagnostics`, `FitStatistics`), post-estimation state,
+  linear-combination inference, and linear hypothesis testing (`PostEstimationModel`),
+  backend capability trait (`Estimator`), normalized errors (`StatsError`), matrix
+  sandwich quadratic form (`sandwich`), Lanczos log-gamma, regularized incomplete beta
+  Student's $t$ p-values and quantiles, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
   `fit_least_squares_with_options`, `predict_linear_response`) supporting classical, robust HC1,
   and clustered covariance. It has zero runtime backend dependencies (no DuckDB, no C FFI).
 - `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
@@ -103,8 +104,10 @@ calculation and `estat vif` runtime result for full-rank linear-regression state
 retains the complete-case predictor design so the diagnostic follows the fitted sample; its
 auxiliary regressions use the model's intercept convention but not WLS/GLS weights, matching
 the Python oracle's exog-based behavior. The exact-collinear main-model case remains
-unreachable because the existing Rust estimator rejects rank-deficient designs. Prediction
-kinds for other estimators, plus `test`, `lincom`, and broader post-estimation, remain deferred.
+unreachable because the existing Rust estimator rejects rank-deficient designs. PR #155 adds
+read-only `lincom` estimates and Student-t inference for stored OLS/WLS/GLS regression states,
+including robust and clustered covariance; other estimator families and `test` remain deferred.
+Prediction kinds for other estimators and broader post-estimation remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
