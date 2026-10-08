@@ -18,10 +18,9 @@ fn f_distribution_survival_probability_matches_scipy_reference_values() {
     f_distribution_survival_probability(6.256742705570278, 1.0, 3.0),
     0.08760247783654902,
   );
-  close(
-    f_distribution_survival_probability(1e20, 2.0, 3.0),
-    1.8371173070873807e-30,
-  );
+  let extreme_tail = f_distribution_survival_probability(1e20, 2.0, 3.0);
+  assert!(extreme_tail > 0.0);
+  assert!((extreme_tail / 1.8371173070873807e-30 - 1.0).abs() < 1e-9);
 }
 
 #[test]
@@ -35,4 +34,26 @@ fn f_distribution_survival_probability_handles_boundaries() {
   assert!(f_distribution_survival_probability(f64::NAN, 2.0, 3.0).is_nan());
   assert!(f_distribution_survival_probability(1.0, 0.0, 3.0).is_nan());
   assert!(f_distribution_survival_probability(1.0, 1.0, 0.0).is_nan());
+}
+
+#[test]
+fn f_distribution_survival_probability_preserves_unit_tail_when_x_underflows() {
+  let probability = f_distribution_survival_probability(1e308, 2.0, 1e-20);
+  assert!(probability > 1.0 - 1e-12, "got {probability}");
+
+  let tiny_df_probability = f_distribution_survival_probability(1.0, 1.0, 1e-320);
+  assert!(
+    tiny_df_probability > 1.0 - 1e-12,
+    "got {tiny_df_probability}"
+  );
+
+  let min_positive_df = f64::from_bits(1);
+  assert_eq!(
+    f_distribution_survival_probability(1.0, 1.0, min_positive_df),
+    1.0
+  );
+  assert_eq!(
+    f_distribution_survival_probability(1.0, min_positive_df, min_positive_df),
+    0.5
+  );
 }

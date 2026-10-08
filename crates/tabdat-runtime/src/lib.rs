@@ -1619,7 +1619,8 @@ impl Session {
     self.active_dataset.as_ref()
   }
 
-  /// Return the result of the most recently executed regression model, if any.
+  /// Return the result from the current regression attempt, if any.
+  /// A new attempt clears the prior result before validation begins.
   pub fn last_regression(&self) -> Option<&tabdat_stats::LeastSquaresResult> {
     self.last_regression.as_ref().map(|state| &state.result)
   }
@@ -3701,6 +3702,7 @@ impl Session {
     &mut self,
     command: &RegressCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    self.last_regression = None;
     let dataset = self
       .active_dataset
       .as_ref()

@@ -1493,14 +1493,16 @@ successful Rust OLS/WLS/GLS regression commands, including the existing classica
 HC1, and cluster covariance modes. It builds restrictions in the fitted parameter order,
 uses the stored covariance matrix, returns Python-compatible constraint labels and errors,
 and computes upper-tail F probabilities with the regularized incomplete beta function.
-Successful and failed tests leave the active data and fitted model unchanged. The current
-regression fitter requires positive residual df, so the zero-df chi-square fallback is
-unreachable and remains deferred. Other model families and CLI/JSON/MCP rendering are also
-deferred.
+Successful and failed tests leave the active data and fitted model unchanged. Starting a
+new regression attempt clears the previous fit before validation, so a failed attempt leaves
+no estimation result for `test`, matching the pinned executor. The current regression fitter
+requires positive residual df, so the zero-df chi-square fallback is unreachable and remains
+deferred. Other model families and CLI/JSON/MCP rendering are also deferred.
 
 Evidence is recorded in [_workspace/runtime-test/](_workspace/runtime-test/), including the
-[contract](_workspace/runtime-test/01-contract.md), the pinned Python and statsmodels/SciPy
-comparisons, small-covariance scaling coverage, and focused runtime/statistics tests. The
+[contract](_workspace/runtime-test/01-contract.md), the reproducible pinned-Python and
+statsmodels/SciPy probe plus its captured output, [independent review](_workspace/runtime-test/04-review.md),
+small-covariance scaling coverage, and focused runtime/statistics tests. The
 full Windows workspace suite retains seven unrelated `export_contract` backslash-path
 failures; hosted Linux acceptance remains required before merge.
 

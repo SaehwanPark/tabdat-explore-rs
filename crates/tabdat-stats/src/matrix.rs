@@ -456,7 +456,7 @@ pub fn lgamma(z: f64) -> f64 {
 
   if z < 0.5 {
     let pi = std::f64::consts::PI;
-    (pi / (pi * z).sin()).ln() - lgamma(1.0 - z)
+    pi.ln() - (pi * z).sin().ln() - lgamma(1.0 - z)
   } else {
     let z_adj = z - 1.0;
     let mut x = COEFFS[0];
@@ -560,8 +560,31 @@ pub fn f_distribution_survival_probability(
     return 0.0;
   }
 
-  let x = denominator_df / (denominator_df + numerator_df * statistic);
-  regularized_incomplete_beta(denominator_df / 2.0, numerator_df / 2.0, x)
+  let log_ratio = numerator_df.ln() + statistic.ln() - denominator_df.ln();
+  let log_x = if log_ratio > 0.0 {
+    -log_ratio - (-log_ratio).exp().ln_1p()
+  } else {
+    -log_ratio.exp().ln_1p()
+  };
+  let x = log_x.exp();
+  let a = denominator_df / 2.0;
+  let b = numerator_df / 2.0;
+  if a == 0.0 && b == 0.0 {
+    return numerator_df / (numerator_df + denominator_df);
+  }
+  if a == 0.0 {
+    return 1.0;
+  }
+  if b == 0.0 {
+    return 0.0;
+  }
+  if x == 0.0 {
+    // For a subnormal x, the continued fraction tends to one; evaluate the
+    // leading lower-tail term from log(x) so a tiny `a` can still round to 1.
+    let ln_beta = lgamma(a) + lgamma(b) - lgamma(a + b);
+    return (a * log_x - a.ln() - ln_beta).exp().clamp(0.0, 1.0);
+  }
+  regularized_incomplete_beta(a, b, x)
 }
 
 /// Two-tailed p-value for Student's t distribution with `df` degrees of freedom.

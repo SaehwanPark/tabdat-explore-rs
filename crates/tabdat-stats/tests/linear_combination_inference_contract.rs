@@ -97,6 +97,31 @@ fn wald_test_normalizes_small_restriction_covariance_before_inversion() {
 }
 
 #[test]
+fn wald_test_preserves_representable_statistic_when_difference_squares_underflow() {
+  let parameter_names = vec!["x".into()];
+  let covariance = CovarianceMatrix::new(
+    parameter_names.clone(),
+    CovarianceType::NonRobust,
+    vec![vec![1e-320]],
+  )
+  .expect("positive subnormal covariance should be valid");
+  let post_estimation = PostEstimationModel {
+    parameter_names,
+    parameters: vec![1e-170],
+    covariance,
+    degrees_of_freedom: 3,
+  };
+
+  let result = post_estimation
+    .test_linear_hypothesis(&[vec![1.0]], &[0.0])
+    .expect("subnormal restriction covariance should remain usable");
+
+  let expected = (1e-170 / 1e-320_f64.sqrt()).powi(2);
+  assert!(result.chi2_statistic > 0.0);
+  assert!((result.chi2_statistic / expected - 1.0).abs() < 1e-12);
+}
+
+#[test]
 fn zero_variance_combination_has_nan_test_and_point_interval() {
   let result = model(3)
     .linear_combination_with_inference(&[0.0, 0.0, 0.0], 2.0, 95.0)

@@ -143,6 +143,14 @@ fn parsed_linear_hypothesis_tests_match_python_and_statsmodels_scipy() {
     2,
     3,
   );
+  assert_result(
+    &execute_test(&mut session, "test intercept = 0"),
+    &["intercept = 0"],
+    10.336952399366405,
+    0.048765598269263695,
+    1,
+    3,
+  );
 
   assert_eq!(session.active_dataset().cloned(), active_before);
   assert_eq!(session.last_regression().cloned(), model_before);
@@ -290,4 +298,30 @@ fn test_errors_match_python_and_leave_session_state_unchanged() {
   );
   assert_eq!(session.active_dataset().cloned(), active_before);
   assert_eq!(session.last_regression().cloned(), model_before);
+}
+
+#[test]
+fn failed_regression_attempt_clears_the_previous_estimation_result() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  fixture.load(&mut session);
+  session
+    .execute(parse_command("regress y x1 x2").unwrap())
+    .expect("regression should fit");
+  let active_before = session.active_dataset().cloned();
+
+  assert!(
+    session
+      .execute(parse_command("regress missing x1").unwrap())
+      .is_err()
+  );
+  assert_eq!(session.active_dataset().cloned(), active_before);
+  assert!(session.last_regression().is_none());
+  assert_eq!(
+    session
+      .execute(parse_command("test x1").unwrap())
+      .unwrap_err()
+      .to_string(),
+    "no active estimation results found"
+  );
 }

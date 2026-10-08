@@ -244,13 +244,22 @@ impl PostEstimationModel {
     let r_v_rt_inv = invert(&normalized_r_v_rt)?;
 
     // W = diff' * middle * diff
-    let inv_diff = multiply_vector(&r_v_rt_inv, &diff)?;
-    let chi2: f64 = diff
+    let difference_scale = diff
+      .iter()
+      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+    let normalized_diff = if difference_scale == 0.0 {
+      vec![0.0; q]
+    } else {
+      diff.iter().map(|value| value / difference_scale).collect()
+    };
+    let inv_diff = multiply_vector(&r_v_rt_inv, &normalized_diff)?;
+    let normalized_quadratic: f64 = normalized_diff
       .iter()
       .zip(inv_diff.iter())
       .map(|(&d, &id)| d * id)
-      .sum::<f64>()
-      / covariance_scale;
+      .sum();
+    let scaled_difference = difference_scale / covariance_scale.sqrt();
+    let chi2 = normalized_quadratic * scaled_difference * scaled_difference;
     let f_stat = chi2 / (q as f64);
 
     Ok(WaldTestResult {
