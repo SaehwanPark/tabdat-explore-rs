@@ -28,8 +28,8 @@ pub use least_squares::{
   fit_least_squares_with_options, predict_linear_response,
 };
 pub use matrix::{
-  covariance_matrix, invert, mean, multiply, multiply_vector, sample_covariance, sample_variance,
-  scale, student_t_pvalue, student_t_quantile, transpose,
+  covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
+  sample_covariance, sample_variance, scale, student_t_pvalue, student_t_quantile, transpose,
 };
 pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,

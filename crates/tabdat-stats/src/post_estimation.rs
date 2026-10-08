@@ -223,15 +223,43 @@ impl PostEstimationModel {
     let r_v = multiply(r_matrix, &self.covariance.matrix)?;
     let r_t = transpose(r_matrix)?;
     let r_v_rt = multiply(&r_v, &r_t)?;
-    let r_v_rt_inv = invert(&r_v_rt)?;
+    if r_v_rt.iter().flatten().any(|value| !value.is_finite()) {
+      return Err(StatsError::SingularMatrix(
+        "restriction covariance matrix is non-finite".into(),
+      ));
+    }
+    let covariance_scale = r_v_rt
+      .iter()
+      .flatten()
+      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+    if covariance_scale == 0.0 {
+      return Err(StatsError::SingularMatrix(
+        "restriction covariance matrix is zero".into(),
+      ));
+    }
+    let normalized_r_v_rt = r_v_rt
+      .iter()
+      .map(|row| row.iter().map(|value| value / covariance_scale).collect())
+      .collect::<Vec<Vec<_>>>();
+    let r_v_rt_inv = invert(&normalized_r_v_rt)?;
 
     // W = diff' * middle * diff
-    let inv_diff = multiply_vector(&r_v_rt_inv, &diff)?;
-    let chi2: f64 = diff
+    let difference_scale = diff
+      .iter()
+      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+    let normalized_diff = if difference_scale == 0.0 {
+      vec![0.0; q]
+    } else {
+      diff.iter().map(|value| value / difference_scale).collect()
+    };
+    let inv_diff = multiply_vector(&r_v_rt_inv, &normalized_diff)?;
+    let normalized_quadratic: f64 = normalized_diff
       .iter()
       .zip(inv_diff.iter())
       .map(|(&d, &id)| d * id)
       .sum();
+    let scaled_difference = difference_scale / covariance_scale.sqrt();
+    let chi2 = normalized_quadratic * scaled_difference * scaled_difference;
     let f_stat = chi2 / (q as f64);
 
     Ok(WaldTestResult {
