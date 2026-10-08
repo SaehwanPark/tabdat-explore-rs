@@ -1446,25 +1446,45 @@ JSON, MCP, and broad causal execution parity deferred.
 ## Verified slice: post-estimation linear combination syntax
 
 The post-estimation linear combination hypothesis testing syntax slice (Phase 9)
-adds bounded, backend-independent linear combination testing syntax boundaries to
-`tabdat-language`. The parser returns an owned `LincomCommand` type with a linear combination
-expression (`expression: GenerateExpression`).
-It validates expression syntax structure, requiring a non-empty expression,
-rejects incomplete expressions (`incomplete expression after <op>`), missing closing parentheses
-(`missing closing ) in expression`), unsupported tokens in expression (`unsupported token in expression: <token>`),
-and delimiter guards (`lincom:`, `lincom=`, `lincom==`, `lincom,`).
-Owned `String`, `GenerateExpression`, and primitive types are used so that the public `Command` enum retains its `Eq` derive.
-Runtime deliberately returns the typed unsupported command result; it does not perform parameter retrieval,
-symbolic differentiation, covariance matrix transformation, standard error computation, or hypothesis testing.
+adds bounded, backend-independent `lincom` syntax to `tabdat-language`. The parser
+returns an owned `LincomCommand` with `expression: GenerateExpression`; it requires a
+non-empty expression, rejects incomplete expressions (`incomplete expression after <op>`),
+missing closing parentheses (`missing closing ) in expression`), unsupported expression
+tokens (`unsupported token in expression: <token>`), and the delimiter guards
+`lincom:`, `lincom=`, `lincom==`, and `lincom,`. Owned strings and AST types preserve
+the public `Command` enum's `Eq` derive.
 
-Evidence: [_workspace/parser-lincom-syntax/](_workspace/parser-lincom-syntax/),
-including the [contract](_workspace/parser-lincom-syntax/01-contract.md) and
-[summary](_workspace/parser-lincom-syntax/04-summary.md). The pinned oracle probes,
-locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
-workflows all passed.
+The parser-only contract and its original runtime deferral are recorded in
+[_workspace/parser-lincom-syntax/](_workspace/parser-lincom-syntax/), including the
+[contract](_workspace/parser-lincom-syntax/01-contract.md) and
+[summary](_workspace/parser-lincom-syntax/04-summary.md). The later bounded runtime
+slice below consumes this AST for stored linear-regression results; it does not make
+`lincom` a general estimator-family or surface feature.
 
-This accepted syntax slice leaves post-estimation parameter retrieval, covariance calculations,
-inference statistics, p-values, confidence intervals, reporting, CLI, JSON, and MCP parity deferred.
+## Verified slice: linear-regression `lincom` runtime
+
+The bounded runtime slice (Phase 7 §9.2) adds read-only affine coefficient combinations
+after successful Rust OLS/WLS/GLS `regress` commands, including existing robust and
+cluster covariance modes. It maps expression identifiers to the fitted ordered parameter
+vector, uses the stored covariance matrix, and returns `ExecutionResult::Lincom(LincomResult)`
+with label, estimate, standard error, Student-t statistic, two-sided p-value, 95% confidence
+interval, and residual df. Constants shift the estimate but not its variance. Zero-standard-error
+combinations return NaN statistic/p-value and a point interval. Invalid nonlinear expressions,
+unknown coefficient names, and missing-estimation errors preserve the pinned Python diagnostics.
+No data relation or fitted state is mutated.
+
+The implementation intentionally covers only regression results represented by the current
+Rust runtime and assumes their positive residual df. Other Python estimator families, the
+normal-reference fallback for absent/non-positive df, CLI/JSON/MCP rendering, and `test` remain
+deferred; the broad Phase 7 `Port lincom` item is therefore still unchecked.
+
+Evidence: [_workspace/runtime-lincom/](_workspace/runtime-lincom/), including the
+[contract](_workspace/runtime-lincom/01-contract.md), the pinned Python and independent
+statsmodels/SciPy comparison, and the Rust contract tests. The checked fixture's
+`lincom x1 - x2` estimate, SE, statistic, p-value, CI, and residual df matched the direct
+statsmodels/SciPy reference within the predeclared hybrid tolerance.
+
+Reporting and CLI, JSON, and MCP result surfaces remain deferred.
 
 ## Verified slice: classical linear hypothesis testing syntax
 
@@ -1965,7 +1985,7 @@ member crate implementing foundational statistical contracts and pure baseline i
   - `FitStatistics`: Goodness-of-fit statistics ($N$, degrees of freedom, R², adjusted R², Root MSE, RSS, TSS, F-statistic, log-likelihood).
   - `LeastSquaresResult`: Owned result struct for linear estimation.
   - `PredictionContract` (`predict_linear_response`): Out-of-sample and in-sample linear prediction.
-  - `PostEstimationModel`: Post-estimation parameter access, linear combinations (`lincom`), and Wald linear hypothesis tests ($R \beta = r$).
+  - `PostEstimationModel`: Post-estimation parameter access, affine linear-combination inference (`lincom`), and Wald linear hypothesis tests ($R \beta = r$), with Student-t p-values and quantiles.
   - `variance_inflation_factors`: Pure auxiliary OLS fits over a retained ordered predictor design, preserving infinite VIF values.
   - `Estimator` trait: Backend capability trait.
   - `StatsError`: Normalized typed statistical error hierarchy.
@@ -2014,8 +2034,10 @@ including the [contract](_workspace/linear-regression-runtime/01-contract.md),
 [summary](_workspace/linear-regression-runtime/04-summary.md), `crates/tabdat-runtime/`,
 `crates/tabdat-stats/`, and PR #151 (squash merge `9476053`).
 
-This accepted runtime regression slice leaves broader post-estimation commands (`predict`,
-`test`, `lincom`, etc.), reporting, CLI table rendering, JSON, and MCP deferred.
+This regression runtime slice leaves broader post-estimation commands (`test`, `ttest`,
+other estimator-family `lincom`, and additional prediction kinds), reporting, CLI table
+rendering, JSON, and MCP deferred. The bounded linear-regression `lincom` support is recorded
+in the dedicated section above.
 
 ## Verified slice: reproducible build baseline
 

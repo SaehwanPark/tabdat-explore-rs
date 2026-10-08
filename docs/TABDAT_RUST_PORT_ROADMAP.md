@@ -1054,7 +1054,7 @@ Port foundational statistical inference and establish the stable estimator backe
 - [ ] Port VIF. PR #154 adds bounded runtime support for successful full-rank OLS/WLS/GLS states; exact-collinearity end-to-end parity remains blocked by the current rank-deficient regression rejection, so this broader item is not complete.
 - [ ] Port residual diagnostics.
 - [ ] Port `test`.
-- [ ] Port `lincom`.
+- [ ] Port `lincom`. PR #155 adds a bounded runtime result for stored OLS/WLS/GLS linear-regression states, including robust/cluster covariance; support for other Python estimator families and the no-positive-df normal fallback remains deferred.
 - [ ] Port `ttest`.
 - [ ] Port HTML regression report.
 
@@ -1066,6 +1066,7 @@ Port foundational statistical inference and establish the stable estimator backe
 - [ ] Validate standard errors.
 - [ ] Validate covariance corrections.
 - [x] Validate the bounded linear-regression `xb` and residual predictions (PR #153; pinned Python tests and NIST Longley fitted-value reference; broader prediction validation remains open).
+- [x] Validate bounded linear-regression `lincom` (PR #155; pinned Python 3.13.15 / statsmodels 0.14.6 / SciPy 1.17.1 plus direct statsmodels/SciPy reference for OLS, WLS, GLS, robust, clustered, and no-intercept cases; other estimator families remain open).
 - [ ] Extend prediction validation to other model families and prediction kinds.
 - [ ] Validate sample exclusion.
 - [ ] Validate failure behavior.

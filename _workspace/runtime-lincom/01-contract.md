@@ -3,7 +3,7 @@
 ## Status and scope
 
 - **Producer / consumer:** task owner / implementer, reviewer, and next maintainer.
-- **State:** in progress; target is read-only library-runtime `lincom` after successful Rust OLS/WLS/GLS `regress` states, including supported robust/cluster covariance results. Other Python estimator families and interface rendering remain deferred.
+- **State:** implementation complete on `feat/runtime-lincom`; awaiting hosted Linux acceptance before merge. Scope is read-only library-runtime `lincom` after successful Rust OLS/WLS/GLS `regress` states, including robust/cluster covariance. Other Python estimator families and interface rendering remain deferred.
 - **Rust base:** `main` at `8d0edb37a0c860ad0d06edbefa618550157241c7`; working branch `feat/runtime-lincom`.
 - **Python oracle:** TabDat 0.25.0, commit `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`, tree `601b236788872323af9277d2276a236154a0f129`; clean checkout and lock digest reverified.
 - **Trusted reference:** statsmodels `0.14.6` OLS covariance/parameters plus SciPy `1.17.1` Student-t tail probability and 97.5th percentile, supplemented by the pinned TabDat implementation.
@@ -40,12 +40,12 @@ A pinned TabDat execution on six observations returned for `lincom x1 - x2`:
 
 A direct independent statsmodels/SciPy calculation returned the same estimate, SE, statistic, CI, and p-value `0.08760247783654902` (roundoff only). Other probes covered scalar/constant expressions, intercept, unknown coefficients, nonlinear multiplication/division, and division by zero.
 
-## Rust contract to implement
+## Implemented Rust contract
 
 - Replace syntax-only `lincom` runtime deferral with `ExecutionResult::Lincom(LincomResult)` after a supported successful linear regression.
 - Map AST identifiers to the ordered `LeastSquaresResult.parameter_names`; derive a complete affine coefficient vector and constant offset. Reject unsupported/nonlinear forms using Python-compatible messages.
 - Use `PostEstimationModel` and its covariance matrix, preserve existing model state, and calculate Student-t p-values / 95% intervals using residual df. Do not initialize DuckDB or mutate the active relation.
-- Add a pure Student-t quantile helper only if needed for CI computation and validate it against SciPy known values before use.
+- Add and validate a pure Student-t quantile helper for CI computation against SciPy known values.
 - Normalize missing estimation state and statistical failures into typed runtime errors with stable display text.
 - Keep non-linear, IV, binary, panel, causal, and other model-family `lincom` dispatch deferred because those result families are not represented by current Rust runtime state.
 

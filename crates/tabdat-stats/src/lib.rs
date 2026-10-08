@@ -29,9 +29,11 @@ pub use least_squares::{
 };
 pub use matrix::{
   covariance_matrix, invert, mean, multiply, multiply_vector, sample_covariance, sample_variance,
-  scale, transpose,
+  scale, student_t_pvalue, student_t_quantile, transpose,
 };
-pub use post_estimation::{LinearCombinationResult, PostEstimationModel, WaldTestResult};
+pub use post_estimation::{
+  LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
+};
 pub use problem::EstimationProblem;
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;

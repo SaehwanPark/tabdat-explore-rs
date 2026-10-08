@@ -547,3 +547,56 @@ pub fn student_t_pvalue(t: f64, df: f64) -> f64 {
   let x = df / (df + t * t);
   regularized_incomplete_beta(df / 2.0, 0.5, x)
 }
+
+/// Quantile of Student's t distribution at `probability` and `df` degrees of freedom.
+///
+/// Returns NaN for a non-finite or non-positive df, or a probability outside `[0, 1]`.
+pub fn student_t_quantile(probability: f64, df: f64) -> f64 {
+  if !probability.is_finite() || !(0.0..=1.0).contains(&probability) || !df.is_finite() || df <= 0.0
+  {
+    return f64::NAN;
+  }
+  if probability == 0.0 {
+    return f64::NEG_INFINITY;
+  }
+  if probability == 1.0 {
+    return f64::INFINITY;
+  }
+  if probability == 0.5 {
+    return 0.0;
+  }
+  if probability < 0.5 {
+    return -student_t_quantile(1.0 - probability, df);
+  }
+
+  let mut lower = 0.0;
+  let mut upper = 1.0;
+  while student_t_cdf(upper, df) < probability {
+    lower = upper;
+    upper *= 2.0;
+    if !upper.is_finite() {
+      return f64::INFINITY;
+    }
+  }
+
+  for _ in 0..128 {
+    let midpoint = lower + (upper - lower) / 2.0;
+    if midpoint == lower || midpoint == upper {
+      break;
+    }
+    if student_t_cdf(midpoint, df) < probability {
+      lower = midpoint;
+    } else {
+      upper = midpoint;
+    }
+  }
+  lower + (upper - lower) / 2.0
+}
+
+fn student_t_cdf(t: f64, df: f64) -> f64 {
+  if t >= 0.0 {
+    1.0 - student_t_pvalue(t, df) / 2.0
+  } else {
+    student_t_pvalue(-t, df) / 2.0
+  }
+}
