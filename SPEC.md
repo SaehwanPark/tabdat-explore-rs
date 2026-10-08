@@ -710,9 +710,10 @@ adds a bounded, backend-independent `estat` syntax boundary to
 The parser returns an owned typed diagnostic subcommand, preserves command and
 subcommand case normalization plus single/double-quoted subcommands, and
 rejects options on the selected no-option forms with the recovered diagnostic.
-Runtime deliberately returns the typed unsupported-command result; it does not
-inspect model state, calculate a post-estimation result, initialize DuckDB, or
-mutate session state.
+For those four forms runtime deliberately returns the typed unsupported-command
+result; it does not inspect model state, calculate a post-estimation result,
+initialize DuckDB, or mutate session state. The separate bounded VIF runtime
+slice below adds `vif` support without changing these deferred subcommands.
 
 Evidence: [_workspace/runtime-estat/](_workspace/runtime-estat/), including
 the [migration evidence](_workspace/runtime-estat/02-evidence-migration.md),
@@ -725,8 +726,8 @@ all passed.
 This accepted syntax slice leaves first-stage, overidentification, endogeneity,
 and Hausman calculations, statistical model-state routing, IV/panel validation,
 covariance, missingness, output/reporting, labels, formatting, CLI, JSON, MCP,
-remaining `estat` subcommands, and broad Python `estat` parity deferred. Phase
-11.1 runtime `estat firststage`, `estat overid`, `estat endogenous`, and
+other `estat` subcommands, and broad Python `estat` parity deferred. Phase 11.1
+runtime `estat firststage`, `estat overid`, `estat endogenous`, and
 `estat hausman` remain unchecked.
 
 ## Verified slice: syntax-only `xtabond` command
@@ -881,6 +882,31 @@ final docs-closeout head is rechecked before merge.
 
 This is not broad `predict` parity: other prediction kinds, estimator families,
 lazy execution, model reporting, CLI, JSON, and MCP remain deferred.
+
+## Work in progress: bounded linear-regression `estat vif` runtime
+
+WIP [PR #154](https://github.com/SaehwanPark/tabdat-explore-rs/pull/154)
+adds typed `estat vif` parsing and library-runtime execution for successful
+full-rank OLS/WLS/GLS regression states. `Session` retains the ordered predictor
+design used for the regression's complete-case sample; each auxiliary OLS fit
+uses the same intercept convention but does not apply the original WLS/GLS
+weights, matching the pinned Python executor's use of `fitted_model.model.exog`.
+The runtime returns an owned `TableResult` in predictor order with a `mean_vif`
+row when values are available. The pure `tabdat-stats` helper preserves positive
+infinity for exact auxiliary dependence.
+
+Evidence: [_workspace/runtime-vif/](_workspace/runtime-vif/),
+`crates/tabdat-stats/tests/vif_contract.rs`, and
+`crates/tabdat-runtime/tests/estat_vif_contract.rs`. The pinned TabDat oracle
+selection passes; a two-predictor case matches statsmodels 0.14.6 and the
+closed-form `27/7` reference, including WLS/GLS, no-intercept, one-predictor,
+and post-fit active-relation projection probes.
+
+This is not complete VIF parity: the Rust regression kernel rejects an exactly
+rank-deficient main design that the Python reference permits, so the runtime
+cannot reach its infinite-VIF case end to end. The broad roadmap item remains
+unchecked pending a separate rank-deficiency decision. Other `estat` commands,
+CLI, JSON, and MCP rendering remain deferred.
 
 ## Verified slice: syntax-only `logit` and `probit` commands
 
@@ -1940,6 +1966,7 @@ member crate implementing foundational statistical contracts and pure baseline i
   - `LeastSquaresResult`: Owned result struct for linear estimation.
   - `PredictionContract` (`predict_linear_response`): Out-of-sample and in-sample linear prediction.
   - `PostEstimationModel`: Post-estimation parameter access, linear combinations (`lincom`), and Wald linear hypothesis tests ($R \beta = r$).
+  - `variance_inflation_factors`: Pure auxiliary OLS fits over a retained ordered predictor design, preserving infinite VIF values.
   - `Estimator` trait: Backend capability trait.
   - `StatsError`: Normalized typed statistical error hierarchy.
   - `fit_least_squares`: Pure Rust baseline linear least squares fitting using Householder QR decomposition with back-substitution and triangular inverse computation for numerical backward stability.

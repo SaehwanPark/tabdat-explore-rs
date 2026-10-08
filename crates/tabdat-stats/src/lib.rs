@@ -7,6 +7,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod diagnostics;
 pub mod error;
 pub mod estimates;
 pub mod least_squares;
@@ -17,6 +18,7 @@ pub mod result;
 pub mod sample;
 pub mod traits;
 
+pub use diagnostics::variance_inflation_factors;
 pub use error::StatsError;
 pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,

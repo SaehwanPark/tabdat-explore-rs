@@ -54,7 +54,7 @@ Python's `test_phase_13_estat_vif_preserves_infinite_values` obtains infinite VI
 1. Parser accepts `estat vif` and rejects invalid subcommands/options with the existing diagnostics.
 2. Runtime returns the exact typed prerequisite failures (no active data, then no prior regression); other `estat` subcommands remain unsupported.
 3. A full-rank two-predictor fixture gives `VIF=27/7` for both predictors, correct order, and matching mean; compare Rust with pinned TabDat and statsmodels plus the closed-form correlation calculation using a declared absolute/relative tolerance.
-4. A one-predictor OLS/WLS/GLS fixture produces VIF 1; verify weights affect sample membership but are not used to weight the auxiliary VIF fits.
+4. A one-predictor fixture produces VIF 1. On multi-predictor WLS/GLS fixtures, extreme finite weights must not enter auxiliary fits, while a row with a missing weight/sigma is excluded with the original fitted sample.
 5. A model's VIF uses the saved estimation design after the current dataset is projected/transformed; active dataset/model state remains unchanged.
 6. Pure statistics tests preserve `+inf` for exact auxiliary collinearity and cover malformed dimensions/unavailable R²; end-to-end exact-collinear regression stays explicitly blocked as above.
 7. Run focused Rust tests, pinned Python selection, root locked checks, dependency/advisory/unsafe policy, independent code review, and hosted PR-head CI before merge.
