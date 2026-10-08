@@ -858,9 +858,9 @@ estimator parity deferred. Runtime linear regression execution (OLS, WLS, GLS,
 robust, and cluster covariance) is implemented in PR #151; broader post-estimation,
 reporting, CLI, JSON, and MCP remain deferred.
 
-## WIP slice: bounded linear-regression prediction runtime
+## Verified slice: bounded linear-regression prediction runtime
 
-Draft PR #153 adds library-runtime `predict <target> [, xb]` and
+PR #153 adds library-runtime `predict <target> [, xb]` and
 `predict <target>, residuals` after the implemented OLS/WLS/GLS regression forms.
 The session retains the regression outcome and ordered predictor mapping with its
 existing `LeastSquaresResult`; DuckDB stages the prediction column before atomic
@@ -874,8 +874,10 @@ Evidence: [_workspace/runtime-linear-predict/](_workspace/runtime-linear-predict
 `crates/tabdat-runtime/src/lib.rs`, and
 `crates/tabdat-runtime/tests/predict_runtime_contract.rs`. The pinned Python
 prediction selection (3 tests) and focused Rust tests pass; NIST-certified Longley
-coefficients provide an independent fitted-value/residual reference. Full hosted
-PR-head checks are pending before closeout.
+coefficients provide an independent fitted-value/residual reference. On PR head
+`530dce5`, hosted Rust baseline, runtime, and dependency/unsafe-policy workflows
+passed, including full workspace tests and the repository's policy checks. The
+final docs-closeout head is rechecked before merge.
 
 This is not broad `predict` parity: other prediction kinds, estimator families,
 lazy execution, model reporting, CLI, JSON, and MCP remain deferred.

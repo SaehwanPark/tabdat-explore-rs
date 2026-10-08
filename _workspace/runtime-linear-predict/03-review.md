@@ -14,4 +14,4 @@
 
 ## Residual validation status
 
-Focused Rust tests, formatter, workspace `cargo check`, and Clippy pass locally. The Python oracle selection passes. The serial full Rust workspace test on Windows is blocked by unchanged `export_contract` tests parsing native backslash paths; full Linux hosted PR-head checks are still pending and remain required before merge. No backend-injected publication-failure test was added; staged inspection and transaction failures use the same cleanup/publication pattern as adjacent runtime transforms.
+Focused Rust tests, formatter, workspace `cargo check`, and Clippy pass locally. The Python oracle selection passes. The serial full Rust workspace test on Windows is blocked by unchanged `export_contract` tests parsing native backslash paths; Linux hosted Rust baseline, runtime-boundary, and dependency/unsafe-policy workflows passed at PR head `530dce5`. The final documentation-only head is being rechecked before merge. No backend-injected publication-failure test was added; staged inspection and transaction failures use the same cleanup/publication pattern as adjacent runtime transforms.
