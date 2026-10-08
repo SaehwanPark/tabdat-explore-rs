@@ -16,10 +16,11 @@ use tabdat_language::script::{
 };
 use tabdat_language::{
   AssertBinaryOperator, AssertExpression, ByCommand, CollapseCommand, CollapseStatistic, Command,
-  DataSource, ExecutionMode, GenerateBinaryOperator, GenerateExpression, JoinCommand, JoinHow,
-  LabelCommand, LabelValue, LazyEngine, PredictCommand, PredictKind, RecodeInput,
-  RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
-  ReshapeCommand, ReshapeDirection, RowLimit, SortKey, TabulateCommand,
+  DataSource, EstatCommand, EstatSubcommand, ExecutionMode, GenerateBinaryOperator,
+  GenerateExpression, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, PredictCommand,
+  PredictKind, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue,
+  RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit, SortKey,
+  TabulateCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -893,6 +894,10 @@ pub enum RuntimeError {
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
   RegressFailed { message: String },
+  /// VIF requires a preceding supported linear regression.
+  EstatRequiresPriorRegression,
+  /// DuckDB-independent auxiliary fits for VIF could not be computed.
+  EstatVifFailed,
   /// Prediction requires a preceding supported linear regression.
   PredictRequiresPriorRegression,
   /// The prediction target already exists in the active schema.
@@ -1406,6 +1411,10 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::EstatRequiresPriorRegression => {
+        formatter.write_str("estat requires a prior regress model")
+      }
+      Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
       Self::PredictRequiresPriorRegression => {
         formatter.write_str("predict requires a prior regress model")
       }
@@ -1435,6 +1444,7 @@ impl From<ScriptError> for RuntimeError {
 struct LinearRegressionState {
   outcome: String,
   predictors: Vec<String>,
+  predictor_design: Vec<Vec<f64>>,
   include_intercept: bool,
   result: tabdat_stats::LeastSquaresResult,
 }
@@ -1532,6 +1542,7 @@ impl Session {
       Command::Reshape { command } => self.execute_reshape(&command),
       Command::Regress { command } => self.execute_regress(&command),
       Command::Predict { command } => self.execute_predict(&command),
+      Command::Estat { command } => self.execute_estat(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
   }
@@ -3882,6 +3893,7 @@ impl Session {
     self.last_regression = Some(LinearRegressionState {
       outcome: command.outcome.clone(),
       predictors: command.predictors.clone(),
+      predictor_design: problem.design_matrix,
       include_intercept: command.include_intercept,
       result: least_squares_result.clone(),
     });
@@ -3912,6 +3924,53 @@ impl Session {
     };
 
     Ok(ExecutionResult::Regression(Box::new(result)))
+  }
+
+  fn execute_estat(&self, command: &EstatCommand) -> Result<ExecutionResult, RuntimeError> {
+    if command.subcommand != EstatSubcommand::Vif {
+      return Err(RuntimeError::UnsupportedCommand { name: "estat" });
+    }
+    if self.active_dataset.is_none() {
+      return Err(RuntimeError::NoActiveDataset { command: "estat" });
+    }
+    let model = self
+      .last_regression
+      .as_ref()
+      .ok_or(RuntimeError::EstatRequiresPriorRegression)?;
+    let vif_values = tabdat_stats::variance_inflation_factors(
+      &model.predictors,
+      &model.predictor_design,
+      model.include_intercept,
+    )
+    .map_err(|_| RuntimeError::EstatVifFailed)?;
+
+    let mut rows = Vec::with_capacity(vif_values.len() + 1);
+    let mut available_values = Vec::with_capacity(vif_values.len());
+    for (variable, vif) in model.predictors.iter().zip(vif_values) {
+      let vif = vif.filter(|value| !value.is_nan());
+      if let Some(value) = vif {
+        available_values.push(value);
+        rows.push(vec![
+          CellValue::Text(variable.clone()),
+          CellValue::Float(value),
+        ]);
+      } else {
+        rows.push(vec![CellValue::Text(variable.clone()), CellValue::Null]);
+      }
+    }
+    if !available_values.is_empty() {
+      let mean_vif =
+        tabdat_stats::mean(&available_values).map_err(|_| RuntimeError::EstatVifFailed)?;
+      rows.push(vec![
+        CellValue::Text("mean_vif".to_owned()),
+        CellValue::Float(mean_vif),
+      ]);
+    }
+
+    Ok(ExecutionResult::Table(TableResult {
+      headers: vec!["Variable".to_owned(), "VIF".to_owned()],
+      rows,
+    }))
   }
 
   fn execute_predict(&mut self, command: &PredictCommand) -> Result<ExecutionResult, RuntimeError> {

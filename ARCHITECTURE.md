@@ -98,8 +98,13 @@ with exact sample missingness tracking in `EstimationSample` and session post-es
 persistence in `Session::last_regression`. PR #153 adds eager `predict, xb` and
 `predict, residuals` for these linear-regression states, with staged DuckDB publication and an
 owned `PredictionResult`; generated values cover all active rows and preserve SQL NULL behavior.
-Prediction kinds for other estimators, plus `test`, `lincom`, and broader post-estimation,
-remain deferred.
+PR #154 adds a pure `tabdat-stats::variance_inflation_factors` auxiliary-OLS
+calculation and `estat vif` runtime result for full-rank linear-regression states. The session
+retains the complete-case predictor design so the diagnostic follows the fitted sample; its
+auxiliary regressions use the model's intercept convention but not WLS/GLS weights, matching
+the Python oracle's exog-based behavior. The exact-collinear main-model case remains
+unreachable because the existing Rust estimator rejects rank-deficient designs. Prediction
+kinds for other estimators, plus `test`, `lincom`, and broader post-estimation, remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

@@ -1152,10 +1152,11 @@ pub struct TtestCommand {
   pub welch: bool,
 }
 
-/// The no-option post-estimation diagnostics accepted by this parser-only
-/// `estat` slice.
+/// The no-option post-estimation diagnostics accepted by this bounded `estat` parser slice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EstatSubcommand {
+  /// Report variance inflation factors for a linear regression model.
+  Vif,
   /// Report the first-stage diagnostic for an IV model.
   FirstStage,
   /// Report the overidentification diagnostic for an IV model.
@@ -1166,8 +1167,8 @@ pub enum EstatSubcommand {
   Hausman,
 }
 
-/// The parser-only `estat` form retained for a later post-estimation runtime
-/// slice.
+/// A no-option `estat` form accepted by the language layer; runtime support is
+/// subcommand-specific.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EstatCommand {
   /// The requested diagnostic subcommand.
@@ -7921,6 +7922,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let argument = &parts.arguments[0];
   let normalized_subcommand = argument.text.to_ascii_lowercase();
   let subcommand = match (normalized_subcommand.as_str(), argument.backtick_quoted) {
+    ("vif", false) => EstatSubcommand::Vif,
     ("firststage", false) => EstatSubcommand::FirstStage,
     ("overid", false) => EstatSubcommand::Overid,
     ("endogenous", false) => EstatSubcommand::Endogenous,

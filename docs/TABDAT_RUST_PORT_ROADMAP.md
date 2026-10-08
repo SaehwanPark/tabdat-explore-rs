@@ -1051,7 +1051,7 @@ Port foundational statistical inference and establish the stable estimator backe
 - [x] Port clustered covariance (PR #151, squash merge `9476053`; cluster-robust sandwich covariance matrix with degrees-of-freedom correction).
 - [x] Port linear-regression `predict, xb` (PR #153; eager DuckDB runtime after OLS/WLS/GLS only; other model families remain deferred).
 - [x] Port linear-regression `predict, residuals` (PR #153; observed outcome minus stored fitted values; other model families remain deferred).
-- [ ] Port VIF.
+- [ ] Port VIF. PR #154 adds bounded runtime support for successful full-rank OLS/WLS/GLS states; exact-collinearity end-to-end parity remains blocked by the current rank-deficient regression rejection, so this broader item is not complete.
 - [ ] Port residual diagnostics.
 - [ ] Port `test`.
 - [ ] Port `lincom`.

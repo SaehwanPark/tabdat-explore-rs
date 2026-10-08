@@ -3016,6 +3016,18 @@ fn estat_parses_bounded_diagnostic_subcommands() {
 }
 
 #[test]
+fn estat_vif_is_recognized_by_the_parser() {
+  assert_eq!(
+    parse_command("ESTAT 'vif'").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Vif,
+      },
+    }
+  );
+}
+
+#[test]
 fn estat_preserves_bounded_parser_diagnostics() {
   let cases = [
     (
@@ -3038,6 +3050,7 @@ fn estat_preserves_bounded_parser_diagnostics() {
       "estat firststage, robust",
       "estat firststage does not support options",
     ),
+    ("estat vif, robust", "estat vif does not support options"),
     ("estat firststage if", "missing expression after if"),
     (
       "estat firststage=",
