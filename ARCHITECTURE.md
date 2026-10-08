@@ -95,8 +95,11 @@ form. Merged PR #151 (`9476053`) implements runtime linear regression execution 
 `crates/tabdat-runtime` via `tabdat-stats`, executing OLS, WLS, GLS (1D sigma scaled to
 precision weights $w_i = 1 / \sigma_i$), classical, robust HC1, and clustered covariance,
 with exact sample missingness tracking in `EstimationSample` and session post-estimation
-persistence in `Session::last_regression`. Broader post-estimation commands (`predict`, `test`,
-`lincom`, etc.) remain deferred.
+persistence in `Session::last_regression`. PR #153 adds eager `predict, xb` and
+`predict, residuals` for these linear-regression states, with staged DuckDB publication and an
+owned `PredictionResult`; generated values cover all active rows and preserve SQL NULL behavior.
+Prediction kinds for other estimators, plus `test`, `lincom`, and broader post-estimation,
+remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
