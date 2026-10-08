@@ -3,7 +3,7 @@
 ## Status and scope
 
 - **Producer / consumer:** task owner / implementer, reviewer, and next maintainer.
-- **State:** in progress; the intended runtime slice covers VIF for currently supported full-rank OLS/WLS/GLS fits. End-to-end exact-collinearity parity is blocked by the existing Rust estimator's rank-deficiency error and must remain explicitly deferred.
+- **State:** partial; the delivered runtime slice covers VIF for currently supported full-rank OLS/WLS/GLS fits. End-to-end exact-collinearity parity is blocked by the existing Rust estimator's rank-deficiency error and remains explicitly deferred.
 - **Rust base:** `main` at squash merge `d44f38b046e082dc22d8e4640ce22f747f044476`; working branch `feat/runtime-vif`.
 - **Python oracle:** TabDat 0.25.0, commit `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`, tree `601b236788872323af9277d2276a236154a0f129`; clean checkout and lock digest reverified.
 - **Reference:** statsmodels `0.14.6`, `statsmodels.stats.outliers_influence.variance_inflation_factor`; the pinned Python reference-validation matrix records `estat` VIF as reference-validated.

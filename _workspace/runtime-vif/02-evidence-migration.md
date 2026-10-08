@@ -3,7 +3,7 @@
 ## Producer, consumer, revisions
 
 - **Producer:** task owner / implementation author. **Consumer:** reviewer and next maintainer.
-- **Rust base:** `d44f38b046e082dc22d8e4640ce22f747f044476`; branch `feat/runtime-vif`, first WIP test commit `bf4a206`; final implementation head is recorded at closeout.
+- **Rust base:** `d44f38b046e082dc22d8e4640ce22f747f044476`; implementation commit `7eb6ea4d400c53e83c9940511b7644ec75dacc9d` on `feat/runtime-vif`; the PR's final documentation-closeout head receives the final hosted recheck.
 - **Python oracle:** TabDat 0.25.0, commit `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`, tree `601b236788872323af9277d2276a236154a0f129`.
 - **Checkout:** `../tabdat-python-oracle`; clean at verification.
 - **Lock:** `uv.lock` SHA-256 `0f0e1dedbff49b4c77b470a75510b8809436c7c3dc77d1eac372ab9c7264d239`, matches `docs/migration/python-baseline.toml`.
@@ -57,7 +57,7 @@ Test-first evidence is recorded in `01-contract.md`: before implementation the p
 - `CARGO_BUILD_JOBS=1 cargo test --locked --workspace --all-targets`: compiled and ran, but seven existing `export_contract` cases failed on Windows because native backslashes in test command strings are rejected as `unsupported token in command: \\`; two other export tests passed. These tests do not touch VIF code. A first parallel Cargo invocation produced a transient missing-`rlib` error; the serial rerun proceeded to the unrelated path failures.
 - `cargo deny check` and `cargo audit -D warnings`: passed; deny prints existing duplicate-lock-entry warnings.
 - `cargo-geiger 0.13.0`: the repository's exact JSON validation loop could not run because local `jq` is not installed. An equivalent Python JSON check invoked `cargo geiger --manifest-path ... --all-dependencies --all-targets --locked --output-format Json` for all four workspace packages and confirmed each first-party package forbids unsafe and reports zero first-party unsafe functions/expressions (all geiger invocations exited 0).
-- Hosted PR-head CI remains the acceptance gate for full Linux tests and the repository policy workflow.
+- Hosted checks on implementation head `7eb6ea4d400c53e83c9940511b7644ec75dacc9d` passed: Rust baseline (including full Linux workspace tests), `tabdat-runtime on Linux`, dependency/unsafe-code policy, both ReadStat feasibility jobs, and both libgretl feasibility jobs. The docs-closeout commit below is pushed separately and is rechecked before merge.
 
 ## Explicit parity boundary
 

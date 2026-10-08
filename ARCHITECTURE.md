@@ -98,7 +98,7 @@ with exact sample missingness tracking in `EstimationSample` and session post-es
 persistence in `Session::last_regression`. PR #153 adds eager `predict, xb` and
 `predict, residuals` for these linear-regression states, with staged DuckDB publication and an
 owned `PredictionResult`; generated values cover all active rows and preserve SQL NULL behavior.
-WIP PR #154 adds a pure `tabdat-stats::variance_inflation_factors` auxiliary-OLS
+PR #154 adds a pure `tabdat-stats::variance_inflation_factors` auxiliary-OLS
 calculation and `estat vif` runtime result for full-rank linear-regression states. The session
 retains the complete-case predictor design so the diagnostic follows the fitted sample; its
 auxiliary regressions use the model's intercept convention but not WLS/GLS weights, matching

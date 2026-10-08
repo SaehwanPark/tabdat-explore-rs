@@ -883,9 +883,9 @@ final docs-closeout head is rechecked before merge.
 This is not broad `predict` parity: other prediction kinds, estimator families,
 lazy execution, model reporting, CLI, JSON, and MCP remain deferred.
 
-## Work in progress: bounded linear-regression `estat vif` runtime
+## Verified slice: bounded linear-regression `estat vif` runtime
 
-WIP [PR #154](https://github.com/SaehwanPark/tabdat-explore-rs/pull/154)
+[PR #154](https://github.com/SaehwanPark/tabdat-explore-rs/pull/154)
 adds typed `estat vif` parsing and library-runtime execution for successful
 full-rank OLS/WLS/GLS regression states. `Session` retains the ordered predictor
 design used for the regression's complete-case sample; each auxiliary OLS fit
