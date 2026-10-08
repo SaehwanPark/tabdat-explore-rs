@@ -3016,6 +3016,11 @@ fn estat_parses_bounded_diagnostic_subcommands() {
 }
 
 #[test]
+fn estat_vif_is_recognized_by_the_parser() {
+  assert!(parse_command("estat vif").is_ok());
+}
+
+#[test]
 fn estat_preserves_bounded_parser_diagnostics() {
   let cases = [
     (
