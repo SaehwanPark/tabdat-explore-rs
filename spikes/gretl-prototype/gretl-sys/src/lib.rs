@@ -1,30 +1,36 @@
-//! Low-level FFI bindings to libgretl (gretl 2026b).
-//!
-//! This is the **only** crate in the spike that contains `unsafe` code. It
-//! declares the `extern "C"` surface of the C ownership shim (`shim.c`) and
-//! wraps the opaque native handles in RAII types so that native objects are
-//! always released, on every path. No raw pointer or foreign struct type is
-//! part of this crate's public API: callers receive [`GretlDataset`] and
-//! [`GretlModel`] values that own their native memory.
-//!
-//! The C shim is compiled from the same pinned gretl source tree, so its view
-//! of libgretl's `DATASET`/`MODEL` layouts is always correct; this crate never
-//! re-declares those structs.
+//! Private-pointer, RAII boundary over the pinned libgretl C ownership shim.
+//! Native calls (including teardown) are serialized because libgretl uses
+//! process-global state. Initialization is lazy and retained for process life;
+//! there is intentionally no safe public cleanup operation to invalidate handles.
+
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use std::ffi::CString;
 use std::os::raw::{c_char, c_double, c_int, c_void};
+use std::sync::{Mutex, Once};
+
+static NATIVE: Mutex<()> = Mutex::new(());
+static INIT: Once = Once::new();
+
+fn native<T>(call: impl FnOnce() -> T) -> T {
+  // Recover poisoning: panics in this wrapper occur only before/after completed
+  // C calls, never by unwinding through C, and owned handles remain valid.
+  let _guard = NATIVE.lock().unwrap_or_else(|error| error.into_inner());
+  INIT.call_once(|| {
+    // SAFETY: the process-global mutex excludes every other shim call; this
+    // initialization executes once and no API can clean up live native state.
+    unsafe { gretl_shim_init() }
+  });
+  call()
+}
 
 unsafe extern "C" {
   fn gretl_shim_init();
-  fn gretl_shim_cleanup();
-
   fn gretl_shim_dataset_new(nvar: c_int, nobs: c_int) -> *mut c_void;
   fn gretl_shim_dataset_set_varname(handle: *mut c_void, i: c_int, name: *const c_char);
   fn gretl_shim_dataset_set_value(handle: *mut c_void, var: c_int, obs: c_int, value: c_double);
   fn gretl_shim_dataset_free(handle: *mut c_void);
-
   fn gretl_shim_ols(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
-
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -50,148 +56,180 @@ pub enum Stat {
   LogLikelihood = 6,
 }
 
-impl Stat {
-  fn code(self) -> c_int {
-    self as c_int
-  }
-}
-
-/// Initialize the libgretl process state.
-///
-/// # Safety contract
-/// Must be called before any dataset/model operation. Safe to call more than
-/// once; libgretl's init is idempotent for this spike's usage.
-pub fn init() {
-  unsafe { gretl_shim_init() }
-}
-
-/// Release libgretl process state. Intended for process shutdown / tests.
-pub fn cleanup() {
-  unsafe { gretl_shim_cleanup() }
-}
-
-/// An owned libgretl dataset.
-///
-/// The native `DATASET` is created in [`GretlDataset::new`] and released in
-/// [`Drop`]. Variable 0 is reserved for the constant term.
+/// Owned dataset. Variable zero is Gretl's immutable implicit constant.
+/// Raw-pointer fields deliberately keep native handles neither Send nor Sync.
+/// Invalid prototype arguments panic before entering C.
 pub struct GretlDataset {
   ptr: *mut c_void,
+  nvar: usize,
+  nobs: usize,
 }
 
-// SAFETY: The native DATASET is created and destroyed on the calling thread
-// and is not shared. libgretl does not document thread-safety, so we do not
-// mark this Send/Sync (see roadmap invariant 1.1).
 impl GretlDataset {
-  /// Create a dataset with `nvar` variables and `nobs` observations.
   pub fn new(nvar: usize, nobs: usize) -> Self {
-    let ptr = unsafe { gretl_shim_dataset_new(nvar as c_int, nobs as c_int) };
+    assert!(nvar > 0 && nobs > 0, "dataset dimensions must be positive");
+    let vars = c_int::try_from(nvar).expect("too many variables");
+    let obs = c_int::try_from(nobs).expect("too many observations");
+    let ptr = native(|| {
+      // SAFETY: dimensions are positive and representable in C; process state
+      // is initialized and protected by native(). The returned allocation is owned.
+      unsafe { gretl_shim_dataset_new(vars, obs) }
+    });
     assert!(!ptr.is_null(), "gretl_shim_dataset_new returned NULL");
-    Self { ptr }
+    Self { ptr, nvar, nobs }
   }
 
-  fn handle(&self) -> *mut c_void {
-    self.ptr
-  }
-
-  /// Set the name of variable `i`.
+  /// Native names are truncated by the shim to VNAMELEN minus one bytes.
   pub fn set_varname(&mut self, i: usize, name: &str) {
-    let c_name = CString::new(name).expect("variable name contains NUL");
-    // SAFETY: self.ptr is a valid DATASET handle; c_name is a valid NUL-
-    // terminated C string for the duration of the call; i is a valid index.
-    unsafe { gretl_shim_dataset_set_varname(self.ptr, i as c_int, c_name.as_ptr()) };
+    assert!(i < self.nvar, "variable index out of bounds");
+    let name = CString::new(name).expect("variable name contains NUL");
+    native(|| {
+      // SAFETY: live owned dataset, checked index, and a NUL-terminated string
+      // borrowed only for this serialized call; C copies the name.
+      unsafe { gretl_shim_dataset_set_varname(self.ptr, i as c_int, name.as_ptr()) }
+    });
   }
 
-  /// Write observation `obs` of variable `var`.
   pub fn set_value(&mut self, var: usize, obs: usize, value: f64) {
-    // SAFETY: self.ptr is a valid DATASET handle; var/obs are valid indices.
-    unsafe { gretl_shim_dataset_set_value(self.ptr, var as c_int, obs as c_int, value) };
+    assert!(
+      var > 0 && var < self.nvar,
+      "variable index is reserved or out of bounds"
+    );
+    assert!(obs < self.nobs, "observation index out of bounds");
+    native(|| {
+      // SAFETY: live owned dataset and checked indices within C-representable
+      // dimensions; no concurrent native call can access process-global state.
+      unsafe { gretl_shim_dataset_set_value(self.ptr, var as c_int, obs as c_int, value) }
+    });
   }
 }
 
 impl Drop for GretlDataset {
   fn drop(&mut self) {
-    // SAFETY: self.ptr is a valid DATASET handle created by new(); Drop runs
-    // exactly once, so the handle is freed exactly once.
-    unsafe { gretl_shim_dataset_free(self.ptr) };
+    native(|| {
+      // SAFETY: this non-null allocation is owned exclusively and freed once;
+      // process state stays initialized and teardown is serialized.
+      unsafe { gretl_shim_dataset_free(self.ptr) }
+    });
   }
 }
 
-/// An owned libgretl estimation result (an OLS `MODEL`).
-///
-/// The native `MODEL` is released in [`Drop`]. The handle remains valid when
-/// estimation failed; inspect [`GretlModel::errcode`].
+/// Owned model, including native error results. The shim copies/owns model
+/// buffers; no dataset borrow or raw native value escapes this wrapper.
 pub struct GretlModel {
   ptr: *mut c_void,
 }
 
 impl GretlModel {
-  /// Run OLS on `dset` with the given gretl variable `list`.
-  ///
-  /// `list[0]` must be the count of the entries that follow.
+  /// `list[0]` counts remaining entries; the outcome must not be variable zero.
   pub fn ols(dset: &GretlDataset, list: &[c_int]) -> Self {
-    assert!(!list.is_empty(), "variable list is empty");
-    // SAFETY: dset.ptr is a valid DATASET handle; list is a valid slice of
-    // c_int with list[0] == its logical length.
-    let ptr = unsafe { gretl_shim_ols(dset.handle(), list.as_ptr(), list.len() as c_int) };
+    let len = c_int::try_from(list.len()).expect("variable list too long");
+    assert!(list.len() >= 3, "need an outcome and regressor");
+    assert_eq!(
+      list[0],
+      len - 1,
+      "variable count does not match list length"
+    );
+    assert!(list[1] > 0, "outcome cannot be the reserved constant");
+    assert!(
+      list[1..]
+        .iter()
+        .all(|&i| i >= 0 && (i as usize) < dset.nvar),
+      "variable list index out of bounds"
+    );
+    let ptr = native(|| {
+      // SAFETY: dataset is live; every list index and the exact count have been
+      // checked. The slice lives through this call. C returns an owned model.
+      unsafe { gretl_shim_ols(dset.ptr, list.as_ptr(), len) }
+    });
     assert!(!ptr.is_null(), "gretl_shim_ols returned NULL");
     Self { ptr }
   }
 
   pub fn ncoeff(&self) -> usize {
-    // SAFETY: self.ptr is a valid MODEL handle.
-    (unsafe { gretl_shim_model_ncoeff(self.ptr) }) as usize
+    native(|| {
+      // SAFETY: self owns a live model; accessor reads a scalar under the lock.
+      usize::try_from(unsafe { gretl_shim_model_ncoeff(self.ptr) })
+        .expect("negative coefficient count")
+    })
   }
 
   pub fn nobs(&self) -> usize {
-    // SAFETY: self.ptr is a valid MODEL handle.
-    (unsafe { gretl_shim_model_nobs(self.ptr) }) as usize
+    native(|| {
+      // SAFETY: self owns a live model; accessor reads a scalar under the lock.
+      usize::try_from(unsafe { gretl_shim_model_nobs(self.ptr) })
+        .expect("negative observation count")
+    })
   }
 
   pub fn dfn(&self) -> usize {
-    // SAFETY: self.ptr is a valid MODEL handle.
-    (unsafe { gretl_shim_model_dfn(self.ptr) }) as usize
+    native(|| {
+      // SAFETY: self owns a live model; accessor reads a scalar under the lock.
+      usize::try_from(unsafe { gretl_shim_model_dfn(self.ptr) })
+        .expect("negative model degrees of freedom")
+    })
   }
 
   pub fn dfd(&self) -> usize {
-    // SAFETY: self.ptr is a valid MODEL handle.
-    (unsafe { gretl_shim_model_dfd(self.ptr) }) as usize
+    native(|| {
+      // SAFETY: self owns a live model; accessor reads a scalar under the lock.
+      usize::try_from(unsafe { gretl_shim_model_dfd(self.ptr) })
+        .expect("negative residual degrees of freedom")
+    })
   }
 
-  /// libgretl error code; 0 means success.
   pub fn errcode(&self) -> i32 {
-    // SAFETY: self.ptr is a valid MODEL handle.
-    unsafe { gretl_shim_model_errcode(self.ptr) }
+    native(|| {
+      // SAFETY: error models are still allocated and scalar access is valid.
+      unsafe { gretl_shim_model_errcode(self.ptr) }
+    })
   }
 
-  /// Coefficient estimate `i`.
+  fn check_index(&self, i: usize) {
+    assert_eq!(self.errcode(), 0, "cannot access buffers on a failed model");
+    assert!(i < self.ncoeff(), "coefficient index out of bounds");
+  }
+
   pub fn coeff(&self, i: usize) -> f64 {
-    // SAFETY: self.ptr is a valid MODEL handle; i < ncoeff().
-    unsafe { gretl_shim_model_coeff(self.ptr, i as c_int) }
+    self.check_index(i);
+    native(|| {
+      // SAFETY: successful live model with checked coefficient index. Model
+      // ownership prevents mutation between checking and this serialized read.
+      unsafe { gretl_shim_model_coeff(self.ptr, i as c_int) }
+    })
   }
 
-  /// Standard error of coefficient `i`.
   pub fn sderr(&self, i: usize) -> f64 {
-    // SAFETY: self.ptr is a valid MODEL handle; i < ncoeff().
-    unsafe { gretl_shim_model_sderr(self.ptr, i as c_int) }
+    self.check_index(i);
+    native(|| {
+      // SAFETY: successful live model and checked standard-error index.
+      unsafe { gretl_shim_model_sderr(self.ptr, i as c_int) }
+    })
   }
 
-  /// (i, j) element of the coefficient covariance matrix.
   pub fn vcv(&self, i: usize, j: usize) -> f64 {
-    // SAFETY: self.ptr is a valid MODEL handle; i, j < ncoeff().
-    unsafe { gretl_shim_model_vcv(self.ptr, i as c_int, j as c_int) }
+    self.check_index(i);
+    self.check_index(j);
+    native(|| {
+      // SAFETY: successful live model and checked covariance indices. The
+      // accessor may populate native VCV storage, so it also holds the lock.
+      unsafe { gretl_shim_model_vcv(self.ptr, i as c_int, j as c_int) }
+    })
   }
 
-  /// A scalar fit statistic.
   pub fn scalar(&self, stat: Stat) -> f64 {
-    // SAFETY: self.ptr is a valid MODEL handle; stat is a valid selector.
-    unsafe { gretl_shim_model_scalar(self.ptr, stat.code()) }
+    native(|| {
+      // SAFETY: live model and a closed-enum scalar selector, serialized read.
+      unsafe { gretl_shim_model_scalar(self.ptr, stat as c_int) }
+    })
   }
 }
 
 impl Drop for GretlModel {
   fn drop(&mut self) {
-    // SAFETY: self.ptr is a valid MODEL handle created by ols(); Drop runs
-    // exactly once, so the handle is freed exactly once.
-    unsafe { gretl_shim_model_free(self.ptr) };
+    native(|| {
+      // SAFETY: exclusively owned model is freed exactly once under the lock.
+      unsafe { gretl_shim_model_free(self.ptr) }
+    });
   }
 }
