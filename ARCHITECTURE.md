@@ -59,8 +59,9 @@ silently invent parity.
   establish broad data-runtime or DuckDB product support. See ADR 0007,
   `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`,
   `_workspace/runtime-export-csv/`, and `_workspace/runtime-use-csv/`.
-- `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
-  checks, and unsafe inventory are development controls, not runtime architecture.
+- `rust-toolchain.toml`, rustfmt, Clippy, local dependency/advisory checks, and
+  unsafe inventory are development controls, not runtime architecture. GitHub
+  Actions are disabled and workflow definitions are removed; see ADR 0009.
 - There is no general session/data-relation model, statistical backend, REPL, MCP
   server, or complete public TabDat command contract in this repository yet. The
   narrow runtime evaluation is deliberately insufficient for those claims.

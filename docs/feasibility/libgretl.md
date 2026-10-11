@@ -1,5 +1,9 @@
 # libgretl feasibility reconnaissance
 
+Hosted workflow results cited in this report are historical. GitHub Actions are
+disabled and workflow definitions are removed under
+[ADR 0009](../adr/0009-disable-github-actions.md).
+
 - Status: **partial**; the pinned native library builds on macOS Apple Silicon and
   Linux x86_64 and its NIST linear-regression smoke program passes on both. No Rust
   binding or estimator support is accepted.

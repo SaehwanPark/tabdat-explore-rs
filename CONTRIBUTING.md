@@ -4,8 +4,8 @@
 
 Use rustup; entering this repository selects the exact version in
 `rust-toolchain.toml` and installs its rustfmt/Clippy components when needed.
-The pin is the supported development/CI toolchain, not a promised MSRV. Upgrade it
-in a dedicated PR that runs all checks locally and in CI. Commit `Cargo.lock`
+The pin is the supported development toolchain, not a promised MSRV. Upgrade it
+in a dedicated PR that runs all checks locally. Commit `Cargo.lock`
 for this binary and use `--locked` so builds cannot silently change resolution.
 
 Use two spaces, no hard tabs. EditorConfig covers editable text and rustfmt covers
@@ -33,6 +33,15 @@ cargo test --locked --workspace --all-targets
 cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
+
+## GitHub Actions status
+
+GitHub Actions are disabled at the repository level and all tracked workflow
+definitions are removed in this change because the Actions usage budget is
+limited. No PR, push, or manual GitHub workflow runs automatically. Run the checks
+in this guide locally before merging. Historical workflow links elsewhere in the
+repository document past evidence; they do not describe active automation. See
+[ADR 0009](docs/adr/0009-disable-github-actions.md).
 
 For the dependency and unsafe-code policy slice, install the pinned tools and run:
 
@@ -91,11 +100,8 @@ contains unsafe code, `cargo geiger` may return a nonzero inventory status even
 though the first-party package is clean. This does not prove FFI safety or
 replace review.
 
-The GitHub Actions `Rust baseline` job runs the four Cargo checks and the
-`Dependency and unsafe-code policy` job runs these three policy checks on Linux for
-every PR and pushes to `main` (no path filters). Inspect the latest revision's
-checks before merging; local success is not a substitute for hosted CI. No branch
-protection is configured by this PR.
+This loop matched the former hosted policy job; policy checks now run only when
+invoked locally. No branch protection is configured.
 
 For docs, also validate relative links, skill frontmatter where affected, and
 normal/blocked guidance scenarios. The one scaffold integration test only checks
@@ -115,7 +121,7 @@ CARGO_TARGET_DIR=target/duckdb-spike cargo build --manifest-path spikes/duckdb-p
 target/duckdb-spike/release/measure
 ```
 
-The path-scoped `DuckDB feasibility spike` workflow covers the Linux build/test;
-macOS Apple Silicon evidence, dependency audit, and native unsafe inventory remain
-explicitly recorded in `docs/feasibility/duckdb.md`, not presented as a
-product-support guarantee.
+The former path-scoped `DuckDB feasibility spike` workflow covered Linux
+build/tests. Its run is historical; macOS Apple Silicon evidence, dependency
+audit, and native unsafe inventory remain explicitly recorded in
+`docs/feasibility/duckdb.md`, not presented as a product-support guarantee.

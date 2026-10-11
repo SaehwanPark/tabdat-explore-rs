@@ -1,7 +1,7 @@
 # ADR 0002: Dependency and unsafe-code policy checks
 
-- Status: Accepted
-- Scope: Rust workspace CI and dependency review; no runtime dependency adoption
+- Status: Superseded for hosted execution by ADR 0009; policy tools remain available locally
+- Scope: Rust workspace dependency and unsafe-code review; no runtime dependency adoption
 
 ## Context
 
@@ -11,9 +11,17 @@ review obligations. A passing compiler/linter does not inspect dependency adviso
 license expressions, source registries, or transitive unsafe usage. Tool versions that
 float with each CI run would also make policy results harder to reproduce.
 
-## Decision
+## Current status
 
-Run three explicitly versioned tools in a separate Linux CI job:
+GitHub Actions are disabled at the repository level and all tracked workflow
+definitions are removed under [ADR 0009](0009-disable-github-actions.md). The
+tool versions and policy configuration in this record remain the local review
+procedure documented in `CONTRIBUTING.md`; no hosted policy job currently runs.
+
+## Original decision
+
+The original hosted policy ran three explicitly versioned tools in a separate
+Linux CI job:
 
 - `cargo-deny` 0.20.2 with `deny.toml` for advisories, licenses, duplicate/wildcard
   dependencies, and registry/git sources;
@@ -39,13 +47,14 @@ not proof of FFI safety or a substitute for unsafe-boundary review.
 
 ## Consequences and verification
 
-CI is slower because tools compile on a clean runner; explicit versions and locked
-installations make that cost visible. The current no-dependency graph passes locally
-with all three tools. The isolated DuckDB spike also required
+The former CI job was slower because tools compiled on a clean runner; explicit
+versions and locked installations made that cost visible. The no-dependency graph
+passed locally with all three tools. The isolated DuckDB spike also required
 `CDLA-Permissive-2.0` for `webpki-roots`; that license is explicitly listed for
 feasibility evaluation and is not a blanket native-redistribution approval. Geiger
 reports the scaffold's `#![forbid(unsafe_code)]`
 coverage. [PR #4 CI](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34187594609)
-passed both the Rust baseline and policy jobs. Future dependencies can fail CI until
-their license/source/advisory and unsafe implications are reviewed. Revisit versions
-in a dedicated tooling update, not as part of feature implementation.
+passed both the Rust baseline and policy jobs. Future dependencies can fail local
+policy checks, or hosted checks if reintroduced, until license/source/advisory and
+unsafe implications are reviewed. Revisit versions in a dedicated tooling update,
+not as part of feature implementation.
