@@ -1,5 +1,9 @@
 # ReadStat feasibility reconnaissance
 
+The hosted Linux workflow cited in this report is historical. GitHub Actions are
+disabled and workflow definitions are removed under
+[ADR 0009](../adr/0009-disable-github-actions.md).
+
 - Status: **binding and DTA ingestion spike complete**; the pinned native
   candidate builds and runs its upstream tests on the two target platforms, and a
   Rust `readstat-sys`-style low-level binding plus a `forbid(unsafe_code)` safe
@@ -53,8 +57,8 @@ not silently treated as clean source. These are compatibility and source-quality
 findings, not evidence that a Rust wrapper is safe or that native defaults are
 portable.
 
-The workflow verifies the release archive before extraction, builds the static
-library and complete upstream tree with the documented warning demotions, and runs
+The former workflow verified the release archive before extraction, built the static
+library and complete upstream tree with the documented warning demotions, and ran
 the upstream `make check` suite. It does not execute the known-flawed CLI, run a
 generated binding, convert a fixture, or run an integration test because none exists
 in this slice.

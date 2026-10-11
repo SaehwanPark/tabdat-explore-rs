@@ -3,6 +3,10 @@
 - Status: Accepted for bounded evaluation; broad production integration deferred
 - Scope: `use <existing-local-parquet>` in eager mode only
 
+The hosted workflow links below are historical. GitHub Actions were later
+disabled and workflow definitions removed under
+[ADR 0009](0009-disable-github-actions.md).
+
 ## Context
 
 The language layer now parses `use`; before this evaluation, the repository had

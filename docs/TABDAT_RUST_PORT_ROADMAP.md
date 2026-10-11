@@ -18,6 +18,11 @@ functional-first design, specification-driven development, and test-first behavi
 changes. Revise future tasks when evidence improves the plan; record major changes
 in an ADR rather than silently changing migration semantics.
 
+GitHub Actions were disabled at the repository level on 2026-10-11, and this
+change removes all tracked workflow definitions because the Actions usage budget
+is limited. Earlier run links below are historical evidence. Required Rust and
+policy checks remain local; see [ADR 0009](adr/0009-disable-github-actions.md).
+
 Initial sequencing:
 
 1. Land repo-local guidance and development-loop rules (documentation-only bootstrap).
@@ -27,7 +32,8 @@ Initial sequencing:
 4. Add security/license tooling and architecture decisions, then undertake bounded
    feasibility spikes with explicit acceptance evidence before product integration.
 
-Check off only the individual tasks demonstrated by source, tests, decisions, or CI.
+Check off only the individual tasks demonstrated by source, tests, decisions, or
+recorded evidence.
 Passing scaffold checks is not statistical validation, and a merged PR alone does
 not satisfy a phase exit gate. Blocked slices retain their evidence and missing
 inputs; select independent work only when it does not bypass the blocked contract.
@@ -84,7 +90,8 @@ inputs; select independent work only when it does not bypass the blocked contrac
 - [ ] Avoid initializing libgretl for non-statistical commands.
 - [ ] Avoid initializing plotting, spatial, Bayesian, or MCP subsystems unless required.
 - [ ] Keep command cancellation responsive.
-- [ ] Establish CI performance-regression thresholds after baselines stabilize.
+- [ ] Establish automated performance-regression thresholds if hosted automation
+  is reintroduced after baselines stabilize.
 
 ---
 
@@ -112,7 +119,7 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 - [x] Configure `cargo deny` (`deny.toml`, pinned CI install).
 - [x] Configure `cargo audit` (pinned CI install and `-D warnings`).
 - [x] Configure `cargo geiger` (pinned CI install and all-target/dependency scan).
-- [x] Configure basic GitHub Actions CI ([PR #2 build evidence](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34186271522)).
+- [x] Configure basic GitHub Actions CI ([PR #2 build evidence](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34186271522)); workflow definitions have since been removed and Actions disabled per [ADR 0009](adr/0009-disable-github-actions.md).
 
 ### 2.2 Migration authority
 
