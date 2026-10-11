@@ -27,7 +27,7 @@ silently invent parity.
   linear-combination inference, and linear hypothesis testing (`PostEstimationModel`),
   backend capability trait (`Estimator`), normalized errors (`StatsError`), matrix
   sandwich quadratic form (`sandwich`), Lanczos log-gamma, regularized incomplete beta
-  Student's $t$ p-values and quantiles, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
+  Student's $t$ p-values and quantiles, one-sample/paired/pooled/Welch t-tests, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
   `fit_least_squares_with_options`, `predict_linear_response`) supporting classical, robust HC1,
   and clustered covariance. It has zero runtime backend dependencies (no DuckDB, no C FFI).
 - `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
@@ -39,7 +39,7 @@ silently invent parity.
 - `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
   for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
   `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, `sql`, and `regress`, plus owned
+  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, `sql`, `regress`, and `ttest`, plus owned
   command/error types and focused tests.
   The `missing [varlist]`, `duplicates [report] [varlist]`, direct
   `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
@@ -59,6 +59,9 @@ silently invent parity.
   establish broad data-runtime or DuckDB product support. See ADR 0007,
   `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`,
   `_workspace/runtime-export-csv/`, and `_workspace/runtime-use-csv/`.
+  PR #157 adds a read-only runtime `ttest` path over one active DuckDB relation,
+  returning owned summaries and inference through `tabdat-stats`; timezone-aware,
+  nested, and interval group keys remain typed limitations.
 - `rust-toolchain.toml`, rustfmt, Clippy, local dependency/advisory checks, and
   unsafe inventory are development controls, not runtime architecture. GitHub
   Actions are disabled and workflow definitions are removed; see ADR 0009.
@@ -111,6 +114,9 @@ including robust and clustered covariance. PR #156 adds read-only Wald/F tests f
 restrictions on those same stored regression states, including classical, HC1, and clustered
 covariance. Other estimator families, the zero-residual-df chi-square fallback, and broader
 post-estimation remain deferred.
+PR #157 adds one-sample, paired, pooled, and Welch `ttest` execution on finite
+numeric observations with Python-compatible scalar group labels; nested,
+interval, and timezone-aware group-key parity remains deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
