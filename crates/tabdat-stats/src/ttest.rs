@@ -263,12 +263,16 @@ fn infer_mean(estimate: f64, standard_error: f64, df: f64) -> (f64, f64, f64, f6
     return (f64::NAN, f64::NAN, f64::NAN, f64::NAN);
   }
   let statistic = estimate / standard_error;
-  let p_two = student_t_pvalue(statistic, df);
-  let half_p_two = p_two / 2.0;
-  let (p_left, p_right) = if statistic < 0.0 {
-    (half_p_two, 1.0 - half_p_two)
-  } else {
-    (1.0 - half_p_two, half_p_two)
-  };
+  let p_left = student_t_cdf(statistic, df);
+  let p_two = 2.0 * (1.0 - student_t_cdf(statistic.abs(), df));
+  let p_right = 1.0 - p_left;
   (statistic, p_left, p_two, p_right)
+}
+
+fn student_t_cdf(statistic: f64, df: f64) -> f64 {
+  if statistic >= 0.0 {
+    1.0 - student_t_pvalue(statistic, df) / 2.0
+  } else {
+    student_t_pvalue(-statistic, df) / 2.0
+  }
 }

@@ -110,6 +110,22 @@ fn one_observation_and_zero_variance_preserve_undefined_inference() {
 }
 
 #[test]
+fn directional_tails_follow_scipy_cdf_rounding_for_extreme_statistics() {
+  let observations = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+  let positive = one_sample_ttest(&observations, -1e20).unwrap();
+  assert!(positive.statistic > 0.0);
+  assert_eq!(positive.p_left, 1.0);
+  assert_eq!(positive.p_two, 0.0);
+  assert_eq!(positive.p_right, 0.0);
+
+  let negative = one_sample_ttest(&observations, 1e20).unwrap();
+  assert!(negative.statistic < 0.0);
+  assert!(negative.p_left > 0.0 && negative.p_left < 1e-90);
+  assert_eq!(negative.p_two, 0.0);
+  assert_eq!(negative.p_right, 1.0);
+}
+
+#[test]
 fn invalid_samples_are_rejected() {
   assert_eq!(
     one_sample_ttest(&[], 0.0).unwrap_err(),
