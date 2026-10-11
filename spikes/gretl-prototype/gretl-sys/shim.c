@@ -28,11 +28,6 @@ void gretl_shim_init(void)
     libgretl_init();
 }
 
-void gretl_shim_cleanup(void)
-{
-    libgretl_cleanup();
-}
-
 /* ------------------------------------------------------------------ */
 /* Dataset                                                            */
 /* ------------------------------------------------------------------ */
@@ -84,8 +79,10 @@ void gretl_shim_dataset_free(void *handle)
  * (inspect gretl_shim_model_errcode). */
 void *gretl_shim_ols(void *dset_handle, const int *list, int nlist)
 {
-    (void) nlist; /* list[0] carries the count; nlist is a sanity bound */
     DATASET *dset = (DATASET *) dset_handle;
+    if (dset == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
+        return NULL;
+    }
     MODEL *model = gretl_model_new();
     if (model == NULL) {
         return NULL;

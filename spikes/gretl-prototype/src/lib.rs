@@ -16,14 +16,6 @@
 
 use gretl_sys::{GretlDataset, GretlModel, Stat};
 use std::os::raw::c_int;
-use std::sync::Once;
-
-static INIT: Once = Once::new();
-
-/// Ensure libgretl process state is initialized (idempotent).
-fn ensure_init() {
-  INIT.call_once(gretl_sys::init);
-}
 
 /// A Rust-owned estimation problem: an outcome, predictors, and the data.
 ///
@@ -101,8 +93,6 @@ impl std::error::Error for GretlError {}
 /// The outcome is `problem.data[*][0]`; predictors are columns 1..=k. The
 /// intercept is included when `problem.include_intercept` is true.
 pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlError> {
-  ensure_init();
-
   let nobs = problem.nobs();
   let ncol = problem.ncol();
   if nobs == 0 {
@@ -120,17 +110,28 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
     }
   }
 
-  // gretl variable layout: 0 = constant (if present), 1 = outcome,
-  // 2..=1+k = predictors.
+  if problem.outcome.contains('\0') || problem.predictors.iter().any(|name| name.contains('\0')) {
+    return Err(GretlError::InvalidProblem(
+      "variable name contains NUL".into(),
+    ));
+  }
+  // Gretl always reserves variable zero, even when omitted from the model list.
   let has_const = problem.include_intercept;
   let n_predictors = problem.predictors.len();
-  let nvar = 1 + n_predictors + usize::from(has_const);
+  let nvar = ncol
+    .checked_add(1)
+    .ok_or_else(|| GretlError::InvalidProblem("too many variables".into()))?;
+  if c_int::try_from(nvar).is_err() || c_int::try_from(nobs).is_err() {
+    return Err(GretlError::InvalidProblem(
+      "dimensions exceed native limits".into(),
+    ));
+  }
 
   let mut dset = GretlDataset::new(nvar, nobs);
 
   // Assign variable indices.
   let const_idx = 0usize;
-  let outcome_idx = if has_const { 1 } else { 0 };
+  let outcome_idx = 1;
   let pred_base = outcome_idx + 1;
 
   if has_const {
@@ -145,8 +146,7 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
   // predictors.
   for (t, row) in problem.data.iter().enumerate() {
     dset.set_value(outcome_idx, t, row[0]);
-    for (i, name) in problem.predictors.iter().enumerate() {
-      let _ = name;
+    for i in 0..n_predictors {
       dset.set_value(pred_base + i, t, row[1 + i]);
     }
   }
