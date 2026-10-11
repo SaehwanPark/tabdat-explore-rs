@@ -811,7 +811,12 @@ Evidence: [_workspace/parser-ttest/](_workspace/parser-ttest/), including the
 [_workspace/runtime-ttest/](_workspace/runtime-ttest/) for the runtime contract,
 Python/SciPy comparisons, review, and check evidence. Pinned Python tests and
 SciPy 1.17.1 reference outputs, focused Rust runtime/stats contracts, locked
-workspace checks, policy checks, and hosted PR workflows passed.
+workspace checks, and local Clippy passed. On head `a9be8cc`, hosted formatting,
+workspace check, policy `cargo deny`/audit, and four native feasibility workflows
+completed successfully; the workspace tests, runtime check, and unsafe-code
+inventory were cancelled and hosted Clippy was skipped when GitHub Actions was
+disabled under ADR 0009. No full hosted workspace, runtime, or policy result is
+claimed for this slice.
 
 This slice does not add presentation, CLI, JSON, MCP, or support for the group
 types listed above as parity limitations. Broader Python statistical validation

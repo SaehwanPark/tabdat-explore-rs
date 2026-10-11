@@ -2,8 +2,9 @@
 
 ## Status and provenance
 
-- Implementation revision: `e846d92` on branch `feat/runtime-ttest`, based on
-  Rust main commit `47bd6a8`.
+- Validated implementation head: `a9be8cc` on branch `feat/runtime-ttest`, based
+  on Rust main commit `47bd6a8`. The later Actions-retirement change in PR #158
+  affects repository automation and documentation only.
 - Python oracle checkout: `../tabdat-explore`, commit
   `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`, tree
   `601b236788872323af9277d2276a236154a0f129`; `uv.lock` SHA-256
@@ -85,4 +86,12 @@ types.
 - `cargo test --locked --workspace --all-targets` — passed; every workspace unit and integration test target completed successfully.
 - `cargo clippy --locked --workspace --all-targets -- -D warnings` — passed.
 - `git diff --check` — passed.
-- Hosted `Rust baseline` and `Dependency and unsafe-code policy` PR checks are required and will be recorded after this revision is pushed.
+- Hosted checks for head `a9be8cc` were interrupted when GitHub Actions was
+  disabled under [ADR 0009](../../docs/adr/0009-disable-github-actions.md).
+  The Rust baseline job completed formatting and `cargo check`; workspace tests
+  were cancelled and Clippy was skipped. The dependency-policy job completed
+  `cargo deny` and `cargo audit`; the unsafe-code inventory was cancelled. The
+  runtime-boundary job completed formatting, then its check was cancelled; its
+  tests and Clippy were skipped. The four native feasibility workflows passed,
+  but they do not establish `ttest` behavior. No complete hosted baseline,
+  runtime, or policy check result is claimed for this head.

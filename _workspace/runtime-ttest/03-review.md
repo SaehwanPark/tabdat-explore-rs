@@ -35,6 +35,8 @@ in the contract and validation evidence. These constraints are reflected in
 ## Verification
 
 The pinned Python tests, SciPy numerical references, focused Rust contracts, and
-all four workspace Cargo gates passed. See [`02-validation.md`](02-validation.md)
-for commands, versions, and the full comparison record. Hosted PR checks remain
-the final merge gate.
+all four workspace Cargo gates passed locally. See
+[`02-validation.md`](02-validation.md) for commands, versions, and the full
+comparison record. GitHub Actions were disabled under ADR 0009 before the hosted
+workspace checks completed; their partial/cancelled status is recorded in the
+validation evidence.
