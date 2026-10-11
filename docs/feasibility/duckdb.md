@@ -75,8 +75,8 @@ blanket native redistribution approval.
 | Linux x86_64 | Repository-pinned toolchain | Pass ([PR #6 workflow](https://github.com/SaehwanPark/tabdat-explore-rs/actions/runs/34194987287)) | Debug test/build path passed; release performance and audit/unsafe inventory remain local-only in this slice |
 | Other targets | — | Not tested | Out of scope for this slice |
 
-Remote HTTP Parquet, S3, and system-vs-bundled linkage are intentionally deferred;
-no endpoint or packaging claim follows from this local run.
+The original run deferred remote HTTP/S3 and system-vs-bundled linkage. The
+later HTTP/unsigned-S3 section closes only the bounded remote-read spike.
 
 ## Performance measurements
 
@@ -113,3 +113,48 @@ a safe-facing API with small owned results. Adoption remains blocked on:
 No DuckDB runtime dependency was added to the root package. The next backend slice
 must either close these gaps or record a reasoned defer/reject decision; it must not
 turn this prototype into implicit product support.
+
+## HTTP and unsigned S3 spike (2026-10-11)
+
+Status: **pass for the bounded remote-read experiment**, not product remote
+support. `src/http_tests.rs` hosts synthetic Parquet on an agent-owned loopback
+server with HEAD, GET, byte ranges, and 404 responses. No third-party data,
+cloud bucket, access keys, or public fixture endpoint is used.
+`ActiveRelation::from_http_parquet` explicitly installs/loads signed `httpfs`;
+installation can contact DuckDB's extension service. The remote test is ignored
+by default, so ordinary spike tests do not silently request that capability.
+
+Observed locally with pinned DuckDB `v1.5.5`, macOS 27.0.1 arm64:
+
+```text
+duckdb=v1.5.5 rows=4096 ranges=21 missing_object=recovered s3_unsigned=passed
+```
+
+Exact checks: repeated count 4,096, id 2 has SQL NULL label, final label
+`row-4096`, Arrow rows 4,096, at least one byte-range response, failure reading
+an absent object, and successful count after that failure. A separate connection
+reads `s3://bucket/fixture.parquet` using an explicit loopback endpoint,
+path-style URLs, unsigned access, and disabled TLS; count, id sum, and non-NULL
+label count agree exactly (4,096 / 8,390,656 / 4,095). This answers whether the
+pinned extension's S3 route works, not whether AWS signing, credentials/IAM,
+virtual-host addressing, HTTPS/certificates, proxies, or cancellation work.
+The pinned Python contract includes S3 Parquet, so those broader requirements
+cannot be silently declared out of scope for eventual parity.
+
+Reproduce (extension service/cache access may be needed):
+
+```sh
+CARGO_TARGET_DIR=target/duckdb-spike cargo test \
+  --manifest-path spikes/duckdb-prototype/Cargo.toml --locked \
+  http_parquet -- --ignored --nocapture
+```
+
+Normal local spike format/check/test/Clippy also pass (two local tests; the
+remote test is opt-in). Root locked checks pass separately. Three explicit
+owner review passes covered query quoting/network scope, server lifecycle/range
+handling, and values/error assertions/documentation scope; no actionable blocker
+remains in this experiment. No independent reviewer runtime was available.
+Changed-document links and whitespace pass. No native unsafety was added and
+no dependency/lockfile changed. No new Linux remote run, TLS fixture, public AWS
+run, or cold network performance measurement is claimed. Production extension
+bundling/offline installation remains a distribution decision.

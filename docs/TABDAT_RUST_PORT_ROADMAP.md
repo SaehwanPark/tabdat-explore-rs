@@ -152,8 +152,11 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Load Parquet (local fixture; [report](feasibility/duckdb.md)).
 - [x] Load CSV (local fixture; [report](feasibility/duckdb.md)).
 - [x] Query Arrow-compatible results (local `RecordBatch` rows; [report](feasibility/duckdb.md)).
-- [ ] Test remote HTTP Parquet (deferred; no authorized endpoint in this slice).
-- [ ] Test S3 support if intended for initial parity (deferred pending scope decision).
+- [x] Test remote HTTP Parquet (4,096-row agent-owned loopback endpoint,
+  byte ranges, values/NULLs/Arrow and missing-object recovery; [report](feasibility/duckdb.md#http-and-unsigned-s3-spike-2026-10-11)).
+- [x] Test S3 support if intended for initial parity (unsigned path-style reads
+  against the owned endpoint; authenticated AWS, IAM, TLS, and broader parity
+  remain unvalidated; [report](feasibility/duckdb.md#http-and-unsigned-s3-spike-2026-10-11)).
 - [x] Implement active-relation lifecycle prototype (owned in-memory connection/view).
 - [x] Measure startup cost (release orientation measurement; not a release gate).
 - [x] Measure first-query cost (release orientation measurement; not a release gate).
