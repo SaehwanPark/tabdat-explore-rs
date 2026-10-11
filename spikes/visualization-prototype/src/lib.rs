@@ -7,7 +7,7 @@ use vl_convert_rs::{VlVersion, converter::VlOpts};
 /// mark, axes, field titles and quantitative encodings for ordinary x/y names.
 pub fn scatter_spec() -> Value {
   json!({
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json",
     "config": {"view": {"continuousWidth": 300, "continuousHeight": 300}},
     "data": {"values": [{"x": 1, "y": 2}, {"x": 2, "y": 1}, {"x": 3, "y": 4}]},
     "mark": {"type": "point"},
@@ -20,7 +20,7 @@ pub fn scatter_spec() -> Value {
 
 pub fn options() -> VlOpts {
   VlOpts {
-    vl_version: VlVersion::v5_21,
+    vl_version: VlVersion::v6_4,
     allowed_base_urls: Some(vec![]),
     ..Default::default()
   }
@@ -39,6 +39,13 @@ mod tests {
     assert_eq!(spec["encoding"]["x"]["field"], "x");
     assert_eq!(spec["encoding"]["y"]["field"], "y");
     assert_eq!(spec["encoding"]["x"]["type"], "quantitative");
+  }
+
+  #[test]
+  fn specification_matches_pinned_python_scatter() {
+    let expected: Value =
+      serde_json::from_str(include_str!("../fixtures/python-scatter.json")).unwrap();
+    assert_eq!(scatter_spec(), expected);
   }
 
   #[tokio::test]

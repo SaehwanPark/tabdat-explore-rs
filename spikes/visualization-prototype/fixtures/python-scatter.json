@@ -1,0 +1,40 @@
+{
+  "config": {
+    "view": {
+      "continuousWidth": 300,
+      "continuousHeight": 300
+    }
+  },
+  "data": {
+    "values": [
+      {
+        "y": 2,
+        "x": 1
+      },
+      {
+        "y": 1,
+        "x": 2
+      },
+      {
+        "y": 4,
+        "x": 3
+      }
+    ]
+  },
+  "mark": {
+    "type": "point"
+  },
+  "encoding": {
+    "x": {
+      "field": "x",
+      "title": "x",
+      "type": "quantitative"
+    },
+    "y": {
+      "field": "y",
+      "title": "y",
+      "type": "quantitative"
+    }
+  },
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.4.1.json"
+}

@@ -53,7 +53,7 @@ spike tasks are checked, with TLS/authenticated AWS parity explicitly excluded.
 PR: [#163](https://github.com/SaehwanPark/tabdat-explore-rs/pull/163). No dependency
 or lockfile change. Three owner review passes; root and spike checks pass.
 
-## Slice 3: Python-free visualization (WIP)
+## Slice 3: Python-free visualization (blocked; draft PR #164)
 
 Evaluate pinned stable `vl-convert-rs` 1.9.0 in an isolated safe Rust spike.
 Generate an inline-data scatter Vega-Lite specification following the pinned
@@ -63,6 +63,15 @@ and the same explicit Vega-Lite version, not arbitrary byte golden replacement.
 Measure converter construction, first render, repeated rendering, process/RSS
 and binary size in release when the candidate builds. Record dependency licenses,
 network restrictions and build failures before any acceptance decision.
+
+Rust spec/SVG/PNG tests and exact Python artifact comparison pass. Release
+orientation: first SVG ~256 ms, repeated SVG ~16.8 ms/render, ~102 MB RSS,
+~114 MB binary. Required audit fails: 19 vulnerabilities / 32 denied warnings
+on reproducible 1.9.0 graph. Separately, published 2.0.0-rc7 graph fails audit
+with 4 vulnerabilities / 7 denied warnings (not built/resolved as a spike).
+No advisory ignores, no adoption, no merge. Detailed evidence and next actions:
+[visualization report](visualization.md). Leave this branch safely committed
+on [draft PR #164](https://github.com/SaehwanPark/tabdat-explore-rs/pull/164).
 
 ## Remaining loops
 
