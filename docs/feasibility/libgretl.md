@@ -242,3 +242,93 @@ Dropped-regressor naming, broader missingness/sample contracts, estimator
 normalization, process-global cleanup cost, and full native packaging remain
 separate validation/decision work. No additional estimator roadmap task is
 checked by this safety prerequisite.
+
+## HC1 and clustered OLS (2026-10-11)
+
+Status: **pass for finite complete full-rank OLS fixtures**, not broad statistical
+parity or primary-backend acceptance. `run_ols_hc1` and `run_ols_clustered` add
+explicit covariance requests; results copy all matrix entries and coefficient
+SEs into Rust-owned storage, include covariance mode, exact zero-based sample
+rows and explicit inference df. No additional Cargo dependency is introduced.
+
+### Contract and references
+
+Synthetic 40-row `fixtures/covariance.csv`, predictors x1/x2 plus intercept,
+10 groups of 4 observations in input order. SHA-256:
+`d3be3915f7269cea0a5642d4b40e40de168187b66e4779877b47ec81b8f59822`.
+Reference CSV SHA-256:
+`1bda2699f939a7cffb227e97373989e4c105cd2872a9fd93d385a367137df246`.
+The generator uses deterministic arithmetic, not a random seed. All rows are
+finite and retained exactly; coefficient order is intercept, x1, x2.
+
+- Pinned clean Python TabDat `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`,
+  tree `601b236788872323af9277d2276a236154a0f129`, lock SHA-256
+  `0f0e1dedbff49b4c77b470a75510b8809436c7c3dc77d1eac372ab9c7264d239`;
+  Python 3.13.3 existing environment. `covariance_python.py` invokes the actual
+  executor, retrieves fitted model covariance, and records public coefficients.
+- Independent trusted reference: R 4.3.2 `lm` and sandwich 3.1-1
+  `vcovHC(type="HC1")` / `vcovCL(type="HC1", cadjust=TRUE)`.
+  Installed externally into `/tmp/tabdat-r-reference-lib`, not runtime code.
+  `covariance_reference.R` verifies ordered sample rows 1..40 before extraction.
+- Formula: HC1 n/(n-k); one-way cluster G/(G-1)*(n-1)/(n-k).
+- Predeclared comparator: finite values and absolute difference no greater than
+  `1e-10 + 1e-9*abs(reference)`, suitable for this well-conditioned fixture.
+  Names, sample rows/counts, dimensions, mode and inference df compare exactly.
+  No tolerance change followed a failed comparison.
+
+All three coefficients, three SEs and nine covariance entries agree with both
+references for classical/HC1/clustered modes (six reference rows in the committed
+CSV). The existing Longley certified/oracle test also remains green.
+
+### Native semantics and ownership
+
+HC1 version is set/restored inside one serialized C call. The cluster option is
+configured by the shim using an internal unique native column name and cleared
+after fitting, including configuration/estimation failure paths. Original Rust
+names remain in owned results, so C truncation cannot change cluster lookup.
+Classical `lsq` leaves packed VCV storage lazy; the first failing fixture exposed
+NaN matrix access. The shim now calls `makevcv` before copying, without changing
+references or relaxing comparisons. Failed models never expose buffers.
+
+Gretl reports `MODEL.dfd = 9` for the clustered fixture, while Python's fitted
+`df_resid` remains 37 and its `df_resid_inference` is 9. Both use G-1 for cluster
+inference; do not reinterpret Gretl's dfd as n-k across all covariance modes.
+The result's explicit `inference_df` is 9 (37 for classical/HC1). No p-values,
+intervals, clustered F-test or fit-statistic normalization is claimed here.
+
+This spike now rejects non-finite/incomplete data, rank-dropped models and
+nonpositive residual sample df rather than silently reporting a changed sample
+or mislabeling dropped coefficients. This is a bounded input limitation, not
+Python missing-row/collinearity parity. Invalid group length and fewer than two
+groups return typed errors; labels are exact i32 values converted losslessly.
+No domain/native handle leakage or new Rust unsafe block is introduced beyond
+the reviewed adapter. New covariance/cluster arguments are checked before C.
+
+### Verification and review
+
+Eleven spike tests pass: existing 8 plus full matrix/reference comparison,
+invalid-group/nonfinite/rank-failure recovery and 30 mixed-covariance fits on
+three independent threads. The test-first attempt failed to compile on missing
+APIs; subsequent matrix failure was diagnosed as lazy native VCV, then fixed.
+
+Root and spike locked format/check/test/Clippy pass; root audit/deny pass with
+duplicate-version warnings only, spike lock audit passes. Geiger adapter scan
+is an unsafe inventory, not native certification. Changed-document links and
+whitespace pass. Three explicit owner passes cover (1) source settings/correction
+and VCV materialization, (2) checked inputs, RAII/serialization/error recovery,
+(3) independent fixture/sample/DF provenance; a follow-up after VCV correction
+confirms finite whole-matrix comparison. No unresolved blocker in this bounded
+slice; no independent reviewer runtime was available. No new Linux, sanitizer,
+or native-transitive advisory/license review is claimed.
+
+Reproduce references separately from Rust tests (no Python/R runtime need):
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/path/to/oracle/src /path/to/oracle/.venv/bin/python spikes/gretl-prototype/fixtures/covariance_python.py
+R_LIBS=/tmp/tabdat-r-reference-lib Rscript spikes/gretl-prototype/fixtures/covariance_reference.R spikes/gretl-prototype/fixtures/covariance.csv
+CARGO_TARGET_DIR=target/gretl-review cargo test --manifest-path spikes/gretl-prototype/Cargo.toml --locked --workspace --all-targets
+```
+
+Core nonlinear/count/IV/panel/selection/survival fixtures, comprehensive semantic
+mismatch inventory, performance and primary-backend/licensing decisions remain
+open. Only the two demonstrated OLS covariance fixture tasks are checked.

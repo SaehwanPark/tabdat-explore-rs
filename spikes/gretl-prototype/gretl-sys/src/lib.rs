@@ -30,7 +30,13 @@ unsafe extern "C" {
   fn gretl_shim_dataset_set_varname(handle: *mut c_void, i: c_int, name: *const c_char);
   fn gretl_shim_dataset_set_value(handle: *mut c_void, var: c_int, obs: c_int, value: c_double);
   fn gretl_shim_dataset_free(handle: *mut c_void);
-  fn gretl_shim_ols(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
+  fn gretl_shim_ols(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    covariance: c_int,
+    cluster_var: c_int,
+  ) -> *mut c_void;
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -114,6 +120,14 @@ impl Drop for GretlDataset {
   }
 }
 
+/// Closed native covariance request. Cluster indices are checked against the dataset.
+#[derive(Clone, Copy)]
+pub enum OlsCovariance {
+  Classical,
+  Hc1,
+  Clustered { variable: usize },
+}
+
 /// Owned model, including native error results. The shim copies/owns model
 /// buffers; no dataset borrow or raw native value escapes this wrapper.
 pub struct GretlModel {
@@ -123,6 +137,25 @@ pub struct GretlModel {
 impl GretlModel {
   /// `list[0]` counts remaining entries; the outcome must not be variable zero.
   pub fn ols(dset: &GretlDataset, list: &[c_int]) -> Self {
+    Self::ols_with_covariance(dset, list, OlsCovariance::Classical)
+  }
+
+  pub fn ols_with_covariance(
+    dset: &GretlDataset,
+    list: &[c_int],
+    covariance: OlsCovariance,
+  ) -> Self {
+    let (mode, cluster) = match covariance {
+      OlsCovariance::Classical => (0, 0),
+      OlsCovariance::Hc1 => (1, 0),
+      OlsCovariance::Clustered { variable } => {
+        assert!(
+          variable > 0 && variable < dset.nvar,
+          "cluster variable out of bounds"
+        );
+        (2, variable as c_int)
+      }
+    };
     let len = c_int::try_from(list.len()).expect("variable list too long");
     assert!(list.len() >= 3, "need an outcome and regressor");
     assert_eq!(
@@ -139,8 +172,9 @@ impl GretlModel {
     );
     let ptr = native(|| {
       // SAFETY: dataset is live; every list index and the exact count have been
-      // checked. The slice lives through this call. C returns an owned model.
-      unsafe { gretl_shim_ols(dset.ptr, list.as_ptr(), len) }
+      // checked. The slice lives through this call. C returns an owned model;
+      // covariance settings are configured/restored within this single locked call.
+      unsafe { gretl_shim_ols(dset.ptr, list.as_ptr(), len, mode, cluster) }
     });
     assert!(!ptr.is_null(), "gretl_shim_ols returned NULL");
     Self { ptr }

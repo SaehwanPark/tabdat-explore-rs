@@ -53,6 +53,30 @@ spike tasks are checked, with TLS/authenticated AWS parity explicitly excluded.
 PR: [#163](https://github.com/SaehwanPark/tabdat-explore-rs/pull/163). No dependency
 or lockfile change. Three owner review passes; root and spike checks pass.
 
+## Slice 4: libgretl HC1 / clustered OLS (complete)
+
+Extend the isolated owned OLS boundary with explicit HC1 and one-way cluster
+requests and owned covariance matrices. Use a finite, full-rank synthetic fixture,
+complete ordered sample, intercept-first coefficients and explicit corrections:
+HC1 n/(n-k); cluster G/(G-1)*(n-1)/(n-k). Compare coefficients, all covariance
+entries and SEs with pinned Python TabDat and an external R/sandwich reference.
+Declare |actual-expected| <= 1e-10 + 1e-9*|expected| before comparison; exact
+sample count, order/names and covariance kind. Invalid groups and failed fits
+must not poison subsequent classical/robust calls. Configure and restore native
+global covariance settings within one serialized shim call. Document native
+versus TabDat inference-DF semantics and do not claim estimator breadth.
+
+Visualization draft PR #164 has rendering evidence but an unresolved audit
+blocker; it is preserved separately and must not merge as-is.
+
+HC1 and cluster coefficients/SEs/full covariance agree with both Python and
+R/sandwich. Eleven spike tests pass, including rank/error recovery and mixed-mode
+thread calls. Native classical VCV required explicit materialization; its initial
+NaN failure was preserved in the report and corrected without tolerance changes.
+PR: [#165](https://github.com/SaehwanPark/tabdat-explore-rs/pull/165).
+See the libgretl report for exact provenance, finite-input limitations and DF
+metadata difference. No whole-phase completion or primary-backend decision.
+
 ## Remaining loops
 
 1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.

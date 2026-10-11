@@ -14,7 +14,7 @@
 
 #![forbid(unsafe_code)]
 
-use gretl_sys::{GretlDataset, GretlModel, Stat};
+use gretl_sys::{GretlDataset, GretlModel, OlsCovariance, Stat};
 use std::os::raw::c_int;
 
 /// A Rust-owned estimation problem: an outcome, predictors, and the data.
@@ -49,6 +49,13 @@ pub struct Coefficient {
   pub standard_error: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CovarianceMode {
+  Classical,
+  Hc1,
+  Clustered,
+}
+
 /// A Rust-owned OLS result. All values are copied out of the native model.
 #[derive(Debug, Clone)]
 pub struct EstimationResult {
@@ -57,6 +64,12 @@ pub struct EstimationResult {
   pub dfn: usize,
   pub dfd: usize,
   pub coefficients: Vec<Coefficient>,
+  pub covariance: Vec<Vec<f64>>,
+  pub covariance_mode: CovarianceMode,
+  /// Zero-based input rows retained by this finite-data-only spike.
+  pub sample_rows: Vec<usize>,
+  /// TabDat inference convention: G-1 for clustered covariance, n-k otherwise.
+  pub inference_df: usize,
   pub r_squared: f64,
   pub adj_r_squared: f64,
   pub sigma: f64,
@@ -93,6 +106,25 @@ impl std::error::Error for GretlError {}
 /// The outcome is `problem.data[*][0]`; predictors are columns 1..=k. The
 /// intercept is included when `problem.include_intercept` is true.
 pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlError> {
+  fit_ols(problem, CovarianceMode::Classical, None)
+}
+
+pub fn run_ols_hc1(problem: &EstimationProblem) -> Result<EstimationResult, GretlError> {
+  fit_ols(problem, CovarianceMode::Hc1, None)
+}
+
+pub fn run_ols_clustered(
+  problem: &EstimationProblem,
+  groups: &[i32],
+) -> Result<EstimationResult, GretlError> {
+  fit_ols(problem, CovarianceMode::Clustered, Some(groups))
+}
+
+fn fit_ols(
+  problem: &EstimationProblem,
+  mode: CovarianceMode,
+  groups: Option<&[i32]>,
+) -> Result<EstimationResult, GretlError> {
   let nobs = problem.nobs();
   let ncol = problem.ncol();
   if nobs == 0 {
@@ -110,6 +142,30 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
     }
   }
 
+  if problem.data.iter().flatten().any(|v| !v.is_finite()) {
+    return Err(GretlError::InvalidProblem(
+      "spike requires finite complete data".into(),
+    ));
+  }
+  let clusters = if let Some(groups) = groups {
+    if groups.len() != nobs {
+      return Err(GretlError::InvalidProblem(
+        "cluster count must match observations".into(),
+      ));
+    }
+    let count = groups
+      .iter()
+      .collect::<std::collections::BTreeSet<_>>()
+      .len();
+    if count < 2 {
+      return Err(GretlError::InvalidProblem(
+        "need at least two clusters".into(),
+      ));
+    }
+    count
+  } else {
+    0
+  };
   if problem.outcome.contains('\0') || problem.predictors.iter().any(|name| name.contains('\0')) {
     return Err(GretlError::InvalidProblem(
       "variable name contains NUL".into(),
@@ -119,7 +175,7 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
   let has_const = problem.include_intercept;
   let n_predictors = problem.predictors.len();
   let nvar = ncol
-    .checked_add(1)
+    .checked_add(1 + usize::from(groups.is_some()))
     .ok_or_else(|| GretlError::InvalidProblem("too many variables".into()))?;
   if c_int::try_from(nvar).is_err() || c_int::try_from(nobs).is_err() {
     return Err(GretlError::InvalidProblem(
@@ -137,9 +193,18 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
   if has_const {
     dset.set_varname(const_idx, "const");
   }
-  dset.set_varname(outcome_idx, &problem.outcome);
-  for (i, name) in problem.predictors.iter().enumerate() {
-    dset.set_varname(pred_base + i, name);
+  // Internal native names avoid truncation/collision affecting cluster lookup.
+  // The owned results keep the original Rust coefficient names.
+  dset.set_varname(outcome_idx, "td_y");
+  for i in 0..n_predictors {
+    dset.set_varname(pred_base + i, &format!("td_x{i}"));
+  }
+  let cluster_idx = nvar - 1;
+  if let Some(groups) = groups {
+    dset.set_varname(cluster_idx, "td_cluster");
+    for (t, group) in groups.iter().enumerate() {
+      dset.set_value(cluster_idx, t, f64::from(*group));
+    }
   }
 
   // Fill the data. Column 0 of the problem is the outcome; columns 1..=k are
@@ -164,7 +229,14 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
   list.push(entries.len() as c_int);
   list.extend_from_slice(&entries);
 
-  let model = GretlModel::ols(&dset, &list);
+  let native_covariance = match mode {
+    CovarianceMode::Classical => OlsCovariance::Classical,
+    CovarianceMode::Hc1 => OlsCovariance::Hc1,
+    CovarianceMode::Clustered => OlsCovariance::Clustered {
+      variable: cluster_idx,
+    },
+  };
+  let model = GretlModel::ols_with_covariance(&dset, &list, native_covariance);
 
   if model.errcode() != 0 {
     return Err(GretlError::EstimationFailed {
@@ -173,6 +245,14 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
   }
 
   let ncoeff = model.ncoeff();
+  if ncoeff != n_predictors + usize::from(has_const) || model.nobs() != nobs || nobs <= ncoeff {
+    return Err(GretlError::InvalidProblem(
+      "spike requires full-rank complete sample with positive residual degrees of freedom".into(),
+    ));
+  }
+  let covariance: Vec<Vec<f64>> = (0..ncoeff)
+    .map(|i| (0..ncoeff).map(|j| model.vcv(i, j)).collect())
+    .collect();
   let mut coefficients = Vec::with_capacity(ncoeff);
   for i in 0..ncoeff {
     let name = coeff_name(i, has_const, &problem.outcome, &problem.predictors);
@@ -183,12 +263,30 @@ pub fn run_ols(problem: &EstimationProblem) -> Result<EstimationResult, GretlErr
     });
   }
 
+  if covariance.iter().flatten().any(|v| !v.is_finite())
+    || coefficients
+      .iter()
+      .any(|c| !c.value.is_finite() || !c.standard_error.is_finite())
+  {
+    return Err(GretlError::InvalidProblem(
+      "native coefficient/covariance output is non-finite".into(),
+    ));
+  }
+
   Ok(EstimationResult {
     nobs: model.nobs(),
     ncoeff,
     dfn: model.dfn(),
     dfd: model.dfd(),
     coefficients,
+    covariance,
+    covariance_mode: mode,
+    sample_rows: (0..nobs).collect(),
+    inference_df: if mode == CovarianceMode::Clustered {
+      clusters - 1
+    } else {
+      nobs - ncoeff
+    },
     r_squared: model.scalar(Stat::RSquared),
     adj_r_squared: model.scalar(Stat::AdjRSquared),
     sigma: model.scalar(Stat::Sigma),
