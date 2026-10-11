@@ -33,6 +33,21 @@ reviewer runtime was available. Accepted lifecycle decision: ADR 0010.
 PR: [#162](https://github.com/SaehwanPark/tabdat-explore-rs/pull/162).
 The broader Phase 1 unsafe-boundary gate remains open.
 
+## Slice 2: DuckDB HTTP Parquet (WIP)
+
+Test the pinned bundled DuckDB against an agent-owned loopback HTTP endpoint
+serving synthetic Parquet. Validate values, Arrow rows, repeated reads, HTTP
+range requests, and missing-object recovery. No third-party dataset, bucket,
+credentials, or public endpoint is needed. Keep extension install/load explicit
+and opt-in because it can use the network. Record HTTPS/S3 gaps rather than
+claiming them from HTTP success. S3 is present in the Python contract, so its
+roadmap task cannot be dismissed as not applicable without an explicit deviation.
+
+Also correct the extra EOF blank line noticed in the preceding report and rerun
+changed-document links and whitespace checks with fail-fast shell execution.
+The preceding merge command did not stop after that whitespace warning; its
+report's whitespace/link pass statement is corrected by this follow-up.
+
 ## Remaining loops
 
 1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.

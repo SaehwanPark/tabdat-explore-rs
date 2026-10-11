@@ -242,4 +242,3 @@ Dropped-regressor naming, broader missingness/sample contracts, estimator
 normalization, process-global cleanup cost, and full native packaging remain
 separate validation/decision work. No additional estimator roadmap task is
 checked by this safety prerequisite.
-
