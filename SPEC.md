@@ -2022,9 +2022,10 @@ contains `row_count`. Each successful command emits one JSON line in order.
 Other successful batch commands are rejected before execution with a
 `JsonResultUnsupported` error envelope, so the CLI does not report success while
 silently omitting a result. Existing execution errors retain their error
-envelopes and stderr diagnostics. `--json` script failures continue to emit
-error envelopes, while successful script result streaming and JSON results for
-other runtime types remain deferred. This does not complete Phase 5 reporting.
+envelopes and stderr diagnostics. Script failures emit one location-aware error
+envelope. Bounded script success streaming is covered in the following slice;
+other successful result types remain deferred. This does not complete Phase 5
+reporting.
 
 Evidence: [_workspace/cli-json-use-count/](_workspace/cli-json-use-count/),
 including the [contract](_workspace/cli-json-use-count/01-contract.md),
@@ -2034,6 +2035,29 @@ including the [contract](_workspace/cli-json-use-count/01-contract.md),
 Python output was compared with the Rust success envelopes; the focused oracle
 tests and locked Rust workspace gates passed locally. GitHub Actions were
 disabled before this slice, so no hosted result is claimed.
+
+## Verified slice: bounded CLI JSONL results from `.td` scripts
+
+PR #160 adds successful `LoadResult` and `CountResult` JSONL streaming for
+`--json -f <script.td>`. Results are observed at the runtime script execution
+boundary, preserving order through nested `run` commands. Unsupported script
+commands are rejected before execution with a source-located `ScriptError`,
+while earlier successful result lines remain available. Runtime errors from
+supported commands also retain earlier results and their script path/line.
+Inactive branches and ordinary non-JSON script execution retain their existing
+behavior.
+
+The Rust JSON script surface is deliberately bounded to `use`, `count`, `exit`,
+and nested `run`; Python supports additional result types, including
+`PreviewResult`. This slice does not claim full Python JSON script parity or
+complete Phase 5 reporting.
+
+Evidence: [_workspace/cli-json-script-results/](_workspace/cli-json-script-results/),
+including the [contract](_workspace/cli-json-script-results/01-contract.md),
+validation, and review. Four pinned Python CLI script tests and eleven focused
+Rust CLI integration tests passed locally. Full locked workspace validation is
+pending. GitHub Actions were disabled before this slice, so no hosted result is
+claimed.
 
 ## Verified slice: statistical contracts substrate (tabdat-stats)
 

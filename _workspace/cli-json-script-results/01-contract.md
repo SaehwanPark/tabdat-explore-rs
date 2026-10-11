@@ -69,8 +69,10 @@ Python script command, or add special handling for `--json -c "run ..."`.
   execution, retains the earlier line, reports the exact resolved path and
   1-based line as one `ScriptError`, and prevents a later supported command.
 - Verify nested unsupported-command errors point to the child script and emit
-  only one error envelope. Verify ordinary non-JSON script execution remains
-  unchanged.
+  only one error envelope. Verify a runtime failure from a supported command
+  preserves earlier output and source location, and commands in inactive
+  branches are not preflighted. Verify ordinary non-JSON script execution
+  remains unchanged.
 - Run the applicable pinned Python CLI tests for the authoritative script
   behavior, then run focused Rust integration coverage and the locked workspace
   gates. Record which broader Python script result forms are outside this

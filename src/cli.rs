@@ -27,7 +27,7 @@ options:
   -f, --file FILE       run a TabDat script file and exit
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
-                        supports use/count; scripts emit errors only)
+                        supports use/count; scripts stream use/count only)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
                         emit declared command effects; requires --json
@@ -439,7 +439,28 @@ pub fn run_cli(args: CliArgs) -> i32 {
     }
 
     let mut session = Session::new();
-    return match session.execute_run(&path) {
+    let result = if args.json {
+      session
+        .execute_run_with_callbacks(
+          &path,
+          |command| {
+            if crate::json_results::supports_script_command(command) {
+              Ok(())
+            } else {
+              Err(crate::json_results::SCRIPT_UNSUPPORTED_MESSAGE.to_owned())
+            }
+          },
+          |result| {
+            let envelope = crate::json_results::serialize_execution_result(result)
+              .expect("JSON script preflight permits only serializable leaf results");
+            println!("{envelope}");
+          },
+        )
+        .map(|_| ())
+    } else {
+      session.execute_run(&path).map(|_| ())
+    };
+    return match result {
       Ok(_) => 0,
       Err(RuntimeError::ScriptError(err)) => {
         eprintln!("Error: {err}");
