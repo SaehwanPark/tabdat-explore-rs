@@ -16,6 +16,7 @@
  */
 
 #include "libgretl.h"
+#include "libset.h"
 
 #include <string.h>
 
@@ -77,7 +78,8 @@ void gretl_shim_dataset_free(void *handle)
  * Returns an opaque MODEL handle owned by the shim; free it with
  * gretl_shim_model_free. The handle is valid even when estimation fails
  * (inspect gretl_shim_model_errcode). */
-void *gretl_shim_ols(void *dset_handle, const int *list, int nlist)
+void *gretl_shim_ols(void *dset_handle, const int *list, int nlist,
+                     int covariance, int cluster_var)
 {
     DATASET *dset = (DATASET *) dset_handle;
     if (dset == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
@@ -87,7 +89,34 @@ void *gretl_shim_ols(void *dset_handle, const int *list, int nlist)
     if (model == NULL) {
         return NULL;
     }
-    *model = lsq(list, dset, OLS, OPT_Z);
+    int saved_hc = libset_get_int(HC_VERSION);
+    gretlopt opt = OPT_Z;
+    if (covariance == 1) {
+        libset_set_int(HC_VERSION, 1);
+        opt |= OPT_R;
+    } else if (covariance == 2) {
+        if (cluster_var <= 0 || cluster_var >= dset->v) {
+            model->errcode = E_DATA;
+            return model;
+        }
+        int err = set_optval_string(OLS, OPT_C, dset->varname[cluster_var]);
+        if (err) {
+            model->errcode = err;
+            clear_stored_options_for_command(OLS);
+            return model;
+        }
+        opt |= OPT_C;
+    }
+    *model = lsq(list, dset, OLS, opt);
+    /* Classical lsq may leave VCV packed storage lazy; materialize it while
+     * the model is still exclusively owned under the Rust native-call lock. */
+    if (!model->errcode && model->vcv == NULL) {
+        model->errcode = makevcv(model, model->sigma);
+    }
+    libset_set_int(HC_VERSION, saved_hc);
+    if (covariance == 2) {
+        clear_stored_options_for_command(OLS);
+    }
     return (void *) model;
 }
 
