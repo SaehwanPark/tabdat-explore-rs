@@ -186,8 +186,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Define Rust-owned `EstimationResult` ([spike](../spikes/gretl-prototype/src/lib.rs)).
 - [x] Prevent `MODEL`, `DATASET`, or raw handles from escaping the adapter (RAII wrappers; `forbid(unsafe_code)` facade; [ADR 0006](adr/0006-libgretl-ffi-adapter-and-ols-fixture.md)).
 - [x] Implement OLS fixture ([test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
-- [ ] Implement robust OLS fixture.
-- [ ] Implement clustered OLS fixture.
+- [x] Implement robust OLS fixture (explicit HC1, all covariance entries/SEs,
+  Python and R/sandwich comparison; [report](feasibility/libgretl.md#hc1-and-clustered-ols-2026-10-11)).
+- [x] Implement clustered OLS fixture (one-way finite-sample correction,
+  ordered sample and inference df; [report](feasibility/libgretl.md#hc1-and-clustered-ols-2026-10-11)).
 - [ ] Implement logit fixture.
 - [ ] Implement probit fixture.
 - [ ] Implement quantile-regression fixture.

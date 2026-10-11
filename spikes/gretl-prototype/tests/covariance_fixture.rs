@@ -47,6 +47,14 @@ fn all_covariance_entries_match_python_and_r_sandwich() {
     };
     assert_eq!(result.nobs, 40);
     assert_eq!(result.ncoeff, 3);
+    assert_eq!(
+      result.dfd,
+      if mode == CovarianceMode::Clustered {
+        9
+      } else {
+        37
+      }
+    );
     assert_eq!(result.covariance_mode, mode);
     assert_eq!(result.sample_rows, (0..40).collect::<Vec<_>>());
     assert_eq!(

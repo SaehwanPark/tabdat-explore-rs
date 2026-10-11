@@ -13,7 +13,7 @@ from tabdat.parser import parse_command
 root = Path(__file__).parent
 if sys.argv[1:] == ["--generate-data"]:
   with (root / "covariance.csv").open("w", newline="") as f:
-    writer = csv.writer(f)
+    writer = csv.writer(f, lineterminator="\n")
     writer.writerow(["y", "x1", "x2", "cid"])
     for i in range(40):
       x1 = i % 7 - 3
