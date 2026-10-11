@@ -26,8 +26,8 @@ options:
                         run a command and exit
   -f, --file FILE       run a TabDat script file and exit
   --config CONFIG       load a TabDat TOML config file
-  --json                emit versioned JSONL results for batch or script
-                        execution
+  --json                emit versioned JSON envelopes (batch success output
+                        supports use/count; scripts emit errors only)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
                         emit declared command effects; requires --json
@@ -398,13 +398,26 @@ pub fn run_cli(args: CliArgs) -> i32 {
       if command == Command::Exit {
         break;
       }
-      if let Err(err) = session.execute(command) {
-        eprintln!("Error: {err}");
-        if args.json {
-          let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
-          println!("{}", serde_json::to_string(&envelope).unwrap());
+      if args.json && !crate::json_results::supports_batch_command(&command) {
+        return json_result_unsupported();
+      }
+      let result = match session.execute(command) {
+        Ok(result) => result,
+        Err(err) => {
+          eprintln!("Error: {err}");
+          if args.json {
+            let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
+            println!("{}", serde_json::to_string(&envelope).unwrap());
+          }
+          return 1;
         }
-        return 1;
+      };
+      if args.json {
+        if let Some(envelope) = crate::json_results::serialize_execution_result(&result) {
+          println!("{envelope}");
+        } else {
+          return json_result_unsupported();
+        }
       }
     }
     return 0;
@@ -462,6 +475,15 @@ pub fn run_cli(args: CliArgs) -> i32 {
   // Fallback for no arguments: preserve scaffold behavior until interactive shell (§7.2).
   println!("Hello, world!");
   0
+}
+
+fn json_result_unsupported() -> i32 {
+  const MESSAGE: &str =
+    "--json successful batch results are currently supported only for use and count";
+  eprintln!("Error: {MESSAGE}");
+  let envelope = crate::catalog::ErrorEnvelope::new(MESSAGE, "JsonResultUnsupported");
+  println!("{}", serde_json::to_string(&envelope).unwrap());
+  2
 }
 
 #[cfg(test)]

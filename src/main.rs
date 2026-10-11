@@ -3,6 +3,7 @@
 pub mod catalog;
 pub mod cli;
 pub mod help;
+pub mod json_results;
 
 fn main() {
   let args = std::env::args_os()

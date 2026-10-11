@@ -2011,6 +2011,30 @@ This accepted CLI discovery slice leaves interactive REPL shell (§7.2), runtime
 execution JSON result serialization and terminal table rendering (§7.3), visualization
 (§7.4), and MCP server (§7.5) deferred.
 
+## Verified slice: bounded CLI JSONL results for `use` and `count`
+
+PR #159 adds successful versioned JSONL envelopes for repeated `-c` batches
+containing eager local `use` and `count`. The `LoadResult` envelope maps the
+runtime source path to Python's `path` field and includes the current dataset
+schema, row count, eager mode, and null label/panel/lazy metadata; `CountResult`
+contains `row_count`. Each successful command emits one JSON line in order.
+
+Other successful batch commands are rejected before execution with a
+`JsonResultUnsupported` error envelope, so the CLI does not report success while
+silently omitting a result. Existing execution errors retain their error
+envelopes and stderr diagnostics. `--json` script failures continue to emit
+error envelopes, while successful script result streaming and JSON results for
+other runtime types remain deferred. This does not complete Phase 5 reporting.
+
+Evidence: [_workspace/cli-json-use-count/](_workspace/cli-json-use-count/),
+including the [contract](_workspace/cli-json-use-count/01-contract.md),
+[validation](_workspace/cli-json-use-count/02-validation.md), and
+[review](_workspace/cli-json-use-count/03-review.md),
+`src/json_results.rs`, and `tests/cli_json_use_count_contract.rs`. The pinned
+Python output was compared with the Rust success envelopes; the focused oracle
+tests and locked Rust workspace gates passed locally. GitHub Actions were
+disabled before this slice, so no hosted result is claimed.
+
 ## Verified slice: statistical contracts substrate (tabdat-stats)
 
 Create `crates/tabdat-stats` (`#![forbid(unsafe_code)]`) as an independent workspace
