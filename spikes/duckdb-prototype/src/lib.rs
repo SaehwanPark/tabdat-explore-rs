@@ -34,6 +34,23 @@ impl ActiveRelation {
     Ok(Self { connection })
   }
 
+  /// Opt-in HTTP(S) feasibility path. Installs/loads the signed `httpfs`
+  /// extension explicitly; installation may contact DuckDB's extension service.
+  /// This is not a product loader or a URL authorization policy.
+  pub fn from_http_parquet(url: &str) -> Result<Self> {
+    assert!(
+      url.starts_with("http://") || url.starts_with("https://"),
+      "expected HTTP(S) URL"
+    );
+    let connection = Connection::open_in_memory()?;
+    connection.execute_batch("INSTALL httpfs; LOAD httpfs;")?;
+    let url = format!("'{}'", url.replace('\'', "''"));
+    connection.execute_batch(&format!(
+      "CREATE VIEW active AS SELECT * FROM read_parquet({url})"
+    ))?;
+    Ok(Self { connection })
+  }
+
   pub fn row_count(&self) -> Result<i64> {
     self
       .connection
@@ -67,6 +84,9 @@ fn sql_string_literal(path: &Path) -> Result<String> {
 pub fn write_fixture(path: &Path) -> std::io::Result<()> {
   fs::write(path, "id,label\n1,alpha\n2,beta\n")
 }
+
+#[cfg(test)]
+mod http_tests;
 
 #[cfg(test)]
 mod tests {
