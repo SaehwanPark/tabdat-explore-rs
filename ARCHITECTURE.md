@@ -62,8 +62,9 @@ silently invent parity.
   PR #157 adds a read-only runtime `ttest` path over one active DuckDB relation,
   returning owned summaries and inference through `tabdat-stats`; timezone-aware,
   nested, and interval group keys remain typed limitations.
-- `rust-toolchain.toml`, rustfmt, Clippy, baseline CI, dependency policy, advisory
-  checks, and unsafe inventory are development controls, not runtime architecture.
+- `rust-toolchain.toml`, rustfmt, Clippy, local dependency/advisory checks, and
+  unsafe inventory are development controls, not runtime architecture. GitHub
+  Actions are disabled and workflow definitions are removed; see ADR 0009.
 - There is no general session/data-relation model, statistical backend, REPL, MCP
   server, or complete public TabDat command contract in this repository yet. The
   narrow runtime evaluation is deliberately insufficient for those claims.

@@ -13,6 +13,10 @@ binary and do not provide a usable TabDat CLI, general data runtime, or
 statistical model implementation.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
+GitHub Actions are disabled at the repository level and no workflows remain in
+`.github/workflows`; required checks are run locally as described in
+[CONTRIBUTING.md](CONTRIBUTING.md). Historical workflow links below record past
+results only. See [ADR 0009](docs/adr/0009-disable-github-actions.md).
 
 Merged PR #27 (`7cf21ae`) adds the verified syntax-only `sort <varlist>` form.
 Merged PR #50 (`f33987a`) adds the bounded eager runtime subset documented below;
@@ -2123,7 +2127,8 @@ Python parser/script oracle suite passed with `516 passed in 0.44s` using
 `PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider
 tests/test_parser.py tests/test_script.py` from the clean sibling checkout at
 revision `16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`. Rust workspace checks pass
-locally on the branch; hosted CI and review remain required before merge.
+locally on the branch; hosted CI and review were required before that slice's
+merge. GitHub Actions were later disabled as recorded in ADR 0009.
 
 This slice does not execute commands, load data, provide the full tokenizer or
 expression grammar, or establish parser/CLI/script parity beyond the listed forms.
