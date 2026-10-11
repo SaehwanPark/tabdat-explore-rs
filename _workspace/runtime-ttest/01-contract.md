@@ -24,7 +24,17 @@ comes from `src/tabdat/executor.py::_execute_ttest`, result models in
 
 - Each command requires the active dataset. Tested columns must exist and use the
   oracle's numeric types (integer, unsigned integer, float, or decimal). A `by()`
-  column may have any type but must exist.
+  column must exist. Scalar text, numeric, boolean, date/time without timezone,
+  UUID, JSON, enum, and blob group values are stringified with Python-compatible
+  labels before lexical ordering. Complex nested group keys (list/struct/map),
+  intervals, and timezone-aware temporal keys return a typed unsupported-type
+  error. This is a documented runtime deviation: the Python oracle stringifies
+  nested and interval values, but their Python representations are outside this
+  slice. For `TIME WITH TIME ZONE`, the Python DuckDB 1.5.2 read of the Parquet
+  fixture yielded `03:04:05+00:00`, while the bundled Rust DuckDB yielded
+  `01:04:05+00:00`; the runtime rejects the type rather than returning mismatched
+  labels. The pinned Python environment also lacks `pytz`, preventing a direct
+  `TIMESTAMP WITH TIME ZONE` reference.
 - SQL NULL and non-finite tested values are excluded. Paired comparisons use only
   complete finite pairs. Group comparisons exclude rows with NULL group values and
   non-finite tested values; group labels are stringified and sorted lexically. The
@@ -76,9 +86,9 @@ comparator.
 `ttest` reads the active DuckDB relation into owned numeric samples, computes
 statistics through `tabdat-stats`, and returns an owned runtime result. It does not
 publish a new relation or modify session fields. Identifier quoting follows the
-existing runtime path; `by()` group labels are fetched as DuckDB VARCHAR values and
-sorted in Rust to preserve the oracle's lexical group order. Data retrieval,
-validation, or statistical errors return before any session mutation.
+existing runtime path; supported scalar `by()` labels are converted to the oracle's
+string form and sorted in Rust. Data retrieval, validation, or statistical errors
+return before any session mutation.
 
 | State | Success | Failure |
 | --- | --- | --- |

@@ -17,6 +17,7 @@ pub mod problem;
 pub mod result;
 pub mod sample;
 pub mod traits;
+pub mod ttest;
 
 pub use diagnostics::variance_inflation_factors;
 pub use error::StatsError;
@@ -38,3 +39,6 @@ pub use problem::EstimationProblem;
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
 pub use traits::Estimator;
+pub use ttest::{
+  TtestSampleStatistics, TtestStatistics, independent_ttest, one_sample_ttest, paired_ttest,
+};

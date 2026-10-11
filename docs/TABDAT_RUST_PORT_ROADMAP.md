@@ -1059,7 +1059,8 @@ Port foundational statistical inference and establish the stable estimator backe
   [`_workspace/runtime-test/`](../_workspace/runtime-test/)).
 - [ ] Port `test` for the remaining Python estimator families and zero-df fallback.
 - [ ] Port `lincom`. PR #155 adds a bounded runtime result for stored OLS/WLS/GLS linear-regression states, including robust/cluster covariance; support for other Python estimator families and the no-positive-df normal fallback remains deferred.
-- [ ] Port `ttest`.
+- [x] Port bounded runtime `ttest` (PR #157; one-sample, paired, pooled, and Welch forms with finite-row filtering, reference inference, and supported scalar group keys; see [`_workspace/runtime-ttest/`](../_workspace/runtime-ttest/)).
+- [ ] Extend `ttest` group-key parity to nested list/struct/map, interval, and timezone-aware values.
 - [ ] Port HTML regression report.
 
 ### 9.3 Validation
@@ -1072,6 +1073,7 @@ Port foundational statistical inference and establish the stable estimator backe
 - [x] Validate the bounded linear-regression `xb` and residual predictions (PR #153; pinned Python tests and NIST Longley fitted-value reference; broader prediction validation remains open).
 - [x] Validate bounded linear-regression `lincom` (PR #155; pinned Python 3.13.15 / statsmodels 0.14.6 / SciPy 1.17.1 plus direct statsmodels/SciPy reference for OLS, WLS, GLS, robust, clustered, and no-intercept cases; other estimator families remain open).
 - [x] Validate bounded linear-regression `test` (PR #156; pinned Python 3.13.15 plus statsmodels 0.14.6/SciPy 1.17.1 references for joint, equality, multiple, OLS/WLS/GLS, HC1, clustered, no-intercept, and small-scale covariance cases; broader estimator families remain open).
+- [x] Validate bounded `ttest` (PR #157; pinned Python oracle tests and SciPy 1.17.1 references for one-sample, paired, pooled, Welch, zero variance, sample filtering, and scalar group labels; deferred group-key types remain unchecked).
 - [ ] Extend prediction validation to other model families and prediction kinds.
 - [ ] Validate sample exclusion.
 - [ ] Validate failure behavior.

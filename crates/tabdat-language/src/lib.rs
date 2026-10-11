@@ -138,7 +138,7 @@ pub enum Command {
   BayesPlot { command: BayesPlotCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
-  /// Run a bounded two-sample test (execution is deferred).
+  /// Run a one-sample, paired, or independent two-sample t-test.
   Ttest { command: TtestCommand },
   /// Run a bounded grouped read-only child command.
   By { command: ByCommand },
@@ -1137,7 +1137,7 @@ pub struct BayesPlotCommand {
   pub open_artifact: bool,
 }
 
-/// The parser-only direct comparison forms accepted by `ttest`.
+/// The direct comparison forms accepted by `ttest`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TtestCommand {
   /// The first variable in the comparison.

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::fmt::Write as _;
@@ -20,7 +20,7 @@ use tabdat_language::{
   GenerateExpression, JoinCommand, JoinHow, LabelCommand, LabelValue, LazyEngine, LincomCommand,
   PredictCommand, PredictKind, RecodeInput, RecodeRangeEndpoint, RecodeRule, RecodeTarget,
   RecodeValue, RegressCommand, RegressEstimator, ReshapeCommand, ReshapeDirection, RowLimit,
-  SortKey, TabulateCommand, TestCommand,
+  SortKey, TabulateCommand, TestCommand, TtestCommand,
 };
 
 const ACTIVE_TABLE: &str = "__tabdat_active";
@@ -537,6 +537,60 @@ pub struct TestResult {
   pub is_chi2: bool,
 }
 
+/// Descriptive statistics for one sample reported by `ttest`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TtestGroupStats {
+  /// Variable name or group label represented by this sample.
+  pub name: String,
+  /// Group observation count, or the oracle's residual-df count for an independent difference.
+  pub observations: usize,
+  /// Arithmetic mean.
+  pub mean: f64,
+  /// Sample standard error.
+  pub standard_error: f64,
+  /// Unbiased sample standard deviation; NaN for an independent-sample difference.
+  pub standard_deviation: f64,
+  /// Lower endpoint of the two-sided 95% Student-t confidence interval.
+  pub ci_lower: f64,
+  /// Upper endpoint of the two-sided 95% Student-t confidence interval.
+  pub ci_upper: f64,
+}
+
+/// The owned result of a one-sample, paired, pooled, or Welch `ttest` command.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TtestResult {
+  /// First tested variable.
+  pub varname1: String,
+  /// Second tested variable for a paired test.
+  pub varname2: Option<String>,
+  /// Grouping variable for an independent-sample test.
+  pub by_variable: Option<String>,
+  /// Whether the command tested paired observations.
+  pub is_paired: bool,
+  /// Whether the independent-sample test used Welch's unequal-variance method.
+  pub is_welch: bool,
+  /// Null mean for a one-sample test; zero for paired and independent tests.
+  pub null_value: f64,
+  /// Summary for the first sample or lexically first group.
+  pub group1_stats: TtestGroupStats,
+  /// Summary for the second sample or lexically second group, when present.
+  pub group2_stats: Option<TtestGroupStats>,
+  /// Combined summary for independent-sample tests.
+  pub combined_stats: Option<TtestGroupStats>,
+  /// Summary of the tested sample mean or mean difference.
+  pub difference_stats: TtestGroupStats,
+  /// Student t statistic, or NaN when the standard error is zero or undefined.
+  pub t_statistic: f64,
+  /// Reference-distribution degrees of freedom.
+  pub degrees_of_freedom: f64,
+  /// Lower-tail probability under the reference Student-t distribution.
+  pub p_left: f64,
+  /// Two-sided probability under the reference Student-t distribution.
+  pub p_two: f64,
+  /// Upper-tail probability under the reference Student-t distribution.
+  pub p_right: f64,
+}
+
 /// The owned result returned after adding fitted values or residuals to the active dataset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PredictionResult {
@@ -627,6 +681,8 @@ pub enum ExecutionResult {
   Lincom(LincomResult),
   /// The result of testing linear restrictions on regression coefficients.
   Test(TestResult),
+  /// The result of a two-sided Student t-test over active dataset columns.
+  Ttest(TtestResult),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -950,6 +1006,20 @@ pub enum RuntimeError {
   TestRequiresPriorEstimation,
   /// An expression or inference error while evaluating `test`.
   TestFailed { message: String },
+  /// One or more requested `ttest` variables are absent from the active dataset.
+  TtestUnknownVariable { variables: Vec<String> },
+  /// The tested `ttest` variables are not numeric.
+  TtestRequiresNumeric { variables: Vec<String> },
+  /// A `ttest` sample contains no finite numeric observations.
+  TtestNoValidNumericObservations,
+  /// A paired `ttest` contains no complete finite pairs.
+  TtestNoValidPairedNumericObservations,
+  /// The filtered `by()` variable contains other than exactly two groups.
+  TtestInvalidGroupCount { found: usize },
+  /// The group key type cannot be stringified with the pinned oracle behavior.
+  TtestUnsupportedGroupType { variable: String, data_type: String },
+  /// A query, sample conversion, or statistical calculation failed.
+  TtestFailed { message: String },
   /// Prediction requires a preceding supported linear regression.
   PredictRequiresPriorRegression,
   /// The prediction target already exists in the active schema.
@@ -1475,6 +1545,38 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("no active estimation results found")
       }
       Self::TestFailed { message } => formatter.write_str(message),
+      Self::TtestUnknownVariable { variables } => {
+        write!(
+          formatter,
+          "ttest unknown variable: {}",
+          variables.join(", ")
+        )
+      }
+      Self::TtestRequiresNumeric { variables } => {
+        write!(
+          formatter,
+          "ttest requires numeric variables: {}",
+          variables.join(", ")
+        )
+      }
+      Self::TtestNoValidNumericObservations => {
+        formatter.write_str("ttest: no valid numeric observations found")
+      }
+      Self::TtestNoValidPairedNumericObservations => {
+        formatter.write_str("ttest: no valid paired numeric observations found")
+      }
+      Self::TtestInvalidGroupCount { found } => write!(
+        formatter,
+        "ttest: by() variable must define exactly two groups (found {found})"
+      ),
+      Self::TtestUnsupportedGroupType {
+        variable,
+        data_type,
+      } => write!(
+        formatter,
+        "ttest: unsupported by() variable type for {variable}: {data_type}"
+      ),
+      Self::TtestFailed { message } => formatter.write_str(message),
       Self::PredictRequiresPriorRegression => {
         formatter.write_str("predict requires a prior regress model")
       }
@@ -1609,6 +1711,7 @@ impl Session {
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),
+      Command::Ttest { command } => self.execute_ttest(&command),
       Command::Estat { command } => self.execute_estat(&command),
       _ => Err(RuntimeError::UnsupportedCommand { name: command_name }),
     }
@@ -4097,6 +4200,310 @@ impl Session {
     }))
   }
 
+  fn execute_ttest(&self, command: &TtestCommand) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "ttest" })?;
+
+    if let Some(null_value) = command.value.as_deref() {
+      validate_ttest_numeric(dataset, &[&command.varname1])?;
+      let null_value = null_value
+        .parse::<f64>()
+        .map_err(|_| RuntimeError::TtestFailed {
+          message: format!("ttest: invalid null value: {null_value}"),
+        })?;
+      let backend = self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::NoActiveDataset { command: "ttest" })?;
+      let query = format!(
+        "SELECT {} FROM {ACTIVE_TABLE}",
+        quote_identifier(&command.varname1)
+      );
+      let mut statement =
+        backend
+          .connection
+          .prepare(&query)
+          .map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?;
+      let mut rows = statement
+        .query([])
+        .map_err(|error| RuntimeError::TtestFailed {
+          message: error.to_string(),
+        })?;
+      let mut observations = Vec::new();
+      while let Some(row) = rows.next().map_err(|error| RuntimeError::TtestFailed {
+        message: error.to_string(),
+      })? {
+        let value =
+          cell_value_from_ref(row.get_ref(0).map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?)
+          .map_err(|_| RuntimeError::TtestFailed {
+            message: "ttest could not read a numeric observation".to_owned(),
+          })?;
+        if let Some(value) = cell_to_f64(&value).filter(|value| value.is_finite()) {
+          observations.push(value);
+        }
+      }
+      if observations.is_empty() {
+        return Err(RuntimeError::TtestNoValidNumericObservations);
+      }
+      let statistics =
+        tabdat_stats::one_sample_ttest(&observations, null_value).map_err(|error| {
+          RuntimeError::TtestFailed {
+            message: error.to_string(),
+          }
+        })?;
+      return Ok(ExecutionResult::Ttest(TtestResult {
+        varname1: command.varname1.clone(),
+        varname2: None,
+        by_variable: None,
+        is_paired: false,
+        is_welch: false,
+        null_value,
+        group1_stats: ttest_group_stats(&command.varname1, &statistics.group1),
+        group2_stats: None,
+        combined_stats: None,
+        difference_stats: ttest_group_stats("mean", &statistics.difference),
+        t_statistic: statistics.statistic,
+        degrees_of_freedom: statistics.degrees_of_freedom,
+        p_left: statistics.p_left,
+        p_two: statistics.p_two,
+        p_right: statistics.p_right,
+      }));
+    }
+
+    if let Some(varname2) = command.varname2.as_deref() {
+      validate_ttest_numeric(dataset, &[&command.varname1, varname2])?;
+      let backend = self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::NoActiveDataset { command: "ttest" })?;
+      let query = format!(
+        "SELECT {}, {} FROM {ACTIVE_TABLE}",
+        quote_identifier(&command.varname1),
+        quote_identifier(varname2)
+      );
+      let mut statement =
+        backend
+          .connection
+          .prepare(&query)
+          .map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?;
+      let mut rows = statement
+        .query([])
+        .map_err(|error| RuntimeError::TtestFailed {
+          message: error.to_string(),
+        })?;
+      let mut first = Vec::new();
+      let mut second = Vec::new();
+      while let Some(row) = rows.next().map_err(|error| RuntimeError::TtestFailed {
+        message: error.to_string(),
+      })? {
+        let first_value =
+          cell_value_from_ref(row.get_ref(0).map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?)
+          .map_err(|_| RuntimeError::TtestFailed {
+            message: "ttest could not read the first paired observation".to_owned(),
+          })?;
+        let second_value =
+          cell_value_from_ref(row.get_ref(1).map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?)
+          .map_err(|_| RuntimeError::TtestFailed {
+            message: "ttest could not read the second paired observation".to_owned(),
+          })?;
+        if let (Some(left), Some(right)) = (cell_to_f64(&first_value), cell_to_f64(&second_value))
+          && left.is_finite()
+          && right.is_finite()
+        {
+          first.push(left);
+          second.push(right);
+        }
+      }
+      if first.is_empty() {
+        return Err(RuntimeError::TtestNoValidPairedNumericObservations);
+      }
+      let statistics =
+        tabdat_stats::paired_ttest(&first, &second).map_err(|error| RuntimeError::TtestFailed {
+          message: error.to_string(),
+        })?;
+      let group2 = statistics
+        .group2
+        .as_ref()
+        .expect("paired t-test has two groups");
+      return Ok(ExecutionResult::Ttest(TtestResult {
+        varname1: command.varname1.clone(),
+        varname2: Some(varname2.to_owned()),
+        by_variable: None,
+        is_paired: true,
+        is_welch: false,
+        null_value: 0.0,
+        group1_stats: ttest_group_stats(&command.varname1, &statistics.group1),
+        group2_stats: Some(ttest_group_stats(varname2, group2)),
+        combined_stats: None,
+        difference_stats: ttest_group_stats("diff", &statistics.difference),
+        t_statistic: statistics.statistic,
+        degrees_of_freedom: statistics.degrees_of_freedom,
+        p_left: statistics.p_left,
+        p_two: statistics.p_two,
+        p_right: statistics.p_right,
+      }));
+    }
+
+    if let Some(by_variable) = command.by_variable.as_deref() {
+      if !dataset
+        .columns
+        .iter()
+        .any(|column| column.name == by_variable)
+      {
+        return Err(RuntimeError::TtestUnknownVariable {
+          variables: vec![by_variable.to_owned()],
+        });
+      }
+      validate_ttest_numeric(dataset, &[&command.varname1])?;
+      let group_type = dataset
+        .columns
+        .iter()
+        .find(|column| column.name == by_variable)
+        .map(|column| column.data_type.as_str())
+        .expect("group variable was checked above");
+      let (group_expression, group_kind) = ttest_group_expression(by_variable, group_type)?;
+      let backend = self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::NoActiveDataset { command: "ttest" })?;
+      let quoted_group = quote_identifier(by_variable);
+      let query = format!(
+        "SELECT {}, {group_expression} FROM {ACTIVE_TABLE} WHERE {quoted_group} IS NOT NULL",
+        quote_identifier(&command.varname1)
+      );
+      let mut statement =
+        backend
+          .connection
+          .prepare(&query)
+          .map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?;
+      let mut rows = statement
+        .query([])
+        .map_err(|error| RuntimeError::TtestFailed {
+          message: error.to_string(),
+        })?;
+      let mut groups: BTreeMap<String, Vec<f64>> = BTreeMap::new();
+      while let Some(row) = rows.next().map_err(|error| RuntimeError::TtestFailed {
+        message: error.to_string(),
+      })? {
+        let value =
+          cell_value_from_ref(row.get_ref(0).map_err(|error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          })?)
+          .map_err(|_| RuntimeError::TtestFailed {
+            message: "ttest could not read a numeric observation".to_owned(),
+          })?;
+        let Some(value) = cell_to_f64(&value).filter(|value| value.is_finite()) else {
+          continue;
+        };
+        let group_name = match group_kind {
+          TtestGroupValueKind::Numeric => {
+            let group =
+              cell_value_from_ref(row.get_ref(1).map_err(|error| RuntimeError::TtestFailed {
+                message: error.to_string(),
+              })?)
+              .map_err(|_| RuntimeError::TtestFailed {
+                message: "ttest could not read a numeric group value".to_owned(),
+              })?;
+            python_ttest_group_label(&group).ok_or_else(|| RuntimeError::TtestFailed {
+              message: "ttest could not stringify a numeric group value".to_owned(),
+            })?
+          }
+          TtestGroupValueKind::Boolean | TtestGroupValueKind::Text => row
+            .get::<_, Option<String>>(1)
+            .map_err(|error| RuntimeError::TtestFailed {
+              message: error.to_string(),
+            })?
+            .ok_or_else(|| RuntimeError::TtestFailed {
+              message: "ttest could not stringify a group value".to_owned(),
+            })?,
+          TtestGroupValueKind::Temporal => {
+            let value = row
+              .get::<_, Option<String>>(1)
+              .map_err(|error| RuntimeError::TtestFailed {
+                message: error.to_string(),
+              })?
+              .ok_or_else(|| RuntimeError::TtestFailed {
+                message: "ttest could not stringify a temporal group value".to_owned(),
+              })?;
+            python_temporal_label(&value)
+          }
+          TtestGroupValueKind::Blob => {
+            let hex = row
+              .get::<_, Option<String>>(1)
+              .map_err(|error| RuntimeError::TtestFailed {
+                message: error.to_string(),
+              })?
+              .ok_or_else(|| RuntimeError::TtestFailed {
+                message: "ttest could not read a blob group value".to_owned(),
+              })?;
+            let bytes = decode_hex(&hex).ok_or_else(|| RuntimeError::TtestFailed {
+              message: "ttest could not decode a blob group value".to_owned(),
+            })?;
+            python_bytes_repr(&bytes)
+          }
+        };
+        groups.entry(group_name).or_default().push(value);
+      }
+      if groups.len() != 2 {
+        return Err(RuntimeError::TtestInvalidGroupCount {
+          found: groups.len(),
+        });
+      }
+      let mut grouped_samples = groups.into_iter();
+      let (group1_name, group1_values) = grouped_samples.next().expect("two groups were checked");
+      let (group2_name, group2_values) = grouped_samples.next().expect("two groups were checked");
+      let statistics =
+        tabdat_stats::independent_ttest(&group1_values, &group2_values, command.welch).map_err(
+          |error| RuntimeError::TtestFailed {
+            message: error.to_string(),
+          },
+        )?;
+      let group2 = statistics
+        .group2
+        .as_ref()
+        .expect("independent t-test has two groups");
+      let combined = statistics
+        .combined
+        .as_ref()
+        .expect("independent t-test has a combined sample");
+      return Ok(ExecutionResult::Ttest(TtestResult {
+        varname1: command.varname1.clone(),
+        varname2: None,
+        by_variable: Some(by_variable.to_owned()),
+        is_paired: false,
+        is_welch: command.welch,
+        null_value: 0.0,
+        group1_stats: ttest_group_stats(&group1_name, &statistics.group1),
+        group2_stats: Some(ttest_group_stats(&group2_name, group2)),
+        combined_stats: Some(ttest_group_stats("combined", combined)),
+        difference_stats: ttest_group_stats("diff", &statistics.difference),
+        t_statistic: statistics.statistic,
+        degrees_of_freedom: statistics.degrees_of_freedom,
+        p_left: statistics.p_left,
+        p_two: statistics.p_two,
+        p_right: statistics.p_right,
+      }));
+    }
+
+    Err(RuntimeError::TtestFailed {
+      message: "ttest: invalid state".to_owned(),
+    })
+  }
+
   fn execute_estat(&self, command: &EstatCommand) -> Result<ExecutionResult, RuntimeError> {
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
@@ -5325,6 +5732,219 @@ fn is_numeric_data_type(data_type: &str) -> bool {
       | "DOUBLE"
       | "DECIMAL"
   )
+}
+
+fn validate_ttest_numeric(dataset: &DatasetInfo, variables: &[&str]) -> Result<(), RuntimeError> {
+  let unknown = variables
+    .iter()
+    .filter(|variable| {
+      !dataset
+        .columns
+        .iter()
+        .any(|column| column.name == **variable)
+    })
+    .map(|variable| (*variable).to_owned())
+    .collect::<Vec<_>>();
+  if !unknown.is_empty() {
+    return Err(RuntimeError::TtestUnknownVariable { variables: unknown });
+  }
+
+  let non_numeric = variables
+    .iter()
+    .filter(|variable| {
+      dataset
+        .columns
+        .iter()
+        .find(|column| column.name == **variable)
+        .is_none_or(|column| !is_numeric_data_type(&column.data_type))
+    })
+    .map(|variable| (*variable).to_owned())
+    .collect::<Vec<_>>();
+  if !non_numeric.is_empty() {
+    return Err(RuntimeError::TtestRequiresNumeric {
+      variables: non_numeric,
+    });
+  }
+  Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+enum TtestGroupValueKind {
+  Numeric,
+  Boolean,
+  Blob,
+  Temporal,
+  Text,
+}
+
+fn ttest_group_expression(
+  variable: &str,
+  data_type: &str,
+) -> Result<(String, TtestGroupValueKind), RuntimeError> {
+  let quoted = quote_identifier(variable);
+  let base_type = data_type
+    .trim()
+    .to_ascii_uppercase()
+    .split('(')
+    .next()
+    .unwrap_or_default()
+    .trim()
+    .to_owned();
+  if is_numeric_data_type(data_type) {
+    return Ok((quoted, TtestGroupValueKind::Numeric));
+  }
+  if matches!(base_type.as_str(), "BOOLEAN" | "BOOL") {
+    return Ok((
+      format!("CASE WHEN {quoted} THEN 'True' ELSE 'False' END"),
+      TtestGroupValueKind::Boolean,
+    ));
+  }
+  if base_type == "BLOB" {
+    return Ok((format!("hex({quoted})"), TtestGroupValueKind::Blob));
+  }
+  if matches!(
+    base_type.as_str(),
+    "DATE" | "TIME" | "TIMESTAMP" | "TIMESTAMP_S" | "TIMESTAMP_MS" | "TIMESTAMP_NS"
+  ) {
+    return Ok((
+      format!("CAST({quoted} AS VARCHAR)"),
+      TtestGroupValueKind::Temporal,
+    ));
+  }
+  if matches!(
+    base_type.as_str(),
+    "VARCHAR" | "CHAR" | "BPCHAR" | "STRING" | "TEXT" | "UUID" | "JSON" | "ENUM" | "BIT"
+  ) {
+    return Ok((
+      format!("CAST({quoted} AS VARCHAR)"),
+      TtestGroupValueKind::Text,
+    ));
+  }
+  Err(RuntimeError::TtestUnsupportedGroupType {
+    variable: variable.to_owned(),
+    data_type: data_type.to_owned(),
+  })
+}
+
+fn ttest_group_stats(
+  name: &str,
+  statistics: &tabdat_stats::TtestSampleStatistics,
+) -> TtestGroupStats {
+  TtestGroupStats {
+    name: name.to_owned(),
+    observations: statistics.observations,
+    mean: statistics.mean,
+    standard_error: statistics.standard_error,
+    standard_deviation: statistics.standard_deviation,
+    ci_lower: statistics.ci_lower,
+    ci_upper: statistics.ci_upper,
+  }
+}
+
+fn python_ttest_group_label(value: &CellValue) -> Option<String> {
+  match value {
+    CellValue::Null => None,
+    CellValue::Boolean(value) => Some(if *value { "True" } else { "False" }.to_owned()),
+    CellValue::SignedInteger(value) => Some(value.to_string()),
+    CellValue::UnsignedInteger(value) => Some(value.to_string()),
+    CellValue::Float(value) => Some(python_ttest_float_label(*value)),
+    CellValue::Decimal { scale, value, .. } => Some(python_decimal_label(*value, *scale)),
+    CellValue::Text(value) => Some(value.clone()),
+    CellValue::Bytes(value) => Some(python_bytes_repr(value)),
+  }
+}
+
+fn python_ttest_float_label(value: f64) -> String {
+  if value.is_nan() {
+    "nan".to_owned()
+  } else if value == f64::INFINITY {
+    "inf".to_owned()
+  } else if value == f64::NEG_INFINITY {
+    "-inf".to_owned()
+  } else if value == 0.0 && value.is_sign_negative() {
+    "-0.0".to_owned()
+  } else {
+    python_float_literal(value)
+  }
+}
+
+fn python_decimal_label(value: i128, scale: u8) -> String {
+  let negative = value < 0;
+  let digits = value.unsigned_abs().to_string();
+  let scale = usize::from(scale);
+  let rendered = if scale == 0 {
+    digits
+  } else if digits.len() <= scale {
+    format!("0.{}{digits}", "0".repeat(scale - digits.len()))
+  } else {
+    let split = digits.len() - scale;
+    format!("{}.{}", &digits[..split], &digits[split..])
+  };
+  if negative {
+    format!("-{rendered}")
+  } else {
+    rendered
+  }
+}
+
+fn python_temporal_label(value: &str) -> String {
+  let Some((prefix, fractional)) = value.rsplit_once('.') else {
+    return value.to_owned();
+  };
+  let precision = fractional.bytes().take_while(u8::is_ascii_digit).count();
+  if precision == 0 {
+    return value.to_owned();
+  }
+  let mut micros = fractional[..precision.min(6)].to_owned();
+  micros.push_str(&"0".repeat(6 - micros.len()));
+  let micros_value = micros.parse::<u32>().unwrap_or(0);
+  let suffix = &fractional[precision..];
+  if micros_value == 0 {
+    format!("{prefix}{suffix}")
+  } else {
+    format!("{prefix}.{micros}{suffix}")
+  }
+}
+
+fn decode_hex(value: &str) -> Option<Vec<u8>> {
+  if value.len() % 2 != 0 {
+    return None;
+  }
+  value
+    .as_bytes()
+    .chunks_exact(2)
+    .map(|pair| {
+      let high = (pair[0] as char).to_digit(16)?;
+      let low = (pair[1] as char).to_digit(16)?;
+      Some(((high << 4) | low) as u8)
+    })
+    .collect()
+}
+
+fn python_bytes_repr(value: &[u8]) -> String {
+  let quote = if value.contains(&b'\'') && !value.contains(&b'"') {
+    b'"'
+  } else {
+    b'\''
+  };
+  let mut rendered = String::from("b");
+  rendered.push(char::from(quote));
+  for &byte in value {
+    match byte {
+      b'\\' => rendered.push_str("\\\\"),
+      b'\t' => rendered.push_str("\\t"),
+      b'\n' => rendered.push_str("\\n"),
+      b'\r' => rendered.push_str("\\r"),
+      byte if byte == quote => {
+        rendered.push('\\');
+        rendered.push(char::from(byte));
+      }
+      0x20..=0x7e => rendered.push(char::from(byte)),
+      byte => rendered.push_str(&format!("\\x{byte:02x}")),
+    }
+  }
+  rendered.push(char::from(quote));
+  rendered
 }
 
 fn is_integer_data_type(data_type: &str) -> bool {

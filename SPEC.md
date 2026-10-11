@@ -782,30 +782,40 @@ including the [migration evidence](_workspace/parser-tokenizer/02-evidence-migra
 locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
 workflows all passed.
 
-## Verified slice: syntax-only `ttest` command
+## Verified slice: syntax and bounded runtime `ttest`
 
 Merged [PR #69](https://github.com/SaehwanPark/tabdat-explore-rs/pull/69)
 ([4dcd892](https://github.com/SaehwanPark/tabdat-explore-rs/commit/4dcd892f59422774e49742019e5f4eefb459711b))
-adds a bounded, backend-independent `ttest` syntax boundary to
-`tabdat-language`. The parser returns an owned `TtestCommand` for
-`ttest <var> == <numeric-value>`, `ttest <var> == <other-var>`, and
-`ttest <var>, by(<group-var>)` with flag-only `welch`/`unequal` options. It
-preserves the pinned diagnostics, decoded quoted names, repeated alias flags,
-and source numeric spelling. Runtime deliberately returns the typed unsupported
-command result; it does not inspect a relation, fit a model, calculate
-inference, initialize DuckDB, or mutate session state.
+adds the bounded, backend-independent `ttest` syntax boundary to
+`tabdat-language`. The parser returns an owned `TtestCommand` for the
+one-sample, paired, and grouped pooled/Welch forms. It preserves the pinned
+diagnostics, decoded quoted names, repeated alias flags, and source numeric
+spelling. Merged [PR #157](https://github.com/SaehwanPark/tabdat-explore-rs/pull/157)
+executes those forms against the active eager relation and returns an owned
+`ExecutionResult::Ttest`. It filters SQL NULL and non-finite values, uses
+listwise-complete pairs, lexically sorts stringified groups, computes 95%
+Student-t intervals and directional/two-sided probabilities through
+`tabdat-stats`, and preserves session and estimation state on success and error.
+
+The runtime supports scalar text, numeric, boolean, date/time without timezone,
+UUID, JSON, enum, and blob group keys. Nested list/struct/map, interval, and
+timezone-aware temporal group values return a typed unsupported-type error. This
+is a recorded parity limitation: the Python oracle accepts some of these group
+types, and the bundled Rust/Python DuckDB timezone normalization differs. The
+runtime remains library-only and is not connected to the root CLI.
 
 Evidence: [_workspace/parser-ttest/](_workspace/parser-ttest/), including the
 [migration evidence](_workspace/parser-ttest/02-evidence-migration.md),
 [review](_workspace/parser-ttest/03-review.md), and
-[summary](_workspace/parser-ttest/04-summary.md). The pinned oracle probes,
-locked Rust and policy checks, PR-head workflows, squash merge, and merge-head
-workflows all passed.
+[summary](_workspace/parser-ttest/04-summary.md), plus
+[_workspace/runtime-ttest/](_workspace/runtime-ttest/) for the runtime contract,
+Python/SciPy comparisons, review, and check evidence. Pinned Python tests and
+SciPy 1.17.1 reference outputs, focused Rust runtime/stats contracts, locked
+workspace checks, policy checks, and hosted PR workflows passed.
 
-This accepted syntax slice leaves numeric conversion, type and missingness
-semantics, sample construction, inference, covariance, post-estimation state,
-reporting, CLI, JSON, MCP, and broad Python statistical parity deferred. The
-Phase 7 statistical `ttest` item remains unchecked.
+This slice does not add presentation, CLI, JSON, MCP, or support for the group
+types listed above as parity limitations. Broader Python statistical validation
+remains open.
 
 ## Verified slice: syntax-only `sql` command
 
