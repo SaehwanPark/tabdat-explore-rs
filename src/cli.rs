@@ -27,7 +27,8 @@ options:
   -f, --file FILE       run a TabDat script file and exit
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
-                        supports use/count; scripts stream use/count only)
+                        supports use/count/head/tail; scripts stream
+                        use/count/head/tail)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
                         emit declared command effects; requires --json
@@ -499,8 +500,7 @@ pub fn run_cli(args: CliArgs) -> i32 {
 }
 
 fn json_result_unsupported() -> i32 {
-  const MESSAGE: &str =
-    "--json successful batch results are currently supported only for use and count";
+  const MESSAGE: &str = crate::json_results::BATCH_UNSUPPORTED_MESSAGE;
   eprintln!("Error: {MESSAGE}");
   let envelope = crate::catalog::ErrorEnvelope::new(MESSAGE, "JsonResultUnsupported");
   println!("{}", serde_json::to_string(&envelope).unwrap());
