@@ -190,8 +190,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   Python and R/sandwich comparison; [report](feasibility/libgretl.md#hc1-and-clustered-ols-2026-10-11)).
 - [x] Implement clustered OLS fixture (one-way finite-sample correction,
   ordered sample and inference df; [report](feasibility/libgretl.md#hc1-and-clustered-ols-2026-10-11)).
-- [ ] Implement logit fixture.
-- [ ] Implement probit fixture.
+- [x] Implement logit fixture (classical MLE, full covariance and likelihood,
+  Python/R comparison; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
+- [x] Implement probit fixture (observed-Hessian covariance, Python/R comparison
+  and separation rejection; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
 - [ ] Implement quantile-regression fixture.
 - [ ] Implement Tobit fixture.
 - [ ] Implement Poisson fixture.

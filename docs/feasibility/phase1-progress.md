@@ -77,7 +77,7 @@ PR: [#165](https://github.com/SaehwanPark/tabdat-explore-rs/pull/165).
 See the libgretl report for exact provenance, finite-input limitations and DF
 metadata difference. No whole-phase completion or primary-backend decision.
 
-## Slice 5: libgretl logit/probit (WIP)
+## Slice 5: libgretl logit/probit (complete)
 
 Classical binary MLE only, intercept and two finite numeric predictors, explicit
 0/1 outcomes and complete ordered sample. Owned coefficients, SEs, full
@@ -90,6 +90,13 @@ prediction, marginal effects or broader model-state port is implied.
 Native reconnaissance found count models dynamically load a plugin via
 `get_plugin_function("count_data_estimate")`; the current spike builds only the
 library. Plugin packaging must be resolved before those fixtures can pass.
+
+Both classical binary fixtures pass full coefficient/SE/covariance/likelihood
+comparisons with pinned Python and independent R observed information. All
+sample rows are exact; separation and invalid-data recovery are covered.
+PR: [#166](https://github.com/SaehwanPark/tabdat-explore-rs/pull/166).
+The full spike now has 13 tests. See libgretl report for Hessian-versus-Fisher
+semantics and explicit unvalidated scope.
 
 ## Remaining loops
 
