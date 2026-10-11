@@ -1,0 +1,12 @@
+[package]
+name = "tabdat-visualization-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+serde_json = "=1.0.117"
+tokio = { version = "=1.36.0", features = ["macros", "rt-multi-thread"] }
+vl-convert-rs = "=1.9.0"
