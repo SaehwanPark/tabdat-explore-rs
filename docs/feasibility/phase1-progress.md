@@ -33,7 +33,7 @@ reviewer runtime was available. Accepted lifecycle decision: ADR 0010.
 PR: [#162](https://github.com/SaehwanPark/tabdat-explore-rs/pull/162).
 The broader Phase 1 unsafe-boundary gate remains open.
 
-## Slice 2: DuckDB HTTP Parquet (WIP)
+## Slice 2: DuckDB HTTP/unsigned S3 Parquet (complete)
 
 Test the pinned bundled DuckDB against an agent-owned loopback HTTP endpoint
 serving synthetic Parquet. Validate values, Arrow rows, repeated reads, HTTP
@@ -47,6 +47,11 @@ Also correct the extra EOF blank line noticed in the preceding report and rerun
 changed-document links and whitespace checks with fail-fast shell execution.
 The preceding merge command did not stop after that whitespace warning; its
 report's whitespace/link pass statement is corrected by this follow-up.
+
+HTTP and unsigned S3 checks pass on 4,096 rows. The two narrowly scoped roadmap
+spike tasks are checked, with TLS/authenticated AWS parity explicitly excluded.
+PR: [#163](https://github.com/SaehwanPark/tabdat-explore-rs/pull/163). No dependency
+or lockfile change. Three owner review passes; root and spike checks pass.
 
 ## Remaining loops
 
