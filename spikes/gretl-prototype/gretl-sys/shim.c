@@ -17,6 +17,7 @@
 
 #include "libgretl.h"
 #include "libset.h"
+#include "discrete.h"
 
 #include <string.h>
 
@@ -123,6 +124,25 @@ void *gretl_shim_ols(void *dset_handle, const int *list, int nlist,
 /* ------------------------------------------------------------------ */
 /* Result accessors                                                   */
 /* ------------------------------------------------------------------ */
+
+/* Binary entry points return MODEL by value just like lsq. The shim owns
+ * the copied result, and callers use the same checked accessors/destructor. */
+void *gretl_shim_binary(void *dset_handle, const int *list, int nlist, int probit)
+{
+    if (dset_handle == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
+        return NULL;
+    }
+    MODEL *model = gretl_model_new();
+    if (model == NULL) {
+        return NULL;
+    }
+    if (probit) {
+        *model = binary_probit(list, (DATASET *) dset_handle, OPT_NONE, NULL);
+    } else {
+        *model = binary_logit(list, (DATASET *) dset_handle, OPT_NONE, NULL);
+    }
+    return model;
+}
 
 int gretl_shim_model_ncoeff(const void *handle)
 {

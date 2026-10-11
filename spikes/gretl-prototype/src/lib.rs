@@ -17,6 +17,9 @@
 use gretl_sys::{GretlDataset, GretlModel, OlsCovariance, Stat};
 use std::os::raw::c_int;
 
+mod binary;
+pub use binary::{BinaryLink, BinaryResult, run_binary};
+
 /// A Rust-owned estimation problem: an outcome, predictors, and the data.
 ///
 /// `data` is a row-major matrix where column 0 is the outcome and columns

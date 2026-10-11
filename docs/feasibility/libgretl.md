@@ -331,4 +331,73 @@ CARGO_TARGET_DIR=target/gretl-review cargo test --manifest-path spikes/gretl-pro
 
 Core nonlinear/count/IV/panel/selection/survival fixtures, comprehensive semantic
 mismatch inventory, performance and primary-backend/licensing decisions remain
-open. Only the two demonstrated OLS covariance fixture tasks are checked.
+open. Only the two demonstrated OLS covariance fixture tasks are checked by
+that slice.
+
+## Classical logit and probit (2026-10-11)
+
+Status: **pass for the bounded complete-data MLE fixtures**. Safe `BinaryLink`,
+`BinaryResult` and `run_binary` expose Rust-owned coefficients, SEs, full
+covariance, sample rows and likelihood, not native model state. The C shim owns
+the by-value results from `binary_logit` / `binary_probit`; both use the existing
+serialized initialization/RAII/check-buffer boundary. The facade accepts finite
+numeric predictors and 0/1 outcomes and rejects changed samples/parameter counts
+or non-finite outputs. Binary low-level lists reuse the checked OLS list helper.
+
+### Reference contract
+
+`fixtures/binary.csv` contains 200 synthetic observations, intercept and two
+predictors, NumPy RNG seed 4276; the saved CSV is the shared fixture, not a promise
+of seeded generator parity across environments. Data SHA-256
+`8111c31527b23575c392b79b89679022556ed07da492c493557025630f820c03`;
+reference SHA-256
+`1b7921b276064522a5abb5f43cbace7acdfdd03632c0d91db2a2b1e154aa4dcb`.
+Python checkout/tree/lock and Python 3.13.3 provenance are the same verified pin
+as the preceding covariance slice. `binary_python.py` runs actual `logit` and
+`probit` executor commands and confirms both fitted models converged.
+
+Independent reference is R 4.3.2 base `glm(..., family=binomial(link=...))`,
+`epsilon=1e-12`, maximum 100 iterations, confirming convergence and exact sample
+rows 1..200. Its script computes the **observed information** from analytic
+binary-likelihood derivatives at the R fit and verifies it against independent
+R `optimHess` finite differences (maximum matrix difference <1e-4).
+
+This distinction matters: ordinary R `vcov(glm)` uses expected/Fisher information
+and may differ for the noncanonical probit link. Gretl and Python use observed
+Hessian covariance. The reference script explicitly documents that convention;
+it does not silently compare Fisher and observed SEs or widen tolerances.
+Logit is canonical, so the observed/Fisher distinction vanishes there.
+
+Gretl's `discrete.c::binary_model` uses Newton-Raphson defaults: maximum 100
+iterations, objective tolerance 1e-8, gradient tolerance 1e-7. The spike does not
+change those settings. Native nonzero errors, including no-convergence/perfect
+prediction, return `GretlError::EstimationFailed`; a successful finite result is
+not a generalized optimizer/cancellation guarantee.
+
+Predeclared comparator: finite values and absolute difference <=
+`1e-7 + 1e-6*abs(reference)`. All three coefficients, three SEs, nine covariance
+entries and log likelihood pass against both Python and R. Coefficient order
+(intercept/x1/x2) and all zero-based retained rows compare exactly. No tolerance
+was changed after judging results. Separation, invalid outcome, missing predictor
+and ragged input tests pass; subsequent nominal fits still succeed.
+
+### Checks / review / exclusions
+
+Test-first unresolved-API compilation failure was observed, then implementation
+and both binary tests passed. Full spike suite now has 13 tests. Root/spike
+locked format/check/test/Clippy pass; root/spike Cargo advisory checks pass, root
+deny passes with duplicate warnings; no dependency or lock change. One first
+root-suite attempt failed in the unchanged runtime reshape test while reading
+its temporary Parquet fixture (`ParquetRead` at `reshape_contract.rs:337`). The
+focused test and full locked workspace rerun both pass; cause is not established
+and no runtime source was changed to hide it. Relative links and whitespace pass. Three explicit owner passes covered native by-value
+ownership/list checks, covariance/likelihood and separation behavior, and exact
+reference/sample/optimizer provenance; no actionable blocker for this bounded
+slice. No independent reviewer runtime, new Linux run or sanitizer is claimed.
+
+Binary robust/clustered covariance, absent-intercept reference coverage,
+missing-row construction, probabilities, marginal effects, general failed-state
+semantics, arbitrary design/rank deficiency and product model persistence remain
+unvalidated. This does not satisfy the whole core-estimator exit gate. Count
+models use a dynamically loaded `count_data_estimate` plugin; the spike currently
+builds only libgretl, so plugin packaging is a prerequisite for those fixtures.

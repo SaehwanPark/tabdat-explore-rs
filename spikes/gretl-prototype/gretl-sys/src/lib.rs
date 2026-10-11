@@ -37,6 +37,12 @@ unsafe extern "C" {
     covariance: c_int,
     cluster_var: c_int,
   ) -> *mut c_void;
+  fn gretl_shim_binary(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    probit: c_int,
+  ) -> *mut c_void;
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -120,6 +126,12 @@ impl Drop for GretlDataset {
   }
 }
 
+#[derive(Clone, Copy)]
+pub enum BinaryLink {
+  Logit,
+  Probit,
+}
+
 /// Closed native covariance request. Cluster indices are checked against the dataset.
 #[derive(Clone, Copy)]
 pub enum OlsCovariance {
@@ -156,6 +168,32 @@ impl GretlModel {
         (2, variable as c_int)
       }
     };
+    let len = Self::checked_list_len(dset, list);
+    let ptr = native(|| {
+      // SAFETY: dataset is live; every list index and the exact count have been
+      // checked. The slice lives through this call. C returns an owned model;
+      // covariance settings are configured/restored within this single locked call.
+      unsafe { gretl_shim_ols(dset.ptr, list.as_ptr(), len, mode, cluster) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_ols returned NULL");
+    Self { ptr }
+  }
+
+  /// Classical binary MLE with a closed logit/probit selector.
+  pub fn binary(dset: &GretlDataset, list: &[c_int], link: BinaryLink) -> Self {
+    let len = Self::checked_list_len(dset, list);
+    let probit = i32::from(matches!(link, BinaryLink::Probit));
+    let ptr = native(|| {
+      // SAFETY: live dataset, exact list count and checked indices. The closed
+      // selector and borrowed slice are valid through this serialized call.
+      // The shim returns an owned model, including native estimation errors.
+      unsafe { gretl_shim_binary(dset.ptr, list.as_ptr(), len, probit) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_binary returned NULL");
+    Self { ptr }
+  }
+
+  fn checked_list_len(dset: &GretlDataset, list: &[c_int]) -> c_int {
     let len = c_int::try_from(list.len()).expect("variable list too long");
     assert!(list.len() >= 3, "need an outcome and regressor");
     assert_eq!(
@@ -170,14 +208,7 @@ impl GretlModel {
         .all(|&i| i >= 0 && (i as usize) < dset.nvar),
       "variable list index out of bounds"
     );
-    let ptr = native(|| {
-      // SAFETY: dataset is live; every list index and the exact count have been
-      // checked. The slice lives through this call. C returns an owned model;
-      // covariance settings are configured/restored within this single locked call.
-      unsafe { gretl_shim_ols(dset.ptr, list.as_ptr(), len, mode, cluster) }
-    });
-    assert!(!ptr.is_null(), "gretl_shim_ols returned NULL");
-    Self { ptr }
+    len
   }
 
   pub fn ncoeff(&self) -> usize {
