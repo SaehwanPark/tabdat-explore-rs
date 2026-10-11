@@ -53,6 +53,17 @@ spike tasks are checked, with TLS/authenticated AWS parity explicitly excluded.
 PR: [#163](https://github.com/SaehwanPark/tabdat-explore-rs/pull/163). No dependency
 or lockfile change. Three owner review passes; root and spike checks pass.
 
+## Slice 3: Python-free visualization (WIP)
+
+Evaluate pinned stable `vl-convert-rs` 1.9.0 in an isolated safe Rust spike.
+Generate an inline-data scatter Vega-Lite specification following the pinned
+Python `visualization.py` contract; render SVG and PNG without Python at runtime.
+Compare with externally generated Python artifacts using structure/dimensions
+and the same explicit Vega-Lite version, not arbitrary byte golden replacement.
+Measure converter construction, first render, repeated rendering, process/RSS
+and binary size in release when the candidate builds. Record dependency licenses,
+network restrictions and build failures before any acceptance decision.
+
 ## Remaining loops
 
 1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.
