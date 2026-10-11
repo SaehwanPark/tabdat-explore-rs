@@ -947,7 +947,10 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 
 - [ ] Port terminal table rendering.
 - [ ] Port deterministic numeric formatting.
-- [ ] Port JSON serialization.
+- [ ] Port JSON serialization for the full result surface (bounded successful
+  `use`/`count` batch envelopes are recorded in SPEC and
+  `_workspace/cli-json-use-count/`; other result types and successful script
+  streaming remain deferred).
 - [ ] Port HTML reporting primitives.
 - [ ] Ensure one typed result model feeds all renderers.
 
