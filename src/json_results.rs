@@ -6,11 +6,24 @@ use tabdat_runtime::{DatasetInfo, ExecutionResult, LoadResult};
 
 use crate::catalog::ResultEnvelope;
 
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str =
+  "--json successful script results are currently supported only for use and count";
+
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. } | Command::Count | Command::Exit
+  )
+}
+
+/// Whether a script command can execute without producing an unsupported JSON
+/// success result. `run` is a container for nested commands and has no result
+/// envelope of its own.
+pub fn supports_script_command(command: &Command) -> bool {
+  matches!(
+    command,
+    Command::Use { .. } | Command::Count | Command::Exit | Command::Run { .. }
   )
 }
 

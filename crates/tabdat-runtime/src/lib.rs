@@ -3631,20 +3631,50 @@ impl Session {
     &mut self,
     raw_path: impl AsRef<Path>,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let mut active_stack = Vec::new();
-    let mut context = ScriptContext::empty();
-    let result =
-      self.execute_script_file(raw_path.as_ref(), None, &mut active_stack, &mut context)?;
+    let result = self.execute_run_with_callbacks(raw_path, |_| Ok(()), |_| {})?;
     Ok(ExecutionResult::Run(result))
   }
 
-  fn execute_script_file(
+  /// Execute a `.td` script while validating commands before execution and
+  /// observing each successful leaf-command result.
+  ///
+  /// Callbacks run in script execution order, including nested scripts. A
+  /// validation error is attached to the command's script path and line.
+  pub fn execute_run_with_callbacks<Before, Observe>(
+    &mut self,
+    raw_path: impl AsRef<Path>,
+    mut before_command: Before,
+    mut observe_result: Observe,
+  ) -> Result<RunResult, RuntimeError>
+  where
+    Before: FnMut(&Command) -> Result<(), String>,
+    Observe: FnMut(&ExecutionResult),
+  {
+    let mut active_stack = Vec::new();
+    let mut context = ScriptContext::empty();
+    self.execute_script_file(
+      raw_path.as_ref(),
+      None,
+      &mut active_stack,
+      &mut context,
+      &mut before_command,
+      &mut observe_result,
+    )
+  }
+
+  fn execute_script_file<Before, Observe>(
     &mut self,
     path: &Path,
     base_dir: Option<&Path>,
     active_stack: &mut Vec<PathBuf>,
     context: &mut ScriptContext,
-  ) -> Result<RunResult, RuntimeError> {
+    before_command: &mut Before,
+    observe_result: &mut Observe,
+  ) -> Result<RunResult, RuntimeError>
+  where
+    Before: FnMut(&Command) -> Result<(), String>,
+    Observe: FnMut(&ExecutionResult),
+  {
     let resolved_path = resolve_script_path(path, base_dir);
     if active_stack.contains(&resolved_path) {
       return Err(RuntimeError::ScriptError(ScriptError::new(
@@ -3752,6 +3782,14 @@ impl Session {
         }
       };
 
+      if let Err(message) = before_command(&command) {
+        return Err(RuntimeError::ScriptError(ScriptError::new(
+          &resolved_path,
+          line,
+          message,
+        )));
+      }
+
       match command {
         Command::Exit => {
           break;
@@ -3763,12 +3801,15 @@ impl Session {
             nested_base,
             active_stack,
             context,
+            before_command,
+            observe_result,
           )?;
           executed_commands += nested_result.executed_commands;
         }
         other => match self.execute(other) {
-          Ok(_) => {
+          Ok(result) => {
             executed_commands += 1;
+            observe_result(&result);
           }
           Err(RuntimeError::ScriptError(err)) => {
             return Err(RuntimeError::ScriptError(err));

@@ -949,8 +949,9 @@ Make the Rust implementation pleasant enough to use interactively and stable eno
 - [ ] Port deterministic numeric formatting.
 - [ ] Port JSON serialization for the full result surface (bounded successful
   `use`/`count` batch envelopes are recorded in SPEC and
-  `_workspace/cli-json-use-count/`; other result types and successful script
-  streaming remain deferred).
+  `_workspace/cli-json-use-count/`; bounded `use`/`count` script streaming is
+  recorded in SPEC and `_workspace/cli-json-script-results/`; other result types
+  and full Python script JSON parity remain deferred).
 - [ ] Port HTML reporting primitives.
 - [ ] Ensure one typed result model feeds all renderers.
 
