@@ -2061,6 +2061,29 @@ CLI script tests and eleven focused Rust CLI integration tests passed locally.
 All four locked workspace gates passed. GitHub Actions were disabled before
 this slice, so no hosted result is claimed.
 
+## Verified slice: bounded CLI JSONL `head` and `tail` previews
+
+PR #161 extends the bounded JSON success output in repeated `-c` batches and
+`.td` scripts with `PreviewResult` envelopes for `head` and `tail`, including
+nested `run`. Each line contains the ordered `columns` and `rows` returned by
+the existing typed runtime preview. Cell conversion preserves integer values,
+uses fixed-scale strings for decimals, maps non-finite floats to null, and
+encodes bytes as `base64:<standard-base64>` strings. Unsupported successful
+commands continue to be rejected before execution, and preview errors retain
+the existing error behavior.
+
+The contract is pinned to Python TabDat commit
+`16b45d9b66b0d80f32d4d220e84d81bc5180bdbe`; this bounded serializer does not
+complete the full JSON result surface or full Python script parity.
+
+Evidence: [_workspace/cli-json-preview-results/](_workspace/cli-json-preview-results/),
+including the [contract](_workspace/cli-json-preview-results/01-contract.md),
+[migration evidence](_workspace/cli-json-preview-results/02-evidence-migration.md),
+[review](_workspace/cli-json-preview-results/03-review.md), and
+[summary](_workspace/cli-json-preview-results/04-summary.md). The pinned Python
+CLI checks and locked local Rust workspace gates passed. GitHub Actions were
+disabled before this slice, so no hosted result is claimed.
+
 ## Verified slice: statistical contracts substrate (tabdat-stats)
 
 Create `crates/tabdat-stats` (`#![forbid(unsafe_code)]`) as an independent workspace
