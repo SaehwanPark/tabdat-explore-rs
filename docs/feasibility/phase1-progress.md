@@ -77,6 +77,20 @@ PR: [#165](https://github.com/SaehwanPark/tabdat-explore-rs/pull/165).
 See the libgretl report for exact provenance, finite-input limitations and DF
 metadata difference. No whole-phase completion or primary-backend decision.
 
+## Slice 5: libgretl logit/probit (WIP)
+
+Classical binary MLE only, intercept and two finite numeric predictors, explicit
+0/1 outcomes and complete ordered sample. Owned coefficients, SEs, full
+covariance and log likelihood; verify with pinned Python and R base `glm` using
+identical data/links. Predeclare abs 1e-7 + rel 1e-6 for optimizer-derived values;
+exact sample/labels. Validate outcome domain and missing/ragged inputs; preserve
+native errors and check successful outputs are finite. No robust/cluster binary,
+prediction, marginal effects or broader model-state port is implied.
+
+Native reconnaissance found count models dynamically load a plugin via
+`get_plugin_function("count_data_estimate")`; the current spike builds only the
+library. Plugin packaging must be resolved before those fixtures can pass.
+
 ## Remaining loops
 
 1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.
