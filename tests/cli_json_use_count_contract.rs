@@ -54,8 +54,9 @@ fn help_describes_the_current_json_result_boundary() {
   assert!(output.status.success());
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   assert!(stdout.contains("batch success output"));
-  assert!(stdout.contains("supports use/count"));
-  assert!(stdout.contains("scripts stream use/count only"));
+  assert!(stdout.contains("supports use/count/head/tail"));
+  assert!(stdout.contains("scripts stream"));
+  assert!(stdout.contains("use/count/head/tail"));
 }
 
 fn fixture_csv(dir: &TestDir) -> PathBuf {
@@ -137,7 +138,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   assert!(!exported_path.exists());
   assert_eq!(
     output.stderr,
-    b"Error: --json successful batch results are currently supported only for use and count\n"
+    b"Error: --json successful batch results are currently supported only for use, count, head, and tail\n"
   );
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   let envelopes = stdout
@@ -153,7 +154,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
     serde_json::json!({
       "schema_version": 1,
       "error": {
-        "message": "--json successful batch results are currently supported only for use and count",
+        "message": "--json successful batch results are currently supported only for use, count, head, and tail",
         "type": "JsonResultUnsupported"
       }
     })
@@ -287,7 +288,7 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
   assert_eq!(envelopes[1]["error"]["line"], 2);
   assert_eq!(
     envelopes[1]["error"]["message"],
-    "--json successful script results are currently supported only for use and count"
+    "--json successful script results are currently supported only for use, count, head, and tail"
   );
   assert!(
     String::from_utf8(output.stderr)
