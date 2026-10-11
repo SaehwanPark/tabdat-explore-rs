@@ -4,7 +4,7 @@ Phase 1 remains **in progress**. The roadmap checkboxes are the acceptance
 tracker; this ledger records the current bounded loop and durable handoff.
 No spike is product support.
 
-## Slice 1: libgretl boundary hardening (WIP)
+## Slice 1: libgretl boundary hardening (complete)
 
 Base: `8f95f89` on `main`. Owner: current agent (serial execution).
 
@@ -25,6 +25,13 @@ Prototype contract: invalid low-level arguments may panic **before** FFI;
 facade validation returns `GretlError`. No Rust callback enters C, so pre-call
 panics do not unwind through C. Allocation failure remains a prototype panic.
 No sanitizer, Linux revalidation, or broader estimator parity is implied.
+
+Implementation and eight spike tests pass. Root locked checks, Clippy, audit,
+deny, and adapter unsafe inventory completed. Three explicit owner review
+passes found no unresolved blocker in this bounded change; no independent
+reviewer runtime was available. Accepted lifecycle decision: ADR 0010.
+PR: [#162](https://github.com/SaehwanPark/tabdat-explore-rs/pull/162).
+The broader Phase 1 unsafe-boundary gate remains open.
 
 ## Remaining loops
 

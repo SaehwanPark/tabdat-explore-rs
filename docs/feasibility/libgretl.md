@@ -5,8 +5,8 @@ disabled and workflow definitions are removed under
 [ADR 0009](../adr/0009-disable-github-actions.md).
 
 - Status: **partial**; the pinned native library builds on macOS Apple Silicon and
-  Linux x86_64 and its NIST linear-regression smoke program passes on both. No Rust
-  binding or estimator support is accepted.
+  Linux x86_64. The later sections record an isolated Rust OLS binding and reference
+  fixture; no product estimator backend is accepted.
 - Candidate: gretl `2026b`, libgretl ABI version `55.0.0`.
 - Reproducible source artifact:
   `gretl-2026b.tar.xz`, SHA-256
@@ -198,3 +198,48 @@ observed agreement) so it cannot mask a real regression. Representative values:
   exercised in hosted CI for this slice.
 - GPLv3 redistribution terms are not yet resolved for runtime adoption.
 - No benchmark of first-use initialization or repeated-model overhead yet.
+
+## Boundary hardening (2026-10-11)
+
+[ADR 0010](../adr/0010-gretl-spike-native-lifecycle.md) supersedes the original
+facade-only initialization and thread-safety ledger for the current spike.
+Every shim call now takes one adapter-global mutex, initializes once lazily,
+and retains process state until exit; public cleanup is removed. Dataset and
+model allocations still use serialized RAII teardown. Rust checks positive,
+C-representable dimensions, all dataset/list indices and count fields, and
+successful-model status and coefficient bounds before native buffer access.
+Variable zero stays reserved even for no-intercept fits. All unsafe operations
+remain in `gretl-sys`, with adjacent safety explanations and
+`deny(unsafe_op_in_unsafe_fn)`.
+
+### Checks and review
+
+Local macOS 27.0.1 arm64, pinned toolchain:
+
+- Root format/check/test/Clippy: pass (locked workspace, all targets).
+- Spike format/check/test/Clippy: pass; eight tests, including Longley and
+  five boundary regressions. Parallel fixture performs 4 × 20 fits/teardowns.
+- Root `cargo audit -D warnings` and `cargo deny check`: pass (duplicate-version
+  warnings only); spike lockfile audit: pass. Native dependencies are outside
+  Cargo's advisory inventory.
+- Adapter geiger JSON scan: completed; inventory only, not safety certification.
+- Three separate owner review passes: (1) bounds/C ABI, (2) global lifecycle,
+  ownership and teardown, (3) fixture integrity, API callers and scope. No
+  unresolved actionable issue in this bounded change. No independent reviewer
+  runtime was available; these are explicit author passes, not independent reviews.
+- `git diff --check` and changed-document relative links: pass.
+
+The no-intercept characterization passed even before hardening; reserving slot
+zero is a native-layout invariant correction, not a demonstrated numerical
+failure on that fixture. Potentially invalid native-memory accesses were not
+executed on the unsafe pre-change wrapper. Regression cases now verify that
+rejection happens in Rust. Native startup emits `otool exited with status 256`
+on this machine; tests still pass, but the diagnostic remains a packaging risk.
+
+No sanitizer/leak checker or new Linux execution ran. This review covers the
+libgretl boundary only, not ReadStat/DuckDB or the whole Phase 1 unsafe exit gate.
+Dropped-regressor naming, broader missingness/sample contracts, estimator
+normalization, process-global cleanup cost, and full native packaging remain
+separate validation/decision work. No additional estimator roadmap task is
+checked by this safety prerequisite.
+
