@@ -71,7 +71,7 @@ fn execute_ttest(session: &mut Session, source: &str) -> TtestResult {
   let ExecutionResult::Ttest(result) = result.expect("ttest should execute") else {
     panic!("expected ExecutionResult::Ttest");
   };
-  result
+  *result
 }
 
 fn close(actual: f64, expected: f64) {

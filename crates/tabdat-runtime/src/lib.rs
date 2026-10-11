@@ -682,7 +682,7 @@ pub enum ExecutionResult {
   /// The result of testing linear restrictions on regression coefficients.
   Test(TestResult),
   /// The result of a two-sided Student t-test over active dataset columns.
-  Ttest(TtestResult),
+  Ttest(Box<TtestResult>),
 }
 
 /// Errors produced by the bounded runtime slice.
@@ -4257,7 +4257,7 @@ impl Session {
             message: error.to_string(),
           }
         })?;
-      return Ok(ExecutionResult::Ttest(TtestResult {
+      return Ok(ExecutionResult::Ttest(Box::new(TtestResult {
         varname1: command.varname1.clone(),
         varname2: None,
         by_variable: None,
@@ -4273,7 +4273,7 @@ impl Session {
         p_left: statistics.p_left,
         p_two: statistics.p_two,
         p_right: statistics.p_right,
-      }));
+      })));
     }
 
     if let Some(varname2) = command.varname2.as_deref() {
@@ -4337,7 +4337,7 @@ impl Session {
         .group2
         .as_ref()
         .expect("paired t-test has two groups");
-      return Ok(ExecutionResult::Ttest(TtestResult {
+      return Ok(ExecutionResult::Ttest(Box::new(TtestResult {
         varname1: command.varname1.clone(),
         varname2: Some(varname2.to_owned()),
         by_variable: None,
@@ -4353,7 +4353,7 @@ impl Session {
         p_left: statistics.p_left,
         p_two: statistics.p_two,
         p_right: statistics.p_right,
-      }));
+      })));
     }
 
     if let Some(by_variable) = command.by_variable.as_deref() {
@@ -4480,7 +4480,7 @@ impl Session {
         .combined
         .as_ref()
         .expect("independent t-test has a combined sample");
-      return Ok(ExecutionResult::Ttest(TtestResult {
+      return Ok(ExecutionResult::Ttest(Box::new(TtestResult {
         varname1: command.varname1.clone(),
         varname2: None,
         by_variable: Some(by_variable.to_owned()),
@@ -4496,7 +4496,7 @@ impl Session {
         p_left: statistics.p_left,
         p_two: statistics.p_two,
         p_right: statistics.p_right,
-      }));
+      })));
     }
 
     Err(RuntimeError::TtestFailed {
@@ -5907,7 +5907,7 @@ fn python_temporal_label(value: &str) -> String {
 }
 
 fn decode_hex(value: &str) -> Option<Vec<u8>> {
-  if value.len() % 2 != 0 {
+  if !value.len().is_multiple_of(2) {
     return None;
   }
   value

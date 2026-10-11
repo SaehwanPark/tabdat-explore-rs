@@ -96,4 +96,3 @@ return before any session mutation.
 | Labels and named tables | Preserved | Preserved |
 | Stored regression state | Preserved | Preserved |
 | Returned result | Owned `Ttest` result | Typed runtime error |
-

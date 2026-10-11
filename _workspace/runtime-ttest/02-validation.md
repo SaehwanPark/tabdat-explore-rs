@@ -80,4 +80,9 @@ types.
 - Pinned Python oracle: `uv run --no-sync pytest -q -p no:cacheprovider tests/test_statistical_testing.py::test_ttests tests/test_statistical_testing.py::test_ttest_zero_variance` — 2 passed.
 - Rust stats contract: `cargo test --locked -p tabdat-stats --test ttest_contract` — 6 passed.
 - Rust runtime contract: `cargo test --locked -p tabdat-runtime --test ttest_contract` — 10 passed.
-- Full workspace Rust and policy gates are recorded in the final PR evidence after completion.
+- `cargo fmt --all -- --check` — passed.
+- `cargo check --locked --workspace --all-targets` — passed.
+- `cargo test --locked --workspace --all-targets` — passed; every workspace unit and integration test target completed successfully.
+- `cargo clippy --locked --workspace --all-targets -- -D warnings` — passed.
+- `git diff --check` — passed.
+- Hosted `Rust baseline` and `Dependency and unsafe-code policy` PR checks are required and will be recorded after this revision is pushed.
