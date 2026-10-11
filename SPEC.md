@@ -2054,10 +2054,12 @@ complete Phase 5 reporting.
 
 Evidence: [_workspace/cli-json-script-results/](_workspace/cli-json-script-results/),
 including the [contract](_workspace/cli-json-script-results/01-contract.md),
-validation, and review. Four pinned Python CLI script tests and eleven focused
-Rust CLI integration tests passed locally. Full locked workspace validation is
-pending. GitHub Actions were disabled before this slice, so no hosted result is
-claimed.
+[validation](_workspace/cli-json-script-results/02-evidence-migration.md),
+[review](_workspace/cli-json-script-results/03-review.md), and
+[summary](_workspace/cli-json-script-results/04-summary.md). Four pinned Python
+CLI script tests and eleven focused Rust CLI integration tests passed locally.
+All four locked workspace gates passed. GitHub Actions were disabled before
+this slice, so no hosted result is claimed.
 
 ## Verified slice: statistical contracts substrate (tabdat-stats)
 
