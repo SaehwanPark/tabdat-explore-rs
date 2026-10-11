@@ -98,6 +98,19 @@ PR: [#166](https://github.com/SaehwanPark/tabdat-explore-rs/pull/166).
 The full spike now has 13 tests. See libgretl report for Hessian-versus-Fisher
 semantics and explicit unvalidated scope.
 
+## Slice 6: libgretl initialization / repeated-model costs (WIP)
+
+Add a release measurement executable for explicit serialized initialization,
+first owned OLS/binary fits and repeated complete adapter calls. A metadata-only
+mode must not call initialization. Run five fresh processes, synthetic 40/200-row
+fixtures, record raw timings, process/RSS and executable size; distinguish
+backend initialization from dataset fill/result copying and do not call
+uncontrolled filesystem/page caches cold startup. No release threshold claim.
+
+Also publish a preliminary feasibility decision matrix and durable Phase 1
+handoff: rendering security, plugin packaging, unvalidated estimator families,
+platform/unsafe/license gates remain explicit, not checked by inference.
+
 ## Remaining loops
 
 1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.
