@@ -1053,7 +1053,11 @@ Port foundational statistical inference and establish the stable estimator backe
 - [x] Port linear-regression `predict, residuals` (PR #153; observed outcome minus stored fitted values; other model families remain deferred).
 - [ ] Port VIF. PR #154 adds bounded runtime support for successful full-rank OLS/WLS/GLS states; exact-collinearity end-to-end parity remains blocked by the current rank-deficient regression rejection, so this broader item is not complete.
 - [ ] Port residual diagnostics.
-- [ ] Port `test`.
+- [x] Port bounded linear-regression `test` (PR #156; stored OLS/WLS/GLS results,
+  including robust and clustered covariance; other estimator families and the
+  zero-residual-df chi-square fallback remain deferred, see
+  [`_workspace/runtime-test/`](../_workspace/runtime-test/)).
+- [ ] Port `test` for the remaining Python estimator families and zero-df fallback.
 - [ ] Port `lincom`. PR #155 adds a bounded runtime result for stored OLS/WLS/GLS linear-regression states, including robust/cluster covariance; support for other Python estimator families and the no-positive-df normal fallback remains deferred.
 - [ ] Port `ttest`.
 - [ ] Port HTML regression report.
@@ -1067,6 +1071,7 @@ Port foundational statistical inference and establish the stable estimator backe
 - [ ] Validate covariance corrections.
 - [x] Validate the bounded linear-regression `xb` and residual predictions (PR #153; pinned Python tests and NIST Longley fitted-value reference; broader prediction validation remains open).
 - [x] Validate bounded linear-regression `lincom` (PR #155; pinned Python 3.13.15 / statsmodels 0.14.6 / SciPy 1.17.1 plus direct statsmodels/SciPy reference for OLS, WLS, GLS, robust, clustered, and no-intercept cases; other estimator families remain open).
+- [x] Validate bounded linear-regression `test` (PR #156; pinned Python 3.13.15 plus statsmodels 0.14.6/SciPy 1.17.1 references for joint, equality, multiple, OLS/WLS/GLS, HC1, clustered, no-intercept, and small-scale covariance cases; broader estimator families remain open).
 - [ ] Extend prediction validation to other model families and prediction kinds.
 - [ ] Validate sample exclusion.
 - [ ] Validate failure behavior.

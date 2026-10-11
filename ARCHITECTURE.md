@@ -106,8 +106,10 @@ auxiliary regressions use the model's intercept convention but not WLS/GLS weigh
 the Python oracle's exog-based behavior. The exact-collinear main-model case remains
 unreachable because the existing Rust estimator rejects rank-deficient designs. PR #155 adds
 read-only `lincom` estimates and Student-t inference for stored OLS/WLS/GLS regression states,
-including robust and clustered covariance; other estimator families and `test` remain deferred.
-Prediction kinds for other estimators and broader post-estimation remain deferred.
+including robust and clustered covariance. PR #156 adds read-only Wald/F tests for parsed linear
+restrictions on those same stored regression states, including classical, HC1, and clustered
+covariance. Other estimator families, the zero-residual-df chi-square fallback, and broader
+post-estimation remain deferred.
 
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.

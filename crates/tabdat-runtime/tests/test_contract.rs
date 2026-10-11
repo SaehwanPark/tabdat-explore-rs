@@ -4,7 +4,7 @@ use tabdat_language::{
 use tabdat_runtime::{RuntimeError, Session};
 
 #[test]
-fn parsed_test_remains_explicitly_deferred_at_runtime() {
+fn parsed_test_requires_prior_estimation() {
   let command = parse_command("test x1 = x2").expect("test parser contract");
 
   assert_eq!(
@@ -24,12 +24,12 @@ fn parsed_test_remains_explicitly_deferred_at_runtime() {
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "test" }
+    RuntimeError::TestRequiresPriorEstimation
   );
 }
 
 #[test]
-fn parsed_test_with_multiple_constraints_remains_explicitly_deferred_at_runtime() {
+fn parsed_test_with_multiple_constraints_requires_prior_estimation() {
   let command = parse_command("test (x1 = x2) (x3 = 0)").expect("test parser contract");
 
   assert_eq!(
@@ -56,6 +56,6 @@ fn parsed_test_with_multiple_constraints_remains_explicitly_deferred_at_runtime(
 
   assert_eq!(
     session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "test" }
+    RuntimeError::TestRequiresPriorEstimation
   );
 }

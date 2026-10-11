@@ -67,6 +67,61 @@ fn affine_combination_inference_includes_constant_offset_and_covariance() {
 }
 
 #[test]
+fn wald_test_normalizes_small_restriction_covariance_before_inversion() {
+  let parameter_names = vec!["intercept".into(), "x1".into(), "x2".into()];
+  let covariance = CovarianceMatrix::new(
+    parameter_names.clone(),
+    CovarianceType::NonRobust,
+    vec![
+      vec![1e-16, 0.0, 0.0],
+      vec![0.0, 1e-16, 0.0],
+      vec![0.0, 0.0, 2e-16],
+    ],
+  )
+  .expect("small covariance matrix should be valid");
+  let post_estimation = PostEstimationModel {
+    parameter_names,
+    parameters: vec![0.0, 2e-8, -1e-8],
+    covariance,
+    degrees_of_freedom: 3,
+  };
+
+  let result = post_estimation
+    .test_linear_hypothesis(&[vec![0.0, 1.0, -1.0]], &[0.0])
+    .expect("small but nonsingular restriction covariance should be invertible");
+
+  close(result.chi2_statistic, 3.0);
+  close(result.f_statistic, 3.0);
+  assert_eq!(result.df_num, 1);
+  assert_eq!(result.df_denom, 3);
+}
+
+#[test]
+fn wald_test_preserves_representable_statistic_when_difference_squares_underflow() {
+  let parameter_names = vec!["x".into()];
+  let covariance = CovarianceMatrix::new(
+    parameter_names.clone(),
+    CovarianceType::NonRobust,
+    vec![vec![1e-320]],
+  )
+  .expect("positive subnormal covariance should be valid");
+  let post_estimation = PostEstimationModel {
+    parameter_names,
+    parameters: vec![1e-170],
+    covariance,
+    degrees_of_freedom: 3,
+  };
+
+  let result = post_estimation
+    .test_linear_hypothesis(&[vec![1.0]], &[0.0])
+    .expect("subnormal restriction covariance should remain usable");
+
+  let expected = (1e-170 / 1e-320_f64.sqrt()).powi(2);
+  assert!(result.chi2_statistic > 0.0);
+  assert!((result.chi2_statistic / expected - 1.0).abs() < 1e-12);
+}
+
+#[test]
 fn zero_variance_combination_has_nan_test_and_point_interval() {
   let result = model(3)
     .linear_combination_with_inference(&[0.0, 0.0, 0.0], 2.0, 95.0)

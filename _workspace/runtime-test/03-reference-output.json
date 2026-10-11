@@ -1,0 +1,188 @@
+{
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.15",
+    "run_date_utc": "2026-10-08T07:56:51.999983+00:00",
+    "scipy": "1.17.1",
+    "statsmodels": "0.14.6",
+    "tabdat_revision": "16b45d9b66b0d80f32d4d220e84d81bc5180bdbe",
+    "uv_lock_sha256": "0f0e1dedbff49b4c77b470a75510b8809436c7c3dc77d1eac372ab9c7264d239"
+  },
+  "python_executor": {
+    "cluster_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.059316200142426334,
+      "statistic": 8.78988633452532
+    },
+    "cluster_equality_small_outcome": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.05931620014242778,
+      "statistic": 8.789886334525155
+    },
+    "gls_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.15310007999959907,
+      "statistic": 3.6233766473472517
+    },
+    "hc1_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.04479875302302139,
+      "statistic": 11.073028358067353
+    },
+    "no_intercept_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 4,
+      "is_chi2": false,
+      "p_value": 0.4032393987934022,
+      "statistic": 0.8721101941505085
+    },
+    "ols_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.08760247783654895,
+      "statistic": 6.256742705570278
+    },
+    "ols_intercept": {
+      "constraints": [
+        "intercept = 0"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.04876559826926352,
+      "statistic": 10.336952399366405
+    },
+    "ols_joint": {
+      "constraints": [
+        "x1 = 0",
+        "x2 = 0"
+      ],
+      "df": 2,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.0007383367189159884,
+      "statistic": 182.120689655171
+    },
+    "ols_multiple": {
+      "constraints": [
+        "x1 = x2",
+        "x2 = 2"
+      ],
+      "df": 2,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 8.724571601725906e-06,
+      "statistic": 3537.8908045977078
+    },
+    "wls_equality": {
+      "constraints": [
+        "x1 = x2"
+      ],
+      "df": 1,
+      "df_residual": 3,
+      "is_chi2": false,
+      "p_value": 0.041511830199647104,
+      "statistic": 11.770830014080122
+    }
+  },
+  "statsmodels_scipy": {
+    "cluster_equality": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.05931620014242662,
+      "p_value_statsmodels": 0.05931620014242662,
+      "statistic": 8.789886334525322
+    },
+    "cluster_equality_small_outcome": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.059316200142427916,
+      "p_value_statsmodels": 0.059316200142427916,
+      "statistic": 8.789886334525155
+    },
+    "gls_equality": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.15310007999959882,
+      "p_value_statsmodels": 0.15310007999959882,
+      "statistic": 3.6233766473472517
+    },
+    "hc1_equality": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.0447987530230212,
+      "p_value_statsmodels": 0.0447987530230212,
+      "statistic": 11.073028358067353
+    },
+    "no_intercept_equality": {
+      "df": 1,
+      "df_residual": 4,
+      "p_value_scipy": 0.4032393987934019,
+      "p_value_statsmodels": 0.4032393987934019,
+      "statistic": 0.8721101941505102
+    },
+    "ols_equality": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.08760247783654902,
+      "p_value_statsmodels": 0.08760247783654902,
+      "statistic": 6.256742705570278
+    },
+    "ols_intercept": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.048765598269263695,
+      "p_value_statsmodels": 0.048765598269263695,
+      "statistic": 10.336952399366405
+    },
+    "ols_joint": {
+      "df": 2,
+      "df_residual": 3,
+      "p_value_scipy": 0.000738336718915947,
+      "p_value_statsmodels": 0.000738336718915947,
+      "statistic": 182.12068965516917
+    },
+    "ols_multiple": {
+      "df": 2,
+      "df_residual": 3,
+      "p_value_scipy": 8.724571601717684e-06,
+      "p_value_statsmodels": 8.724571601717684e-06,
+      "statistic": 3537.89080459769
+    },
+    "wls_equality": {
+      "df": 1,
+      "df_residual": 3,
+      "p_value_scipy": 0.04151183019964714,
+      "p_value_statsmodels": 0.04151183019964714,
+      "statistic": 11.770830014080097
+    }
+  },
+  "test_after_failed_regress_error": "no active estimation results found"
+}
