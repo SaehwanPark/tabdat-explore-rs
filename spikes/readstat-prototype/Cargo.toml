@@ -6,6 +6,6 @@ publish = false
 description = "Safe facade over the ReadStat DTA reader for the TabDat ingestion spike"
 
 [dependencies]
-readstat-sys = { path = "readstat-sys" }
+readstat-sys = { version = "=0.0.0", path = "readstat-sys" }
 
 [workspace]

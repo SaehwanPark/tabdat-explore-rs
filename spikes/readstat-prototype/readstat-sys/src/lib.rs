@@ -17,7 +17,7 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
@@ -26,33 +26,27 @@ use std::path::Path;
 
 /// Opaque ReadStat parser handle. Owned by `parse_dta`; freed on every path.
 #[repr(C)]
-pub struct readstat_parser_t {
+struct readstat_parser_t {
   _private: [u8; 0],
 }
 
 /// Opaque ReadStat variable handle. Borrowed inside callbacks only.
 #[repr(C)]
-pub struct readstat_variable_t {
+struct readstat_variable_t {
   _private: [u8; 0],
 }
 
 /// Opaque ReadStat metadata handle. Borrowed inside the metadata callback.
 #[repr(C)]
-pub struct readstat_metadata_t {
+struct readstat_metadata_t {
   _private: [u8; 0],
 }
 
-/// Pass-by-value ReadStat value.
-///
-/// The C struct is a union (8 bytes) + `readstat_type_t` (4) + `char tag` (1)
-/// + two 1-bit bitfields, measured at 16 bytes with alignment 8 on both target
-/// platforms. We model it opaquely and read it exclusively through the C
-/// accessor functions, so the internal union/bitfield layout is never
-/// interpreted from Rust.
-#[repr(C, align(8))]
-#[derive(Clone, Copy)]
-pub struct readstat_value_t {
-  _private: [u8; 16],
+/// Borrowed C callback value. Its size, union, bitfields and padding are known
+/// only to `value_bridge.c`; Rust must never instantiate or dereference it.
+#[repr(C)]
+struct readstat_value_t {
+  _private: [u8; 0],
 }
 
 // ---------------------------------------------------------------------------
@@ -60,83 +54,75 @@ pub struct readstat_value_t {
 // ---------------------------------------------------------------------------
 
 #[allow(non_camel_case_types)]
-pub type readstat_type_t = c_int;
+type readstat_type_t = c_int;
 
-pub const READSTAT_TYPE_STRING: readstat_type_t = 0;
-pub const READSTAT_TYPE_INT8: readstat_type_t = 1;
-pub const READSTAT_TYPE_INT16: readstat_type_t = 2;
-pub const READSTAT_TYPE_INT32: readstat_type_t = 3;
-pub const READSTAT_TYPE_FLOAT: readstat_type_t = 4;
-pub const READSTAT_TYPE_DOUBLE: readstat_type_t = 5;
-pub const READSTAT_TYPE_STRING_REF: readstat_type_t = 6;
+const READSTAT_TYPE_STRING: readstat_type_t = 0;
+const READSTAT_TYPE_INT8: readstat_type_t = 1;
+const READSTAT_TYPE_INT16: readstat_type_t = 2;
+const READSTAT_TYPE_INT32: readstat_type_t = 3;
+const READSTAT_TYPE_FLOAT: readstat_type_t = 4;
+const READSTAT_TYPE_DOUBLE: readstat_type_t = 5;
 
-pub const READSTAT_OK: c_int = 0;
-pub const READSTAT_HANDLER_OK: c_int = 0;
-pub const READSTAT_HANDLER_ABORT: c_int = 1;
+const READSTAT_OK: c_int = 0;
+const READSTAT_HANDLER_OK: c_int = 0;
+const READSTAT_HANDLER_ABORT: c_int = 1;
 
 // ---------------------------------------------------------------------------
 // Raw FFI declarations
 // ---------------------------------------------------------------------------
 
 unsafe extern "C" {
-  pub fn readstat_parser_init() -> *mut readstat_parser_t;
-  pub fn readstat_parser_free(parser: *mut readstat_parser_t);
+  fn readstat_parser_init() -> *mut readstat_parser_t;
+  fn readstat_parser_free(parser: *mut readstat_parser_t);
 
-  pub fn readstat_set_metadata_handler(
+  fn readstat_set_metadata_handler(
     parser: *mut readstat_parser_t,
     handler: extern "C" fn(*mut readstat_metadata_t, *mut c_void) -> c_int,
   ) -> c_int;
-  pub fn readstat_set_variable_handler(
+  fn readstat_set_variable_handler(
     parser: *mut readstat_parser_t,
     handler: extern "C" fn(c_int, *mut readstat_variable_t, *const c_char, *mut c_void) -> c_int,
   ) -> c_int;
-  pub fn readstat_set_value_handler(
-    parser: *mut readstat_parser_t,
-    handler: extern "C" fn(c_int, *mut readstat_variable_t, readstat_value_t, *mut c_void) -> c_int,
-  ) -> c_int;
-  pub fn readstat_set_value_label_handler(
-    parser: *mut readstat_parser_t,
-    handler: extern "C" fn(*const c_char, readstat_value_t, *const c_char, *mut c_void) -> c_int,
-  ) -> c_int;
-  pub fn readstat_set_error_handler(
+  fn tabdat_readstat_set_value_handlers(parser: *mut readstat_parser_t) -> c_int;
+  fn readstat_set_error_handler(
     parser: *mut readstat_parser_t,
     handler: extern "C" fn(*const c_char, *mut c_void),
   ) -> c_int;
 
-  pub fn readstat_parse_dta(
+  fn readstat_parse_dta(
     parser: *mut readstat_parser_t,
     path: *const c_char,
     user_ctx: *mut c_void,
   ) -> c_int;
 
   // Metadata accessors.
-  pub fn readstat_get_row_count(metadata: *mut readstat_metadata_t) -> c_int;
-  pub fn readstat_get_var_count(metadata: *mut readstat_metadata_t) -> c_int;
-  pub fn readstat_get_file_label(metadata: *mut readstat_metadata_t) -> *const c_char;
-  pub fn readstat_get_file_format_version(metadata: *mut readstat_metadata_t) -> c_int;
-  pub fn readstat_get_file_format_is_64bit(metadata: *mut readstat_metadata_t) -> c_int;
+  fn readstat_get_row_count(metadata: *mut readstat_metadata_t) -> c_int;
+  fn readstat_get_var_count(metadata: *mut readstat_metadata_t) -> c_int;
+  fn readstat_get_file_label(metadata: *mut readstat_metadata_t) -> *const c_char;
+  fn readstat_get_file_format_version(metadata: *mut readstat_metadata_t) -> c_int;
+  fn readstat_get_file_format_is_64bit(metadata: *mut readstat_metadata_t) -> c_int;
 
   // Variable accessors.
-  pub fn readstat_variable_get_index(variable: *const readstat_variable_t) -> c_int;
-  pub fn readstat_variable_get_name(variable: *const readstat_variable_t) -> *const c_char;
-  pub fn readstat_variable_get_label(variable: *const readstat_variable_t) -> *const c_char;
-  pub fn readstat_variable_get_type(variable: *const readstat_variable_t) -> readstat_type_t;
+  fn readstat_variable_get_index(variable: *const readstat_variable_t) -> c_int;
+  fn readstat_variable_get_name(variable: *const readstat_variable_t) -> *const c_char;
+  fn readstat_variable_get_label(variable: *const readstat_variable_t) -> *const c_char;
+  fn readstat_variable_get_type(variable: *const readstat_variable_t) -> readstat_type_t;
 
   // Value accessors.
-  pub fn readstat_value_type(value: readstat_value_t) -> readstat_type_t;
-  pub fn readstat_value_is_system_missing(value: readstat_value_t) -> c_int;
-  pub fn readstat_value_is_tagged_missing(value: readstat_value_t) -> c_int;
-  pub fn readstat_value_is_defined_missing(
-    value: readstat_value_t,
+  fn tabdat_readstat_value_type(value: *const readstat_value_t) -> readstat_type_t;
+  fn tabdat_readstat_value_is_system_missing(value: *const readstat_value_t) -> c_int;
+  fn tabdat_readstat_value_is_tagged_missing(value: *const readstat_value_t) -> c_int;
+  fn tabdat_readstat_value_is_defined_missing(
+    value: *const readstat_value_t,
     variable: *mut readstat_variable_t,
   ) -> c_int;
-  pub fn readstat_value_tag(value: readstat_value_t) -> c_char;
-  pub fn readstat_int8_value(value: readstat_value_t) -> i8;
-  pub fn readstat_int16_value(value: readstat_value_t) -> i16;
-  pub fn readstat_int32_value(value: readstat_value_t) -> i32;
-  pub fn readstat_float_value(value: readstat_value_t) -> f32;
-  pub fn readstat_double_value(value: readstat_value_t) -> f64;
-  pub fn readstat_string_value(value: readstat_value_t) -> *const c_char;
+  fn tabdat_readstat_value_tag(value: *const readstat_value_t) -> c_char;
+  fn tabdat_readstat_int8_value(value: *const readstat_value_t) -> i8;
+  fn tabdat_readstat_int16_value(value: *const readstat_value_t) -> i16;
+  fn tabdat_readstat_int32_value(value: *const readstat_value_t) -> i32;
+  fn tabdat_readstat_float_value(value: *const readstat_value_t) -> f32;
+  fn tabdat_readstat_double_value(value: *const readstat_value_t) -> f64;
+  fn tabdat_readstat_string_value(value: *const readstat_value_t) -> *const c_char;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,20 +283,20 @@ fn cstr_to_string(ptr: *const c_char) -> Option<String> {
   Some(cstr.to_string_lossy().into_owned())
 }
 
-/// Extract an owned [`DtaValue`] from a pass-by-value ReadStat value.
-fn extract_value(value: readstat_value_t, variable: *const readstat_variable_t) -> DtaValue {
+/// Copy a value while the C bridge's borrowed stack value remains live.
+fn extract_value(value: *const readstat_value_t, variable: *const readstat_variable_t) -> DtaValue {
   // SAFETY: `value`/`variable` are valid for the duration of the callback.
   let (is_system, is_tagged, is_defined, tag, type_) = unsafe {
     (
-      readstat_value_is_system_missing(value),
-      readstat_value_is_tagged_missing(value),
+      tabdat_readstat_value_is_system_missing(value),
+      tabdat_readstat_value_is_tagged_missing(value),
       if variable.is_null() {
         0
       } else {
-        readstat_value_is_defined_missing(value, variable as *mut readstat_variable_t)
+        tabdat_readstat_value_is_defined_missing(value, variable as *mut readstat_variable_t)
       },
-      readstat_value_tag(value),
-      readstat_value_type(value),
+      tabdat_readstat_value_tag(value),
+      tabdat_readstat_value_type(value),
     )
   };
 
@@ -326,7 +312,7 @@ fn extract_value(value: readstat_value_t, variable: *const readstat_variable_t) 
     // Defined missing is an SPSS concept and does not occur in DTA; carry the
     // underlying double so no data is lost if it ever appears.
     // SAFETY: `value` is valid for the duration of the callback.
-    let underlying = unsafe { readstat_double_value(value) };
+    let underlying = unsafe { tabdat_readstat_double_value(value) };
     return DtaValue::DefinedMissing(underlying);
   }
 
@@ -334,14 +320,14 @@ fn extract_value(value: readstat_value_t, variable: *const readstat_variable_t) 
   unsafe {
     match type_ {
       READSTAT_TYPE_STRING => {
-        let ptr = readstat_string_value(value);
+        let ptr = tabdat_readstat_string_value(value);
         DtaValue::String(cstr_to_string(ptr).unwrap_or_default())
       }
-      READSTAT_TYPE_INT8 => DtaValue::Int8(readstat_int8_value(value)),
-      READSTAT_TYPE_INT16 => DtaValue::Int16(readstat_int16_value(value)),
-      READSTAT_TYPE_INT32 => DtaValue::Int32(readstat_int32_value(value)),
-      READSTAT_TYPE_FLOAT => DtaValue::Float(readstat_float_value(value)),
-      READSTAT_TYPE_DOUBLE => DtaValue::Double(readstat_double_value(value)),
+      READSTAT_TYPE_INT8 => DtaValue::Int8(tabdat_readstat_int8_value(value)),
+      READSTAT_TYPE_INT16 => DtaValue::Int16(tabdat_readstat_int16_value(value)),
+      READSTAT_TYPE_INT32 => DtaValue::Int32(tabdat_readstat_int32_value(value)),
+      READSTAT_TYPE_FLOAT => DtaValue::Float(tabdat_readstat_float_value(value)),
+      READSTAT_TYPE_DOUBLE => DtaValue::Double(tabdat_readstat_double_value(value)),
       // STRING_REF and unknown types are not expected in the DTA read path.
       _ => DtaValue::SystemMissing,
     }
@@ -371,7 +357,10 @@ fn extract_metadata(metadata: *const readstat_metadata_t) -> DtaMetadata {
 }
 
 /// Copy the variable identity fields into an owned [`DtaVariable`].
-fn extract_variable(variable: *const readstat_variable_t, label_set_name: *const c_char) -> DtaVariable {
+fn extract_variable(
+  variable: *const readstat_variable_t,
+  label_set_name: *const c_char,
+) -> DtaVariable {
   // SAFETY: `variable` is valid for the duration of the callback.
   let (name, label, type_) = unsafe {
     (
@@ -434,10 +423,13 @@ extern "C" fn variable_trampoline(
   }
 }
 
+// SAFETY: this unique symbol is called only by the header-compiled bridge,
+// with the pointer live for this synchronous callback; no Rust ABI is exposed.
+#[unsafe(export_name = "tabdat_readstat_value_callback")]
 extern "C" fn value_trampoline(
   obs_index: c_int,
   variable: *mut readstat_variable_t,
-  value: readstat_value_t,
+  value: *const readstat_value_t,
   ctx: *mut c_void,
 ) -> c_int {
   let outcome = catch_unwind(AssertUnwindSafe(|| {
@@ -465,9 +457,12 @@ extern "C" fn value_trampoline(
   }
 }
 
+// SAFETY: unique bridge symbol; value and strings live until this callback
+// returns, and only owned copies are retained in ParserState.
+#[unsafe(export_name = "tabdat_readstat_label_callback")]
 extern "C" fn value_label_trampoline(
   set_name: *const c_char,
-  value: readstat_value_t,
+  value: *const readstat_value_t,
   label: *const c_char,
   ctx: *mut c_void,
 ) -> c_int {
@@ -488,7 +483,10 @@ extern "C" fn value_label_trampoline(
     }
     // The set was just pushed (or already existed); it is the last match.
     if let Some(entry) = state.label_sets.iter_mut().find(|set| set.name == name) {
-      entry.labels.push(DtaValueLabel { value: key, label: text });
+      entry.labels.push(DtaValueLabel {
+        value: key,
+        label: text,
+      });
     }
   }));
   if outcome.is_err() {
@@ -516,6 +514,15 @@ extern "C" fn error_trampoline(message: *const c_char, ctx: *mut c_void) {
 /// The native parser is created, driven, and freed within this call on every
 /// path (success, native error, and callback abort).
 pub fn parse_dta(path: &Path) -> Result<DtaDataset, DtaError> {
+  parse_dta_with_metadata_handler(path, metadata_trampoline)
+}
+
+// Private injection seam tests a real native handler abort and teardown without
+// exposing callback pointers or parser handles through the safe API.
+fn parse_dta_with_metadata_handler(
+  path: &Path,
+  metadata_handler: extern "C" fn(*mut readstat_metadata_t, *mut c_void) -> c_int,
+) -> Result<DtaDataset, DtaError> {
   let c_path = CString::new(path.as_os_str().to_string_lossy().as_bytes())
     .map_err(|_| DtaError::Path("path contains NUL".into()))?;
 
@@ -541,11 +548,15 @@ pub fn parse_dta(path: &Path) -> Result<DtaDataset, DtaError> {
   // SAFETY: the trampolines are `extern "C"` functions with the exact
   // signatures ReadStat expects; `parser` is valid until freed below.
   let setup = unsafe {
-    readstat_set_metadata_handler(parser, metadata_trampoline)
-      & readstat_set_variable_handler(parser, variable_trampoline)
-      & readstat_set_value_handler(parser, value_trampoline)
-      & readstat_set_value_label_handler(parser, value_label_trampoline)
-      & readstat_set_error_handler(parser, error_trampoline)
+    [
+      readstat_set_metadata_handler(parser, metadata_handler),
+      readstat_set_variable_handler(parser, variable_trampoline),
+      tabdat_readstat_set_value_handlers(parser),
+      readstat_set_error_handler(parser, error_trampoline),
+    ]
+    .into_iter()
+    .find(|code| *code != READSTAT_OK)
+    .unwrap_or(READSTAT_OK)
   };
   if setup != READSTAT_OK {
     // SAFETY: `parser` is the valid handle created above and is freed exactly
@@ -562,7 +573,11 @@ pub fn parse_dta(path: &Path) -> Result<DtaDataset, DtaError> {
   // ReadStat invokes the callbacks single-threaded on this stack; the
   // trampolines copy all borrowed data before returning.
   let code = unsafe {
-    readstat_parse_dta(parser, c_path.as_ptr(), &mut state as *mut ParserState as *mut c_void)
+    readstat_parse_dta(
+      parser,
+      c_path.as_ptr(),
+      &mut state as *mut ParserState as *mut c_void,
+    )
   };
 
   // SAFETY: `parser` is the valid handle created above and is freed exactly
@@ -577,7 +592,7 @@ pub fn parse_dta(path: &Path) -> Result<DtaDataset, DtaError> {
     });
   }
 
-  let metadata = state.metadata.unwrap_or_else(|| DtaMetadata {
+  let metadata = state.metadata.unwrap_or(DtaMetadata {
     row_count: state.rows.len() as i64,
     var_count: state.variables.len() as i64,
     file_label: None,
@@ -592,3 +607,6 @@ pub fn parse_dta(path: &Path) -> Result<DtaDataset, DtaError> {
     rows: state.rows,
   })
 }
+
+#[cfg(test)]
+mod value_tests;

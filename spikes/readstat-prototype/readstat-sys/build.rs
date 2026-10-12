@@ -15,6 +15,9 @@ fn main() {
 
   println!("cargo:rerun-if-changed=vendor/readstat-1.0.0.tar.gz");
   println!("cargo:rerun-if-changed=build.rs");
+  println!("cargo:rerun-if-changed=value_bridge.c");
+  println!("cargo:rerun-if-env-changed=CC");
+  println!("cargo:rerun-if-env-changed=AR");
 
   if source.exists() {
     remove_recursive(&source);
@@ -23,7 +26,15 @@ fn main() {
 
   run(
     "tar",
-    &["--extract", "--gzip", "--file", tarball.to_str().unwrap(), "--strip-components=1", "--directory", source.to_str().unwrap()],
+    &[
+      "--extract",
+      "--gzip",
+      "--file",
+      tarball.to_str().unwrap(),
+      "--strip-components=1",
+      "--directory",
+      source.to_str().unwrap(),
+    ],
     &[],
     &manifest_dir,
   );
@@ -34,7 +45,12 @@ fn main() {
     // The configure probe does not add macOS's system iconv automatically.
     configure_env.push(("LIBS", "-liconv"));
   }
-  run_with_env("./configure", &["--disable-shared", "--enable-static"], &configure_env, &source);
+  run_with_env(
+    "./configure",
+    &["--disable-shared", "--enable-static"],
+    &configure_env,
+    &source,
+  );
 
   // ReadStat ships `-Werror -pedantic-errors`; demote only the diagnostics the
   // pinned release triggers on each platform's compiler (see feasibility report).
@@ -56,8 +72,48 @@ fn main() {
   );
 
   let libs = source.join(".libs");
-  assert!(libs.join("libreadstat.a").exists(), "static ReadStat library missing after build");
+  assert!(
+    libs.join("libreadstat.a").exists(),
+    "static ReadStat library missing after build"
+  );
+  // Compile the aggregate ABI bridge against the exact extracted header;
+  // no Rust declaration needs to model ReadStat's union, bitfields or padding.
+  let object = out_dir.join("value_bridge.o");
+  let compiler = std::env::var("CC").unwrap_or_else(|_| "cc".into());
+  run(
+    &compiler,
+    &[
+      "-std=c99",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-I",
+      source.join("src").to_str().unwrap(),
+      "-c",
+      manifest_dir.join("value_bridge.c").to_str().unwrap(),
+      "-o",
+      object.to_str().unwrap(),
+    ],
+    &[],
+    &manifest_dir,
+  );
+  let archiver = std::env::var("AR").unwrap_or_else(|_| "ar".into());
+  run(
+    &archiver,
+    &[
+      "crs",
+      out_dir
+        .join("libtabdat_readstat_bridge.a")
+        .to_str()
+        .unwrap(),
+      object.to_str().unwrap(),
+    ],
+    &[],
+    &manifest_dir,
+  );
+  println!("cargo:rustc-link-search=native={}", out_dir.display());
   println!("cargo:rustc-link-search=native={}", libs.display());
+  println!("cargo:rustc-link-lib=static=tabdat_readstat_bridge");
   println!("cargo:rustc-link-lib=static=readstat");
   // ReadStat uses zlib for compressed DTA sections and iconv for text conversion.
   println!("cargo:rustc-link-lib=z");
@@ -72,9 +128,9 @@ fn run_with_env(program: &str, args: &[&str], env: &[(&str, &str)], dir: &PathBu
   for (key, value) in env {
     command.env(key, value);
   }
-  let status = command.status().unwrap_or_else(|error| {
-    panic!("failed to run {program} in {}: {error}", dir.display())
-  });
+  let status = command
+    .status()
+    .unwrap_or_else(|error| panic!("failed to run {program} in {}: {error}", dir.display()));
   assert!(status.success(), "{program} {} failed", args.join(" "));
 }
 
@@ -84,9 +140,7 @@ fn run(program: &str, args: &[&str], env: &[(&str, &str)], dir: &PathBuf) {
       .args(args)
       .current_dir(dir)
       .status()
-      .unwrap_or_else(|error| {
-        panic!("failed to run {program} in {}: {error}", dir.display())
-      });
+      .unwrap_or_else(|error| panic!("failed to run {program} in {}: {error}", dir.display()));
     assert!(status.success(), "{program} {} failed", args.join(" "));
   } else {
     run_with_env(program, args, env, dir);

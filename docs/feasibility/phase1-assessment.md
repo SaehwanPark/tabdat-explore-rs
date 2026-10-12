@@ -7,7 +7,8 @@ balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 an
 quantile LP/canonical iid #175, PH survival/observed covariance #176 and
 proper two-step selection #177, collapsed one-step dynamic panel #178 and
 truthful source-build native initialization #179, fixture ownership #180 and
-cross-family packed arithmetic #181. The
+cross-family packed arithmetic #181 and ReadStat pointer-only value boundary
+#182. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -17,7 +18,7 @@ shipping native artifacts. Proposal intent is not implemented support.
 | Capability | Verified evidence | Current disposition | Missing acceptance evidence |
 | --- | --- | --- | --- |
 | DuckDB | Local CSV/Parquet/Arrow and bounded runtime; owned connection; HTTP ranges/values/NULL/Arrow and unsigned S3 path-style loopback reads | Continue canonical-engine bounded evaluation under ADRs 0003/0007 | TLS/authenticated S3, extension/offline/native distribution and comprehensive upstream ownership/unsafe review |
-| ReadStat | Existing pinned macOS/Linux native builds; Rust DTA facade, labels and system/tagged missing fixtures | Continue isolated DTA candidate, **do not accept product ingestion yet** | Recorded source-quality findings, callback/native review, broader format/oracle references, string-key/empty-string policies, redistribution |
+| ReadStat | Existing pinned macOS/Linux native builds; Rust DTA facade, labels and system/tagged missing fixtures; [pointer-only C value boundary](readstat-value-boundary.md), 11 tests each on macOS/emulated Linux | Continue isolated DTA candidate, **do not accept product ingestion yet** | Recorded source-quality findings, callback/native review, broader format/oracle references, string-key/empty-string policies, redistribution |
 | libgretl | Existing cross-platform build; owned serialized/checked boundary; NIST/Python OLS, Python/R HC1+cluster, Python/R logit+probit and classical integer Poisson; opt-in shared-core plugin build/load; measured first/repeated use | Continue isolated statistical candidate under ADRs 0005/0006/0010; **primary backend not yet accepted** | Remaining estimator fixtures, plugin lifecycle/packaging, general sample/model/inference normalization, updated platform/unsafe/native-license review |
 | Visualization | #169 native SVG/resvg scatter, explicit-bin histogram and prepared bar semantics, PNG/raster tests, policy-clean graph and release measurements; rejected #164 preserves exact Python scatter | Accept bounded static-rendering spike under ADR 0011; **no Vega-Lite or product plotting parity** | Automatic bin/category policy, full layout/font UX, Linux/platform and transitive safety/redistribution review |
 | Linear algebra | Current safe workspace QR/OLS boundary and libgretl BLAS/LAPACK build evidence | No general linear-algebra substrate is newly selected by these spikes | Bounded faer versus BLAS/LAPACK benchmark, ownership/build/thread/license evidence and accepted ADR |
