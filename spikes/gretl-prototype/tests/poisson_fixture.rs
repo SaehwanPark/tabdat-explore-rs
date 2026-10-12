@@ -107,6 +107,15 @@ fn poisson_invalid_inputs_and_native_rank_failure_do_not_poison_later_calls() {
 }
 
 #[test]
+#[ignore = "manual fresh-process probe with build-owned poisson.so temporarily unavailable"]
+fn missing_poisson_plugin_returns_owned_native_error() {
+  assert!(matches!(
+    run_poisson(&fixture()),
+    Err(GretlError::EstimationFailed { .. })
+  ));
+}
+
+#[test]
 fn independent_count_binary_and_ols_calls_share_serialized_core() {
   let workers: Vec<_> = (0..4)
     .map(|_| {

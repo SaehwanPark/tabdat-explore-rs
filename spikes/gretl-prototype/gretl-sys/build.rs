@@ -1,7 +1,8 @@
-//! Builds the pinned gretl 2026b `libgretl` static library and the C
-//! ownership shim, then emits the link flags for the Rust crate.
+//! Builds pinned gretl 2026b and its ownership shim. Default builds use a
+//! static core; `count-plugin` builds a same-source shared core plus Poisson
+//! module with private build-owned paths (ADR 0012), without prebuilt shortcuts.
 //!
-//! Two paths:
+//! Default paths:
 //! - If `GRETL_PREBUILT_DIR` is set and contains `libgretl-1.0.a`, use it
 //!   directly (fast local iteration; the library must have been built with the
 //!   documented recipe).
@@ -9,8 +10,8 @@
 //!   the documented `monte_carlo.c` compatibility patch, configure, and build
 //!   the static library from source.
 //!
-//! The from-source path is what CI exercises; it is slow (minutes) but
-//! reproducible.
+//! Source builds verify the downloaded archive; count builds also verify cached
+//! archives. Checks run locally (Actions are disabled under ADR 0009).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -51,7 +52,7 @@ fn main() {
     // static copies with separate process globals. Absolute paths are spike-only.
     println!("cargo:rustc-link-lib=dylib=gretl-1.0");
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
-    println!("cargo:metadata=shared_lib_dir={}", lib_dir.display());
+    println!("cargo::metadata=shared_lib_dir={}", lib_dir.display());
   } else {
     println!("cargo:rustc-link-lib=static=gretl-1.0");
   }
@@ -59,7 +60,7 @@ fn main() {
   emit_dependency_flags(is_macos);
 }
 
-/// Return the path to `libgretl-1.0.a`, building it if necessary.
+/// Return the selected static/shared core artifact, building it if necessary.
 ///
 /// The source is always downloaded and extracted (the C shim needs the gretl
 /// headers to compile). If `GRETL_PREBUILT_DIR` provides a prebuilt
@@ -70,6 +71,10 @@ fn build_libgretl(out_dir: &Path, is_macos: bool, count_plugin: bool) -> PathBuf
 
   if !tarball.exists() {
     download_and_verify(&tarball);
+  }
+  if count_plugin {
+    // Cached source must retain the same provenance as a fresh download.
+    verify_sha256(&tarball, GRETL_SHA256);
   }
   extract(&tarball, &src);
   patch_monte_carlo(&src);

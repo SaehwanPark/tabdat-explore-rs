@@ -458,3 +458,17 @@ prevention is recorded in CONTRIBUTING.md; no weaker scan replaced it.
 Measurements do not resolve native plugin, licensing,
 statistical breadth or the overall Phase 1 blockers; see the
 [preliminary feasibility matrix](phase1-assessment.md).
+
+## Classical Poisson / plugin boundary (2026-10-12)
+
+The opt-in `count-plugin` slice now validates classical integer-count Poisson
+against pinned Python and independent R, with owned full covariance, exact sample,
+native-error recovery and serialized mixed calls. Default static tests stay at 14;
+the feature suite has 17 passing tests plus a separately exercised ignored loader
+probe. See the [detailed report](poisson-plugin.md) and
+[ADR 0012](../adr/0012-count-plugin-shared-core-spike.md) for shared-core matching,
+verified source, bounded private paths, gettext/host-detection prerequisites,
+full/sibling-layout unsafe inventories and platform/licensing limitations.
+Python's fractional outcomes, broader count options, other plugins and production
+packaging remain unaccepted. The prior measurements above excluded this capability
+and must not be relabeled as shared-core/plugin cost measurements.

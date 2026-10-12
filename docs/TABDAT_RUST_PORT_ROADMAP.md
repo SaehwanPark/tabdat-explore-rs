@@ -196,7 +196,9 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   and separation rejection; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
 - [ ] Implement quantile-regression fixture.
 - [ ] Implement Tobit fixture.
-- [ ] Implement Poisson fixture.
+- [x] Implement Poisson fixture (opt-in shared-core/count module, integer
+  classical MLE, full covariance/likelihood and exact sample against Python/R;
+  [report](feasibility/poisson-plugin.md); fractional/robust/offset semantics excluded).
 - [ ] Implement negative-binomial fixture.
 - [ ] Implement IV/2SLS fixture.
 - [ ] Implement panel FE fixture.

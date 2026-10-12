@@ -2,7 +2,7 @@
 
 **Disposition: partial / blocked, not complete.** Updated 2026-10-11 after
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
-native static-rendering slice #169. The
+native static-rendering slice #169 and Poisson/plugin slice #170 (2026-10-12). The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -13,7 +13,7 @@ shipping native artifacts. Proposal intent is not implemented support.
 | --- | --- | --- | --- |
 | DuckDB | Local CSV/Parquet/Arrow and bounded runtime; owned connection; HTTP ranges/values/NULL/Arrow and unsigned S3 path-style loopback reads | Continue canonical-engine bounded evaluation under ADRs 0003/0007 | TLS/authenticated S3, extension/offline/native distribution and comprehensive upstream ownership/unsafe review |
 | ReadStat | Existing pinned macOS/Linux native builds; Rust DTA facade, labels and system/tagged missing fixtures | Continue isolated DTA candidate, **do not accept product ingestion yet** | Recorded source-quality findings, callback/native review, broader format/oracle references, string-key/empty-string policies, redistribution |
-| libgretl | Existing cross-platform build; owned serialized/checked boundary; NIST/Python OLS, Python/R HC1+cluster, Python/R logit+probit; measured first/repeated use | Continue isolated statistical candidate under ADRs 0005/0006/0010; **primary backend not yet accepted** | Remaining estimator fixtures, plugin lifecycle/packaging, general sample/model/inference normalization, updated platform/unsafe/native-license review |
+| libgretl | Existing cross-platform build; owned serialized/checked boundary; NIST/Python OLS, Python/R HC1+cluster, Python/R logit+probit and classical integer Poisson; opt-in shared-core plugin build/load; measured first/repeated use | Continue isolated statistical candidate under ADRs 0005/0006/0010; **primary backend not yet accepted** | Remaining estimator fixtures, plugin lifecycle/packaging, general sample/model/inference normalization, updated platform/unsafe/native-license review |
 | Visualization | #169 native SVG/resvg scatter, explicit-bin histogram and prepared bar semantics, PNG/raster tests, policy-clean graph and release measurements; rejected #164 preserves exact Python scatter | Accept bounded static-rendering spike under ADR 0011; **no Vega-Lite or product plotting parity** | Automatic bin/category policy, full layout/font UX, Linux/platform and transitive safety/redistribution review |
 | Linear algebra | Current safe workspace QR/OLS boundary and libgretl BLAS/LAPACK build evidence | No general linear-algebra substrate is newly selected by these spikes | Bounded faer versus BLAS/LAPACK benchmark, ownership/build/thread/license evidence and accepted ADR |
 
@@ -34,13 +34,14 @@ estimator feasibility requirements.
    [ADR 0011](../adr/0011-static-svg-renderer-feasibility.md). Its
    [report](native-svg.md) records exact fixture semantics but differing layout,
    explicit-bin/category limitations, fonts and outstanding platform/safety work.
-2. **Native estimator prerequisite:** the pinned library dispatches count models
-   to dynamically loaded `count_data_estimate`; current build scripts only build
-   libgretl. Resolve plugins and their init/search-path/thread/ownership/packaging
-   boundaries before claiming those estimator fixtures pass. Plugin build/use
-   was not attempted in this session; this is source reconnaissance, not a
-   demonstrated plugin build failure.
-3. **Unmet numerical gates:** quantile, Tobit, Poisson, negative binomial,
+2. **Native plugin scope:** #170 resolves the bounded classical integer Poisson
+   prerequisite: opt-in shared core plus count module, matching linkage, private
+   bounded path and serialized process lifetime. Default static core is unchanged.
+   [ADR 0012](../adr/0012-count-plugin-shared-core-spike.md) and
+   [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
+   error recovery, nonrelocatable paths and native otool diagnostic. Other module
+   lifecycles, count options and full platform/packaging acceptance remain open.
+3. **Unmet numerical gates:** quantile, Tobit, negative binomial,
    IV/2SLS, panel FE/RE, dynamic panel, Heckman and survival fixtures are still
    unchecked. Passed linear/binary fixtures cannot substitute for these families.
 4. **Safety/distribution gates:** new libgretl safe-API defects were corrected and
@@ -64,9 +65,11 @@ gates independently prevent a whole-phase completion claim.
    accepted bounded static-artifact candidate, not production plotting. Follow up
    with automatic bins/category normalization, layout/font and Linux/platform
    evidence before integrating it into command execution.
-2. Investigate one libgretl plugin-backed estimator and its native lifecycle/build
-   contract. Open a new draft PR at the contract checkpoint, then validate with
-   pinned Python and an independent trusted reference before proceeding.
+2. Continue from the validated Poisson module with bounded NB dispersion/
+   parameterization work or another plugin family. Preserve predeclared tolerances,
+   Python/R reference provenance and exact samples. The integer/fraction contract
+   and native initialization diagnostic need explicit product decisions before
+   integration; passing Poisson does not accept all count models or plugins.
 3. Port/validate the remaining estimator families in small dependency-ordered
    PRs, preserving sample identity, covariance/optimizer conventions and failures.
 4. Review ReadStat and DuckDB unsafe/lifecycle boundaries and distribution matrix;
