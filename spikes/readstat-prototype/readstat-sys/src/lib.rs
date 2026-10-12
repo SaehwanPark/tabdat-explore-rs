@@ -137,6 +137,8 @@ pub enum DtaError {
   Native { code: i32, message: Option<String> },
   /// The path could not be converted to a NUL-terminated C string.
   Path(String),
+  /// The callback stream violates the bounded ingestion contract.
+  Boundary(String),
 }
 
 impl std::fmt::Display for DtaError {
@@ -150,6 +152,7 @@ impl std::fmt::Display for DtaError {
         }
       }
       Self::Path(message) => write!(f, "invalid path: {message}"),
+      Self::Boundary(message) => write!(f, "readstat boundary: {message}"),
     }
   }
 }
@@ -265,6 +268,57 @@ struct ParserState {
   rows: Vec<Vec<DtaValue>>,
   label_sets: Vec<DtaLabelSet>,
   error: Option<String>,
+  boundary_error: Option<String>,
+}
+
+// These are explicit prototype resource limits, not DTA format limits.
+const MAX_CELLS: usize = 10_000_000;
+const MAX_VARIABLES: usize = 32_767;
+
+impl ParserState {
+  fn set_metadata(&mut self, metadata: DtaMetadata) -> Result<(), String> {
+    let rows = usize::try_from(metadata.row_count).map_err(|_| "negative row count")?;
+    let columns = usize::try_from(metadata.var_count).map_err(|_| "negative variable count")?;
+    if self.metadata.is_some()
+      || columns == 0
+      || columns > MAX_VARIABLES
+      || rows
+        .checked_mul(columns)
+        .is_none_or(|cells| cells > MAX_CELLS)
+    {
+      return Err("metadata exceeds bounded dimensions or is repeated".into());
+    }
+    self.metadata = Some(metadata);
+    Ok(())
+  }
+
+  fn check_variable(&self, index: c_int) -> Result<(), String> {
+    let metadata = self.metadata.as_ref().ok_or("variable before metadata")?;
+    let index = usize::try_from(index).map_err(|_| "negative variable index")?;
+    if index != self.variables.len() || index >= metadata.var_count as usize {
+      return Err("variable index violates metadata/order".into());
+    }
+    Ok(())
+  }
+
+  fn store_cell(&mut self, obs: c_int, column: c_int, cell: DtaValue) -> Result<(), String> {
+    let metadata = self.metadata.as_ref().ok_or("value before metadata")?;
+    let row = usize::try_from(obs).map_err(|_| "negative observation index")?;
+    let column = usize::try_from(column).map_err(|_| "negative cell variable index")?;
+    if self.variables.len() != metadata.var_count as usize
+      || column >= self.variables.len()
+      || row >= metadata.row_count as usize
+    {
+      return Err("cell index or variable count violates metadata".into());
+    }
+    while self.rows.len() <= row {
+      self
+        .rows
+        .push(vec![DtaValue::SystemMissing; self.variables.len()]);
+    }
+    self.rows[row][column] = cell;
+    Ok(())
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -394,17 +448,17 @@ extern "C" fn metadata_trampoline(metadata: *mut readstat_metadata_t, ctx: *mut 
     let state = unsafe { &mut *(ctx as *mut ParserState) };
     // SAFETY: `metadata` is valid for the duration of this callback.
     let meta = extract_metadata(metadata as *const readstat_metadata_t);
-    state.metadata = Some(meta);
-  }));
-  if outcome.is_err() {
-    READSTAT_HANDLER_ABORT
-  } else {
+    if let Err(error) = state.set_metadata(meta) {
+      state.boundary_error = Some(error);
+      return READSTAT_HANDLER_ABORT;
+    }
     READSTAT_HANDLER_OK
-  }
+  }));
+  outcome.unwrap_or(READSTAT_HANDLER_ABORT)
 }
 
 extern "C" fn variable_trampoline(
-  _index: c_int,
+  index: c_int,
   variable: *mut readstat_variable_t,
   label_set_name: *const c_char,
   ctx: *mut c_void,
@@ -412,15 +466,16 @@ extern "C" fn variable_trampoline(
   let outcome = catch_unwind(AssertUnwindSafe(|| {
     // SAFETY: as in `metadata_trampoline`.
     let state = unsafe { &mut *(ctx as *mut ParserState) };
+    if let Err(error) = state.check_variable(index) {
+      state.boundary_error = Some(error);
+      return READSTAT_HANDLER_ABORT;
+    }
     // SAFETY: `variable`/`label_set_name` are valid for this callback.
     let var = extract_variable(variable as *const readstat_variable_t, label_set_name);
     state.variables.push(var);
-  }));
-  if outcome.is_err() {
-    READSTAT_HANDLER_ABORT
-  } else {
     READSTAT_HANDLER_OK
-  }
+  }));
+  outcome.unwrap_or(READSTAT_HANDLER_ABORT)
 }
 
 // SAFETY: this unique symbol is called only by the header-compiled bridge,
@@ -436,25 +491,16 @@ extern "C" fn value_trampoline(
     // SAFETY: as in `metadata_trampoline`.
     let state = unsafe { &mut *(ctx as *mut ParserState) };
     // SAFETY: `variable` is valid for this callback.
-    let col =
-      unsafe { readstat_variable_get_index(variable as *const readstat_variable_t) } as usize;
+    let col = unsafe { readstat_variable_get_index(variable as *const readstat_variable_t) };
     // SAFETY: `value`/`variable` are valid for this callback.
     let cell = extract_value(value, variable as *const readstat_variable_t);
-    let row = obs_index as usize;
-    while state.rows.len() <= row {
-      state.rows.push(Vec::new());
+    if let Err(error) = state.store_cell(obs_index, col, cell) {
+      state.boundary_error = Some(error);
+      return READSTAT_HANDLER_ABORT;
     }
-    let row = &mut state.rows[row];
-    while row.len() <= col {
-      row.push(DtaValue::SystemMissing);
-    }
-    row[col] = cell;
-  }));
-  if outcome.is_err() {
-    READSTAT_HANDLER_ABORT
-  } else {
     READSTAT_HANDLER_OK
-  }
+  }));
+  outcome.unwrap_or(READSTAT_HANDLER_ABORT)
 }
 
 // SAFETY: unique bridge symbol; value and strings live until this callback
@@ -505,6 +551,18 @@ extern "C" fn error_trampoline(message: *const c_char, ctx: *mut c_void) {
   let _ = outcome;
 }
 
+// A non-null parser has exactly one owner, including early returns and panics
+// outside callbacks. Native callbacks complete before this guard is dropped.
+struct NativeParser(*mut readstat_parser_t);
+
+impl Drop for NativeParser {
+  fn drop(&mut self) {
+    // SAFETY: constructed only after the null check; owns this parser uniquely,
+    // and parse_dta does not retain callbacks/context after returning.
+    unsafe { readstat_parser_free(self.0) };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -523,8 +581,11 @@ fn parse_dta_with_metadata_handler(
   path: &Path,
   metadata_handler: extern "C" fn(*mut readstat_metadata_t, *mut c_void) -> c_int,
 ) -> Result<DtaDataset, DtaError> {
-  let c_path = CString::new(path.as_os_str().to_string_lossy().as_bytes())
-    .map_err(|_| DtaError::Path("path contains NUL".into()))?;
+  let path = path
+    .to_str()
+    .ok_or_else(|| DtaError::Path("path is not UTF-8".into()))?;
+  let c_path =
+    CString::new(path.as_bytes()).map_err(|_| DtaError::Path("path contains NUL".into()))?;
 
   let mut state = ParserState {
     metadata: None,
@@ -532,6 +593,7 @@ fn parse_dta_with_metadata_handler(
     rows: Vec::new(),
     label_sets: Vec::new(),
     error: None,
+    boundary_error: None,
   };
 
   // SAFETY: `readstat_parser_init` returns a heap-allocated parser that we own
@@ -545,23 +607,22 @@ fn parse_dta_with_metadata_handler(
     });
   }
 
+  let parser = NativeParser(parser);
+
   // SAFETY: the trampolines are `extern "C"` functions with the exact
   // signatures ReadStat expects; `parser` is valid until freed below.
   let setup = unsafe {
     [
-      readstat_set_metadata_handler(parser, metadata_handler),
-      readstat_set_variable_handler(parser, variable_trampoline),
-      tabdat_readstat_set_value_handlers(parser),
-      readstat_set_error_handler(parser, error_trampoline),
+      readstat_set_metadata_handler(parser.0, metadata_handler),
+      readstat_set_variable_handler(parser.0, variable_trampoline),
+      tabdat_readstat_set_value_handlers(parser.0),
+      readstat_set_error_handler(parser.0, error_trampoline),
     ]
     .into_iter()
     .find(|code| *code != READSTAT_OK)
     .unwrap_or(READSTAT_OK)
   };
   if setup != READSTAT_OK {
-    // SAFETY: `parser` is the valid handle created above and is freed exactly
-    // once on this early-exit path.
-    unsafe { readstat_parser_free(parser) };
     return Err(DtaError::Native {
       code: setup,
       message: state.error,
@@ -574,17 +635,17 @@ fn parse_dta_with_metadata_handler(
   // trampolines copy all borrowed data before returning.
   let code = unsafe {
     readstat_parse_dta(
-      parser,
+      parser.0,
       c_path.as_ptr(),
       &mut state as *mut ParserState as *mut c_void,
     )
   };
 
-  // SAFETY: `parser` is the valid handle created above and is freed exactly
-  // once here, after `readstat_parse_dta` has returned and no callback can be
-  // on the stack.
-  unsafe { readstat_parser_free(parser) };
+  drop(parser); // Native call/callbacks have completed; release before shaping results.
 
+  if let Some(error) = state.boundary_error {
+    return Err(DtaError::Boundary(error));
+  }
   if code != READSTAT_OK {
     return Err(DtaError::Native {
       code,
@@ -592,13 +653,14 @@ fn parse_dta_with_metadata_handler(
     });
   }
 
-  let metadata = state.metadata.unwrap_or(DtaMetadata {
-    row_count: state.rows.len() as i64,
-    var_count: state.variables.len() as i64,
-    file_label: None,
-    file_format_version: 0,
-    is_64bit: false,
-  });
+  let metadata = state
+    .metadata
+    .ok_or_else(|| DtaError::Boundary("missing metadata".into()))?;
+  if state.rows.len() != metadata.row_count as usize
+    || state.variables.len() != metadata.var_count as usize
+  {
+    return Err(DtaError::Boundary("incomplete callback stream".into()));
+  }
 
   Ok(DtaDataset {
     metadata,

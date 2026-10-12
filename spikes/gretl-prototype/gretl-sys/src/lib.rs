@@ -19,6 +19,25 @@ pub fn parameter_count_supported(count: usize) -> bool {
       .is_some_and(|cells| c_int::try_from(cells).is_ok())
 }
 
+/// Explicit resource envelope for the feasibility adapter, not engine limits.
+pub fn dataset_dimensions_supported(nvar: usize, nobs: usize) -> bool {
+  (1..=4096).contains(&nvar)
+    && (1..=1_000_000).contains(&nobs)
+    && nvar
+      .checked_mul(nobs)
+      .is_some_and(|cells| cells <= 10_000_000)
+}
+
+fn check_work_budget(dset: &GretlDataset, parameters: usize) {
+  assert!(
+    parameters <= 1024
+      && parameters
+        .checked_mul(dset.nobs)
+        .is_some_and(|cells| cells <= 10_000_000),
+    "prototype native work budget exceeded"
+  );
+}
+
 static NATIVE: Mutex<()> = Mutex::new(());
 static INIT: Once = Once::new();
 
@@ -205,7 +224,10 @@ impl GretlDataset {
   }
 
   pub fn new(nvar: usize, nobs: usize) -> Self {
-    assert!(nvar > 0 && nobs > 0, "dataset dimensions must be positive");
+    assert!(
+      dataset_dimensions_supported(nvar, nobs),
+      "prototype dataset dimension budget exceeded"
+    );
     let vars = c_int::try_from(nvar).expect("too many variables");
     let obs = c_int::try_from(nobs).expect("too many observations");
     let ptr = native(|| {
@@ -373,6 +395,10 @@ impl GretlModel {
         && parameter_count_supported(list.len() - separator - 1 + added_constant),
       "IV parameter/instrument count exceeds native arithmetic"
     );
+    check_work_budget(
+      dset,
+      (separator - 2).max(list.len() - separator - 1 + added_constant),
+    );
     assert!(list[1] > 0, "outcome cannot be reserved constant");
     assert!(
       list[1..]
@@ -497,6 +523,7 @@ impl GretlModel {
       end >= 3 && parameter_count_supported(end - 2 + usize::from(!exponential)),
       "duration parameter count exceeds native arithmetic"
     );
+    check_work_budget(dset, end - 2 + usize::from(!exponential));
     assert!(
       list[2..end].contains(&0),
       "native duration requires constant"
@@ -617,6 +644,7 @@ impl GretlModel {
       parameter_count_supported(total),
       "two-step packed covariance exceeds native integer arithmetic"
     );
+    check_work_budget(dset, total);
     let sep = separators[0];
     assert!(
       sep >= 3 && sep + 3 < list.len(),
@@ -668,6 +696,7 @@ impl GretlModel {
       parameter_count_supported(list.len() - 2 + extra),
       "packed covariance exceeds native integer arithmetic"
     );
+    check_work_budget(dset, list.len() - 2 + extra);
     assert_eq!(
       list[0],
       len - 1,

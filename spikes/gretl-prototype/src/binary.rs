@@ -1,5 +1,5 @@
 use crate::{Coefficient, EstimationProblem, GretlError};
-use gretl_sys::{GretlDataset, GretlModel, Stat};
+use gretl_sys::{GretlModel, Stat};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryLink {
@@ -50,7 +50,7 @@ pub fn run_binary(
       "dimensions exceed native limits".into(),
     ));
   }
-  let mut dataset = GretlDataset::new(nvar, nobs);
+  let mut dataset = crate::new_dataset(nvar, nobs)?;
   dataset.set_varname(1, "td_y");
   for i in 0..problem.predictors.len() {
     dataset.set_varname(i + 2, &format!("td_x{i}"));

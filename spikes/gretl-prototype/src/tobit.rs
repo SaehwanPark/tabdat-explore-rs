@@ -1,5 +1,5 @@
 use crate::{Coefficient, EstimationProblem, GretlError};
-use gretl_sys::{GretlDataset, GretlModel, Stat};
+use gretl_sys::{GretlModel, Stat};
 
 #[derive(Debug, Clone)]
 pub struct TobitResult {
@@ -54,7 +54,7 @@ pub fn run_tobit(
   {
     return Err(invalid("Tobit needs at least one uncensored observation"));
   }
-  let mut dset = GretlDataset::new(p + 2, n);
+  let mut dset = crate::new_dataset(p + 2, n)?;
   for i in 0..p + 1 {
     dset.set_varname(i + 1, &format!("td_v{i}"));
   }

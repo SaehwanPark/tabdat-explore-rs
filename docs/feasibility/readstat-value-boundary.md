@@ -1,5 +1,11 @@
 # ReadStat pointer-only value boundary
 
+Follow-up: PR #183 completes the Phase 1 architecture review and adds parser
+RAII, checked callback/resource/UTF-8 path contracts, archive verification and
+native constructor/read-error patches with fault/UBSan evidence. See
+[the final report](phase1-final-report.md). The #182 evidence/deferred list below
+is historical, not a current claim that those addressed items remain unresolved.
+
 Status: **bounded hardening complete; wider acceptance deferred**. Base
 `8981ac8`; [PR #182](https://github.com/SaehwanPark/tabdat-explore-rs/pull/182).
 This is not Phase 1 acceptance or DTA migration parity.

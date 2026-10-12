@@ -146,6 +146,15 @@ Create a clean Rust-port workspace with explicit links to the Python implementat
 
 Resolve the largest backend and FFI uncertainties before implementing the product.
 
+**Complete (2026-10-12, PR #183).** The [final feasibility report](feasibility/phase1-final-report.md)
+and [ADR 0021](adr/0021-phase1-backend-and-linear-algebra-decisions.md) accept the
+initial backend architecture and explicitly tested capability envelopes. Exit
+review covers first-party boundaries and immediate native ownership contracts,
+not proof of all transitive C or shipping approval. Broad parity, hostile inputs,
+relocation, artifact-specific licenses/corresponding source and full sanitizer/
+leak/platform certification remain hard integration/release prerequisites in
+later phases; the original six exit items below are retained and evidenced.
+
 ### 3.1 DuckDB spike
 
 - [x] Create a minimal `duckdb-rs` prototype (`spikes/duckdb-prototype/`; [report](feasibility/duckdb.md)).
@@ -234,7 +243,8 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   and [report](feasibility/survival.md)).
 - [x] Compare results against Python TabDat (NIST Longley; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [x] Compare results against trusted reference outputs (NIST/ITL certified; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
-- [ ] Document semantic mismatches.
+- [x] Document semantic mismatches ([final index](feasibility/phase1-final-report.md#numerical-and-semantic-mismatch-index);
+  original references/tolerances and corrected contracts in ADRs 0013–0018).
 - [x] Benchmark first-use initialization (five fresh release processes, caches
   uncontrolled; [measurements](feasibility/libgretl.md#initialization-and-model-costs-2026-10-11)).
 - [x] Benchmark repeated-model overhead (complete owned OLS/logit adapter calls,
@@ -254,27 +264,40 @@ evidence remains on draft PR #164; native SVG is not Vega-Lite compatibility.
   labels/data/order and relative scatter coordinates; differing layout/ticks/fonts
   and bar/histogram dimensions explicitly recorded; [report](feasibility/native-svg.md)).
 - [x] Measure initialization and render overhead (five macOS release processes;
-  [report](feasibility/native-svg.md)); Linux/font distribution remain unvalidated.
+  [report](feasibility/native-svg.md)); Linux rendering fixtures now also pass;
+  Linux cost measurements and font distribution remain unvalidated.
 
 ### 3.5 Feasibility decision
 
-- [ ] Produce backend feasibility report.
-- [ ] Decide whether libgretl is accepted as the primary compiled classical/econometric backend.
-- [ ] Decide whether ReadStat is accepted for DTA support.
-- [ ] Decide the initial linear-algebra substrate.
-- [ ] Decide whether any FFI dependency is too costly to justify.
-- [ ] Record accepted decisions in ADRs.
+- [x] Produce [final backend feasibility report](feasibility/phase1-final-report.md).
+- [x] Accept libgretl as the primary compiled classical/econometric backend,
+  alongside native Rust utilities, for the explicit validated baseline variants (ADR 0021).
+- [x] Accept patched ReadStat for DTA-only ingestion; broader formats/CLI/writers
+  and arbitrary hostile-file acceptance rejected from the initial envelope (ADR 0021).
+- [x] Select libgretl's BLAS/LAPACK as the initial compiled numerical substrate;
+  retain existing safe QR utilities; no speculative faer/standalone BLAS API (ADR 0021).
+- [x] Decide FFI costs are justified for the selected capabilities; reject
+  duplicate engines/cores and unnecessary FFI, retain rejected Vega #164 (ADR 0021).
+- [x] Record accepted decisions in [ADR 0021](adr/0021-phase1-backend-and-linear-algebra-decisions.md).
 
 ### Exit gate
 
-- [ ] DuckDB spike passes.
-- [ ] DTA ingestion spike passes.
-- [ ] At least the core libgretl estimator set passes numerical validation.
-- [x] Plot rendering works without Python (bounded macOS native SVG/PNG spike,
-  policy-clean graph; not production or cross-platform parity;
-  [report](feasibility/native-svg.md)).
-- [ ] Unsafe boundaries have been reviewed.
-- [ ] No unresolved P0 feasibility blocker remains.
+- [x] DuckDB spike passes (3 local/owned-Arrow tests plus explicit HTTP/unsigned
+  S3 test on macOS/emulated Linux; [final evidence](feasibility/phase1-final-report.md)).
+- [x] DTA ingestion spike passes (13 Rust tests each platform, native UBSan
+  constructor/read-error fault recovery; [final evidence](feasibility/phase1-final-report.md)).
+- [x] At least the core libgretl estimator set passes numerical validation
+  (all listed baseline families, unchanged trusted-reference tolerances;
+  [numerical index](feasibility/phase1-final-report.md#numerical-and-semantic-mismatch-index)).
+- [x] Plot rendering works without Python (8 native SVG/PNG tests each on
+  macOS/emulated Linux, policy-clean graph; no pixel/product parity;
+  [report](feasibility/native-svg.md), [final evidence](feasibility/phase1-final-report.md)).
+- [x] Unsafe boundaries have been reviewed (owner review of all first-party
+  adapters and immediate ownership contracts, actionable defects fixed/tested;
+  [review ledger](feasibility/phase1-final-report.md#reviewed-ownership--unsafe-boundaries)).
+- [x] No unresolved P0 feasibility blocker remains in the accepted envelope
+  ([finding dispositions and later hard gates](feasibility/phase1-final-report.md#p0-disposition-and-later-hard-gates));
+  shipping/unsupported capabilities remain separately gated, not silently accepted.
 
 ---
 
@@ -1472,6 +1495,13 @@ Ship TabDat as a normal native CLI without requiring Python or R for standard us
 - [ ] Evaluate Windows feasibility.
 - [ ] Decide static vs dynamic linkage per dependency.
 - [ ] Audit native library redistribution requirements.
+- [ ] Complete Phase 1 deferred native release obligations: physical-host matrix,
+  supported ASan/leak/allocator/hostile-input tests and full transitive/native audit;
+  do not infer these from the bounded UBSan/owner-review evidence.
+- [ ] Make shared-core/plugins relocatable and verify installation without build/Homebrew paths.
+- [ ] Assemble artifact-specific native sources, patches/build scripts, notices and
+  corresponding-source obligations; finalize the project's release license.
+- [ ] Resolve runtime stability failures such as issue #167 before claiming canonical workflow reliability.
 - [ ] Audit AGPL/GPL compatibility and source obligations.
 - [ ] Bundle required license notices.
 - [ ] Test installation into a clean environment.

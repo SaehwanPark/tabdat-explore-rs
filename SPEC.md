@@ -1,5 +1,16 @@
 # TabDat Rust implementation state
 
+## Phase 1 architecture acceptance (2026-10-12)
+
+All six Phase 1 feasibility exit gates are checked under PR #183 and
+[the final report](docs/feasibility/phase1-final-report.md).
+[ADR 0021](docs/adr/0021-phase1-backend-and-linear-algebra-decisions.md) selects
+DuckDB, DTA-only patched ReadStat, primary compiled libgretl with existing Rust
+utilities, reused BLAS/LAPACK and native SVG/resvg. These are architectural
+choices backed by isolated spikes, **not new installed commands, product parity
+or native binary distribution approval**. Source/checksum/ownership/resource and
+reference contracts are explicit; broader integration and release gates remain.
+
 ## Current behavior
 
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits

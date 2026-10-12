@@ -1,6 +1,13 @@
 # Phase 1 preliminary feasibility assessment
 
-**Disposition: partial / in progress, not complete.** Updated 2026-10-12 after
+**Historical snapshot through PR #182. Superseded by the
+[final Phase 1 report](phase1-final-report.md) and
+[ADR 0021](../adr/0021-phase1-backend-and-linear-algebra-decisions.md).**
+Phase 1 is now complete as bounded feasibility/architecture acceptance; all
+statements below describe the earlier review state, not the current exit tracker.
+Product integration and shipping remain unaccepted.
+
+**Historical disposition: partial / in progress, not complete.** Updated 2026-10-12 after
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
 native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
