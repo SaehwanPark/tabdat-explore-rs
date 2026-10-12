@@ -212,12 +212,20 @@ fn configure(src: &Path, is_macos: bool, count_plugin: bool) {
   if count_plugin {
     args.push(&libdir);
   }
+  let tool_path = format!("/opt/homebrew/opt/gettext/bin:{}", std::env::var("PATH").unwrap_or_default());
   let mut env: Vec<(&str, &str)> = vec![];
+  if is_macos && count_plugin {
+    // gettext is keg-only on this host. Without its header the generated
+    // configure skips canonicalization even with NLS requested.
+    env.push(("CPPFLAGS", "-I/opt/homebrew/include -I/opt/homebrew/opt/gettext/include"));
+    env.push(("PATH", &tool_path));
+  }
   if is_macos {
     env.push(("OMP_LIB", "-L/opt/homebrew/opt/libomp/lib -lomp"));
     env.push((
       "LDFLAGS",
-      "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib",
+      if count_plugin { "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib -L/opt/homebrew/opt/gettext/lib" }
+      else { "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib" },
     ));
     env.push((
       "PKG_CONFIG_PATH",
@@ -246,13 +254,10 @@ fn make_lib(src: &Path, is_macos: bool) {
   run("make", &args, src);
 }
 
-/// Compile the C ownership shim into a static archive (libshim.a).
-///
-/// The shim includes `libgretl.h`, which pulls in glib, libxml2, and other
-/// dependency headers. Those live in platform-specific subdirectories, so the
-/// include flags are obtained from `pkg-config` (the same mechanism gretl's
-/// configure uses) rather than hard-coded paths.
+/// Build only the count module against the same shared core.
 fn make_count_plugin(src: &Path, is_macos: bool) {
+  // Building a single module bypasses the aggregate target that creates .deps.
+  std::fs::create_dir_all(src.join("plugin/.deps")).expect("create plugin dependency directory");
   let cflags = if is_macos {
     "CFLAGS=-g -O2 -I/opt/homebrew/include -I/opt/homebrew/opt/libomp/include -Xclang -fopenmp"
   } else {
@@ -262,6 +267,8 @@ fn make_count_plugin(src: &Path, is_macos: bool) {
   assert!(src.join("plugin/.libs/poisson.so").exists(), "poisson.so missing after build");
 }
 
+/// Compile the ownership shim using headers and pkg-config flags from the pinned
+/// core build. Only the count feature receives the bounded private plugin path.
 fn build_shim(manifest_dir: &Path, out_dir: &Path, is_macos: bool, count_plugin: bool) -> PathBuf {
   let shim_c = manifest_dir.join("shim.c");
   let shim_obj = out_dir.join("shim.o");
