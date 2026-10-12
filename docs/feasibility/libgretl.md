@@ -490,6 +490,10 @@ core/lifetime applies, with release first-use/repeated measurements in that repo
 Epanechnikov/Hall-Sheather covariance under ADR 0015. Original IRLS stopping and
 native sparsity differences are explicit, not hidden parity; additional rq NCSA
 notice and independently selected shared module are recorded.
+[PH survival](survival.md) adds exponential/Weibull joint observed covariance,
+AFT/raw-sigma and event-density normalization under ADR 0016, exact event/censor IDs
+and redundant-dummy protections. Original approximate Python SEs remain explicit
+deviation; independent duration module, missing-loader and release costs are recorded.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

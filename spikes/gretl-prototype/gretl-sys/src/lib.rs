@@ -77,6 +77,13 @@ unsafe extern "C" {
   ) -> *mut c_void;
   #[cfg(feature = "quantile-plugin")]
   fn gretl_shim_normal_quantile(probability: c_double) -> c_double;
+  #[cfg(feature = "survival-plugin")]
+  fn gretl_shim_survival(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    exponential: c_int,
+  ) -> *mut c_void;
   fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   fn gretl_shim_panel(
     dset: *mut c_void,
@@ -391,6 +398,46 @@ impl GretlModel {
       unsafe { gretl_shim_quantile(dset.ptr, list.as_ptr(), len, q) }
     });
     assert!(!ptr.is_null(), "gretl_shim_quantile returned NULL");
+    Self { ptr }
+  }
+
+  #[cfg(feature = "survival-plugin")]
+  pub fn survival(dset: &GretlDataset, list: &[c_int], exponential: bool) -> Self {
+    let len = c_int::try_from(list.len()).expect("duration list exceeds native limits");
+    assert!(
+      list.len() >= 3 && list[0] == len - 1,
+      "invalid duration list count/length"
+    );
+    assert!(list[1] > 0, "duration outcome cannot be constant");
+    let separators: Vec<_> = list
+      .iter()
+      .enumerate()
+      .filter(|(_, v)| **v == -100)
+      .map(|(i, _)| i)
+      .collect();
+    assert!(
+      separators.is_empty()
+        || (separators.len() == 1 && separators[0] == list.len() - 2 && list[list.len() - 1] > 0),
+      "censor separator must be second last with nonconstant dummy"
+    );
+    let end = separators.first().copied().unwrap_or(list.len());
+    assert!(
+      list[2..end].contains(&0),
+      "native duration requires constant"
+    );
+    assert!(
+      list[1..]
+        .iter()
+        .all(|&i| i == -100 || (i >= 0 && (i as usize) < dset.nvar)),
+      "duration index out of bounds"
+    );
+    let ptr = native(|| {
+      // SAFETY: live owned dataset, exact count, validated separator/constant
+      // and all indices checked. Native validates the dummy/times and owns its
+      // copied MODEL buffers. Loader/fit/destructors share this process lock.
+      unsafe { gretl_shim_survival(dset.ptr, list.as_ptr(), len, i32::from(exponential)) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_survival returned NULL");
     Self { ptr }
   }
 

@@ -22,6 +22,7 @@
 #include "gretl_panel.h"
 
 #include <string.h>
+#include <math.h>
 
 /* ------------------------------------------------------------------ */
 /* Process lifecycle                                                  */
@@ -243,6 +244,43 @@ void *gretl_shim_quantile(void *handle, const int *list, int nlist, double q)
 double gretl_shim_normal_quantile(double probability)
 {
     return normal_cdf_inverse(probability);
+}
+#endif
+
+#ifdef TD_SPIKE_PLUGIN_PATH
+void *gretl_shim_survival(void *handle, const int *list, int nlist, int exponential)
+{
+    if (handle == NULL || list == NULL || nlist < 3 || list[0] != nlist-1) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    DATASET *dset = handle;
+    int censor = list[nlist-2] == LISTSEP ? list[nlist-1] : 0;
+    int any_event = 0, any_censored = 0;
+    for (int t = 0; t < dset->n; t++) {
+        double time = dset->Z[list[1]][t];
+        double c = censor ? dset->Z[censor][t] : 0.0;
+        if (!isfinite(time) || time <= 0.0 || (c != 0.0 && c != 1.0)) {
+            model->errcode = E_DATA;
+            return model;
+        }
+        any_event |= c == 0.0;
+        any_censored |= c == 1.0;
+    }
+    if (!any_event) { model->errcode = E_DATA; return model; }
+    /* duration_precheck blindly decrements the initial OLS rank for a dummy.
+     * An all-zero dummy was already dropped by OLS: omit it on an owned list,
+     * never mutate the caller's slice or accidentally remove a real predictor. */
+    int *normalized = NULL;
+    const int *spec = list;
+    if (censor && !any_censored) {
+        normalized = gretl_list_copy(list);
+        if (normalized == NULL) { model->errcode = E_ALLOC; return model; }
+        normalized[0] -= 2;
+        spec = normalized;
+    }
+    *model = duration_model(spec, dset, exponential ? OPT_E : OPT_NONE, NULL);
+    free(normalized);
+    return model;
 }
 #endif
 

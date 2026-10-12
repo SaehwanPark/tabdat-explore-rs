@@ -251,6 +251,23 @@ in [report](quantile.md). NCSA additional native notice is preserved. Three owne
 reviews add finite sigma² and dimension guards. No Cargo dependency, waiver or runtime
 Python/R. Continue dynamic panel/selection/survival and acceptance decisions.
 
+## Slice 14: exponential/Weibull PH survival (complete)
+
+[PR #176](https://github.com/SaehwanPark/tabdat-explore-rs/pull/176) validates
+PH beta/logshape and full observed covariance/SE/likelihood/sample/event/censor IDs
+against R and external Python. Native AFT/raw-sigma and log-time likelihood require
+explicit joint Jacobian and event-only density normalization; original Python
+approximate SEs fail and remain preserved under ADR 0016. Tolerance unchanged.
+
+Shim protects positive times/binary censor/all-censored input and normalizes an
+all-zero dummy on an owned list, avoiding native blind rank decrement. Full rank,
+all-event, time-unit, recovery, parallel/mixed-plugin and actual linked missing-module
+restoration tests pass. Mac all41/survival26/default21 plus previous feature suites,
+Linux all41/survival26/default21, policy/unsafe inventory and release measures in
+[report](survival.md). Three owner reviews and follow-up fixes; no new dependency,
+waiver, runtime R/Python or product/phase-completion claim. Continue selection/
+dynamic panel and broader native/backend acceptance work.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

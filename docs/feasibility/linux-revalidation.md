@@ -72,3 +72,13 @@ missing-module claim; actual linked missing quantreg.so probe is separately
 exercised on macOS. Final logs `/tmp/quantile-linux-final.log` and
 `/tmp/quantile-linux-last.log`. [Report](quantile.md),
 [ADR 0015](../adr/0015-quantile-lp-and-iid-covariance-normalization.md).
+
+## PH survival and low-level censor protections
+
+PR #176 validates **41 combined, 26 survival-only, 21 default** tests on the same
+emulated Linux image, including exponential/Weibull full PH observed covariance/
+likelihood, exact event IDs, time-unit Jacobian, all-event redundant-dummy normalization
+and five-way mixed-plugin threading. Actual missing-duration probe runs separately
+on macOS; no Linux missing-module/host-performance or distribution claim.
+Final log `/tmp/survival-linux.log`; [report](survival.md),
+[ADR 0016](../adr/0016-survival-ph-and-observed-information.md).
