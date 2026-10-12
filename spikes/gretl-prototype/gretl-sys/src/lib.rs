@@ -68,6 +68,15 @@ unsafe extern "C" {
   ) -> *mut c_void;
   #[cfg(feature = "tobit-plugin")]
   fn gretl_shim_tobit_vcv(handle: *mut c_void, i: c_int, j: c_int) -> c_double;
+  #[cfg(feature = "quantile-plugin")]
+  fn gretl_shim_quantile(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    q: c_double,
+  ) -> *mut c_void;
+  #[cfg(feature = "quantile-plugin")]
+  fn gretl_shim_normal_quantile(probability: c_double) -> c_double;
   fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   fn gretl_shim_panel(
     dset: *mut c_void,
@@ -86,6 +95,19 @@ unsafe extern "C" {
   fn gretl_shim_model_vcv(handle: *const c_void, i: c_int, j: c_int) -> c_double;
   fn gretl_shim_model_scalar(handle: *const c_void, which: c_int) -> c_double;
   fn gretl_shim_model_free(handle: *mut c_void);
+}
+
+#[cfg(feature = "quantile-plugin")]
+pub fn normal_quantile(probability: f64) -> f64 {
+  assert!(
+    probability.is_finite() && probability > 0.0 && probability < 1.0,
+    "normal probability must be strictly between zero and one"
+  );
+  native(|| {
+    // SAFETY: finite strictly interior probability, scalar-only native function;
+    // no ownership transfer, and existing process serialization still applies.
+    unsafe { gretl_shim_normal_quantile(probability) }
+  })
 }
 
 /// Scalar fit-statistic selectors for [`GretlModel::scalar`].
@@ -353,6 +375,23 @@ impl GretlModel {
       // no foreign matrix storage escapes or outlives its RAII model owner.
       unsafe { gretl_shim_tobit_vcv(self.ptr, i, j) }
     })
+  }
+
+  #[cfg(feature = "quantile-plugin")]
+  pub fn quantile(dset: &GretlDataset, list: &[c_int], q: f64) -> Self {
+    let len = Self::checked_list_len(dset, list);
+    assert!(
+      q.is_finite() && (0.01..=0.99).contains(&q),
+      "native quantile must be .01 through .99"
+    );
+    let ptr = native(|| {
+      // SAFETY: live owned dataset, checked list/indices and native q range.
+      // The shim allocates/frees the one-element tau matrix within this locked
+      // call; the model stores a scalar or owned copy, never a borrowed tau.
+      unsafe { gretl_shim_quantile(dset.ptr, list.as_ptr(), len, q) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_quantile returned NULL");
+    Self { ptr }
   }
 
   fn checked_list_len(dset: &GretlDataset, list: &[c_int]) -> c_int {

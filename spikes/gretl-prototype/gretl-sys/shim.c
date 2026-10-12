@@ -33,7 +33,7 @@ void gretl_shim_init(void)
 #ifdef TD_SPIKE_PLUGIN_PATH
     /* plugins.c concatenates path + basename into MAXLEN storage. Keep the
      * compile-time, build-owned path bounded, including separator and suffix. */
-    _Static_assert(sizeof(TD_SPIKE_PLUGIN_PATH) + sizeof("/interval.so") < MAXLEN,
+    _Static_assert(sizeof(TD_SPIKE_PLUGIN_PATH) + sizeof("/quantreg.so") < MAXLEN,
                    "plugin build path exceeds native path buffer");
     set_gretl_plugin_path(TD_SPIKE_PLUGIN_PATH);
 #endif
@@ -222,6 +222,27 @@ double gretl_shim_tobit_vcv(void *handle, int i, int j)
     int k = model->ncoeff + 1;
     if (vcv == NULL || vcv->rows != k || vcv->cols != k || i < 0 || j < 0 || i >= k || j >= k) return NADBL;
     return gretl_matrix_get(vcv, i, j);
+}
+#endif
+
+#ifdef TD_SPIKE_PLUGIN_PATH
+void *gretl_shim_quantile(void *handle, const int *list, int nlist, double q)
+{
+    if (handle == NULL || list == NULL || nlist < 3 || list[0] != nlist-1) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    gretl_matrix *tau = gretl_matrix_alloc(1, 1);
+    if (tau == NULL) { model->errcode = E_ALLOC; return model; }
+    tau->val[0] = q;
+    *model = quantreg(tau, list, handle, OPT_NONE, NULL);
+    /* Single-quantile rq_driver stores tau as scalar metadata, not a borrow. */
+    gretl_matrix_free(tau);
+    return model;
+}
+
+double gretl_shim_normal_quantile(double probability)
+{
+    return normal_cdf_inverse(probability);
 }
 #endif
 

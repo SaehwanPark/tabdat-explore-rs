@@ -8,6 +8,7 @@ description = "Safe facade over libgretl OLS for the TabDat estimator-backend fe
 [features]
 count-plugin = ["gretl-sys/count-plugin"]
 tobit-plugin = ["gretl-sys/tobit-plugin"]
+quantile-plugin = ["gretl-sys/quantile-plugin"]
 
 [dependencies]
 gretl-sys = { path = "gretl-sys", version = "=0.0.0" }
@@ -21,3 +22,8 @@ path = "src/lib.rs"
 name = "tobit-measure"
 path = "src/bin/tobit-measure.rs"
 required-features = ["tobit-plugin"]
+
+[[bin]]
+name = "quantile-measure"
+path = "src/bin/quantile-measure.rs"
+required-features = ["quantile-plugin"]
