@@ -36,6 +36,7 @@ pub fn run_survival(
   let k = p + 1;
   let weibull = distribution == SurvivalDistribution::Weibull;
   let dim = k + usize::from(weibull);
+  crate::check_parameter_count(dim)?;
   if !problem.include_intercept
     || n <= dim
     || problem.data.iter().any(|r| r.len() != p + 2)

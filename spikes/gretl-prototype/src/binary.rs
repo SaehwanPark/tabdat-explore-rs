@@ -41,6 +41,7 @@ pub fn run_binary(
       "variable name contains NUL".into(),
     ));
   }
+  crate::check_parameter_count(problem.predictors.len() + usize::from(problem.include_intercept))?;
   let nvar = ncol
     .checked_add(1)
     .ok_or_else(|| GretlError::InvalidProblem("too many variables".into()))?;

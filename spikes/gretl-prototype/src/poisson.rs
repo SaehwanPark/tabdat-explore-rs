@@ -38,6 +38,7 @@ fn run_count(problem: &EstimationProblem, family: CountFamily) -> Result<CountRe
   let ncol = problem.ncol();
   let nb2 = family == CountFamily::NegativeBinomial2;
   let k = problem.predictors.len() + usize::from(problem.include_intercept) + usize::from(nb2);
+  crate::check_parameter_count(k)?;
   if nobs <= k || problem.predictors.is_empty() || problem.data.iter().any(|r| r.len() != ncol) {
     return Err(invalid("empty, ragged or undersized count problem"));
   }

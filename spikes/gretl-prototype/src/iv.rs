@@ -24,6 +24,10 @@ pub fn run_iv(problem: &IvProblem) -> Result<IvResult, GretlError> {
   let invalid = |m: &str| GretlError::InvalidProblem(m.into());
   let nobs = problem.data.len();
   let k = problem.exogenous.len() + 1 + usize::from(problem.include_intercept);
+  crate::check_parameter_count(k)?;
+  crate::check_parameter_count(
+    problem.instruments.len() + problem.exogenous.len() + usize::from(problem.include_intercept),
+  )?;
   let ncol = 2 + problem.exogenous.len() + problem.instruments.len();
   if nobs <= k
     || problem.instruments.is_empty()

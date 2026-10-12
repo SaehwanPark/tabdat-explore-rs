@@ -20,6 +20,7 @@ pub fn run_tobit(
   let p = problem.predictors.len();
   let n = problem.data.len();
   let k = p + usize::from(problem.include_intercept);
+  crate::check_parameter_count(k + 1)?;
   if !lower.is_finite()
     || upper.is_some_and(|u| !u.is_finite() || u <= lower)
     || k == 0

@@ -135,6 +135,19 @@ impl std::fmt::Display for GretlError {
 
 impl std::error::Error for GretlError {}
 
+#[cfg(test)]
+mod parameter_tests;
+
+pub(crate) fn check_parameter_count(count: usize) -> Result<(), GretlError> {
+  if gretl_sys::parameter_count_supported(count) {
+    Ok(())
+  } else {
+    Err(GretlError::InvalidProblem(
+      "packed covariance parameter count exceeds native arithmetic".into(),
+    ))
+  }
+}
+
 /// Run ordinary least squares on `problem` via libgretl.
 ///
 /// The outcome is `problem.data[*][0]`; predictors are columns 1..=k. The
@@ -211,6 +224,7 @@ fn fit_ols(
   let nvar = ncol
     .checked_add(1 + usize::from(groups.is_some()))
     .ok_or_else(|| GretlError::InvalidProblem("too many variables".into()))?;
+  check_parameter_count(n_predictors + usize::from(has_const))?;
   if c_int::try_from(nvar).is_err() || c_int::try_from(nobs).is_err() {
     return Err(GretlError::InvalidProblem(
       "dimensions exceed native limits".into(),
