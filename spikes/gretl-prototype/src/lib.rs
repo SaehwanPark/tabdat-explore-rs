@@ -29,6 +29,10 @@ pub use quantile::{QuantileResult, run_quantile};
 mod survival;
 #[cfg(feature = "survival-plugin")]
 pub use survival::{SurvivalDistribution, SurvivalProblem, SurvivalResult, run_survival};
+#[cfg(feature = "heckman-plugin")]
+mod heckman;
+#[cfg(feature = "heckman-plugin")]
+pub use heckman::{HeckmanProblem, HeckmanResult, run_heckman};
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
 mod panel;
