@@ -127,6 +127,33 @@ fn invalid_selection_equation_and_native_failure_recover() {
   bad = base.clone();
   bad.data[0][4] += 1.;
   assert!(run_heckman(&bad).is_err());
+  for (outcome, selection, predictor) in [
+    ("", "selected", "x2"),
+    ("y", "mills_lambda", "x2"),
+    ("y", "selected", "x1"),
+    ("y\0", "selected", "x2"),
+  ] {
+    bad = base.clone();
+    bad.outcome = outcome.into();
+    bad.selection = selection.into();
+    bad.outcome_predictors[1] = predictor.into();
+    assert!(matches!(
+      run_heckman(&bad),
+      Err(GretlError::InvalidProblem(_))
+    ));
+  }
+  bad = base.clone();
+  bad.selection_predictors[1] = "y".into();
+  assert!(matches!(
+    run_heckman(&bad),
+    Err(GretlError::InvalidProblem(_))
+  ));
+  bad = base.clone();
+  bad.outcome_predictors[1] = "selected".into();
+  assert!(matches!(
+    run_heckman(&bad),
+    Err(GretlError::InvalidProblem(_))
+  ));
   for value in [0., 1.] {
     bad = base.clone();
     for row in &mut bad.data {

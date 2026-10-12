@@ -94,10 +94,19 @@ pub fn run_heckman(problem: &HeckmanProblem) -> Result<HeckmanResult, GretlError
       ));
     }
   }
-  for (i, outname) in problem.outcome_predictors.iter().enumerate() {
-    for (j, selname) in problem.selection_predictors.iter().enumerate() {
-      if outname == selname && problem.data.iter().any(|r| r[i + 1] != r[p + 2 + j]) {
-        return Err(invalid("shared predictor names require identical columns"));
+  // Identifiers refer to one column even when used in different equation roles.
+  for (i, outname) in std::iter::once(&problem.outcome)
+    .chain(&problem.outcome_predictors)
+    .enumerate()
+  {
+    for (j, selname) in std::iter::once(&problem.selection)
+      .chain(&problem.selection_predictors)
+      .enumerate()
+    {
+      if outname == selname && problem.data.iter().any(|r| r[i] != r[p + 1 + j]) {
+        return Err(invalid(
+          "shared names require identical columns across equation roles",
+        ));
       }
     }
   }

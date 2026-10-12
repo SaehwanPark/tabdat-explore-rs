@@ -10,11 +10,13 @@ outcome-SE parity, product heckman or primary-backend acceptance.
 Complete finite two-equation sample, binary selection with both classes, explicit
 intercepts, outcome predictors and excluded selection predictor. `HeckmanProblem`
 owns names/data; rows are outcome, outcome predictors, selection, selection
-predictors. Identically named shared predictors must contain identical values.
+predictors. Identically named columns must contain identical values across all
+roles, including dependent variables reused as predictors.
 Result owns outcome beta plus `mills_lambda`, selection probit beta, separate
 outcome/selection covariance blocks, sigma/rho and distinct exact sample IDs.
-Unselected outcome values do not affect fit, but NULL/missing unselected outcomes
-are deliberately not accepted by this complete-data slice. Native OPT_T, not MLE.
+For this fixture, outcome is not in selection design: unselected outcome changes
+do not affect fit. NULL/missing unselected outcomes are deliberately not accepted
+by this complete-data slice. Native OPT_T, not MLE.
 
 Predeclared abs **1e-7 + rel 1e-6*abs(reference)** for all coefficients/SEs/equation
 covariance/sigma/rho; exact shape, names and both sample identities. Seed 44107,
@@ -81,8 +83,10 @@ call geiger native safety certification. No new Cargo dependency or waiver.
 
 Three owner reviews, not independent: two-equation covariance/sample authority;
 list/packed-arithmetic/model/error/dataset ownership; feature/platform/concurrency/
-loader and evidence. Early-return mutation and signed packed-size hazard fixed
-and follow-up boundary/combined/platform tests pass. Broader native integer/
+loader and evidence. Early-return mutation and signed packed-size hazard fixed;
+follow-up also extends shared-name agreement to dependent/predictor roles and adds
+reserved/duplicate/NUL-name probes. Adapter separately formatted. Final boundary/
+combined/platform tests pass (`/tmp/heckman-linux-owner-followup.log`). Broader native integer/
 allocation/sanitizer/leak and model variants remain separate acceptance work.
 
 ## Release cost and distribution
