@@ -214,11 +214,19 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 
 ### 3.4 Visualization spike
 
-- [ ] Generate a Vega-Lite specification in Rust.
-- [ ] Render SVG with `vl-convert-rs`.
-- [ ] Render PNG with `vl-convert-rs`.
-- [ ] Compare visual/output behavior with current TabDat artifacts.
-- [ ] Measure initialization and render overhead.
+Static-artifact evaluation replaces mandatory Vega runtime execution under
+[ADR 0011](adr/0011-static-svg-renderer-feasibility.md). Rejected `vl-convert-rs`
+evidence remains on draft PR #164; native SVG is not Vega-Lite compatibility.
+
+- [x] Generate owned native SVG in Rust (scatter, prepared category counts,
+  explicit histogram edges; [report](feasibility/native-svg.md)).
+- [x] Render SVG without Python or a JavaScript runtime ([spike](../spikes/native-svg-prototype/src/lib.rs)).
+- [x] Render PNG with `resvg` (explicit single-font loading; [report](feasibility/native-svg.md)).
+- [x] Compare visual/output behavior with current TabDat artifacts (exact mark
+  labels/data/order and relative scatter coordinates; differing layout/ticks/fonts
+  and bar/histogram dimensions explicitly recorded; [report](feasibility/native-svg.md)).
+- [x] Measure initialization and render overhead (five macOS release processes;
+  [report](feasibility/native-svg.md)); Linux/font distribution remain unvalidated.
 
 ### 3.5 Feasibility decision
 
@@ -234,7 +242,9 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [ ] DuckDB spike passes.
 - [ ] DTA ingestion spike passes.
 - [ ] At least the core libgretl estimator set passes numerical validation.
-- [ ] Plot rendering works without Python.
+- [x] Plot rendering works without Python (bounded macOS native SVG/PNG spike,
+  policy-clean graph; not production or cross-platform parity;
+  [report](feasibility/native-svg.md)).
 - [ ] Unsafe boundaries have been reviewed.
 - [ ] No unresolved P0 feasibility blocker remains.
 
