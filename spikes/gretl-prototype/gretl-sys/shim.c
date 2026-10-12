@@ -152,7 +152,7 @@ void *gretl_shim_binary(void *dset_handle, const int *list, int nlist, int probi
 }
 
 #ifdef TD_COUNT_PLUGIN_PATH
-void *gretl_shim_poisson(void *dset_handle, const int *list, int nlist)
+void *gretl_shim_count(void *dset_handle, const int *list, int nlist, int nb2)
 {
     if (dset_handle == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
         return NULL;
@@ -163,7 +163,7 @@ void *gretl_shim_poisson(void *dset_handle, const int *list, int nlist)
     }
     /* count_model owns the normal OLS setup and native plugin dispatch. The
      * plugin links the same shared core and is retained until process exit. */
-    *model = count_model(list, POISSON, (DATASET *) dset_handle, OPT_NONE, NULL);
+    *model = count_model(list, nb2 ? NEGBIN : POISSON, (DATASET *) dset_handle, OPT_NONE, NULL);
     return model;
 }
 #endif
