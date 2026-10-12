@@ -25,6 +25,10 @@ pub use tobit::{TobitResult, run_tobit};
 mod quantile;
 #[cfg(feature = "quantile-plugin")]
 pub use quantile::{QuantileResult, run_quantile};
+#[cfg(feature = "survival-plugin")]
+mod survival;
+#[cfg(feature = "survival-plugin")]
+pub use survival::{SurvivalDistribution, SurvivalProblem, SurvivalResult, run_survival};
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
 mod panel;
