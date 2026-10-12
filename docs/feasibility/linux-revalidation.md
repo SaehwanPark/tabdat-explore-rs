@@ -1,5 +1,12 @@
 # Fresh Linux x86_64 revalidation (2026-10-12)
 
+Latest exit replay: [PR #183 / final report](phase1-final-report.md). Gretl59
+all-feature /30 default; ReadStat13 Rust tests plus native UBSan3 constructor
+faults/200 parses/66 read faults; DuckDB3 + explicitHTTP1; SVG/PNG8 pass. Named
+spike Clippy checks pass, including the affected DuckDB rustls0.23.45 replay.
+Earlier counts below remain slice history. No physical-host or whole-runtime
+Linux acceptance, ASan or leak pass is inferred.
+
 Local Docker Desktop on Apple Silicon, **linux/amd64 emulation**, not a physical
 x86 host or a performance benchmark. Agent-owned container `tabdat-phase1-linux`;
 repository mounted read-only at /work, generated target artifacts at /results.

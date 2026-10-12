@@ -532,6 +532,16 @@ Some features are better implemented directly in Rust because they are bounded a
 
 ### 7.4 Numerical libraries
 
+Phase 1 follow-up (2026-10-12):
+[ADR 0021](adr/0021-phase1-backend-and-linear-algebra-decisions.md) accepts
+libgretl as the primary compiled backend for the validated initial variants,
+ReadStat for patched DTA-only ingestion, canonical DuckDB and native SVG/resvg.
+Reuse libgretl's existing BLAS/LAPACK as the initial compiled linear-algebra
+substrate, retaining existing safe Rust QR/inference utilities. A general matrix
+API or competing faer route needs real callers and comparative evidence; it is
+not introduced solely to reproduce this candidate list. These decisions complete
+feasibility, not product parity or native distribution approval.
+
 Use mature numerical substrates rather than rebuilding kernels.
 
 Candidates include:

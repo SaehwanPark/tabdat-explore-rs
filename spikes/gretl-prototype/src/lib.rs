@@ -148,6 +148,17 @@ pub(crate) fn check_parameter_count(count: usize) -> Result<(), GretlError> {
   }
 }
 
+// Stored columns include equation roles/auxiliary parameters, so this envelope
+// also keeps facade-generated parameter-by-observation work within the sys cap.
+pub(crate) fn new_dataset(nvar: usize, nobs: usize) -> Result<GretlDataset, GretlError> {
+  if nvar > 1024 || !gretl_sys::dataset_dimensions_supported(nvar, nobs) {
+    return Err(GretlError::InvalidProblem(
+      "prototype dataset/work budget exceeded".into(),
+    ));
+  }
+  Ok(GretlDataset::new(nvar, nobs))
+}
+
 /// Run ordinary least squares on `problem` via libgretl.
 ///
 /// The outcome is `problem.data[*][0]`; predictors are columns 1..=k. The
@@ -231,7 +242,7 @@ fn fit_ols(
     ));
   }
 
-  let mut dset = GretlDataset::new(nvar, nobs);
+  let mut dset = new_dataset(nvar, nobs)?;
 
   // Assign variable indices.
   let const_idx = 0usize;

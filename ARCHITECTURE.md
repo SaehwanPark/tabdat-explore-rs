@@ -121,6 +121,20 @@ interval, and timezone-aware group-key parity remains deferred.
 No component should be described as implemented until source/tests and the relevant
 roadmap gate provide that evidence.
 
+## Initial backend decisions
+
+Phase 1 is complete as feasibility/architecture acceptance under
+[ADR 0021](docs/adr/0021-phase1-backend-and-linear-algebra-decisions.md) and
+[the final report](docs/feasibility/phase1-final-report.md): canonical DuckDB,
+DTA-only patched ReadStat, primary compiled libgretl alongside existing native
+Rust utilities, BLAS/LAPACK reused inside the gretl boundary, and native SVG/resvg.
+No second data engine or speculative general matrix FFI is added. The evaluated
+adapters remain isolated spikes; this decision does not wire native capabilities
+into command execution or accept shipping artifacts. Typed domain-owned results,
+explicit samples/normalizations, lazy initialization and directional dependencies
+remain mandatory. Broader native/hostile-input/distribution gates still block
+production integration or release when applicable.
+
 ## Target dependency direction
 
 The intended flow is:

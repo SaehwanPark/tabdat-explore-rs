@@ -1,5 +1,11 @@
 # Cross-family native packed-parameter bounds
 
+Follow-up PR #183 adds an independent practical resource envelope
+([final report](phase1-final-report.md)): low-level models ≤1024 nominal
+parameters and ≤10,000,000 parameter-observation cells; conservative facade
+stored-column and dataset limits. The 46,340 arithmetic predicate below is
+retained/tested, **not the overall supported workload limit**.
+
 [PR #181](https://github.com/SaehwanPark/tabdat-explore-rs/pull/181), base
 `c122ab6`. **Pass for bounded packed-parameter arithmetic hardening**, not complete
 native dimension/allocation/index/ownership or sanitizer/leak certification.

@@ -1,5 +1,11 @@
 # libgretl feasibility reconnaissance
 
+Current architecture decision: **accept libgretl as the primary compiled
+classical/econometric backend** for the tested baseline envelope under
+[ADR 0021](../adr/0021-phase1-backend-and-linear-algebra-decisions.md) and
+[final review](phase1-final-report.md). Earlier reconnaissance/partial statuses
+below are historical; no production execution integration or shipping is implied.
+
 Hosted workflow results cited in this report are historical. GitHub Actions are
 disabled and workflow definitions are removed under
 [ADR 0009](../adr/0009-disable-github-actions.md).

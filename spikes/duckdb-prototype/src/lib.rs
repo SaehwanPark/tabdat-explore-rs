@@ -159,4 +159,38 @@ mod tests {
     );
     Ok(())
   }
+
+  #[test]
+  fn owned_arrow_batches_outlive_statement_and_connection_after_error_recovery() -> Result<()> {
+    let batches = {
+      let connection = Connection::open_in_memory()?;
+      assert!(
+        connection
+          .execute_batch("SELECT * FROM nonexistent_phase1_table")
+          .is_err()
+      );
+      let mut statement = connection
+        .prepare("SELECT 42::BIGINT AS id, 'owned'::VARCHAR AS label, NULL::DOUBLE AS absent")?;
+      statement.query_arrow([])?.collect::<Vec<_>>()
+    };
+    assert_eq!(
+      batches.iter().map(|batch| batch.num_rows()).sum::<usize>(),
+      1
+    );
+    let batch = &batches[0];
+    let id = batch
+      .column(0)
+      .as_any()
+      .downcast_ref::<duckdb::arrow::array::Int64Array>()
+      .unwrap();
+    let label = batch
+      .column(1)
+      .as_any()
+      .downcast_ref::<duckdb::arrow::array::StringArray>()
+      .unwrap();
+    assert_eq!(id.value(0), 42);
+    assert_eq!(label.value(0), "owned");
+    assert_eq!(batch.column(2).null_count(), 1);
+    Ok(())
+  }
 }

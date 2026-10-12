@@ -1,5 +1,5 @@
 use crate::{Coefficient, GretlError};
-use gretl_sys::{GretlDataset, GretlModel, Stat};
+use gretl_sys::{GretlModel, Stat};
 #[derive(Debug, Clone)]
 pub struct HeckmanProblem {
   pub outcome: String,
@@ -103,7 +103,7 @@ pub fn run_heckman(problem: &HeckmanProblem) -> Result<HeckmanResult, GretlError
       }
     }
   }
-  let mut dset = GretlDataset::new(p + q + 3, n);
+  let mut dset = crate::new_dataset(p + q + 3, n)?;
   for i in 1..p + q + 3 {
     dset.set_varname(i, &format!("td_v{i}"));
   }

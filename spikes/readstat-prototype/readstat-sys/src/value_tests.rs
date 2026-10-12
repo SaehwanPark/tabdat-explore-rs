@@ -78,3 +78,74 @@ fn actual_native_abort_and_repeated_parse_recover() {
     assert_eq!(data.rows[0][4], DtaValue::Double(88.25));
   }
 }
+
+fn empty_state() -> ParserState {
+  ParserState {
+    metadata: None,
+    variables: vec![],
+    rows: vec![],
+    label_sets: vec![],
+    error: None,
+    boundary_error: None,
+  }
+}
+
+fn metadata(rows: i64, columns: i64) -> DtaMetadata {
+  DtaMetadata {
+    row_count: rows,
+    var_count: columns,
+    file_label: None,
+    file_format_version: 118,
+    is_64bit: true,
+  }
+}
+
+#[test]
+fn dimensions_and_callback_indices_reject_before_row_growth() {
+  for (rows, columns) in [
+    (-1, 1),
+    (1, -1),
+    (1, 0),
+    (1, 32768),
+    (i64::MAX, 32767),
+    (10_000_001, 1),
+  ] {
+    let mut state = empty_state();
+    assert!(state.set_metadata(metadata(rows, columns)).is_err());
+    assert!(state.metadata.is_none());
+    assert!(state.rows.is_empty());
+  }
+  let mut state = empty_state();
+  assert!(state.check_variable(0).is_err());
+  assert!(state.store_cell(0, 0, DtaValue::Int8(1)).is_err());
+  state.set_metadata(metadata(2, 1)).unwrap();
+  assert!(state.set_metadata(metadata(2, 1)).is_err());
+  assert!(state.check_variable(-1).is_err());
+  assert!(state.check_variable(1).is_err());
+  assert!(state.store_cell(0, 0, DtaValue::Int8(1)).is_err());
+  state.check_variable(0).unwrap();
+  state.variables.push(DtaVariable {
+    name: "x".into(),
+    label: None,
+    type_: DtaType::Int8,
+    label_set: None,
+  });
+  assert!(state.check_variable(0).is_err());
+  for (row, column) in [(-1, 0), (i32::MAX, 0), (2, 0), (0, -1), (0, 1)] {
+    assert!(state.store_cell(row, column, DtaValue::Int8(1)).is_err());
+    assert!(state.rows.is_empty());
+  }
+  state.store_cell(1, 0, DtaValue::Int8(7)).unwrap();
+  assert_eq!(
+    state.rows,
+    [vec![DtaValue::SystemMissing], vec![DtaValue::Int8(7)]]
+  );
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_path_is_rejected_without_lossy_file_substitution() {
+  use std::os::unix::ffi::OsStrExt;
+  let path = Path::new(std::ffi::OsStr::from_bytes(b"wrong-\xff.dta"));
+  assert!(matches!(parse_dta(path), Err(DtaError::Path(_))));
+}

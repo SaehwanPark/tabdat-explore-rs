@@ -1,5 +1,5 @@
 use crate::{Coefficient, GretlError};
-use gretl_sys::{GretlDataset, GretlModel};
+use gretl_sys::GretlModel;
 
 #[derive(Debug, Clone)]
 pub struct IvProblem {
@@ -66,7 +66,7 @@ pub fn run_iv(problem: &IvProblem) -> Result<IvResult, GretlError> {
   if i32::try_from(nvar).is_err() || i32::try_from(nobs).is_err() {
     return Err(invalid("IV dimensions exceed native limits"));
   }
-  let mut dset = GretlDataset::new(nvar, nobs);
+  let mut dset = crate::new_dataset(nvar, nobs)?;
   for (i, _) in names.iter().enumerate() {
     dset.set_varname(i + 1, &format!("td_v{i}"));
   }

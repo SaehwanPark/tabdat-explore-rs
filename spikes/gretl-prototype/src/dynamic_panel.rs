@@ -1,5 +1,5 @@
 use crate::{Coefficient, GretlError, PanelProblem};
-use gretl_sys::{GretlDataset, GretlModel};
+use gretl_sys::GretlModel;
 #[derive(Debug, Clone)]
 pub struct DynamicPanelResult {
   pub coefficients: Vec<Coefficient>,
@@ -45,7 +45,7 @@ pub fn run_dynamic_panel(problem: &PanelProblem) -> Result<DynamicPanelResult, G
       return Err(invalid("invalid/duplicate/reserved dynamic column name"));
     }
   }
-  let mut dset = GretlDataset::new(p + 2, n);
+  let mut dset = crate::new_dataset(p + 2, n)?;
   for i in 1..p + 2 {
     dset.set_varname(i, &format!("td_v{i}"));
   }

@@ -1,5 +1,10 @@
 # ReadStat feasibility reconnaissance
 
+Current architecture decision: **accept DTA-only ReadStat under ADR 0021**, with
+pointer-only values, parser RAII, callback budgets and pinned constructor/read-error
+patches; [final review/evidence](phase1-final-report.md). The reconnaissance and
+initial binding history below is retained; it is not shipping or broad-format approval.
+
 The hosted Linux workflow cited in this report is historical. GitHub Actions are
 disabled and workflow definitions are removed under
 [ADR 0009](../adr/0009-disable-github-actions.md).

@@ -1,5 +1,5 @@
 use crate::{Coefficient, EstimationProblem, GretlError, run_ols};
-use gretl_sys::{GretlDataset, GretlModel, normal_quantile};
+use gretl_sys::{GretlModel, normal_quantile};
 
 #[derive(Debug, Clone)]
 pub struct QuantileResult {
@@ -57,7 +57,7 @@ pub fn run_quantile(problem: &EstimationProblem, q: f64) -> Result<QuantileResul
   let n = problem.data.len();
   let p = problem.predictors.len();
   let k = ols.ncoeff;
-  let mut dset = GretlDataset::new(p + 2, n);
+  let mut dset = crate::new_dataset(p + 2, n)?;
   for i in 0..p + 1 {
     dset.set_varname(i + 1, &format!("td_v{i}"));
   }

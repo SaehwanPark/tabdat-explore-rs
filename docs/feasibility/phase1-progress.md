@@ -1,8 +1,10 @@
 # Phase 1 execution ledger
 
-Phase 1 remains **partial / in progress**, not complete. The roadmap checkboxes are the acceptance
-tracker; this ledger records the current bounded loop and durable handoff.
-No spike is product support.
+Phase 1 is **complete as bounded backend feasibility / architecture acceptance**
+under [PR #183](https://github.com/SaehwanPark/tabdat-explore-rs/pull/183),
+[final report](phase1-final-report.md) and ADR 0021. All six exit items are checked.
+The roadmap remains the acceptance tracker; earlier partial/blocked slice states
+below are historical evidence. No spike is product support or shipping approval.
 
 ## Slice 1: libgretl boundary hardening (complete)
 
@@ -367,14 +369,26 @@ full nested79-expression inventory and three owner passes/follow-up pass. See
 malformed files, native source-quality, sanitizer/leak, build/source/distribution
 and backend acceptance remain open.
 
-## Remaining loops / handoff
+## Slice 21: Phase 1 exit review and decisions (complete)
 
-The [preliminary assessment](phase1-assessment.md) records decisions, blockers
-and next actions. Static-renderer dependency policy is resolved under ADR 0011;
-extend plugin/parameterization evaluation beyond classical integer Poisson;
-validate the remaining estimator families; review the full native/unsafe/license
-matrix; benchmark/select general linear algebra; then review Phase 1 exit gates.
-No final backend acceptance or phase completion is inferred from current slices.
-The intermittent unchanged reshape fixture failure is tracked in issue #167.
+PR #183, baseca10ac0, contracte254b45. Full first-party native boundary/ownership
+review, actionable ReadStat callback/RAII and constructor/read-error fixes, gretl
+resource envelopes, DuckDB post-owner Arrow lifetime test and rustls advisory fix.
+Mac/emulated Linux evidence: gretl57/59 all-feature and28/30 default; ReadStat13
+Rust tests plus3 constructor allocation faults,200 parses and66 read faults with
+UBSan; DuckDB3+explicitHTTP1; renderer8. Root/spike checks, strict policy and full
+inventories (gretl93/ReadStat84, facadeforbid=true) pass. Three owner passes and
+follow-up; no independent audit claim. Final report/ADR0021 resolve backend,
+linear-algebra/cost/license-family decisions and every original exit item.
 
-Never check the whole phase merely because a PR merges or Cargo passes.
+## Remaining integration / release handoff
+
+Use the [final report](phase1-final-report.md), not the historical preliminary
+assessment, for current decisions. Broad estimator/sample/model contracts,
+remote/hostile-input policy, ASan/leak/allocator and physical-host/native-transitive
+review, relocation and artifact-specific licenses/corresponding source remain
+hard integration/release gates in Phases 14/15. General matrix APIs or competing
+substrates need real callers and comparative evidence. Issue #167 remains open;
+fixture ownership mitigates a concrete risk without proving the original cause.
+Rejected Vega draft #164 remains unmerged. Do not treat Phase 1 completion as
+product parity, integration or shipping approval.
