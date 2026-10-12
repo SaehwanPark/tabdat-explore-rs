@@ -268,6 +268,24 @@ Linux all41/survival26/default21, policy/unsafe inventory and release measures i
 waiver, runtime R/Python or product/phase-completion claim. Continue selection/
 dynamic panel and broader native/backend acceptance work.
 
+## Slice 15: proper two-step selection (complete)
+
+PR #177, base 8606026, early contract 4fbda6e and implementation e34296f.
+480 total / 210 selected seed-44107 observations, explicit intercepts and excluded
+selection predictor. Original coefficients agree; proper two-step outcome VCV
+includes first-stage uncertainty and observed probit block. Python correction/R
+max differences ~1.4e-11 / ~1.1e-8, unchanged tolerance. Original OLS SE difference
+~8.2e-4 preserved in ADR 0017; native cross-equation zeros not exposed as covariance.
+
+Independent heckit.so capability, owned scalar/array/sample outputs, shape/list/
+rank/failed-metadata and packed signed-size bounds. Shim restores temporary Mills
+series after success and early failure; direct test proves successful first stage,
+failed second stage and same-dataset recovery. Six-way mixed threading and actual
+linked missing-module restoration pass. macOS/Linux all46/Heckman26/default21,
+policy/unsafe inventory (77 expressions), release costs and three owner reviews in
+[report](heckman.md). No dependency/waiver/runtime R/Python/product claim.
+Continue dynamic panel and broader native/backend acceptance work.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

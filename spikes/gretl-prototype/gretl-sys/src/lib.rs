@@ -37,6 +37,7 @@ unsafe extern "C" {
   fn gretl_shim_dataset_set_varname(handle: *mut c_void, i: c_int, name: *const c_char);
   fn gretl_shim_dataset_set_value(handle: *mut c_void, var: c_int, obs: c_int, value: c_double);
   fn gretl_shim_dataset_free(handle: *mut c_void);
+  fn gretl_shim_dataset_nvar(handle: *const c_void) -> c_int;
   fn gretl_shim_ols(
     dset: *mut c_void,
     list: *const c_int,
@@ -84,6 +85,10 @@ unsafe extern "C" {
     nlist: c_int,
     exponential: c_int,
   ) -> *mut c_void;
+  #[cfg(feature = "heckman-plugin")]
+  fn gretl_shim_heckman(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
+  #[cfg(feature = "heckman-plugin")]
+  fn gretl_shim_selection_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   fn gretl_shim_panel(
     dset: *mut c_void,
@@ -128,6 +133,7 @@ pub enum Stat {
   Tss = 4,
   FStatistic = 5,
   LogLikelihood = 6,
+  Rho = 7,
 }
 
 /// Owned dataset. Variable zero is Gretl's immutable implicit constant.
@@ -140,6 +146,15 @@ pub struct GretlDataset {
 }
 
 impl GretlDataset {
+  /// Native shape observation for invariant probes; no foreign data escapes.
+  pub fn variable_count(&self) -> usize {
+    native(|| {
+      // SAFETY: self owns a live dataset; scalar native shape read is serialized.
+      usize::try_from(unsafe { gretl_shim_dataset_nvar(self.ptr) })
+        .expect("negative dataset variable count")
+    })
+  }
+
   pub fn new(nvar: usize, nobs: usize) -> Self {
     assert!(nvar > 0 && nobs > 0, "dataset dimensions must be positive");
     let vars = c_int::try_from(nvar).expect("too many variables");
@@ -439,6 +454,76 @@ impl GretlModel {
     });
     assert!(!ptr.is_null(), "gretl_shim_survival returned NULL");
     Self { ptr }
+  }
+
+  #[cfg(feature = "heckman-plugin")]
+  pub fn heckman(dset: &GretlDataset, list: &[c_int]) -> Self {
+    let len = c_int::try_from(list.len()).expect("selection list exceeds native limits");
+    assert!(
+      list.len() >= 6 && list[0] == len - 1,
+      "invalid selection list count/length"
+    );
+    let separators: Vec<_> = list
+      .iter()
+      .enumerate()
+      .filter(|(_, v)| **v == -100)
+      .map(|(i, _)| i)
+      .collect();
+    assert!(
+      separators.len() == 1,
+      "selection needs exactly one separator"
+    );
+    // heckit.c computes (tot*tot+tot)/2 in signed int before allocating packed
+    // VCV. Bound the nominal combined parameters even if a fit could drop rank.
+    let total = list.len() - 3;
+    assert!(
+      total
+        .checked_mul(total + 1)
+        .is_some_and(|cells| c_int::try_from(cells).is_ok()),
+      "two-step packed covariance exceeds native integer arithmetic"
+    );
+    let sep = separators[0];
+    assert!(
+      sep >= 3 && sep + 3 < list.len(),
+      "selection equation sides must be nonempty with predictors"
+    );
+    assert!(
+      list[1] > 0 && list[sep + 1] > 0,
+      "equation outcomes cannot be constant"
+    );
+    assert!(
+      list[2..sep].contains(&0) && list[sep + 2..].contains(&0),
+      "two-step spike requires both intercepts"
+    );
+    assert!(
+      list[1..]
+        .iter()
+        .all(|&i| i == -100 || (i >= 0 && (i as usize) < dset.nvar)),
+      "selection index out of bounds"
+    );
+    let ptr = native(|| {
+      // SAFETY: live dataset, exact count, two validated equation sides with
+      // checked indices/one separator. Source-matched OPT_T owns copied MODEL
+      // buffers and cleans temporary Mills series within this serialized call.
+      unsafe { gretl_shim_heckman(dset.ptr, list.as_ptr(), len) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_heckman returned NULL");
+    Self { ptr }
+  }
+
+  #[cfg(feature = "heckman-plugin")]
+  pub fn selection_nobs(&self) -> usize {
+    assert_eq!(
+      self.errcode(),
+      0,
+      "cannot access failed selection model metadata"
+    );
+    native(|| {
+      // SAFETY: live successful MODEL owns its integer totobs metadata; scalar
+      // read is serialized and no data-item pointer escapes.
+      usize::try_from(unsafe { gretl_shim_selection_nobs(self.ptr) })
+        .expect("negative selection sample count")
+    })
   }
 
   fn checked_list_len(dset: &GretlDataset, list: &[c_int]) -> c_int {

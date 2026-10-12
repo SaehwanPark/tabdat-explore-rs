@@ -494,6 +494,12 @@ notice and independently selected shared module are recorded.
 AFT/raw-sigma and event-density normalization under ADR 0016, exact event/censor IDs
 and redundant-dummy protections. Original approximate Python SEs remain explicit
 deviation; independent duration module, missing-loader and release costs are recorded.
+[Proper two-step selection](heckman.md) adds distinct total/selected samples,
+corrected outcome and observed probit covariance blocks, sigma/rho and explicit
+ordinary-OLS SE deviation under ADR 0017. Independently selected heckit.so shares
+owned serialized lifetime. Shim restores temporary Mills series on early second-
+stage failure; packed signed-size bounds prevent known upstream overflow. No
+purported joint cross-equation covariance or product selection support.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

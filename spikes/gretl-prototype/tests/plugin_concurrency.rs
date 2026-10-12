@@ -4,6 +4,8 @@
   feature = "quantile-plugin"
 ))]
 use tabdat_gretl_spike::{EstimationProblem, run_ols, run_poisson, run_quantile, run_tobit};
+#[cfg(feature = "heckman-plugin")]
+use tabdat_gretl_spike::{HeckmanProblem, run_heckman};
 #[cfg(feature = "survival-plugin")]
 use tabdat_gretl_spike::{SurvivalDistribution, SurvivalProblem, run_survival};
 fn problem(source: &str) -> EstimationProblem {
@@ -37,12 +39,33 @@ fn mixed_plugins_and_core_share_serialized_lifetime() {
       })
       .collect(),
   };
+  #[cfg(feature = "heckman-plugin")]
+  let selection = HeckmanProblem {
+    outcome: "y".into(),
+    outcome_predictors: vec!["x1".into(), "x2".into()],
+    selection: "selected".into(),
+    selection_predictors: vec!["x1".into(), "z".into()],
+    include_intercept: true,
+    data: include_str!("../fixtures/heckman.csv")
+      .lines()
+      .skip(1)
+      .map(|l| {
+        let r: Vec<f64> = l.split(',').map(|v| v.parse().unwrap()).collect();
+        vec![r[0], r[1], r[2], r[3], r[1], r[4]]
+      })
+      .collect(),
+  };
   std::thread::scope(|scope| {
-    for i in 0..4 + usize::from(cfg!(feature = "survival-plugin")) {
+    for i in 0..4
+      + usize::from(cfg!(feature = "survival-plugin"))
+      + usize::from(cfg!(feature = "heckman-plugin"))
+    {
       let continuous = &continuous;
       let count = &count;
       #[cfg(feature = "survival-plugin")]
       let survival = &survival;
+      #[cfg(feature = "heckman-plugin")]
+      let selection = &selection;
       scope.spawn(move || {
         for _ in 0..5 {
           match i {
@@ -58,6 +81,10 @@ fn mixed_plugins_and_core_share_serialized_lifetime() {
             #[cfg(feature = "survival-plugin")]
             4 => {
               run_survival(survival, SurvivalDistribution::Weibull).unwrap();
+            }
+            #[cfg(feature = "heckman-plugin")]
+            index if index == 4 + usize::from(cfg!(feature = "survival-plugin")) => {
+              run_heckman(selection).unwrap();
             }
             _ => {
               run_ols(continuous).unwrap();

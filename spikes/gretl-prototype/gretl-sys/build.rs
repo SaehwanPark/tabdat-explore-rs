@@ -50,6 +50,9 @@ fn main() {
   if std::env::var_os("CARGO_FEATURE_SURVIVAL_PLUGIN").is_some() {
     make_plugin(&out_dir.join("gretl-src"), is_macos, "duration");
   }
+  if std::env::var_os("CARGO_FEATURE_HECKMAN_PLUGIN").is_some() {
+    make_plugin(&out_dir.join("gretl-src"), is_macos, "heckit");
+  }
   let shim_a = build_shim(&manifest_dir, &out_dir, is_macos, shared_plugins);
 
   // Emit link flags. Order matters for static symbol resolution: the shim

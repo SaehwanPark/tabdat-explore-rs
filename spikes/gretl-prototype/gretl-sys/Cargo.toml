@@ -13,6 +13,7 @@ count-plugin = ["shared-plugins"]
 tobit-plugin = ["shared-plugins"]
 quantile-plugin = ["shared-plugins"]
 survival-plugin = ["shared-plugins"]
+heckman-plugin = ["shared-plugins"]
 
 [lib]
 path = "src/lib.rs"

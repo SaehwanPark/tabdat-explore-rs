@@ -4,7 +4,8 @@
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
 native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
-quantile LP/canonical iid #175 and PH survival/observed covariance #176. The
+quantile LP/canonical iid #175, PH survival/observed covariance #176 and
+proper two-step selection #177. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -43,7 +44,12 @@ estimator feasibility requirements.
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
    error recovery, nonrelocatable paths and native otool diagnostic. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
-3. **Remaining numerical fixtures:** dynamic panel and Heckman fixtures remain.
+3. **Remaining numerical fixtures:** dynamic panel fixture remains.
+   Heckman two-step now passes corrected outcome/observed probit equation blocks,
+   exact distinct samples and sigma/rho ([report](heckman.md), ADR 0017), with
+   original ordinary-OLS SE discrepancy and zero-placeholder cross block explicit.
+   Native early-failure dataset mutation and packed-size arithmetic are guarded;
+   MLE/robust/missing-outcome and broader selection contracts remain open.
    Exponential/Weibull PH survival now passes full observed references with explicit
    AFT/censor/time-density and approximate-SE normalization ([report](survival.md),
    ADR 0016). Quantile LP/canonical iid now passes HiGHS/R references,

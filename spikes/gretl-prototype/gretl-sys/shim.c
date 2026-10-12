@@ -71,6 +71,11 @@ void gretl_shim_dataset_set_value(void *handle, int var, int obs, double value)
     dset->Z[var][obs] = value;
 }
 
+int gretl_shim_dataset_nvar(const void *handle)
+{
+    return ((const DATASET *)handle)->v;
+}
+
 void gretl_shim_dataset_free(void *handle)
 {
     destroy_dataset((DATASET *) handle);
@@ -284,6 +289,28 @@ void *gretl_shim_survival(void *handle, const int *list, int nlist, int exponent
 }
 #endif
 
+#ifdef TD_SPIKE_PLUGIN_PATH
+void *gretl_shim_heckman(void *handle, const int *list, int nlist)
+{
+    if (handle == NULL || list == NULL || nlist < 6 || list[0] != nlist-1) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    DATASET *dset = handle;
+    int original_v = dset->v;
+    *model = heckit_model(list, dset, OPT_T, NULL);
+    /* heckit_init may return after adding Mills series but before the plugin's
+     * normal cleanup. Restore dataset shape on both success and failure. Model
+     * coefficient/VCV/name buffers are owned, never borrowed from this series. */
+    if (dset->v > original_v) dataset_drop_last_variables(dset, dset->v-original_v);
+    return model;
+}
+
+int gretl_shim_selection_nobs(const void *handle)
+{
+    return gretl_model_get_int(handle, "totobs");
+}
+#endif
+
 int gretl_shim_model_ncoeff(const void *handle)
 {
     return ((const MODEL *) handle)->ncoeff;
@@ -334,7 +361,8 @@ enum {
     SHIM_STAT_ESS,
     SHIM_STAT_TSS,
     SHIM_STAT_FSTT,
-    SHIM_STAT_LNL
+    SHIM_STAT_LNL,
+    SHIM_STAT_RHO
 };
 
 double gretl_shim_model_scalar(const void *handle, int which)
@@ -348,6 +376,7 @@ double gretl_shim_model_scalar(const void *handle, int which)
     case SHIM_STAT_TSS:    return model->tss;
     case SHIM_STAT_FSTT:   return model->fstt;
     case SHIM_STAT_LNL:    return model->lnL;
+    case SHIM_STAT_RHO:    return model->rho;
     default:               return 0.0;
     }
 }
