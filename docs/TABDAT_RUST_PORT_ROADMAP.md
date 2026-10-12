@@ -220,7 +220,11 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   See [bounded panel evidence](feasibility/panel.md); no broader xtreg acceptance.
 - [ ] Implement dynamic-panel fixture.
 - [ ] Implement Heckman fixture.
-- [ ] Implement survival fixture.
+- [x] Implement classical exponential/Weibull PH survival fixture (PR #176;
+  full observed covariance/Jacobian, time-density likelihood and exact event/
+  censor/sample IDs against R and externally normalized Python; original
+  approximate SE/native log-time differences explicit in [ADR 0016](adr/0016-survival-ph-and-observed-information.md)
+  and [report](feasibility/survival.md)).
 - [x] Compare results against Python TabDat (NIST Longley; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [x] Compare results against trusted reference outputs (NIST/ITL certified; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [ ] Document semantic mismatches.

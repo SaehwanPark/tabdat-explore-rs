@@ -28,3 +28,8 @@ required-features = ["tobit-plugin"]
 name = "quantile-measure"
 path = "src/bin/quantile-measure.rs"
 required-features = ["quantile-plugin"]
+
+[[bin]]
+name = "survival-measure"
+path = "src/bin/survival-measure.rs"
+required-features = ["survival-plugin"]
