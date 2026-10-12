@@ -52,6 +52,7 @@ unsafe extern "C" {
   ) -> *mut c_void;
   #[cfg(feature = "count-plugin")]
   fn gretl_shim_count(dset: *mut c_void, list: *const c_int, nlist: c_int, nb2: c_int) -> *mut c_void;
+  fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -225,6 +226,27 @@ impl GretlModel {
       unsafe { gretl_shim_count(dset.ptr, list.as_ptr(), len, i32::from(nb2)) }
     });
     assert!(!ptr.is_null(), "gretl_shim_count returned NULL");
+    Self { ptr }
+  }
+
+  /// Classical unadjusted 2SLS, with one separator between structural and
+  /// instrument lists. Invalid lists panic before native dispatch.
+  pub fn iv(dset: &GretlDataset, list: &[c_int]) -> Self {
+    let len = c_int::try_from(list.len()).expect("IV list too long");
+    assert!(list.len() >= 5 && list[0] == len - 1, "invalid IV list count");
+    let separators: Vec<_> = list.iter().enumerate().filter(|(_,v)| **v == -100).map(|(i,_)| i).collect();
+    assert_eq!(separators.len(), 1, "IV list needs exactly one separator");
+    let separator = separators[0];
+    assert!(separator >= 3 && separator < list.len()-1, "empty IV list side");
+    assert!(list[1] > 0, "outcome cannot be reserved constant");
+    assert!(list[1..].iter().all(|&i| i == -100 || (i >= 0 && (i as usize) < dset.nvar)), "IV variable index out of bounds");
+    let ptr = native(|| {
+      // SAFETY: live owned dataset, one checked separator, exact count and all
+      // variable indices checked. Native tsls owns its copied model/list buffers;
+      // the slice is borrowed only through this serialized call.
+      unsafe { gretl_shim_iv(dset.ptr, list.as_ptr(), len) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_iv returned NULL");
     Self { ptr }
   }
 

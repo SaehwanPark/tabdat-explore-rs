@@ -18,6 +18,7 @@
 #include "libgretl.h"
 #include "libset.h"
 #include "discrete.h"
+#include "tsls.h"
 
 #include <string.h>
 
@@ -167,6 +168,21 @@ void *gretl_shim_count(void *dset_handle, const int *list, int nlist, int nb2)
     return model;
 }
 #endif
+
+void *gretl_shim_iv(void *dset_handle, const int *list, int nlist)
+{
+    if (dset_handle == NULL || list == NULL || nlist < 5 || list[0] != nlist - 1) {
+        return NULL;
+    }
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    /* Python unadjusted IV covariance uses SSE/n, not SSE/(n-k). */
+    *model = tsls(list, (DATASET *) dset_handle, OPT_N);
+    if (!model->errcode && model->vcv == NULL) {
+        model->errcode = makevcv(model, model->sigma);
+    }
+    return model;
+}
 
 int gretl_shim_model_ncoeff(const void *handle)
 {

@@ -19,6 +19,8 @@ use std::os::raw::c_int;
 
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
+mod iv;
+pub use iv::{IvProblem, IvResult, run_iv};
 #[cfg(feature = "count-plugin")]
 mod poisson;
 #[cfg(feature = "count-plugin")]
