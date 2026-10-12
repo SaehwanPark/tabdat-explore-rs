@@ -1,8 +1,7 @@
 //! Script parsing, macro expansion, and directives engine for `.td` script files.
 
 use std::collections::HashMap;
-use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// A single discrete command line extracted from a script file or buffer.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,47 +134,7 @@ impl ScriptBlockState {
   }
 }
 
-/// Recoverable script parsing or execution error containing source location.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScriptError {
-  path: PathBuf,
-  line: usize,
-  message: String,
-}
-
-impl ScriptError {
-  /// Construct a new script error with file path, 1-based line number, and diagnostic message.
-  pub fn new(path: impl Into<PathBuf>, line: usize, message: impl Into<String>) -> Self {
-    Self {
-      path: path.into(),
-      line,
-      message: message.into(),
-    }
-  }
-
-  /// The path to the script file where the error occurred.
-  pub fn path(&self) -> &Path {
-    &self.path
-  }
-
-  /// The 1-based line number of the error.
-  pub fn line(&self) -> usize {
-    self.line
-  }
-
-  /// The diagnostic error message.
-  pub fn message(&self) -> &str {
-    &self.message
-  }
-}
-
-impl fmt::Display for ScriptError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}:{}: {}", self.path.display(), self.line, self.message)
-  }
-}
-
-impl std::error::Error for ScriptError {}
+pub use tabdat_domain::ScriptError;
 
 /// Read a script file from disk and parse it into discrete structured commands.
 pub fn read_script(path: &Path) -> Result<Vec<ScriptCommand>, ScriptError> {

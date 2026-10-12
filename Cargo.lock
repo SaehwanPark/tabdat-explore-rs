@@ -1183,12 +1183,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabdat-domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tabdat-stats",
+]
+
+[[package]]
 name = "tabdat-explore-rs"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "serde",
  "serde_json",
+ "tabdat-domain",
  "tabdat-language",
  "tabdat-runtime",
  "tabdat-stats",
@@ -1197,6 +1207,9 @@ dependencies = [
 [[package]]
 name = "tabdat-language"
 version = "0.1.0"
+dependencies = [
+ "tabdat-domain",
+]
 
 [[package]]
 name = "tabdat-runtime"
@@ -1204,6 +1217,7 @@ version = "0.1.0"
 dependencies = [
  "duckdb",
  "sha2",
+ "tabdat-domain",
  "tabdat-language",
  "tabdat-stats",
 ]

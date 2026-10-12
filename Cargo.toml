@@ -8,6 +8,7 @@ publish = false
 base64 = "0.22.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["arbitrary_precision"] }
+tabdat-domain = { path = "crates/tabdat-domain", version = "0.1.0" }
 tabdat-language = { path = "crates/tabdat-language", version = "0.1.0" }
 tabdat-runtime = { path = "crates/tabdat-runtime", version = "0.1.0" }
 tabdat-stats = { path = "crates/tabdat-stats", version = "0.1.0" }
@@ -15,6 +16,7 @@ tabdat-stats = { path = "crates/tabdat-stats", version = "0.1.0" }
 [workspace]
 members = [
   ".",
+  "crates/tabdat-domain",
   "crates/tabdat-language",
   "crates/tabdat-runtime",
   "crates/tabdat-stats",
