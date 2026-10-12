@@ -329,33 +329,38 @@ Build the domain model before substantial runtime implementation.
 - [x] Port dataset metadata types (PR #185; existing eager metadata, lazy/session
   metadata follows the state-contract slice).
 - [x] Port labels metadata (PR #185; owned dictionary, sets and attachments).
-- [ ] Port panel metadata.
-- [ ] Port execution-state types.
-- [ ] Design explicit estimation-family state enum.
-- [ ] Design typed error hierarchy.
-- [ ] Define stable JSON serialization contracts.
-- [ ] Define command effect categories.
-- [ ] Define capability requirement metadata.
+- [x] Port panel metadata (PR #186; validated keys + structure summary, not panel execution).
+- [x] Port execution-state types (PR #186; owned snapshot and general lazy-count metadata).
+- [x] Design explicit estimation-family state enum (PR #186; one optional family;
+  current runtime publishes Linear; other family execution remains later work).
+- [x] Design typed error hierarchy (PR #186; pipeline hierarchy + located wire diagnostics).
+- [x] Define stable JSON serialization contracts (PR #186; internal tagged v1
+  prototype and goldens, existing CLI v1 unchanged).
+- [x] Define command effect categories (PR #186; 81-entry Python discovery comparison).
+- [x] Define capability requirement metadata (PR #186; typed conservative prerequisites,
+  recursive child requirements; does not eagerly initialize capabilities).
 
 ### 4.3 Rust contract review
 
 For each major Python type/signature:
 
-- [ ] Record existing Python contract.
-- [ ] Determine whether behavior should remain unchanged.
-- [ ] Design idiomatic Rust signature.
-- [ ] Eliminate Python-specific dynamic representation.
-- [ ] Encode finite choices as enums.
-- [ ] Encode optional state as `Option`.
-- [ ] Encode failure as `Result`.
-- [ ] Avoid `Box<dyn Any>`-style escape hatches unless explicitly justified.
+- [x] Record existing Python contract ([major-type review](migration/phase2-core-contracts.md#major-python-typesignature-review), PR #186).
+- [x] Determine whether behavior should remain unchanged (review table + ADR 0022).
+- [x] Design idiomatic Rust signature (review table + compiled domain APIs).
+- [x] Eliminate Python-specific dynamic representation (owned scalar/AST/model boundaries).
+- [x] Encode finite choices as enums (command/options/effects/capabilities/families).
+- [x] Encode optional state as `Option` (domain execution and family state).
+- [x] Encode failure as `Result` (parser/execution/constructors/typed hierarchy).
+- [x] Avoid `Box<dyn Any>`-style escape hatches unless explicitly justified (none introduced).
 
 ### Exit gate
 
 - [x] Core domain crate has no runtime backend dependency (PR #185; serde + pure stats only).
 - [x] Core domain crate forbids unsafe (PR #185).
-- [ ] Main command/result/state types compile.
-- [ ] JSON schema prototype is stable enough for migration tests.
+- [x] Main command/result/state types compile (PR #186; full workspace checks).
+- [x] JSON schema prototype is stable enough for migration tests (PR #186;
+  [internal v1 contract](migration/domain-json-v1.md), envelope schema and typed goldens;
+  not full public JSON/MCP parity).
 
 ---
 

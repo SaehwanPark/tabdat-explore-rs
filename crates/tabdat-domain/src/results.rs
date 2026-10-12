@@ -1,8 +1,10 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
 
 /// A column in the loaded dataset schema.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnInfo {
   /// The source column name, in schema order.
   pub name: String,
@@ -11,7 +13,7 @@ pub struct ColumnInfo {
 }
 
 /// Owned metadata for the active dataset.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DatasetInfo {
   /// The local source path used for the load.
   pub source: PathBuf,
@@ -26,21 +28,21 @@ pub struct DatasetInfo {
 }
 
 /// The owned result returned after an eager local Parquet or CSV load.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LoadResult {
   /// Metadata for the newly active dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after projecting columns with `keep`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeepResult {
   /// Metadata for the newly active projected dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after projecting out columns with `drop`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DropResult {
   /// Metadata for the newly active projected dataset.
   pub dataset: DatasetInfo,
@@ -48,28 +50,28 @@ pub struct DropResult {
 
 /// The owned result returned after projecting an explicit selection with
 /// `select`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SelectResult {
   /// Metadata for the newly active projected dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned by a read-only `describe` request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DescribeResult {
   /// The unchanged metadata for the active dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after counting rows in the active dataset.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CountResult {
   /// The row count observed in the active relation.
   pub row_count: u64,
 }
 
 /// An owned descriptive-statistics row for one numeric column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SummaryRow {
   /// The requested column name.
   pub variable: String,
@@ -86,14 +88,14 @@ pub struct SummaryRow {
 }
 
 /// The owned result returned by a read-only `summarize` request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SummarizeResult {
   /// Rows in requested order, including repeated explicit variables.
   pub rows: Vec<SummaryRow>,
 }
 
 /// An owned codebook profile row for one active column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CodebookRow {
   /// The requested column name.
   pub variable: String,
@@ -110,14 +112,14 @@ pub struct CodebookRow {
 }
 
 /// The owned result returned by a read-only `codebook` request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CodebookResult {
   /// Rows in schema or requested order, including repeated explicit variables.
   pub rows: Vec<CodebookRow>,
 }
 
 /// An owned missingness row for one active column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MissingRow {
   /// The requested column name.
   pub variable: String,
@@ -134,14 +136,14 @@ pub struct MissingRow {
 }
 
 /// The owned result returned by a read-only `missing` request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MissingResult {
   /// Rows in schema or requested order, including repeated explicit variables.
   pub rows: Vec<MissingRow>,
 }
 
 /// The owned duplicate-key aggregate returned by a read-only request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DuplicatesResult {
   /// Key variables in schema or requested order, including repeated requests.
   pub variables: Vec<String>,
@@ -160,7 +162,7 @@ pub struct DuplicatesResult {
 }
 
 /// The owned key-uniqueness aggregate returned by a read-only `isid` request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IsidResult {
   /// Key variables in the requested order, including repeated requests.
   pub variables: Vec<String>,
@@ -175,7 +177,7 @@ pub struct IsidResult {
 }
 
 /// The owned reproducibility fingerprint returned by a read-only request.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DatasignatureResult {
   /// The digest algorithm named by the versioned signature protocol.
   pub algorithm: String,
@@ -188,7 +190,7 @@ pub struct DatasignatureResult {
 }
 
 /// The owned aggregate returned by a read-only row assertion.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AssertResult {
   /// The number of active rows checked by the predicate.
   pub checked: u64,
@@ -197,84 +199,84 @@ pub struct AssertResult {
 }
 
 /// The owned result returned after appending a generated numeric column.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenerateResult {
   /// Metadata for the newly active generated dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after replacing values in an existing column.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReplaceResult {
   /// Metadata for the newly active replaced dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after renaming one column in the active dataset.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RenameResult {
   /// Metadata for the newly active renamed dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after stably sorting active rows.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SortResult {
   /// Metadata for the newly active sorted dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after stably sorting active rows by directed keys.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GsortResult {
   /// Metadata for the newly active directed-sort dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after recoding selected columns.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecodeResult {
   /// Metadata for the newly active recoded dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after encoding one string column.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EncodeResult {
   /// Metadata for the newly active encoded dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after decoding one encode-produced numeric column.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DecodeResult {
   /// Metadata for the newly active decoded dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after joining the active relation with a named table.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JoinResult {
   /// Metadata for the newly active joined dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after appending rows from a named table.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppendResult {
   /// Metadata for the newly active combined dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after reshaping the active dataset.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReshapeResult {
   /// Metadata for the newly active reshaped dataset.
   pub dataset: DatasetInfo,
 }
 
 /// A normalized named value-label set owned by the active session.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValueLabelSet {
   /// The set name.
   pub name: String,
@@ -283,7 +285,7 @@ pub struct ValueLabelSet {
 }
 
 /// Session-local variable and value-label metadata.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelMetadata {
   /// Variable names and their display labels.
   pub variable_labels: Vec<(String, String)>,
@@ -300,7 +302,8 @@ impl LabelMetadata {
 }
 
 /// The metadata mutation represented by a successful `label` result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum LabelResultAction {
   /// A variable display label was set or cleared.
   Variable,
@@ -315,7 +318,7 @@ pub enum LabelResultAction {
 }
 
 /// The owned result returned by a successful session-local `label` command.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LabelResult {
   /// The label action that completed.
   pub action: LabelResultAction,
@@ -326,7 +329,7 @@ pub struct LabelResult {
 }
 
 /// The owned result returned by a bounded one- or two-way frequency table.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TabulateResult {
   /// Human-readable table headers in output order.
   pub headers: Vec<String>,
@@ -335,7 +338,7 @@ pub struct TabulateResult {
 }
 
 /// The owned result returned by a bounded grouped read-only request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ByResult {
   /// Group and aggregate headers in output order.
   pub headers: Vec<String>,
@@ -345,14 +348,14 @@ pub struct ByResult {
 
 /// The owned result returned after replacing the active relation with a
 /// grouped aggregate relation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CollapseResult {
   /// Metadata for the newly active collapsed dataset.
   pub dataset: DatasetInfo,
 }
 
 /// The owned result returned after writing the active dataset to Parquet.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveResult {
   /// The output path requested by the caller.
   pub path: PathBuf,
@@ -361,7 +364,7 @@ pub struct SaveResult {
 }
 
 /// The owned result returned after writing the active dataset to CSV.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportResult {
   /// The output path requested by the caller.
   pub path: PathBuf,
@@ -373,20 +376,26 @@ pub struct ExportResult {
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
 /// caller never depends on a backend row or connection lifetime.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum CellValue {
   /// An SQL NULL value.
   Null,
   /// A boolean value.
   Boolean(bool),
   /// A signed integer value, widened without loss of precision.
-  SignedInteger(i128),
+  SignedInteger(#[serde(with = "crate::wire::signed_decimal")] i128),
   /// An unsigned integer value, widened without loss of precision.
-  UnsignedInteger(u128),
+  UnsignedInteger(#[serde(with = "crate::wire::unsigned_decimal")] u128),
   /// A floating-point value.
-  Float(f64),
+  Float(#[serde(with = "crate::wire::float_text")] f64),
   /// A decimal value with its declared width, scale, and scaled payload.
-  Decimal { width: u8, scale: u8, value: i128 },
+  Decimal {
+    width: u8,
+    scale: u8,
+    #[serde(with = "crate::wire::signed_decimal")]
+    value: i128,
+  },
   /// A UTF-8 text value.
   Text(String),
   /// An owned binary value.
@@ -394,7 +403,7 @@ pub enum CellValue {
 }
 
 /// The owned result returned by a bounded preview request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PreviewResult {
   /// Column names in the active relation's schema order.
   pub columns: Vec<String>,
@@ -403,7 +412,7 @@ pub struct PreviewResult {
 }
 
 /// The owned result returned after executing a .td script.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunResult {
   /// The resolved path of the executed script.
   pub path: PathBuf,
@@ -412,7 +421,7 @@ pub struct RunResult {
 }
 
 /// The owned result returned by a direct `sql <query>` request.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TableResult {
   /// Column headers in query projection order.
   pub headers: Vec<String>,
@@ -421,7 +430,7 @@ pub struct TableResult {
 }
 
 /// The owned result returned by `sql <query> into <table>`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SqlCreateResult {
   /// The destination named table name.
   pub table_name: String,
@@ -430,7 +439,7 @@ pub struct SqlCreateResult {
 }
 
 /// The owned result returned after activating a registered named table with `use <table>`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActivateResult {
   /// The activated table name.
   pub table_name: String,
@@ -439,7 +448,7 @@ pub struct ActivateResult {
 }
 
 /// The typed result of executing a linear regression command.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegressionResult {
   /// Outcome (dependent) variable name.
   pub outcome: String,
@@ -466,7 +475,7 @@ pub struct RegressionResult {
 }
 
 /// The owned result of estimating one affine combination of regression coefficients.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LincomResult {
   /// Human-readable form of the requested expression.
   pub label: String,
@@ -489,7 +498,7 @@ pub struct LincomResult {
 }
 
 /// The owned result returned after testing linear restrictions on a fitted model.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TestResult {
   /// Formatted restrictions in their requested order.
   pub constraints: Vec<String>,
@@ -506,7 +515,7 @@ pub struct TestResult {
 }
 
 /// Descriptive statistics for one sample reported by `ttest`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TtestGroupStats {
   /// Variable name or group label represented by this sample.
   pub name: String,
@@ -525,7 +534,7 @@ pub struct TtestGroupStats {
 }
 
 /// The owned result of a one-sample, paired, pooled, or Welch `ttest` command.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TtestResult {
   /// First tested variable.
   pub varname1: String,
@@ -560,14 +569,15 @@ pub struct TtestResult {
 }
 
 /// The owned result returned after adding fitted values or residuals to the active dataset.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PredictionResult {
   /// Metadata for the newly active dataset with the appended prediction column.
   pub dataset: DatasetInfo,
 }
 
 /// Results currently exposed by the bounded runtime slice.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum ExecutionResult {
   /// A successfully loaded dataset.
   Load(LoadResult),

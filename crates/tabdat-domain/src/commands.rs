@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// The syntax-only command forms currently understood by the language layer.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum Command {
   /// Show general help or the help topic named by `topic`.
   Help { topic: Option<String> },
@@ -206,7 +209,7 @@ pub enum Command {
 }
 
 /// The bounded Bayesian estimation prefix command form.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BayesPrefixCommand {
   /// The inner estimation command (restricted to regress or logit).
   pub command: Box<Command>,
@@ -225,7 +228,7 @@ pub struct BayesPrefixCommand {
 }
 
 /// The bounded SQL command AST representation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SqlCommand {
   /// The opaque SQL query text.
   pub query: String,
@@ -234,7 +237,8 @@ pub struct SqlCommand {
 }
 
 /// A value accepted by a bounded `label define` command.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum LabelValue {
   /// An integer label value.
   Integer(i64),
@@ -245,7 +249,8 @@ pub enum LabelValue {
 }
 
 /// The non-I/O session-local forms of the `label` command.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum LabelCommand {
   /// Set or clear the display label for one variable. `None` clears it.
   Variable {
@@ -283,7 +288,7 @@ pub enum LabelCommand {
 }
 
 /// The bounded frequency-table forms of `tabulate`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TabulateCommand {
   /// The one row variable supported by this slice.
   pub row_variables: Vec<String>,
@@ -300,7 +305,8 @@ pub struct TabulateCommand {
 }
 
 /// The finite aggregate functions accepted by bounded `collapse`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CollapseStatistic {
   /// Count non-NULL values in each aggregate variable.
   Count,
@@ -315,7 +321,7 @@ pub enum CollapseStatistic {
 }
 
 /// The bounded grouped aggregate form of `collapse`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CollapseCommand {
   /// The aggregate function applied to every requested variable.
   pub statistic: CollapseStatistic,
@@ -326,7 +332,7 @@ pub struct CollapseCommand {
 }
 
 /// The grouped read-only form of `by`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ByCommand {
   /// Grouping variables in source order.
   pub groups: Vec<String>,
@@ -335,7 +341,8 @@ pub struct ByCommand {
 }
 
 /// The bounded join modes accepted by the syntax boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum JoinHow {
   /// Keep only active rows with a matching named-table row.
   Inner,
@@ -344,7 +351,7 @@ pub enum JoinHow {
 }
 
 /// The named-table join form retained for a later runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JoinCommand {
   /// The user-visible named table to join.
   pub table_name: String,
@@ -357,7 +364,8 @@ pub struct JoinCommand {
 }
 
 /// The two layout directions accepted by the bounded `reshape` syntax.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ReshapeDirection {
   /// Convert repeated wide columns into rows.
   Long,
@@ -366,7 +374,7 @@ pub enum ReshapeDirection {
 }
 
 /// The parser-only reshape form retained for a later relation runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReshapeCommand {
   /// Whether the eventual runtime should produce long or wide output.
   pub direction: ReshapeDirection,
@@ -379,7 +387,8 @@ pub struct ReshapeCommand {
 }
 
 /// The actions accepted by the parser-only `panel` command.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum PanelAction {
   /// Report the current panel declaration.
   Report,
@@ -395,7 +404,7 @@ pub enum PanelAction {
 }
 
 /// The parser-only panel form retained for a later relation runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PanelCommand {
   /// The requested panel action.
   pub action: PanelAction,
@@ -403,7 +412,8 @@ pub struct PanelCommand {
 
 /// The panel-index transform forms accepted by the parser-only `xtdata`
 /// command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum XtDataTransform {
   /// Demean each requested variable within its panel entity.
   Within,
@@ -412,7 +422,7 @@ pub enum XtDataTransform {
 }
 
 /// The parser-only `xtdata` form retained for a later panel runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtDataCommand {
   /// Ordered variables selected for transformation.
   pub variables: Vec<String>,
@@ -421,7 +431,8 @@ pub struct XtDataCommand {
 }
 
 /// The estimator forms accepted by the parser-only `regress` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RegressEstimator {
   /// Ordinary least squares.
   Ols,
@@ -433,7 +444,7 @@ pub enum RegressEstimator {
 
 /// The parser-only `regress` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegressCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -453,7 +464,7 @@ pub struct RegressCommand {
 
 /// The parser-only `logit` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogitCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -469,7 +480,7 @@ pub struct LogitCommand {
 
 /// The parser-only `probit` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProbitCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -485,7 +496,7 @@ pub struct ProbitCommand {
 
 /// The parser-only `poisson` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoissonCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -501,7 +512,7 @@ pub struct PoissonCommand {
 
 /// The parser-only `nbreg` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NbregCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -517,7 +528,7 @@ pub struct NbregCommand {
 
 /// The parser-only `zip` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZipCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -535,7 +546,7 @@ pub struct ZipCommand {
 
 /// The parser-only `zinb` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZinbCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -553,7 +564,7 @@ pub struct ZinbCommand {
 
 /// The parser-only `qreg` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QregCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -569,7 +580,7 @@ pub struct QregCommand {
 
 /// The parser-only `tobit` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TobitCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -589,7 +600,7 @@ pub struct TobitCommand {
 
 /// The parser-only `heckman` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeckmanCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -609,7 +620,7 @@ pub struct HeckmanCommand {
 
 /// The parser-only `nl` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NlCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -626,7 +637,8 @@ pub struct NlCommand {
 }
 
 /// The parametric distributions accepted by the parser-only `streg` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StregDistribution {
   /// Weibull proportional hazards / accelerated failure time model.
   Weibull,
@@ -636,7 +648,7 @@ pub enum StregDistribution {
 
 /// The parser-only `streg` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StregCommand {
   /// The survival time variable.
   pub time_variable: String,
@@ -655,7 +667,8 @@ pub struct StregCommand {
 }
 
 /// The spatial model types accepted by the parser-only `spregress` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SpregressModelType {
   /// Spatial autoregressive model (lag of y).
   Lag,
@@ -666,7 +679,8 @@ pub enum SpregressModelType {
 }
 
 /// The spatial contiguity types accepted by the parser-only `spregress` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SpregressContiguity {
   /// Queen contiguity (common edge or vertex).
   Queen,
@@ -676,7 +690,7 @@ pub enum SpregressContiguity {
 
 /// The parser-only `spregress` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpregressCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -700,7 +714,7 @@ pub struct SpregressCommand {
 
 /// The parser-only `lasso` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LassoCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -714,7 +728,7 @@ pub struct LassoCommand {
 
 /// The parser-only `postlasso` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PostlassoCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -730,7 +744,7 @@ pub struct PostlassoCommand {
 
 /// The parser-only `ridge` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RidgeCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -744,7 +758,7 @@ pub struct RidgeCommand {
 
 /// The parser-only `elasticnet` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ElasticnetCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -760,7 +774,7 @@ pub struct ElasticnetCommand {
 
 /// The parser-only `cvlasso` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CvlassoCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -774,7 +788,7 @@ pub struct CvlassoCommand {
 
 /// The parser-only `cvridge` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CvridgeCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -787,7 +801,8 @@ pub struct CvridgeCommand {
 }
 
 /// The elastic net mixing parameter forms accepted by `cvelasticnet`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum CvelasticnetL1Ratio {
   /// Single mixing parameter value retained as string spelling.
   Single(String),
@@ -797,7 +812,7 @@ pub enum CvelasticnetL1Ratio {
 
 /// The parser-only `cvelasticnet` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CvelasticnetCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -813,7 +828,7 @@ pub struct CvelasticnetCommand {
 
 /// The parser-only direct `bayes` linear regression form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BayesCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -828,7 +843,8 @@ pub struct BayesCommand {
 }
 
 /// The requested prediction mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PredictKind {
   /// Linear prediction (fitted values $X\hat{\beta}$).
   Xb,
@@ -844,7 +860,7 @@ pub enum PredictKind {
 
 /// The parser-only `predict` form retained for a later post-estimation
 /// runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PredictCommand {
   /// Target variable name to store predictions.
   pub target_variable: String,
@@ -861,7 +877,8 @@ pub struct PredictCommand {
 }
 
 /// The estimator forms accepted by the parser-only `ivregress` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum IvEstimator {
   /// Two-stage least squares.
   TwoStageLeastSquares,
@@ -871,7 +888,7 @@ pub enum IvEstimator {
 
 /// The parser-only `ivregress` form retained for a later statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IvRegressCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -892,7 +909,8 @@ pub struct IvRegressCommand {
 }
 
 /// The estimator forms accepted by the parser-only `xtreg` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum XtRegEstimator {
   /// Fixed-effects panel estimator.
   FixedEffects,
@@ -902,7 +920,7 @@ pub enum XtRegEstimator {
 
 /// The parser-only `xtreg` form retained for a later panel/statistical runtime
 /// slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtRegCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -918,7 +936,7 @@ pub struct XtRegCommand {
 
 /// The parser-only `xtabond` dynamic-panel estimator form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtAbondCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -934,7 +952,7 @@ pub struct XtAbondCommand {
 
 /// The parser-only `xtlogit` fixed-effects panel logit estimator form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtLogitCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -946,7 +964,7 @@ pub struct XtLogitCommand {
 
 /// The parser-only `lowess` locally weighted regression smoother form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LowessCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -960,7 +978,7 @@ pub struct LowessCommand {
 
 /// The parser-only `did` difference-in-differences estimator form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DidCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -975,7 +993,8 @@ pub struct DidCommand {
 }
 
 /// The doubly robust difference-in-differences estimator methods.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DrDidMethod {
   /// Outcome regression.
   Or,
@@ -987,7 +1006,7 @@ pub enum DrDidMethod {
 
 /// The parser-only `drdid` doubly robust difference-in-differences estimator form retained
 /// for a later statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DrDidCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -1009,7 +1028,7 @@ pub struct DrDidCommand {
 
 /// The parser-only `dml` double machine learning estimator form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DmlCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -1031,7 +1050,7 @@ pub struct DmlCommand {
 
 /// The parser-only `cfregress` control function estimator form retained for a later
 /// statistical runtime slice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CfRegressCommand {
   /// The dependent variable.
   pub outcome: String,
@@ -1050,21 +1069,21 @@ pub struct CfRegressCommand {
 }
 
 /// Parsed `lincom` linear combination specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LincomCommand {
   /// The linear combination expression to estimate.
   pub expression: GenerateExpression,
 }
 
 /// Parsed `test` linear hypothesis testing specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TestCommand {
   /// The linear constraints to test.
   pub constraints: Vec<GenerateExpression>,
 }
 
 /// Parsed `histogram` visualization specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistogramCommand {
   /// The single variable to plot.
   pub variable: String,
@@ -1077,7 +1096,7 @@ pub struct HistogramCommand {
 }
 
 /// Parsed `scatter` visualization specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScatterCommand {
   /// The y-axis variable to plot.
   pub y_variable: String,
@@ -1090,7 +1109,7 @@ pub struct ScatterCommand {
 }
 
 /// Parsed `bar` visualization specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BarCommand {
   /// The variable to plot frequency categories for.
   pub variable: String,
@@ -1103,7 +1122,8 @@ pub struct BarCommand {
 }
 
 /// The diagnostic plot kinds supported by `bayesplot`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BayesPlotKind {
   /// Trace plot of MCMC iterations.
   Trace,
@@ -1114,7 +1134,7 @@ pub enum BayesPlotKind {
 }
 
 /// Parsed `bayesplot` visualization specification.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BayesPlotCommand {
   /// The MCMC diagnostic plot kind (trace, density, or autocorrelation).
   pub kind: BayesPlotKind,
@@ -1125,7 +1145,7 @@ pub struct BayesPlotCommand {
 }
 
 /// The direct comparison forms accepted by `ttest`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TtestCommand {
   /// The first variable in the comparison.
   pub varname1: String,
@@ -1140,7 +1160,8 @@ pub struct TtestCommand {
 }
 
 /// The no-option post-estimation diagnostics accepted by this bounded `estat` parser slice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EstatSubcommand {
   /// Report variance inflation factors for a linear regression model.
   Vif,
@@ -1156,14 +1177,15 @@ pub enum EstatSubcommand {
 
 /// A no-option `estat` form accepted by the language layer; runtime support is
 /// subcommand-specific.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EstatCommand {
   /// The requested diagnostic subcommand.
   pub subcommand: EstatSubcommand,
 }
 
 /// An expression accepted by the bounded eager `assert` command.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum AssertExpression {
   /// A dataset column reference.
   Identifier(String),
@@ -1191,7 +1213,8 @@ pub enum AssertExpression {
 /// The parser preserves a broader syntax than each runtime executes. This remains
 /// separate from [`AssertExpression`], which models only the bounded predicate forms
 /// accepted by `assert` and does not represent function calls.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum GenerateExpression {
   /// A dataset column reference.
   Identifier(String),
@@ -1222,7 +1245,8 @@ pub enum GenerateExpression {
 }
 
 /// Operators accepted by [`GenerateExpression::Binary`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GenerateBinaryOperator {
   /// Addition.
   Add,
@@ -1247,7 +1271,8 @@ pub enum GenerateBinaryOperator {
 }
 
 /// Operators accepted by [`AssertExpression::Binary`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AssertBinaryOperator {
   /// Addition.
   Add,
@@ -1272,28 +1297,32 @@ pub enum AssertBinaryOperator {
 }
 
 /// A local path or an unvalidated remote URI supplied to `use`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum DataSource {
   LocalPath(String),
   Uri(String),
 }
 
 /// Whether a `use` request should load eagerly or build a lazy plan.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecutionMode {
   Eager,
   Lazy,
 }
 
 /// The lazy engine named by a `use` request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum LazyEngine {
   DuckDb,
   Polars,
 }
 
 /// The finite setting names accepted by the syntax-only `set` command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SettingName {
   /// Select the artifact image format (value validation is deferred).
   GraphFormat,
@@ -1304,7 +1333,7 @@ pub enum SettingName {
 }
 
 /// One owned `gsort` key and its requested direction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SortKey {
   /// The variable spelling after an optional unquoted direction prefix.
   pub variable: String,
@@ -1313,7 +1342,8 @@ pub struct SortKey {
 }
 
 /// A value accepted on either side of a bounded `recode` rule.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum RecodeValue {
   /// A numeric literal preserved as source text.
   Number(String),
@@ -1323,7 +1353,8 @@ pub enum RecodeValue {
 }
 
 /// One endpoint of an inclusive numeric `recode` range.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum RecodeRangeEndpoint {
   /// The lower unbounded endpoint.
   Min,
@@ -1334,7 +1365,8 @@ pub enum RecodeRangeEndpoint {
 }
 
 /// One input accepted by a bounded `recode` rule.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum RecodeInput {
   /// A single scalar value.
   Value(RecodeValue),
@@ -1354,7 +1386,7 @@ pub enum RecodeInput {
 }
 
 /// One ordered bounded `recode` rule.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecodeRule {
   /// The input values or ranges matched by this rule.
   pub inputs: Vec<RecodeInput>,
@@ -1363,7 +1395,8 @@ pub struct RecodeRule {
 }
 
 /// The mutually exclusive write target for a bounded `recode` command.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum RecodeTarget {
   /// Append one new output column per source variable.
   Generate { variables: Vec<String> },
@@ -1387,7 +1420,8 @@ impl AssertBinaryOperator {
 }
 
 /// A validated, canonical non-negative decimal row limit.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
 pub struct RowLimit(Box<str>);
 
 impl RowLimit {
@@ -1413,5 +1447,17 @@ impl RowLimit {
 impl Default for RowLimit {
   fn default() -> Self {
     Self("5".into())
+  }
+}
+
+impl TryFrom<String> for RowLimit {
+  type Error = &'static str;
+  fn try_from(value: String) -> Result<Self, Self::Error> {
+    Self::new(&value)
+  }
+}
+impl From<RowLimit> for String {
+  fn from(value: RowLimit) -> Self {
+    value.0.into()
   }
 }

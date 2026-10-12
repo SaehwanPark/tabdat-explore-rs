@@ -26,14 +26,6 @@ struct TabulateCount {
   count: u64,
 }
 
-struct LinearRegressionState {
-  outcome: String,
-  predictors: Vec<String>,
-  predictor_design: Vec<Vec<f64>>,
-  include_intercept: bool,
-  result: tabdat_stats::LeastSquaresResult,
-}
-
 struct AffineCombination {
   offset: f64,
   weights: Vec<f64>,
@@ -55,7 +47,7 @@ pub struct Session {
   active_table_name: Option<String>,
   named_tables: HashMap<String, DatasetInfo>,
   label_metadata: LabelMetadata,
-  last_regression: Option<LinearRegressionState>,
+  estimation: Option<EstimationState>,
 }
 
 impl Session {
@@ -67,7 +59,7 @@ impl Session {
       active_table_name: None,
       named_tables: HashMap::new(),
       label_metadata: LabelMetadata::default(),
-      last_regression: None,
+      estimation: None,
     }
   }
 
@@ -140,6 +132,27 @@ impl Session {
     }
   }
 
+  fn linear_state(&self) -> Option<&LinearRegressionState> {
+    self.estimation.as_ref().and_then(EstimationState::linear)
+  }
+
+  /// Read an owned domain snapshot without initializing a backend.
+  /// Panel/operation/materialization tracking are not executed by this slice.
+  pub fn state(&self) -> ExecutionState {
+    ExecutionState {
+      active_dataset: self.active_dataset.clone(),
+      active_table_name: self.active_table_name.clone(),
+      named_tables: self
+        .named_tables
+        .iter()
+        .map(|(name, dataset)| (name.clone(), dataset.clone()))
+        .collect(),
+      labels: self.label_metadata.clone(),
+      estimation: self.estimation.clone(),
+      ..ExecutionState::default()
+    }
+  }
+
   /// Return the currently published dataset metadata, if any.
   pub fn active_dataset(&self) -> Option<&DatasetInfo> {
     self.active_dataset.as_ref()
@@ -148,7 +161,7 @@ impl Session {
   /// Return the result from the current regression attempt, if any.
   /// A new attempt clears the prior result before validation begins.
   pub fn last_regression(&self) -> Option<&tabdat_stats::LeastSquaresResult> {
-    self.last_regression.as_ref().map(|state| &state.result)
+    self.linear_state().map(|state| &state.result)
   }
 
   /// Return the currently published named table registry.
@@ -2269,7 +2282,7 @@ impl Session {
     &mut self,
     command: &RegressCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
-    self.last_regression = None;
+    self.estimation = None;
     let dataset = self
       .active_dataset
       .as_ref()
@@ -2526,13 +2539,13 @@ impl Session {
         message: e.to_string(),
       })?;
 
-    self.last_regression = Some(LinearRegressionState {
+    self.estimation = Some(EstimationState::Linear(Box::new(LinearRegressionState {
       outcome: command.outcome.clone(),
       predictors: command.predictors.clone(),
       predictor_design: problem.design_matrix,
       include_intercept: command.include_intercept,
       result: least_squares_result.clone(),
-    });
+    })));
 
     let covariance_str = match &least_squares_result.covariance.covariance_type {
       tabdat_stats::CovarianceType::NonRobust => "nonrobust".to_string(),
@@ -2564,8 +2577,7 @@ impl Session {
 
   fn execute_lincom(&self, command: &LincomCommand) -> Result<ExecutionResult, RuntimeError> {
     let model = self
-      .last_regression
-      .as_ref()
+      .linear_state()
       .ok_or(RuntimeError::LincomRequiresPriorEstimation)?;
     let parameter_indices = model
       .result
@@ -2601,8 +2613,7 @@ impl Session {
 
   fn execute_test(&self, command: &TestCommand) -> Result<ExecutionResult, RuntimeError> {
     let model = self
-      .last_regression
-      .as_ref()
+      .linear_state()
       .ok_or(RuntimeError::TestRequiresPriorEstimation)?;
     if command.constraints.is_empty() {
       return Err(RuntimeError::TestFailed {
@@ -2976,8 +2987,7 @@ impl Session {
       return Err(RuntimeError::NoActiveDataset { command: "estat" });
     }
     let model = self
-      .last_regression
-      .as_ref()
+      .linear_state()
       .ok_or(RuntimeError::EstatRequiresPriorRegression)?;
     let vif_values = tabdat_stats::variance_inflation_factors(
       &model.predictors,
@@ -3028,8 +3038,7 @@ impl Session {
 
     let (outcome, predictors, intercept, coefficients) = {
       let model = self
-        .last_regression
-        .as_ref()
+        .linear_state()
         .ok_or(RuntimeError::PredictRequiresPriorRegression)?;
       if dataset
         .columns
@@ -3627,89 +3636,7 @@ impl Default for Session {
 }
 
 fn command_name(command: &Command) -> &'static str {
-  match command {
-    Command::Help { .. } => "help",
-    Command::Status => "status",
-    Command::Exit => "exit",
-    Command::Describe => "describe",
-    Command::Doctor => "doctor",
-    Command::Summarize { .. } => "summarize",
-    Command::Codebook { .. } => "codebook",
-    Command::Datasignature => "datasignature",
-    Command::Assert { .. } => "assert",
-    Command::Generate { .. } => "generate",
-    Command::Replace { .. } => "replace",
-    Command::Keep { .. } => "keep",
-    Command::Drop { .. } => "drop",
-    Command::Missing { .. } => "missing",
-    Command::Duplicates { .. } => "duplicates",
-    Command::Isid { .. } => "isid",
-    Command::Select { .. } => "select",
-    Command::Sort { .. } => "sort",
-    Command::Gsort { .. } => "gsort",
-    Command::Recode { .. } => "recode",
-    Command::Encode { .. } => "encode",
-    Command::Decode { .. } => "decode",
-    Command::Label { .. } => "label",
-    Command::Tabulate { .. } => "tabulate",
-    Command::Join { .. } => "join",
-    Command::Append { .. } => "append",
-    Command::Reshape { .. } => "reshape",
-    Command::Panel { .. } => "panel",
-    Command::XtData { .. } => "xtdata",
-    Command::IvRegress { .. } => "ivregress",
-    Command::XtReg { .. } => "xtreg",
-    Command::XtAbond { .. } => "xtabond",
-    Command::XtLogit { .. } => "xtlogit",
-    Command::Lowess { .. } => "lowess",
-    Command::Did { .. } => "did",
-    Command::DrDid { .. } => "drdid",
-    Command::Dml { .. } => "dml",
-    Command::CfRegress { .. } => "cfregress",
-    Command::Lincom { .. } => "lincom",
-    Command::Test { .. } => "test",
-    Command::Histogram { .. } => "histogram",
-    Command::Scatter { .. } => "scatter",
-    Command::Bar { .. } => "bar",
-    Command::BayesPlot { .. } => "bayesplot",
-    Command::Estat { .. } => "estat",
-    Command::Ttest { .. } => "ttest",
-    Command::By { .. } => "by",
-    Command::Collapse { .. } => "collapse",
-    Command::Rename { .. } => "rename",
-    Command::Run { .. } => "run",
-    Command::Set { .. } => "set",
-    Command::Save { .. } => "save",
-    Command::Export { .. } => "export",
-    Command::Use { .. } => "use",
-    Command::Count => "count",
-    Command::Head { .. } => "head",
-    Command::Tail { .. } => "tail",
-    Command::Sql { .. } => "sql",
-    Command::Regress { .. } => "regress",
-    Command::Logit { .. } => "logit",
-    Command::Probit { .. } => "probit",
-    Command::Poisson { .. } => "poisson",
-    Command::Nbreg { .. } => "nbreg",
-    Command::Zip { .. } => "zip",
-    Command::Zinb { .. } => "zinb",
-    Command::Qreg { .. } => "qreg",
-    Command::Tobit { .. } => "tobit",
-    Command::Heckman { .. } => "heckman",
-    Command::Nl { .. } => "nl",
-    Command::Streg { .. } => "streg",
-    Command::Spregress { .. } => "spregress",
-    Command::Lasso { .. } => "lasso",
-    Command::Postlasso { .. } => "postlasso",
-    Command::Ridge { .. } => "ridge",
-    Command::Elasticnet { .. } => "elasticnet",
-    Command::Cvlasso { .. } => "cvlasso",
-    Command::Cvridge { .. } => "cvridge",
-    Command::Cvelasticnet { .. } => "cvelasticnet",
-    Command::Bayes { .. } => "bayes",
-    Command::BayesPrefix { .. } => "bayes",
-    Command::Predict { .. } => "predict",
-  }
+  command.name()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

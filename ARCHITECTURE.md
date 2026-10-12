@@ -21,8 +21,14 @@ Phase 2 slice 1 introduces `tabdat-domain` as the sole owner of existing command
 expression, result, dataset/label metadata and recoverable execution/script error
 contracts. It forbids unsafe code and depends only on serde and the pure
 `tabdat-stats`; language and runtime re-export the types for source compatibility.
-Parser diagnostics and execution effects remain in their existing layers. See
-[the recovered contract](docs/migration/phase2-core-contracts.md).
+Parser diagnostics and execution effects remain in their existing layers. Domain
+also owns validated panel keys, general metadata with unknown lazy counts, a
+backend-free execution snapshot, one finite optional estimation-family state,
+typed command effects/capability prerequisites and an internal tagged JSON v1
+prototype. Runtime publishes only Linear family state today. CLI v1 JSON remains
+unchanged. [ADR 0022](docs/adr/0022-domain-state-and-workspace-boundaries.md) and
+[the recovered contract](docs/migration/phase2-core-contracts.md) record scope and
+intentional state/wire design differences.
 
 - `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
   `tabdat-domain`, `tabdat-language`, `tabdat-runtime`, and `tabdat-stats`.

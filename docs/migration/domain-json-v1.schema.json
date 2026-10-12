@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tabdat:domain-envelope:1",
+  "title": "TabDat internal domain envelope v1 prototype",
+  "description": "Envelope validation only. Select a typed Rust payload decoder; this does not validate every command or state invariant.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "data"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "data": {}
+  },
+  "$defs": {
+    "row_limit": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
+    "panel_metadata": {
+      "type": "object",
+      "required": ["id_variable", "time_variable"],
+      "properties": {
+        "id_variable": {"type": "string", "minLength": 1},
+        "time_variable": {"type": "string", "minLength": 1}
+      },
+      "description": "Distinctness is validated by the Rust decoder."
+    },
+    "count_result": {
+      "type": "object",
+      "required": ["kind", "payload"],
+      "properties": {
+        "kind": {"const": "count"},
+        "payload": {
+          "type": "object",
+          "required": ["row_count"],
+          "properties": {"row_count": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615}}
+        }
+      }
+    }
+  }
+}
