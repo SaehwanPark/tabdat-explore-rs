@@ -172,6 +172,24 @@ fractions, Gretl requires integers: explicit mismatch, not whole-command parity.
 See [report](poisson-plugin.md). No NB/other plugin, Linux, complete native safety
 or distribution acceptance is implied. Three owner review passes, not independent.
 
+## Slice 9: NB2 and fresh Linux build/render validation (complete)
+
+[PR #171](https://github.com/SaehwanPark/tabdat-explore-rs/pull/171) extends the
+same count module with an explicit family selector and variance-scale alpha.
+Original Python default results fail the declared precision rule; its raw alpha
+is also mislabeled lnalpha. ADR 0013 records correction of parameter metadata and
+separately labeled external Newton refinement, preserving the original output
+and tolerance. Full beta/alpha observed covariance and likelihood agree with R
+MASS and refined Python, with exact 320-row sample. No old-default parity claim.
+
+19 feature tests pass on macOS and a freshly built Linux x86_64 emulated Docker
+container; native SVG/resvg also passes all 8 tests headlessly using DejaVu Sans.
+[Linux evidence](linux-revalidation.md), [NB2 report](negative-binomial.md).
+Default static tests, audit/deny and locked checks remain clean. No new native
+module/unsafe call/dependency; adapter exception remains explicit. Three owner
+review passes, not independent. Continue IV/panel/plugin families rather than
+stop on the now-recorded oracle defects. Whole Phase 1 remains in progress.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

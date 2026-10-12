@@ -22,7 +22,10 @@ pub use binary::{BinaryLink, BinaryResult, run_binary};
 #[cfg(feature = "count-plugin")]
 mod poisson;
 #[cfg(feature = "count-plugin")]
-pub use poisson::{PoissonResult, run_poisson};
+pub use poisson::{
+  CountFamily, CountResult, NegativeBinomialResult, PoissonResult, run_negative_binomial,
+  run_poisson,
+};
 
 /// A Rust-owned estimation problem: an outcome, predictors, and the data.
 ///

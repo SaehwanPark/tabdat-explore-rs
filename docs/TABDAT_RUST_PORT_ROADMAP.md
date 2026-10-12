@@ -199,7 +199,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Implement Poisson fixture (opt-in shared-core/count module, integer
   classical MLE, full covariance/likelihood and exact sample against Python/R;
   [report](feasibility/poisson-plugin.md); fractional/robust/offset semantics excluded).
-- [ ] Implement negative-binomial fixture.
+- [x] Implement negative-binomial fixture (NB2 raw alpha, joint observed
+  covariance, unchanged tolerance against independent R and explicitly refined
+  Python; default-oracle precision/name deviations recorded in ADR 0013;
+  [report](feasibility/negative-binomial.md)).
 - [ ] Implement IV/2SLS fixture.
 - [ ] Implement panel FE fixture.
 - [ ] Implement panel RE fixture.

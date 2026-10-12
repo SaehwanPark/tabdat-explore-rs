@@ -1,23 +1,45 @@
 use crate::{Coefficient, EstimationProblem, GretlError};
 use gretl_sys::{GretlDataset, GretlModel, Stat};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CountFamily {
+  Poisson,
+  NegativeBinomial2,
+}
+
 #[derive(Debug, Clone)]
-pub struct PoissonResult {
+pub struct CountResult {
+  pub family: CountFamily,
   pub coefficients: Vec<Coefficient>,
   pub covariance: Vec<Vec<f64>>,
   pub sample_rows: Vec<usize>,
   pub log_likelihood: f64,
 }
 
-/// Integer classical Poisson only; no offset, weights, robust covariance,
+pub type PoissonResult = CountResult;
+pub type NegativeBinomialResult = CountResult;
+
+/// Integer classical counts only; no offset, weights, robust covariance,
 /// missing-row construction or product model state is implied.
 pub fn run_poisson(problem: &EstimationProblem) -> Result<PoissonResult, GretlError> {
+  run_count(problem, CountFamily::Poisson)
+}
+
+/// NB2: Var(Y)=mu+alpha*mu^2. The final parameter is raw alpha, not log(alpha).
+pub fn run_negative_binomial(
+  problem: &EstimationProblem,
+) -> Result<NegativeBinomialResult, GretlError> {
+  run_count(problem, CountFamily::NegativeBinomial2)
+}
+
+fn run_count(problem: &EstimationProblem, family: CountFamily) -> Result<CountResult, GretlError> {
   let invalid = |message: &str| GretlError::InvalidProblem(message.into());
   let nobs = problem.nobs();
   let ncol = problem.ncol();
-  let k = problem.predictors.len() + usize::from(problem.include_intercept);
+  let nb2 = family == CountFamily::NegativeBinomial2;
+  let k = problem.predictors.len() + usize::from(problem.include_intercept) + usize::from(nb2);
   if nobs <= k || problem.predictors.is_empty() || problem.data.iter().any(|r| r.len() != ncol) {
-    return Err(invalid("empty, ragged or undersized Poisson problem"));
+    return Err(invalid("empty, ragged or undersized count problem"));
   }
   if problem.data.iter().flatten().any(|v| !v.is_finite())
     || problem
@@ -26,7 +48,7 @@ pub fn run_poisson(problem: &EstimationProblem) -> Result<PoissonResult, GretlEr
       .any(|r| r[0] < 0.0 || r[0].fract() != 0.0 || r[0] > (1_u64 << 53) as f64)
   {
     return Err(invalid(
-      "Poisson spike requires finite data and exact nonnegative integer counts",
+      "count spike requires finite data and exact nonnegative integer counts",
     ));
   }
   if problem.outcome.contains('\0') || problem.predictors.iter().any(|name| name.contains('\0')) {
@@ -54,20 +76,24 @@ pub fn run_poisson(problem: &EstimationProblem) -> Result<PoissonResult, GretlEr
   }
   list.extend((2..nvar).map(|i| i as i32));
   list[0] = (list.len() - 1) as i32;
-  let model = GretlModel::poisson(&dataset, &list);
+  let model = if nb2 {
+    GretlModel::negative_binomial(&dataset, &list)
+  } else {
+    GretlModel::poisson(&dataset, &list)
+  };
   if model.errcode() != 0 {
     return Err(GretlError::EstimationFailed {
       code: model.errcode(),
     });
   }
   if model.nobs() != nobs || model.ncoeff() != k {
-    return Err(invalid(
-      "Poisson spike requires a full-rank complete sample",
-    ));
+    return Err(invalid("count spike requires a full-rank complete sample"));
   }
   let coefficients: Vec<_> = (0..k)
     .map(|i| Coefficient {
-      name: if problem.include_intercept && i == 0 {
+      name: if nb2 && i == k - 1 {
+        "alpha".into()
+      } else if problem.include_intercept && i == 0 {
         "intercept".into()
       } else {
         problem.predictors[i - usize::from(problem.include_intercept)].clone()
@@ -86,9 +112,13 @@ pub fn run_poisson(problem: &EstimationProblem) -> Result<PoissonResult, GretlEr
     || covariance.iter().flatten().any(|v| !v.is_finite())
     || !log_likelihood.is_finite()
   {
-    return Err(invalid("Poisson native output is invalid/nonfinite"));
+    return Err(invalid("count native output is invalid/nonfinite"));
   }
-  Ok(PoissonResult {
+  if nb2 && coefficients[k - 1].value <= 0.0 {
+    return Err(invalid("NB2 dispersion must be positive"));
+  }
+  Ok(CountResult {
+    family,
     coefficients,
     covariance,
     sample_rows: (0..nobs).collect(),

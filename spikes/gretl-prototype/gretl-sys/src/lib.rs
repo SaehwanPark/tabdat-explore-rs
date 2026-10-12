@@ -51,7 +51,7 @@ unsafe extern "C" {
     probit: c_int,
   ) -> *mut c_void;
   #[cfg(feature = "count-plugin")]
-  fn gretl_shim_poisson(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
+  fn gretl_shim_count(dset: *mut c_void, list: *const c_int, nlist: c_int, nb2: c_int) -> *mut c_void;
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -206,15 +206,25 @@ impl GretlModel {
   /// shared-core count capability. Plugin lifetime follows process initialization.
   #[cfg(feature = "count-plugin")]
   pub fn poisson(dset: &GretlDataset, list: &[c_int]) -> Self {
+    Self::count(dset, list, false)
+  }
+
+  #[cfg(feature = "count-plugin")]
+  pub fn negative_binomial(dset: &GretlDataset, list: &[c_int]) -> Self {
+    Self::count(dset, list, true)
+  }
+
+  #[cfg(feature = "count-plugin")]
+  fn count(dset: &GretlDataset, list: &[c_int], nb2: bool) -> Self {
     let len = Self::checked_list_len(dset, list);
     let ptr = native(|| {
       // SAFETY: live dataset, exact checked list/count, slice borrowed through
       // the call. Initialization set the bounded build-owned plugin path once;
       // all plugin dispatch/global state and teardown share the native mutex.
       // The shim returns an owned model even when estimation fails.
-      unsafe { gretl_shim_poisson(dset.ptr, list.as_ptr(), len) }
+      unsafe { gretl_shim_count(dset.ptr, list.as_ptr(), len, i32::from(nb2)) }
     });
-    assert!(!ptr.is_null(), "gretl_shim_poisson returned NULL");
+    assert!(!ptr.is_null(), "gretl_shim_count returned NULL");
     Self { ptr }
   }
 
