@@ -3,7 +3,7 @@
 **Disposition: partial / in progress, not complete.** Updated 2026-10-12 after
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
 native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
-balanced panel FE/explicit-intercept RE #173. The
+balanced panel FE/explicit-intercept RE #173 and observed-information Tobit #174. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -42,8 +42,9 @@ estimator feasibility requirements.
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
    error recovery, nonrelocatable paths and native otool diagnostic. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
-3. **Remaining numerical fixtures:** quantile, Tobit, dynamic panel, Heckman
-   and survival fixtures remain. Balanced FE/explicit-intercept RE now pass
+3. **Remaining numerical fixtures:** quantile, dynamic panel, Heckman
+   and survival fixtures remain. Classical Tobit now passes observed-information
+   references, explicitly not fallback BFGS SE parity ([report](tobit.md), ADR 0014). Balanced FE/explicit-intercept RE now pass
    Python/R plm references ([report](panel.md)); other panel contracts remain open. NB2 (ADR 0013,
    explicit optimizer/name normalization) and IV/2SLS now pass trusted references,
    including fresh Linux x86_64 emulated runs. Passed linear/binary fixtures cannot substitute for these families.

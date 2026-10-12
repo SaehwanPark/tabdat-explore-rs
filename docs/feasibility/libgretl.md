@@ -482,6 +482,10 @@ R². [Balanced panel FE/RE](panel.md) validates within slopes and Swamy-Arora RE
 with explicit intercept and exact canonical row keys; it does not accept default
 Python no-constant RE or unbalanced/robust panel contracts. Fresh Linux emulated
 source builds accompany these slices ([platform record](linux-revalidation.md)).
+[Classical Tobit](tobit.md) adds independently selected interval-plugin and full
+observed beta/logscale covariance evidence (ADR 0014); original Python fallback
+SEs are preserved as a recorded deviation, not accepted parity. The same shared
+core/lifetime applies, with release first-use/repeated measurements in that report.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

@@ -30,12 +30,12 @@
 void gretl_shim_init(void)
 {
     libgretl_init();
-#ifdef TD_COUNT_PLUGIN_PATH
+#ifdef TD_SPIKE_PLUGIN_PATH
     /* plugins.c concatenates path + basename into MAXLEN storage. Keep the
      * compile-time, build-owned path bounded, including separator and suffix. */
-    _Static_assert(sizeof(TD_COUNT_PLUGIN_PATH) + sizeof("/poisson.so") < MAXLEN,
+    _Static_assert(sizeof(TD_SPIKE_PLUGIN_PATH) + sizeof("/interval.so") < MAXLEN,
                    "plugin build path exceeds native path buffer");
-    set_gretl_plugin_path(TD_COUNT_PLUGIN_PATH);
+    set_gretl_plugin_path(TD_SPIKE_PLUGIN_PATH);
 #endif
 }
 
@@ -153,7 +153,7 @@ void *gretl_shim_binary(void *dset_handle, const int *list, int nlist, int probi
     return model;
 }
 
-#ifdef TD_COUNT_PLUGIN_PATH
+#ifdef TD_SPIKE_PLUGIN_PATH
 void *gretl_shim_count(void *dset_handle, const int *list, int nlist, int nb2)
 {
     if (dset_handle == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
@@ -201,6 +201,29 @@ void *gretl_shim_panel(void *handle, const int *list, int nlist, int periods, in
     dset->pd = pd;
     return model;
 }
+
+#ifdef TD_SPIKE_PLUGIN_PATH
+void *gretl_shim_tobit(void *handle, const int *list, int nlist, double lower, double upper, int has_upper)
+{
+    if (handle == NULL || list == NULL || nlist < 3 || list[0] != nlist-1) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    *model = tobit_model(list, lower, has_upper ? upper : NADBL, handle, OPT_NONE, NULL);
+    return model;
+}
+
+double gretl_shim_tobit_vcv(void *handle, int i, int j)
+{
+    MODEL *model = handle;
+    if (model == NULL || model->errcode || model->ci != TOBIT) return NADBL;
+    /* interval.c donates this matrix to the MODEL; get_data borrows it,
+     * unlike public model-matrix extraction, which returns an owned copy. */
+    gretl_matrix *vcv = gretl_model_get_data(model, "full_vcv");
+    int k = model->ncoeff + 1;
+    if (vcv == NULL || vcv->rows != k || vcv->cols != k || i < 0 || j < 0 || i >= k || j >= k) return NADBL;
+    return gretl_matrix_get(vcv, i, j);
+}
+#endif
 
 int gretl_shim_model_ncoeff(const void *handle)
 {

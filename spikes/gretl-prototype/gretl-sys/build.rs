@@ -1,6 +1,6 @@
 //! Builds pinned gretl 2026b and its ownership shim. Default builds use a
-//! static core; `count-plugin` builds a same-source shared core plus Poisson
-//! module with private build-owned paths (ADR 0012), without prebuilt shortcuts.
+//! static core; opt-in plugins share one same-source core and private build-owned
+//! paths (ADR 0012), without prebuilt shortcuts.
 //!
 //! Default paths:
 //! - If `GRETL_PREBUILT_DIR` is set and contains `libgretl-1.0.a`, use it
@@ -25,19 +25,26 @@ fn main() {
   let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
   let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
   let is_macos = cfg!(target_os = "macos");
-  let count_plugin = std::env::var_os("CARGO_FEATURE_COUNT_PLUGIN").is_some();
+  // Shared linkage is required for every enabled plugin. Module selection stays
+  // explicit below so Tobit does not implicitly ship the count module.
+  let shared_plugins = std::env::var_os("CARGO_FEATURE_SHARED_PLUGINS").is_some();
   println!("cargo:rerun-if-env-changed=GRETL_PREBUILT_DIR");
-  assert!(!count_plugin || std::env::var_os("GRETL_PREBUILT_DIR").is_none(),
-    "count-plugin requires a same-source shared core; unset GRETL_PREBUILT_DIR");
+  assert!(
+    !shared_plugins || std::env::var_os("GRETL_PREBUILT_DIR").is_none(),
+    "plugins require a same-source shared core; unset GRETL_PREBUILT_DIR"
+  );
 
   println!("cargo:rerun-if-changed=build.rs");
   println!("cargo:rerun-if-changed=shim.c");
 
-  let libgretl_a = build_libgretl(&out_dir, is_macos, count_plugin);
-  if count_plugin {
-    make_count_plugin(&out_dir.join("gretl-src"), is_macos);
+  let libgretl_a = build_libgretl(&out_dir, is_macos, shared_plugins);
+  if std::env::var_os("CARGO_FEATURE_COUNT_PLUGIN").is_some() {
+    make_plugin(&out_dir.join("gretl-src"), is_macos, "poisson");
   }
-  let shim_a = build_shim(&manifest_dir, &out_dir, is_macos, count_plugin);
+  if std::env::var_os("CARGO_FEATURE_TOBIT_PLUGIN").is_some() {
+    make_plugin(&out_dir.join("gretl-src"), is_macos, "interval");
+  }
+  let shim_a = build_shim(&manifest_dir, &out_dir, is_macos, shared_plugins);
 
   // Emit link flags. Order matters for static symbol resolution: the shim
   // references libgretl symbols, so the shim archive must precede libgretl.
@@ -47,7 +54,7 @@ fn main() {
 
   let lib_dir = libgretl_a.parent().unwrap();
   println!("cargo:rustc-link-search=native={}", lib_dir.display());
-  if count_plugin {
+  if shared_plugins {
     // The plugin and shim must resolve the same shared core, not independent
     // static copies with separate process globals. Absolute paths are spike-only.
     println!("cargo:rustc-link-lib=dylib=gretl-1.0");
@@ -65,14 +72,14 @@ fn main() {
 /// The source is always downloaded and extracted (the C shim needs the gretl
 /// headers to compile). If `GRETL_PREBUILT_DIR` provides a prebuilt
 /// `libgretl-1.0.a`, the configure/make build is skipped.
-fn build_libgretl(out_dir: &Path, is_macos: bool, count_plugin: bool) -> PathBuf {
+fn build_libgretl(out_dir: &Path, is_macos: bool, shared_plugins: bool) -> PathBuf {
   let src = out_dir.join("gretl-src");
   let tarball = out_dir.join(format!("gretl-{GRETL_VERSION}.tar.xz"));
 
   if !tarball.exists() {
     download_and_verify(&tarball);
   }
-  if count_plugin {
+  if shared_plugins {
     // Cached source must retain the same provenance as a fresh download.
     verify_sha256(&tarball, GRETL_SHA256);
   }
@@ -89,12 +96,16 @@ fn build_libgretl(out_dir: &Path, is_macos: bool, count_plugin: bool) -> PathBuf
     panic!("GRETL_PREBUILT_DIR set but {} not found", lib.display());
   }
 
-  configure(&src, is_macos, count_plugin);
+  configure(&src, is_macos, shared_plugins);
   make_buildstamp(&src);
   make_lib(&src, is_macos);
 
-  let name = if count_plugin {
-    if is_macos { "libgretl-1.0.dylib" } else { "libgretl-1.0.so" }
+  let name = if shared_plugins {
+    if is_macos {
+      "libgretl-1.0.dylib"
+    } else {
+      "libgretl-1.0.so"
+    }
   } else {
     "libgretl-1.0.a"
   };
@@ -199,7 +210,7 @@ fn patch_monte_carlo(src: &Path) {
   eprintln!("build.rs: applied monte_carlo.c compatibility patch");
 }
 
-fn configure(src: &Path, is_macos: bool, count_plugin: bool) {
+fn configure(src: &Path, is_macos: bool, shared_plugins: bool) {
   let libdir = format!("--libdir={}", src.join("lib/.libs").display());
   let mut args = vec![
     "--disable-gui",
@@ -208,31 +219,48 @@ fn configure(src: &Path, is_macos: bool, count_plugin: bool) {
     "--without-libR",
     // In the pinned generated configure script, disabling NLS also skips host
     // canonicalization, leaving libtool unable to select a shared linker.
-    if count_plugin { "--enable-nls" } else { "--disable-nls" },
+    if shared_plugins {
+      "--enable-nls"
+    } else {
+      "--disable-nls"
+    },
     "--disable-build-addons",
     "--disable-xdg-utils",
     "--disable-sse2",
     "--disable-avx",
-    if count_plugin { "--enable-shared" } else { "--disable-shared" },
+    if shared_plugins {
+      "--enable-shared"
+    } else {
+      "--disable-shared"
+    },
     "--enable-static",
   ];
-  if count_plugin {
+  if shared_plugins {
     args.push(&libdir);
   }
-  let tool_path = format!("/opt/homebrew/opt/gettext/bin:{}", std::env::var("PATH").unwrap_or_default());
+  let tool_path = format!(
+    "/opt/homebrew/opt/gettext/bin:{}",
+    std::env::var("PATH").unwrap_or_default()
+  );
   let mut env: Vec<(&str, &str)> = vec![];
-  if is_macos && count_plugin {
+  if is_macos && shared_plugins {
     // gettext is keg-only on this host. Without its header the generated
     // configure skips canonicalization even with NLS requested.
-    env.push(("CPPFLAGS", "-I/opt/homebrew/include -I/opt/homebrew/opt/gettext/include"));
+    env.push((
+      "CPPFLAGS",
+      "-I/opt/homebrew/include -I/opt/homebrew/opt/gettext/include",
+    ));
     env.push(("PATH", &tool_path));
   }
   if is_macos {
     env.push(("OMP_LIB", "-L/opt/homebrew/opt/libomp/lib -lomp"));
     env.push((
       "LDFLAGS",
-      if count_plugin { "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib -L/opt/homebrew/opt/gettext/lib" }
-      else { "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib" },
+      if shared_plugins {
+        "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib -L/opt/homebrew/opt/gettext/lib"
+      } else {
+        "-L/opt/homebrew/lib -L/opt/homebrew/opt/libomp/lib"
+      },
     ));
     env.push((
       "PKG_CONFIG_PATH",
@@ -261,8 +289,8 @@ fn make_lib(src: &Path, is_macos: bool) {
   run("make", &args, src);
 }
 
-/// Build only the count module against the same shared core.
-fn make_count_plugin(src: &Path, is_macos: bool) {
+/// Build only explicitly selected modules against the same shared core.
+fn make_plugin(src: &Path, is_macos: bool, module: &str) {
   // Building a single module bypasses the aggregate target that creates .deps.
   std::fs::create_dir_all(src.join("plugin/.deps")).expect("create plugin dependency directory");
   let cflags = if is_macos {
@@ -270,13 +298,22 @@ fn make_count_plugin(src: &Path, is_macos: bool) {
   } else {
     "CFLAGS=-g -O2 -fopenmp"
   };
-  run("make", &["-C", "plugin", "poisson.la", cflags], src);
-  assert!(src.join("plugin/.libs/poisson.so").exists(), "poisson.so missing after build");
+  let target = format!("{module}.la");
+  run("make", &["-C", "plugin", &target, cflags], src);
+  assert!(
+    src.join(format!("plugin/.libs/{module}.so")).exists(),
+    "plugin missing after build"
+  );
 }
 
 /// Compile the ownership shim using headers and pkg-config flags from the pinned
-/// core build. Only the count feature receives the bounded private plugin path.
-fn build_shim(manifest_dir: &Path, out_dir: &Path, is_macos: bool, count_plugin: bool) -> PathBuf {
+/// core build. Only shared plugin features receive the bounded private path.
+fn build_shim(
+  manifest_dir: &Path,
+  out_dir: &Path,
+  is_macos: bool,
+  shared_plugins: bool,
+) -> PathBuf {
   let shim_c = manifest_dir.join("shim.c");
   let shim_obj = out_dir.join("shim.o");
   let src_include = out_dir.join("gretl-src/lib/src");
@@ -298,10 +335,16 @@ fn build_shim(manifest_dir: &Path, out_dir: &Path, is_macos: bool, count_plugin:
     gretl_root_s,
   ];
 
-  let plugin_define = format!("-DTD_COUNT_PLUGIN_PATH=\"{}\"",
-    out_dir.join("gretl-src/plugin/.libs").to_str().expect("UTF-8 plugin path")
-      .replace('\\', "\\\\").replace('"', "\\\""));
-  if count_plugin {
+  let plugin_define = format!(
+    "-DTD_SPIKE_PLUGIN_PATH=\"{}\"",
+    out_dir
+      .join("gretl-src/plugin/.libs")
+      .to_str()
+      .expect("UTF-8 plugin path")
+      .replace('\\', "\\\\")
+      .replace('"', "\\\"")
+  );
+  if shared_plugins {
     args.push(&plugin_define);
   }
 

@@ -17,6 +17,10 @@
 use gretl_sys::{GretlDataset, GretlModel, OlsCovariance, Stat};
 use std::os::raw::c_int;
 
+#[cfg(feature = "tobit-plugin")]
+mod tobit;
+#[cfg(feature = "tobit-plugin")]
+pub use tobit::{TobitResult, run_tobit};
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
 mod panel;
