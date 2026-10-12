@@ -106,5 +106,10 @@ still applies. Three owner review passes covered wire/constructor invariants,
 family cache/source/error compatibility, and architecture/effect/fixture evidence.
 No actionable issues remained; independent model review was not used.
 
-Slice 3 will extract nonempty workspace boundaries with an early draft PR,
-progress commits, verification and owner review before autonomous merge.
+Slice 3 WIP: extract existing DuckDB operations into `tabdat-data`, filesystem
+and script-path effects into `tabdat-io`, coordination into `tabdat-execution`,
+existing catalog/help/JSON into `tabdat-reporting`, and existing CLI into
+`tabdat-shell`. Keep `tabdat-runtime` compatibility re-exports. `tabdat-mcp` will
+provide a typed, transport-independent tool boundary using the same command/result
+and reporting contracts (not a server). Add architecture/dependency regression
+checks and run complete workspace and policy validation before merge.
