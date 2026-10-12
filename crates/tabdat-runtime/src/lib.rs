@@ -2539,13 +2539,13 @@ impl Session {
         message: e.to_string(),
       })?;
 
-    self.estimation = Some(EstimationState::Linear(LinearRegressionState {
+    self.estimation = Some(EstimationState::Linear(Box::new(LinearRegressionState {
       outcome: command.outcome.clone(),
       predictors: command.predictors.clone(),
       predictor_design: problem.design_matrix,
       include_intercept: command.include_intercept,
       result: least_squares_result.clone(),
-    }));
+    })));
 
     let covariance_str = match &least_squares_result.covariance.covariance_type {
       tabdat_stats::CovarianceType::NonRobust => "nonrobust".to_string(),

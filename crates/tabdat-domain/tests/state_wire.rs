@@ -18,7 +18,13 @@ fn domain_exchange_is_versioned_and_lossless() {
       .data,
     command
   );
-  assert_eq!(serde_json::to_value(DomainEnvelope::new(ExecutionResult::Count(CountResult { row_count: 7 }))).unwrap(), serde_json::json!({"schema_version":1,"data":{"kind":"count","payload":{"row_count":7}}}));
+  assert_eq!(
+    serde_json::to_value(DomainEnvelope::new(ExecutionResult::Count(CountResult {
+      row_count: 7
+    })))
+    .unwrap(),
+    serde_json::json!({"schema_version":1,"data":{"kind":"count","payload":{"row_count":7}}})
+  );
   assert!(
     serde_json::from_str::<DomainEnvelope<Command>>(
       r#"{"schema_version":2,"data":{"kind":"count"}}"#
@@ -49,7 +55,9 @@ fn state_has_one_optional_model_and_panel_contract() {
   let panel = PanelMetadata::new("id", "time").unwrap();
   assert_eq!(panel.id_variable(), "id");
   assert!(PanelMetadata::new("id", "id").is_err());
-  assert!(serde_json::from_str::<PanelMetadata>(r#"{"id_variable":"id","time_variable":"id"}"#).is_err());
+  assert!(
+    serde_json::from_str::<PanelMetadata>(r#"{"id_variable":"id","time_variable":"id"}"#).is_err()
+  );
   state.panel = Some(panel);
   let json = serde_json::to_string(&DomainEnvelope::new(state.clone())).unwrap();
   assert_eq!(
@@ -64,22 +72,35 @@ fn state_has_one_optional_model_and_panel_contract() {
 fn scalar_nonfinite_values_are_not_confused_with_null() {
   for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.0] {
     let wire = serde_json::to_string(&CellValue::Float(value)).unwrap();
-    let CellValue::Float(decoded) = serde_json::from_str(&wire).unwrap() else { panic!("lost float tag") };
-    if value.is_nan() { assert!(decoded.is_nan()); } else { assert_eq!(decoded.to_bits(), value.to_bits()); }
+    let CellValue::Float(decoded) = serde_json::from_str(&wire).unwrap() else {
+      panic!("lost float tag")
+    };
+    if value.is_nan() {
+      assert!(decoded.is_nan());
+    } else {
+      assert_eq!(decoded.to_bits(), value.to_bits());
+    }
   }
 }
 
 #[test]
 fn located_errors_keep_typed_sources_and_versioned_diagnostics() {
   use std::error::Error;
-  let error = TabDatError::from(RuntimeError::ScriptError(ScriptError::new("job.td", 7, "failed")));
+  let error = TabDatError::from(RuntimeError::ScriptError(ScriptError::new(
+    "job.td", 7, "failed",
+  )));
   assert!(error.source().is_some());
   let diagnostic = Diagnostic::from(&error);
   assert_eq!(diagnostic.category, ErrorCategory::Script);
   assert_eq!(diagnostic.line, Some(7));
   assert_eq!(diagnostic.message, "job.td:7: failed");
   let wire = serde_json::to_string(&DomainEnvelope::new(diagnostic.clone())).unwrap();
-  assert_eq!(serde_json::from_str::<DomainEnvelope<Diagnostic>>(&wire).unwrap().data, diagnostic);
+  assert_eq!(
+    serde_json::from_str::<DomainEnvelope<Diagnostic>>(&wire)
+      .unwrap()
+      .data,
+    diagnostic
+  );
 }
 
 #[test]

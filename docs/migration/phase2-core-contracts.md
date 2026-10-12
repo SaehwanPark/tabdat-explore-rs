@@ -30,6 +30,28 @@ moving existing implementations or introducing tested interface contracts; it
 must not claim a new REPL, MCP server or production native adapter merely because
 a crate exists. Approved Phase 1 FFI remains isolated until needed by runtime work.
 
+## Major Python type/signature review
+
+| Python contract at the pin | Rust signature / decision | Behavioral policy and evidence |
+| --- | --- | --- |
+| `models.py:Command` dataclass union and parsed expressions | `Command`, command-specific structs, finite option/operator enums and recursive owned AST | Preserve existing parser forms/diagnostics; language contract suites; no runtime backend import |
+| `ColumnInfo`, `DatasetInfo` | eager compatibility `DatasetInfo`; general `DatasetMetadata` with `Option<u64>`, `DataSource`, ordered schema | Preserve existing eager runtime; lazy/URI metadata compiles but execution is later work |
+| `PanelMetadata`, `PanelStructureSummary` | validated distinct-key `PanelMetadata`, typed summary with `is_balanced()` | Retain key names and balance definition; constructors/decoders enforce distinctness |
+| `ValueLabelSet`, `LabelMetadata` | owned ordered mapping/attachment records, `LabelValue` enum | Preserve existing label execution and normalized order; no dynamic scalar objects |
+| Existing execution result union / `TransformResult` | owned `ExecutionResult` and named transform results | Preserve bounded Rust payloads rather than invent messages/overflow counts; further family-specific output records follow their execution slices |
+| `CoefficientEstimate`, estimation/inference records | existing pure `tabdat-stats` contracts | Reused unchanged; not a new statistical validation claim |
+| `SessionState` | owned `ExecutionState` with optional dataset/model/panel and deterministic registry snapshot | Explicit optional fields; backend connections excluded; snapshot does not initialize capabilities |
+| Private family caches `_RegressionState` through `_SpatialRegressionState` | `Option<EstimationState>`; finite variants + normalized owned `ModelState`; current linear cache is complete | Intentional ADR 0022 replacement of independently nullable/native slots; adapter scoring caches excluded, no claim of unsupported-family execution |
+| `TabDatError`/parse/execution subclasses and `ScriptError` | `TabDatError` hierarchy, typed existing `RuntimeError`, located `ScriptError`, wire `Diagnostic` | Failure is `Result`; deterministic messages/source chains; no foreign error/handle escapes |
+| Effect Literal categories and discovery records | `CommandEffect` and exhaustive command metadata | All 81 conservative discovery entries match pinned Python JSON; no implied permission grant |
+| Backend/library checks | finite `Capability` requirements incl. nested command requirements | New Rust metadata, not Python module replication; installation/variant checks remain execution-owned |
+| JSON result formatting | existing CLI v1 plus internal `DomainEnvelope<T>` prototype | CLI unchanged; internal tagged prototype explicitly versioned and documented separately |
+
+No `Any`, dynamic/native model escape hatch, or duplicate backend engine is used.
+Finite choices are enums, optional state uses Option, and fallible APIs use Result.
+`Box` is used only for recursive commands/expressions, the large linear-state
+variant and typed errors, never type erasure. ADR 0022 records design deviations.
+
 ## Test contract
 
 Characterize existing parser/runtime/CLI behavior with the full workspace suites.
@@ -62,9 +84,27 @@ No actionable issues remained. The initial 120-second test invocation timed out
 while running suites; the complete rerun passed. Initial geiger relative manifest
 was rejected; the absolute-manifest invocation passed. No failures were hidden.
 
-Slice 2 WIP: explicit panel and owned execution/family state, exhaustive command
-names/effects/capability requirements, typed top-level errors and a lossless tagged
-JSON prototype. Existing CLI v1 JSON remains unchanged and separate from the new
-internal domain exchange format. Runtime linear caches will use the domain state.
-Slice 3 will extract nonempty workspace boundaries. Both have early draft PRs,
+Slice 2 implemented (PR #186): explicit panel/execution/family state, exhaustive
+command names/effects, typed capability requirements and top-level errors, and
+[internal JSON v1 prototype](domain-json-v1.md). Runtime uses the domain Linear
+family cache and exposes an owned snapshot. CLI JSON is unchanged. New tests first
+failed for absent state/wire APIs. Two representative fixture inputs were corrected
+to existing parser syntax (quoted label text, explicit recode target), without
+changing the parser. Clippy caught the large Linear variant; boxing fixed it without
+changing wire shape. No tolerance or statistical implementation changed.
+
+Pinned oracle command (Python 3.13.3, existing unsynchronized environment):
+`PYTHONDONTWRITEBYTECODE=1 uv run --no-sync tabdat --json --list-command-effects`.
+All 81 entries exactly match the existing Rust discovery table used to recover
+exhaustive domain effects. Output is committed at
+`../../tests/fixtures/python-command-effects-v1.json`; checkout remained clean.
+
+Slice 2 validation: 716 passed, one pre-existing ignored (92 suites); format,
+locked all-target check/test/Clippy, diff/link/schema-JSON checks and full domain
+geiger inventory passed. No dependency versions changed; slice 1 deny/audit evidence
+still applies. Three owner review passes covered wire/constructor invariants,
+family cache/source/error compatibility, and architecture/effect/fixture evidence.
+No actionable issues remained; independent model review was not used.
+
+Slice 3 will extract nonempty workspace boundaries with an early draft PR,
 progress commits, verification and owner review before autonomous merge.

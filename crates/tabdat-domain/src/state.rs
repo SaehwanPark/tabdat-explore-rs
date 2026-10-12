@@ -138,7 +138,7 @@ pub struct ModelState {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "family", content = "state", rename_all = "snake_case")]
 pub enum EstimationState {
-  Linear(LinearRegressionState),
+  Linear(Box<LinearRegressionState>),
   Lasso(ModelState),
   Postlasso(ModelState),
   Ridge(ModelState),

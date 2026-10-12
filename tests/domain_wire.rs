@@ -4,6 +4,8 @@ use tabdat_domain::{Command, DomainEnvelope, EstimationState, ExecutionState};
 
 #[test]
 fn representative_commands_roundtrip_the_internal_wire_without_backend_use() {
+  let oracle: serde_json::Value =
+    serde_json::from_str(include_str!("fixtures/python-command-effects-v1.json")).unwrap();
   for input in [
     "count",
     "help status",
@@ -32,6 +34,17 @@ fn representative_commands_roundtrip_the_internal_wire_without_backend_use() {
     let wire = serde_json::to_string(&DomainEnvelope::new(command.clone())).unwrap();
     let decoded: DomainEnvelope<Command> = serde_json::from_str(&wire).unwrap();
     assert_eq!(decoded.data, command, "{input}");
+    let expected = oracle["data"]["commands"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .find(|entry| entry["name"] == command.name())
+      .unwrap();
+    assert_eq!(
+      serde_json::to_value(command.effects()).unwrap(),
+      expected["effects"],
+      "{input}"
+    );
     assert!(!command.effects().is_empty());
     assert!(command.effects().windows(2).all(|pair| pair[0] < pair[1]));
     assert!(

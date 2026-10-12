@@ -16,8 +16,12 @@ reference contracts are explicit; broader integration and release gates remain.
 `tabdat-domain` owns the existing command/expression, result, dataset/label metadata
 and execution/script error types without a runtime backend dependency. Language
 and runtime compatibility re-exports preserve existing call sites. Arbitrary-length
-row limits now have a public validating constructor. This is a type ownership
-change, not new command execution or full Python parity; see
+row limits now have a public validating constructor. Domain includes validated
+panel/general metadata, execution snapshots, one optional finite model family,
+typed effects/capability prerequisites, typed pipeline errors and internal JSON v1
+goldens. Runtime uses the domain Linear family cache and exposes `Session::state()`
+without eager capability initialization. Existing CLI v1 JSON is unchanged. This
+is a type ownership/design change, not new command execution or full Python parity; see
 [contract and acceptance](docs/migration/phase2-core-contracts.md).
 
 ## Current behavior
