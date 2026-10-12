@@ -47,5 +47,20 @@ MCP transport: later phases, not prerequisites for this type-system phase.
 
 ## Status
 
-WIP: contracts recorded before implementation. Each slice has its own draft PR,
-progress commits, verification and owner review before autonomous merge.
+Slice 1 complete (PR #185): command/result/metadata/script and execution error
+ownership moved, with compatibility re-exports and validating RowLimit constructor.
+New tests first failed because the domain package was absent; after implementation
+709 workspace tests passed, one pre-existing test ignored (90 suites). Format,
+locked all-target check/test/Clippy, diff/link checks, cargo deny and audit passed.
+Full dependency geiger inventory for domain confirms forbid-unsafe and zero used
+first-party unsafe. Review compared moved result/error contracts modulo formatting
+and the documented label visibility/helper relocation: no behavior differences.
+
+Three owner review passes (not independent model reviews): contract/source identity,
+API/row-limit invariants and compatibility, and dependency/safety/docs/test evidence.
+No actionable issues remained. The initial 120-second test invocation timed out
+while running suites; the complete rerun passed. Initial geiger relative manifest
+was rejected; the absolute-manifest invocation passed. No failures were hidden.
+
+Slices 2–3 remain WIP. Each has its own early draft PR, progress commits, verification
+and owner review before autonomous merge.
