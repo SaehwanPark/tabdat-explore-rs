@@ -6,7 +6,8 @@ native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
 quantile LP/canonical iid #175, PH survival/observed covariance #176 and
 proper two-step selection #177, collapsed one-step dynamic panel #178 and
-truthful source-build native initialization #179 and fixture ownership #180. The
+truthful source-build native initialization #179, fixture ownership #180 and
+cross-family packed arithmetic #181. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -70,7 +71,10 @@ estimator feasibility requirements.
    explicit optimizer/name normalization) and IV/2SLS now pass trusted references,
    including fresh Linux x86_64 emulated runs. Passed linear/binary fixtures cannot substitute for these families.
 4. **Safety/distribution gates:** new libgretl safe-API defects were corrected and
-   reviewed, but no comprehensive native/transitive unsafe review, sanitizer/leak
+   reviewed, including [cross-family packed parameter arithmetic](native-parameter-bounds.md)
+   under #181 (auxiliary/IV automatic constant counts, owned errors). This does not
+   establish all native dimension/allocation arithmetic. No comprehensive
+   native/transitive unsafe review, sanitizer/leak
    proof or license/NOTICE/corresponding-source distribution approval ran. The
    ReadStat report retains warnings about native non-DTA error paths; do not
    interpret build-warning demotions as source-quality approval.

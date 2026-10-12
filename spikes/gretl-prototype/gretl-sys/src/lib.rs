@@ -365,9 +365,12 @@ impl GretlModel {
       separator >= 3 && separator < list.len() - 1,
       "empty IV list side"
     );
+    // tsls.c may prepend the structural constant to the instrument list.
+    let added_constant =
+      usize::from(list[2..separator].contains(&0) && !list[separator + 1..].contains(&0));
     assert!(
       parameter_count_supported(separator - 2)
-        && parameter_count_supported(list.len() - separator - 1),
+        && parameter_count_supported(list.len() - separator - 1 + added_constant),
       "IV parameter/instrument count exceeds native arithmetic"
     );
     assert!(list[1] > 0, "outcome cannot be reserved constant");

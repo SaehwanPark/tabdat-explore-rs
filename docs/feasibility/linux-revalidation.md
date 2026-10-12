@@ -120,3 +120,12 @@ External strace under emulation decoded nonsensical syscalls; QEMU_STRACE output
 absent. Neither proves complete file/process side effects or physical-host safety.
 Linux may still spawn ldd. Final log `/tmp/native-init-linux-final.log` (77 total);
 [report](native-initialization.md), [ADR0019](../adr/0019-native-blas-discovery-source-patch.md).
+
+## Cross-family packed arithmetic bounds
+
+PR #181 validates **56 all-feature / 27 default** tests (83 total) on same emulated
+image. Pure46340/46341/usizeMAX limit, owned facade rejection, small-dataset large
+nominal list guards, auxiliary parameters and IV auto-instrument-constant follow-up
+pass with all numerical/sample fixtures unchanged. Log `/tmp/parameter-bounds-linux-final.log`;
+[report](native-parameter-bounds.md). No huge native matrix/UB execution or general
+native arithmetic/physical-host/sanitizer/leak claim.

@@ -65,6 +65,9 @@ fn oversized_nominal_lists_and_auxiliary_parameters_fail_before_native_dispatch(
   iv[3] = -100;
   iv[46343] = 1;
   packed_panic(|| GretlModel::iv(&dset, &iv));
+  iv[3] = 1;
+  iv[4] = -100;
+  packed_panic(|| GretlModel::iv(&dset, &iv)); // 46340 instruments + inserted constant
   let normal = GretlModel::ols(&dset, &[2, 1, 0]);
   assert_eq!(normal.errcode(), 0);
   assert!((normal.coeff(0) - 4.5).abs() < 1e-12);
