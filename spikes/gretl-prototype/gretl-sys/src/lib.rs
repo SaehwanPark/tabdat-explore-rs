@@ -24,6 +24,13 @@ fn native<T>(call: impl FnOnce() -> T) -> T {
   call()
 }
 
+/// Eagerly initialize through the same serialized, once-only boundary for the
+/// feasibility measurement executable. Ordinary constructors remain lazy and
+/// never require callers to invoke this. There is still no cleanup API.
+pub fn initialize_for_measurement() {
+  native(|| ());
+}
+
 unsafe extern "C" {
   fn gretl_shim_init();
   fn gretl_shim_dataset_new(nvar: c_int, nobs: c_int) -> *mut c_void;
