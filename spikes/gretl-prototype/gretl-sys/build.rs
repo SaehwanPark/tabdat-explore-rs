@@ -10,8 +10,8 @@
 //!   the documented `monte_carlo.c` compatibility patch, configure, and build
 //!   the static library from source.
 //!
-//! Source builds verify the downloaded archive; count builds also verify cached
-//! archives. Checks run locally (Actions are disabled under ADR 0009).
+//! Source builds verify downloaded and cached archives and record compatibility
+//! patches. Checks run locally (Actions are disabled under ADR 0009).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -29,6 +29,7 @@ fn main() {
   // explicit below so Tobit does not implicitly ship the count module.
   let shared_plugins = std::env::var_os("CARGO_FEATURE_SHARED_PLUGINS").is_some();
   println!("cargo:rerun-if-env-changed=GRETL_PREBUILT_DIR");
+  println!("cargo:rerun-if-changed=patches/blas-discovery.c");
   assert!(
     !shared_plugins || std::env::var_os("GRETL_PREBUILT_DIR").is_none(),
     "plugins require a same-source shared core; unset GRETL_PREBUILT_DIR"
@@ -91,10 +92,9 @@ fn build_libgretl(out_dir: &Path, is_macos: bool, shared_plugins: bool) -> PathB
   if !tarball.exists() {
     download_and_verify(&tarball);
   }
-  if shared_plugins {
-    // Cached source must retain the same provenance as a fresh download.
-    verify_sha256(&tarball, GRETL_SHA256);
-  }
+  // Every patched source route needs the same provenance, including cached
+  // default archives; a successful earlier download is not current evidence.
+  verify_sha256(&tarball, GRETL_SHA256);
   extract(&tarball, &src);
   patch_monte_carlo(&src);
 
@@ -108,6 +108,7 @@ fn build_libgretl(out_dir: &Path, is_macos: bool, shared_plugins: bool) -> PathB
     panic!("GRETL_PREBUILT_DIR set but {} not found", lib.display());
   }
 
+  patch_blas_discovery(&src);
   configure(&src, is_macos, shared_plugins);
   make_buildstamp(&src);
   make_lib(&src, is_macos);
@@ -220,6 +221,25 @@ fn patch_monte_carlo(src: &Path) {
   );
   std::fs::write(&path, patched).expect("write patched monte_carlo.c");
   eprintln!("build.rs: applied monte_carlo.c compatibility patch");
+}
+
+/// Source-build-only discovery fallback; external prebuilt libraries are untouched.
+fn patch_blas_discovery(src: &Path) {
+  let path = src.join("lib/src/gretl_utils.c");
+  let source = std::fs::read_to_string(&path).expect("read BLAS discovery source");
+  let start = "static int detect_blas_via_ldd (void)\n{";
+  let end = "\n#endif /* neither Windows nor Mac */";
+  assert_eq!(source.matches(start).count(), 1, "BLAS patch start changed");
+  let begin = source.find(start).unwrap();
+  let finish = begin + source[begin..].find(end).expect("BLAS patch end changed");
+  assert!(
+    source[begin..finish].trim_end().ends_with('}'),
+    "BLAS discovery function boundary changed"
+  );
+  let mut patched = source.clone();
+  patched.replace_range(begin..finish, include_str!("patches/blas-discovery.c"));
+  std::fs::write(path, patched).expect("write BLAS discovery patch");
+  eprintln!("build.rs: applied source-only BLAS discovery fallback patch");
 }
 
 fn configure(src: &Path, is_macos: bool, shared_plugins: bool) {
