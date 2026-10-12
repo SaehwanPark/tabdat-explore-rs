@@ -5,7 +5,8 @@ bounded PRs #162, #163, #165, #166, the measurement slice #168 and
 native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
 quantile LP/canonical iid #175, PH survival/observed covariance #176 and
-proper two-step selection #177 and collapsed one-step dynamic panel #178. The
+proper two-step selection #177, collapsed one-step dynamic panel #178 and
+truthful source-build native initialization #179. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -42,7 +43,10 @@ estimator feasibility requirements.
    bounded path and serialized process lifetime. Default static core is unchanged.
    [ADR 0012](../adr/0012-count-plugin-shared-core-spike.md) and
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
-   error recovery, nonrelocatable paths and native otool diagnostic. Other module
+   error recovery and nonrelocatable paths. Source-build failed otool/ldd targets
+   are corrected in [native initialization](native-initialization.md), ADR0019;
+   normal fresh-process provider/streams pass but Linux still may spawn ldd and
+   broader initialization side effects remain unaccepted. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
 3. **Numerical scope:** all listed initial estimator-family baseline fixtures now
    have bounded evidence, not full inference/sample/command acceptance. Collapsed
@@ -70,9 +74,10 @@ estimator feasibility requirements.
    proof or license/NOTICE/corresponding-source distribution approval ran. The
    ReadStat report retains warnings about native non-DTA error paths; do not
    interpret build-warning demotions as source-quality approval.
-5. **Verification risk:** an unchanged runtime reshape test failed once on a
-   generated temporary Parquet read; focused and full reruns passed, cause
-   unproven. Tracked separately as
+5. **Verification risk:** unchanged runtime reshape tests failed intermittently
+   on generated temporary Parquet reads, including a new missing-file failure at
+   line301 during #179 verification. Focused and complete reruns passed; fixture
+   pid/timestamp/create_dir_all ownership is a hypothesis, not proven cause. Tracked separately as
    [issue #167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
 
 The bounded static-rendering graph now passes mandatory dependency policy.

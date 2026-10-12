@@ -506,6 +506,12 @@ Explicit regular x instruments required alongside GMM specification; original
 pooled-IVGMM independent-row SE difference preserved. Owned MODEL-type/length sample
 and metadata restoration probes, independent dpanel.so and release costs recorded.
 No general weighting/system/two-step/command acceptance.
+[Source-build initialization](native-initialization.md) supersedes historical
+failed-probe/current-init statements: actual Accelerate fallback or parent-resolved
+Linux executable ldd replaces fictitious targets, with honest provider/normal stream
+and once-only tests under ADR0019. Linux earlier missing-gretlcli shorthand corrected
+to missing installed-prefix core. No tool mode/stderr suppression/kernel change;
+prebuilt/custom routes and complete side-effect/sanitizer/leak acceptance excluded.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

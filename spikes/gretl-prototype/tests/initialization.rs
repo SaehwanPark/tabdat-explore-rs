@@ -39,6 +39,36 @@ fn fresh_normal_and_concurrent_init_have_truthful_clean_diagnostics() {
 }
 #[cfg(target_os = "linux")]
 #[test]
+fn explicit_bad_discovery_override_is_not_falsely_reported_as_known() {
+  let out = Command::new(env!("CARGO_BIN_EXE_init-probe"))
+    .env(
+      "GRETL_LIB_NAME",
+      "/tabdat-owned-invalid-blas-target/not-present",
+    )
+    .output()
+    .unwrap();
+  assert!(out.status.success());
+  let text = String::from_utf8(out.stdout).unwrap();
+  // Dynamically detected providers need no fallback; netlib in the pinned image
+  // reaches ldd. Never turn that failed explicit override into a known provider.
+  if text.starts_with("blas=unknown ") {
+    assert!(
+      String::from_utf8(out.stderr)
+        .unwrap()
+        .contains("ldd exited with status")
+    );
+  } else {
+    assert!(
+      text.starts_with("blas=openblas ")
+        || text.starts_with("blas=mkl ")
+        || text.starts_with("blas=blis ")
+    );
+    assert!(out.stderr.is_empty());
+  }
+  assert!(text.contains("ols=ok"));
+}
+#[cfg(target_os = "linux")]
+#[test]
 fn fallback_ldd_target_is_resolved_in_parent_not_child() {
   use std::{
     fs,
