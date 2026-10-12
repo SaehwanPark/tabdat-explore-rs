@@ -388,7 +388,10 @@ assessment, for current decisions. Broad estimator/sample/model contracts,
 remote/hostile-input policy, ASan/leak/allocator and physical-host/native-transitive
 review, relocation and artifact-specific licenses/corresponding source remain
 hard integration/release gates in Phases 14/15. General matrix APIs or competing
-substrates need real callers and comparative evidence. Issue #167 remains open;
-fixture ownership mitigates a concrete risk without proving the original cause.
-Rejected Vega draft #164 remains unmerged. Do not treat Phase 1 completion as
+substrates need real callers and comparative evidence. Follow-up
+[PR #184](reshape-collision-replay.md) reproduces the former clock/adoption/delete
+mechanism with real Parquet and verifies exclusive ownership; #167 is closed as
+addressed, with exact historical timing unknown and reopening on recurrence.
+Rejected Vega #164 is closed as superseded, still unmerged; its branch/evidence
+remain preserved. Do not treat Phase 1 completion as
 product parity, integration or shipping approval.

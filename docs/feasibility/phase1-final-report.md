@@ -5,6 +5,10 @@ Date: 2026-10-12. Base `ca10ac0`; [exit PR #183](https://github.com/SaehwanPark/
 report supersedes the preliminary assessment's undecided backend dispositions.
 [ADR 0021](../adr/0021-phase1-backend-and-linear-algebra-decisions.md) records
 initial architecture acceptance, not binary shipping approval or broad parity.
+Subsequent [triage #184](reshape-collision-replay.md) closes reproduced fixture
+ownership issue #167 and rejected/superseded renderer #164, preserving historical
+uncertainties and the rejected branch. Earlier open/draft statuses below record
+this report's #183 closeout snapshot.
 
 ## Gate interpretation and scope
 
