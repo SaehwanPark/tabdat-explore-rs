@@ -1,19 +1,49 @@
-# Reshape fixture-directory ownership (in progress)
+# Exclusive reshape fixture-directory ownership
 
-Base e3a6618; [issue167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
-Unchanged root reshape tests intermittently fail reading generated Parquet, now
+[PR #180](https://github.com/SaehwanPark/tabdat-explore-rs/pull/180), base
+`e3a6618`; [issue167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
+**Verified test-infrastructure hardening**, not proven original flaky-read cause
+or runtime/backend semantic fix. Issue remains open.
+
+Unchanged root reshape tests intermittently failed reading generated Parquet,
 including line301 missing reshape_wide_collision.parquet during #179 verification.
-Focused and full reruns passed; original failure cause remains unproven.
+Focused/full reruns passed; original failure cause remains unproven.
 
-Fixture currently chooses pid+SystemTime.as_nanos then create_dir_all, which can
-silently adopt another fixture's existing directory. Drop recursively deletes its
-root. Wall-clock uniqueness is not ownership proof. Correct this concrete risk
-without claiming it caused the observed native read failure.
+Old fixture chose pid+SystemTime.as_nanos then create_dir_all, silently adopting
+existing directories. Drop recursively removed its root. Clock uniqueness does
+not establish exclusive ownership. Concrete risk is corrected without claiming
+an observed wall-clock collision caused either original event.
 
-Bounded plan: process-local atomic sequence for distinct candidates, exclusive
-create_dir claiming, retry only AlreadyExists candidate ownership (never retry
-Parquet read), preserve other I/O failures. Add deterministic existing-directory
-claim rejection/marker preservation and concurrent retained fixture independence.
-No dependency, runtime/semantic/tolerance/sleep change. Stress reshape suite and
-full locked fmt/check/test/Clippy; leave issue open unless actual cause/reproduction
-established. Do not infer all runtime helpers/backend correctness from one file.
+Process-local AtomicU64 sequence (Relaxed for distinct candidates) supplies IDs;
+exclusive create_dir establishes ownership. AlreadyExists selects another candidate,
+including leftovers from a reused PID; no existing root is adopted/deleted. Other
+I/O errors remain errors, never hidden behind a read retry or sleep. Drop removes
+only successfully claimed directory. No dependency/runtime/semantic/tolerance change.
+
+Deterministic existing-directory double claim yields AlreadyExists; rejected claim
+cannot remove owner's marker. Missing-parent error stays NotFound. Thirty-two
+concurrent retained fixtures have distinct roots; dropping all but one preserves
+retained marker. These test the contract, not probabilistic timer resolution.
+
+macOS 27.0.1 arm64 / Rust1.97.1: **14 reshape tests**, **30 repeated suites / 420
+passes**, full locked root fmt/check/test/Clippy and follow-up focused/Clippy pass.
+Same exact helper/two ownership tests extracted to external rustc std-only harness
+on emulated Linux x86_64: **2 passes**. This is not full Linux DuckDB/runtime parity;
+no production code or native library changed. Original helper/tests are in
+`crates/tabdat-runtime/tests/reshape_contract.rs`. Logs `/tmp/reshape-ownership-*`.
+
+Three owner reviews, not independent: atomic identity vs filesystem ownership;
+AlreadyExists/other errors/destructor independence; stress/proportional evidence/
+no original-cause overclaim. Final marker/error follow-up passes. Other integration
+fixture helpers and full native filesystem/lifetime diagnosis remain separate work.
+
+```sh
+cargo test --locked -p tabdat-runtime --test reshape_contract
+cargo fmt --all -- --check
+cargo check --locked --workspace --all-targets
+cargo test --locked --workspace --all-targets
+cargo clippy --locked --workspace --all-targets -- -D warnings
+```
+
+No whole-phase acceptance or issue closure from a successful stress run. Remaining
+Phase1 numerical/backend/native safety/license/distribution gates remain open.

@@ -6,7 +6,7 @@ native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
 quantile LP/canonical iid #175, PH survival/observed covariance #176 and
 proper two-step selection #177, collapsed one-step dynamic panel #178 and
-truthful source-build native initialization #179. The
+truthful source-build native initialization #179 and fixture ownership #180. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -77,7 +77,10 @@ estimator feasibility requirements.
 5. **Verification risk:** unchanged runtime reshape tests failed intermittently
    on generated temporary Parquet reads, including a new missing-file failure at
    line301 during #179 verification. Focused and complete reruns passed; fixture
-   pid/timestamp/create_dir_all ownership is a hypothesis, not proven cause. Tracked separately as
+   pid/timestamp/create_dir_all ownership is a hypothesis, not proven cause.
+   [Exclusive fixture ownership](reshape-fixture-ownership.md) corrects concrete
+   directory-adoption risk and passes deterministic/stress checks under #180;
+   original causal diagnosis/issue closure is not inferred. Tracked separately as
    [issue #167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
 
 The bounded static-rendering graph now passes mandatory dependency policy.

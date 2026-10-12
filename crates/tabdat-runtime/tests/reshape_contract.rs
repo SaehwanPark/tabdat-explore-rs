@@ -51,6 +51,10 @@ fn existing_fixture_root_cannot_be_adopted_or_deleted_by_another_claim() {
   let result = Fixture::claim(owner.root.clone());
   assert!(matches!(result, Err(ref error) if error.kind() == std::io::ErrorKind::AlreadyExists));
   drop(result);
+  let missing_parent = owner.root.join("uncreated-parent").join("fixture");
+  assert!(
+    matches!(Fixture::claim(missing_parent), Err(ref error) if error.kind() == std::io::ErrorKind::NotFound)
+  );
   assert_eq!(fs::read_to_string(&marker).unwrap(), "retained");
 }
 
