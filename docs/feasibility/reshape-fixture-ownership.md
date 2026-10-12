@@ -2,8 +2,11 @@
 
 [PR #180](https://github.com/SaehwanPark/tabdat-explore-rs/pull/180), base
 `e3a6618`; [issue167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
-**Verified test-infrastructure hardening**, not proven original flaky-read cause
-or runtime/backend semantic fix. Issue remains open.
+**Verified test-infrastructure hardening**, not a runtime/backend semantic fix.
+Issue remained open after #180. [Follow-up #184](reshape-collision-replay.md)
+reproduces live-clock shared ownership and deletion of another guard's real Parquet,
+verifies the fix, and closes the reproduced fixture defect. The exact historical
+interleaving remains unavailable; reopen if exclusive ownership sees recurrence.
 
 Unchanged root reshape tests intermittently failed reading generated Parquet,
 including line301 missing reshape_wide_collision.parquet during #179 verification.

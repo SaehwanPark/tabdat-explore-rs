@@ -59,6 +59,152 @@ fn existing_fixture_root_cannot_be_adopted_or_deleted_by_another_claim() {
 }
 
 #[test]
+fn rejected_fixture_claim_preserves_parquet_and_runtime_reshape() {
+  let owner = Fixture::new();
+  let path = owner.root.join("owned.parquet");
+  let path_string = path.to_string_lossy().into_owned();
+  let connection = Connection::open_in_memory().unwrap();
+  connection
+    .execute(
+      "COPY (SELECT 1 AS id, 10 AS income_2020, 11 AS income_2021) TO ? (FORMAT PARQUET)",
+      [&path_string],
+    )
+    .unwrap();
+  let rejected = Fixture::claim(owner.root.clone());
+  assert!(matches!(rejected, Err(ref error) if error.kind() == std::io::ErrorKind::AlreadyExists));
+  drop(rejected);
+  assert!(path.is_file());
+  let mut session = Session::new();
+  session
+    .execute(parse_command(&format!("use {path_string}")).unwrap())
+    .unwrap();
+  let result = session
+    .execute(parse_command("reshape long income, i(id) j(year)").unwrap())
+    .unwrap();
+  assert!(matches!(result, ExecutionResult::Reshape(_)));
+  assert!(path.is_file());
+}
+
+#[test]
+#[ignore = "manual live-clock causal probe; a timestamp collision is not a portable test requirement"]
+fn former_live_clock_claims_reproduce_missing_parquet() {
+  use std::sync::{Arc, Barrier};
+  use std::time::{SystemTime, UNIX_EPOCH};
+
+  // Deliberately reproduce the former helper only BELOW an exclusively owned
+  // outer directory. Even its invalid ownership can never adopt external files.
+  struct FormerFixture {
+    root: PathBuf,
+  }
+  impl FormerFixture {
+    fn new(parent: &std::path::Path) -> std::io::Result<Self> {
+      let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(std::io::Error::other)?
+        .as_nanos();
+      let root = parent.join(format!(
+        "tabdat_reshape_test_{}_{}",
+        std::process::id(),
+        stamp
+      ));
+      fs::create_dir_all(&root)?;
+      Ok(Self { root })
+    }
+  }
+  impl Drop for FormerFixture {
+    fn drop(&mut self) {
+      let _ = fs::remove_dir_all(&self.root);
+    }
+  }
+  let outer = Fixture::new();
+  let barrier = Arc::new(Barrier::new(32));
+  let mut fixtures = std::thread::scope(|scope| {
+    let workers: Vec<_> = (0..32)
+      .map(|_| {
+        let barrier = barrier.clone();
+        let parent = &outer.root;
+        scope.spawn(move || {
+          let mut claims = Vec::new();
+          for _ in 0..100 {
+            barrier.wait();
+            claims.push(FormerFixture::new(parent));
+          }
+          claims
+        })
+      })
+      .collect();
+    // Finish all barrier rounds before surfacing an I/O error, so one failed
+    // claim cannot strand the remaining workers at their next barrier.
+    workers
+      .into_iter()
+      .flat_map(|worker| worker.join().unwrap())
+      .collect::<std::io::Result<Vec<_>>>()
+      .expect("former helper claims")
+  });
+  let mut seen = std::collections::HashMap::new();
+  let mut pair = None;
+  let mut duplicates = 0;
+  for (index, fixture) in fixtures.iter().enumerate() {
+    if let Some(first) = seen.insert(fixture.root.clone(), index) {
+      duplicates += 1;
+      pair = Some((first, index));
+    }
+  }
+  eprintln!(
+    "former helper: {} live claims, {} shared-root claims",
+    fixtures.len(),
+    duplicates
+  );
+  let (first, second) =
+    pair.expect("no live clock collision observed; this diagnostic is not a portable gate");
+  let adopter = fixtures.swap_remove(second);
+  let retained = fixtures.swap_remove(first);
+  assert_eq!(retained.root, adopter.root);
+  let path = retained.root.join("reshape_wide_collision.parquet");
+  let path_string = path.to_string_lossy().into_owned();
+  Connection::open_in_memory()
+    .unwrap()
+    .execute(
+      "COPY (SELECT 1 AS id, 'order' AS year, 10 AS income) TO ? (FORMAT PARQUET)",
+      [&path_string],
+    )
+    .unwrap();
+  assert!(path.is_file());
+  drop(adopter);
+  assert!(
+    !path.exists(),
+    "one adopter deleted another live guard's Parquet"
+  );
+  let error = Connection::open_in_memory()
+    .unwrap()
+    .query_row(
+      "SELECT COUNT(*) FROM read_parquet(?)",
+      [&path_string],
+      |row| row.get::<_, i64>(0),
+    )
+    .unwrap_err();
+  // A fresh binder sees the already-deleted file. Deletion later in a read
+  // can report "Cannot open file", consistent with the historical diagnostic.
+  assert!(
+    error
+      .to_string()
+      .contains("No files found that match the pattern"),
+    "{error}"
+  );
+  let mut session = Session::new();
+  assert!(matches!(
+    session.execute(parse_command(&format!("use {path_string}")).unwrap()),
+    Err(RuntimeError::FileNotFound { .. })
+  ));
+  // Current validation detects deletion before `use`; the historical error
+  // variants are compatible with deletion later in the read pipeline.
+  eprintln!(
+    "native missing-file and runtime FileNotFound reproduced while the other guard remains live"
+  );
+  drop(retained);
+}
+
+#[test]
 fn concurrent_fixture_claims_and_cleanup_are_independent() {
   let mut fixtures = std::thread::scope(|scope| {
     let workers: Vec<_> = (0..32).map(|_| scope.spawn(Fixture::new)).collect();
