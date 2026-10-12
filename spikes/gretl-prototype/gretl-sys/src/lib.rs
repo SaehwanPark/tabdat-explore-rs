@@ -53,6 +53,7 @@ unsafe extern "C" {
   #[cfg(feature = "count-plugin")]
   fn gretl_shim_count(dset: *mut c_void, list: *const c_int, nlist: c_int, nb2: c_int) -> *mut c_void;
   fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
+  fn gretl_shim_panel(dset: *mut c_void, list: *const c_int, nlist: c_int, periods: c_int, random: c_int) -> *mut c_void;
   fn gretl_shim_model_ncoeff(handle: *const c_void) -> c_int;
   fn gretl_shim_model_nobs(handle: *const c_void) -> c_int;
   fn gretl_shim_model_dfn(handle: *const c_void) -> c_int;
@@ -247,6 +248,21 @@ impl GretlModel {
       unsafe { gretl_shim_iv(dset.ptr, list.as_ptr(), len) }
     });
     assert!(!ptr.is_null(), "gretl_shim_iv returned NULL");
+    Self { ptr }
+  }
+
+  pub fn panel(dset: &GretlDataset, list: &[c_int], periods: usize, random: bool) -> Self {
+    let len = Self::checked_list_len(dset, list);
+    assert!(list[2..].contains(&0), "panel baseline requires constant");
+    assert!(periods >= 2 && dset.nobs.is_multiple_of(periods) && dset.nobs/periods >= 2, "balanced panel dimensions required");
+    let periods = c_int::try_from(periods).expect("panel period exceeds native limits");
+    let ptr = native(|| {
+      // SAFETY: live owned dataset, checked list/indices and balanced dimensions.
+      // Metadata changes and restoration occur within this locked shim call;
+      // the returned copied native model has the existing RAII ownership.
+      unsafe { gretl_shim_panel(dset.ptr,list.as_ptr(),len,periods,i32::from(random)) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_panel returned NULL");
     Self { ptr }
   }
 

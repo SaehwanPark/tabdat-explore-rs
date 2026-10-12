@@ -19,6 +19,7 @@
 #include "libset.h"
 #include "discrete.h"
 #include "tsls.h"
+#include "gretl_panel.h"
 
 #include <string.h>
 
@@ -181,6 +182,23 @@ void *gretl_shim_iv(void *dset_handle, const int *list, int nlist)
     if (!model->errcode && model->vcv == NULL) {
         model->errcode = makevcv(model, model->sigma);
     }
+    return model;
+}
+
+void *gretl_shim_panel(void *handle, const int *list, int nlist, int periods, int random)
+{
+    DATASET *dset = handle;
+    if (dset == NULL || list == NULL || nlist < 4 || list[0] != nlist-1 || periods < 2) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    int structure = dset->structure;
+    int pd = dset->pd;
+    dset->structure = STACKED_TIME_SERIES;
+    dset->pd = periods;
+    *model = real_panel_model(list, dset, random ? OPT_U : OPT_F, NULL);
+    if (!model->errcode && model->vcv == NULL) model->errcode = makevcv(model, model->sigma);
+    dset->structure = structure;
+    dset->pd = pd;
     return model;
 }
 
