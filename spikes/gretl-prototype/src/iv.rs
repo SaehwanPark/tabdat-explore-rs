@@ -46,6 +46,16 @@ pub fn run_iv(problem: &IvProblem) -> Result<IvResult, GretlError> {
   {
     return Err(invalid("IV variable names must be distinct and NUL-free"));
   }
+  let encoded_len = problem
+    .exogenous
+    .len()
+    .checked_mul(2)
+    .and_then(|count| count.checked_add(problem.instruments.len()))
+    .and_then(|count| count.checked_add(4 + 2 * usize::from(problem.include_intercept)))
+    .ok_or_else(|| invalid("IV list length overflow"))?;
+  if i32::try_from(encoded_len).is_err() {
+    return Err(invalid("IV list exceeds native limits"));
+  }
   let nvar = ncol
     .checked_add(1)
     .ok_or_else(|| invalid("too many variables"))?;
