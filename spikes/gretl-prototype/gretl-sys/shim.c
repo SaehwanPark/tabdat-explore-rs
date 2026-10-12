@@ -28,6 +28,13 @@
 void gretl_shim_init(void)
 {
     libgretl_init();
+#ifdef TD_COUNT_PLUGIN_PATH
+    /* plugins.c concatenates path + basename into MAXLEN storage. Keep the
+     * compile-time, build-owned path bounded, including separator and suffix. */
+    _Static_assert(sizeof(TD_COUNT_PLUGIN_PATH) + sizeof("/poisson.so") < MAXLEN,
+                   "plugin build path exceeds native path buffer");
+    set_gretl_plugin_path(TD_COUNT_PLUGIN_PATH);
+#endif
 }
 
 /* ------------------------------------------------------------------ */
@@ -143,6 +150,23 @@ void *gretl_shim_binary(void *dset_handle, const int *list, int nlist, int probi
     }
     return model;
 }
+
+#ifdef TD_COUNT_PLUGIN_PATH
+void *gretl_shim_poisson(void *dset_handle, const int *list, int nlist)
+{
+    if (dset_handle == NULL || list == NULL || nlist < 3 || list[0] != nlist - 1) {
+        return NULL;
+    }
+    MODEL *model = gretl_model_new();
+    if (model == NULL) {
+        return NULL;
+    }
+    /* count_model owns the normal OLS setup and native plugin dispatch. The
+     * plugin links the same shared core and is retained until process exit. */
+    *model = count_model(list, POISSON, (DATASET *) dset_handle, OPT_NONE, NULL);
+    return model;
+}
+#endif
 
 int gretl_shim_model_ncoeff(const void *handle)
 {

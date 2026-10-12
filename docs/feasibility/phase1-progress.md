@@ -148,11 +148,35 @@ and transitive safety/distribution acceptance remain open. See
 [native report](native-svg.md). Draft #164 remains unmerged and is not superseded
 by a claim of Vega-Lite compatibility.
 
+## Slice 8: shared-core Poisson plugin / classical counts (complete)
+
+Early draft [#170](https://github.com/SaehwanPark/tabdat-explore-rs/pull/170)
+checkpoints exact integer-count classical MLE and predeclared abs 1e-7 + rel 1e-6
+comparison. Opt-in `count-plugin` builds shared libgretl plus only `poisson.so`
+from the same verified archive, with bounded private path and serialized lifetime;
+default static OLS/binary stays unchanged. ADR 0012 records that spike boundary.
+
+240-row coefficients/SEs/full covariance/likelihood agree with pinned Python and
+independent R; maximum coefficient difference ~2.2e-10 and likelihood difference
+zero. Feature suite: 17 pass, one manual loader test ignored ordinarily but run
+successfully with the correct module unavailable/restored in fresh processes.
+Default source-built 14-test checks pass. Audit/deny and full unsafe inventories
+pass within the declared adapter exception; sibling-layout source-identical
+geiger probe resolves nested-crate attribution, not hides coverage.
+
+Shared configuration needed explicit keg-only gettext and NLS to activate the
+pinned generated script's host detection, plus single-module `.deps` creation.
+Native init still probes an unbuilt `gretlcli` via otool and prints a diagnostic;
+this and nonrelocatable paths remain product/packaging gaps. Python accepts
+fractions, Gretl requires integers: explicit mismatch, not whole-command parity.
+See [report](poisson-plugin.md). No NB/other plugin, Linux, complete native safety
+or distribution acceptance is implied. Three owner review passes, not independent.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers
 and next actions. Static-renderer dependency policy is resolved under ADR 0011;
-recover native plugins;
+extend plugin/parameterization evaluation beyond classical integer Poisson;
 validate the remaining estimator families; review the full native/unsafe/license
 matrix; benchmark/select general linear algebra; then review Phase 1 exit gates.
 No final backend acceptance or phase completion is inferred from current slices.
