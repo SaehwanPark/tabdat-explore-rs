@@ -472,3 +472,16 @@ full/sibling-layout unsafe inventories and platform/licensing limitations.
 Python's fractional outcomes, broader count options, other plugins and production
 packaging remain unaccepted. The prior measurements above excluded this capability
 and must not be relabeled as shared-core/plugin cost measurements.
+
+## Additional estimator evidence (2026-10-12)
+
+[NB2](negative-binomial.md) now validates raw dispersion and full observed joint
+covariance under ADR 0013's explicit Python metadata/optimizer normalization.
+[IV/2SLS](iv2sls.md) validates classical no-df covariance and original structural
+R². [Balanced panel FE/RE](panel.md) validates within slopes and Swamy-Arora RE
+with explicit intercept and exact canonical row keys; it does not accept default
+Python no-constant RE or unbalanced/robust panel contracts. Fresh Linux emulated
+source builds accompany these slices ([platform record](linux-revalidation.md)).
+The estimator reports supersede the earlier remaining-family lists for their
+bounded fixtures only; general inference/model state, other families, safety,
+packaging and primary-backend acceptance remain open.

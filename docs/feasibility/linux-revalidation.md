@@ -36,3 +36,16 @@ Source at the NB2 slice PR #171, based on ba24111. Local raw log:
 `/tmp/tabdat-linux-gretl-svg.log`; image/commands/counts are the durable evidence.
 Root, ReadStat, sanitizers, package relocation and additional estimator families
 need their own checks; these passes do not complete all platform/safety gates.
+
+## Subsequent IV and balanced panel runs
+
+At PR #172 the source-built suites reached 22 shared-feature and 17 default
+tests. PR #173 repeats both routes with balanced FE/explicit-intercept RE full
+Python/R plm references, native key/rank/list/period recovery and concurrent fits:
+**26 shared-feature and 21 default tests pass**, one ordinarily ignored manual
+plugin probe. Same container/image/architecture; no host-performance claim.
+External R 4.2.2 Patched and plm 2.6-2 were installed only for independent panel
+references. Native build continues to set `--without-libR`; no validation-tool
+runtime dependency was introduced. Native init's missing-gretlcli ldd diagnostic
+remains recorded. Raw final log `/tmp/panel-linux-final.log`.
+See [IV](iv2sls.md) and [panel](panel.md) for bounded contracts and tolerances.

@@ -56,6 +56,15 @@ fn panel_matches_python_and_r() {
         .map(|v| v.parse().unwrap())
         .collect();
       assert_eq!(values.len(), reference.len());
+      let maximum = values
+        .iter()
+        .zip(&reference)
+        .map(|(actual, expected)| (actual - expected).abs())
+        .fold(0.0_f64, f64::max);
+      eprintln!(
+        "{} {family} maximum absolute difference {maximum:.3e}",
+        line.split(',').next().unwrap()
+      );
       for (i, (actual, expected)) in values.iter().zip(reference).enumerate() {
         assert!(
           (actual - expected).abs() <= 1e-9 + 1e-8 * expected.abs(),
