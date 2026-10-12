@@ -204,6 +204,8 @@ fn configure(src: &Path, is_macos: bool, count_plugin: bool) {
   let mut args = vec![
     "--disable-gui",
     "--disable-json",
+    // Reference R is external tooling, never an auto-detected native runtime.
+    "--without-libR",
     // In the pinned generated configure script, disabling NLS also skips host
     // canonicalization, leaving libtool unable to select a shared linker.
     if count_plugin { "--enable-nls" } else { "--disable-nls" },

@@ -37,8 +37,9 @@ NLS (or missing keg-only libintl.h) leaves host_os blank and libtool declines
 shared libraries. The opt-in build therefore enables NLS and exposes Homebrew
 gettext headers/tools/library path. It also creates plugin `.deps` when building
 a single module, bypassing the aggregate target. These are documented native
-build prerequisites, not statistical algorithm patches. Default configuration is
-unchanged. Relocatable packaging and Linux revalidation remain deferred.
+build prerequisites, not statistical algorithm patches. Default static linkage is
+unchanged; both source routes explicitly disable auto-detected libR integration
+so external R validation cannot become a runtime dependency. Relocatable packaging and Linux revalidation remain deferred.
 
 ## Consequences and limits
 

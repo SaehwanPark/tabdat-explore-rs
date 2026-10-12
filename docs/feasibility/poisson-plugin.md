@@ -28,7 +28,9 @@ intercept + predictors, no offset, weights, robust/cluster, automatic missing
 sample construction, prediction or product session/model mutation. Bad shapes,
 nonfinite/negative/fractional/oversized counts and NUL names are facade errors;
 native errors preserve `EstimationFailed { code }`. Rank/sample changes and
-nonfinite outputs are rejected. No native handle or plugin path escapes.
+nonfinite outputs are rejected. No native handle or plugin path escapes. Both source routes set `--without-libR`
+explicitly; linkage inspection found no R/Python library dependency. External
+reference installations must not enable native R integration automatically.
 No-intercept fitting is smoke-tested but the trusted fixture uses an intercept.
 
 `count_model` in pinned `discrete.c` performs native OLS setup and dispatches
@@ -154,7 +156,8 @@ Changed-document links and whitespace are checked before merge. Actions disabled
 
 Three explicit owner review passes: numerical/sample contracts; FFI/plugin
 lifecycle and build provenance; policy/packaging/documentation. Fixed cached-source
-verification, exact local dependency requirement and loader-probe target selection;
+verification, exact local dependency requirement, loader-probe target selection
+and potential auto-detected libR integration;
 follow-up found no unresolved blocker in this bounded scope. No independent
 reviewer runtime was available; these are not independent reviews.
 
