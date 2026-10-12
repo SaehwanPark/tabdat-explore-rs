@@ -5,6 +5,10 @@ edition = "2024"
 publish = false
 description = "Low-level FFI bindings to libgretl (gretl 2026b) for the TabDat estimator-backend spike"
 build = "build.rs"
+links = "gretl"
+
+[features]
+count-plugin = []
 
 [lib]
 path = "src/lib.rs"

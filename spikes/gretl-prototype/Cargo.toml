@@ -5,6 +5,9 @@ edition = "2024"
 publish = false
 description = "Safe facade over libgretl OLS for the TabDat estimator-backend feasibility spike"
 
+[features]
+count-plugin = ["gretl-sys/count-plugin"]
+
 [dependencies]
 gretl-sys = { path = "gretl-sys" }
 

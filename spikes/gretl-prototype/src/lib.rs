@@ -19,6 +19,10 @@ use std::os::raw::c_int;
 
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
+#[cfg(feature = "count-plugin")]
+mod poisson;
+#[cfg(feature = "count-plugin")]
+pub use poisson::{PoissonResult, run_poisson};
 
 /// A Rust-owned estimation problem: an outcome, predictors, and the data.
 ///
