@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use duckdb::Connection;
 use tabdat_language::parse_command;
@@ -11,19 +12,28 @@ struct Fixture {
   root: PathBuf,
 }
 
+static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+
 impl Fixture {
   fn new() -> Self {
-    let fixture_id = format!(
-      "tabdat_reshape_test_{}_{}",
-      std::process::id(),
-      std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos()
-    );
-    let root = std::env::temp_dir().join(fixture_id);
-    fs::create_dir_all(&root).expect("fixture directory should be created");
-    Self { root }
+    loop {
+      // A clock is not a uniqueness source. Relaxed ordering grants distinct
+      // candidates; exclusive mkdir, not the counter, establishes ownership.
+      let id = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
+      let root =
+        std::env::temp_dir().join(format!("tabdat_reshape_test_{}_{}", std::process::id(), id));
+      match Self::claim(root) {
+        Ok(fixture) => return fixture,
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+        Err(error) => panic!("fixture directory claim failed: {error}"),
+      }
+    }
+  }
+
+  fn claim(root: PathBuf) -> std::io::Result<Self> {
+    // Never adopt an existing root: Drop is permitted to delete only our claim.
+    fs::create_dir(&root)?;
+    Ok(Self { root })
   }
 }
 
@@ -31,6 +41,35 @@ impl Drop for Fixture {
   fn drop(&mut self) {
     let _ = fs::remove_dir_all(&self.root);
   }
+}
+
+#[test]
+fn existing_fixture_root_cannot_be_adopted_or_deleted_by_another_claim() {
+  let owner = Fixture::new();
+  let marker = owner.root.join("owner-marker");
+  fs::write(&marker, "retained").unwrap();
+  let result = Fixture::claim(owner.root.clone());
+  assert!(matches!(result, Err(ref error) if error.kind() == std::io::ErrorKind::AlreadyExists));
+  drop(result);
+  assert_eq!(fs::read_to_string(&marker).unwrap(), "retained");
+}
+
+#[test]
+fn concurrent_fixture_claims_and_cleanup_are_independent() {
+  let mut fixtures = std::thread::scope(|scope| {
+    let workers: Vec<_> = (0..32).map(|_| scope.spawn(Fixture::new)).collect();
+    workers
+      .into_iter()
+      .map(|worker| worker.join().unwrap())
+      .collect::<Vec<_>>()
+  });
+  let roots: std::collections::HashSet<_> = fixtures.iter().map(|f| &f.root).collect();
+  assert_eq!(roots.len(), 32);
+  let retained = fixtures.pop().unwrap();
+  let marker = retained.root.join("retained-marker");
+  fs::write(&marker, "independent").unwrap();
+  drop(fixtures);
+  assert_eq!(fs::read_to_string(&marker).unwrap(), "independent");
 }
 
 #[test]
