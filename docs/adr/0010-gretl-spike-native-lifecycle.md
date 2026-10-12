@@ -30,6 +30,12 @@ Independent Rust callers can fit on different threads without concurrent entry
 through this adapter. This is not upstream thread-safety certification, does not
 coordinate unrelated libgretl consumers, and sacrifices parallel backend calls.
 There are no callbacks, so Rust argument-check panics cannot unwind through C.
+The cost-measurement slice adds `initialize_for_measurement`, an optional eager
+call through the **same** serialized once-only boundary. Ordinary constructors
+still initialize lazily and require no caller setup; no cleanup/invalidation API
+is restored. This exception separates initialization from fit timings without
+bypassing lifecycle protection.
+
 Any future callbacks, plugins, asynchronous cancellation, or cleanup feature
 need a new lifetime/locking review. This does not accept libgretl for production.
 

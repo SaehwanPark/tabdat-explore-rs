@@ -1,6 +1,6 @@
 # Phase 1 execution ledger
 
-Phase 1 remains **in progress**. The roadmap checkboxes are the acceptance
+Phase 1 remains **partial / blocked**, not complete. The roadmap checkboxes are the acceptance
 tracker; this ledger records the current bounded loop and durable handoff.
 No spike is product support.
 
@@ -53,6 +53,17 @@ spike tasks are checked, with TLS/authenticated AWS parity explicitly excluded.
 PR: [#163](https://github.com/SaehwanPark/tabdat-explore-rs/pull/163). No dependency
 or lockfile change. Three owner review passes; root and spike checks pass.
 
+## Slice 3: Python-free visualization (blocked; draft PR #164)
+
+On branch `feat/phase1-visualization`, Rust scatter spec/SVG/PNG matches the
+verified pinned Python fixture, including byte-identical 351×347 artifacts.
+Release measurements are preserved there. Required audit fails on reproducible
+1.9.0 graph (19 vulnerabilities / 32 denied warnings); separately, the published
+2.0.0-rc7 lock audit fails (4 vulnerabilities / 7 warnings), not a freshly resolved
+application audit. No advisory ignores, no merge, no product adoption.
+Report/source remain on [draft PR #164](https://github.com/SaehwanPark/tabdat-explore-rs/pull/164),
+not main. Recover that branch to investigate a policy-compliant candidate.
+
 ## Slice 4: libgretl HC1 / clustered OLS (complete)
 
 Extend the isolated owned OLS boundary with explicit HC1 and one-way cluster
@@ -98,7 +109,7 @@ PR: [#166](https://github.com/SaehwanPark/tabdat-explore-rs/pull/166).
 The full spike now has 13 tests. See libgretl report for Hessian-versus-Fisher
 semantics and explicit unvalidated scope.
 
-## Slice 6: libgretl initialization / repeated-model costs (WIP)
+## Slice 6: libgretl initialization / repeated-model costs (complete)
 
 Add a release measurement executable for explicit serialized initialization,
 first owned OLS/binary fits and repeated complete adapter calls. A metadata-only
@@ -111,13 +122,19 @@ Also publish a preliminary feasibility decision matrix and durable Phase 1
 handoff: rendering security, plugin packaging, unvalidated estimator families,
 platform/unsafe/license gates remain explicit, not checked by inference.
 
-## Remaining loops
+Five fresh release processes measured explicit initialization (median ~15.6 ms),
+40-row owned OLS calls (~4.76 µs repeated) and 200-row owned logit calls
+(~66.2 µs repeated). Metadata mode avoids init; median full-process RSS ~9 MB.
+Fourteen spike tests pass. Report preserves every raw run, cache limitations and
+native diagnostic. PR: [#168](https://github.com/SaehwanPark/tabdat-explore-rs/pull/168).
 
-1. DuckDB HTTP Parquet evidence and explicit S3 initial-parity scope.
-2. libgretl covariance and estimator fixtures with oracle/reference evidence,
-   semantic mismatch inventory, and first/repeated-use measurements.
-3. Python-free Vega-Lite SVG/PNG rendering and artifact comparison/measurement.
-4. Backend synthesis, linear-algebra decision, licensing/build-cost decisions,
-   and exit-gate review (including ReadStat's existing evidence).
+## Remaining loops / handoff
+
+The [preliminary assessment](phase1-assessment.md) records decisions, blockers
+and next actions. Resolve renderer dependency policy; recover native plugins;
+validate the remaining estimator families; review the full native/unsafe/license
+matrix; benchmark/select general linear algebra; then review Phase 1 exit gates.
+No final backend acceptance or phase completion is inferred from current slices.
+The intermittent unchanged reshape fixture failure is tracked in issue #167.
 
 Never check the whole phase merely because a PR merges or Cargo passes.

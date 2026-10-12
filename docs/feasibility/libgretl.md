@@ -401,3 +401,60 @@ semantics, arbitrary design/rank deficiency and product model persistence remain
 unvalidated. This does not satisfy the whole core-estimator exit gate. Count
 models use a dynamically loaded `count_data_estimate` plugin; the spike currently
 builds only libgretl, so plugin packaging is a prerequisite for those fixtures.
+
+## Initialization and model costs (2026-10-11)
+
+Five fresh release processes on Apple M1 Max / macOS 27.0.1 arm64, repository
+Rust 1.97.1 pin, gretl 2026b. Compilation excluded. Filesystem/page caches are
+uncontrolled: these are orientation measurements, **not cold-start or release
+regression gates**. `initialize_for_measurement` enters the same mutex/once
+boundary as ordinary lazy calls, letting initialization be timed separately
+without exposing cleanup or requiring callers to initialize manually.
+
+`measure --metadata` returns before fixture parsing or native initialization;
+its exact stdout/empty stderr contract is tested. Native libraries are still
+linked into this isolated executable, so the baseline includes loader cost and
+is not a lazy-distribution certification.
+
+| Fresh process | Init µs | First OLS µs | 100 OLS calls µs | First logit µs | 20 logit calls µs | Wall s | Peak RSS bytes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 16,994 | 187 | 471 | 286 | 1,324 | 0.14 | 9,027,584 |
+| 2 | 15,497 | 37 | 475 | 168 | 1,339 | 0.02 | 9,011,200 |
+| 3 | 15,552 | 37 | 485 | 172 | 1,314 | 0.02 | 9,011,200 |
+| 4 | 15,742 | 37 | 476 | 176 | 1,326 | 0.02 | 8,978,432 |
+| 5 | 15,571 | 35 | 479 | 173 | 1,318 | 0.02 | 9,011,200 |
+
+Median explicit init ~15.6 ms. Median repeated owned adapter calls: OLS ~4.76 µs
+and logit ~66.2 µs. These tiny fixtures are the existing 40-row OLS and 200-row
+binary reference data; each call includes native dataset allocation/fill,
+list setup, estimation, coefficient/covariance/sample copying and RAII teardown.
+It is **not isolated libgretl model arithmetic** or measured TabDat overhead.
+Logit runs after OLS and shared initialization, not as its own cold process.
+
+Metadata process wall time rounds to 0.00 s in `/usr/bin/time -l`, RSS 7,110,656
+bytes. Release executable size is 3,039,872 bytes. This excludes unbuilt native
+plugins and linked dynamic dependency distribution. Init still emits the known
+`otool exited with status 256` diagnostic; child discovery work is included in
+these init measurements, not silently subtracted. A larger representative
+workflow, platform distribution and teardown/leak assessment remain open.
+
+Reproduce:
+
+```sh
+CARGO_TARGET_DIR=target/gretl-review cargo build --manifest-path spikes/gretl-prototype/Cargo.toml --release --locked
+/usr/bin/time -l target/gretl-review/release/measure
+/usr/bin/time -l target/gretl-review/release/measure --metadata
+```
+
+Fourteen spike tests, locked root/spike format/check/test/Clippy and Cargo
+advisory/policy checks pass. Three owner review passes cover timing boundaries,
+metadata control flow/lifecycle, and raw measurements/cache/acceptance claims;
+no actionable blocker for this measurement slice. No independent reviewer
+runtime was available. The full workspace geiger inventory initially timed out
+inside Cargo clean/glob traversal of the large shared target tree; the unchanged
+full scan in dedicated `target/geiger-policy` completed for all four workspace
+packages, each reporting forbid-unsafe and zero first-party usage. The verified
+prevention is recorded in CONTRIBUTING.md; no weaker scan replaced it.
+Measurements do not resolve native plugin, licensing,
+statistical breadth or the overall Phase 1 blockers; see the
+[preliminary feasibility matrix](phase1-assessment.md).

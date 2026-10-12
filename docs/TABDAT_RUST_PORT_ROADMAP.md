@@ -207,8 +207,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Compare results against Python TabDat (NIST Longley; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [x] Compare results against trusted reference outputs (NIST/ITL certified; [test](../spikes/gretl-prototype/tests/ols_fixture.rs); [report](feasibility/libgretl.md)).
 - [ ] Document semantic mismatches.
-- [ ] Benchmark first-use initialization.
-- [ ] Benchmark repeated-model overhead.
+- [x] Benchmark first-use initialization (five fresh release processes, caches
+  uncontrolled; [measurements](feasibility/libgretl.md#initialization-and-model-costs-2026-10-11)).
+- [x] Benchmark repeated-model overhead (complete owned OLS/logit adapter calls,
+  not isolated backend arithmetic; [measurements](feasibility/libgretl.md#initialization-and-model-costs-2026-10-11)).
 
 ### 3.4 Visualization spike
 

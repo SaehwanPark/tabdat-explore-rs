@@ -62,7 +62,7 @@ jq -r '.packages[].manifest_path' "$metadata_file" \
       package_name="$(jq -er --arg manifest "$manifest" \
         '.packages[] | select(.manifest_path == $manifest) | .name' \
         "$metadata_file")"
-      cargo geiger \
+      CARGO_TARGET_DIR=target/geiger-policy cargo geiger \
         --manifest-path "$manifest" \
         --all-dependencies \
         --all-targets \
@@ -100,7 +100,15 @@ contains unsafe code, `cargo geiger` may return a nonzero inventory status even
 though the first-party package is clean. This does not prove FFI safety or
 replace review.
 
-This loop matched the former hosted policy job; policy checks now run only when
+Use a dedicated `target/geiger-policy` directory for the scan. `cargo-geiger`
+0.13.0 internally cleans package artifacts; a root target containing large nested
+native-spike builds can spend minutes recursively globbing during that clean,
+without producing a report. During Phase 1 verification, process sampling showed
+that clean/glob path after 200- and 900-second timeouts. The dedicated directory
+completed all four workspace scans without changing policy coverage. Do not
+replace the full scan with `--forbid-only`, which omits the unsafe-usage inventory.
+
+This loop otherwise matches the former hosted policy job; policy checks now run only when
 invoked locally. No branch protection is configured.
 
 For docs, also validate relative links, skill frontmatter where affected, and
