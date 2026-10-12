@@ -125,18 +125,26 @@ fn y_position(domain: Domain, value: f64) -> f64 {
   TOP + SIZE * (1.0 - domain.fraction(value))
 }
 
+fn tick_label(value: f64) -> String {
+  if value != 0.0 && (value.abs() < 0.001 || value.abs() >= 1e6) {
+    format!("{value:.2e}")
+  } else {
+    value.to_string()
+  }
+}
+
 fn numeric_axes(svg: &mut String, x: Option<Domain>, y: Domain) -> Result<()> {
   for tick in 0..=4 {
     let fraction = f64::from(tick) / 4.0;
     let py = TOP + SIZE * (1.0 - fraction);
     write!(svg, "<path d=\"M{LEFT} {py}h{SIZE}\" stroke=\"#ddd\"/>").unwrap();
     let value = y.low + (y.high - y.low) * fraction;
-    text(svg, LEFT - 5.0, py + 3.0, &format!("{value:.2}"), "end")?;
+    text(svg, LEFT - 5.0, py + 3.0, &tick_label(value), "end")?;
     if let Some(domain) = x {
       let px = LEFT + SIZE * fraction;
       write!(svg, "<path d=\"M{px} {TOP}v{SIZE}\" stroke=\"#ddd\"/>").unwrap();
       let value = domain.low + (domain.high - domain.low) * fraction;
-      text(svg, px, TOP + SIZE + 13.0, &format!("{value:.2}"), "middle")?;
+      text(svg, px, TOP + SIZE + 13.0, &tick_label(value), "middle")?;
     }
   }
   write!(

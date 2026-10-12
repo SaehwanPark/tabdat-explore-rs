@@ -61,7 +61,7 @@ horizontal and bands expand to 300 pixels; histograms use a fixed left margin.
 SVG structure, font metrics and raster antialiasing can differ. No byte/pixel
 parity or subjective visual-equivalence threshold is claimed.
 
-Seven integration tests cover semantic fixture equality, scatter geometry,
+Eight integration tests cover semantic fixture equality, scatter geometry,
 negative/constant/zero and incomplete rows, bin boundary/empty-bin handling,
 Unicode/XML escaping, invalid inputs and successful recovery. PNGs are decoded
 and inspected for blue pixels, exact dimensions and repeat-byte determinism
@@ -148,15 +148,15 @@ process peak RSS; results are orientation, not release acceptance thresholds.
 
 | Run | First SVG µs | Repeat SVG µs | Font read/init ms | First PNG ms | Repeat PNG ms | Peak RSS bytes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 97.208 | 6.349 | 0.552 | 4.263 | 2.671 | 9,879,552 |
-| 2 | 18.625 | 7.055 | 0.201 | 3.521 | 2.867 | 9,207,808 |
-| 3 | 21.875 | 5.895 | 0.222 | 2.844 | 2.477 | 10,403,840 |
-| 4 | 20.625 | 7.265 | 0.257 | 2.459 | 2.723 | 10,338,304 |
-| 5 | 20.584 | 5.871 | 0.210 | 2.869 | 2.450 | 9,633,792 |
+| 1 | 67.917 | 4.308 | 0.249 | 3.195 | 1.724 | 7,618,560 |
+| 2 | 18.959 | 4.311 | 0.131 | 2.169 | 1.733 | 7,602,176 |
+| 3 | 15.917 | 4.196 | 0.127 | 2.100 | 1.762 | 8,880,128 |
+| 4 | 16.375 | 4.396 | 0.176 | 2.211 | 1.777 | 8,896,512 |
+| 5 | 16.833 | 4.448 | 0.167 | 2.249 | 1.775 | 8,863,744 |
 
-Medians: first SVG 20.625 µs, repeated SVG 6.349 µs; font read/init 0.222 ms;
-first PNG 2.869 ms, repeated PNG 2.671 ms; peak RSS 9,879,552 bytes (~9.42 MiB).
-Release executable: **4,033,600 bytes**. Metadata mode performs no font access:
+Medians: first SVG 16.833 µs, repeated SVG 4.311 µs; font read/init 0.167 ms;
+first PNG 2.211 ms, repeated PNG 1.762 ms; peak RSS 8,863,744 bytes (~8.45 MiB).
+Release executable: **4,034,128 bytes**. Metadata mode performs no font access:
 ~0.00 s wall, 2,031,616 bytes peak RSS. SVG itself requires no font/backend init.
 The old rejected renderer measured ~256 ms first SVG / ~16.8 ms repeated SVG,
 ~102 MB RSS / ~114 MB binary: not equivalent algorithms, fonts or chart breadth,
@@ -170,8 +170,19 @@ mmap/unsafe FFI. Avoid indiscriminate font discovery in a lazy CLI capability.
 ## Verification / review / next actions
 
 Spike locked format/check/test/Clippy, release build, oracle/artifact comparison,
-strict audit, deny and full unsafe inventory pass. Root verification and owner
-review disposition are finalized on the PR before merge. GitHub Actions remain
+strict audit, deny and full unsafe inventory pass. Root locked
+format/check/test/Clippy and audit/deny pass. Full workspace first-party unsafe
+policy loop also passes for all four packages (isolated geiger target). Two interrupted root runs exceeded their
+180/300-second command budgets; a background full rerun completed successfully,
+with no failing test reported. No #167 reshape recurrence was observed.
+
+Three explicit **owner** review passes covered semantic/arithmetic contracts,
+security/resource ownership and docs/policy evidence. One actionable Medium
+finding: fixed two-decimal tick formatting mislabeled small nonzero data as zero.
+It was corrected with magnitude-aware scientific formatting and a focused eighth
+test; affected checks and five release measurements were rerun. Follow-up owner
+review found no unresolved blocker within this declared spike scope. These are
+not independent reviewer passes; no independent reviewer runtime was available. GitHub Actions remain
 disabled under ADR 0009; no hosted-check or independent-review claim.
 
 This removes the demonstrated renderer advisory blocker by **changing the

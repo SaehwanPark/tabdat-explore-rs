@@ -138,11 +138,11 @@ matches Python. Full Vega bin selection/category normalization is not ported.
 Layout/ticks/fonts and histogram/bar dimensions differ deliberately.
 
 Pinned resvg 0.48.1 text-only graph passes strict audit (0 vulnerabilities / 0
-warnings), existing deny policy and first-party unsafe inventory. Seven tests
-cover semantic/geometry/raster output, malformed/missing inputs, escaping and
-recovery. Initial all-font discovery measured ~836 MB RSS; loading one explicit
-font instead measured median ~9.42 MiB RSS, ~0.222 ms font read/init and ~2.671 ms
-repeated PNG. No font is redistributed. ADR 0011 changes the Phase 1 static
+warnings), existing deny policy and first-party unsafe inventory. Eight tests
+cover semantic/geometry/raster output, malformed/missing inputs, escaping, small
+numeric axis labels and recovery. Initial all-font discovery measured ~836 MB
+RSS; loading one explicit font instead measured median ~8.45 MiB RSS,
+~0.167 ms font read/init and ~1.762 ms repeated PNG. No font is redistributed. ADR 0011 changes the Phase 1 static
 rendering candidate, not the production architecture. Linux/full glyph coverage
 and transitive safety/distribution acceptance remain open. See
 [native report](native-svg.md). Draft #164 remains unmerged and is not superseded

@@ -91,6 +91,18 @@ fn missing_points_are_omitted_and_negative_constant_data_is_supported() {
 }
 
 #[test]
+fn tiny_numeric_ranges_have_nonzero_tick_labels() {
+  let chart = Chart::Scatter {
+    x_label: "x".into(),
+    y_label: "y".into(),
+    rows: vec![(Some(1e-8), Some(2e-8))],
+  };
+  let svg = render_svg(&chart).unwrap();
+  assert!(svg.contains(">1.00e-8</text>"));
+  assert!(svg.contains(">2.00e-8</text>"));
+}
+
+#[test]
 fn explicit_histogram_edges_include_final_endpoint_and_empty_bins() {
   let chart = Chart::Histogram {
     label: "v".into(),
