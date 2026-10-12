@@ -1,9 +1,6 @@
 #![forbid(unsafe_code)]
 
-pub mod catalog;
-pub mod cli;
-pub mod help;
-pub mod json_results;
+pub use tabdat_shell::{catalog, cli, help, json_results};
 
 fn main() {
   let args = std::env::args_os()

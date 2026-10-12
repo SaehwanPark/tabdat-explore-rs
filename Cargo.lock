@@ -1183,6 +1183,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabdat-data"
+version = "0.1.0"
+dependencies = [
+ "duckdb",
+ "sha2",
+ "tabdat-domain",
+ "tabdat-io",
+]
+
+[[package]]
 name = "tabdat-domain"
 version = "0.1.0"
 dependencies = [
@@ -1192,16 +1202,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabdat-execution"
+version = "0.1.0"
+dependencies = [
+ "tabdat-data",
+ "tabdat-domain",
+ "tabdat-io",
+ "tabdat-language",
+ "tabdat-stats",
+]
+
+[[package]]
 name = "tabdat-explore-rs"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
- "serde",
  "serde_json",
  "tabdat-domain",
+ "tabdat-execution",
  "tabdat-language",
+ "tabdat-mcp",
+ "tabdat-reporting",
  "tabdat-runtime",
- "tabdat-stats",
+ "tabdat-shell",
+]
+
+[[package]]
+name = "tabdat-io"
+version = "0.1.0"
+dependencies = [
+ "tabdat-domain",
 ]
 
 [[package]]
@@ -1209,6 +1238,28 @@ name = "tabdat-language"
 version = "0.1.0"
 dependencies = [
  "tabdat-domain",
+ "tabdat-io",
+]
+
+[[package]]
+name = "tabdat-mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tabdat-domain",
+ "tabdat-execution",
+ "tabdat-language",
+ "tabdat-reporting",
+]
+
+[[package]]
+name = "tabdat-reporting"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde_json",
+ "tabdat-domain",
+ "tabdat-language",
 ]
 
 [[package]]
@@ -1216,10 +1267,21 @@ name = "tabdat-runtime"
 version = "0.1.0"
 dependencies = [
  "duckdb",
- "sha2",
  "tabdat-domain",
+ "tabdat-execution",
  "tabdat-language",
  "tabdat-stats",
+]
+
+[[package]]
+name = "tabdat-shell"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tabdat-domain",
+ "tabdat-execution",
+ "tabdat-language",
+ "tabdat-reporting",
 ]
 
 [[package]]

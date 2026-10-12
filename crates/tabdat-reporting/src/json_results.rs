@@ -2,8 +2,8 @@
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
+use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult};
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
-use tabdat_runtime::{CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult};
 
 use crate::catalog::ResultEnvelope;
 

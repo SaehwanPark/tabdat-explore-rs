@@ -1,7 +1,5 @@
 //! Canonical command catalogs, schemas, effects, and serialization envelopes.
 
-use serde::{Deserialize, Serialize};
-
 use crate::help::{available_help_topics, load_help_topic_text};
 
 pub const COMMAND_NAMES: &[&str] = &[
@@ -88,125 +86,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "zip",
 ];
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandCatalogEntry {
-  pub help_topic: Option<String>,
-  pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandCatalogResult {
-  pub commands: Vec<CommandCatalogEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandEffectEntry {
-  pub effects: Vec<String>,
-  pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandEffectCatalogResult {
-  pub commands: Vec<CommandEffectEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ArgumentDescriptor {
-  pub name: String,
-  pub required: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OptionDescriptor {
-  pub name: String,
-  pub required: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandSchemaResult {
-  pub arguments: Vec<ArgumentDescriptor>,
-  pub help_topic: Option<String>,
-  pub name: String,
-  pub options: Vec<OptionDescriptor>,
-  pub syntax: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HelpTopicResult {
-  pub help_topic: String,
-  pub text: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CommandExplainResult {
-  pub command_name: String,
-  pub execution: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ResultEnvelope<T> {
-  pub data: T,
-  pub result_type: String,
-  pub schema_version: u32,
-}
-
-impl<T> ResultEnvelope<T> {
-  pub fn new(data: T, result_type: &str) -> Self {
-    Self {
-      data,
-      result_type: result_type.to_string(),
-      schema_version: 1,
-    }
-  }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ErrorDetail {
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub line: Option<usize>,
-  pub message: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub path: Option<String>,
-  #[serde(rename = "type")]
-  pub error_type: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ErrorEnvelope {
-  pub error: ErrorDetail,
-  pub schema_version: u32,
-}
-
-impl ErrorEnvelope {
-  pub fn new(message: impl Into<String>, error_type: &str) -> Self {
-    Self {
-      error: ErrorDetail {
-        line: None,
-        message: message.into(),
-        path: None,
-        error_type: error_type.to_string(),
-      },
-      schema_version: 1,
-    }
-  }
-
-  pub fn with_location(
-    message: impl Into<String>,
-    error_type: &str,
-    path: impl Into<String>,
-    line: usize,
-  ) -> Self {
-    Self {
-      error: ErrorDetail {
-        line: Some(line),
-        message: message.into(),
-        path: Some(path.into()),
-        error_type: error_type.to_string(),
-      },
-      schema_version: 1,
-    }
-  }
-}
+pub use tabdat_domain::*;
 
 pub fn command_catalog_result() -> CommandCatalogResult {
   let help_topics = available_help_topics();
@@ -227,341 +107,341 @@ pub fn command_catalog_result() -> CommandCatalogResult {
 pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
   let commands = vec![
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "append".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "assert".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "plot".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "bar".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "bayes".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "plot".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "bayesplot".to_string(),
     },
     CommandEffectEntry {
       effects: vec![
-        "read".to_string(),
-        "write".to_string(),
-        "control".to_string(),
-        "plot".to_string(),
+        CommandEffect::Read,
+        CommandEffect::Write,
+        CommandEffect::Control,
+        CommandEffect::Plot,
       ],
       name: "by".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "cfregress".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "codebook".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "collapse".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "count".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "cvelasticnet".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "cvlasso".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "cvridge".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "datasignature".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "decode".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "describe".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "did".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "dml".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "doctor".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "drdid".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "drop".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "duplicates".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "elasticnet".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "encode".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "plot".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "estat".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["control".to_string()],
+      effects: vec![CommandEffect::Control],
       name: "exit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "export".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "generate".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "gsort".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "head".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "heckman".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["control".to_string()],
+      effects: vec![CommandEffect::Control],
       name: "help".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "plot".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "histogram".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "isid".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "ivregress".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "join".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "keep".to_string(),
     },
     CommandEffectEntry {
       effects: vec![
-        "read".to_string(),
-        "write".to_string(),
-        "control".to_string(),
+        CommandEffect::Read,
+        CommandEffect::Write,
+        CommandEffect::Control,
       ],
       name: "label".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "lasso".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "lincom".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "logit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "lowess".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "missing".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "nbreg".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "nl".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["control".to_string()],
+      effects: vec![CommandEffect::Control],
       name: "panel".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "poisson".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "postlasso".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "predict".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "probit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "qreg".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["control".to_string()],
+      effects: vec![CommandEffect::Control],
       name: "quit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "recode".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "regress".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "rename".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "replace".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "reshape".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "ridge".to_string(),
     },
     CommandEffectEntry {
       effects: vec![
-        "read".to_string(),
-        "write".to_string(),
-        "control".to_string(),
-        "plot".to_string(),
+        CommandEffect::Read,
+        CommandEffect::Write,
+        CommandEffect::Control,
+        CommandEffect::Plot,
       ],
       name: "run".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "save".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "plot".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "scatter".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "select".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["control".to_string()],
+      effects: vec![CommandEffect::Control],
       name: "set".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "sort".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "spregress".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "sql".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "status".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "streg".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "summarize".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "tabulate".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "tail".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "test".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "tobit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "ttest".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "control".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Control],
       name: "use".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "xtabond".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string(), "write".to_string()],
+      effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "xtdata".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "xtlogit".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "xtreg".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "zinb".to_string(),
     },
     CommandEffectEntry {
-      effects: vec!["read".to_string()],
+      effects: vec![CommandEffect::Read],
       name: "zip".to_string(),
     },
   ];

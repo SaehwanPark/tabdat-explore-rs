@@ -1,8 +1,8 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use tabdat_execution::{RuntimeError, Session};
 use tabdat_language::{Command, parse_command};
-use tabdat_runtime::{RuntimeError, Session};
 
 pub const USAGE: &str = "\
 usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--config CONFIG] [--json]

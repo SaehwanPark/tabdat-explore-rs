@@ -4,6 +4,7 @@
 mod capabilities;
 mod commands;
 mod diagnostic;
+mod discovery;
 mod errors;
 mod requirements;
 mod results;
@@ -13,6 +14,7 @@ mod wire;
 pub use capabilities::*;
 pub use commands::*;
 pub use diagnostic::*;
+pub use discovery::*;
 pub use errors::*;
 pub use results::*;
 pub use state::*;

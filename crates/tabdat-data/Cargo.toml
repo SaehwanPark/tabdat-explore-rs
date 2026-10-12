@@ -1,0 +1,11 @@
+[package]
+name = "tabdat-data"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }
+tabdat-io = { path = "../tabdat-io", version = "0.1.0" }
+duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
+sha2 = "0.10"
