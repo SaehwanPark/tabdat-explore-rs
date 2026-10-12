@@ -1,8 +1,8 @@
 # Phase 1 preliminary feasibility assessment
 
-**Disposition: partial / blocked, not complete.** Updated 2026-10-11 after
+**Disposition: partial / in progress, not complete.** Updated 2026-10-12 after
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
-native static-rendering slice #169 and Poisson/plugin slice #170 (2026-10-12). The
+native static-rendering #169, Poisson/plugin #170, NB2/Linux #171 and IV #172. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -22,7 +22,7 @@ not automatic acceptance. The current native OLS/statistical workspace code does
 not establish a broad numerical substrate decision or replace the libgretl
 estimator feasibility requirements.
 
-## Blocking / unresolved findings
+## Remaining acceptance work / recorded findings
 
 1. **Rejected plotting candidate:** reproducible `vl-convert-rs` 1.9.0 renders
    correctly but has 19 vulnerabilities / 32 denied warnings. Fresh rc7 application
@@ -41,9 +41,10 @@ estimator feasibility requirements.
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
    error recovery, nonrelocatable paths and native otool diagnostic. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
-3. **Unmet numerical gates:** quantile, Tobit, negative binomial,
-   IV/2SLS, panel FE/RE, dynamic panel, Heckman and survival fixtures are still
-   unchecked. Passed linear/binary fixtures cannot substitute for these families.
+3. **Remaining numerical fixtures:** quantile, Tobit, panel FE/RE,
+   dynamic panel, Heckman and survival fixtures remain. NB2 (ADR 0013,
+   explicit optimizer/name normalization) and IV/2SLS now pass trusted references,
+   including fresh Linux x86_64 emulated runs. Passed linear/binary fixtures cannot substitute for these families.
 4. **Safety/distribution gates:** new libgretl safe-API defects were corrected and
    reviewed, but no comprehensive native/transitive unsafe review, sanitizer/leak
    proof or license/NOTICE/corresponding-source distribution approval ran. The

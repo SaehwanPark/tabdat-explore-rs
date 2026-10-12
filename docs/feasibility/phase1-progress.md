@@ -190,6 +190,19 @@ module/unsafe call/dependency; adapter exception remains explicit. Three owner
 review passes, not independent. Continue IV/panel/plugin families rather than
 stop on the now-recorded oracle defects. Whole Phase 1 remains in progress.
 
+## Slice 10: classical IV/2SLS (complete)
+
+[PR #172](https://github.com/SaehwanPark/tabdat-explore-rs/pull/172) validates
+native tsls with explicit no-df covariance correction and owned full results.
+All coefficients/SEs/VCV and structural R² match Python/R within ~2.3e-15,
+exact 160-row sample. Native correlation-based R² initially disagreed; the
+facade normalizes from original structural residuals, without changing tolerance.
+Both sides of LISTSEP and all indices/counts are checked before FFI; invalid and
+underidentified recovery tests pass. [Report](iv2sls.md).
+Mac/Linux emulated feature suite now 22 tests, default 17. No new plugin or
+dependency; same owned model/serialized lifecycle. Three owner review passes.
+Continue panel and remaining plugin families; Phase 1 is still in progress.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

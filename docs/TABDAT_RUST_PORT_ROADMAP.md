@@ -203,7 +203,9 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   covariance, unchanged tolerance against independent R and explicitly refined
   Python; default-oracle precision/name deviations recorded in ADR 0013;
   [report](feasibility/negative-binomial.md)).
-- [ ] Implement IV/2SLS fixture.
+- [x] Implement IV/2SLS fixture (classical unadjusted/no-df covariance, full
+  matrix and structural R², exact sample against Python/R; checked list separator
+  and failed-fit recovery; [report](feasibility/iv2sls.md)).
 - [ ] Implement panel FE fixture.
 - [ ] Implement panel RE fixture.
 - [ ] Implement dynamic-panel fixture.
