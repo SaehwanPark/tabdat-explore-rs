@@ -6,6 +6,8 @@
 use tabdat_gretl_spike::{EstimationProblem, run_ols, run_poisson, run_quantile, run_tobit};
 #[cfg(feature = "heckman-plugin")]
 use tabdat_gretl_spike::{HeckmanProblem, run_heckman};
+#[cfg(feature = "dpanel-plugin")]
+use tabdat_gretl_spike::{PanelProblem, run_dynamic_panel};
 #[cfg(feature = "survival-plugin")]
 use tabdat_gretl_spike::{SurvivalDistribution, SurvivalProblem, run_survival};
 fn problem(source: &str) -> EstimationProblem {
@@ -55,10 +57,29 @@ fn mixed_plugins_and_core_share_serialized_lifetime() {
       })
       .collect(),
   };
+  #[cfg(feature = "dpanel-plugin")]
+  let dynamic = {
+    let rows: Vec<Vec<f64>> = include_str!("../fixtures/dynamic-panel.csv")
+      .lines()
+      .skip(1)
+      .map(|l| l.split(',').map(|v| v.parse().unwrap()).collect())
+      .collect();
+    PanelProblem {
+      outcome: "y".into(),
+      predictors: vec!["x1".into(), "x2".into()],
+      keys: rows
+        .iter()
+        .map(|r| (r[0] as usize, r[1] as usize))
+        .collect(),
+      periods: 8,
+      data: rows.iter().map(|r| r[2..].to_vec()).collect(),
+    }
+  };
   std::thread::scope(|scope| {
     for i in 0..4
       + usize::from(cfg!(feature = "survival-plugin"))
       + usize::from(cfg!(feature = "heckman-plugin"))
+      + usize::from(cfg!(feature = "dpanel-plugin"))
     {
       let continuous = &continuous;
       let count = &count;
@@ -66,6 +87,8 @@ fn mixed_plugins_and_core_share_serialized_lifetime() {
       let survival = &survival;
       #[cfg(feature = "heckman-plugin")]
       let selection = &selection;
+      #[cfg(feature = "dpanel-plugin")]
+      let dynamic = &dynamic;
       scope.spawn(move || {
         for _ in 0..5 {
           match i {
@@ -85,6 +108,15 @@ fn mixed_plugins_and_core_share_serialized_lifetime() {
             #[cfg(feature = "heckman-plugin")]
             index if index == 4 + usize::from(cfg!(feature = "survival-plugin")) => {
               run_heckman(selection).unwrap();
+            }
+            #[cfg(feature = "dpanel-plugin")]
+            index
+              if index
+                == 4
+                  + usize::from(cfg!(feature = "survival-plugin"))
+                  + usize::from(cfg!(feature = "heckman-plugin")) =>
+            {
+              run_dynamic_panel(dynamic).unwrap();
             }
             _ => {
               run_ols(continuous).unwrap();

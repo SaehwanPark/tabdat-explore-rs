@@ -218,7 +218,11 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Implement balanced classical explicit-intercept panel RE Swamy-Arora fixture
   (PR #173; Python/R plm references; default no-constant RE remains unvalidated).
   See [bounded panel evidence](feasibility/panel.md); no broader xtreg acceptance.
-- [ ] Implement dynamic-panel fixture.
+- [x] Implement bounded collapsed one-step difference-GMM dynamic-panel fixture
+  (PR #178; lag2-only + differenced exogenous instruments, entity sandwich,
+  native mask/group/instrument counts; R plm/external Python references;
+  original independent-row SE mismatch and just-identification scope in
+  [report](feasibility/dynamic-panel.md), [ADR 0018](adr/0018-dynamic-panel-entity-covariance.md)).
 - [x] Implement bounded classical two-step Heckman fixture (PR #177;
   separate corrected outcome/observed probit covariance, exact samples/sigma/rho;
   original ordinary-OLS SE and placeholder cross-block deviations recorded in

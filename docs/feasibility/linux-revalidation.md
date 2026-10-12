@@ -93,3 +93,16 @@ Mac missing-module probe remains separate; no physical-host performance or Linux
 loader/relocation claim. Logs `/tmp/heckman-linux.log` and
 `/tmp/heckman-linux-final.log`; [report](heckman.md),
 [ADR 0017](../adr/0017-heckman-two-step-covariance-and-cleanup.md).
+
+## Collapsed one-step difference GMM and owned sample metadata
+
+PR #178 validates **50 combined / 25 dpanel-only / 21 default** source tests on
+same emulated image. R4.2.2 Patched/plm2.6-2 pgmm/vcovHC independently references
+entity inference. Native residual-mask keys/counts, group/instrument metadata,
+wrong-length/non-DPD buffer guards, failure metadata restoration/recovery and
+seven-way mixed plugin/core fits pass. Final combined follow-up log
+`/tmp/dynamic-panel-linux-last.log`; original complete three-suite log
+`/tmp/dynamic-panel-linux.log` (96 total). A concurrent final attempt timed out
+waiting for default-build lock; not counted as pass. Mac missing-module/measurements
+remain separate, no physical-host performance or Linux relocation acceptance.
+[Report](dynamic-panel.md), [ADR 0018](../adr/0018-dynamic-panel-entity-covariance.md).

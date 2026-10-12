@@ -500,6 +500,12 @@ ordinary-OLS SE deviation under ADR 0017. Independently selected heckit.so share
 owned serialized lifetime. Shim restores temporary Mills series on early second-
 stage failure; packed signed-size bounds prevent known upstream overflow. No
 purported joint cross-equation covariance or product selection support.
+[Collapsed one-step dynamic panel](dynamic-panel.md) adds just-identified difference
+GMM, entity covariance, exact native mask/group/instrument metadata under ADR 0018.
+Explicit regular x instruments required alongside GMM specification; original
+pooled-IVGMM independent-row SE difference preserved. Owned MODEL-type/length sample
+and metadata restoration probes, independent dpanel.so and release costs recorded.
+No general weighting/system/two-step/command acceptance.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

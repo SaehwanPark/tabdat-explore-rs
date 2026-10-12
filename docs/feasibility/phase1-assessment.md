@@ -5,7 +5,7 @@ bounded PRs #162, #163, #165, #166, the measurement slice #168 and
 native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
 balanced panel FE/explicit-intercept RE #173, observed-information Tobit #174 and
 quantile LP/canonical iid #175, PH survival/observed covariance #176 and
-proper two-step selection #177. The
+proper two-step selection #177 and collapsed one-step dynamic panel #178. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -44,7 +44,13 @@ estimator feasibility requirements.
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
    error recovery, nonrelocatable paths and native otool diagnostic. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
-3. **Remaining numerical fixtures:** dynamic panel fixture remains.
+3. **Numerical scope:** all listed initial estimator-family baseline fixtures now
+   have bounded evidence, not full inference/sample/command acceptance. Collapsed
+   one-step difference GMM passes exact native masks/counts and R plm/entity
+   covariance references ([report](dynamic-panel.md), ADR 0018). Original pooled
+   IVGMM points pass only in the just-identified case; independent-row SE mismatch
+   is preserved. Overidentified/multi-lag/system/two-step/other panel contracts and
+   general inference/model-state normalization remain open.
    Heckman two-step now passes corrected outcome/observed probit equation blocks,
    exact distinct samples and sigma/rho ([report](heckman.md), ADR 0017), with
    original ordinary-OLS SE discrepancy and zero-placeholder cross block explicit.
