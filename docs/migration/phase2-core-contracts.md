@@ -62,5 +62,9 @@ No actionable issues remained. The initial 120-second test invocation timed out
 while running suites; the complete rerun passed. Initial geiger relative manifest
 was rejected; the absolute-manifest invocation passed. No failures were hidden.
 
-Slices 2–3 remain WIP. Each has its own early draft PR, progress commits, verification
-and owner review before autonomous merge.
+Slice 2 WIP: explicit panel and owned execution/family state, exhaustive command
+names/effects/capability requirements, typed top-level errors and a lossless tagged
+JSON prototype. Existing CLI v1 JSON remains unchanged and separate from the new
+internal domain exchange format. Runtime linear caches will use the domain state.
+Slice 3 will extract nonempty workspace boundaries. Both have early draft PRs,
+progress commits, verification and owner review before autonomous merge.
