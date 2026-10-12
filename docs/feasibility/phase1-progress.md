@@ -305,6 +305,23 @@ Linux/release batches explicitly replayed; never counted as passes.
 All initial-family baseline fixtures have bounded evidence, but general numerical/
 model state/native safety/license/distribution/backend gates remain open.
 
+## Slice 17: truthful source-build native initialization (complete)
+
+PR #179, base29190a2, contract1248b5e / implementation7b60d31. Source diagnosis
+corrects prior Linux shorthand: missing installed-prefix core, not gretlcli.
+Mac actual Accelerate linkage supports known-provider fallback; Linux parent
+readlink gives real embedding-executable ldd argument. Prior dynamic provider/
+thread init retained, no stderr suppression/tool mode/env race/kernel change.
+Prebuilt/custom routes excluded. Every cached/default source archive now verified.
+
+Owned diagnostic copy, fresh serial/concurrent init+OLS, Linux child-only PATH
+argument trace/bad override, unchanged numerical fixtures pass. Mac all51/default22,
+Linux all53/default24, policy/full93-expression inventory and median1.778ms init
+in [report](native-initialization.md), ADR0019. Three owner reviews, not independent.
+Emulated strace unusable/QEMU trace absent; no pure/no-I/O claim. Root tempfile
+failure recurred at line301, focused/final full gates passed and issue167 updated;
+separate exclusive fixture ownership hardening is next, cause not yet proven.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

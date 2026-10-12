@@ -106,3 +106,17 @@ seven-way mixed plugin/core fits pass. Final combined follow-up log
 waiting for default-build lock; not counted as pass. Mac missing-module/measurements
 remain separate, no physical-host performance or Linux relocation acceptance.
 [Report](dynamic-panel.md), [ADR 0018](../adr/0018-dynamic-panel-entity-covariance.md).
+
+## Source-build BLAS discovery and fresh-process inference
+
+PR #179 validates **53 all-feature / 24 default** source tests. Parent-resolved
+embedding executable replaces missing installed-prefix ldd target; netlib provider,
+clean normal streams, concurrent once-only/OLS and child-scoped PATH target trace
+pass. Explicit bad override stays unknown with diagnostic. Source/patch linkage,
+all numerical fixtures and owned sample/buffer guards pass. Prior missing-gretlcli
+Linux shorthand is corrected: Linux originally probed installed-prefix core.
+
+External strace under emulation decoded nonsensical syscalls; QEMU_STRACE output
+absent. Neither proves complete file/process side effects or physical-host safety.
+Linux may still spawn ldd. Final log `/tmp/native-init-linux-final.log` (77 total);
+[report](native-initialization.md), [ADR0019](../adr/0019-native-blas-discovery-source-patch.md).

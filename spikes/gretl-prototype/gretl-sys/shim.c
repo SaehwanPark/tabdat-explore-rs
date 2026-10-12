@@ -40,6 +40,15 @@ void gretl_shim_init(void)
 #endif
 }
 
+int gretl_shim_blas_variant(char *out, int capacity)
+{
+    const char *name = blas_variant_string();
+    size_t n = strlen(name);
+    if (out == NULL || capacity <= 0 || n >= (size_t)capacity) return -1;
+    memcpy(out, name, n); out[n] = '\0';
+    return (int)n;
+}
+
 /* ------------------------------------------------------------------ */
 /* Dataset                                                            */
 /* ------------------------------------------------------------------ */

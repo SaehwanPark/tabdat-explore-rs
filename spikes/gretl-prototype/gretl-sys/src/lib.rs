@@ -31,8 +31,22 @@ pub fn initialize_for_measurement() {
   native(|| ());
 }
 
+/// Copy provider diagnostics after normal initialization; no native string escapes.
+pub fn blas_variant_for_measurement() -> String {
+  native(|| {
+    let mut buffer = vec![0u8; 64];
+    // SAFETY: owned 64-byte output buffer, explicit capacity, serialized access
+    // to a static diagnostic string. C bounds the copy and returns its length.
+    let n = unsafe { gretl_shim_blas_variant(buffer.as_mut_ptr().cast(), 64) };
+    let n = usize::try_from(n).expect("BLAS diagnostic exceeded fixed buffer");
+    assert!(n < buffer.len(), "BLAS diagnostic length invalid");
+    buffer.truncate(n);
+    String::from_utf8(buffer).expect("BLAS diagnostic is ASCII")
+  })
+}
 unsafe extern "C" {
   fn gretl_shim_init();
+  fn gretl_shim_blas_variant(out: *mut c_char, capacity: c_int) -> c_int;
   fn gretl_shim_dataset_new(nvar: c_int, nobs: c_int) -> *mut c_void;
   fn gretl_shim_dataset_set_varname(handle: *mut c_void, i: c_int, name: *const c_char);
   fn gretl_shim_dataset_set_value(handle: *mut c_void, var: c_int, obs: c_int, value: c_double);
