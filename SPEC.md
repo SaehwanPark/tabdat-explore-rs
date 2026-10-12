@@ -11,6 +11,15 @@ choices backed by isolated spikes, **not new installed commands, product parity
 or native binary distribution approval**. Source/checksum/ownership/resource and
 reference contracts are explicit; broader integration and release gates remain.
 
+## Phase 2 domain boundary
+
+`tabdat-domain` owns the existing command/expression, result, dataset/label metadata
+and execution/script error types without a runtime backend dependency. Language
+and runtime compatibility re-exports preserve existing call sites. Arbitrary-length
+row limits now have a public validating constructor. This is a type ownership
+change, not new command execution or full Python parity; see
+[contract and acceptance](docs/migration/phase2-core-contracts.md).
+
 ## Current behavior
 
 The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits

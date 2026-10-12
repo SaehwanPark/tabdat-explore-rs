@@ -6,3 +6,6 @@ publish = false
 
 [lib]
 path = "src/lib.rs"
+
+[dependencies]
+tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }

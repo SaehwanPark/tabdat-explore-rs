@@ -17,8 +17,15 @@ silently invent parity.
 
 ## Current implementation
 
+Phase 2 slice 1 introduces `tabdat-domain` as the sole owner of existing command,
+expression, result, dataset/label metadata and recoverable execution/script error
+contracts. It forbids unsafe code and depends only on serde and the pure
+`tabdat-stats`; language and runtime re-export the types for source compatibility.
+Parser diagnostics and execution effects remain in their existing layers. See
+[the recovered contract](docs/migration/phase2-core-contracts.md).
+
 - `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
-  `tabdat-language`, `tabdat-runtime`, and `tabdat-stats`.
+  `tabdat-domain`, `tabdat-language`, `tabdat-runtime`, and `tabdat-stats`.
 - `crates/tabdat-stats` contains pure, safe (`#![forbid(unsafe_code)]`) statistical
   problem contracts (`EstimationProblem`), explicit inspectable sample tracking
   (`EstimationSample`), parameter estimates (`CoefficientEstimate`), covariance

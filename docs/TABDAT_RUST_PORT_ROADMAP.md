@@ -310,7 +310,7 @@ Build the domain model before substantial runtime implementation.
 ### 4.1 Workspace topology
 
 - [x] Create `tabdat-language` (bounded syntax-only parser foundations; PRs #11–#20).
-- [ ] Create `tabdat-domain`.
+- [x] Create `tabdat-domain` (PR #185; backend-independent owned contracts).
 - [ ] Create `tabdat-execution`.
 - [ ] Create `tabdat-data`.
 - [ ] Create `tabdat-io`.
@@ -323,10 +323,12 @@ Build the domain model before substantial runtime implementation.
 
 ### 4.2 Core domain types
 
-- [ ] Port command enums.
-- [ ] Port result enums.
-- [ ] Port dataset metadata types.
-- [ ] Port labels metadata.
+- [x] Port command enums (PR #185; all existing typed language forms, no new execution).
+- [x] Port result enums (PR #185; existing bounded runtime result union; further
+  family-specific results follow their execution slices).
+- [x] Port dataset metadata types (PR #185; existing eager metadata, lazy/session
+  metadata follows the state-contract slice).
+- [x] Port labels metadata (PR #185; owned dictionary, sets and attachments).
 - [ ] Port panel metadata.
 - [ ] Port execution-state types.
 - [ ] Design explicit estimation-family state enum.
@@ -350,8 +352,8 @@ For each major Python type/signature:
 
 ### Exit gate
 
-- [ ] Core domain crate has no runtime backend dependency.
-- [ ] Core domain crate forbids unsafe.
+- [x] Core domain crate has no runtime backend dependency (PR #185; serde + pure stats only).
+- [x] Core domain crate forbids unsafe (PR #185).
 - [ ] Main command/result/state types compile.
 - [ ] JSON schema prototype is stable enough for migration tests.
 
