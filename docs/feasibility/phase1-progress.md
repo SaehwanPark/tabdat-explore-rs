@@ -1,6 +1,6 @@
 # Phase 1 execution ledger
 
-Phase 1 remains **partial / blocked**, not complete. The roadmap checkboxes are the acceptance
+Phase 1 remains **partial / in progress**, not complete. The roadmap checkboxes are the acceptance
 tracker; this ledger records the current bounded loop and durable handoff.
 No spike is product support.
 
@@ -202,6 +202,20 @@ underidentified recovery tests pass. [Report](iv2sls.md).
 Mac/Linux emulated feature suite now 22 tests, default 17. No new plugin or
 dependency; same owned model/serialized lifecycle. Three owner review passes.
 Continue panel and remaining plugin families; Phase 1 is still in progress.
+
+## Slice 11: balanced classical panel FE/RE (complete)
+
+[PR #173](https://github.com/SaehwanPark/tabdat-explore-rs/pull/173) validates
+192-row balanced within slopes and explicit-intercept Swamy-Arora RE, with owned
+full exposed covariance/SEs and exact canonical entity/time keys. Python/R plm
+agree within ~2e-15; tolerance unchanged at abs 1e-9 + rel 1e-8. Default Python
+no-constant RE, unbalanced/robust/time effects and product state are not accepted.
+Native period/structure changes restore within the existing serialized call;
+invalid shape/keys/lists, rank failures, recovery and four-thread fits pass.
+[Report](panel.md). Mac/Linux default/shared suites, Clippy, audit/deny and adapter
+unsafe inventory pass. Three owner review passes found/fixed a pre-FFI minimum
+list length guard; no new dependency/module or waiver. Remaining numerical
+families and primary-backend/safety/packaging decisions remain separate gates.
 
 ## Remaining loops / handoff
 

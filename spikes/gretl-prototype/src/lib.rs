@@ -19,6 +19,8 @@ use std::os::raw::c_int;
 
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
+mod panel;
+pub use panel::{PanelEstimator, PanelProblem, PanelResult, run_panel};
 mod iv;
 pub use iv::{IvProblem, IvResult, run_iv};
 #[cfg(feature = "count-plugin")]

@@ -206,8 +206,11 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Implement IV/2SLS fixture (classical unadjusted/no-df covariance, full
   matrix and structural R², exact sample against Python/R; checked list separator
   and failed-fit recovery; [report](feasibility/iv2sls.md)).
-- [ ] Implement panel FE fixture.
-- [ ] Implement panel RE fixture.
+- [x] Implement balanced classical panel FE within-slope fixture (PR #173;
+  exact canonical keys/sample and full exposed covariance match Python/R plm).
+- [x] Implement balanced classical explicit-intercept panel RE Swamy-Arora fixture
+  (PR #173; Python/R plm references; default no-constant RE remains unvalidated).
+  See [bounded panel evidence](feasibility/panel.md); no broader xtreg acceptance.
 - [ ] Implement dynamic-panel fixture.
 - [ ] Implement Heckman fixture.
 - [ ] Implement survival fixture.

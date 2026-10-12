@@ -2,7 +2,8 @@
 
 **Disposition: partial / in progress, not complete.** Updated 2026-10-12 after
 bounded PRs #162, #163, #165, #166, the measurement slice #168 and
-native static-rendering #169, Poisson/plugin #170, NB2/Linux #171 and IV #172. The
+native static-rendering #169, Poisson/plugin #170, NB2/Linux #171, IV #172 and
+balanced panel FE/explicit-intercept RE #173. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -41,8 +42,9 @@ estimator feasibility requirements.
    [report](poisson-plugin.md) record gettext/host-detection prerequisites, loader
    error recovery, nonrelocatable paths and native otool diagnostic. Other module
    lifecycles, count options and full platform/packaging acceptance remain open.
-3. **Remaining numerical fixtures:** quantile, Tobit, panel FE/RE,
-   dynamic panel, Heckman and survival fixtures remain. NB2 (ADR 0013,
+3. **Remaining numerical fixtures:** quantile, Tobit, dynamic panel, Heckman
+   and survival fixtures remain. Balanced FE/explicit-intercept RE now pass
+   Python/R plm references ([report](panel.md)); other panel contracts remain open. NB2 (ADR 0013,
    explicit optimizer/name normalization) and IV/2SLS now pass trusted references,
    including fresh Linux x86_64 emulated runs. Passed linear/binary fixtures cannot substitute for these families.
 4. **Safety/distribution gates:** new libgretl safe-API defects were corrected and
@@ -66,8 +68,8 @@ gates independently prevent a whole-phase completion claim.
    accepted bounded static-artifact candidate, not production plotting. Follow up
    with automatic bins/category normalization, layout/font and Linux/platform
    evidence before integrating it into command execution.
-2. Continue from the validated Poisson module with bounded NB dispersion/
-   parameterization work or another plugin family. Preserve predeclared tolerances,
+2. Continue from the validated count/NB2, IV and balanced panel fixtures with
+   another bounded plugin family. Preserve predeclared tolerances,
    Python/R reference provenance and exact samples. The integer/fraction contract
    and native initialization diagnostic need explicit product decisions before
    integration; passing Poisson does not accept all count models or plugins.

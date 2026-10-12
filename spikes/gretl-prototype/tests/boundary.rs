@@ -109,3 +109,19 @@ fn independent_threads_fit_and_drop_repeatedly() {
     worker.join().unwrap();
   }
 }
+
+#[test]
+fn panel_boundary_rejects_invalid_lists_and_periods_before_ffi() {
+  let dataset = GretlDataset::new(3, 12);
+  for (list, periods) in [
+    (vec![2, 1, 0], 3),
+    (vec![2, 1, 2], 3),
+    (vec![3, 1, 0, 2], 0),
+    (vec![3, 1, 0, 2], 5),
+    (vec![3, 1, 0, 2], 12),
+  ] {
+    assert!(
+      std::panic::catch_unwind(|| GretlModel::panel(&dataset, &list, periods, false)).is_err()
+    );
+  }
+}
