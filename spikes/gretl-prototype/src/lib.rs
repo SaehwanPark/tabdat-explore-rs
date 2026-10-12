@@ -21,6 +21,10 @@ use std::os::raw::c_int;
 mod tobit;
 #[cfg(feature = "tobit-plugin")]
 pub use tobit::{TobitResult, run_tobit};
+#[cfg(feature = "quantile-plugin")]
+mod quantile;
+#[cfg(feature = "quantile-plugin")]
+pub use quantile::{QuantileResult, run_quantile};
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
 mod panel;

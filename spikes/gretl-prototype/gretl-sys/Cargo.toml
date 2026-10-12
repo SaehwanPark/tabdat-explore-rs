@@ -11,6 +11,7 @@ links = "gretl"
 shared-plugins = []
 count-plugin = ["shared-plugins"]
 tobit-plugin = ["shared-plugins"]
+quantile-plugin = ["shared-plugins"]
 
 [lib]
 path = "src/lib.rs"
