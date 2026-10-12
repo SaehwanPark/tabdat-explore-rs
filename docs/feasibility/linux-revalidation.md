@@ -49,3 +49,14 @@ references. Native build continues to set `--without-libR`; no validation-tool
 runtime dependency was introduced. Native init's missing-gretlcli ldd diagnostic
 remains recorded. Raw final log `/tmp/panel-linux-final.log`.
 See [IV](iv2sls.md) and [panel](panel.md) for bounded contracts and tolerances.
+
+## Tobit isolated module and combined features
+
+PR #174 revalidates the refactored shared-linkage/module selection on the same
+emulated Linux image: **31 combined, 26 Tobit-only, 26 count-only and 21 default**
+source-built tests pass. Tobit left-only/two-sided observed-information comparisons,
+full covariance/error/bounds/family guards and threaded recovery pass. Ordinary
+manual loader tests remain ignored; the actual missing-interval probe is separately
+exercised on macOS. No Linux cold-performance, missing-module or redistribution
+claim follows from these checks. Final log `/tmp/tobit-linux-final.log`.
+[Report](tobit.md), [ADR 0014](../adr/0014-tobit-observed-information-and-plugin-scope.md).

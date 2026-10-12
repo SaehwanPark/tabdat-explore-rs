@@ -107,6 +107,9 @@ fn tobit_invalid_native_failure_and_recovery() {
   bad.data[0][1] = f64::INFINITY;
   assert!(run_tobit(&bad, 0., None).is_err());
   bad = base.clone();
+  bad.data[0][0] = 1e300;
+  assert!(run_tobit(&bad, 0., None).is_err());
+  bad = base.clone();
   for row in &mut bad.data {
     row[0] = 0.;
   }
@@ -127,6 +130,25 @@ fn tobit_invalid_native_failure_and_recovery() {
   let result = run_tobit(&no_intercept, 0., None).unwrap();
   assert_eq!(result.coefficients.len(), 2);
   assert_eq!(result.covariance.len(), 3);
+}
+#[test]
+fn censoring_includes_values_beyond_the_declared_bounds() {
+  for both in [false, true] {
+    let mut problem = fixture(both);
+    let upper = both.then_some(2.);
+    let expected = run_tobit(&problem, 0., upper).unwrap();
+    for row in &mut problem.data {
+      if row[0] <= 0. {
+        row[0] = -5.;
+      } else if both && row[0] >= 2. {
+        row[0] = 7.;
+      }
+    }
+    let actual = run_tobit(&problem, 0., upper).unwrap();
+    for (a, e) in actual.coefficients.iter().zip(expected.coefficients) {
+      assert!((a.value - e.value).abs() <= 1e-7 + 1e-6 * e.value.abs());
+    }
+  }
 }
 #[test]
 fn independent_tobit_threads_serialize_plugin_calls() {

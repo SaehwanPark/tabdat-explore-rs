@@ -195,7 +195,11 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
 - [x] Implement probit fixture (observed-Hessian covariance, Python/R comparison
   and separation rejection; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
 - [ ] Implement quantile-regression fixture.
-- [ ] Implement Tobit fixture.
+- [x] Implement classical Gaussian left-only/two-sided Tobit fixture (PR #174;
+  exact sample, joint beta/logscale observed covariance and likelihood match R
+  and externally normalized Python; fallback SE discrepancy is explicit in
+  [ADR 0014](adr/0014-tobit-observed-information-and-plugin-scope.md) and
+  [Tobit evidence](feasibility/tobit.md), not old-fallback SE parity).
 - [x] Implement Poisson fixture (opt-in shared-core/count module, integer
   classical MLE, full covariance/likelihood and exact sample against Python/R;
   [report](feasibility/poisson-plugin.md); fractional/robust/offset semantics excluded).

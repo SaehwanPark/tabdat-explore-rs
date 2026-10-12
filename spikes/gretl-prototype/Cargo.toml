@@ -16,3 +16,8 @@ gretl-sys = { path = "gretl-sys", version = "=0.0.0" }
 
 [lib]
 path = "src/lib.rs"
+
+[[bin]]
+name = "tobit-measure"
+path = "src/bin/tobit-measure.rs"
+required-features = ["tobit-plugin"]

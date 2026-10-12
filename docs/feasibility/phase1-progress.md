@@ -217,6 +217,23 @@ unsafe inventory pass. Three owner review passes found/fixed a pre-FFI minimum
 list length guard; no new dependency/module or waiver. Remaining numerical
 families and primary-backend/safety/packaging decisions remain separate gates.
 
+## Slice 12: classical Gaussian Tobit (complete)
+
+[PR #174](https://github.com/SaehwanPark/tabdat-explore-rs/pull/174) validates
+left-only/two-sided Tobit against R survival and external Python observed Hessian,
+including full joint beta/logscale covariance/SEs, likelihood and exact 240-row
+sample. Actual pinned Python falls back due to R/rpy2 incompatibility; its BFGS
+approximation SEs fail tolerance. Original output is preserved; ADR 0014 explicitly
+accepts observed covariance, not fallback SE parity. No tolerance change.
+
+Independent interval module selection shares ADR 0012's verified core/lifetime.
+Failed/beyond-bound/sentinel/wrong-family covariance cases and concurrent fits
+pass; actual linked missing-module probe restores then succeeds in a fresh process.
+Default/count-only/Tobit-only/combined tests pass; release costs and unsafe inventory
+are recorded in the [report](tobit.md). Three owner reviews; no new dependency,
+advisory waiver or runtime R/Python. Continue quantile/selection/survival/dynamic
+panel and full safety/distribution/backend acceptance; Phase 1 remains partial.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

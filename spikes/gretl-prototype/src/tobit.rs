@@ -33,6 +33,11 @@ pub fn run_tobit(
       "Tobit requires finite rectangular complete data and ordered limits",
     ));
   }
+  // interval.c substitutes 1e300 for an absent right bound. Reject values
+  // colliding with that sentinel instead of silently right-censoring them.
+  if upper.is_none() && (lower >= 1e300 || problem.data.iter().any(|row| row[0] >= 1e300)) {
+    return Err(invalid("Tobit no-upper-bound sentinel collision"));
+  }
   let mut seen = std::collections::HashSet::new();
   for name in std::iter::once(&problem.outcome).chain(&problem.predictors) {
     if name.is_empty() || name.contains('\0') || name == "intercept" || !seen.insert(name) {
