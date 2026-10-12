@@ -170,15 +170,61 @@ fn rejects_missing_file() {
   ));
 }
 
+struct CorruptFixture(PathBuf);
+
+impl CorruptFixture {
+  fn new() -> Self {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    loop {
+      let path = std::env::temp_dir().join(format!(
+        "tabdat-readstat-corrupt-{}-{}.dta",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+      ));
+      match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+      {
+        Ok(mut file) => {
+          // Only exclusive creation authorizes this guard's cleanup.
+          let owned = Self(path);
+          file
+            .write_all(b"this is not a stata dataset at all")
+            .expect("write corrupt fixture");
+          return owned;
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+        Err(error) => panic!("create corrupt fixture: {error}"),
+      }
+    }
+  }
+}
+
+impl Drop for CorruptFixture {
+  fn drop(&mut self) {
+    let _ = std::fs::remove_file(&self.0);
+  }
+}
+
 #[test]
 fn rejects_corrupt_file() {
-  let path = fixture("corrupt.dta");
-  std::fs::write(&path, b"this is not a stata dataset at all").expect("write corrupt fixture");
-  let error = parse_dta(&path).unwrap_err();
-  let _ = std::fs::remove_file(&path);
+  let owned = CorruptFixture::new();
+  let error = parse_dta(&owned.0).unwrap_err();
   assert!(matches!(
     error,
     tabdat_readstat_spike::DtaError::Native { .. }
+  ));
+  assert_eq!(parse_dta(&fixture("patients.dta")).unwrap().rows.len(), 3);
+}
+
+#[test]
+fn rejects_nul_path_before_native_parse() {
+  assert!(matches!(
+    parse_dta(Path::new("bad\0path")),
+    Err(tabdat_readstat_spike::DtaError::Path(_))
   ));
 }
 

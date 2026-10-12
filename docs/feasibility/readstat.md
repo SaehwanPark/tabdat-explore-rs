@@ -89,9 +89,14 @@ addition to the previously recorded `-Wno-strict-prototypes` and `LIBS=-liconv`)
   is complete when `readstat_parse_dta` returns.
 - The variable handler's third parameter (`const char *val_labels`) carries the
   value-label set name; there is no `readstat_variable_get_label_set` accessor.
-- `readstat_value_t` is a 16-byte, align-8 pass-by-value struct (union + type +
-  tag + bitfields). It is modeled opaquely and read only through the C accessor
-  functions, so the internal union/bitfield layout is never interpreted from Rust.
+- The original binding modeled `readstat_value_t` as a 16-byte, align-8 Rust
+  byte array. Matching size/alignment did not establish aggregate ABI/padding
+  safety. [PR #182](https://github.com/SaehwanPark/tabdat-explore-rs/pull/182)
+  replaces it with a header-compiled C bridge: native by-value callbacks and
+  accessors stay in C; Rust receives borrowed opaque pointers and copies owned
+  values. [The bounded report](readstat-value-boundary.md) and
+  [ADR 0020](../adr/0020-readstat-pointer-only-value-boundary.md) retain the
+  unaccepted wider safety/ingestion gates.
 - The parser handle is created and freed exactly once on every path (success,
   native error, and callback abort); trampolines copy borrowed C data into owned
   values before returning and wrap the body in `catch_unwind` so a Rust panic

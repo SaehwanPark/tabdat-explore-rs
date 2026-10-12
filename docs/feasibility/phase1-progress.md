@@ -349,6 +349,24 @@ root gates/policy/unchanged93-expression inventory and three owner reviews in
 Other source dimension/allocation/ownership/transitive/sanitizer/leak and final
 backend/distribution gates remain open; no whole-boundary acceptance.
 
+## Slice 20: ReadStat pointer-only value boundary (complete)
+
+PR [#182](https://github.com/SaehwanPark/tabdat-explore-rs/pull/182), base8981ac8,
+contract55faf19. Replace the hand-declared by-value Rust byte array with a
+header-compiled C callback/accessor bridge. Raw types/declarations stay private;
+owned outputs and labels/missingness semantics unchanged. No demonstrated ABI
+failure or broad safety acceptance is claimed.
+
+Mac and emulated Linux each pass 11 tests, including all numeric scalar accessors,
+owned string copying, native metadata-handler abort/recovery and label fixtures.
+Linux's existing read-only corruption-test failure is fixed with exclusive temp
+file ownership. Registration retains nonzero errors; existing Clippy and wildcard
+path-dependency failures fixed without waivers. Root/spike checks, strict policy,
+full nested79-expression inventory and three owner passes/follow-up pass. See
+[report](readstat-value-boundary.md) and ADR 0020. Wider callbacks/dimensions,
+malformed files, native source-quality, sanitizer/leak, build/source/distribution
+and backend acceptance remain open.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers
