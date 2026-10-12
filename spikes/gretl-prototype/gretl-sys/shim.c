@@ -71,6 +71,11 @@ void gretl_shim_dataset_set_value(void *handle, int var, int obs, double value)
     dset->Z[var][obs] = value;
 }
 
+void gretl_shim_dataset_panel_shape(const void *handle, int *pd, int *structure)
+{
+    const DATASET *dset = handle;
+    *pd = dset->pd; *structure = dset->structure;
+}
 int gretl_shim_dataset_nvar(const void *handle)
 {
     return ((const DATASET *)handle)->v;
@@ -303,6 +308,43 @@ void *gretl_shim_heckman(void *handle, const int *list, int nlist)
      * coefficient/VCV/name buffers are owned, never borrowed from this series. */
     if (dset->v > original_v) dataset_drop_last_variables(dset, dset->v-original_v);
     return model;
+}
+
+void *gretl_shim_dynamic_panel(void *handle, const int *list, int nlist, int periods)
+{
+    if (handle == NULL || list == NULL || nlist < 4 || list[0] != nlist-1) return NULL;
+    DATASET *dset = handle;
+    if (list[3] <= 0 || list[3] >= dset->v || periods < 4 || dset->n % periods) return NULL;
+    const unsigned char *name = (const unsigned char *)dset->varname[list[3]];
+    if (*name == '\0') return NULL;
+    /* Closed GMM spec: names cannot inject a second instrument expression. */
+    for (const unsigned char *c = name; *c; c++) {
+        if (!((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') ||
+              (*c >= '0' && *c <= '9') || *c == '_')) return NULL;
+    }
+    char spec[VNAMELEN+64];
+    int written = snprintf(spec, sizeof spec, "GMM(%s,2,2)", name);
+    if (written < 0 || (size_t)written >= sizeof spec) return NULL;
+    MODEL *model = gretl_model_new();
+    if (model == NULL) return NULL;
+    int old_pd = dset->pd, old_structure = dset->structure;
+    dset->pd = periods; dset->structure = STACKED_TIME_SERIES;
+    /* No OPT_T/L/D/A: one-step difference, individual effects, entity sandwich.
+     * Collapse gives one level-lag outcome instrument plus differenced x's. */
+    *model = dpd_model(list, NULL, spec, dset, OPT_C | OPT_Q, NULL);
+    dset->pd = old_pd; dset->structure = old_structure;
+    return model;
+}
+int gretl_shim_dpanel_instruments(const void *handle)
+{
+    return gretl_model_get_int(handle, "ninst");
+}
+int gretl_shim_model_sample_mask(const void *handle, int n, unsigned char *out)
+{
+    const MODEL *model = handle;
+    if (model == NULL || out == NULL || model->errcode || model->ci != DPANEL || model->full_n != n || model->uhat == NULL) return 0;
+    for (int t=0; t<n; t++) out[t] = isfinite(model->uhat[t]) ? 1 : 0;
+    return 1;
 }
 
 int gretl_shim_selection_nobs(const void *handle)

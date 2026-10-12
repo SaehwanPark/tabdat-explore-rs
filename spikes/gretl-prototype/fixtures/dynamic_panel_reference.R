@@ -1,0 +1,5 @@
+args <- commandArgs(trailingOnly=TRUE)
+d <- read.csv(args[1]);library(plm)
+f <- pgmm(y~lag(y,1)+x1+x2|lag(y,2:2)|x1+x2,data=pdata.frame(d,index=c('id','time')),effect='individual',model='onestep',transformation='d',collapse=TRUE)
+b <- coef(f);v <- vcovHC(f);stopifnot(length(b)==3,sum(vapply(f$residuals,length,1L))==384)
+cat('R,',paste(sprintf('%.17g',c(b,sqrt(diag(v)),as.vector(t(v)))),collapse=','),'\n',sep='')

@@ -38,6 +38,8 @@ unsafe extern "C" {
   fn gretl_shim_dataset_set_value(handle: *mut c_void, var: c_int, obs: c_int, value: c_double);
   fn gretl_shim_dataset_free(handle: *mut c_void);
   fn gretl_shim_dataset_nvar(handle: *const c_void) -> c_int;
+  #[cfg(feature = "dpanel-plugin")]
+  fn gretl_shim_dataset_panel_shape(handle: *const c_void, pd: *mut c_int, structure: *mut c_int);
   fn gretl_shim_ols(
     dset: *mut c_void,
     list: *const c_int,
@@ -85,6 +87,17 @@ unsafe extern "C" {
     nlist: c_int,
     exponential: c_int,
   ) -> *mut c_void;
+  #[cfg(feature = "dpanel-plugin")]
+  fn gretl_shim_dynamic_panel(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    periods: c_int,
+  ) -> *mut c_void;
+  #[cfg(feature = "dpanel-plugin")]
+  fn gretl_shim_dpanel_instruments(handle: *const c_void) -> c_int;
+  #[cfg(feature = "dpanel-plugin")]
+  fn gretl_shim_model_sample_mask(handle: *const c_void, n: c_int, out: *mut u8) -> c_int;
   #[cfg(feature = "heckman-plugin")]
   fn gretl_shim_heckman(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   #[cfg(feature = "heckman-plugin")]
@@ -146,6 +159,18 @@ pub struct GretlDataset {
 }
 
 impl GretlDataset {
+  /// Owned scalar metadata for restoration probes, confined to the low-level API.
+  #[cfg(feature = "dpanel-plugin")]
+  pub fn panel_shape(&self) -> (i32, i32) {
+    native(|| {
+      let mut pd = 0;
+      let mut structure = 0;
+      // SAFETY: live owned dataset, two valid scalar out pointers; serialized
+      // read copies metadata only, without borrowing native state.
+      unsafe { gretl_shim_dataset_panel_shape(self.ptr, &mut pd, &mut structure) };
+      (pd, structure)
+    })
+  }
   /// Native shape observation for invariant probes; no foreign data escapes.
   pub fn variable_count(&self) -> usize {
     native(|| {
@@ -454,6 +479,74 @@ impl GretlModel {
     });
     assert!(!ptr.is_null(), "gretl_shim_survival returned NULL");
     Self { ptr }
+  }
+
+  #[cfg(feature = "dpanel-plugin")]
+  pub fn dynamic_panel(dset: &GretlDataset, list: &[c_int], periods: usize) -> Self {
+    assert!(
+      (4..=32).contains(&periods) && dset.nobs.is_multiple_of(periods),
+      "invalid balanced dynamic panel periods"
+    );
+    assert!(
+      (8..=4096).contains(&(dset.nobs / periods)) && dset.nvar <= 32,
+      "prototype dynamic panel dimension cap"
+    );
+    assert!(
+      (7..=37).contains(&list.len()) && (list.len() - 5).is_multiple_of(2),
+      "dynamic panel parameter cap/list length"
+    );
+    let len = c_int::try_from(list.len()).expect("dynamic list exceeds native limits");
+    assert!(
+      list[0] == len - 1 && list[1] == 1 && list[2] == -100,
+      "dynamic list needs exactly one lag then separator"
+    );
+    let p = (list.len() - 5) / 2;
+    assert!(
+      list[4 + p] == -100 && list[5 + p..] == list[4..4 + p],
+      "dynamic exogenous instrument roles must match"
+    );
+    assert!(
+      list[3..4 + p]
+        .iter()
+        .all(|&v| v > 0 && (v as usize) < dset.nvar),
+      "dynamic variable index/constant invalid"
+    );
+    let ptr = native(|| {
+      // SAFETY: live bounded dataset, checked balanced metadata and closed one-lag
+      // list/spec with checked indices. Shim restores metadata and owns MODEL;
+      // fit/loader/cleanup share serialization and no input slice is mutated.
+      unsafe { gretl_shim_dynamic_panel(dset.ptr, list.as_ptr(), len, periods as c_int) }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_dynamic_panel returned NULL");
+    Self { ptr }
+  }
+  #[cfg(feature = "dpanel-plugin")]
+  pub fn dynamic_panel_instruments(&self) -> usize {
+    assert_eq!(
+      self.errcode(),
+      0,
+      "cannot read failed dynamic model metadata"
+    );
+    native(|| {
+      // SAFETY: live successful owned MODEL; fixed integer metadata key read is
+      // serialized, with no borrowed metadata storage exposed.
+      usize::try_from(unsafe { gretl_shim_dpanel_instruments(self.ptr) })
+        .expect("negative instruments")
+    })
+  }
+  #[cfg(feature = "dpanel-plugin")]
+  pub fn sample_mask(&self, n: usize) -> Vec<bool> {
+    assert_eq!(self.errcode(), 0, "cannot access failed model sample");
+    let len = c_int::try_from(n).expect("sample mask exceeds native limits");
+    let mut mask = vec![0u8; n];
+    let ok = native(|| {
+      // SAFETY: owned caller buffer has exactly n bytes. C validates successful
+      // MODEL, full_n and residual allocation before bounded reads/writes;
+      // serialization covers the copy and no foreign ownership escapes.
+      unsafe { gretl_shim_model_sample_mask(self.ptr, len, mask.as_mut_ptr()) }
+    });
+    assert_eq!(ok, 1, "native sample shape/residual buffer unavailable");
+    mask.into_iter().map(|v| v != 0).collect()
   }
 
   #[cfg(feature = "heckman-plugin")]

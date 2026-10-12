@@ -33,6 +33,10 @@ pub use survival::{SurvivalDistribution, SurvivalProblem, SurvivalResult, run_su
 mod heckman;
 #[cfg(feature = "heckman-plugin")]
 pub use heckman::{HeckmanProblem, HeckmanResult, run_heckman};
+#[cfg(feature = "dpanel-plugin")]
+mod dynamic_panel;
+#[cfg(feature = "dpanel-plugin")]
+pub use dynamic_panel::{DynamicPanelResult, run_dynamic_panel};
 mod binary;
 pub use binary::{BinaryLink, BinaryResult, run_binary};
 mod panel;

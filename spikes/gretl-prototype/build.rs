@@ -6,6 +6,7 @@ fn main() {
     || std::env::var_os("CARGO_FEATURE_QUANTILE_PLUGIN").is_some()
     || std::env::var_os("CARGO_FEATURE_SURVIVAL_PLUGIN").is_some()
     || std::env::var_os("CARGO_FEATURE_HECKMAN_PLUGIN").is_some()
+    || std::env::var_os("CARGO_FEATURE_DPANEL_PLUGIN").is_some()
   {
     // Link-args from a dependency's build script do not propagate to these
     // executable/test targets. The native core exports its build-owned directory.
