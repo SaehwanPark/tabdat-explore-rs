@@ -194,7 +194,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   Python/R comparison; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
 - [x] Implement probit fixture (observed-Hessian covariance, Python/R comparison
   and separation rejection; [report](feasibility/libgretl.md#classical-logit-and-probit-2026-10-11)).
-- [ ] Implement quantile-regression fixture.
+- [x] Implement .25/.5/.75 quantile LP fixture with canonical iid
+  Epanechnikov/Hall-Sheather covariance, exact sample and independent HiGHS/R
+  references (PR #175; [report](feasibility/quantile.md), ADR 0015); original
+  IRLS precision and native sparsity-covariance discrepancies are explicit.
 - [x] Implement classical Gaussian left-only/two-sided Tobit fixture (PR #174;
   exact sample, joint beta/logscale observed covariance and likelihood match R
   and externally normalized Python; fallback SE discrepancy is explicit in

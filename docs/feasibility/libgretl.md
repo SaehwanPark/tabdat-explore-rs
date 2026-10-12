@@ -486,6 +486,10 @@ source builds accompany these slices ([platform record](linux-revalidation.md)).
 observed beta/logscale covariance evidence (ADR 0014); original Python fallback
 SEs are preserved as a recorded deviation, not accepted parity. The same shared
 core/lifetime applies, with release first-use/repeated measurements in that report.
+[Quantile LP](quantile.md) adds .25/.5/.75 coefficients and canonical iid
+Epanechnikov/Hall-Sheather covariance under ADR 0015. Original IRLS stopping and
+native sparsity differences are explicit, not hidden parity; additional rq NCSA
+notice and independently selected shared module are recorded.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

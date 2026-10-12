@@ -22,3 +22,8 @@ path = "src/lib.rs"
 name = "tobit-measure"
 path = "src/bin/tobit-measure.rs"
 required-features = ["tobit-plugin"]
+
+[[bin]]
+name = "quantile-measure"
+path = "src/bin/quantile-measure.rs"
+required-features = ["quantile-plugin"]

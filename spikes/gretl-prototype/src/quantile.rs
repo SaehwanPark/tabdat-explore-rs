@@ -49,7 +49,8 @@ pub fn run_quantile(problem: &EstimationProblem, q: f64) -> Result<QuantileResul
   // Reuse the checked owned QR/OLS path for (X'X)^-1. Classical OLS covariance
   // is sigma² (X'X)^-1; this avoids introducing a second inversion backend.
   let ols = run_ols(problem)?;
-  if !ols.sigma.is_finite() || ols.sigma <= 0. {
+  let sigma_squared = ols.sigma.powi(2);
+  if !sigma_squared.is_finite() || sigma_squared <= 0. {
     return Err(invalid("quantile density requires nondegenerate outcome"));
   }
   let n = problem.data.len();
@@ -144,7 +145,7 @@ pub fn run_quantile(problem: &EstimationProblem, q: f64) -> Result<QuantileResul
   if !residual_density.is_finite() || residual_density <= 0. {
     return Err(invalid("degenerate quantile residual density"));
   }
-  let scale = q * (1. - q) / (residual_density.powi(2) * ols.sigma.powi(2));
+  let scale = q * (1. - q) / (residual_density.powi(2) * sigma_squared);
   let covariance: Vec<Vec<_>> = ols
     .covariance
     .iter()

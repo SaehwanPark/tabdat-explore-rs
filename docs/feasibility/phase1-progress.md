@@ -234,6 +234,23 @@ are recorded in the [report](tobit.md). Three owner reviews; no new dependency,
 advisory waiver or runtime R/Python. Continue quantile/selection/survival/dynamic
 panel and full safety/distribution/backend acceptance; Phase 1 remains partial.
 
+## Slice 13: quantile LP and canonical iid covariance (complete)
+
+[PR #175](https://github.com/SaehwanPark/tabdat-explore-rs/pull/175) validates
+.25/.5/.75 LP coefficients and owned Epanechnikov/Hall-Sheather iid covariance,
+SEs/density/bandwidth/check-loss pseudo-R² and exact 360-row sample against independent
+HiGHS/R. Original IRLS outputs fail precision and have strictly worse objective;
+ADR 0015 records LP authority without widening tolerances. Native iid sparsity
+covariance remains separately labeled with an unresolved .75 difference from R.
+
+Independent quantile module shares verified core/lifetime; full scalar/tau/buffer,
+rank/error/recovery and mixed-plugin threaded tests pass. Actual linked missing-module
+probe restores then succeeds; quantile-only excludes other plugins. Default/count/
+Tobit/quantile/combined macOS suites pass, Linux evidence and release measurements
+in [report](quantile.md). NCSA additional native notice is preserved. Three owner
+reviews add finite sigma² and dimension guards. No Cargo dependency, waiver or runtime
+Python/R. Continue dynamic panel/selection/survival and acceptance decisions.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

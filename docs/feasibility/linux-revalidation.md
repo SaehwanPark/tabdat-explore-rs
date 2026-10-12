@@ -60,3 +60,15 @@ manual loader tests remain ignored; the actual missing-interval probe is separat
 exercised on macOS. No Linux cold-performance, missing-module or redistribution
 claim follows from these checks. Final log `/tmp/tobit-linux-final.log`.
 [Report](tobit.md), [ADR 0014](../adr/0014-tobit-observed-information-and-plugin-scope.md).
+
+## Quantile LP/canonical iid and mixed plugins
+
+PR #175 revalidates **36 combined, 25 quantile-only and 21 default** tests on the
+same emulated Linux image, including .25/.5/.75 full canonical reference fields,
+original IRLS objective excess, checked tau/probability and mixed Poisson/Tobit/
+quantile/OLS threading. Default/count/Tobit configurations also pass locally on
+macOS after module selection changes. No physical-host performance or Linux
+missing-module claim; actual linked missing quantreg.so probe is separately
+exercised on macOS. Final logs `/tmp/quantile-linux-final.log` and
+`/tmp/quantile-linux-last.log`. [Report](quantile.md),
+[ADR 0015](../adr/0015-quantile-lp-and-iid-covariance-normalization.md).

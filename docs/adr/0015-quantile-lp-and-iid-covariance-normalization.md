@@ -51,7 +51,9 @@ sample, post-estimation or product integration acceptance. The extra translated
 rq code carries University of Illinois/NCSA copyright 2002 Roger Koenker. Its
 permissive license permits modification/sublicensing, with source/binary notice,
 disclaimer and nonendorsement obligations; those are not optional when shipping.
-It is compatible in principle with the proposal's AGPL intent alongside gretl's
+The [upstream notice](../third-party-notices/gretl-quantile-NCSA.txt) is preserved
+with whitespace-only normalization. It is compatible in principle with the
+proposal's AGPL intent alongside gretl's
 GPL context, but complete dependency/native distribution approval remains open.
 
 [Quantile evidence](../feasibility/quantile.md),

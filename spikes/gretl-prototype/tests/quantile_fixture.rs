@@ -85,6 +85,22 @@ fn quantiles_match_lp_r_and_canonical_iid_covariance() {
     eprintln!("original IRLS q={q} coefficient max discrepancy {error:.3e}");
     // Actual default IRLS is retained as disagreement evidence, not an LP oracle.
     assert!(error > 1e-7);
+    let objective = |beta: &[f64]| {
+      fixture()
+        .data
+        .iter()
+        .map(|row| {
+          let e = row[0] - beta[0] - row[1] * beta[1] - row[2] * beta[2];
+          if e >= 0.0 { q * e } else { (q - 1.0) * e }
+        })
+        .sum::<f64>()
+    };
+    let gap = objective(&original[..3]) - objective(&values[..3]);
+    eprintln!("original IRLS q={q} objective excess {gap:.9e}");
+    assert!(
+      gap > 1e-8,
+      "difference is not only an equally optimal representation"
+    );
     let r_iid = include_str!("../fixtures/quantile-r-native-iid.csv")
       .lines()
       .find(|l| l.split(',').nth(1).unwrap().parse::<f64>().unwrap() == q)
@@ -102,6 +118,11 @@ fn quantiles_match_lp_r_and_canonical_iid_covariance() {
       .map(|(v, e)| (v - e).abs())
       .fold(0.0_f64, f64::max);
     eprintln!("native vs R iid q={q} covariance max difference {difference:.3e}");
+    // Native sparsity is diagnostic only: do not require a known discrepancy
+    // to recur on every BLAS/platform or reject an improved backend result.
+    for (i, row) in result.native_iid_covariance.iter().enumerate() {
+      assert!(row[i] >= 0.0);
+    }
   }
 }
 #[test]
