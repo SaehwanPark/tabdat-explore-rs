@@ -286,6 +286,25 @@ policy/unsafe inventory (77 expressions), release costs and three owner reviews 
 [report](heckman.md). No dependency/waiver/runtime R/Python/product claim.
 Continue dynamic panel and broader native/backend acceptance work.
 
+## Slice 16: collapsed one-step difference GMM (complete)
+
+PR #178, base f78be4a, contract bd57670 / implementation7e1e69e. Seed29183,
+64×8 canonical balanced input, 384 native usable rows, 64 groups / 3 instruments.
+One lag, collapsed lag2 only, differenced strictly exogenous predictors, entity-
+summed covariance without finite-N correction. Native/R plm/external moment
+agreement <=4.5e-16. Original pooled IVGMM points pass but independent-row SE differs
+~.06924, preserved under ADR 0018. Just identification does not validate weighting.
+
+Explicit second separator/x instrument roles fixes native singular first attempt;
+closed bounded low-level API, MODEL-type/length/sample guards, metadata restoration,
+failed getters and same-dataset recovery, parallel/seven-way threading pass.
+Actual linked missing-module restoration passes. Mac/Linux all50/dpanel25/default21,
+strict policy/full90-expression inventory and release measures in
+[report](dynamic-panel.md). Three owner reviews, no independent reviewer. Timed-out
+Linux/release batches explicitly replayed; never counted as passes.
+All initial-family baseline fixtures have bounded evidence, but general numerical/
+model state/native safety/license/distribution/backend gates remain open.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

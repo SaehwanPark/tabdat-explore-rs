@@ -40,3 +40,8 @@ required-features = ["survival-plugin"]
 name = "heckman-measure"
 path = "src/bin/heckman-measure.rs"
 required-features = ["heckman-plugin"]
+
+[[bin]]
+name = "dynamic-panel-measure"
+path = "src/bin/dynamic-panel-measure.rs"
+required-features = ["dpanel-plugin"]

@@ -95,7 +95,7 @@ unsafe extern "C" {
     periods: c_int,
   ) -> *mut c_void;
   #[cfg(feature = "dpanel-plugin")]
-  fn gretl_shim_dpanel_instruments(handle: *const c_void) -> c_int;
+  fn gretl_shim_dpanel_count(handle: *const c_void, which: c_int) -> c_int;
   #[cfg(feature = "dpanel-plugin")]
   fn gretl_shim_model_sample_mask(handle: *const c_void, n: c_int, out: *mut u8) -> c_int;
   #[cfg(feature = "heckman-plugin")]
@@ -522,6 +522,14 @@ impl GretlModel {
   }
   #[cfg(feature = "dpanel-plugin")]
   pub fn dynamic_panel_instruments(&self) -> usize {
+    self.dynamic_panel_count(0)
+  }
+  #[cfg(feature = "dpanel-plugin")]
+  pub fn dynamic_panel_groups(&self) -> usize {
+    self.dynamic_panel_count(1)
+  }
+  #[cfg(feature = "dpanel-plugin")]
+  fn dynamic_panel_count(&self, which: c_int) -> usize {
     assert_eq!(
       self.errcode(),
       0,
@@ -530,7 +538,7 @@ impl GretlModel {
     native(|| {
       // SAFETY: live successful owned MODEL; fixed integer metadata key read is
       // serialized, with no borrowed metadata storage exposed.
-      usize::try_from(unsafe { gretl_shim_dpanel_instruments(self.ptr) })
+      usize::try_from(unsafe { gretl_shim_dpanel_count(self.ptr, which) })
         .expect("negative instruments")
     })
   }

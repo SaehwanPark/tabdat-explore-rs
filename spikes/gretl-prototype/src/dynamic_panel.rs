@@ -74,10 +74,12 @@ pub fn run_dynamic_panel(problem: &PanelProblem) -> Result<DynamicPanelResult, G
     .map(|(i, _)| i)
     .collect();
   let instruments = model.dynamic_panel_instruments();
+  let groups = model.dynamic_panel_groups();
   if model.ncoeff() != p + 1
     || model.nobs() != expected.len()
     || actual != expected
     || instruments != p + 1
+    || groups != n / t
   {
     return Err(invalid("dynamic panel changed design/instruments/sample"));
   }
@@ -106,7 +108,7 @@ pub fn run_dynamic_panel(problem: &PanelProblem) -> Result<DynamicPanelResult, G
     covariance,
     keys: actual.iter().map(|&i| problem.keys[i]).collect(),
     sample_rows: actual,
-    groups: n / t,
+    groups,
     instruments,
   })
 }

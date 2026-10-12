@@ -335,9 +335,11 @@ void *gretl_shim_dynamic_panel(void *handle, const int *list, int nlist, int per
     dset->pd = old_pd; dset->structure = old_structure;
     return model;
 }
-int gretl_shim_dpanel_instruments(const void *handle)
+int gretl_shim_dpanel_count(const void *handle, int which)
 {
-    return gretl_model_get_int(handle, "ninst");
+    if (which == 0) return gretl_model_get_int(handle, "ninst");
+    if (which == 1) return gretl_model_get_int(handle, "n_included_units");
+    return 0;
 }
 int gretl_shim_model_sample_mask(const void *handle, int n, unsigned char *out)
 {
