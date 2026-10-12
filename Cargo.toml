@@ -23,5 +23,6 @@ exclude = [
   "spikes/duckdb-prototype",
   "spikes/readstat-prototype",
   "spikes/gretl-prototype",
+  "spikes/native-svg-prototype",
 ]
 resolver = "3"

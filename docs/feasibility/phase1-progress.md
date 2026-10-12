@@ -128,10 +128,31 @@ Five fresh release processes measured explicit initialization (median ~15.6 ms),
 Fourteen spike tests pass. Report preserves every raw run, cache limitations and
 native diagnostic. PR: [#168](https://github.com/SaehwanPark/tabdat-explore-rs/pull/168).
 
+## Slice 7: native static SVG / resvg (complete)
+
+Implement the requested alternative rather than weakening the rejected renderer's
+advisory policy. Early draft [#169](https://github.com/SaehwanPark/tabdat-explore-rs/pull/169)
+records the bounded contract. Isolated Rust-only SVG and PNG preserve exact
+scatter/bar/histogram fixture marks, labels and order; scatter relative geometry
+matches Python. Full Vega bin selection/category normalization is not ported.
+Layout/ticks/fonts and histogram/bar dimensions differ deliberately.
+
+Pinned resvg 0.48.1 text-only graph passes strict audit (0 vulnerabilities / 0
+warnings), existing deny policy and first-party unsafe inventory. Eight tests
+cover semantic/geometry/raster output, malformed/missing inputs, escaping, small
+numeric axis labels and recovery. Initial all-font discovery measured ~836 MB
+RSS; loading one explicit font instead measured median ~8.45 MiB RSS,
+~0.167 ms font read/init and ~1.762 ms repeated PNG. No font is redistributed. ADR 0011 changes the Phase 1 static
+rendering candidate, not the production architecture. Linux/full glyph coverage
+and transitive safety/distribution acceptance remain open. See
+[native report](native-svg.md). Draft #164 remains unmerged and is not superseded
+by a claim of Vega-Lite compatibility.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers
-and next actions. Resolve renderer dependency policy; recover native plugins;
+and next actions. Static-renderer dependency policy is resolved under ADR 0011;
+recover native plugins;
 validate the remaining estimator families; review the full native/unsafe/license
 matrix; benchmark/select general linear algebra; then review Phase 1 exit gates.
 No final backend acceptance or phase completion is inferred from current slices.

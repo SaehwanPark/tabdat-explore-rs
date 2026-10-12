@@ -1,7 +1,8 @@
 # Phase 1 preliminary feasibility assessment
 
 **Disposition: partial / blocked, not complete.** Updated 2026-10-11 after
-bounded PRs #162, #163, #165, #166 and the measurement slice #168. The
+bounded PRs #162, #163, #165, #166, the measurement slice #168 and
+native static-rendering slice #169. The
 [roadmap](../TABDAT_RUST_PORT_ROADMAP.md) remains the acceptance tracker.
 This assessment does not replace a final accepted backend decision or authorize
 shipping native artifacts. Proposal intent is not implemented support.
@@ -13,7 +14,7 @@ shipping native artifacts. Proposal intent is not implemented support.
 | DuckDB | Local CSV/Parquet/Arrow and bounded runtime; owned connection; HTTP ranges/values/NULL/Arrow and unsigned S3 path-style loopback reads | Continue canonical-engine bounded evaluation under ADRs 0003/0007 | TLS/authenticated S3, extension/offline/native distribution and comprehensive upstream ownership/unsafe review |
 | ReadStat | Existing pinned macOS/Linux native builds; Rust DTA facade, labels and system/tagged missing fixtures | Continue isolated DTA candidate, **do not accept product ingestion yet** | Recorded source-quality findings, callback/native review, broader format/oracle references, string-key/empty-string policies, redistribution |
 | libgretl | Existing cross-platform build; owned serialized/checked boundary; NIST/Python OLS, Python/R HC1+cluster, Python/R logit+probit; measured first/repeated use | Continue isolated statistical candidate under ADRs 0005/0006/0010; **primary backend not yet accepted** | Remaining estimator fixtures, plugin lifecycle/packaging, general sample/model/inference normalization, updated platform/unsafe/native-license review |
-| Visualization | Draft #164 Rust spec/SVG/PNG and byte-identical Python scatter; release measurements | **Blocked: do not merge/adopt the tested dependency graph** | Required audit fails; updated tested/policy-clean candidate graph, transitive license/native review, platform/artifact coverage |
+| Visualization | #169 native SVG/resvg scatter, explicit-bin histogram and prepared bar semantics, PNG/raster tests, policy-clean graph and release measurements; rejected #164 preserves exact Python scatter | Accept bounded static-rendering spike under ADR 0011; **no Vega-Lite or product plotting parity** | Automatic bin/category policy, full layout/font UX, Linux/platform and transitive safety/redistribution review |
 | Linear algebra | Current safe workspace QR/OLS boundary and libgretl BLAS/LAPACK build evidence | No general linear-algebra substrate is newly selected by these spikes | Bounded faer versus BLAS/LAPACK benchmark, ownership/build/thread/license evidence and accepted ADR |
 
 The original proposal's primary-libgretl and ReadStat preferences are candidates,
@@ -23,14 +24,16 @@ estimator feasibility requirements.
 
 ## Blocking / unresolved findings
 
-1. **Plotting acceptance blocker:** reproducible `vl-convert-rs` 1.9.0 renders
-   correctly but its Cargo graph audit fails with 19 vulnerabilities and 32 denied
-   warnings. Published 2.0.0-rc7 lock audit also fails (4 vulnerabilities, 7
-   warnings); it was not built or freshly resolved as an application. No advisory
-   ignore/waiver was added. Detailed evidence is preserved on
-   [draft PR #164](https://github.com/SaehwanPark/tabdat-explore-rs/pull/164),
-   branch `feat/phase1-visualization`, in its `docs/feasibility/visualization.md`.
-   That report/source is deliberately **not merged into main**.
+1. **Rejected plotting candidate:** reproducible `vl-convert-rs` 1.9.0 renders
+   correctly but has 19 vulnerabilities / 32 denied warnings. Fresh rc7 application
+   resolution still has 4 vulnerabilities / 6 denied warnings (the earlier
+   published-lock-only audit had 4/7). Upstream pins prevent targeted upgrades.
+   [Draft #164](https://github.com/SaehwanPark/tabdat-explore-rs/pull/164) remains
+   unmerged. Native SVG + resvg 0.48.1 **resolves the bounded static-artifact
+   advisory gate** with 0 vulnerabilities / 0 warnings and no waiver, under
+   [ADR 0011](../adr/0011-static-svg-renderer-feasibility.md). Its
+   [report](native-svg.md) records exact fixture semantics but differing layout,
+   explicit-bin/category limitations, fonts and outstanding platform/safety work.
 2. **Native estimator prerequisite:** the pinned library dispatches count models
    to dynamically loaded `count_data_estimate`; current build scripts only build
    libgretl. Resolve plugins and their init/search-path/thread/ownership/packaging
@@ -50,16 +53,17 @@ estimator feasibility requirements.
    unproven. Tracked separately as
    [issue #167](https://github.com/SaehwanPark/tabdat-explore-rs/issues/167).
 
-The "no unresolved P0 feasibility blocker" gate cannot be marked complete while
-mandatory plotting dependency policy fails. The other unmet gates independently
-prevent a whole-phase completion claim, even if a newer renderer graph passes.
+The bounded static-rendering graph now passes mandatory dependency policy.
+The "no unresolved P0 feasibility blocker" gate remains unchecked pending a full
+feasibility review; native plugins, unvalidated estimators and safety/distribution
+gates independently prevent a whole-phase completion claim.
 
 ## Next bounded loops
 
-1. Recover draft #164 without overwriting it. Evaluate a **freshly resolved**
-   current renderer graph; compare the same scatter spec/artifacts and audit/deny
-   it. If no policy-compliant graph exists, record an upstream fix or alternative
-   design decision rather than silently widening policy.
+1. Preserve draft #164 as rejected-candidate evidence. Native SVG/resvg is the
+   accepted bounded static-artifact candidate, not production plotting. Follow up
+   with automatic bins/category normalization, layout/font and Linux/platform
+   evidence before integrating it into command execution.
 2. Investigate one libgretl plugin-backed estimator and its native lifecycle/build
    contract. Open a new draft PR at the contract checkpoint, then validate with
    pinned Python and an independent trusted reference before proceeding.

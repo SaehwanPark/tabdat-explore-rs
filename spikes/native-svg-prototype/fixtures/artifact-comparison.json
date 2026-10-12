@@ -1,0 +1,38 @@
+{
+  "scatter": {
+    "mark_semantics_equal": true,
+    "python_dimensions": [
+      351,
+      347
+    ],
+    "rust_dimensions": [
+      351,
+      347
+    ],
+    "png_bytes_equal": false
+  },
+  "histogram": {
+    "mark_semantics_equal": true,
+    "python_dimensions": [
+      347,
+      347
+    ],
+    "rust_dimensions": [
+      351,
+      347
+    ],
+    "png_bytes_equal": false
+  },
+  "bar": {
+    "mark_semantics_equal": true,
+    "python_dimensions": [
+      106,
+      383
+    ],
+    "rust_dimensions": [
+      351,
+      347
+    ],
+    "png_bytes_equal": false
+  }
+}

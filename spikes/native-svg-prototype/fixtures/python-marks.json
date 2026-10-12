@@ -1,0 +1,17 @@
+{
+  "scatter": [
+    "x: 1; y: 2",
+    "x: 2; y: 1",
+    "x: 3; y: 4"
+  ],
+  "histogram": [
+    "value: 0 – 1; Count: 2",
+    "value: 1 – 2; Count: 1",
+    "value: 2 – 3; Count: 2"
+  ],
+  "bar": [
+    "category: b; Count: 3",
+    "category: <missing>; Count: 1",
+    "category: a; Count: 2"
+  ]
+}
