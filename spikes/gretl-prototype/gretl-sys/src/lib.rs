@@ -9,6 +9,16 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_double, c_int, c_void};
 use std::sync::{Mutex, Once};
 
+/// Bound the signed intermediate used by native packed covariance allocation,
+/// not every native matrix/allocation operation.
+pub fn parameter_count_supported(count: usize) -> bool {
+  count > 0
+    && count
+      .checked_add(1)
+      .and_then(|next| count.checked_mul(next))
+      .is_some_and(|cells| c_int::try_from(cells).is_ok())
+}
+
 static NATIVE: Mutex<()> = Mutex::new(());
 static INIT: Once = Once::new();
 
@@ -284,7 +294,7 @@ impl GretlModel {
         (2, variable as c_int)
       }
     };
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, 0);
     let ptr = native(|| {
       // SAFETY: dataset is live; every list index and the exact count have been
       // checked. The slice lives through this call. C returns an owned model;
@@ -297,7 +307,7 @@ impl GretlModel {
 
   /// Classical binary MLE with a closed logit/probit selector.
   pub fn binary(dset: &GretlDataset, list: &[c_int], link: BinaryLink) -> Self {
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, 0);
     let probit = i32::from(matches!(link, BinaryLink::Probit));
     let ptr = native(|| {
       // SAFETY: live dataset, exact list count and checked indices. The closed
@@ -323,7 +333,7 @@ impl GretlModel {
 
   #[cfg(feature = "count-plugin")]
   fn count(dset: &GretlDataset, list: &[c_int], nb2: bool) -> Self {
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, usize::from(nb2));
     let ptr = native(|| {
       // SAFETY: live dataset, exact checked list/count, slice borrowed through
       // the call. Initialization set the bounded build-owned plugin path once;
@@ -355,6 +365,14 @@ impl GretlModel {
       separator >= 3 && separator < list.len() - 1,
       "empty IV list side"
     );
+    // tsls.c may prepend the structural constant to the instrument list.
+    let added_constant =
+      usize::from(list[2..separator].contains(&0) && !list[separator + 1..].contains(&0));
+    assert!(
+      parameter_count_supported(separator - 2)
+        && parameter_count_supported(list.len() - separator - 1 + added_constant),
+      "IV parameter/instrument count exceeds native arithmetic"
+    );
     assert!(list[1] > 0, "outcome cannot be reserved constant");
     assert!(
       list[1..]
@@ -373,7 +391,7 @@ impl GretlModel {
   }
 
   pub fn panel(dset: &GretlDataset, list: &[c_int], periods: usize, random: bool) -> Self {
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, 0);
     assert!(
       list.len() >= 4,
       "panel requires a predictor beyond the constant"
@@ -396,7 +414,7 @@ impl GretlModel {
 
   #[cfg(feature = "tobit-plugin")]
   pub fn tobit(dset: &GretlDataset, list: &[c_int], lower: f64, upper: Option<f64>) -> Self {
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, 1);
     assert!(
       lower.is_finite() && upper.is_none_or(|u| u.is_finite() && u > lower),
       "invalid Tobit limits"
@@ -440,7 +458,7 @@ impl GretlModel {
 
   #[cfg(feature = "quantile-plugin")]
   pub fn quantile(dset: &GretlDataset, list: &[c_int], q: f64) -> Self {
-    let len = Self::checked_list_len(dset, list);
+    let len = Self::checked_list_len(dset, list, 0);
     assert!(
       q.is_finite() && (0.01..=0.99).contains(&q),
       "native quantile must be .01 through .99"
@@ -475,6 +493,10 @@ impl GretlModel {
       "censor separator must be second last with nonconstant dummy"
     );
     let end = separators.first().copied().unwrap_or(list.len());
+    assert!(
+      end >= 3 && parameter_count_supported(end - 2 + usize::from(!exponential)),
+      "duration parameter count exceeds native arithmetic"
+    );
     assert!(
       list[2..end].contains(&0),
       "native duration requires constant"
@@ -592,9 +614,7 @@ impl GretlModel {
     // VCV. Bound the nominal combined parameters even if a fit could drop rank.
     let total = list.len() - 3;
     assert!(
-      total
-        .checked_mul(total + 1)
-        .is_some_and(|cells| c_int::try_from(cells).is_ok()),
+      parameter_count_supported(total),
       "two-step packed covariance exceeds native integer arithmetic"
     );
     let sep = separators[0];
@@ -641,9 +661,13 @@ impl GretlModel {
     })
   }
 
-  fn checked_list_len(dset: &GretlDataset, list: &[c_int]) -> c_int {
+  fn checked_list_len(dset: &GretlDataset, list: &[c_int], extra: usize) -> c_int {
     let len = c_int::try_from(list.len()).expect("variable list too long");
     assert!(list.len() >= 3, "need an outcome and regressor");
+    assert!(
+      parameter_count_supported(list.len() - 2 + extra),
+      "packed covariance exceeds native integer arithmetic"
+    );
     assert_eq!(
       list[0],
       len - 1,

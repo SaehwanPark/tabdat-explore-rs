@@ -34,6 +34,7 @@ pub fn run_panel(
   let n = problem.data.len();
   let p = problem.predictors.len();
   let t = problem.periods;
+  crate::check_parameter_count(p + 1)?;
   if t < 2
     || !n.is_multiple_of(t)
     || n / t <= p + 1

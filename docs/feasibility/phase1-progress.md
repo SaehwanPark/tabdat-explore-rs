@@ -334,6 +334,21 @@ Three owner reviews, no dependency/production/tolerance/sleep change. [Report](r
 Issue167 remains open: original cause unproven, no claim stress establishes cure.
 Continue broader native integer/allocation/ownership/distribution/backend review.
 
+## Slice 19: cross-family packed-parameter arithmetic (complete)
+
+PR #181, basec122ab6, contract8276b96 / implementation96334e9. Pinned native QR/
+estimate/model allocations multiply signed k*(k+1) before halving; pure checked
+max46340 nominal count enforced pre-C across every exposed family. Auxiliary
+NB2/Tobit/Weibull and joint Heckman accounted; IV owner follow-up includes native
+auto-prepended instrument constant. Owned facade errors share same criterion.
+
+Pure threshold/usizeMAX and ~185KiB repeated-index guards avoid real huge matrices/
+UB execution, then normal fit recovers. Mac all54/default25, Linux all56/default27,
+root gates/policy/unchanged93-expression inventory and three owner reviews in
+[report](native-parameter-bounds.md). No tolerance/dependency/unsafe changes.
+Other source dimension/allocation/ownership/transitive/sanitizer/leak and final
+backend/distribution gates remain open; no whole-boundary acceptance.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers

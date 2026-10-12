@@ -512,6 +512,11 @@ Linux executable ldd replaces fictitious targets, with honest provider/normal st
 and once-only tests under ADR0019. Linux earlier missing-gretlcli shorthand corrected
 to missing installed-prefix core. No tool mode/stderr suppression/kernel change;
 prebuilt/custom routes and complete side-effect/sanitizer/leak acceptance excluded.
+[Packed-parameter guards](native-parameter-bounds.md) cap signed packed allocation
+intermediates at46340 nominal parameters across exposed constructors/facades,
+including auxiliary scalars and IV's automatically added constant. Pure limits/
+small oversized-list probes preserve all numerics, no new unsafe; this does not
+accept every native dimension/allocation/index or full boundary.
 The estimator reports supersede the earlier remaining-family lists for their
 bounded fixtures only; general inference/model state, other families, safety,
 packaging and primary-backend acceptance remain open.

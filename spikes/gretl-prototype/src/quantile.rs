@@ -35,6 +35,7 @@ pub fn run_quantile(problem: &EstimationProblem, q: f64) -> Result<QuantileResul
   if !q.is_finite() || !(0.01..=0.99).contains(&q) {
     return Err(invalid("quantile must be .01 through .99"));
   }
+  crate::check_parameter_count(problem.predictors.len() + usize::from(problem.include_intercept))?;
   if i32::try_from(problem.predictors.len() + 3).is_err() {
     return Err(invalid("quantile list dimension exceeds native limits"));
   }
