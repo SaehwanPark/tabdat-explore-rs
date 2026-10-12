@@ -322,6 +322,18 @@ Emulated strace unusable/QEMU trace absent; no pure/no-I/O claim. Root tempfile
 failure recurred at line301, focused/final full gates passed and issue167 updated;
 separate exclusive fixture ownership hardening is next, cause not yet proven.
 
+## Slice 18: exclusive reshape fixture-directory ownership (complete)
+
+PR #180, basee3a6618, contract94762ff / implementationc0f22db. Runtime/test clocks
+are not ownership proof: atomically distinct candidates plus exclusive create_dir,
+retry only AlreadyExists, never adopt/delete another root. Deterministic rejected
+claim/retained marker, missing-parent error and32-way retained-fixture independence.
+Mac14 tests,30 repeated suites/420 passes, full root gates/follow-up pass; exact
+std-only helper/two tests also pass on emulated Linux, not whole runtime parity.
+Three owner reviews, no dependency/production/tolerance/sleep change. [Report](reshape-fixture-ownership.md).
+Issue167 remains open: original cause unproven, no claim stress establishes cure.
+Continue broader native integer/allocation/ownership/distribution/backend review.
+
 ## Remaining loops / handoff
 
 The [preliminary assessment](phase1-assessment.md) records decisions, blockers
