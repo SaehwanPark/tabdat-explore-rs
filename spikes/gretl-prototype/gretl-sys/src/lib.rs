@@ -57,6 +57,17 @@ unsafe extern "C" {
     nlist: c_int,
     nb2: c_int,
   ) -> *mut c_void;
+  #[cfg(feature = "tobit-plugin")]
+  fn gretl_shim_tobit(
+    dset: *mut c_void,
+    list: *const c_int,
+    nlist: c_int,
+    lower: c_double,
+    upper: c_double,
+    has_upper: c_int,
+  ) -> *mut c_void;
+  #[cfg(feature = "tobit-plugin")]
+  fn gretl_shim_tobit_vcv(handle: *mut c_void, i: c_int, j: c_int) -> c_double;
   fn gretl_shim_iv(dset: *mut c_void, list: *const c_int, nlist: c_int) -> *mut c_void;
   fn gretl_shim_panel(
     dset: *mut c_void,
@@ -298,6 +309,50 @@ impl GretlModel {
     });
     assert!(!ptr.is_null(), "gretl_shim_panel returned NULL");
     Self { ptr }
+  }
+
+  #[cfg(feature = "tobit-plugin")]
+  pub fn tobit(dset: &GretlDataset, list: &[c_int], lower: f64, upper: Option<f64>) -> Self {
+    let len = Self::checked_list_len(dset, list);
+    assert!(
+      lower.is_finite() && upper.is_none_or(|u| u.is_finite() && u > lower),
+      "invalid Tobit limits"
+    );
+    let ptr = native(|| {
+      // SAFETY: live owned dataset, checked borrowed list/indices and finite
+      // ordered bounds. The shim owns the by-value model and all its buffers;
+      // source-matched plugin loading and estimation share the global lock.
+      unsafe {
+        gretl_shim_tobit(
+          dset.ptr,
+          list.as_ptr(),
+          len,
+          lower,
+          upper.unwrap_or(0.0),
+          i32::from(upper.is_some()),
+        )
+      }
+    });
+    assert!(!ptr.is_null(), "gretl_shim_tobit returned NULL");
+    Self { ptr }
+  }
+
+  #[cfg(feature = "tobit-plugin")]
+  pub fn tobit_vcv(&self, i: usize, j: usize) -> f64 {
+    assert_eq!(self.errcode(), 0, "cannot access failed Tobit model");
+    let k = self
+      .ncoeff()
+      .checked_add(1)
+      .expect("Tobit dimension overflow");
+    assert!(i < k && j < k, "Tobit covariance index out of bounds");
+    let i = c_int::try_from(i).expect("Tobit index exceeds native limits");
+    let j = c_int::try_from(j).expect("Tobit index exceeds native limits");
+    native(|| {
+      // SAFETY: live successful model and checked indices. The shim additionally
+      // validates the borrowed full_vcv matrix shape before reading one scalar;
+      // no foreign matrix storage escapes or outlives its RAII model owner.
+      unsafe { gretl_shim_tobit_vcv(self.ptr, i, j) }
+    })
   }
 
   fn checked_list_len(dset: &GretlDataset, list: &[c_int]) -> c_int {

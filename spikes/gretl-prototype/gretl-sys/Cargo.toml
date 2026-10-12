@@ -8,7 +8,9 @@ build = "build.rs"
 links = "gretl"
 
 [features]
-count-plugin = []
+shared-plugins = []
+count-plugin = ["shared-plugins"]
+tobit-plugin = ["shared-plugins"]
 
 [lib]
 path = "src/lib.rs"

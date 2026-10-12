@@ -7,6 +7,7 @@ description = "Safe facade over libgretl OLS for the TabDat estimator-backend fe
 
 [features]
 count-plugin = ["gretl-sys/count-plugin"]
+tobit-plugin = ["gretl-sys/tobit-plugin"]
 
 [dependencies]
 gretl-sys = { path = "gretl-sys", version = "=0.0.0" }
