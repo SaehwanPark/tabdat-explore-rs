@@ -82,3 +82,14 @@ and five-way mixed-plugin threading. Actual missing-duration probe runs separate
 on macOS; no Linux missing-module/host-performance or distribution claim.
 Final log `/tmp/survival-linux.log`; [report](survival.md),
 [ADR 0016](../adr/0016-survival-ph-and-observed-information.md).
+
+## Proper two-step selection and failed-fit dataset restoration
+
+PR #177 validates **46 combined / 26 Heckman-only / 21 default** source tests on
+same emulated Linux image. Corrected outcome/observed probit blocks, exact masks,
+sigma/rho, malformed/oversized lists, successful first-stage then failed second-
+stage dataset restoration/recovery and six-way mixed-plugin threading pass.
+Mac missing-module probe remains separate; no physical-host performance or Linux
+loader/relocation claim. Logs `/tmp/heckman-linux.log` and
+`/tmp/heckman-linux-final.log`; [report](heckman.md),
+[ADR 0017](../adr/0017-heckman-two-step-covariance-and-cleanup.md).

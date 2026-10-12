@@ -31,6 +31,15 @@ pub fn run_heckman(problem: &HeckmanProblem) -> Result<HeckmanResult, GretlError
   let n = problem.data.len();
   let m = p + 2;
   let l = q + 1;
+  let total = m + l;
+  if !total
+    .checked_mul(total + 1)
+    .is_some_and(|cells| i32::try_from(cells).is_ok())
+  {
+    return Err(invalid(
+      "two-step packed covariance exceeds native integer arithmetic",
+    ));
+  }
   if !problem.include_intercept
     || q == 0
     || n <= l

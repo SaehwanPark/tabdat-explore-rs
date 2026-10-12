@@ -27,6 +27,14 @@ fn selection_lists_and_early_second_stage_failure_restore_dataset() {
   ] {
     assert!(std::panic::catch_unwind(|| GretlModel::heckman(&dset, &list)).is_err());
   }
+  let mut oversized = vec![2; 46344];
+  oversized[0] = 46343;
+  oversized[1] = 1;
+  oversized[2] = 0;
+  oversized[4] = -100;
+  oversized[5] = 4;
+  oversized[6] = 0;
+  assert!(std::panic::catch_unwind(|| GretlModel::heckman(&dset, &oversized)).is_err());
   for t in 0..480 {
     dset.set_value(4, t, if t == 3 || t == 173 { 1. } else { 0. });
   }

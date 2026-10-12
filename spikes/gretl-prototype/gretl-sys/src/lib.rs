@@ -473,6 +473,10 @@ impl GretlModel {
       separators.len() == 1,
       "selection needs exactly one separator"
     );
+    // heckit.c computes (tot*tot+tot)/2 in signed int before allocating packed
+    // VCV. Bound the nominal combined parameters even if a fit could drop rank.
+    let total = list.len()-3;
+    assert!(total.checked_mul(total+1).is_some_and(|cells| c_int::try_from(cells).is_ok()), "two-step packed covariance exceeds native integer arithmetic");
     let sep = separators[0];
     assert!(
       sep >= 3 && sep + 3 < list.len(),

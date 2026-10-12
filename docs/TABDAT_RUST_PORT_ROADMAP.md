@@ -219,7 +219,10 @@ Resolve the largest backend and FFI uncertainties before implementing the produc
   (PR #173; Python/R plm references; default no-constant RE remains unvalidated).
   See [bounded panel evidence](feasibility/panel.md); no broader xtreg acceptance.
 - [ ] Implement dynamic-panel fixture.
-- [ ] Implement Heckman fixture.
+- [x] Implement bounded classical two-step Heckman fixture (PR #177;
+  separate corrected outcome/observed probit covariance, exact samples/sigma/rho;
+  original ordinary-OLS SE and placeholder cross-block deviations recorded in
+  [report](feasibility/heckman.md) and [ADR 0017](adr/0017-heckman-two-step-covariance-and-cleanup.md)).
 - [x] Implement classical exponential/Weibull PH survival fixture (PR #176;
   full observed covariance/Jacobian, time-density likelihood and exact event/
   censor/sample IDs against R and externally normalized Python; original

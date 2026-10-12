@@ -34,3 +34,8 @@ required-features = ["quantile-plugin"]
 name = "survival-measure"
 path = "src/bin/survival-measure.rs"
 required-features = ["survival-plugin"]
+
+[[bin]]
+name = "heckman-measure"
+path = "src/bin/heckman-measure.rs"
+required-features = ["heckman-plugin"]
