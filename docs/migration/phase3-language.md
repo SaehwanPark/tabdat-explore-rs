@@ -203,3 +203,10 @@ that the package's NCSA obligation was omitted from the initial ADR; corrected
 and rechecked against installed package metadata and bundled source headers.
 No blocking code findings remain; no independent model/hosted review is claimed.
 Full AST/canonical script evidence and whole-phase exit acceptance remain pending.
+
+Final local verification: root `cargo fmt --all -- --check`, locked workspace
+`cargo check`, all-target `cargo test` (**737 passed across 108 test binaries**),
+and all-target Clippy with `-D warnings` passed. Separate fuzz formatting,
+changed-document relative links and `git diff --check` passed. No skill/harness
+frontmatter or guidance scenarios were changed. Local test/Clippy logs are
+`target/phase3-properties-tests.log` and `target/phase3-properties-clippy.log`.
