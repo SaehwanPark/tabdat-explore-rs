@@ -79,8 +79,9 @@ state are handled correctly.
 
 - Extend machine-readable output **for executed commands**, not the entire
   speculative command catalog; version changes to stable public envelopes.
-  CLI-v1 now includes ordered descriptive summaries alongside load/count/preview
-  results (#200), including nested script streams and located failures.
+  CLI-v1 now includes ordered descriptive summaries and bounded frequency tables
+  alongside load/count/preview results (#200/#201), including nested script
+  streams and located failures.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics.
 - Add small performance benchmarks (cold start, simple command, representative

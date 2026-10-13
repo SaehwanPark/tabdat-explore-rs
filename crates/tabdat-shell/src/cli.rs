@@ -30,8 +30,8 @@ options:
   -f, --file FILE       run a TabDat script file and exit
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
-                        supports use/count/summarize/head/tail; scripts stream
-                        use/count/summarize/head/tail)
+                        supports use/count/summarize/tabulate/head/tail;
+                        scripts stream use/count/summarize/tabulate/head/tail)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
                         emit declared command effects; requires --json
