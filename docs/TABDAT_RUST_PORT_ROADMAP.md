@@ -172,6 +172,11 @@ state are handled correctly.
   and cached-fit rules, binder/validation failures and output/file boundaries
   are checked. SQL validation/publication boundaries are not sandbox/atomicity
   guarantees; no default row limit or backend execution changes are implied.
+  Join JSON now reports owned lookup-enriched metadata (#226), connecting named
+  SQL relations to duplicate-preserving inner/left joins and model/persistence.
+  Multi/quoted keys, NULL nonmatches, suffixes, empty/self joins, cached original
+  fits/labels/named updates, validation/native failures and output guards are
+  checked; no guessed match diagnostics, cardinality checks or backend changes.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced
