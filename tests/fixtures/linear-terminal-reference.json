@@ -1,0 +1,66 @@
+{
+  "provenance": {
+    "python": "3.13.3",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "statsmodels": "0.14.6",
+    "method": "OLS with intercept, classical covariance, Student-t and F inference",
+    "sample": "complete cases of y and x; original zero-based row indices",
+    "tolerance": "max(1e-10 absolute, 1e-9 * abs(expected)); no display rounding"
+  },
+  "retained_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "n": 6,
+  "df_residual": 4,
+  "coefficient_names": [
+    "intercept",
+    "x"
+  ],
+  "coefficients": [
+    0.9285714285714286,
+    0.7285714285714286
+  ],
+  "standard_errors": [
+    0.5818981372859612,
+    0.19219462924391026
+  ],
+  "statistics": [
+    1.5957628476048933,
+    3.7908001458605463
+  ],
+  "p_values": [
+    0.1857741587159503,
+    0.019255594950935657
+  ],
+  "r_squared": 0.7822556390977443,
+  "adjusted_r_squared": 0.7278195488721804,
+  "root_mse": 0.8040078180145834,
+  "lincom": [
+    1.6571428571428573,
+    0.4368642124688801,
+    3.7932675871473527,
+    0.019214704420862372,
+    0.44421335279754626,
+    2.8700723614881682
+  ],
+  "test": [
+    14.370165745856342,
+    0.019255594950935657
+  ],
+  "predictions": [
+    0.9285714285714286,
+    1.6571428571428573,
+    2.385714285714286,
+    3.1142857142857148,
+    3.8428571428571434,
+    4.571428571428572,
+    5.300000000000001,
+    null
+  ]
+}

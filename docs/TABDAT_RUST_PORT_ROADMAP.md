@@ -52,6 +52,15 @@ rows, values, metadata and outputs match the declared supported semantics.
 
 ### 3. Make linear statistics reliably usable
 
+The bounded shell now renders `regress`, `predict`, `lincom` and `test` results
+([PR #198](https://github.com/SaehwanPark/tabdat-explore-rs/pull/198)). A noisy OLS
+binary fixture compares displayed coefficients/inference/fit, lincom intervals,
+F tests and predictions with statsmodels/SciPy, including exact sample row identity.
+It also tests failed estimation/model clearing and recovery. This reporting-only
+slice does not expand covariance/estimator support or claim validation of every
+mode. `ttest`/VIF terminal details and broader structured statistical output remain
+follow-up work.
+
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 
 - `regress` with explicitly supported covariance modes, then `predict`, `test`,

@@ -68,7 +68,70 @@ fn dataset_outcome(action: &str, dataset: &DatasetInfo) -> String {
   )
 }
 
-/// Render the supported interactive EDA subset without changing owned results.
+fn inference_number(value: f64) -> String {
+  if value.is_nan() {
+    "NA".to_owned()
+  } else {
+    value.to_string()
+  }
+}
+
+fn optional_inference(value: Option<f64>) -> String {
+  value
+    .map(inference_number)
+    .unwrap_or_else(|| "NA".to_owned())
+}
+
+fn regression(result: &tabdat_domain::RegressionResult) -> String {
+  let mut output = format!(
+    "Regression: {} on {}\nEstimator: {}; covariance: {}; intercept: {}\nN = {}; residual df = {}\n",
+    result.outcome.escape_debug(),
+    result
+      .predictors
+      .iter()
+      .map(|name| name.escape_debug().to_string())
+      .collect::<Vec<_>>()
+      .join(" "),
+    result.estimator.escape_debug(),
+    result.covariance.escape_debug(),
+    result.include_intercept,
+    result.observation_count,
+    result.least_squares.fit_statistics.degrees_of_freedom
+  );
+  if let Some(sample) = &result.least_squares.sample {
+    writeln!(
+      output,
+      "Candidate rows = {}; excluded = {}",
+      sample.total_observations, sample.dropped_observations
+    )
+    .unwrap();
+  }
+  writeln!(
+    output,
+    "R-squared = {}; adjusted R-squared = {}; root MSE = {}",
+    optional_inference(result.r_squared),
+    optional_inference(result.adjusted_r_squared),
+    optional_inference(result.root_mse)
+  )
+  .unwrap();
+  output.push_str("Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
+  for coefficient in &result.coefficients {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}",
+      coefficient.name.escape_debug(),
+      inference_number(coefficient.value),
+      optional_inference(coefficient.standard_error),
+      optional_inference(coefficient.statistic),
+      optional_inference(coefficient.p_value)
+    )
+    .unwrap();
+  }
+  output.push_str("NA = unavailable or undefined.\n");
+  output
+}
+
+/// Render the supported interactive EDA and linear-analysis results without recomputing statistics.
 /// Other executed results receive an explicit display limitation, not silence.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
@@ -146,6 +209,51 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.dataset.columns.len(),
       result.path.to_string_lossy().escape_debug()
     ),
+    ExecutionResult::Regression(result) => regression(result),
+    ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),
+    ExecutionResult::Lincom(result) => format!(
+      "Linear combination: {}\nt reference; residual df = {}\nEstimate\tStd. error\tt\tP(two-sided)\tCI lower ({}%)\tCI upper ({}%)\n{}\t{}\t{}\t{}\t{}\t{}\nNA = unavailable or undefined.\n",
+      result.label.escape_debug(),
+      result
+        .df_residual
+        .map(|df| df.to_string())
+        .unwrap_or_else(|| "NA".to_owned()),
+      result.ci_level,
+      result.ci_level,
+      inference_number(result.estimate),
+      inference_number(result.standard_error),
+      inference_number(result.statistic),
+      inference_number(result.p_value),
+      inference_number(result.ci_lower),
+      inference_number(result.ci_upper)
+    ),
+    ExecutionResult::Test(result) => {
+      let mut output = String::from("Linear restrictions:\n");
+      for constraint in &result.constraints {
+        writeln!(output, "  {}", constraint.escape_debug()).unwrap();
+      }
+      let distribution = if result.is_chi2 {
+        format!("chi-square({})", result.df)
+      } else {
+        format!(
+          "F({}, {})",
+          result.df,
+          result
+            .df_residual
+            .map(|df| df.to_string())
+            .unwrap_or_else(|| "NA".to_owned())
+        )
+      };
+      writeln!(
+        output,
+        "{distribution} = {}; P(upper-tail) = {}",
+        inference_number(result.statistic),
+        inference_number(result.p_value)
+      )
+      .unwrap();
+      output.push_str("NA = unavailable or undefined.\n");
+      output
+    }
     ExecutionResult::Run(run) => format!(
       "Executed {} commands from {}\n",
       run.executed_commands,
@@ -235,6 +343,38 @@ mod tests {
       render_execution_result(&empty),
       "category\tCount\tPercent\n(0 rows shown)\n"
     );
+  }
+
+  #[test]
+  fn post_estimation_names_the_reference_and_preserves_undefined_inference() {
+    let result = ExecutionResult::Lincom(tabdat_domain::LincomResult {
+      label: "constant".to_owned(),
+      estimate: 5.0,
+      standard_error: 0.0,
+      statistic: f64::NAN,
+      p_value: f64::NAN,
+      ci_lower: 5.0,
+      ci_upper: 5.0,
+      ci_level: 95.0,
+      df_residual: Some(4),
+    });
+    let text = render_execution_result(&result);
+    assert!(text.contains("t reference; residual df = 4"));
+    assert!(text.contains("CI lower (95%)\tCI upper (95%)\n5\t0\tNA\tNA\t5\t5\n"));
+    assert!(!text.contains("NaN"));
+    for (is_chi2, expected) in [(false, "F(2, 4)"), (true, "chi-square(2)")] {
+      let test = ExecutionResult::Test(tabdat_domain::TestResult {
+        constraints: vec!["x = 0".to_owned()],
+        statistic: 3.0,
+        p_value: 0.0,
+        df: 2,
+        df_residual: Some(4),
+        is_chi2,
+      });
+      assert!(
+        render_execution_result(&test).contains(&format!("{expected} = 3; P(upper-tail) = 0"))
+      );
+    }
   }
 
   #[test]
