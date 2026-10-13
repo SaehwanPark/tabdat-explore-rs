@@ -126,7 +126,12 @@ state are handled correctly.
   Empty/current-prediction schema, nested equivalence, errors and state preservation
   are covered; label/panel fields retain existing null-placeholder semantics.
 - Stabilize script reproducibility and practical error reporting, including
-  canonical `.td` workflows and documented seed semantics.
+  canonical `.td` workflows and documented seed semantics. Noninteractive CLI
+  streams now use fallible writes/flush boundaries (#214), fixing a reproduced
+  broken-JSON-pipe panic/exit 101. I/O failures exit 1 and stop later commands;
+  final/nested/write/flush and closed stdout/stderr cases are covered. Existing
+  successful bytes/categories are retained; prior effects are not rolled back
+  and no atomic file-publication guarantee is implied (MIG-0008).
 - Add small performance benchmarks (cold start, simple command, representative
   data access, model fit). Optimize only measured regressions.
 - Improve history/completion and display as needed for daily use. In-session

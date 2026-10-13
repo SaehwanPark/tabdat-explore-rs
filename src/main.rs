@@ -9,9 +9,12 @@ fn main() {
   let exit_code = match cli::parse_args(args.into_iter().skip(1)) {
     Ok(cli_args) => cli::run_cli(cli_args),
     Err(err) => {
-      eprintln!("{}", cli::USAGE);
-      eprintln!("tabdat: error: {err}");
-      2
+      use std::io::Write;
+      let mut errors = std::io::stderr().lock();
+      match writeln!(errors, "{}\ntabdat: error: {err}", cli::USAGE).and_then(|_| errors.flush()) {
+        Ok(()) => 2,
+        Err(_) => 1,
+      }
     }
   };
   if exit_code != 0 {

@@ -16,6 +16,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0007 | Accepted | Summary finite sample | Per-variable finite non-NULL sample for all summary aggregates; correct non-finite failures without masking poisoned output. PR #209; details below. |
 
+| MIG-0008 | Accepted | Noninteractive CLI I/O failures | Deliberate exit 1, fallible writes/flush boundaries and script stop guard instead of print-macro panic/exit 101. PR #214; details below. |
+
 MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
@@ -172,3 +174,31 @@ updates also get an entry identifying old/new pins and affected contract checks.
   empty cases, metadata/model/row invariants and existing finite regressions are
   tested. Runtime typed fixtures check BIGINT/UBIGINT and DECIMAL(38,2) extrema
   without narrowing, quoted identifiers, and REAL NaN/infinity filtering.
+
+### MIG-0008: noninteractive CLI I/O failures
+
+- **Scope/reproduction:** Rust `b4125c6`, Darwin arm64: close the reader of
+  stdout before `--json -c "use data.csv" -c count` emits its first result.
+  `println!` panics with Broken pipe and exits 101. Noninteractive discovery,
+  diagnostics and argument-error printing share the same panic-prone boundary.
+- **Decision/impact:** PR #214 uses fallible output/diagnostic writers and flushes
+  each emitted result/diagnostic before subsequent commands. I/O failure returns
+  1, even if an ordinary syntax/file error would otherwise return 2/3, with one
+  best-effort CLI I/O diagnostic on stderr. Failed stderr or argument-error
+  reporting also returns 1 without another panic. Successful bytes and normal
+  parse/runtime/file categories remain unchanged; interactive editing is separate.
+- **Rationale/limits:** Suppressing BrokenPipe into success would hide failed
+  output; keeping panics gives an accidental exit contract. Script observer
+  callbacks are infallible, so the original I/O error is retained and the existing
+  next-command preflight guard stops execution. The synthetic stop is not reported
+  as a ScriptError. Failure on the final result is still fatal. Completed effects,
+  including the command whose output failed, are not rolled back; partial output
+  can remain and no JSON error envelope is guaranteed on broken streams. Silent
+  plain batch/script success and unused streams are not proactively probed. No
+  new file atomicity, native ownership or Python-parity claim is made.
+- **Evidence:** `cli_output_tests.rs` injects write/flush failures in discovery,
+  diagnostics, first/middle/final batch and nested-script results, with a working
+  nested prediction baseline and no later observers. Unix binary tests use peers
+  closed before process launch (no timing races) for stdout/stderr, including
+  argument errors. Existing CLI/script/envelope regressions preserve normal bytes
+  and categories. This is local Unix evidence, not platform certification.

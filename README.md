@@ -55,6 +55,17 @@ piped input is also accepted, with no greeting or prompts. A clean exit returns
 0 even after recoverable command errors; input/output failure returns 1. Use batch
 `-c`/`-f` modes when command failures must determine a process exit code.
 
+Noninteractive CLI results and diagnostics use fallible writes with explicit
+flush boundaries. A write/flush failure (including a closed JSON output pipe)
+returns 1 instead of panicking, stops later batch/script commands, and attempts
+one best-effort `Error: CLI I/O failed:` diagnostic on stderr. If stderr itself
+fails, exit 1 still applies. A failed argument-error diagnostic also returns 1;
+normal argument/syntax/file exit categories remain unchanged when streams work.
+A broken stream cannot be promised a JSON error envelope. Prior results/effects,
+and the command whose result failed to write, are not rolled back. Plain batch/
+script success remains silent; unused streams are not proactively probed. This
+is not transactional or atomic file publication; see MIG-0008.
+
 Readable terminal details currently cover load, describe, summarize, count,
 head/tail, frequency tables, SQL table results and run metadata. Core
 `generate`/`replace`, rename, sort/gsort and keep/drop/select report updated
