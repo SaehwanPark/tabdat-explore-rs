@@ -34,7 +34,7 @@ options:
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail
-                        and generate/replace/rename/recode, keep/drop/select variable lists, sort/gsort,
+                        and generate/replace/rename/recode/label, keep/drop/select variable lists, sort/gsort,
                         regress/predict/lincom/test/ttest/estat vif, save/export;
                         scripts stream the same successful leaf results)
   --list-commands       emit the available command catalog; requires --json

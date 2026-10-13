@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Recode { .. }
+    Command::Label { .. }
+      | Command::Recode { .. }
       | Command::Rename { .. }
       | Command::Sort { .. }
       | Command::Gsort { .. }
@@ -58,7 +59,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Recode { .. }
+    Command::Label { .. }
+      | Command::Recode { .. }
       | Command::Rename { .. }
       | Command::Sort { .. }
       | Command::Gsort { .. }
@@ -128,6 +130,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Label(result) => (
+      json!({"action": result.action, "message": result.message, "metadata": result.metadata}),
+      "LabelResult",
     ),
     ExecutionResult::Recode(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -530,6 +536,81 @@ mod tests {
     let command = tabdat_language::parse_command("rename old new").unwrap();
     assert!(supports_batch_command(&command));
     assert!(supports_script_command(&command));
+  }
+
+  #[test]
+  fn label_results_preserve_owned_tagged_keys_order_and_absent_metadata() {
+    use tabdat_domain::{LabelMetadata, LabelResult, LabelResultAction, LabelValue, ValueLabelSet};
+    let metadata = LabelMetadata {
+      variable_labels: vec![
+        ("z\t列".into(), "Title\n\u{1b}".into()),
+        ("a".into(), "A".into()),
+      ],
+      value_sets: vec![ValueLabelSet {
+        name: "codes".into(),
+        mappings: vec![
+          (LabelValue::Integer(i64::MAX), "wide".into()),
+          (
+            LabelValue::Number("9007199254740993.001".into()),
+            "exact".into(),
+          ),
+          (LabelValue::Text("1".into()), "text".into()),
+          (LabelValue::Integer(i64::MIN), "negative".into()),
+        ],
+      }],
+      attachments: vec![("z\t列".into(), "codes".into())],
+    };
+    for (action, spelling) in [
+      (LabelResultAction::Variable, "variable"),
+      (LabelResultAction::Define, "define"),
+      (LabelResultAction::Values, "values"),
+      (LabelResultAction::List, "list"),
+      (LabelResultAction::Drop, "drop"),
+    ] {
+      let result = ExecutionResult::Label(LabelResult {
+        action,
+        message: "Done\n".into(),
+        metadata: Some(metadata.clone()),
+      });
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(
+        value,
+        json!({"schema_version":1,"result_type":"LabelResult","data":{
+          "action":spelling,"message":"Done\n","metadata":{
+            "variable_labels":[["z\t列","Title\n\u{1b}"],["a","A"]],
+            "value_sets":[{"name":"codes","mappings":[
+              [{"kind":"integer","payload":i64::MAX},"wide"],
+              [{"kind":"number","payload":"9007199254740993.001"},"exact"],
+              [{"kind":"text","payload":"1"},"text"],
+              [{"kind":"integer","payload":i64::MIN},"negative"]
+            ]}],"attachments":[["z\t列","codes"]]
+          }
+        }})
+      );
+    }
+    let result = ExecutionResult::Label(LabelResult {
+      action: LabelResultAction::List,
+      message: "Label dictionary".into(),
+      metadata: None,
+    });
+    let value: Value = serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(
+      value["data"],
+      json!({"action":"list","message":"Label dictionary","metadata":null})
+    );
+    for source in [
+      "label variable x 'X'",
+      "label define codes 1 'one'",
+      "label values x codes",
+      "label list codes",
+      "label drop codes",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
   }
 
   #[test]

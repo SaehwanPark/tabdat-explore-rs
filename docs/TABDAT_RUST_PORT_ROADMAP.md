@@ -156,6 +156,11 @@ state are handled correctly.
   SQL NULL versus stored empty strings, multi-output order/native schema,
   explicit cached-fit/label rules, nested/persistence/failure/output cases are
   checked. No guessed rule/changed-cell fields or new recode semantics are added.
+  Label JSON now exposes owned actions/messages and explicitly tagged dictionary
+  keys (#223), completing category definition/attachment/inspection workflows.
+  Named-list subsets, clears/replacements/drops, transform reconciliation,
+  data/model invariants, nested streams and output/file guards are checked.
+  Dataset placeholders and session-local/non-persistent label limits remain.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

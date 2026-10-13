@@ -180,6 +180,21 @@ fits without refitting. Metadata label/panel fields remain null placeholders.
 Parquet retains stored empty strings; CSV reload may turn empty fields into NULL.
 See `help recode` for bounded eager syntax and failure limits.
 
+Bounded session-local `label variable`, `define`, `values`, `list` and `drop`
+return `LabelResult` with `data.action`, `message` and owned `metadata` (null
+when empty). Metadata contains ordered `variable_labels` and `attachments`
+`[name, text-or-set-name]` pairs, and `value_sets` with `name` and ordered
+`mappings` pairs `[key, display_text]`. Keys retain tagged `{kind, payload}`
+forms: `integer` with an i64 JSON number (use lossless consumer parsing),
+`number` with an exact numeric spelling string, or `text` with a string.
+Names/attachments/sets are producer-normalized; mappings retain definition
+order. `label list names` filters sets and matching attachments but still
+includes all variable labels. Defining/replacing/clearing/dropping labels
+changes metadata only, not data or cached models. Other dataset envelopes
+retain their existing null label/panel placeholders. Labels are session-local:
+a new `use` clears them, and CSV/Parquet save/export does not archive them.
+`label save`/`label use` are not installed. See `help label`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and
