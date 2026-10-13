@@ -227,7 +227,7 @@ fn vif_errors_preserve_prior_streams_locations_and_stop_later_effects() {
       .unwrap()
       .contains("active dataset")
   );
-  for command in ["estat residuals", "sql select 1"] {
+  for command in ["estat residuals", "by x1: summarize x1"] {
     let unsupported =
       fixture.batch(&["--json", "-c", "use data.csv", "-c", command, "-c", "count"]);
     assert_eq!(unsupported.status.code(), Some(2));
@@ -245,7 +245,7 @@ fn vif_errors_preserve_prior_streams_locations_and_stop_later_effects() {
     ("", "estat vif", 1),
     ("regress y x1, noconstant\n", "estat vif", 1),
     ("regress y x2 x1 z\n", "estat residuals", 1),
-    ("regress y x2 x1 z\n", "sql select 1", 1),
+    ("regress y x2 x1 z\n", "by x1: summarize x1", 1),
   ] {
     fs::write(
       fixture.0.join("child.td"),

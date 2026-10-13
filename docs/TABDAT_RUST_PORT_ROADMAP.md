@@ -166,6 +166,12 @@ state are handled correctly.
   Sorted SQL-non-NULL codes, stored empty strings, native schema, inherited labels,
   integer-map decoding/unmatched NULLs, cached-state/native failure guards,
   nested streams and output boundaries are checked, without new backend semantics.
+  SQL JSON now reports owned query rows and named-cohort metadata, including
+  reactivation of registered tables (#225), for filtered analysis before fitting.
+  SELECT/WITH ordering, existing scalar policy, empty/duplicate headers, labels
+  and cached-fit rules, binder/validation failures and output/file boundaries
+  are checked. SQL validation/publication boundaries are not sandbox/atomicity
+  guarantees; no default row limit or backend execution changes are implied.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced
