@@ -86,6 +86,13 @@ indices, singleton/all-invalid/empty cases, exact wide integer/decimal extrema,
 finite regressions and read-only state are checked. Native finite-arithmetic
 overflow remains outside this correction; see MIG-0007 for the explicit policy.
 
+Codebook now reports owned profiles in terminal/CLI-v1 JSON (#210): types,
+SQL-NULL/non-NULL/native distinct counts, ordering/duplicates, and up to three
+possibly repeated examples. Existing scalar encoding is reused; JSON metadata
+explicitly marks non-finite example null encoding. Empty/all-NULL, stored-empty,
+non-finite, scalar-boundary, nested/error and state paths are checked. Unsupported
+composite example conversions remain a bounded execution limitation.
+
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 
 - `regress` with explicitly supported covariance modes, then `predict`, `test`,

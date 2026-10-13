@@ -3,15 +3,15 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
-  CellValue, DatasetInfo, ExecutionResult, LoadResult, MissingResult, PreviewResult,
-  RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
+  CellValue, CodebookResult, DatasetInfo, ExecutionResult, LoadResult, MissingResult,
+  PreviewResult, RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
 };
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -19,6 +19,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     command,
     Command::Use { .. }
       | Command::Count
+      | Command::Codebook { .. }
       | Command::Summarize { .. }
       | Command::Missing { .. }
       | Command::Tabulate { .. }
@@ -41,6 +42,7 @@ pub fn supports_script_command(command: &Command) -> bool {
     command,
     Command::Use { .. }
       | Command::Count
+      | Command::Codebook { .. }
       | Command::Summarize { .. }
       | Command::Missing { .. }
       | Command::Tabulate { .. }
@@ -64,6 +66,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
+    ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
     ExecutionResult::Missing(result) => (missing_result_data(result), "MissingResult"),
     ExecutionResult::Tabulate(table) => (
@@ -104,6 +107,17 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn codebook_result_data(result: &CodebookResult) -> Value {
+  json!({
+    "missing_definition": "sql_null", "example_limit": 3, "examples_nonfinite_encoding": "null",
+    "rows": result.rows.iter().map(|row| json!({
+      "variable": row.variable, "data_type": row.data_type,
+      "nonmissing": row.nonmissing, "missing": row.missing, "distinct": row.distinct,
+      "examples": row.examples.iter().map(cell_value_data).collect::<Vec<_>>(),
+    })).collect::<Vec<_>>()
+  })
 }
 
 fn missing_result_data(result: &MissingResult) -> Value {
@@ -254,6 +268,92 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn codebook_json_uses_existing_scalar_policy_without_loss_of_owned_labels_or_counts() {
+    let row = |variable: &str, data_type: &str, examples| tabdat_domain::CodebookRow {
+      variable: variable.to_owned(),
+      data_type: data_type.to_owned(),
+      nonmissing: u64::MAX,
+      missing: 0,
+      distinct: u64::MAX,
+      examples,
+    };
+    let result = ExecutionResult::Codebook(CodebookResult {
+      rows: vec![
+        row(
+          "signed",
+          "HUGEINT",
+          vec![
+            CellValue::SignedInteger(i128::MIN),
+            CellValue::SignedInteger(i128::MAX),
+          ],
+        ),
+        row(
+          "unsigned",
+          "UHUGEINT",
+          vec![CellValue::UnsignedInteger(u128::MAX)],
+        ),
+        row(
+          "decimal",
+          "DECIMAL(38,2)",
+          vec![CellValue::Decimal {
+            width: 38,
+            scale: 2,
+            value: -1,
+          }],
+        ),
+        row("blob", "BLOB", vec![CellValue::Bytes(vec![0, 255])]),
+        row(
+          "label\t\"\n",
+          "VARCHAR",
+          vec![CellValue::Text("text\t\"\n".to_owned())],
+        ),
+        row(
+          "bool",
+          "BOOLEAN",
+          vec![CellValue::Boolean(true), CellValue::Boolean(false)],
+        ),
+        row(
+          "nonfinite",
+          "DOUBLE",
+          vec![
+            CellValue::Float(f64::NAN),
+            CellValue::Float(f64::INFINITY),
+            CellValue::Float(f64::NEG_INFINITY),
+          ],
+        ),
+      ],
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(value["result_type"], "CodebookResult");
+    let rows = value["data"]["rows"].as_array().unwrap();
+    assert!(
+      rows
+        .iter()
+        .all(|row| row["nonmissing"] == u64::MAX && row["distinct"] == u64::MAX)
+    );
+    for (index, expected) in [
+      json!([i128::MIN, i128::MAX]),
+      json!([u128::MAX]),
+      json!(["-0.01"]),
+      json!(["base64:AP8="]),
+      json!(["text\t\"\n"]),
+      json!([true, false]),
+      json!([null, null, null]),
+    ]
+    .iter()
+    .enumerate()
+    {
+      assert_eq!(rows[index]["examples"], *expected);
+    }
+    assert_eq!(rows[4]["variable"], "label\t\"\n");
+    let empty = ExecutionResult::Codebook(CodebookResult { rows: vec![] });
+    let value: Value = serde_json::from_str(&serialize_execution_result(&empty).unwrap()).unwrap();
+    assert_eq!(value["data"]["rows"], json!([]));
+  }
 
   #[test]
   fn missing_json_preserves_large_counts_labels_null_percent_and_empty_rows() {
