@@ -41,6 +41,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "keep",
   "label",
   "lasso",
+  "lincom",
   "logit",
   "lowess",
   "missing",
@@ -72,6 +73,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "summarize",
   "tabulate",
   "tail",
+  "test",
   "tobit",
   "use",
   "xtabond",
@@ -128,6 +130,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "keep" => Some(include_str!("help/topics/keep.md")),
     "label" => Some(include_str!("help/topics/label.md")),
     "lasso" => Some(include_str!("help/topics/lasso.md")),
+    "lincom" => Some(include_str!("help/topics/lincom.md")),
     "logit" => Some(include_str!("help/topics/logit.md")),
     "lowess" => Some(include_str!("help/topics/lowess.md")),
     "missing" => Some(include_str!("help/topics/missing.md")),
@@ -159,6 +162,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "summarize" => Some(include_str!("help/topics/summarize.md")),
     "tabulate" => Some(include_str!("help/topics/tabulate.md")),
     "tail" => Some(include_str!("help/topics/tail.md")),
+    "test" => Some(include_str!("help/topics/test.md")),
     "tobit" => Some(include_str!("help/topics/tobit.md")),
     "use" => Some(include_str!("help/topics/use.md")),
     "xtabond" => Some(include_str!("help/topics/xtabond.md")),
@@ -177,7 +181,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 79);
+    assert_eq!(available_help_topics().len(), 81);
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");

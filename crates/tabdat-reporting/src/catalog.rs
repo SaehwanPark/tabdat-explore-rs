@@ -2078,13 +2078,33 @@ mod tests {
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
-    // Verify lincom, test, ttest are in catalog but have no help topic
+    // Implemented post-estimation topics are linked; catalog membership alone
+    // still does not imply execution or packaged help for every command.
     let lincom_entry = catalog
       .commands
       .iter()
       .find(|e| e.name == "lincom")
       .unwrap();
-    assert_eq!(lincom_entry.help_topic, None);
+    assert_eq!(lincom_entry.help_topic.as_deref(), Some("lincom"));
+    assert_eq!(
+      catalog
+        .commands
+        .iter()
+        .find(|entry| entry.name == "test")
+        .unwrap()
+        .help_topic
+        .as_deref(),
+      Some("test")
+    );
+    assert_eq!(
+      catalog
+        .commands
+        .iter()
+        .find(|entry| entry.name == "ttest")
+        .unwrap()
+        .help_topic,
+      None
+    );
     let summarize_entry = catalog
       .commands
       .iter()

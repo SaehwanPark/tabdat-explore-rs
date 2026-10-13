@@ -86,7 +86,10 @@ state are handled correctly.
   canonical `.td` workflows and documented seed semantics.
 - Add small performance benchmarks (cold start, simple command, representative
   data access, model fit). Optimize only measured regressions.
-- Improve history/completion and display as needed for daily use.
+- Improve history/completion and display as needed for daily use. In-session
+  `help`/`?` now provides bounded workflow guidance and packaged reference topics,
+  including new `lincom`/`test` topics (#202); reference syntax is not an execution
+  support guarantee.
 - Add plotting or MCP transport only when a concrete workflow requires them.
 
 ## Later: optional estimator and backend breadth

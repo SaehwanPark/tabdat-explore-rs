@@ -42,6 +42,26 @@ fn run(fixture: &Fixture, input: &[u8]) -> Output {
 }
 
 #[test]
+fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
+  let fixture = Fixture::new();
+  let output = run(&fixture, b"help\n?\nuse data.csv\nhelp SUMMARIZE\n?lincom\nhelp test\nhelp no_such_topic\nhelp summarize extra\ncount\nexit\n");
+  assert!(output.status.success());
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  assert_eq!(stdout.matches("Interactive core workflow\n").count(), 2);
+  assert!(stdout.contains("Load local eager CSV/Parquet: use <path>"));
+  assert!(stdout.contains("parser-only or future syntax"));
+  assert!(stdout.contains("# summarize\n"));
+  assert!(stdout.contains("# lincom\n"));
+  assert!(stdout.contains("# test\n"));
+  assert!(stdout.ends_with("2 rows\n"));
+  assert!(!stdout.contains("tabdat>"));
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 2);
+  assert!(stderr.contains("unknown help topic: no_such_topic"));
+  assert!(stderr.contains("help expects at most one command name"));
+}
+
+#[test]
 fn persistent_eda_session_reports_schema_statistics_and_previews() {
   let fixture = Fixture::new();
   let output = run(&fixture, b"# analyst session\n\nuse data.csv\ndescribe\nsummarize y\nhead 2\ncount\nexit\nnot_a_command\n");
