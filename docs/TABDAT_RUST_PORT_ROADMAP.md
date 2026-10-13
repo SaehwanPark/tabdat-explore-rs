@@ -70,8 +70,11 @@ child locations and existing JSON fields are retained. Readable terminal `ttest`
 results now cover one-sample, paired, pooled and Welch forms (#206), with a
 SciPy display reference, asymmetric missingness, fractional DF, undefined
 inference, state preservation and nested-stream checks. VIF already uses the
-generic terminal table renderer; dedicated interface coverage/polish and bounded
-`ttest` JSON remain follow-up work.
+generic terminal table renderer; dedicated interface coverage/polish remains
+follow-up work. CLI-v1 `ttest` JSON now covers the same four forms (#207), using
+owned inference, explicit Student-t/95% metadata, nullable independent difference
+counts, and the shared SciPy fixture; nested streams and error/null paths are
+covered without changing calculations or model state.
 
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 

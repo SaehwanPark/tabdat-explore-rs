@@ -32,7 +32,7 @@ options:
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
                         supports use/count/summarize/tabulate/head/tail
-                        and regress/predict/lincom/test; scripts stream
+                        and regress/predict/lincom/test/ttest; scripts stream
                         the same successful leaf results)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
