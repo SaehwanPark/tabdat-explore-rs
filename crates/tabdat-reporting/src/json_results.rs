@@ -10,14 +10,16 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Label { .. }
+    Command::Encode { .. }
+      | Command::Decode { .. }
+      | Command::Label { .. }
       | Command::Recode { .. }
       | Command::Rename { .. }
       | Command::Sort { .. }
@@ -59,7 +61,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Label { .. }
+    Command::Encode { .. }
+      | Command::Decode { .. }
+      | Command::Label { .. }
       | Command::Recode { .. }
       | Command::Rename { .. }
       | Command::Sort { .. }
@@ -130,6 +134,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Encode(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "EncodeResult",
+    ),
+    ExecutionResult::Decode(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "DecodeResult",
     ),
     ExecutionResult::Label(result) => (
       json!({"action": result.action, "message": result.message, "metadata": result.metadata}),
@@ -536,6 +548,51 @@ mod tests {
     let command = tabdat_language::parse_command("rename old new").unwrap();
     assert!(supports_batch_command(&command));
     assert!(supports_script_command(&command));
+  }
+
+  #[test]
+  fn category_coding_reports_owned_schema_without_dictionary_or_guessed_counts() {
+    let dataset = DatasetInfo {
+      source: "source\t目录.csv".into(),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "code\n".into(),
+        data_type: "BIGINT".into(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, name) in [
+      (
+        ExecutionResult::Encode(tabdat_domain::EncodeResult {
+          dataset: dataset.clone(),
+        }),
+        "EncodeResult",
+      ),
+      (
+        ExecutionResult::Decode(tabdat_domain::DecodeResult {
+          dataset: dataset.clone(),
+        }),
+        "DecodeResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(
+        value,
+        json!({"schema_version":1,"result_type":name,"data":{"dataset":dataset_info_data(&dataset)}})
+      );
+    }
+    for source in [
+      "encode x, generate(code)",
+      "encode x, generate(code) label(codes)",
+      "decode code, generate(text)",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
   }
 
   #[test]

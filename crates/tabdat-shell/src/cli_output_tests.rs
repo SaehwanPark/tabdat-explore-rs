@@ -457,6 +457,62 @@ fn label_output_failure_stops_later_dictionary_commands_and_export() {
 }
 
 #[test]
+fn coding_output_failure_stops_later_category_commands_and_export() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=5 {
+        let fixture = Fixture::new();
+        let exported = fixture.0.join("coded.csv");
+        let export = format!("export \"{}\"", exported.display());
+        let prepare = "recode x (1='b') (2='a') (else='b'), generate(category)";
+        let encode = "encode category, generate(code)";
+        let decode = "decode code, generate(readable)";
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, format!("{encode}\n{decode}\n{export}\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\n{prepare}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            prepare,
+            "-c",
+            encode,
+            "-c",
+            decode,
+            "-c",
+            &export,
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(exported.exists(), fail_at == 5);
+        if fail_at == 5 {
+          assert_eq!(
+            std::fs::read_to_string(&exported).unwrap(),
+            "x,y,category,code,readable\n1,2,b,2,b\n2,5,a,1,a\n3,5,b,2,b\n4,9,b,2,b\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {
