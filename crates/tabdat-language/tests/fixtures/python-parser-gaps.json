@@ -12,30 +12,6 @@
     "difference": "expected drop, got error drop if execution is deferred in the bounded runtime"
   },
   {
-    "input": "estat bayes",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat did",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat dml",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat gof",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat margins",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat ovtest",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
     "input": "estat report",
     "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
   },
@@ -54,18 +30,6 @@
   {
     "input": "estat report, saving(my_report.html)",
     "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat residuals",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat residuals, coord(lat lon)",
-    "difference": "expected error \"estat residuals does not support options\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat residuals, detail",
-    "difference": "expected error \"estat residuals does not support options\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
   },
   {
     "input": "estat spatial",

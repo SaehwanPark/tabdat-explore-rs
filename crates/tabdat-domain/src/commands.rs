@@ -1163,6 +1163,14 @@ pub struct TtestCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EstatSubcommand {
+  Residuals,
+  Ovtest,
+  Margins,
+  Gof,
+  Did,
+  Drdid,
+  Dml,
+  Bayes,
   /// Report variance inflation factors for a linear regression model.
   Vif,
   /// Report the first-stage diagnostic for an IV model.
