@@ -45,8 +45,12 @@ slice. Conditional summarize and keep/drop row-filter forms now own typed
 expressions/options while execution explicitly rejects these new forms; existing
 unconditional operations remain unchanged. Conditional/multidimensional/value-
 aggregate `TabulateQuery` syntax is also accepted but explicitly deferred by
-execution; bounded positional frequency tables still run. Full AST, script,
-property/fuzz and whole-phase acceptance remain pending.
+execution; bounded positional frequency tables still run. Generated parser properties
+and an isolated sanitizer fuzz target are installed; full AST, canonical script
+and whole-phase acceptance remain pending. Expressions exceeding 256 tokens and
+command parsing at depth 32 are rejected with deterministic resource diagnostics
+under [ADR 0023](docs/adr/0023-syntax-resource-budgets-and-fuzz-tooling.md). These
+limits are intentional safety restrictions, not unrestricted Python parity.
 
 ## Current behavior
 

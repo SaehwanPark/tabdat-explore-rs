@@ -26,8 +26,10 @@ pinned corpus fixture exceeds these budgets. The Python oracle itself has
 implementation recursion constraints, not these stable diagnostics.
 
 Keep libFuzzer in a separate `fuzz/` validation workspace and lock its dependencies.
-Use cargo-fuzz 0.13.2 and libfuzzer-sys 0.4.13; the wrapper is MIT/Apache-2.0 and
-LLVM's bundled fuzz engine is Apache-2.0 with LLVM exception. This tooling is not
+Use cargo-fuzz 0.13.2 and libfuzzer-sys 0.4.13. The latter's package declares
+`(MIT OR Apache-2.0) AND NCSA`; its bundled LLVM source headers state Apache-2.0
+with LLVM exception. Preserve those notices if redistributing the validation
+facility; the published package license includes the NCSA obligation. This tooling is not
 linked into production, adds no native ownership to domain APIs and does not
 change accepted runtime backends or product redistribution decisions. Safe target
 source forbids unsafe; native instrumentation is an external validation facility.
