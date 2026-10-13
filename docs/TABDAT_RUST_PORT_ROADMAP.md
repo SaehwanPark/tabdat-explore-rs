@@ -146,6 +146,11 @@ state are handled correctly.
   failure/output boundaries are checked. Labels and original fit/sample are
   retained without refitting; prediction uses current rows. No lazy/by execution
   or invented key/affected-row fields are implied.
+  Single-column rename JSON now reports owned normalized schema metadata (#221),
+  completing rename → transform → fit/predict → persistence. Values/types/position,
+  NULLs, quoted names/empty data, label remapping, original cached-fit names/sample,
+  validation/native case-collision, nested and output boundaries are checked.
+  Renaming does not rewrite cached parameter names or install label/panel snapshots.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Sort { .. }
+    Command::Rename { .. }
+      | Command::Sort { .. }
       | Command::Gsort { .. }
       | Command::Use { .. }
       | Command::Generate { .. }
@@ -56,7 +57,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Sort { .. }
+    Command::Rename { .. }
+      | Command::Sort { .. }
       | Command::Gsort { .. }
       | Command::Use { .. }
       | Command::Generate { .. }
@@ -124,6 +126,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Rename(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "RenameResult",
     ),
     ExecutionResult::Sort(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -489,6 +495,35 @@ mod tests {
     let command = tabdat_language::parse_command("by x: sort y").unwrap();
     assert!(!supports_batch_command(&command));
     assert!(!supports_script_command(&command));
+  }
+
+  #[test]
+  fn rename_result_encodes_only_owned_post_operation_metadata() {
+    let dataset = DatasetInfo {
+      source: std::path::PathBuf::from("source\t目录.csv"),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "renamed\n".to_owned(),
+        data_type: "DECIMAL(38,0)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    let result = ExecutionResult::Rename(tabdat_domain::RenameResult {
+      dataset: dataset.clone(),
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result_type"], "RenameResult");
+    assert_eq!(
+      value["data"],
+      json!({"dataset": dataset_info_data(&dataset)})
+    );
+    let command = tabdat_language::parse_command("rename old new").unwrap();
+    assert!(supports_batch_command(&command));
+    assert!(supports_script_command(&command));
   }
 
   #[test]
