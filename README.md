@@ -68,9 +68,20 @@ path/line; scripts are sequential, not atomic. A terminal output failure ends
 the session and prevents subsequent data/file operations, but does not
 roll back an already completed command.
 
-There is no history, completion, or multiline interactive input.
-Ctrl-C retains default OS process termination; recoverable cancellation and
-in-flight file-write safety are not promised.
+Capable terminals provide basic line editing and Up/Down command recall, with
+at most 500 session-local submitted commands (blank/comments and cancelled input
+are excluded; consecutive duplicates are skipped). History is never saved to disk.
+Ctrl-C while composing a line cancels that input and preserves data/model state;
+Ctrl-D on an empty line exits. Piped input keeps the existing plain line behavior.
+Unsupported/dumb terminals may fall back to plain input. There is no completion
+or multiline command syntax. Ctrl-C during command execution is **not** a
+supported cancellation protocol and may terminate the process; in-flight file-write
+safety is not promised.
+
+Terminal editing uses Rustyline's safe API with optional/file-history features
+disabled. Local Unix PTY verification is reproducible with
+`python3 tools/check_terminal_pty.py target/debug/tabdat-explore-rs` after
+`cargo build --locked`; this is not cross-platform release certification.
 
 Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery

@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+rustyline = { version = "18.0.1", default-features = false }
 tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }
 tabdat-language = { path = "../tabdat-language", version = "0.1.0" }
 tabdat-execution = { path = "../tabdat-execution", version = "0.1.0" }

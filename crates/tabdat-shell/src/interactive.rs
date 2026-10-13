@@ -5,32 +5,43 @@ use tabdat_execution::Session;
 use tabdat_language::{Command, parse_command};
 use tabdat_reporting::terminal::{render_execution_result, render_interactive_help};
 
-fn run_session(
-  input: &mut impl BufRead,
+const WELCOME: &str = "TabDat — type help or ? for core workflows; exit to quit.";
+
+enum InputEvent {
+  Line(String),
+  Interrupted,
+  Eof,
+}
+
+fn run_session_with_input(
+  mut read_input: impl FnMut() -> io::Result<InputEvent>,
   output: &mut impl Write,
   errors: &mut impl Write,
   prompt: bool,
 ) -> io::Result<()> {
   let mut session = Session::new();
   if prompt {
-    writeln!(
-      output,
-      "TabDat — type help or ? for core workflows; exit to quit."
-    )?;
+    writeln!(output, "{WELCOME}")?;
   }
-  let mut line = String::new();
   loop {
     if prompt {
       write!(output, "tabdat> ")?;
       output.flush()?;
     }
-    line.clear();
-    if input.read_line(&mut line)? == 0 {
-      if prompt {
-        writeln!(output)?;
+    let line = match read_input()? {
+      InputEvent::Line(line) => line,
+      InputEvent::Interrupted => {
+        writeln!(output, "Input cancelled.")?;
+        output.flush()?;
+        continue;
       }
-      return Ok(());
-    }
+      InputEvent::Eof => {
+        if prompt {
+          writeln!(output)?;
+        }
+        return Ok(());
+      }
+    };
     let text = line.trim();
     if text.is_empty() || text.starts_with('#') {
       continue;
@@ -103,17 +114,78 @@ fn run_session(
   }
 }
 
+fn run_session(
+  input: &mut impl BufRead,
+  output: &mut impl Write,
+  errors: &mut impl Write,
+  prompt: bool,
+) -> io::Result<()> {
+  run_session_with_input(
+    || {
+      let mut line = String::new();
+      if input.read_line(&mut line)? == 0 {
+        Ok(InputEvent::Eof)
+      } else {
+        Ok(InputEvent::Line(line))
+      }
+    },
+    output,
+    errors,
+    prompt,
+  )
+}
+
+fn run_editor_session(output: &mut impl Write, errors: &mut impl Write) -> io::Result<()> {
+  use rustyline::{Config, DefaultEditor, error::ReadlineError};
+  let config = Config::builder()
+    .behavior(rustyline::config::Behavior::Stdio)
+    .max_history_size(500)
+    .map_err(io::Error::other)?
+    .build();
+  let mut editor = DefaultEditor::with_config(config).map_err(io::Error::other)?;
+  writeln!(output, "{WELCOME}")?;
+  output.flush()?;
+  run_session_with_input(
+    || match editor.readline("tabdat> ") {
+      Ok(line) => {
+        let text = line.trim();
+        if !text.is_empty() && !text.starts_with('#') {
+          editor
+            .add_history_entry(line.as_str())
+            .map_err(io::Error::other)?;
+        }
+        Ok(InputEvent::Line(line))
+      }
+      Err(ReadlineError::Interrupted) => Ok(InputEvent::Interrupted),
+      #[cfg(unix)]
+      Err(ReadlineError::Signal(rustyline::error::Signal::Interrupt)) => {
+        Ok(InputEvent::Interrupted)
+      }
+      Err(ReadlineError::Eof) => Ok(InputEvent::Eof),
+      Err(error) => Err(io::Error::other(error)),
+    },
+    output,
+    errors,
+    false,
+  )
+}
+
 pub(crate) fn run_interactive() -> i32 {
   let input = io::stdin();
   let output = io::stdout();
   let errors = io::stderr();
   let prompt = input.is_terminal() && output.is_terminal();
-  match run_session(
-    &mut input.lock(),
-    &mut output.lock(),
-    &mut errors.lock(),
-    prompt,
-  ) {
+  let result = if prompt {
+    run_editor_session(&mut output.lock(), &mut errors.lock())
+  } else {
+    run_session(
+      &mut input.lock(),
+      &mut output.lock(),
+      &mut errors.lock(),
+      false,
+    )
+  };
+  match result {
     Ok(()) => 0,
     Err(error) => {
       eprintln!("Error: interactive I/O failed: {error}");
@@ -158,6 +230,44 @@ mod tests {
     .unwrap();
     assert!(output.is_empty());
     assert!(errors.is_empty());
+  }
+
+  #[test]
+  fn input_interruption_preserves_data_and_model_then_accepts_more_commands() {
+    let nonce = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-input-interrupt-{}-{nonce}",
+      std::process::id()
+    ));
+    std::fs::create_dir(&root).unwrap();
+    let csv = root.join("data.csv");
+    std::fs::write(&csv, "x,y\n0,1\n1,2\n2,4\n3,6\n").unwrap();
+    let mut events = vec![
+      InputEvent::Line(format!("use {}", csv.display())),
+      InputEvent::Line("regress y x".to_owned()),
+      InputEvent::Interrupted,
+      InputEvent::Line("predict fitted".to_owned()),
+      InputEvent::Line("count".to_owned()),
+      InputEvent::Eof,
+    ]
+    .into_iter();
+    let mut output = Vec::new();
+    let mut errors = Vec::new();
+    let result = run_session_with_input(
+      || Ok(events.next().unwrap()),
+      &mut output,
+      &mut errors,
+      false,
+    );
+    std::fs::remove_dir_all(&root).unwrap();
+    result.unwrap();
+    assert!(errors.is_empty());
+    let output = String::from_utf8(output).unwrap();
+    assert!(output.contains("Input cancelled.\nPredicted: 4 rows, 3 columns\n"));
+    assert!(output.ends_with("4 rows\n"));
   }
 
   #[test]

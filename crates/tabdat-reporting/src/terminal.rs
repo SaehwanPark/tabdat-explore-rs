@@ -144,7 +144,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "  Help: help [topic] or ?[topic]; example: help summarize\n",
       "  Leave: exit, quit, or EOF\n",
       "Supported forms/options are bounded; reference topics may include parser-only or future syntax.\n",
-      "See SPEC.md for current limits. Ctrl-C terminates the process; recoverable cancellation is not installed.\n"
+      "See SPEC.md for current limits. In capable terminals, Ctrl-C cancels pending input; executing-command cancellation is not supported.\n"
     ).to_owned()),
     Some(topic) => crate::catalog::help_topic_result(topic).map(|topic| format!(
       "Reference topic: supported forms/options are bounded; some syntax is parser-only or future. See SPEC.md.\n\n{}",

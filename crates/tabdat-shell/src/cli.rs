@@ -17,7 +17,8 @@ usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--config CONFIG] [--json]
               [script]
 
 With no arguments, start a persistent line-oriented session.
-Type exit/quit or send EOF to leave. Terminal input shows a prompt.
+Type exit/quit or send EOF to leave. Capable terminals provide editing,
+session-local history and Ctrl-C input cancellation (not in-flight cancellation).
 
 positional arguments:
   script                run a TabDat script file and exit

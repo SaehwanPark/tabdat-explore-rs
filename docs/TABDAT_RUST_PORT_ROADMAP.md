@@ -28,8 +28,10 @@ Seed currently records context only; RNG semantics remain future command work.
 The minimal shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/pull/196)
 provides persistent line input, core inspection output, recoverable command errors
 and clean exit/EOF. `use` → `describe` → `summarize` → `exit` is covered through
-the binary. History, completion, multiline input and recoverable Ctrl-C/in-flight
-cancellation remain deferred; default OS SIGINT terminates the process.
+the binary. Capable-terminal editing, bounded in-memory history and input-level
+Ctrl-C recovery are now installed (#203); piped input remains plain. Completion,
+multiline syntax and in-flight cancellation remain deferred; an executing command
+may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
 
 ### 2. Close the core EDA loop
 
