@@ -188,9 +188,14 @@ An empty relation keeps the existing zero-count/0% convention.
 
 Missingness means SQL NULL **after loading**. Stored NaN/infinity, empty strings
 and sentinel codes are nonmissing; CSV loading can first turn empty fields into
-NULL. `ttest`/`regress` can exclude non-finite values separately. Current
-`summarize` still uses native aggregates and can fail on infinity-containing
-columns; missingness reporting does not change that aggregate policy. Reporting
+NULL. `summarize`, `ttest`, and `regress` exclude non-finite numeric inputs
+separately. Each summary variable uses one finite, non-NULL sample for count,
+mean, sample SD (N-1), and extrema. All-invalid samples report count zero and
+undefined statistics; singleton SD is undefined. Filtering preserves exact
+integer/decimal extrema without casting the aggregate input. Very large finite
+values can still overflow native aggregates; broader numerical stability is not
+claimed. This deliberately corrects formerly poisoned/failed non-finite summaries
+without changing result field shapes or finite-data behavior. Reporting
 is read-only, retains types/data/model state, and streams in nested scripts.
 Current runtime support is eager local CSV/Parquet through DuckDB, not broader
 lazy/remote modes.

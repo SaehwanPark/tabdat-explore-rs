@@ -93,7 +93,7 @@ fn missing_reports_null_only_counts_types_order_duplicates_and_finite_sample_dif
     "-c",
     "missing label x label",
     "-c",
-    "summarize y",
+    "summarize x",
     "-c",
     "ttest x == 0",
   ]);
@@ -136,12 +136,12 @@ fn missing_reports_null_only_counts_types_order_duplicates_and_finite_sample_dif
     results[2]["data"]["rows"],
     json!([rows[2], rows[0], rows[2]])
   );
-  // SQL NULL excludes only row 1; ttest separately excludes NaN and +/-infinity.
+  // SQL NULL excludes only row 1; summarize/ttest also exclude NaN and +/-infinity.
   assert_eq!(rows[0]["nonmissing"], 6);
-  assert_eq!(results[3]["data"]["rows"][0]["count"], 7);
+  assert_eq!(results[3]["data"]["rows"][0]["count"], 3);
   assert_eq!(results[4]["data"]["group1_stats"]["count"], 3);
   let output =
-    fixture.shell("use data.parquet\nmissing label x label\nsummarize y\nttest x == 0\nexit\n");
+    fixture.shell("use data.parquet\nmissing label x label\nsummarize x\nttest x == 0\nexit\n");
   assert!(output.status.success());
   assert!(output.stderr.is_empty());
   let text = String::from_utf8(output.stdout).unwrap();

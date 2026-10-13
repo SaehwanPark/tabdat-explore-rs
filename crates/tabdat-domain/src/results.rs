@@ -75,15 +75,15 @@ pub struct CountResult {
 pub struct SummaryRow {
   /// The requested column name.
   pub variable: String,
-  /// The number of non-null values in the column.
+  /// The number of finite non-NULL numeric values used by all summary aggregates.
   pub count: u64,
-  /// The arithmetic mean, or `None` when there are no non-null values.
+  /// The arithmetic mean, or `None` when the finite sample is empty.
   pub mean: Option<f64>,
   /// The sample standard deviation, or `None` for fewer than two values.
   pub std_dev: Option<f64>,
-  /// The minimum non-null value, preserving its owned DuckDB scalar type.
+  /// The minimum finite value, preserving its owned DuckDB scalar type.
   pub minimum: Option<CellValue>,
-  /// The maximum non-null value, preserving its owned DuckDB scalar type.
+  /// The maximum finite value, preserving its owned DuckDB scalar type.
   pub maximum: Option<CellValue>,
 }
 

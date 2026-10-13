@@ -31,10 +31,13 @@ impl DuckDbBackend {
   }
   pub fn summarize_variable(&self, variable: &str) -> Result<SummaryRow, DataError> {
     let quoted_variable = quote_identifier(variable);
+    // One finite sample for every aggregate: NaN/infinity can poison variance.
+    // Only the predicate casts to DOUBLE (all supported exact numeric ranges
+    // fit); keep aggregate input uncast to retain integer/decimal extrema.
     let mut statement = self
       .connection
       .prepare(&format!(
-        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE}"
+        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE} WHERE isfinite(CAST({quoted_variable} AS DOUBLE))"
       ))
       .map_err(|_| DataError)?;
     let mut rows = statement.query([]).map_err(|_| DataError)?;
@@ -280,5 +283,27 @@ impl DuckDbBackend {
     let failed =
       u64::try_from(row.get::<_, i64>(1).map_err(|_| DataError)?).map_err(|_| DataError)?;
     Ok((checked, failed))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn finite_predicate_keeps_full_128_bit_integer_extrema_without_narrowing() {
+    let backend = DuckDbBackend::new().unwrap();
+    backend.connection.execute_batch(&format!("CREATE TABLE {ACTIVE_TABLE} AS SELECT CAST('{}' AS UHUGEINT) AS u, CAST('{}' AS HUGEINT) AS i", u128::MAX, i128::MIN)).unwrap();
+    for (variable, value) in [
+      ("u", CellValue::UnsignedInteger(u128::MAX)),
+      ("i", CellValue::SignedInteger(i128::MIN)),
+    ] {
+      let summary = backend.summarize_variable(variable).unwrap();
+      assert_eq!(summary.count, 1);
+      assert!(summary.mean.unwrap().is_finite());
+      assert_eq!(summary.std_dev, None);
+      assert_eq!(summary.minimum, Some(value.clone()));
+      assert_eq!(summary.maximum, Some(value));
+    }
   }
 }
