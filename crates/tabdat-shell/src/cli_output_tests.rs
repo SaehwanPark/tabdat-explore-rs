@@ -136,6 +136,55 @@ fn batch_stops_at_first_middle_and_final_result_output_failures() {
 }
 
 #[test]
+fn expression_output_failure_stops_later_transforms_and_export() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=4 {
+        let fixture = Fixture::new();
+        let exported = fixture.0.join("transformed.csv");
+        let export = format!("export \"{}\"", exported.display());
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(
+            &child,
+            format!("generate doubled = x * 2\nreplace y = y + 1 if x > 2\n{export}\n"),
+          )
+          .unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            "generate doubled = x * 2",
+            "-c",
+            "replace y = y + 1 if x > 2",
+            "-c",
+            &export,
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(exported.exists(), fail_at == 4);
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

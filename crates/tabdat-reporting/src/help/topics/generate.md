@@ -4,29 +4,19 @@ How to invoke:
 `generate new_name = <expression>`
 
 What it does:
-Create a new variable from an expression.
-
-What problem it answers:
-How do I compute a derived column?
+Append a numeric column to the active dataset using the bounded eager expression evaluator.
 
 Examples:
-- `generate log_cost = log(cost)`
-- `generate age2 = age * 2`
-- `generate missing_cost = null`
+- `generate doubled = age * 2`
+- `generate centered = age - 40`
+- ``generate `age value` = age + 1``
 
-`null` creates an all-missing value. Null-aware `==` and `!=` comparisons are supported; null
-arithmetic and null function arguments are rejected.
+Notes:
+- Requires an active dataset and a new target name. Supported expressions are numeric columns/literals, unary minus, parentheses and arithmetic `+`, `-`, `*`, `/`.
+- String/explicit NULL expressions, comparisons and function calls (including `log`) may parse but are not installed for generate. Unknown columns and type mismatches fail without changing prior data/session state.
+- NULL input values propagate through arithmetic; output uses the existing numerical-safety/compiler and native-type policies. No new precision, overflow-count or function-family support is implied.
+- CLI-v1 JSON returns `GenerateResult` with `data.dataset` in the existing metadata shape: source path, total relation row count and current ordered native schema. The new column is appended. This is metadata, not cell values, affected-row counts or overflow diagnostics; use `head`/`tail` to inspect values. Label/panel fields remain null placeholders.
+- Existing source/order/row count and prior fitted model are retained; generating a feature does not automatically refit it. Successful effects are not rolled back by later output failure (MIG-0008).
 
-Arithmetic requires numeric operands. Numeric functions require numeric arguments; `lower` and
-`upper` require string arguments.
-
-Missing operands produce missing results. Division by zero and invalid `sqrt`, `ln`, or `log`
-domains produce missing values for those rows; computed `inf` and `nan` are normalized to missing.
-Integral `+`, `-`, `*`, and unary minus results use exact `DECIMAL(38,0)` storage. Results outside
-that width become missing for the affected row rather than wrapping; machine-readable overflow
-diagnostics and decimal-scale/float-width guarantees are not yet defined.
-When exact integral overflow occurs, the successful transform result appends `overflow rows: N`;
-zero-count results keep the existing output shape.
-
-Subtraction involving unsigned numeric variables and unary minus of unsigned numeric expressions
-are rejected rather than wrapped or implicitly widened.
+Links:
+- `SPEC.md`
