@@ -40,6 +40,59 @@ fn generated_unicode_inputs_are_deterministic_and_tokens_stay_in_bounds() {
 }
 
 #[test]
+fn recursive_and_deep_ast_inputs_fail_with_resource_diagnostics() {
+  for expression in [
+    format!("{}1{}", "(".repeat(20_000), ")".repeat(20_000)),
+    format!("{}1", "-".repeat(20_000)),
+    format!("{}1{}", "f(".repeat(10_000), ")".repeat(10_000)),
+    std::iter::repeat_n("1", 1_000)
+      .collect::<Vec<_>>()
+      .join("+"),
+  ] {
+    assert_eq!(
+      parse_command(&format!("generate x = {expression}"))
+        .unwrap_err()
+        .message(),
+      "expression exceeds limit of 256 tokens"
+    );
+  }
+  assert_eq!(
+    parse_command(&format!("{}summarize x", "by x: ".repeat(100)))
+      .unwrap_err()
+      .message(),
+    "command nesting exceeds limit of 32"
+  );
+  for prefix in ["assert ", "keep if ", "replace x = "] {
+    assert_eq!(
+      parse_command(&format!("{prefix}{}1", "-".repeat(256)))
+        .unwrap_err()
+        .message(),
+      "expression exceeds limit of 256 tokens"
+    );
+    // Exactly 256 tokens remains accepted; equality and drop visit the AST.
+    let input = format!("{prefix}{}1", "-".repeat(255));
+    assert_eq!(
+      parse_command(&input).unwrap(),
+      parse_command(&input).unwrap()
+    );
+  }
+  assert_eq!(
+    parse_command(&format!("{}regress y x", "bayes: ".repeat(100)))
+      .unwrap_err()
+      .message(),
+    "command nesting exceeds limit of 32"
+  );
+  assert_eq!(
+    parse_command(&format!("{}count", "by x: ".repeat(31)))
+      .unwrap_err()
+      .message(),
+    "nested by commands are not supported"
+  );
+  let accepted = std::iter::repeat_n("1", 128).collect::<Vec<_>>().join("+");
+  assert!(parse_command(&format!("generate x = {accepted}")).is_ok());
+}
+
+#[test]
 fn quoted_identifier_roundtrip_and_case_whitespace_invariance() {
   for name in [
     "x",

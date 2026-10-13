@@ -104,6 +104,13 @@ impl Error for ParseError {}
 
 /// Parse one syntax-only command without executing it or initializing a backend.
 pub fn parse_command(input: &str) -> Result<Command, ParseError> {
+  parse_command_with_depth(input, 0)
+}
+
+fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseError> {
+  if depth >= 32 {
+    return Err(ParseError::new("command nesting exceeds limit of 32"));
+  }
   let command = input.trim_matches(is_command_whitespace);
   if command.is_empty() {
     return Err(ParseError::new("empty command"));
@@ -447,7 +454,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     || first_word.starts_with("bayes,")
     || (first_word == "bayes" && first_unquoted_colon(command).is_some())
   {
-    return parse_bayes_prefix_command(command);
+    return parse_bayes_prefix_command(command, depth);
   }
 
   // `status` keeps the Python tokenizer's punctuation diagnostics for
@@ -462,7 +469,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       .and_then(|suffix| suffix.chars().next())
       .is_some_and(|character| matches!(character, '-' | '+'))
   {
-    return parse_named_command("status", &command[6..]);
+    return parse_named_command("status", &command[6..], depth);
   }
 
   // `gsort` permits attached symbolic key text (for example `gsort-age` and
@@ -478,7 +485,7 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
       .and_then(|suffix| suffix.chars().next())
       .is_some_and(|character| !character.is_alphanumeric() && character != '_')
   {
-    return parse_named_command("gsort", &command[5..]);
+    return parse_named_command("gsort", &command[5..], depth);
   }
 
   for (name, prefix_length) in [("save", 4usize), ("export", 6usize)] {
@@ -492,14 +499,14 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
         .and_then(|suffix| suffix.chars().next())
         .is_some_and(|character| !character.is_alphanumeric() && character != '_')
     {
-      return parse_named_command(name, &command[prefix_length..]);
+      return parse_named_command(name, &command[prefix_length..], depth);
     }
   }
 
   let Some(command_end) = command
     .find(|character: char| is_command_whitespace(character) || matches!(character, ',' | '='))
   else {
-    return parse_named_command(command, "");
+    return parse_named_command(command, "", depth);
   };
   let delimiter = command[command_end..]
     .chars()
@@ -830,10 +837,10 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
   }
-  parse_named_command(name, body)
+  parse_named_command(name, body, depth)
 }
 
-fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
+fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, ParseError> {
   let normalized_name = name.to_lowercase();
   match normalized_name.as_str() {
     "help" => parse_help(body),
@@ -925,7 +932,7 @@ fn parse_named_command(name: &str, body: &str) -> Result<Command, ParseError> {
     "bayesplot" => parse_bayesplot_command(body),
     "estat" => parse_estat_command(body),
     "ttest" => parse_ttest_command(body),
-    "by" => parse_by_command(body),
+    "by" => parse_by_command(body, depth),
     "collapse" => parse_collapse_command(body),
     "rename" => parse_rename_command(body),
     "generate" => parse_generate_command(body),
@@ -1420,6 +1427,15 @@ fn parse_replace_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn check_expression_budget(tokens: usize) -> Result<(), ParseError> {
+  // Bound recursion and resulting AST depth, including long left-associative
+  // chains whose parsing is iterative but whose drop/equality/visitors recurse.
+  if tokens > 256 {
+    return Err(ParseError::new("expression exceeds limit of 256 tokens"));
+  }
+  Ok(())
+}
+
 struct GenerateExpressionParser {
   tokens: Vec<UseToken>,
   index: usize,
@@ -1431,6 +1447,7 @@ impl GenerateExpressionParser {
   }
 
   fn parse(mut self) -> Result<GenerateExpression, ParseError> {
+    check_expression_budget(self.tokens.len())?;
     let expression = self.parse_comparison()?;
     if let Some(token) = self.peek() {
       return Err(ParseError::new(format!(
@@ -1649,6 +1666,7 @@ impl AssertExpressionParser {
   }
 
   fn parse(mut self) -> Result<AssertExpression, ParseError> {
+    check_expression_budget(self.tokens.len())?;
     let expression = self.parse_comparison()?;
     if let Some(token) = self.peek() {
       return Err(ParseError::new(format!(
@@ -5219,7 +5237,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn parse_bayes_prefix_command(command: &str) -> Result<Command, ParseError> {
+fn parse_bayes_prefix_command(command: &str, depth: usize) -> Result<Command, ParseError> {
   let Some(colon_index) = first_unquoted_colon(command) else {
     return Err(ParseError::new(
       "bayes prefix expects syntax: bayes [, options]: command",
@@ -5296,7 +5314,7 @@ fn parse_bayes_prefix_command(command: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("bayes expects a command after :"));
   }
 
-  let inner_command = parse_command(after)?;
+  let inner_command = parse_command_with_depth(after, depth + 1)?;
   match &inner_command {
     Command::Regress { .. } | Command::Logit { .. } => {}
     _ => {
@@ -7767,7 +7785,7 @@ fn join_single_text_option(
   }
 }
 
-fn parse_by_command(body: &str) -> Result<Command, ParseError> {
+fn parse_by_command(body: &str, depth: usize) -> Result<Command, ParseError> {
   let syntax = "by expects syntax: by group_vars: command";
   let Some(colon_index) = first_unquoted_colon(body) else {
     return Err(ParseError::new(syntax));
@@ -7791,7 +7809,7 @@ fn parse_by_command(body: &str) -> Result<Command, ParseError> {
   if command_body.is_empty() {
     return Err(ParseError::new("by expects a command after :"));
   }
-  let command = parse_command(command_body)?;
+  let command = parse_command_with_depth(command_body, depth + 1)?;
   match &command {
     Command::By { .. } => return Err(ParseError::new("nested by commands are not supported")),
     Command::Help { .. } => {
