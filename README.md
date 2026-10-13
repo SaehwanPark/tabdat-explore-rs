@@ -116,6 +116,9 @@ milliseconds with supplied build context. It introduces no production dependency
 or timing gate. Fresh-process is not OS-cold-cache timing, and debug smoke evidence
 is not release-performance evidence. See [the measurement guide](docs/performance/core-workflow.md)
 for matching-profile build/run commands, fixture semantics and limitations.
+A [local matching release baseline](docs/performance/core-workflow.md#local-release-baseline)
+retains raw samples and context for one macOS/aarch64 host; it is not a timing
+threshold, OS-cold-cache measurement or release/platform certification.
 
 ## Bounded JSON results
 

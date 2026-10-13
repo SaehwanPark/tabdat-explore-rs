@@ -1,0 +1,339 @@
+{
+  "baseline_record_version": 1,
+  "context": {
+    "code_revision": "255d596b3697ee2d9f9a43da3afdf88050dea6fc",
+    "measurement_checkout_revision": "f9186ea51e3a92b1b6fd4b1ffe3d0905b04a75f4",
+    "code_changes_from_code_revision": false,
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "host_os_version": "macOS 27.0.1",
+    "cpu": "Apple M1 Max",
+    "available_host_clang": "Apple clang version 15.0.0 (clang-1500.1.0.2.5)",
+    "build_command": "cargo build --locked --release --bin tabdat-explore-rs --example measure_core_workflow",
+    "profile": "Cargo default release; no repository profile override",
+    "relevant_environment_overrides": {},
+    "native_cargo_packages": {
+      "duckdb": "1.10505.0",
+      "libduckdb-sys": "1.10505.0"
+    },
+    "native_features": [
+      "bundled",
+      "parquet"
+    ],
+    "publication_normalization": "Only machine-local absolute binary paths replaced with repository-relative paths. Raw samples and all other harness fields unchanged.",
+    "limitations": [
+      "one local macOS/aarch64 host",
+      "no OS cache flush or scheduler/thermal isolation",
+      "no timing gate or guarantee",
+      "normalized finite numeric CSV fixture only"
+    ]
+  },
+  "runs": {
+    "10000-a": {
+      "binary": "target/release/tabdat-explore-rs",
+      "binary_build_label": "release; f9186ea checkout; default profile/flags; matching binary/harness",
+      "binary_version": "tabdat 0.1.0",
+      "cases": {
+        "fresh_process_json_workflow": {
+          "max_ms": 40.587959,
+          "median_ms": 39.255292,
+          "min_ms": 38.790708,
+          "samples_ms": [
+            39.255292,
+            39.04225,
+            39.34025,
+            38.790708,
+            39.200542,
+            39.903209000000004,
+            40.587959
+          ]
+        },
+        "fresh_process_version": {
+          "max_ms": 18.096833999999998,
+          "median_ms": 12.525500000000001,
+          "min_ms": 11.968582999999999,
+          "samples_ms": [
+            18.096833999999998,
+            15.243542,
+            13.182084,
+            12.13675,
+            11.968582999999999,
+            12.4785,
+            12.525500000000001
+          ]
+        },
+        "session_load_csv": {
+          "max_ms": 19.330584,
+          "median_ms": 18.311999999999998,
+          "min_ms": 18.13225,
+          "samples_ms": [
+            18.182291,
+            18.13225,
+            18.311999999999998,
+            18.466459,
+            18.809833,
+            19.330584,
+            18.276542
+          ]
+        },
+        "session_predict": {
+          "max_ms": 1.8185829999999998,
+          "median_ms": 1.554417,
+          "min_ms": 1.486625,
+          "samples_ms": [
+            1.677125,
+            1.554417,
+            1.528958,
+            1.490875,
+            1.5942079999999998,
+            1.8185829999999998,
+            1.486625
+          ]
+        },
+        "session_regress": {
+          "max_ms": 1.789708,
+          "median_ms": 1.675333,
+          "min_ms": 1.602166,
+          "samples_ms": [
+            1.6251250000000002,
+            1.688083,
+            1.675333,
+            1.602166,
+            1.754834,
+            1.657917,
+            1.789708
+          ]
+        },
+        "session_summarize": {
+          "max_ms": 0.922084,
+          "median_ms": 0.765375,
+          "min_ms": 0.698333,
+          "samples_ms": [
+            0.740375,
+            0.7649999999999999,
+            0.765375,
+            0.91525,
+            0.767041,
+            0.922084,
+            0.698333
+          ]
+        }
+      },
+      "csv_bytes": 184365,
+      "fixture": "i=0..N-1; x=i/N; y=3+2x+alternating(-1,+1); group=i%10; all finite",
+      "harness_package_version": "0.1.0",
+      "harness_profile": "no_debug_assertions",
+      "measurement_schema_version": 1,
+      "numeric_validation_absolute_tolerance": 1e-08,
+      "platform": {
+        "arch": "aarch64",
+        "os": "macos"
+      },
+      "repetitions": 7,
+      "rows": 10000,
+      "timing_scope": {
+        "cache": "one excluded warmup per case; no OS cache flush; fresh process is not cold cache",
+        "comparison": "session cases use linked harness runtime; compare with CLI only when built from matching source/profile",
+        "process": "spawn through wait/output capture; includes CLI/reporting/teardown; excludes parent validation",
+        "session": "execute only; fresh session per sample; excludes parsing/setup/reporting/validation/teardown; CSV load includes lazy backend initialization"
+      },
+      "warmups_per_case": 1
+    },
+    "10000-b": {
+      "binary": "target/release/tabdat-explore-rs",
+      "binary_build_label": "release; f9186ea checkout; default profile/flags; matching binary/harness; repeat",
+      "binary_version": "tabdat 0.1.0",
+      "cases": {
+        "fresh_process_json_workflow": {
+          "max_ms": 40.872708,
+          "median_ms": 40.024292,
+          "min_ms": 39.138,
+          "samples_ms": [
+            40.024292,
+            40.034708,
+            39.921709,
+            40.782334000000006,
+            40.872708,
+            39.138,
+            39.835833
+          ]
+        },
+        "fresh_process_version": {
+          "max_ms": 13.456459,
+          "median_ms": 12.543042000000002,
+          "min_ms": 12.016417,
+          "samples_ms": [
+            12.543042000000002,
+            12.102917,
+            12.466415999999999,
+            12.858125,
+            12.016417,
+            13.343291,
+            13.456459
+          ]
+        },
+        "session_load_csv": {
+          "max_ms": 19.336375,
+          "median_ms": 18.750417,
+          "min_ms": 18.523166,
+          "samples_ms": [
+            18.750417,
+            18.636167,
+            18.523166,
+            19.336375,
+            18.823375,
+            18.54625,
+            18.976125
+          ]
+        },
+        "session_predict": {
+          "max_ms": 1.731917,
+          "median_ms": 1.559459,
+          "min_ms": 1.4909590000000001,
+          "samples_ms": [
+            1.526917,
+            1.559459,
+            1.6408340000000001,
+            1.731917,
+            1.639708,
+            1.512292,
+            1.4909590000000001
+          ]
+        },
+        "session_regress": {
+          "max_ms": 1.804834,
+          "median_ms": 1.6861249999999999,
+          "min_ms": 1.595,
+          "samples_ms": [
+            1.7091669999999999,
+            1.804834,
+            1.764708,
+            1.6861249999999999,
+            1.595,
+            1.6755,
+            1.6850829999999999
+          ]
+        },
+        "session_summarize": {
+          "max_ms": 0.883375,
+          "median_ms": 0.861083,
+          "min_ms": 0.724375,
+          "samples_ms": [
+            0.724375,
+            0.739167,
+            0.883375,
+            0.878208,
+            0.777833,
+            0.864208,
+            0.861083
+          ]
+        }
+      },
+      "csv_bytes": 184365,
+      "fixture": "i=0..N-1; x=i/N; y=3+2x+alternating(-1,+1); group=i%10; all finite",
+      "harness_package_version": "0.1.0",
+      "harness_profile": "no_debug_assertions",
+      "measurement_schema_version": 1,
+      "numeric_validation_absolute_tolerance": 1e-08,
+      "platform": {
+        "arch": "aarch64",
+        "os": "macos"
+      },
+      "repetitions": 7,
+      "rows": 10000,
+      "timing_scope": {
+        "cache": "one excluded warmup per case; no OS cache flush; fresh process is not cold cache",
+        "comparison": "session cases use linked harness runtime; compare with CLI only when built from matching source/profile",
+        "process": "spawn through wait/output capture; includes CLI/reporting/teardown; excludes parent validation",
+        "session": "execute only; fresh session per sample; excludes parsing/setup/reporting/validation/teardown; CSV load includes lazy backend initialization"
+      },
+      "warmups_per_case": 1
+    },
+    "1000000": {
+      "binary": "target/release/tabdat-explore-rs",
+      "binary_build_label": "release; f9186ea checkout; default profile/flags; matching binary/harness",
+      "binary_version": "tabdat 0.1.0",
+      "cases": {
+        "fresh_process_json_workflow": {
+          "max_ms": 329.639208,
+          "median_ms": 310.702833,
+          "min_ms": 307.532584,
+          "samples_ms": [
+            310.702833,
+            307.532584,
+            329.639208
+          ]
+        },
+        "fresh_process_version": {
+          "max_ms": 13.516125,
+          "median_ms": 13.171084,
+          "min_ms": 12.9775,
+          "samples_ms": [
+            13.171084,
+            12.9775,
+            13.516125
+          ]
+        },
+        "session_load_csv": {
+          "max_ms": 75.981958,
+          "median_ms": 75.760625,
+          "min_ms": 75.603292,
+          "samples_ms": [
+            75.760625,
+            75.981958,
+            75.603292
+          ]
+        },
+        "session_predict": {
+          "max_ms": 9.272292,
+          "median_ms": 8.690041,
+          "min_ms": 7.866458999999999,
+          "samples_ms": [
+            7.866458999999999,
+            8.690041,
+            9.272292
+          ]
+        },
+        "session_regress": {
+          "max_ms": 171.323541,
+          "median_ms": 163.471375,
+          "min_ms": 161.908166,
+          "samples_ms": [
+            171.323541,
+            163.471375,
+            161.908166
+          ]
+        },
+        "session_summarize": {
+          "max_ms": 6.198124999999999,
+          "median_ms": 6.054709,
+          "min_ms": 6.053959,
+          "samples_ms": [
+            6.054709,
+            6.198124999999999,
+            6.053959
+          ]
+        }
+      },
+      "csv_bytes": 21989580,
+      "fixture": "i=0..N-1; x=i/N; y=3+2x+alternating(-1,+1); group=i%10; all finite",
+      "harness_package_version": "0.1.0",
+      "harness_profile": "no_debug_assertions",
+      "measurement_schema_version": 1,
+      "numeric_validation_absolute_tolerance": 1e-08,
+      "platform": {
+        "arch": "aarch64",
+        "os": "macos"
+      },
+      "repetitions": 3,
+      "rows": 1000000,
+      "timing_scope": {
+        "cache": "one excluded warmup per case; no OS cache flush; fresh process is not cold cache",
+        "comparison": "session cases use linked harness runtime; compare with CLI only when built from matching source/profile",
+        "process": "spawn through wait/output capture; includes CLI/reporting/teardown; excludes parent validation",
+        "session": "execute only; fresh session per sample; excludes parsing/setup/reporting/validation/teardown; CSV load includes lazy backend initialization"
+      },
+      "warmups_per_case": 1
+    }
+  }
+}
