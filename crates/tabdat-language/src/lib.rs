@@ -8638,10 +8638,23 @@ struct UseOption {
   value: UseOptionValue,
 }
 
-fn parse_use_command(body: &str) -> Result<Command, ParseError> {
+fn split_use_source(body: &str) -> Result<(&str, Option<&str>), ParseError> {
   let body = body.trim_matches(is_command_whitespace);
-  if body.is_empty() {
-    return Err(ParseError::new("use expects exactly one path: use <path>"));
+  if let Some(quote @ ('\'' | '"')) = body.chars().next() {
+    // Paths are literals, not shell strings: preserve backslashes and commas
+    // inside quotes, and split options only after the matching closing quote.
+    let closing = body
+      .char_indices()
+      .skip(1)
+      .find(|(_, character)| *character == quote)
+      .map(|(index, _)| index)
+      .ok_or_else(|| ParseError::new("unterminated quoted string"))?;
+    let path = &body[1..closing];
+    let remainder = body[closing + 1..].trim_matches(is_command_whitespace);
+    if path.is_empty() || (!remainder.is_empty() && !remainder.starts_with(',')) {
+      return Err(ParseError::new("use expects exactly one path: use <path>"));
+    }
+    return Ok((path, remainder.strip_prefix(',')));
   }
 
   let (path_text, option_text) = match body.split_once(',') {
@@ -8656,7 +8669,12 @@ fn parse_use_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("use expects exactly one path: use <path>"));
   }
 
-  let source_text = path_parts[0].to_owned();
+  Ok((path_parts[0], option_text))
+}
+
+fn parse_use_command(body: &str) -> Result<Command, ParseError> {
+  let (path_text, option_text) = split_use_source(body)?;
+  let source_text = path_text.to_owned();
   let source = if source_text.contains("://") {
     DataSource::Uri(source_text)
   } else {

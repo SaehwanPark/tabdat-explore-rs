@@ -32,6 +32,15 @@ count
 exit
 ```
 
+`use` loads local eager CSV/Parquet files. Enclose paths containing spaces or
+commas in matching single or double quotes: `use "data files/survey,2026.csv"`
+or `use 'data files/survey.parquet'`. Quotes are removed; backslashes remain
+literal, with no shell escape or tilde expansion. The matching quote cannot
+occur inside the path (use the other quote for a name containing an apostrophe).
+Existing options follow the closing quote, e.g.
+`use "semi, data.csv", delimiter(";") has_header(true)`. This does not enable
+remote/lazy/DTA loading or add quoted paths to other commands.
+
 Use `help` or `?` for core workflow guidance and `help summarize` or `?regress`
 for packaged topic help (case-insensitive). Unknown/malformed help requests
 report an error without losing session data. Reference topics may include
