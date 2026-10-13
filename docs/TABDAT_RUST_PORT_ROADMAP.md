@@ -66,8 +66,12 @@ mode. CLI-v1 now includes bounded regress/predict/lincom/test results (#204),
 with independent OLS/reference and error/null-policy checks, omitting full model
 arrays. Script exit codes now use source categories (#205), fixing model errors
 misclassified by “not found” and malformed scripts missed by text heuristics;
-child locations and existing JSON fields are retained. `ttest`/VIF reporting
-remains follow-up work.
+child locations and existing JSON fields are retained. Readable terminal `ttest`
+results now cover one-sample, paired, pooled and Welch forms (#206), with a
+SciPy display reference, asymmetric missingness, fractional DF, undefined
+inference, state preservation and nested-stream checks. VIF already uses the
+generic terminal table renderer; dedicated interface coverage/polish and bounded
+`ttest` JSON remain follow-up work.
 
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 
