@@ -9,8 +9,8 @@ use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, head, and tail";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, head, and tail";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, and tail";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, and tail";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -19,6 +19,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Count
       | Command::Summarize { .. }
+      | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
       | Command::Exit
@@ -34,6 +35,7 @@ pub fn supports_script_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Count
       | Command::Summarize { .. }
+      | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
       | Command::Exit
@@ -50,6 +52,13 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
+    ExecutionResult::Tabulate(table) => (
+      json!({
+        "headers": table.headers,
+        "rows": table.rows.iter().map(|row| row.iter().map(cell_value_data).collect::<Vec<_>>()).collect::<Vec<_>>(),
+      }),
+      "TabulateResult",
+    ),
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       (preview_result_data(preview), "PreviewResult")
     }
@@ -147,6 +156,47 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn tabulate_serialization_preserves_owned_labels_scalar_policies_and_empty_rows() {
+    let result = ExecutionResult::Tabulate(tabdat_domain::TabulateResult {
+      headers: vec![
+        "label\tcategory".to_owned(),
+        "Count".to_owned(),
+        "Percent".to_owned(),
+      ],
+      rows: vec![
+        vec![
+          CellValue::Text("label\n\"quoted\"".to_owned()),
+          CellValue::SignedInteger(i128::MAX),
+          CellValue::Float(50.0),
+        ],
+        vec![
+          CellValue::Null,
+          CellValue::SignedInteger(1),
+          CellValue::Float(f64::NAN),
+        ],
+      ],
+    });
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(
+      envelope,
+      json!({"schema_version": 1, "result_type": "TabulateResult", "data": {
+        "headers": ["label\tcategory", "Count", "Percent"], "rows": [["label\n\"quoted\"", i128::MAX, 50.0], [null, 1, null]]
+      }})
+    );
+    let empty = ExecutionResult::Tabulate(tabdat_domain::TabulateResult {
+      headers: vec!["cat".to_owned(), "Count".to_owned(), "Percent".to_owned()],
+      rows: vec![],
+    });
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&empty).unwrap()).unwrap();
+    assert_eq!(
+      envelope["data"],
+      json!({"headers": ["cat", "Count", "Percent"], "rows": []})
+    );
+  }
 
   #[test]
   fn summary_serialization_preserves_order_precision_and_null_policies() {

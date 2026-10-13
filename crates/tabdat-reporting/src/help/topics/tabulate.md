@@ -24,6 +24,12 @@ When a dimension variable has attached value labels (`label values`), category c
 column headers show those labels by default. Use `nolabel` to display raw codes instead. Sorting
 and aggregation still use the underlying stored values.
 
+CLI JSON supports the bounded one/two-way frequency-table execution forms as
+`TabulateResult` with `data.headers` and `data.rows`. Existing order, labels, counts
+and percentages are preserved; cells reuse preview scalar encoding, including
+null missing categories. This reporting support does not install broader
+parser-only multi-dimensional/aggregation forms.
+
 Examples:
 - `tabulate sex`
 - `tabulate sex outcome, row col`

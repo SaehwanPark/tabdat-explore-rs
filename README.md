@@ -72,7 +72,7 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, summarize, head and tail; nested scripts stream leaf results.
+supports use, count, summarize, tabulate, head and tail; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
@@ -85,6 +85,13 @@ CLI-v1 preview output. Extrema reuse preview scalar encoding: integers remain
 JSON numbers, decimals are exact scaled strings. Consumers needing large-integer
 precision should use a lossless JSON number parser. This is an additive result
 surface, not full-command JSON support.
+
+Bounded one/two-way `tabulate` uses `result_type: "TabulateResult"` with
+`data.headers` and `data.rows`. Header/cell order, value labels, counts and
+percentages are supplied by execution without recomputation. Missing categories
+are excluded by default and included last with `missing`; their cells serialize
+as `null`. Two-way row/column percentage headers remain explicit. This does not
+install the broader parser-only tabulation/aggregation forms.
 
 ## Development direction
 
