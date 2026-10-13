@@ -121,7 +121,10 @@ state are handled correctly.
   speculative command catalog; version changes to stable public envelopes.
   CLI-v1 now includes ordered descriptive summaries and bounded frequency tables
   alongside load/count/preview results (#200/#201), including nested script
-  streams and located failures.
+  streams and located failures. `describe` now reports owned current metadata
+  (#213), completing canonical `use` → `describe` → `summarize` JSON scripts.
+  Empty/current-prediction schema, nested equivalence, errors and state preservation
+  are covered; label/panel fields retain existing null-placeholder semantics.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics.
 - Add small performance benchmarks (cold start, simple command, representative

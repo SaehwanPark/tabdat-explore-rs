@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Describe
       | Command::Count
       | Command::Codebook { .. }
       | Command::Summarize { .. }
@@ -47,6 +48,7 @@ pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Describe
       | Command::Count
       | Command::Codebook { .. }
       | Command::Summarize { .. }
@@ -77,6 +79,10 @@ pub fn supports_script_command(command: &Command) -> bool {
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
+    ExecutionResult::Describe(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "DescribeResult",
+    ),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
@@ -288,6 +294,44 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn describe_json_preserves_owned_metadata_with_existing_placeholder_policy() {
+    let result = ExecutionResult::Describe(tabdat_domain::DescribeResult {
+      dataset: DatasetInfo {
+        source: std::path::PathBuf::from("目录/source\t\".parquet"),
+        row_count: u64::MAX,
+        columns: vec![
+          tabdat_domain::ColumnInfo {
+            name: "é\t\"\n".to_owned(),
+            data_type: "DECIMAL(38,2)".to_owned(),
+          },
+          tabdat_domain::ColumnInfo {
+            name: "wide".to_owned(),
+            data_type: "UHUGEINT".to_owned(),
+          },
+        ],
+        execution_mode: ExecutionMode::Eager,
+        lazy_engine: None,
+      },
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result_type"], "DescribeResult");
+    assert_eq!(
+      value["data"]["dataset"],
+      json!({
+        "path": "目录/source\t\".parquet", "row_count": u64::MAX,
+        "columns": [{"name": "é\t\"\n", "data_type": "DECIMAL(38,2)"}, {"name": "wide", "data_type": "UHUGEINT"}],
+        "execution_mode": "eager", "lazy_engine": null,
+        "label_metadata": null, "panel_metadata": null,
+      })
+    );
+    assert!(supports_batch_command(&Command::Describe));
+    assert!(supports_script_command(&Command::Describe));
+  }
 
   #[test]
   fn owned_tables_encode_cells_without_reinterpreting_vif_labels() {
