@@ -100,9 +100,19 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, codebook, summarize, missing, tabulate, head/tail, `estat vif` and the bounded
+supports use, describe, count, codebook, summarize, missing, tabulate, head/tail,
+`estat vif` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
-Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
+Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
+`result_type: "DescribeResult"` and `data.dataset`, reusing the load/prediction
+metadata shape: source `path`, integer `row_count`, ordered `columns` with names
+and native type strings, `execution_mode` and `lazy_engine`. It reports the
+current schema (including generated prediction columns) without rescanning or
+changing data/model state. The source path remains the load source, not a new
+output destination. `label_metadata` and `panel_metadata` remain the existing
+`null` placeholders, not a full session-label/panel snapshot.
+
+A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
 
