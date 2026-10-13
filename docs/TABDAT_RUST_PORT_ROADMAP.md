@@ -161,6 +161,11 @@ state are handled correctly.
   Named-list subsets, clears/replacements/drops, transform reconciliation,
   data/model invariants, nested streams and output/file guards are checked.
   Dataset placeholders and session-local/non-persistent label limits remain.
+  Encode/decode JSON now connects installed string category coding to dictionary
+  inspection, explicit numeric transforms/modeling and readable persistence (#224).
+  Sorted SQL-non-NULL codes, stored empty strings, native schema, inherited labels,
+  integer-map decoding/unmatched NULLs, cached-state/native failure guards,
+  nested streams and output boundaries are checked, without new backend semantics.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

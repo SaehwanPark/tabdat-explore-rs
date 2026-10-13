@@ -195,6 +195,22 @@ retain their existing null label/panel placeholders. Labels are session-local:
 a new `use` clears them, and CSV/Parquet save/export does not archive them.
 `label save`/`label use` are not installed. See `help label`.
 
+`encode`/`decode` report additive `EncodeResult`/`DecodeResult` with owned
+`data.dataset` metadata, not code/mapping/count diagnostics. Encode maps sorted
+non-NULL strings to 1..K, preserving SQL NULL and treating stored empty strings
+as categories. Default/custom label dictionaries are inspected with `label list`;
+custom names replace existing definitions, preserving other attachments to them.
+Decode requires attached integer-key mappings and numeric input, uses native
+SQL numeric equality (no explicit fractional truncation), and emits SQL NULL
+for unknown/missing codes. Cross-type wide comparisons follow native coercion,
+not a lossless DOUBLE/i64 equality guarantee.
+Source columns/order/count/path and cached fits remain; generated variable labels
+inherit their source label. Native schema is reported (small nonempty mappings
+use INTEGER; empty/all-NULL encode uses BIGINT). Other dataset label/panel placeholders remain
+null. Numeric codes alone do not install factor/dummy/ordinal model semantics;
+choose a supported explicit design/transform. Dictionary persistence remains
+uninstalled; CSV reload may turn empty strings into NULL. See `help encode`/`decode`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and
