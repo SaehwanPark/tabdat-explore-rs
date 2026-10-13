@@ -72,6 +72,99 @@ fn workspace_dependencies_keep_contracts_and_surfaces_backend_independent() {
 }
 
 #[test]
+fn mcp_execute_returns_the_same_owned_count_as_the_coordinator() {
+  use std::io::Write;
+  use tabdat_domain::{Command as DomainCommand, DataSource, ExecutionMode, ExecutionResult};
+  struct OwnedCsv(std::path::PathBuf);
+  impl Drop for OwnedCsv {
+    fn drop(&mut self) {
+      let _ = std::fs::remove_file(&self.0);
+    }
+  }
+  let (fixture, mut file) = (0..1000)
+    .find_map(|index| {
+      let path = std::env::temp_dir().join(format!(
+        "tabdat-phase2-mcp-{}-{index}.csv",
+        std::process::id()
+      ));
+      match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+      {
+        Ok(file) => Some((OwnedCsv(path), file)),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => None,
+        Err(error) => panic!("fixture creation failed: {error}"),
+      }
+    })
+    .expect("exclusive fixture path");
+  file.write_all(b"x\n1\n2\n").unwrap();
+  drop(file);
+  let mut session = tabdat_execution::Session::new();
+  session
+    .execute(DomainCommand::Use {
+      source: DataSource::LocalPath(fixture.0.to_str().unwrap().into()),
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+      delimiter: None,
+      has_header: Some(true),
+    })
+    .unwrap();
+  let expected = session.execute(DomainCommand::Count).unwrap();
+  let reply = tabdat_mcp::dispatch(
+    &mut session,
+    tabdat_mcp::ToolRequest::Execute {
+      command: "count".into(),
+    },
+  )
+  .unwrap();
+  let tabdat_mcp::ToolReply::Executed(result) = &reply else {
+    panic!("not an execution reply")
+  };
+  assert_eq!(result.as_ref(), &expected);
+  assert!(matches!(result.as_ref(), ExecutionResult::Count(count) if count.row_count == 2));
+  assert_eq!(
+    reply.execution_json(),
+    tabdat_reporting::json_results::serialize_execution_result(&expected)
+  );
+}
+
+#[test]
+fn reporting_effects_preserve_all_pinned_python_entries() {
+  let oracle: serde_json::Value =
+    serde_json::from_str(include_str!("fixtures/python-command-effects-v1.json")).unwrap();
+  let actual =
+    serde_json::to_value(tabdat_reporting::catalog::command_effect_catalog_result()).unwrap();
+  assert_eq!(actual, oracle["data"]);
+}
+
+#[test]
+fn mcp_tools_normalize_failures_without_eager_backend_initialization() {
+  use tabdat_domain::{Diagnostic, ErrorCategory};
+  let mut session = tabdat_execution::Session::new();
+  for (command, category) in [
+    ("count", ErrorCategory::Execution),
+    ("not_a_command", ErrorCategory::Parse),
+  ] {
+    let error = tabdat_mcp::dispatch(
+      &mut session,
+      tabdat_mcp::ToolRequest::Execute {
+        command: command.into(),
+      },
+    )
+    .unwrap_err();
+    assert_eq!(Diagnostic::from(&error).category, category);
+    assert!(session.initialized_capabilities().is_empty());
+  }
+  assert!(
+    serde_json::from_str::<tabdat_mcp::ToolRequest>(
+      r#"{"tool":"execute","command":"count","unexpected":true}"#
+    )
+    .is_err()
+  );
+}
+
+#[test]
 fn reporting_and_mcp_share_typed_domain_success_without_a_server() {
   let result = tabdat_domain::ExecutionResult::Count(tabdat_domain::CountResult { row_count: 3 });
   let cli = tabdat_reporting::json_results::serialize_execution_result(&result).unwrap();

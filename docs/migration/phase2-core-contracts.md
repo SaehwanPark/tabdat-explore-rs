@@ -106,10 +106,73 @@ still applies. Three owner review passes covered wire/constructor invariants,
 family cache/source/error compatibility, and architecture/effect/fixture evidence.
 No actionable issues remained; independent model review was not used.
 
-Slice 3 WIP: extract existing DuckDB operations into `tabdat-data`, filesystem
-and script-path effects into `tabdat-io`, coordination into `tabdat-execution`,
-existing catalog/help/JSON into `tabdat-reporting`, and existing CLI into
-`tabdat-shell`. Keep `tabdat-runtime` compatibility re-exports. `tabdat-mcp` will
-provide a typed, transport-independent tool boundary using the same command/result
-and reporting contracts (not a server). Add architecture/dependency regression
-checks and run complete workspace and policy validation before merge.
+Slice 3 implemented (PR #187): existing DuckDB operations moved into
+`tabdat-data`, filesystem/script-path effects into `tabdat-io`, coordination into
+responsibility modules in `tabdat-execution`, catalog/help/JSON into
+`tabdat-reporting` and CLI into `tabdat-shell`. Domain owns discovery/envelope
+records, with typed effects preserving JSON. `tabdat-runtime` re-exports remain
+source-compatible. `tabdat-mcp` is a typed transport-independent tool boundary,
+not a server; it shares parser/coordinator/owned results and CLI JSON reporting.
+
+## Extraction state/effect review
+
+| Boundary | Success | Failure / unchanged scope |
+| --- | --- | --- |
+| Read-only inspection | Existing owned result, no metadata/label/model publication | Existing typed errors; no new backend on a missing dataset |
+| Local eager use / named activation | Existing staged schema/count/relation publication and label clearing | Prior staging-error behavior retained; remote/lazy formats still unsupported |
+| Transforms | Existing relation staging, metadata/named-table sync and label retention/rename policies | Existing failure tests retained; no new general atomicity claim beyond those contracts |
+| Save/export | Existing target/replacement/parent checks and backend output | Active state preserved; output-file atomicity/other formats not newly promised |
+| Fit attempt | Clear previous model on attempt, publish owned Linear cache on success | Preserves existing reset-before-validation behavior; no other family execution |
+| Streaming sample read | One owned row at a time; complete-case/weight/group decisions unchanged | Query/visitor errors remain typed; unaccessed unsupported cells do not fail skipped rows |
+| Script reader/path resolution | Same bytes/UTF8/path/file-line diagnostics through I/O | Same recursion/parse/command error contracts |
+| Discovery/explain / typed MCP metadata | Same typed catalogs/results, no capability initialization | Execute is trusted, not a transport/security sandbox; MCP protocol/server remains later work |
+
+Source-identity review verified all 53 unchanged coordinator methods and all 44
+DuckDB methods modulo visibility, formatting and typed unit-error normalization.
+The four intentional coordinator-body adaptations are save/export's shared I/O
+checks and regression/t-test's streaming owned-row boundary. Tests retain numeric
+results, samples, cell-conversion and command diagnostics; no tolerance changed.
+
+The first full extraction test run caught a new adapter metadata-timing panic:
+DuckDB column metadata was queried after prepare but before execution. Fixed by
+reading metadata from executed rows, with three dedicated regressions for empty
+queries, unsupported skipped cells, early visitor errors and query recovery. The
+[contributor lesson](../../CONTRIBUTING.md#duckdb-metadata-timing) preserves cause,
+resolution and prevention. New workspace/MCP tests first failed for missing crates
+before extraction. All later full runs passed.
+
+Full policy evidence: cargo-deny 0.20.2 (`advisories/bans/licenses/sources ok`),
+cargo-audit 0.22.2 (`-D warnings`, no vulnerability), cargo-geiger 0.13.0 full
+all-dependency/all-target inventory for all 11 workspace packages, each with
+exactly one matching first-party record, forbid-unsafe and zero used unsafe.
+Raw local reports: `/tmp/phase2-geiger-reports/`; all scan statuses were zero.
+The first 600-second inventory loop timed out after five complete reports; the
+remaining six were rerun to completion, not treated as passing partial output.
+These are Rust workspace controls, not proof of transitive native memory safety
+or license redistribution approval.
+
+Three owner review passes (not independent model reviews): contract/source
+identity and success/failure state policy; native ownership/query/serialization/
+interface compatibility; dependency/safety/docs/fixture/roadmap evidence. The
+metadata panic was fixed and rechecked; no actionable issue remains. No model
+subagents were spawned. AI usage was checked before each slice and after heavy
+review; final observation was 66% five-hour / 74% weekly, below wait/stop limits.
+
+Final verification (PR #187): **724 tests passed, one pre-existing manual live-clock
+reshape probe ignored, 100 suites**. Format, locked all-target workspace check/test/
+Clippy, diff checks, cargo deny/audit and all 11 full geiger inventories passed;
+the root inventory was rerun after the final interface tests. Changed/relocated
+Markdown links resolve; repo skill frontmatter fields remain intact. Guidance
+scenarios reviewed: normal syntax-only parser work follows domain contracts without
+a backend; unsupported lazy/native execution still reports its bounded limitation
+rather than interpreting compiling metadata/spikes as support. No required check
+was skipped or statistical tolerance changed.
+
+## Phase 2 exit disposition
+
+All requested core crate/type/review and four exit gates are demonstrated. Approved
+Phase 1 low-level bindings remain isolated because no production FFI integration
+is needed by Phase 2. General lazy/remote/panel/family execution, REPL/MCP transport,
+native integration, statistical breadth and shipping remain later roadmap work,
+not unresolved Phase 2 blockers. Cargo checks establish type/build/regression
+acceptance, not whole-command or statistical parity.

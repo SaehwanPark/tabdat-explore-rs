@@ -7,8 +7,9 @@ skills needed for a bounded task; there is no required worker service, model,
 plugin, or runtime adapter. The repository began with a Rust binary scaffold and
 two proposed planning documents. Repo guidance is now present, and the initial
 Python oracle revision is recorded in [docs/migration/](../../migration/); individual
-slices still require their own contract and comparison evidence. The proposed crate
-tree is not an installed architecture.
+slices still require their own contract and comparison evidence. Phase 2's core
+crate topology is installed; planned command breadth, native integrations and
+transport/server features are not support merely because their types compile.
 
 [AGENTS.md](../../../AGENTS.md) contains repo-wide rules and checks. The
 [architecture](../../../ARCHITECTURE.md) owns current-versus-proposed Rust boundaries;

@@ -1,295 +1,195 @@
 # TabDat Explore Rust architecture
 
-**Status:** current scaffold plus bounded language/runtime slices and proposed ownership boundaries
+**Status:** Phase 2 core workspace implemented; bounded execution, not full product parity
 
-This document separates repository truth from the target architecture. The Rust
-repository currently contains an unpublished binary scaffold, a small
-`tabdat-language` crate, and bounded `tabdat-runtime` evaluations from PR #22
-(`26dba2b`), PR #70 (`9bbf804`), PR #72 (`5cb5b34`), and PR #74 (`7a5b8d4`).
-The language crate remains a syntax-only parser; the runtime crate is a
-library-only eager local-Parquet/CSV boundary and not a usable TabDat command
-runtime.
-The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
-[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) are design plans; their proposed crate
-names and product commands are not installed support. The [migration authority](docs/migration/README.md)
-defines how Python behavior becomes evidence rather than letting this document
-silently invent parity.
+This document separates source-established behavior from the future product in the
+[proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
+[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md). The
+[migration authority](docs/migration/README.md) defines how pinned Python behavior
+becomes evidence. A compiling type or crate is not proof of command support.
 
 ## Current implementation
 
-Phase 2 slice 1 introduces `tabdat-domain` as the sole owner of existing command,
-expression, result, dataset/label metadata and recoverable execution/script error
-contracts. It forbids unsafe code and depends only on serde and the pure
-`tabdat-stats`; language and runtime re-export the types for source compatibility.
-Parser diagnostics and execution effects remain in their existing layers. Domain
-also owns validated panel keys, general metadata with unknown lazy counts, a
-backend-free execution snapshot, one finite optional estimation-family state,
-typed command effects/capability prerequisites and an internal tagged JSON v1
-prototype. Runtime publishes only Linear family state today. CLI v1 JSON remains
-unchanged. [ADR 0022](docs/adr/0022-domain-state-and-workspace-boundaries.md) and
-[the recovered contract](docs/migration/phase2-core-contracts.md) record scope and
-intentional state/wire design differences.
+The Rust 2024 workspace contains the root binary and ten library crates. All eleven
+first-party packages forbid unsafe code. Phase 2 ownership and intentional design
+differences are recorded in [ADR 0022](docs/adr/0022-domain-state-and-workspace-boundaries.md)
+and [the recovered contract / review](docs/migration/phase2-core-contracts.md).
 
-- `Cargo.toml` describes an unpublished Rust 2024 workspace with the root binary,
-  `tabdat-domain`, `tabdat-language`, `tabdat-runtime`, and `tabdat-stats`.
-- `crates/tabdat-stats` contains pure, safe (`#![forbid(unsafe_code)]`) statistical
-  problem contracts (`EstimationProblem`), explicit inspectable sample tracking
-  (`EstimationSample`), parameter estimates (`CoefficientEstimate`), covariance
-  representations (`CovarianceMatrix`, `CovarianceType`), convergence and model
-  diagnostics (`EstimationDiagnostics`, `FitStatistics`), post-estimation state,
-  linear-combination inference, and linear hypothesis testing (`PostEstimationModel`),
-  backend capability trait (`Estimator`), normalized errors (`StatsError`), matrix
-  sandwich quadratic form (`sandwich`), Lanczos log-gamma, regularized incomplete beta
-  Student's $t$ p-values and quantiles, one-sample/paired/pooled/Welch t-tests, and a backward-stable Householder QR least squares kernel (`fit_least_squares`,
-  `fit_least_squares_with_options`, `predict_linear_response`) supporting classical, robust HC1,
-  and clustered covariance. It has zero runtime backend dependencies (no DuckDB, no C FFI).
-- `src/main.rs` and `src/cli.rs` contain the root binary entry point and CLI argument
-  parser, forbidding unsafe code, supporting `--version`, `--help`, repeated `-c`,
-  `-f`, and positional script execution, while preserving the scaffold greeting
-  when called without arguments until the interactive shell REPL is implemented.
-- `tests/scaffold.rs` and `tests/cli_contract.rs` characterize CLI execution,
-  argument parsing, flag conflict rejection, and exit codes.
-- `crates/tabdat-language/src/lib.rs` contains a safe, backend-independent parser
-  for `help`/`?`, `status`, `exit`/`quit`, `describe`, `doctor`, `set`, `count`,
-  `datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`,
-  `isid`, `run`, `head`, `tail`, `rename`, `select`, `save`, `export`, `sql`, `regress`, and `ttest`, plus owned
-  command/error types and focused tests.
-  The `missing [varlist]`, `duplicates [report] [varlist]`, direct
-  `summarize [varlist]`, direct `isid [varlist] [, missok]`, direct
-  `run <script-path>`, direct `rename <old> <new>`, and direct
-  `select <varlist>`, direct `sort <varlist>`, direct `gsort [+|-]varlist`, and
-  direct `save <path> [, replace]` / `export <path> [, replace]` forms perform
-  no execution or I/O; structured conditions/options, key semantics,
-  persistence/output, summary execution, and script loading
-  remain deferred.
-- `crates/tabdat-runtime` contains the accepted private bundled-DuckDB adapter
-  evaluations that accept an existing local `.parquet` or `.csv` through
-  `Command::Use` in eager mode and can write the published eager relation
-  through bounded `Command::Save` Parquet and `Command::Export` CSV paths.
-  CSV `use` accepts bound delimiter/header options and stages publication;
-  these paths return owned metadata, preserve active state on failure, and
-  remain library-only. They are not connected to the root binary and do not
-  establish broad data-runtime or DuckDB product support. See ADR 0007,
-  `_workspace/use-eager-parquet/`, `_workspace/runtime-save/`,
-  `_workspace/runtime-export-csv/`, and `_workspace/runtime-use-csv/`.
-  PR #157 adds a read-only runtime `ttest` path over one active DuckDB relation,
-  returning owned summaries and inference through `tabdat-stats`; timezone-aware,
-  nested, and interval group keys remain typed limitations.
-- `rust-toolchain.toml`, rustfmt, Clippy, local dependency/advisory checks, and
-  unsafe inventory are development controls, not runtime architecture. GitHub
-  Actions are disabled and workflow definitions are removed; see ADR 0009.
-- There is no general session/data-relation model, statistical backend, REPL, MCP
-  server, or complete public TabDat command contract in this repository yet. The
-  narrow runtime evaluation is deliberately insufficient for those claims.
+| Crate | Implemented responsibility | Runtime/backend dependencies |
+| --- | --- | --- |
+| `tabdat-domain` | Owned commands/AST, results, dataset/label/panel metadata, errors, execution snapshot, one optional finite estimation-family state, typed effects/capabilities, internal JSON v1 prototype, discovery/envelope records | serde + pure stats only |
+| `tabdat-language` | Existing command/tokenizer/expression/script syntax, macros/control directives and deterministic parse errors | domain; lightweight I/O for the existing explicit `read_script` compatibility helper |
+| `tabdat-stats` | Pure statistical problems/samples, coefficients/covariance/inference, Householder QR OLS/WLS/GLS, HC1/cluster covariance, hypothesis/VIF and t-test utilities | serde/serde_json; no DuckDB or FFI |
+| `tabdat-io` | Local input format/path checks, output-format/replacement/parent checks, script bytes/UTF8 diagnostics and path resolution | domain only |
+| `tabdat-data` | Canonical bundled DuckDB adapter, generated SQL, eager CSV/Parquet loading/persistence, relation transformations/inspection and native-to-owned cell conversion | domain + I/O + DuckDB/sha2 |
+| `tabdat-execution` | Session coordination, metadata/label/model publication, named tables, data/script/statistical dispatch and owned snapshots | domain, language, I/O, data, stats |
+| `tabdat-reporting` | Existing deterministic catalog/schemas/effects/help and bounded Python-compatible CLI JSON | domain/language + serde_json/base64; no runtime backend |
+| `tabdat-shell` | Existing batch/script CLI argument parsing, exit policy and terminal/JSON effects | language/execution/reporting; no native types |
+| `tabdat-mcp` | Typed transport-independent discovery/explain/execute tool boundary sharing parser, coordinator and result reporting | domain/language/execution/reporting; **not an MCP server** |
+| `tabdat-runtime` | Source-compatible domain/Session re-exports and existing integration contract tests | domain/execution; native test fixtures are dev-only |
 
-The accepted backend-independent syntax-only `sort <varlist>` form is recorded
-by PR #27 (`7cf21ae`). Row ordering and all relation effects remain deferred.
+`src/main.rs` delegates to shell. Existing `--help`, `--version`, discovery,
+repeated `-c`, `-f`, positional scripts and bounded JSON behavior are preserved.
+No-argument execution still prints the scaffold greeting; no interactive REPL is
+implemented. JSON success reporting remains limited to the existing use/count/
+head/tail surface. The typed MCP boundary does not wire `--mcp` to a server.
 
-Merged PR #28 (`fd94133`) records the accepted backend-independent syntax-only
-`gsort [+|-]varlist` form. Direction metadata is parsed, while row ordering and
-all relation effects remain deferred.
+The language accepts more forms than execution supports. The supported eager
+runtime contains local CSV/Parquet, inspection/transforms/labels, named-table SQL,
+join/append/reshape, scripts, linear regress/predict/VIF/lincom/test and t-tests.
+Source tests and individual roadmap entries define each bounded variant; parsing
+an estimator, panel or plotting command does not establish its execution.
+Session publishes only `EstimationState::Linear` today. Other family variants and
+unknown lazy row-count metadata are contracts for later integration, not installed
+capabilities. Existing regression-attempt failure behavior is retained: beginning
+a new fit clears the prior fit before validation.
 
-Merged PR #29 (`8b16223`) records the bounded backend-independent syntax-only
-`save` and `export` forms. Their owned paths and `replace` flags are parsed in
-the language layer. Merged PR #70 (`9bbf804`) adds the separate bounded eager
-runtime `save` implementation for local Parquet, and merged PR #72 (`5cb5b34`)
-adds CSV-only eager `export`; broader output formats, path normalization, and
-persistence remain deferred.
+Execution and data are split into responsibility modules, not new monolithic
+executor/backend files. DuckDB connections, statements, rows and native values
+remain private to data. Statistical sample extraction streams one owned row at a
+time; unsupported cell conversions are retained until accessed so a row skipped
+for another reason does not spuriously fail. No native row/connection lifetime
+crosses into execution. Data operation failures use an owned `DataError`; existing
+command-specific `RuntimeError` messages remain at coordination boundaries.
 
-Merged PR #74 (`7a5b8d4`) adds the separate bounded eager runtime local-CSV
-`use` path. It binds optional delimiter/header values through DuckDB, stages
-schema/count inspection before publication, returns owned load metadata, and
-clears labels only after successful replacement. Remote, lazy, Feather/Arrow,
-DTA, broader relation/session, and interface boundaries remain deferred.
+`tests/workspace_boundaries.rs` checks dependency direction and safe crate roots;
+existing parser/runtime/statistical/CLI contracts characterize the extraction.
+Build/toolchain/advisory/license/unsafe inventory are local development controls,
+not product parity or FFI-safety proof. GitHub Actions are disabled with no tracked
+workflows; see [ADR 0009](docs/adr/0009-disable-github-actions.md).
 
-Merged PR #77 (`feeeaf4`) records the bounded backend-independent syntax-only
-`sql <query> [into <table>]` form. Owned query text and optional named-table
-target are parsed, while multiline script blocks, SQL execution, and named-table
-lifecycle remain deferred.
-
-Merged PR #79 (`e6b81d3`) records the bounded backend-independent syntax-only
-`regress <y> <xvars> [, robust] [, cluster(<var>)] [, noconstant] [, wls(<var>) | gls(<var>)]`
-form. Merged PR #151 (`9476053`) implements runtime linear regression execution in
-`crates/tabdat-runtime` via `tabdat-stats`, executing OLS, WLS, GLS (1D sigma scaled to
-precision weights $w_i = 1 / \sigma_i$), classical, robust HC1, and clustered covariance,
-with exact sample missingness tracking in `EstimationSample` and session post-estimation
-persistence in `Session::last_regression`. PR #153 adds eager `predict, xb` and
-`predict, residuals` for these linear-regression states, with staged DuckDB publication and an
-owned `PredictionResult`; generated values cover all active rows and preserve SQL NULL behavior.
-PR #154 adds a pure `tabdat-stats::variance_inflation_factors` auxiliary-OLS
-calculation and `estat vif` runtime result for full-rank linear-regression states. The session
-retains the complete-case predictor design so the diagnostic follows the fitted sample; its
-auxiliary regressions use the model's intercept convention but not WLS/GLS weights, matching
-the Python oracle's exog-based behavior. The exact-collinear main-model case remains
-unreachable because the existing Rust estimator rejects rank-deficient designs. PR #155 adds
-read-only `lincom` estimates and Student-t inference for stored OLS/WLS/GLS regression states,
-including robust and clustered covariance. PR #156 adds read-only Wald/F tests for parsed linear
-restrictions on those same stored regression states, including classical, HC1, and clustered
-covariance. Other estimator families, the zero-residual-df chi-square fallback, and broader
-post-estimation remain deferred.
-PR #157 adds one-sample, paired, pooled, and Welch `ttest` execution on finite
-numeric observations with Python-compatible scalar group labels; nested,
-interval, and timezone-aware group-key parity remains deferred.
-
-No component should be described as implemented until source/tests and the relevant
-roadmap gate provide that evidence.
-
-## Initial backend decisions
+## Accepted backend decisions
 
 Phase 1 is complete as feasibility/architecture acceptance under
 [ADR 0021](docs/adr/0021-phase1-backend-and-linear-algebra-decisions.md) and
 [the final report](docs/feasibility/phase1-final-report.md): canonical DuckDB,
-DTA-only patched ReadStat, primary compiled libgretl alongside existing native
-Rust utilities, BLAS/LAPACK reused inside the gretl boundary, and native SVG/resvg.
-No second data engine or speculative general matrix FFI is added. The evaluated
-adapters remain isolated spikes; this decision does not wire native capabilities
-into command execution or accept shipping artifacts. Typed domain-owned results,
-explicit samples/normalizations, lazy initialization and directional dependencies
-remain mandatory. Broader native/hostile-input/distribution gates still block
-production integration or release when applicable.
+DTA-only patched ReadStat, primary compiled libgretl alongside existing safe Rust
+utilities, BLAS/LAPACK reused within gretl, and native SVG/resvg. No duplicate
+engine, standalone numerical FFI or JavaScript/Python plotting runtime is added.
 
-## Target dependency direction
+ReadStat/libgretl/plotting adapters remain isolated spikes, not production workspace
+integrations. Phase 2 needs no additional low-level FFI crate. Accepted feasibility
+does not approve arbitrary hostile input, relocatable shipping artifacts, native
+redistribution, or full platform/sanitizer certification. Those later-phase
+integration/release prerequisites are not silently removed by workspace completion.
 
-The intended flow is:
+## Dependency direction
 
 ```text
-language / interface
-        ↓ typed commands
-execution / session
-        ↓ domain-owned plans and capability requests
-backend adapters
-        ↓ owned domain results
-execution / reporting / interface
+shell / typed MCP tools
+  ├── reporting ── language ── domain
+  └── execution
+        ├── language ── domain
+        ├── data ── domain + I/O
+        ├── I/O ── domain
+        └── pure stats
+
+domain ── pure stats + serde
+runtime ── domain + execution (compatibility only)
 ```
 
-The dependency arrow points toward effects and installed capabilities. Domain types
-must not import runtime backends. Backends may depend on domain contracts, but a
-DuckDB, FFI, plotting, or MCP type must not leak into public language/domain APIs.
-Human-readable, JSON, and MCP surfaces should render the same typed result rather
-than implement separate command semantics.
+Dependencies remain acyclic. Language's explicit legacy script reader delegates
+filesystem effects to lightweight I/O; parsing itself performs no I/O or backend
+initialization. Data does not depend on language or execution. Domain types must
+never import runtime backends. Backend adapters return owned domain results,
+not raw foreign pointers, native model/data types or backend-specific lifetimes.
+Human/JSON/MCP surfaces share typed contracts, not separate command semantics.
 
-The proposal's candidate boundaries are guidance, not a crate tree to create all at
-once:
-
-- **Language:** syntax, AST, command schemas, scripts, and diagnostics.
-- **Domain:** commands, typed results, errors, metadata, session/model state, and
-  invariants that do not require I/O or an installed backend.
-- **Execution:** dispatch, state transitions, capability routing, cancellation,
-  and post-estimation coordination.
-- **Data/IO:** DuckDB relations, file formats, labels, lazy plans, and translation
-  into domain-owned values.
-- **Statistics:** estimator contracts, inference, diagnostics, covariance, and
-  post-estimation state; optional native adapters remain behind these contracts.
-- **Surfaces:** shell, reporting, JSON, and MCP adapters that consume typed results.
-
-A future implementation may combine or split these boundaries. A split requires
-current evidence and, when it is a major dependency/runtime decision, an ADR.
-Avoid monolithic Python-style dispatcher/backend modules and avoid speculative empty
-crates.
+Further splits/merges require current evidence and an ADR for major dependency,
+runtime, backend, FFI, packaging or licensing changes. Avoid speculative empty
+crates, Python module-layout replication and `Box<dyn Any>` escape hatches.
 
 ## Functional state and effects
 
-For a command boundary, prefer the explicit shape:
+Prefer the explicit shape:
 
 ```text
 session state + typed input -> Result<(new state, typed result), typed error>
 ```
 
-Pure transformations should own parsing-independent validation, expression/domain
-semantics, result shaping, and deterministic rendering inputs. Effects belong at
-adapters: filesystem/network access, DuckDB execution, native calls, terminal I/O,
-time, and randomness. Inject or record effect inputs when deterministic comparison
-requires them.
+Pure functions own validation, domain semantics, sample/result shaping and
+rendering inputs. Filesystem/network, DuckDB, native calls, terminal output, time
+and randomness belong to adapters. Inject/record effect inputs when deterministic
+comparison requires them.
 
-State transitions must make preconditions and failure atomicity visible:
+State transitions make preconditions and failure policy visible:
 
-1. Parse and validate into an owned command before mutating session state.
-2. Check capability and data preconditions without partially applying a mutation.
-3. Execute through the narrow adapter and translate failures into deterministic,
-  typed domain/application errors.
-4. Commit the new session state only after the command succeeds; preserve the prior
-  state on recoverable failure unless the recovered contract explicitly says otherwise.
-5. Return a typed result from which all presentation surfaces derive output.
+1. Parse/validate into an owned command before mutation.
+2. Check data/capability preconditions without accidental partial publication.
+3. Execute through a narrow adapter and normalize errors into typed failures.
+4. Publish state after success; preserve prior state on recoverable failure unless
+   the recovered contract explicitly specifies otherwise (as for new fit attempts).
+5. Return a typed result used by all supported presentation surfaces.
 
-Relations, named tables, labels, estimation samples, covariance modes, and
-post-estimation families are domain state with explicit invariants, not unrelated
-nullable fields or backend-owned handles.
+Relations, named tables, labels, samples, covariance and post-estimation families
+are explicit domain state, not unrelated nullable native objects. A snapshot owns
+its data; reading it and initialized-capability metadata does not initialize data.
 
 ## Data and capability boundaries
 
-DuckDB is the planned canonical initial tabular engine. Initialize it only when a
-command needs data execution; metadata-only or syntax-only paths must not eagerly
-load unrelated statistical, plotting, spatial, Bayesian, MCP, or FFI capabilities.
-A lazy relation remains lazy unless the command's contract requires materialization.
-Do not add a second execution engine until benchmark and semantic evidence justify it.
+DuckDB is the canonical data engine; no second engine is accepted. Lazy-engine
+syntax/types remain compatibility metadata, not support for a Polars runtime.
+Initialize data only when execution needs it. Help/discovery/syntax/state paths
+must not initialize statistical, plotting, spatial, Bayesian, MCP or FFI systems.
+Command effects are conservative discovery metadata; requirements describe
+capability families, not permission grants or eager initialization requests.
+Post-estimation requirements also depend on the fitted family at dispatch.
 
-Backend adapters own connection/handle lifetimes and conversion details. They return
-owned domain/application values or typed adapter errors. They do not expose native
-model/data types, raw pointers, or backend-specific lifetimes to language/domain
-callers. Cancellation and resource cleanup are part of each adapter contract.
+Future lazy relations remain lazy until the command requires materialization;
+unknown counts are not zero. Cache invalidation, cancellation/resource cleanup,
+ordering/missingness/labels, and failure atomicity require their own bounded
+contracts. Existing save/export validation is not an atomic output-file
+publication or general persistence guarantee. Low-level adapter internal-SQL
+methods and MCP Execute are trusted operations, not execution sandboxes; a
+transport must enforce its own authorization/resource policy.
 
 ## Unsafe and FFI boundary
 
-Ordinary application/domain crates should use:
+Ordinary crates use `#![forbid(unsafe_code)]`. Unsafe-enabled crates require
+explicit approval for low-level interoperability/exceptional systems work,
+`#![deny(unsafe_op_in_unsafe_fn)]`, narrow unsafe blocks and adjacent `// SAFETY:`
+reasoning. Approved adapters must wrap ownership in RAII, contain panics at FFI
+boundaries and document thread-safety assumptions. No foreign handle becomes
+`Send`/`Sync` without upstream proof and no raw foreign ownership escapes.
 
-```rust
-#![forbid(unsafe_code)]
-```
+The full `cargo-geiger` inventory is a signal, not an unsafe approval or proof of
+transitive native memory safety. Review, sanitizers, fuzzing, upstream ownership
+contracts and native license/distribution decisions remain necessary.
 
-An unsafe-enabled crate must be explicitly approved for low-level interoperability
-or exceptional systems work. Every unsafe block is narrow and adjacent to a
-`// SAFETY:` explanation of the invariant; unsafe functions deny unsafe operations
-unless each operation is justified. Approved adapters must provide safe facades,
-owned RAII handles, panic containment at FFI boundaries, and documented thread-safety
-assumptions. No raw foreign pointer or native model type appears in a public
-TabDat/domain API, and no foreign handle is marked `Send`/`Sync` without upstream
-proof.
+## Migration, serialization and validation
 
-The CI `cargo-geiger` report is an inventory signal. It does not approve a proposed
-FFI adapter, establish memory safety, or replace code review, sanitizers, fuzzing,
-and native dependency/license decisions. Such a capability needs its own feasibility
-slice and ADR.
+Each migrated behavior records four contracts:
 
-## Migration and validation
+1. **Python:** verified pin, syntax/defaults/state/output/errors, sources/tests,
+   conflicts and required statistical references.
+2. **Rust:** typed inputs/results/errors, ownership/state transitions, capability
+   requirements and intentional deviations.
+3. **Tests:** fixtures, exact comparisons/normalizations, environment/seed/tool
+   details, diagnostics and trusted numerical references where applicable.
+4. **Mapping:** safe Rust, DuckDB, approved FFI, optional capability or deferred work.
 
-Each ported behavior gets four explicit contracts:
+Recover semantics before backend breadth. Python is an oracle, not unquestioned
+truth; statistical claims also need trusted external references, unchanged
+justified tolerances and explicit sample/covariance/inference contracts.
 
-1. **Python contract:** pinned revision, syntax/options/defaults, state effects,
-  outputs/errors, source/docs/tests, and unresolved conflicts.
-2. **Rust contract:** typed command/result/error, ownership, state transition,
-  capability requirement, and intentional deviations.
-3. **Test contract:** test-first cases, exact semantic comparisons, fixtures,
-  diagnostics, and trusted statistical references where applicable.
-4. **Implementation mapping:** native Rust, DuckDB, approved FFI, optional capability,
-  or deferred work.
+[Internal domain JSON v1](docs/migration/domain-json-v1.md) is a tagged migration
+prototype, separate from the unchanged Python-compatible CLI v1 envelope. It
+supports typed/golden migration tests, not a full public protocol/schema promise.
+Backend/model validity and execution authority are not established by decoding.
 
-Recover language and execution behavior before designing backend breadth. Syntax-only
-parsing must remain independent of backend initialization. Differential fixtures may
-compare Python and Rust only after both contracts and environment/revision details
-are recorded; statistical claims additionally require a trusted external reference.
-Passing the scaffold or policy checks does not establish command or statistical parity.
+## Documentation ownership and remaining work
 
-## Ownership and decision records
+- This file owns implemented/target structure, direction, state/effects and deferrals.
+- `SPEC.md` owns active implementation and evidence; historical slices document
+  acceptance at merge, not later composition or whole-command parity.
+- The roadmap owns phased gates; checkboxes need source/test/decision evidence.
+- `docs/migration/` owns oracle authority, conflicts, contracts and comparisons.
+- `docs/adr/` owns accepted major architecture/backend/FFI/dependency decisions.
+- `AGENTS.md`, `CONTRIBUTING.md` and repo-local skills own workflow/check discipline.
 
-- This file owns Rust structure, dependency direction, state/effect boundaries, and
-  current-versus-proposed architecture.
-- `SPEC.md` owns the small active slice and evidence state.
-- The roadmap owns phased backlog and acceptance gates; checkboxes require evidence.
-- `docs/migration/` owns Python baseline, authority, conflict, and parity evidence.
-- `docs/adr/` owns accepted major backend, FFI, packaging, licensing, and dependency
-  decisions. `docs/adr/template.md` is the minimal format.
-- `AGENTS.md`, `CONTRIBUTING.md`, and repo-local skills own repeatable workflow and
-  checks; they do not assert product support beyond source evidence.
-
-When these documents disagree, record the conflict and avoid choosing a behavior by
-convenience. Update the narrowest owning document after implementation or evidence;
-do not mark a proposed boundary as present merely because it is described here.
-
-## Explicit deferrals
-
-This document does not select a DuckDB crate/version, native statistical library,
-ReadStat/libgretl ABI, plotting stack, parser framework, workspace crate layout beyond
-the bounded language member, minimum supported Rust version, packaging model, or
-Rust/Python parity surface. Those are bounded decisions for later spikes with
-feasibility, license, performance, ownership, and validation evidence. Python and R
-remain external validation tools, not core Rust runtime dependencies.
+Phase 2 establishes core type/workspace boundaries. Broad parser/data/estimator
+parity, general lazy/remote/DTA runtime, REPL, MCP transport, native integration,
+benchmarks, cancellation, hostile-input hardening and release packaging remain
+later-phase tasks. Core distribution requires neither Python nor R; external
+validation tools are not runtime dependencies. Do not describe those future
+capabilities as present merely because their contracts or spikes compile.

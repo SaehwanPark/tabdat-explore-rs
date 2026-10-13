@@ -1,77 +1,60 @@
 # TabDat Explore Rust
 
 Rust-native successor to TabDat's terminal-first statistical/EDA environment.
-**This repository is a scaffold, not a usable TabDat CLI.** Running the root binary
-currently prints `Hello, world!`. The workspace has begun a safe language layer with
-a syntax-only parser for a few control, status, inspection, diagnostic, and
-configuration commands (`help`, `status`, `exit`, `describe`, `doctor`, `set`,
-`datasignature`, `use`, `codebook`, `missing`, `duplicates`, `summarize`, `isid`,
-`select`, `rename`, `run`, `sort`, `gsort`, `save`, `export`, `count`, `head`, and `tail`). The `missing [varlist]`, `duplicates [report] [varlist]`,
-direct `summarize [varlist]`, and direct `isid [varlist] [, missok]` forms are
-syntax-only; no data engine or statistical
-backend is installed as a supported product surface. Merged PR #22 (`26dba2b`) accepted a bounded
-`tabdat-runtime` evaluation that can load an existing local Parquet file eagerly
-through its library API; it is not wired into the root binary, does not provide a
-general data engine, and is not a supported CLI or statistical backend. The
-accepted runtime boundary is documented as an evaluation result, not broad
-`use` or DuckDB product support.
+**Phase 2 core workspace is implemented; full TabDat product parity is not.**
+The binary has bounded batch/script execution, help/discovery and JSON interfaces.
+No-argument execution still prints `Hello, world!`; there is no interactive REPL
+or MCP server.
 
-PR #23 adds the owned syntax-only `isid` command. Key uniqueness checks,
-missing-key handling, active-dataset access, and all execution/reporting remain
-deferred to the roadmap's data-runtime work.
+## Workspace
 
-Merged PR #24 (`77f4754`) adds the owned syntax-only `run <script-path>` form.
-Script loading, line-oriented execution, nested/recursive scripts, and
-file/line diagnostics remain deferred to the roadmap's script-engine work.
+- **Domain:** owned typed commands/results/errors, metadata, explicit model-family
+  state, effects/capability prerequisites and internal JSON v1 migration contracts.
+- **Language:** existing command/expression/tokenizer/script parser contracts.
+- **Execution / data / I/O:** existing bounded eager DuckDB CSV/Parquet,
+  inspection/transforms/labels/named tables, scripts and local persistence.
+- **Statistics:** pure safe Rust linear regression, sample/covariance/inference,
+  prediction/hypothesis/VIF and t-test utilities.
+- **Reporting / shell:** shared help/catalog/CLI JSON and the existing batch CLI.
+- **MCP:** typed transport-independent tool boundary sharing these contracts,
+  not an implemented transport/server.
+- **Runtime:** compatibility facade for existing library callers and tests.
 
-Merged PR #25 (`89f6c14`) adds the owned syntax-only `rename <old> <new>` form.
-Schema lookup, collision checks, relation mutation, and execution remain
-deferred.
-
-Merged PR #26 (`5735b43`) adds the owned syntax-only `select <varlist>` form.
-Active-schema lookup, wildcard/range expansion, relation mutation, and
-execution remain deferred.
-
-Merged PR #27 (`7cf21ae`) adds the owned syntax-only `sort <varlist>` form.
-Active-schema lookup, stable/null/descending/expression sorting, relation
-mutation, and execution remain deferred.
-
-Merged PR #28 (`fd94133`) adds the owned syntax-only `gsort [+|-]varlist` form.
-Direction metadata is owned in typed keys, while active-schema lookup, ordering,
-relation mutation, and execution remain deferred.
-
-Merged PR #29 (`8b16223`) adds the owned syntax-only `save <path> [, replace]`
-and `export <path> [, replace]` forms. PR #70 (`9bbf804`) adds a separate
-library-only eager runtime `save` path for active local-Parquet relations,
-including target validation, Parquet writing, and state-preserving round trips.
-PR #72 (`5cb5b34`) adds the corresponding bounded CSV-only eager `export` path
-with target validation, header-bearing output, and state-preserving round trips.
-Parquet aliasing through `export`, broader output formats, and
-interface/persistence surfaces remain deferred.
+All eleven first-party workspace packages forbid unsafe code. Domain has no
+runtime backend dependency; native DuckDB values/connections stay inside data.
+The language parses more command forms than execution supports. The
+[implementation state](SPEC.md), [architecture](ARCHITECTURE.md), tests and
+individual roadmap entries establish each supported variant—not merely a
+compiling enum or a merged PR. Remote/lazy/DTA runtime, broad estimator parity,
+native libgretl/ReadStat integration, REPL/MCP transport and shipping remain
+later-phase work. Phase 1 backend spikes are feasibility evidence, not installed
+production capabilities or redistribution approval.
 
 ## Development
 
 Install [rustup](https://rustup.rs/), then:
 
 ```sh
-cargo run --locked
+cargo run --locked -- --help
+cargo run --locked -- --json --list-commands
 cargo test --locked --workspace --all-targets
 ```
 
-`rust-toolchain.toml` pins the compiler, rustfmt, and Clippy used locally and in CI.
-The core scaffold and language crate require neither Python nor R. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for all checks and the development workflow.
+`rust-toolchain.toml` pins the compiler, rustfmt and Clippy. Core runtime requires
+neither Python nor R; they remain external validation tools. GitHub Actions are
+disabled, so required checks run locally. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for all checks and the development workflow.
 
 ## Project state
 
-- [Implemented state and active scope](SPEC.md)
+- [Implemented state and evidence](SPEC.md)
 - [Current and proposed architecture](ARCHITECTURE.md)
-- [Proposed project design](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md)
+- [Project proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md)
 - [Roadmap and acceptance gates](docs/TABDAT_RUST_PORT_ROADMAP.md)
+- [Phase 2 recovered contract / review](docs/migration/phase2-core-contracts.md)
 - [Agent rules](AGENTS.md)
 
-The initial Python migration baseline is pinned in
-[docs/migration/](docs/migration/). Build checks and the recorded parser/script
-oracle run do not establish Rust behavioral or statistical parity. Licensing and
-redistribution decisions must be resolved before publication; the proposal's AGPL
-intent is not a release license.
+The initial Python migration baseline is pinned in [docs/migration/](docs/migration/).
+Cargo checks do not establish whole-command/statistical parity. Licensing,
+artifact-specific redistribution and corresponding-source obligations must be
+resolved before publication; the proposal's AGPL intent is not a release license.

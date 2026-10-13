@@ -307,19 +307,29 @@ evidence remains on draft PR #164; native SVG is not Vega-Lite compatibility.
 
 Build the domain model before substantial runtime implementation.
 
+**Complete (2026-10-12, PRs #185–#187).** Existing bounded implementations were
+re-homed into nonempty directional crates rather than replaced with placeholders.
+[Contract/type review and final evidence](migration/phase2-core-contracts.md) and
+[ADR 0022](adr/0022-domain-state-and-workspace-boundaries.md) distinguish core
+contracts from later execution/transport/native shipping support. All four exit
+gates are evidenced; no later-phase parity gate is implied.
+
 ### 4.1 Workspace topology
 
 - [x] Create `tabdat-language` (bounded syntax-only parser foundations; PRs #11–#20).
 - [x] Create `tabdat-domain` (PR #185; backend-independent owned contracts).
-- [ ] Create `tabdat-execution`.
-- [ ] Create `tabdat-data`.
-- [ ] Create `tabdat-io`.
+- [x] Create `tabdat-execution` (PR #187; extracted coordinator responsibility modules).
+- [x] Create `tabdat-data` (PR #187; private DuckDB connection, generated SQL and owned row/value boundary).
+- [x] Create `tabdat-io` (PR #187; filesystem/path/script-text effects).
 - [x] Create `tabdat-stats` (PR #149, squash merge `8370622`; foundational statistical contracts, explicit inspectable sample tracking, Householder QR baseline OLS fitting, and linear hypothesis testing; `forbid(unsafe_code)`).
-- [ ] Create `tabdat-reporting`.
-- [ ] Create `tabdat-shell`.
-- [ ] Create `tabdat-mcp`.
-- [ ] Create approved low-level FFI crates as needed.
-- [ ] Add `#![forbid(unsafe_code)]` to all safe crates.
+- [x] Create `tabdat-reporting` (PR #187; extracted catalog/help/shared CLI JSON).
+- [x] Create `tabdat-shell` (PR #187; existing batch/script CLI, not a new REPL).
+- [x] Create `tabdat-mcp` (PR #187; typed transport-independent tool boundary, not a server).
+- [x] Create approved low-level FFI crates as needed (need reviewed in ADR 0022:
+  none required for Phase 2; approved Phase 1 bindings remain isolated until an
+  integration slice needs them, rather than adding empty production FFI crates).
+- [x] Add `#![forbid(unsafe_code)]` to all safe crates (PR #187; all 11 first-party
+  packages, source/dependency regression tests and full geiger inventories).
 
 ### 4.2 Core domain types
 

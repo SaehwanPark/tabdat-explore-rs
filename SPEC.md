@@ -11,7 +11,7 @@ choices backed by isolated spikes, **not new installed commands, product parity
 or native binary distribution approval**. Source/checksum/ownership/resource and
 reference contracts are explicit; broader integration and release gates remain.
 
-## Phase 2 domain boundary
+## Phase 2 core workspace acceptance (2026-10-12)
 
 `tabdat-domain` owns the existing command/expression, result, dataset/label metadata
 and execution/script error types without a runtime backend dependency. Language
@@ -24,17 +24,26 @@ without eager capability initialization. Existing CLI v1 JSON is unchanged. This
 is a type ownership/design change, not new command execution or full Python parity; see
 [contract and acceptance](docs/migration/phase2-core-contracts.md).
 
+PRs #185–#187 establish nonempty domain/language/execution/data/I/O/stats/reporting/
+shell/MCP crates, with runtime as a compatibility facade. All safe crate roots
+forbid unsafe. Existing data/I/O/coordination and catalog/help/CLI JSON code is
+extracted rather than duplicated; native rows/connections remain private to data.
+MCP is a typed transport-independent tool boundary, **not a server**. The core
+schema/state and workspace exit gates are demonstrated; this is not Phase 3+
+whole-command, REPL, native runtime or release acceptance.
+
 ## Current behavior
 
-The Rust 2024 binary remains a scaffold: it prints `Hello, world!` and exits
-successfully. The workspace contains a backend-independent `tabdat-language`
-crate with a syntax-only parser, a library-only `tabdat-runtime` crate for eager
-DuckDB tabular relations and data commands, and a pure, safe `tabdat-stats` crate
-for statistical problem specifications, explicit sample tracking, parameter inference,
-covariance representation, post-estimation state, and Householder QR least squares baseline
-fitting. These paths are not wired into the
-binary and do not provide a usable TabDat CLI, general data runtime, or
-statistical model implementation.
+The Rust 2024 binary delegates to `tabdat-shell`: existing batch/script CLI,
+discovery/help and bounded JSON paths are wired to execution. Calling it without
+arguments still prints `Hello, world!`; there is no REPL or MCP server. Language
+parses typed domain commands; execution coordinates the existing eager DuckDB
+data/label/named-table/script paths and pure linear/statistical utilities. Source
+and individual acceptance tests define supported variants; parsing other families
+or compiling their state contracts does not establish execution. See the current
+[architecture](ARCHITECTURE.md) for crate responsibilities and dependencies.
+Historical slice sections below describe behavior at merge; later composition may
+supersede wiring/deferral notes. They are not assertions of whole-command parity.
 The [proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md) and
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) describe planned work, not support.
 GitHub Actions are disabled at the repository level and no workflows remain in

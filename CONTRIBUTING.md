@@ -34,6 +34,26 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
 
+## Phase 2 workspace boundaries
+
+The runtime crate is a compatibility facade; scan/test all workspace packages,
+not just that facade. Domain, language, I/O, stats and reporting must remain
+runtime-backend-independent; execution uses owned data values, never DuckDB rows
+or connections. `tests/workspace_boundaries.rs` protects this direction and safe
+crate roots. Existing CLI JSON and numerical contracts must survive structural
+moves. The full geiger metadata loop below discovers every current package.
+
+### DuckDB metadata timing
+
+With `duckdb` 1.10505.0, `Statement::column_count()` after `prepare()` but before
+execution panics with **"The statement was not executed yet"**. The owned-row
+adapter obtains metadata from the executed row's statement, so it also handles
+empty queries without double execution. Keep metadata reads after execution and
+run `cargo test --locked -p tabdat-data --test owned_rows`; its tests protect
+metadata timing, skipped unsupported cells, empty results and visitor/query error
+recovery. See `crates/tabdat-data/src/owned_rows.rs`. This is an upstream timing
+constraint, not a reason to expose native rows across the execution boundary.
+
 ## GitHub Actions status
 
 GitHub Actions are disabled at the repository level and all tracked workflow
