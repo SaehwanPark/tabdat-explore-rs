@@ -55,3 +55,23 @@ model or hosted reviews. No additional model-backed workers were launched.
 Next slices: reconcile conditional `summarize`/`keep`/`drop`, richer `tabulate`,
 and missing `estat` syntax; compare expression/command fields; validate canonical
 script behavior; add property/fuzz coverage; then perform the Phase 3 exit review.
+
+## Slice 2: remaining no-option estat diagnostics
+
+**Python contract:** pinned `src/tabdat/parser.py::_parse_estat` accepts residuals,
+ovtest, margins, gof, did, drdid, dml and bayes without options; option-bearing
+forms fail with `estat <name> does not support options`.
+
+**Rust contract:** extend the finite `EstatSubcommand` enum and existing parser;
+no untyped escape hatch or backend dependency. Execution remains unchanged:
+only the already implemented VIF path runs, other diagnostics remain deferred.
+
+**Test contract:** new typed-JSON/option-rejection characterization for all eight
+forms, plus replay of the entire pinned corpus. The new test failed before the
+implementation. Nine captured differences are resolved, leaving 40 explicit
+gaps. This does not establish report/spatial syntax or diagnostic execution.
+
+**Implementation mapping:** safe domain enums and language parsing only.
+Local formatting, locked workspace check/test/Clippy and diff verification pass.
+Three owner review passes covered enum/serialization, parser/error behavior, and
+execution/dependency scope; no actionable findings. No delegated review claimed.

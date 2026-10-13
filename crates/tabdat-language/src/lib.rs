@@ -6518,6 +6518,14 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
   let argument = &parts.arguments[0];
   let normalized_subcommand = argument.text.to_ascii_lowercase();
   let subcommand = match (normalized_subcommand.as_str(), argument.backtick_quoted) {
+    ("residuals", false) => EstatSubcommand::Residuals,
+    ("ovtest", false) => EstatSubcommand::Ovtest,
+    ("margins", false) => EstatSubcommand::Margins,
+    ("gof", false) => EstatSubcommand::Gof,
+    ("did", false) => EstatSubcommand::Did,
+    ("drdid", false) => EstatSubcommand::Drdid,
+    ("dml", false) => EstatSubcommand::Dml,
+    ("bayes", false) => EstatSubcommand::Bayes,
     ("vif", false) => EstatSubcommand::Vif,
     ("firststage", false) => EstatSubcommand::FirstStage,
     ("overid", false) => EstatSubcommand::Overid,
