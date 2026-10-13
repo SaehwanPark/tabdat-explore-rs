@@ -111,8 +111,8 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, describe, count, codebook, summarize, missing, tabulate, head/tail,
-`estat vif` and the bounded
+supports use, describe, count, codebook, summarize, missing, tabulate, save/export,
+head/tail, `estat vif` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
 `result_type: "DescribeResult"` and `data.dataset`, reusing the load/prediction
@@ -142,6 +142,22 @@ percentages are supplied by execution without recomputation. Missing categories
 are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
+
+`save` (local Parquet) and `export` (local CSV) return additive `SaveResult` and
+`ExportResult` envelopes with requested `data.path` and output-oriented
+`data.dataset`, reusing the existing metadata shape. The reported dataset path
+is the destination, not the unchanged active source shown by `describe`.
+Prediction columns are included; data/model state and label/panel placeholder
+policy are unchanged. Existing targets require `replace`; refused overwrite
+preserves their bytes. Paths with spaces/commas can be quoted.
+
+Persistence is **not atomic file publication**: a native failure may leave
+partial output or alter a replaced file, and created parent directories may
+remain. CSV is text interchange, not a general type/label archive. Result I/O
+failure stops later commands but does not roll back files already written by
+the completed command. Roundtrips and these failure boundaries are tested;
+no general filesystem rollback or platform guarantee is claimed. See `help save`,
+`help export` and MIG-0008.
 
 `estat vif` returns an additive `TableResult` envelope with `data.headers`
 (`Variable`, `VIF`) and ordered `data.rows`, including the supplied `mean_vif`
