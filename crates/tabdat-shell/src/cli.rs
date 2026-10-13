@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::fmt;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use tabdat_execution::{RuntimeError, Session};
@@ -313,78 +315,97 @@ where
   })
 }
 
-pub fn run_cli(args: CliArgs) -> i32 {
+fn emit_cli_line(writer: &mut dyn Write, text: impl fmt::Display) -> io::Result<()> {
+  writeln!(writer, "{text}")?;
+  // Detect buffered failures before the next command can have effects.
+  writer.flush()
+}
+
+fn json_result_unsupported(output: &mut dyn Write, errors: &mut dyn Write) -> io::Result<i32> {
+  const MESSAGE: &str = crate::json_results::BATCH_UNSUPPORTED_MESSAGE;
+  emit_cli_line(errors, format_args!("Error: {MESSAGE}"))?;
+  let envelope = crate::catalog::ErrorEnvelope::new(MESSAGE, "JsonResultUnsupported");
+  emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
+  Ok(2)
+}
+
+fn run_cli_with_output(
+  args: CliArgs,
+  output: &mut dyn Write,
+  errors: &mut dyn Write,
+) -> io::Result<i32> {
   if args.help {
-    print!("{HELP_TEXT}");
-    return 0;
+    output.write_all(HELP_TEXT.as_bytes())?;
+    output.flush()?;
+    return Ok(0);
   }
 
   if args.version {
-    println!("tabdat {}", env!("CARGO_PKG_VERSION"));
-    return 0;
+    emit_cli_line(output, format_args!("tabdat {}", env!("CARGO_PKG_VERSION")))?;
+    return Ok(0);
   }
 
   if args.list_commands {
     let catalog = crate::catalog::command_catalog_result();
     let envelope = crate::catalog::ResultEnvelope::new(catalog, "CommandCatalogResult");
-    println!("{}", serde_json::to_string(&envelope).unwrap());
-    return 0;
+    emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
+    return Ok(0);
   }
 
   if args.list_command_effects {
     let effects = crate::catalog::command_effect_catalog_result();
     let envelope = crate::catalog::ResultEnvelope::new(effects, "CommandEffectCatalogResult");
-    println!("{}", serde_json::to_string(&envelope).unwrap());
-    return 0;
+    emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
+    return Ok(0);
   }
 
   if let Some(name) = &args.describe_command {
-    return match crate::catalog::describe_command_result(name) {
+    return Ok(match crate::catalog::describe_command_result(name) {
       Ok(schema) => {
         let envelope = crate::catalog::ResultEnvelope::new(schema, "CommandSchemaResult");
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         0
       }
       Err(err) => {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         let envelope = crate::catalog::ErrorEnvelope::new(err, "TabDatError");
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         1
       }
-    };
+    });
   }
 
   if let Some(topic) = &args.help_topic {
-    return match crate::catalog::help_topic_result(topic) {
+    return Ok(match crate::catalog::help_topic_result(topic) {
       Ok(res) => {
         let envelope = crate::catalog::ResultEnvelope::new(res, "HelpTopicResult");
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         0
       }
       Err(err) => {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         let envelope = crate::catalog::ErrorEnvelope::new(err, "TabDatError");
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         1
       }
-    };
+    });
   }
 
   if args.explain {
     let cmd_text = &args.commands[0];
-    return match crate::catalog::explain_result(cmd_text) {
+    return Ok(match crate::catalog::explain_result(cmd_text) {
       Ok(res) => {
         let envelope = crate::catalog::ResultEnvelope::new(res, "CommandExplainResult");
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         0
       }
       Err((err, err_type)) => {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         let envelope = crate::catalog::ErrorEnvelope::new(err, err_type);
-        println!("{}", serde_json::to_string(&envelope).unwrap());
+        emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         1
       }
-    };
+    });
   }
 
   if !args.commands.is_empty() {
@@ -393,40 +414,40 @@ pub fn run_cli(args: CliArgs) -> i32 {
       let command = match parse_command(cmd_text) {
         Ok(cmd) => cmd,
         Err(err) => {
-          eprintln!("Error: {err}");
+          emit_cli_line(errors, format_args!("Error: {err}"))?;
           if args.json {
             let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ParseError");
-            println!("{}", serde_json::to_string(&envelope).unwrap());
+            emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
           }
-          return 2;
+          return Ok(2);
         }
       };
       if command == Command::Exit {
         break;
       }
       if args.json && !crate::json_results::supports_batch_command(&command) {
-        return json_result_unsupported();
+        return json_result_unsupported(output, errors);
       }
       let result = match session.execute(command) {
         Ok(result) => result,
         Err(err) => {
-          eprintln!("Error: {err}");
+          emit_cli_line(errors, format_args!("Error: {err}"))?;
           if args.json {
             let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
-            println!("{}", serde_json::to_string(&envelope).unwrap());
+            emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
           }
-          return 1;
+          return Ok(1);
         }
       };
       if args.json {
         if let Some(envelope) = crate::json_results::serialize_execution_result(&result) {
-          println!("{envelope}");
+          emit_cli_line(output, envelope)?;
         } else {
-          return json_result_unsupported();
+          return json_result_unsupported(output, errors);
         }
       }
     }
-    return 0;
+    return Ok(0);
   }
 
   let script_path = args.file.or(args.positional_script);
@@ -434,23 +455,26 @@ pub fn run_cli(args: CliArgs) -> i32 {
     if path == Path::new("doctor") && !path.exists() {
       let mut session = Session::new();
       if let Err(err) = session.execute(Command::Doctor) {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         if args.json {
           let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
-          println!("{}", serde_json::to_string(&envelope).unwrap());
+          emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         }
-        return 1;
+        return Ok(1);
       }
-      return 0;
+      return Ok(0);
     }
 
     let mut session = Session::new();
+    let output_error = RefCell::new(None);
     let result = if args.json {
       session
         .execute_run_with_callbacks(
           &path,
           |command| {
-            if crate::json_results::supports_script_command(command) {
+            if output_error.borrow().is_some() {
+              Err("CLI output failed".to_owned())
+            } else if crate::json_results::supports_script_command(command) {
               Ok(())
             } else {
               Err(crate::json_results::SCRIPT_UNSUPPORTED_MESSAGE.to_owned())
@@ -459,17 +483,24 @@ pub fn run_cli(args: CliArgs) -> i32 {
           |result| {
             let envelope = crate::json_results::serialize_execution_result(result)
               .expect("JSON script preflight permits only serializable leaf results");
-            println!("{envelope}");
+            if let Err(error) = emit_cli_line(output, envelope) {
+              *output_error.borrow_mut() = Some(error);
+            }
           },
         )
         .map(|_| ())
     } else {
       session.execute_run(&path).map(|_| ())
     };
-    return match result {
+    // The observer cannot return an error. Keep the original I/O failure rather
+    // than expose the preflight stop as a command or located script failure.
+    if let Some(error) = output_error.into_inner() {
+      return Err(error);
+    }
+    return Ok(match result {
       Ok(_) => 0,
       Err(RuntimeError::ScriptError(err)) => {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         if args.json {
           let envelope = crate::catalog::ErrorEnvelope::with_location(
             err.message(),
@@ -477,7 +508,7 @@ pub fn run_cli(args: CliArgs) -> i32 {
             err.path().to_string_lossy(),
             err.line(),
           );
-          println!("{}", serde_json::to_string(&envelope).unwrap());
+          emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         }
         match err.kind() {
           tabdat_domain::ScriptErrorKind::Execution => 1,
@@ -486,26 +517,37 @@ pub fn run_cli(args: CliArgs) -> i32 {
         }
       }
       Err(err) => {
-        eprintln!("Error: {err}");
+        emit_cli_line(errors, format_args!("Error: {err}"))?;
         if args.json {
           let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
-          println!("{}", serde_json::to_string(&envelope).unwrap());
+          emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
         }
         1
       }
-    };
+    });
   }
 
-  crate::interactive::run_interactive()
+  Ok(crate::interactive::run_interactive())
 }
 
-fn json_result_unsupported() -> i32 {
-  const MESSAGE: &str = crate::json_results::BATCH_UNSUPPORTED_MESSAGE;
-  eprintln!("Error: {MESSAGE}");
-  let envelope = crate::catalog::ErrorEnvelope::new(MESSAGE, "JsonResultUnsupported");
-  println!("{}", serde_json::to_string(&envelope).unwrap());
-  2
+/// Run parsed CLI arguments. Noninteractive write/flush failures return 1;
+/// diagnostics are best-effort and completed command effects are not rolled back.
+pub fn run_cli(args: CliArgs) -> i32 {
+  let mut output = io::stdout();
+  let mut errors = io::stderr();
+  match run_cli_with_output(args, &mut output, &mut errors) {
+    Ok(code) => code,
+    Err(error) => {
+      // stderr may itself be broken; reporting is best-effort, exit 1 is not.
+      let _ = emit_cli_line(&mut errors, format_args!("Error: CLI I/O failed: {error}"));
+      1
+    }
+  }
 }
+
+#[cfg(test)]
+#[path = "cli_output_tests.rs"]
+mod output_tests;
 
 #[cfg(test)]
 mod tests {
