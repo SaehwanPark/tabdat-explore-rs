@@ -4,7 +4,12 @@ How to invoke:
 `run <script-path>`
 
 What it does:
-Execute a TabDat script file in the current session.
+Execute a TabDat script file in the current session. Interactive runs display successful
+leaf-command results in execution order, including nested scripts, then report the total
+executed-command count for that run. On error, prior results and completed state changes remain; the error identifies
+the script path/line and the shell remains usable. Scripts are sequential, not atomic.
+An interactive output failure is fatal and prevents subsequent data/file operations; it does not roll back
+an already completed command.
 
 What problem it answers:
 How do I replay a workflow deterministically?

@@ -51,8 +51,16 @@ ordered coefficient inference. Follow with `predict fitted`, `lincom x`, or
 reference-distribution test. These displays use existing results, not a second
 statistical calculation. Undefined inference displays as `NA`; regression
 coefficient confidence intervals are not added by the renderer.
-Other executed results explicitly report that terminal details are not yet supported. Batch/script output contracts
-are unchanged. There is no history, completion, or multiline interactive input.
+Other executed results explicitly report that terminal details are not yet
+supported. Batch/script output contracts are unchanged. Interactive
+`run analysis.td` streams successful leaf results, including nested scripts,
+then reports the total executed-command count for that run. A script error keeps prior displayed
+results and completed state changes and returns to the shell with its source
+path/line; scripts are sequential, not atomic. A terminal output failure ends
+the session and prevents subsequent data/file operations, but does not
+roll back an already completed command.
+
+There is no history, completion, or multiline interactive input.
 Ctrl-C retains default OS process termination; recoverable cancellation and
 in-flight file-write safety are not promised.
 

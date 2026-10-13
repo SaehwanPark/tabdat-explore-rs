@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::io::{self, BufRead, IsTerminal, Write};
 
 use tabdat_execution::Session;
@@ -45,7 +46,38 @@ fn run_session(
     if command == Command::Exit {
       return Ok(());
     }
-    match session.execute(command) {
+    let result = if let Command::Run { path } = command {
+      // The observer API is infallible. Retain an IO failure and reject the next
+      // command before execution, so a broken output stream cannot hide later
+      // data/file mutations. Script-local directives have no lasting effects.
+      let output_failed = Cell::new(false);
+      let mut io_failure = None;
+      let result = session.execute_run_with_callbacks(
+        path,
+        |_| {
+          if output_failed.get() {
+            Err("interactive output failed".to_owned())
+          } else {
+            Ok(())
+          }
+        },
+        |result| {
+          if let Err(error) =
+            write!(output, "{}", render_execution_result(result)).and_then(|_| output.flush())
+          {
+            output_failed.set(true);
+            io_failure = Some(error);
+          }
+        },
+      );
+      if let Some(error) = io_failure {
+        return Err(error);
+      }
+      result.map(tabdat_domain::ExecutionResult::Run)
+    } else {
+      session.execute(command)
+    };
+    match result {
       Ok(result) => {
         write!(output, "{}", render_execution_result(&result))?;
         output.flush()?;
@@ -113,6 +145,68 @@ mod tests {
     .unwrap();
     assert!(output.is_empty());
     assert!(errors.is_empty());
+  }
+
+  #[test]
+  fn script_output_failure_prevents_later_script_and_shell_file_writes() {
+    struct FailedOutput {
+      fail_on_flush: bool,
+    }
+    impl Write for FailedOutput {
+      fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.fail_on_flush {
+          Ok(bytes.len())
+        } else {
+          Err(io::Error::other("write failed"))
+        }
+      }
+      fn flush(&mut self) -> io::Result<()> {
+        Err(io::Error::other("flush failed"))
+      }
+    }
+    for fail_on_flush in [false, true] {
+      let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+      let root = std::env::temp_dir().join(format!(
+        "tabdat-script-output-{}-{nonce}",
+        std::process::id()
+      ));
+      std::fs::create_dir(&root).unwrap();
+      let csv = root.join("data.csv");
+      let script = root.join("parent.td");
+      let script_output = root.join("script.csv");
+      let shell_output = root.join("shell.csv");
+      std::fs::write(&csv, "x\n1\n").unwrap();
+      std::fs::write(
+        &script,
+        format!(
+          "use {}\nexport {}\n",
+          csv.display(),
+          script_output.display()
+        ),
+      )
+      .unwrap();
+      let input = format!(
+        "run {}\nexport {}\n",
+        script.display(),
+        shell_output.display()
+      );
+      let result = run_session(
+        &mut Cursor::new(input.as_bytes()),
+        &mut FailedOutput { fail_on_flush },
+        &mut Vec::new(),
+        false,
+      );
+      let written = script_output.exists() || shell_output.exists();
+      std::fs::remove_dir_all(&root).unwrap();
+      assert!(result.is_err());
+      assert!(
+        !written,
+        "commands after a broken output stream must not write files"
+      );
+    }
   }
 
   #[test]
