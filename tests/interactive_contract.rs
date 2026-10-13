@@ -77,6 +77,90 @@ fn errors_recover_and_failed_load_preserves_the_previous_dataset() {
 }
 
 #[test]
+fn frequency_tables_preserve_numeric_order_missingness_and_percent_headers() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("categories.csv"),
+    "cat,grp\n10,A\n2,B\n-1,A\n,\n",
+  )
+  .unwrap();
+  let output = run(&fixture, b"use categories.csv\ntabulate cat\ntabulate cat, missing\ntabulate cat grp, missing row col\nexit\n");
+  assert!(output.status.success());
+  assert!(
+    output.stderr.is_empty(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  let tables: Vec<_> = stdout.split("cat\tCount\tPercent\n").collect();
+  assert_eq!(tables.len(), 3);
+  let without_missing = tables[1];
+  assert!(!without_missing.contains("NA\t"));
+  assert!(without_missing.find("-1\t1\t").unwrap() < without_missing.find("2\t1\t").unwrap());
+  assert!(without_missing.find("2\t1\t").unwrap() < without_missing.find("10\t1\t").unwrap());
+  assert!(tables[2].starts_with("-1\t1\t25\n2\t1\t25\n10\t1\t25\nNA\t1\t25\n(4 rows shown)\n"));
+  assert!(stdout.contains("cat\tA Count\tA Row %\tA Col %\tB Count\tB Row %\tB Col %\tmissing Count\tmissing Row %\tmissing Col %\n"));
+  assert!(stdout.contains("-1\t1\t100\t50\t0\t0\t0\t0\t0\t0\n"));
+}
+
+#[test]
+fn transformed_data_reports_outcomes_and_roundtrips_through_save_and_export() {
+  let fixture = Fixture::new();
+  let output = run(&fixture, b"use data.csv\ngenerate z = x * 2\nreplace z = z + 1\nrename z result\ngsort -x\nsort x\nkeep x y result\ndrop x\nselect result y\nsave result.parquet\nexport result.csv\nuse result.parquet\nhead 2\nuse result.csv\nhead 2\nexit\n");
+  assert!(output.status.success());
+  assert!(
+    output.stderr.is_empty(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  for message in [
+    "Generated: 2 rows, 3 columns",
+    "Replaced: 2 rows, 3 columns",
+    "Renamed: 2 rows, 3 columns",
+    "Sorted: 2 rows, 3 columns",
+    "Kept: 2 rows, 3 columns",
+    "Dropped: 2 rows, 2 columns",
+    "Selected: 2 rows, 2 columns",
+    "Saved 2 rows, 2 columns to result.parquet",
+    "Exported 2 rows, 2 columns to result.csv",
+  ] {
+    assert!(stdout.contains(message), "missing {message}: {stdout}");
+  }
+  assert_eq!(
+    stdout
+      .matches("result\ty\n3\t2\n7\tNA\n(2 rows shown)\n")
+      .count(),
+    2
+  );
+  assert!(fixture.0.join("result.parquet").is_file());
+  assert_eq!(
+    fs::read_to_string(fixture.0.join("result.csv")).unwrap(),
+    "result,y\n3,2\n7,\n"
+  );
+  assert!(!stdout.contains("terminal details"));
+}
+
+#[test]
+fn failed_transformations_and_refused_overwrite_do_not_report_success_or_lose_data() {
+  let fixture = Fixture::new();
+  let path = fixture.0.join("existing.csv");
+  fs::write(&path, "sentinel\n").unwrap();
+  let output = run(&fixture, b"use data.csv\nreplace absent = x\nkeep absent\nexport existing.csv\nsave invalid.csv\nhead 2\ncount\nexit\n");
+  assert!(output.status.success());
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 4, "{stderr}");
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  for success in ["Replaced:", "Kept:", "Exported", "Saved"] {
+    assert!(!stdout.contains(success));
+  }
+  assert!(stdout.contains("x\ty\n1\t2\n3\tNA\n(2 rows shown)\n"));
+  assert!(stdout.ends_with("2 rows\n"));
+  assert_eq!(fs::read_to_string(path).unwrap(), "sentinel\n");
+  assert!(!fixture.0.join("invalid.csv").exists());
+}
+
+#[test]
 fn eof_executes_the_final_unterminated_line_and_io_errors_are_fatal() {
   let fixture = Fixture::new();
   let output = run(&fixture, b"use data.csv\ncount");

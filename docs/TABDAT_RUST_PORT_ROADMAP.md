@@ -33,6 +33,12 @@ cancellation remain deferred; default OS SIGINT terminates the process.
 
 ### 2. Close the core EDA loop
 
+The shell now reports bounded frequency tables, common transformation metadata
+and save/export outcomes ([PR #197](https://github.com/SaehwanPark/tabdat-explore-rs/pull/197)).
+Binary fixtures cover ordering/missingness, transformed CSV/Parquet roundtrips,
+and failed transformation/refused-overwrite recovery. Broader options and other
+result families remain command-specific; this is not whole-command parity.
+
 **Goal:** common local-data workflows are functional through the actual CLI/REPL.
 
 - `use`, `describe`, `head`/`tail`, `summarize`, `tabulate`, a practical subset of

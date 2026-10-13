@@ -39,8 +39,12 @@ piped input is also accepted, with no greeting or prompts. A clean exit returns
 `-c`/`-f` modes when command failures must determine a process exit code.
 
 Readable terminal details currently cover load, describe, summarize, count,
-head/tail, SQL table results and run metadata. Other executed results explicitly
-report that terminal details are not yet supported. Batch/script output contracts
+head/tail, frequency tables, SQL table results and run metadata. Core
+`generate`/`replace`, rename, sort/gsort and keep/drop/select report updated
+row/column counts; save/export confirm the written path and row/column counts. Table output
+preserves existing result order and labels; SQL-null cells display as `NA`, while
+text is quoted to distinguish literal `"NA"` and escape control characters.
+Other executed results explicitly report that terminal details are not yet supported. Batch/script output contracts
 are unchanged. There is no history, completion, or multiline interactive input.
 Ctrl-C retains default OS process termination; recoverable cancellation and
 in-flight file-write safety are not promised.
