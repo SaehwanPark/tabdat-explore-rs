@@ -31,8 +31,8 @@ cargo test --locked --example measure_core_workflow
 `--rows` accepts 4..=1000000; `--repetitions` accepts 1..=50. Defaults are 10000
 and 7. Large combinations cost more time/memory. `--label` is supplied context,
 not an inferred/verified optimization level; the harness records its own debug
-assertion flag separately. Keep reports with `git rev-parse HEAD`, `rustc
---version`, build flags, CPU/OS details, row count and repetitions. Compare only
+assertion flag separately. Keep reports with `git rev-parse HEAD`,
+`rustc --version`, build flags, CPU/OS details, row count and repetitions. Compare only
 matching workloads/profiles on a reasonably idle machine; retain raw samples.
 
 ## What is timed
@@ -67,7 +67,8 @@ implied. Benchmark those separately when an actual need appears.
 A temporary CSV contains `i=0..N-1`, `x=i/N`,
 `y=3+2*x+alternating(-1,+1)` and `group=i%10`; all values are finite.
 The predictor is normalized to [0,1) so the baseline measures a well-conditioned
-core workload, not accuracy under increasing predictor magnitude. The tool validates CLI-v1 tags/counts, ordered means,
+core workload, not accuracy under increasing predictor magnitude. The tool
+validates CLI-v1 tags/counts, ordered means,
 OLS/intercept/nonrobust metadata and sample size/DF, predictions and row order.
 Session cases also check exact retained indices `0..N`. Independent algebra gives:
 
@@ -75,8 +76,9 @@ Session cases also check exact retained indices `0..N`. Independent algebra give
 - Odd N: slope `2`, intercept `3-1/N`.
 
 Means, coefficients and preview predictions use a fixed absolute **1e-8** health
-check tolerance for this normalized fixture up to 1000000 rows. This is not a new estimator/inference
-validation contract, and it does not relax existing statistical test tolerances.
+check tolerance for this normalized fixture up to 1000000 rows. This is not a new
+estimator/inference validation contract, and it does not relax existing statistical
+test tolerances.
 An initial unscaled `x=i` one-million-row trial failed this guard: intercept
 2.999996908512485 versus exact 2.999997000003 (about 9.15e-8 absolute drift).
 Exact rational algebra and a NumPy centered-noise calculation agree on the latter;

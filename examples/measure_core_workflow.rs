@@ -279,10 +279,11 @@ fn sample_session(fixture: &Fixture, rows: usize, source: &str, kind: &str) -> R
     envelope(&mut session, fixture.load()?)?;
   }
   if kind == "PredictionResult" {
-    envelope(
+    let fit = envelope(
       &mut session,
       parse_command("regress y x").map_err(|error| error.to_string())?,
     )?;
+    validate(&fit, "RegressionResult", rows)?;
   }
   let start = Instant::now();
   let result = session
