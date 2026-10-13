@@ -1,0 +1,198 @@
+[
+  {
+    "input": "by: summarize age",
+    "difference": "expected error \"unknown command: by\", got Err(ParseError { message: \"unknown command: by:\" })"
+  },
+  {
+    "input": "collapse mean age, by()",
+    "difference": "expected error \"option by expects at least one value\", got Err(ParseError { message: \"collapse by() expects at least one grouping variable\" })"
+  },
+  {
+    "input": "drop if sex == 'F'",
+    "difference": "expected drop, got error drop if execution is deferred in the bounded runtime"
+  },
+  {
+    "input": "estat bayes",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat did",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat dml",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat gof",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat margins",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat ovtest",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat report",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat report, invalid",
+    "difference": "expected error \"estat report unsupported option: invalid\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat report, noopen",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat report, saving()",
+    "difference": "expected error \"option saving expects at least one value\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat report, saving(my_report.html)",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat residuals",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat residuals, coord(lat lon)",
+    "difference": "expected error \"estat residuals does not support options\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat residuals, detail",
+    "difference": "expected error \"estat residuals does not support options\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial",
+    "difference": "expected error \"estat spatial requires either coord() or weights() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial, coord(lat lon) id(neighborhood)",
+    "difference": "expected error \"estat spatial option id can only be used with weights() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial, coord(lat lon) knn(5)",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat spatial, coord(lat lon) weights(columbus.gal)",
+    "difference": "expected error \"estat spatial option coord and weights are mutually exclusive\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial, coord(lat) knn(5)",
+    "difference": "expected error \"estat spatial option coord expects exactly two variables representing latitude and longitude coordinates\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(invalid)",
+    "difference": "expected error \"estat spatial option contiguity must be 'queen' or 'rook'\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(rook)",
+    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+  },
+  {
+    "input": "estat spatial, weights(columbus.gal) knn(5)",
+    "difference": "expected error \"estat spatial option knn/coord can only be used with coord() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
+  },
+  {
+    "input": "keep if `if` == 1",
+    "difference": "expected keep, got error keep if execution is deferred in the bounded runtime"
+  },
+  {
+    "input": "keep if age >= 18",
+    "difference": "expected keep, got error keep if execution is deferred in the bounded runtime"
+  },
+  {
+    "input": "reshape long income, i() j(year)",
+    "difference": "expected error \"option i expects at least one value\", got Err(ParseError { message: \"reshape expects exactly one i(id_vars) option\" })"
+  },
+  {
+    "input": "summarize age `bmi-zscore` if age >= 18",
+    "difference": "expected parsed, got error summarize does not accept if clauses or options"
+  },
+  {
+    "input": "summarize age bmi, detail limit=10",
+    "difference": "expected parsed, got error summarize does not accept if clauses or options"
+  },
+  {
+    "input": "summarize age if age $ 18",
+    "difference": "expected error \"unsupported token in command: $\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age if age > 18 if bmi > 20",
+    "difference": "expected error \"duplicate if clause\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age if age >=",
+    "difference": "expected error \"incomplete expression after >=\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age if if age > 18",
+    "difference": "expected error \"duplicate if clause\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age if sex == \"F",
+    "difference": "expected error \"unterminated quoted string\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age if sex == \"F\", detail",
+    "difference": "expected parsed, got error summarize does not accept if clauses or options"
+  },
+  {
+    "input": "summarize age, limit 10",
+    "difference": "expected error \"option limit value must use option=value syntax\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "summarize age, limit=",
+    "difference": "expected error \"option limit requires a value after =\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
+  },
+  {
+    "input": "tabulate",
+    "difference": "expected error \"tabulate expects one or two variables or rows()/columns() options\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
+  },
+  {
+    "input": "tabulate age bmi sex",
+    "difference": "expected error \"tabulate expects one or two variables or rows()/columns() options\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
+  },
+  {
+    "input": "tabulate age bmi, stat(mean)",
+    "difference": "expected error \"tabulate values() and stat() must be specified together\", got Err(ParseError { message: \"tabulate unsupported option: stat\" })"
+  },
+  {
+    "input": "tabulate age bmi, values(cost)",
+    "difference": "expected error \"tabulate values() and stat() must be specified together\", got Err(ParseError { message: \"tabulate unsupported option: values\" })"
+  },
+  {
+    "input": "tabulate age bmi, values(cost) stat(mean) row",
+    "difference": "expected error \"tabulate row and col percentages are only supported for frequencies\", got Err(ParseError { message: \"tabulate unsupported option: stat, values\" })"
+  },
+  {
+    "input": "tabulate age, row",
+    "difference": "expected error \"one-way tabulate does not accept row or col options\", got Err(ParseError { message: \"tabulate one-way tables do not accept row or col options\" })"
+  },
+  {
+    "input": "tabulate sex if age >= 18",
+    "difference": "expected tabulate, got error tabulate expects one or two variables"
+  },
+  {
+    "input": "tabulate, rows(age age)",
+    "difference": "expected error \"tabulate duplicate variable: age\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
+  },
+  {
+    "input": "tabulate, rows(age) columns(age)",
+    "difference": "expected error \"tabulate duplicate variable: age\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
+  },
+  {
+    "input": "tabulate, rows(age) values(age) stat(mean)",
+    "difference": "expected error \"tabulate values() variable cannot also be a row or column variable\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
+  },
+  {
+    "input": "tabulate, rows(region sex) columns(outcome year) values(cost) stat(mean)",
+    "difference": "expected tabulate, got error tabulate expects one or two variables"
+  }
+]

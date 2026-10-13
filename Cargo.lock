@@ -1237,6 +1237,7 @@ dependencies = [
 name = "tabdat-language"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "tabdat-domain",
  "tabdat-io",
 ]

@@ -1,0 +1,5567 @@
+{
+  "revision": "16b45d9b66b0d80f32d4d220e84d81bc5180bdbe",
+  "tree": "601b236788872323af9277d2276a236154a0f129",
+  "python": "3.13.3 (main, Apr  9 2025, 03:47:57) [Clang 20.1.0 ]",
+  "pytest": "9.0.3",
+  "cases": [
+    {
+      "input": "",
+      "error": "empty command"
+    },
+    {
+      "input": "?",
+      "command": {
+        "type": "HelpCommand",
+        "fields": {
+          "topic": null
+        }
+      }
+    },
+    {
+      "input": "? summarize",
+      "command": {
+        "type": "HelpCommand",
+        "fields": {
+          "topic": "summarize"
+        }
+      }
+    },
+    {
+      "input": "append",
+      "error": "append expects syntax: append <table>"
+    },
+    {
+      "input": "append active",
+      "error": "sql into cannot use reserved table name: active"
+    },
+    {
+      "input": "append bad-name",
+      "error": "unsupported token in command: -"
+    },
+    {
+      "input": "append followup",
+      "command": {
+        "type": "AppendCommand",
+        "fields": {
+          "table_name": "followup"
+        }
+      }
+    },
+    {
+      "input": "append followup extra",
+      "error": "append expects syntax: append <table>"
+    },
+    {
+      "input": "append followup if age > 18",
+      "error": "append expects syntax: append <table>"
+    },
+    {
+      "input": "append followup, replace",
+      "error": "append expects syntax: append <table>"
+    },
+    {
+      "input": "bar",
+      "error": "bar expects exactly one variable"
+    },
+    {
+      "input": "bar sex age",
+      "error": "bar expects exactly one variable"
+    },
+    {
+      "input": "bar sex, bins=20",
+      "error": "bar unsupported option: bins"
+    },
+    {
+      "input": "bar sex, missing noopen",
+      "command": {
+        "type": "BarCommand",
+        "fields": {
+          "variable": "sex",
+          "saving": null,
+          "include_missing": true,
+          "open_artifact": false
+        }
+      }
+    },
+    {
+      "input": "bar sex, missing=true",
+      "error": "bar option missing does not accept a value"
+    },
+    {
+      "input": "bayes",
+      "error": "bayes expects syntax: bayes linear <y> <xvars>"
+    },
+    {
+      "input": "bayes linear",
+      "error": "bayes expects syntax: bayes linear <y> <xvars>"
+    },
+    {
+      "input": "bayes linear cost age bmi",
+      "command": {
+        "type": "BayesCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "n_iter": 300,
+          "tol": 0.001,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "bayes linear cost age, n_iter(100) tol(1e-5) noconstant",
+      "command": {
+        "type": "BayesCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "n_iter": 100,
+          "tol": 1e-05,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "bayes linear cost age, n_iter(500)",
+      "command": {
+        "type": "BayesCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "n_iter": 500,
+          "tol": 0.001,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "bayes linear cost age, tol(1e-4)",
+      "command": {
+        "type": "BayesCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "n_iter": 300,
+          "tol": 0.0001,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "bayes linear y",
+      "error": "bayes expects syntax: bayes linear <y> <xvars>"
+    },
+    {
+      "input": "bayes linear y x if y > 0",
+      "error": "bayes expects syntax: bayes linear <y> <xvars>"
+    },
+    {
+      "input": "bayes linear y x, alpha(1)",
+      "error": "bayes unsupported option: alpha"
+    },
+    {
+      "input": "bayes linear y x, n_iter()",
+      "error": "option n_iter expects at least one value"
+    },
+    {
+      "input": "bayes linear y x, n_iter(-10)",
+      "error": "bayes option n_iter must be at least 1"
+    },
+    {
+      "input": "bayes linear y x, robust",
+      "error": "bayes unsupported option: robust"
+    },
+    {
+      "input": "bayes linear y x, tol()",
+      "error": "option tol expects at least one value"
+    },
+    {
+      "input": "bayes linear y x, tol(-0.5)",
+      "error": "bayes option tol must be positive"
+    },
+    {
+      "input": "bayes logistic y x",
+      "error": "bayes model must be linear"
+    },
+    {
+      "input": "bayes, draws(500) burnin(200) chains(2) thin(2) seed(123): regress y x",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": 500,
+          "burnin": 200,
+          "chains": 2,
+          "thin": 2,
+          "seed": 123,
+          "priors": []
+        }
+      }
+    },
+    {
+      "input": "bayes, prior(`x:y`, normal): regress `outcome col` `x:y`",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "outcome col",
+              "predictors": [
+                "x:y"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": null,
+          "burnin": null,
+          "chains": null,
+          "thin": null,
+          "seed": null,
+          "priors": [
+            [
+              "x:y",
+              "normal"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "input": "bayes, prior(x, normal(0, 10)) prior(intercept, uniform(-5, 5)): logit y x",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "LogitCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": null,
+          "burnin": null,
+          "chains": null,
+          "thin": null,
+          "seed": null,
+          "priors": [
+            [
+              "x",
+              "normal(0,10)"
+            ],
+            [
+              "intercept",
+              "uniform(-5,5)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "input": "bayes, rseed(42): regress y x",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": null,
+          "burnin": null,
+          "chains": null,
+          "thin": null,
+          "seed": 42,
+          "priors": []
+        }
+      }
+    },
+    {
+      "input": "bayes, tune(100): regress y x",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": null,
+          "burnin": 100,
+          "chains": null,
+          "thin": null,
+          "seed": null,
+          "priors": []
+        }
+      }
+    },
+    {
+      "input": "bayes: codebook",
+      "error": "bayes prefix only supports regress and logit commands"
+    },
+    {
+      "input": "bayes: regress y x",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": true
+            }
+          },
+          "draws": null,
+          "burnin": null,
+          "chains": null,
+          "thin": null,
+          "seed": null,
+          "priors": []
+        }
+      }
+    },
+    {
+      "input": "bayes: regress y x, noconstant",
+      "command": {
+        "type": "BayesPrefixCommand",
+        "fields": {
+          "command": {
+            "type": "RegressCommand",
+            "fields": {
+              "outcome": "y",
+              "predictors": [
+                "x"
+              ],
+              "estimator": "ols",
+              "weight_variable": null,
+              "robust": false,
+              "cluster_variable": null,
+              "include_intercept": false
+            }
+          },
+          "draws": null,
+          "burnin": null,
+          "chains": null,
+          "thin": null,
+          "seed": null,
+          "priors": []
+        }
+      }
+    },
+    {
+      "input": "bayesplot",
+      "error": "bayesplot expects syntax: bayesplot <trace|density|autocorrelation>"
+    },
+    {
+      "input": "bayesplot autocorrelation",
+      "command": {
+        "type": "BayesPlotCommand",
+        "fields": {
+          "kind": "autocorrelation",
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "bayesplot density, saving(figures/bayes-density.svg) noopen",
+      "command": {
+        "type": "BayesPlotCommand",
+        "fields": {
+          "kind": "density",
+          "saving": "figures/bayes-density.svg",
+          "open_artifact": false
+        }
+      }
+    },
+    {
+      "input": "bayesplot scatter",
+      "error": "bayesplot kind must be trace, density, or autocorrelation"
+    },
+    {
+      "input": "bayesplot trace",
+      "command": {
+        "type": "BayesPlotCommand",
+        "fields": {
+          "kind": "trace",
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "bayesplot trace density",
+      "error": "bayesplot expects syntax: bayesplot <trace|density|autocorrelation>"
+    },
+    {
+      "input": "bayesplot trace if x > 0",
+      "error": "bayesplot does not accept if clauses or assignment syntax"
+    },
+    {
+      "input": "bayesplot trace, bins=10",
+      "error": "bayesplot unsupported option: bins"
+    },
+    {
+      "input": "bayesplot trace, noopen(on)",
+      "error": "bayesplot option noopen does not accept a value"
+    },
+    {
+      "input": "by `group:key`: summarize `value col`",
+      "command": {
+        "type": "ByCommand",
+        "fields": {
+          "groups": [
+            "group:key"
+          ],
+          "command": {
+            "type": "SummarizeCommand",
+            "fields": {
+              "variables": [
+                "value col"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "by sex age: count",
+      "command": {
+        "type": "ByCommand",
+        "fields": {
+          "groups": [
+            "sex",
+            "age"
+          ],
+          "command": {
+            "type": "CountCommand",
+            "fields": {}
+          }
+        }
+      }
+    },
+    {
+      "input": "by sex:",
+      "error": "by expects a command after :"
+    },
+    {
+      "input": "by sex: by age: count",
+      "error": "nested by commands are not supported"
+    },
+    {
+      "input": "by sex: help summarize",
+      "error": "help is not supported inside by commands"
+    },
+    {
+      "input": "by sex: status",
+      "error": "status is not supported inside by commands"
+    },
+    {
+      "input": "by sex: summarize age cost",
+      "command": {
+        "type": "ByCommand",
+        "fields": {
+          "groups": [
+            "sex"
+          ],
+          "command": {
+            "type": "SummarizeCommand",
+            "fields": {
+              "variables": [
+                "age",
+                "cost"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "by: summarize age",
+      "error": "unknown command: by"
+    },
+    {
+      "input": "cfregress",
+      "error": "cfregress expects syntax: cfregress <y> [exog_vars], endog(<var>) iv(<vars>)"
+    },
+    {
+      "input": "cfregress cost age bmi, endog(hours) iv(distance policy)",
+      "command": {
+        "type": "CfRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [
+            "age",
+            "bmi"
+          ],
+          "endogenous": "hours",
+          "instruments": [
+            "distance",
+            "policy"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cfregress cost age, endog(hours) iv(distance) cluster(group_id) noconstant",
+      "command": {
+        "type": "CfRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [
+            "age"
+          ],
+          "endogenous": "hours",
+          "instruments": [
+            "distance"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "cfregress cost, endog(hours) iv(distance) robust",
+      "command": {
+        "type": "CfRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [],
+          "endogenous": "hours",
+          "instruments": [
+            "distance"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cfregress y x",
+      "error": "cfregress option endog expects one variable"
+    },
+    {
+      "input": "cfregress y x, endog(z w) iv(q)",
+      "error": "cfregress option endog expects one variable"
+    },
+    {
+      "input": "cfregress y x, endog(z)",
+      "error": "cfregress option iv expects at least one variable"
+    },
+    {
+      "input": "cfregress y x, endog(z) iv()",
+      "error": "option iv expects at least one value"
+    },
+    {
+      "input": "cfregress y x, endog(z) iv(w) robust cluster(g)",
+      "error": "cfregress cannot combine robust and cluster"
+    },
+    {
+      "input": "cfregress y x, endog(z) iv(w) robust=true",
+      "error": "cfregress option robust does not accept a value"
+    },
+    {
+      "input": "cfregress y x, iv(w)",
+      "error": "cfregress option endog expects one variable"
+    },
+    {
+      "input": "cfregress y z, endog(z) iv(w)",
+      "error": "cfregress endog variable must not appear in exogenous variables"
+    },
+    {
+      "input": "codebook",
+      "command": {
+        "type": "CodebookCommand",
+        "fields": {
+          "variables": []
+        }
+      }
+    },
+    {
+      "input": "codebook age if age > 18",
+      "error": "codebook does not accept if clauses or options"
+    },
+    {
+      "input": "codebook age sex",
+      "command": {
+        "type": "CodebookCommand",
+        "fields": {
+          "variables": [
+            "age",
+            "sex"
+          ]
+        }
+      }
+    },
+    {
+      "input": "codebook age, detail",
+      "error": "codebook does not accept if clauses or options"
+    },
+    {
+      "input": "collapse `mean` age, by(sex)",
+      "error": "collapse unsupported statistic: mean"
+    },
+    {
+      "input": "collapse mean age",
+      "error": "collapse expects exactly one by(group_vars) option"
+    },
+    {
+      "input": "collapse mean age cost, by(sex)",
+      "command": {
+        "type": "CollapseCommand",
+        "fields": {
+          "statistic": "mean",
+          "variables": [
+            "age",
+            "cost"
+          ],
+          "groups": [
+            "sex"
+          ]
+        }
+      }
+    },
+    {
+      "input": "collapse mean age, by()",
+      "error": "option by expects at least one value"
+    },
+    {
+      "input": "collapse median age, by(sex)",
+      "error": "collapse unsupported statistic: median"
+    },
+    {
+      "input": "count",
+      "command": {
+        "type": "CountCommand",
+        "fields": {}
+      }
+    },
+    {
+      "input": "count age",
+      "error": "count does not accept arguments, if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "count if age > 18",
+      "error": "count does not accept arguments, if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "cvelasticnet linear cost age bmi",
+      "command": {
+        "type": "CvelasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "cv": 5,
+          "l1_ratio": [
+            0.1,
+            0.5,
+            0.7,
+            0.9,
+            0.95,
+            0.99,
+            1.0
+          ],
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvelasticnet linear cost age, l1_ratio()",
+      "error": "option l1_ratio expects at least one value"
+    },
+    {
+      "input": "cvelasticnet linear cost age, l1_ratio(0.1 0.5 0.9)",
+      "command": {
+        "type": "CvelasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "cv": 5,
+          "l1_ratio": [
+            0.1,
+            0.5,
+            0.9
+          ],
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvelasticnet linear cost age, l1_ratio(0.3)",
+      "command": {
+        "type": "CvelasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "cv": 5,
+          "l1_ratio": 0.3,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvlasso linear cost age bmi",
+      "command": {
+        "type": "CvlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "cv": 5,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvlasso linear cost age, cv(3)",
+      "command": {
+        "type": "CvlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "cv": 3,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvlasso linear cost age, noconstant",
+      "command": {
+        "type": "CvlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "cv": 5,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "cvridge linear cost age bmi",
+      "command": {
+        "type": "CvridgeCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "cv": 5,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "cvridge linear cost age, cv(10)",
+      "command": {
+        "type": "CvridgeCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "cv": 10,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "describe",
+      "command": {
+        "type": "DescribeCommand",
+        "fields": {}
+      }
+    },
+    {
+      "input": "describe age",
+      "error": "describe does not accept arguments, if clauses, or options"
+    },
+    {
+      "input": "describe if age > 18",
+      "error": "describe does not accept arguments, if clauses, or options"
+    },
+    {
+      "input": "did",
+      "error": "did expects syntax: did <y> [controls], treat(<var>) post(<var>)"
+    },
+    {
+      "input": "did wage exper tenure, treat(treated) post(post)",
+      "command": {
+        "type": "DidCommand",
+        "fields": {
+          "outcome": "wage",
+          "controls": [
+            "exper",
+            "tenure"
+          ],
+          "treatment_variable": "treated",
+          "post_variable": "post",
+          "robust": false
+        }
+      }
+    },
+    {
+      "input": "did wage, treat(treated) post(post) robust",
+      "command": {
+        "type": "DidCommand",
+        "fields": {
+          "outcome": "wage",
+          "controls": [],
+          "treatment_variable": "treated",
+          "post_variable": "post",
+          "robust": true
+        }
+      }
+    },
+    {
+      "input": "did y",
+      "error": "did option treat expects one variable"
+    },
+    {
+      "input": "did y x",
+      "error": "did option treat expects one variable"
+    },
+    {
+      "input": "did y x, robust",
+      "error": "did option treat expects one variable"
+    },
+    {
+      "input": "did y x, treat() post(p)",
+      "error": "option treat expects at least one value"
+    },
+    {
+      "input": "did y x, treat(t p) post(p)",
+      "error": "did option treat expects one variable"
+    },
+    {
+      "input": "did y x, treat(t) post()",
+      "error": "option post expects at least one value"
+    },
+    {
+      "input": "did y x, treat(t) post(p q)",
+      "error": "did option post expects one variable"
+    },
+    {
+      "input": "did y x, treat(t) post(p) cluster(g)",
+      "error": "did unsupported option: cluster"
+    },
+    {
+      "input": "did y x, treat(t) post(p) robust=true",
+      "error": "did option robust does not accept a value"
+    },
+    {
+      "input": "dml",
+      "error": "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]"
+    },
+    {
+      "input": "dml linear",
+      "error": "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]"
+    },
+    {
+      "input": "dml linear y",
+      "error": "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]"
+    },
+    {
+      "input": "dml linear y x if y > 0, treat(d)",
+      "error": "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]"
+    },
+    {
+      "input": "dml linear y x, alpha()",
+      "error": "option alpha expects at least one value"
+    },
+    {
+      "input": "dml linear y x, alpha(-1)",
+      "error": "dml option treat expects one variable"
+    },
+    {
+      "input": "dml linear y x, folds(1)",
+      "error": "dml option treat expects one variable"
+    },
+    {
+      "input": "dml linear y x, treat()",
+      "error": "option treat expects at least one value"
+    },
+    {
+      "input": "dml linear y x, treat(d) robust=true",
+      "error": "dml option robust does not accept a value"
+    },
+    {
+      "input": "dml linear y x1 x2, treat(d)",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1",
+            "x2"
+          ],
+          "treatment_variable": "d",
+          "folds": 5,
+          "alpha": 1.0,
+          "robust": false,
+          "seed": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "dml linear y x1 x2, treat(d) alpha(0.5)",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1",
+            "x2"
+          ],
+          "treatment_variable": "d",
+          "folds": 5,
+          "alpha": 0.5,
+          "robust": false,
+          "seed": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "dml linear y x1, treat(d) folds(3)",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1"
+          ],
+          "treatment_variable": "d",
+          "folds": 3,
+          "alpha": 1.0,
+          "robust": false,
+          "seed": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "dml linear y x1, treat(d) noconstant",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1"
+          ],
+          "treatment_variable": "d",
+          "folds": 5,
+          "alpha": 1.0,
+          "robust": false,
+          "seed": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "dml linear y x1, treat(d) robust",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1"
+          ],
+          "treatment_variable": "d",
+          "folds": 5,
+          "alpha": 1.0,
+          "robust": true,
+          "seed": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "dml linear y x1, treat(d) seed(42)",
+      "command": {
+        "type": "DmlCommand",
+        "fields": {
+          "outcome": "y",
+          "controls": [
+            "x1"
+          ],
+          "treatment_variable": "d",
+          "folds": 5,
+          "alpha": 1.0,
+          "robust": false,
+          "seed": 42,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "dml linear y, treat(d)",
+      "error": "dml expects syntax: dml linear <y> <controls>, treat(<var>) [folds(<int>) alpha(<num>) robust seed(<int>) noconstant]"
+    },
+    {
+      "input": "dml logistic y x, treat(d)",
+      "error": "dml model must be linear"
+    },
+    {
+      "input": "drdid",
+      "error": "drdid expects syntax: drdid <y> [covariates], treat(<var>) post(<var>) [method(or|ipw|aipw) robust bootstrap(<n>) seed(<n>)]"
+    },
+    {
+      "input": "drdid wage exper tenure, treat(treated) post(post)",
+      "command": {
+        "type": "DrDidCommand",
+        "fields": {
+          "outcome": "wage",
+          "covariates": [
+            "exper",
+            "tenure"
+          ],
+          "treatment_variable": "treated",
+          "post_variable": "post",
+          "method": "aipw",
+          "robust": false,
+          "bootstrap": null,
+          "seed": null
+        }
+      }
+    },
+    {
+      "input": "drdid wage, treat(treated) post(post) method(or) robust bootstrap(100) seed(42)",
+      "command": {
+        "type": "DrDidCommand",
+        "fields": {
+          "outcome": "wage",
+          "covariates": [],
+          "treatment_variable": "treated",
+          "post_variable": "post",
+          "method": "or",
+          "robust": true,
+          "bootstrap": 100,
+          "seed": 42
+        }
+      }
+    },
+    {
+      "input": "drdid y",
+      "error": "drdid option treat expects one variable"
+    },
+    {
+      "input": "drdid y x",
+      "error": "drdid option treat expects one variable"
+    },
+    {
+      "input": "drdid y x, robust",
+      "error": "drdid option treat expects one variable"
+    },
+    {
+      "input": "drdid y x, treat() post(p)",
+      "error": "option treat expects at least one value"
+    },
+    {
+      "input": "drdid y x, treat(t p) post(p)",
+      "error": "drdid option treat expects one variable"
+    },
+    {
+      "input": "drdid y x, treat(t) post()",
+      "error": "option post expects at least one value"
+    },
+    {
+      "input": "drdid y x, treat(t) post(p q)",
+      "error": "drdid option post expects one variable"
+    },
+    {
+      "input": "drdid y x, treat(t) post(p) method(invalid)",
+      "error": "drdid option method must be one of: or, ipw, aipw"
+    },
+    {
+      "input": "drdid y x, treat(t) post(p) robust=true",
+      "error": "drdid option robust does not accept a value"
+    },
+    {
+      "input": "drdid y x, treat(t) post(p) seed(123)",
+      "error": "drdid option seed requires option bootstrap"
+    },
+    {
+      "input": "drop",
+      "error": "drop expects a variable list or if clause"
+    },
+    {
+      "input": "drop age = 1",
+      "error": "drop does not accept options or assignment syntax"
+    },
+    {
+      "input": "drop cost",
+      "command": {
+        "type": "DropCommand",
+        "fields": {
+          "variables": [
+            "cost"
+          ],
+          "condition": null
+        }
+      }
+    },
+    {
+      "input": "drop if sex == 'F'",
+      "command": {
+        "type": "DropCommand",
+        "fields": {
+          "variables": [],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "sex"
+                }
+              },
+              "operator": "==",
+              "right": {
+                "type": "StringExpression",
+                "fields": {
+                  "value": "F"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "elasticnet",
+      "error": "elasticnet expects syntax: elasticnet linear <y> <xvars>"
+    },
+    {
+      "input": "elasticnet linear",
+      "error": "elasticnet expects syntax: elasticnet linear <y> <xvars>"
+    },
+    {
+      "input": "elasticnet linear cost age bmi",
+      "command": {
+        "type": "ElasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "alpha": 1.0,
+          "l1_ratio": 0.5,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "elasticnet linear cost age, alpha(0.25) l1_ratio(0.75)",
+      "command": {
+        "type": "ElasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 0.25,
+          "l1_ratio": 0.75,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "elasticnet linear cost age, noconstant",
+      "command": {
+        "type": "ElasticnetCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 1.0,
+          "l1_ratio": 0.5,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "elasticnet linear y",
+      "error": "elasticnet expects syntax: elasticnet linear <y> <xvars>"
+    },
+    {
+      "input": "elasticnet linear y x if y > 0",
+      "error": "elasticnet expects syntax: elasticnet linear <y> <xvars>"
+    },
+    {
+      "input": "elasticnet linear y x, alpha()",
+      "error": "option alpha expects at least one value"
+    },
+    {
+      "input": "elasticnet linear y x, alpha(-1)",
+      "error": "elasticnet option alpha must be positive"
+    },
+    {
+      "input": "elasticnet linear y x, l1_ratio()",
+      "error": "option l1_ratio expects at least one value"
+    },
+    {
+      "input": "elasticnet linear y x, l1_ratio(-0.5)",
+      "error": "elasticnet option l1_ratio must be between 0 and 1 inclusive"
+    },
+    {
+      "input": "elasticnet linear y x, l1_ratio(1.5)",
+      "error": "elasticnet option l1_ratio must be between 0 and 1 inclusive"
+    },
+    {
+      "input": "elasticnet linear y x, robust",
+      "error": "elasticnet unsupported option: robust"
+    },
+    {
+      "input": "elasticnet logistic y x",
+      "error": "elasticnet model must be linear"
+    },
+    {
+      "input": "estat",
+      "error": "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>"
+    },
+    {
+      "input": "estat bayes",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "bayes",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat bayes detail",
+      "error": "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>"
+    },
+    {
+      "input": "estat detail",
+      "error": "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+    },
+    {
+      "input": "estat did",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "did",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat dml",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "dml",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat endog",
+      "error": "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+    },
+    {
+      "input": "estat endogenous",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "endogenous",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat first",
+      "error": "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+    },
+    {
+      "input": "estat firststage",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "firststage",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat gof",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "gof",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat hausman",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "hausman",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat margin",
+      "error": "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
+    },
+    {
+      "input": "estat margins",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "margins",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat overid",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "overid",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat ovtest",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "ovtest",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat report",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "report",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat report, invalid",
+      "error": "estat report unsupported option: invalid"
+    },
+    {
+      "input": "estat report, noopen",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "report",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": false
+        }
+      }
+    },
+    {
+      "input": "estat report, saving()",
+      "error": "option saving expects at least one value"
+    },
+    {
+      "input": "estat report, saving(my_report.html)",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "report",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": "my_report.html",
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat residuals",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "residuals",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat residuals, coord(lat lon)",
+      "error": "estat residuals does not support options"
+    },
+    {
+      "input": "estat residuals, detail",
+      "error": "estat residuals does not support options"
+    },
+    {
+      "input": "estat spatial",
+      "error": "estat spatial requires either coord() or weights() option"
+    },
+    {
+      "input": "estat spatial, coord(lat lon) id(neighborhood)",
+      "error": "estat spatial option id can only be used with weights() option"
+    },
+    {
+      "input": "estat spatial, coord(lat lon) knn(5)",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "spatial",
+          "coord_variables": [
+            "lat",
+            "lon"
+          ],
+          "knn": 5,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat spatial, coord(lat lon) weights(columbus.gal)",
+      "error": "estat spatial option coord and weights are mutually exclusive"
+    },
+    {
+      "input": "estat spatial, coord(lat) knn(5)",
+      "error": "estat spatial option coord expects exactly two variables representing latitude and longitude coordinates"
+    },
+    {
+      "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(invalid)",
+      "error": "estat spatial option contiguity must be 'queen' or 'rook'"
+    },
+    {
+      "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(rook)",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "spatial",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": "columbus.gal",
+          "id_variable": "neighborhood",
+          "contiguity": "rook",
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat spatial, weights(columbus.gal) knn(5)",
+      "error": "estat spatial option knn/coord can only be used with coord() option"
+    },
+    {
+      "input": "estat vif",
+      "command": {
+        "type": "EstatCommand",
+        "fields": {
+          "subcommand": "vif",
+          "coord_variables": null,
+          "knn": null,
+          "weights_file": null,
+          "id_variable": null,
+          "contiguity": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "estat vif extra",
+      "error": "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>"
+    },
+    {
+      "input": "estat, vif",
+      "error": "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>"
+    },
+    {
+      "input": "exit",
+      "command": {
+        "type": "ExitCommand",
+        "fields": {}
+      }
+    },
+    {
+      "input": "exit now",
+      "error": "exit does not accept arguments, if clauses, or options"
+    },
+    {
+      "input": "export",
+      "error": "export expects exactly one path"
+    },
+    {
+      "input": "export output.csv",
+      "command": {
+        "type": "ExportCommand",
+        "fields": {
+          "path": "output.csv",
+          "replace": false
+        }
+      }
+    },
+    {
+      "input": "export output.feather",
+      "command": {
+        "type": "ExportCommand",
+        "fields": {
+          "path": "output.feather",
+          "replace": false
+        }
+      }
+    },
+    {
+      "input": "export output.parquet, replace",
+      "command": {
+        "type": "ExportCommand",
+        "fields": {
+          "path": "output.parquet",
+          "replace": true
+        }
+      }
+    },
+    {
+      "input": "generate `age group` = `body mass` + 1",
+      "command": {
+        "type": "GenerateCommand",
+        "fields": {
+          "variable": "age group",
+          "expression": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "body mass"
+                }
+              },
+              "operator": "+",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "generate all_missing = NULL",
+      "command": {
+        "type": "GenerateCommand",
+        "fields": {
+          "variable": "all_missing",
+          "expression": {
+            "type": "NullExpression",
+            "fields": {}
+          }
+        }
+      }
+    },
+    {
+      "input": "generate log_cost = log(cost)",
+      "command": {
+        "type": "GenerateCommand",
+        "fields": {
+          "variable": "log_cost",
+          "expression": {
+            "type": "FunctionCallExpression",
+            "fields": {
+              "name": "log",
+              "arguments": [
+                {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "cost"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "generate new",
+      "error": "generate expects syntax: generate new = expression"
+    },
+    {
+      "input": "generate new = age if age > 18",
+      "error": "duplicate if clause"
+    },
+    {
+      "input": "head",
+      "command": {
+        "type": "HeadCommand",
+        "fields": {
+          "limit": 5
+        }
+      }
+    },
+    {
+      "input": "head -1",
+      "error": "unsupported token in command: -"
+    },
+    {
+      "input": "head 0",
+      "command": {
+        "type": "HeadCommand",
+        "fields": {
+          "limit": 0
+        }
+      }
+    },
+    {
+      "input": "head 01",
+      "command": {
+        "type": "HeadCommand",
+        "fields": {
+          "limit": 1
+        }
+      }
+    },
+    {
+      "input": "head 1 2",
+      "error": "head accepts at most one row limit"
+    },
+    {
+      "input": "head 1.5",
+      "error": "head row limit must be a non-negative integer"
+    },
+    {
+      "input": "head 10",
+      "command": {
+        "type": "HeadCommand",
+        "fields": {
+          "limit": 10
+        }
+      }
+    },
+    {
+      "input": "head five",
+      "error": "head row limit must be a non-negative integer"
+    },
+    {
+      "input": "head, limit=10",
+      "error": "head does not accept if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "heckman",
+      "error": "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)"
+    },
+    {
+      "input": "heckman outcome x1 x2, selectdep(s) select(z1 z2) robust",
+      "command": {
+        "type": "HeckmanCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "selection_dependent": "s",
+          "selection_predictors": [
+            "z1",
+            "z2"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "heckman outcome x1, selectdep(s) select(z1)",
+      "command": {
+        "type": "HeckmanCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "selection_dependent": "s",
+          "selection_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "heckman outcome x1, selectdep(s) select(z1) cluster(group_id) noconstant",
+      "command": {
+        "type": "HeckmanCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "selection_dependent": "s",
+          "selection_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "heckman y",
+      "error": "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)"
+    },
+    {
+      "input": "heckman y x",
+      "error": "heckman option selectdep expects one variable"
+    },
+    {
+      "input": "heckman y x if y > 0",
+      "error": "heckman expects syntax: heckman <y> <xvars>, selectdep(<var>) select(<vars>)"
+    },
+    {
+      "input": "heckman y x, select(s)",
+      "error": "heckman option selectdep expects one variable"
+    },
+    {
+      "input": "heckman y x, selectdep() select(z)",
+      "error": "option selectdep expects at least one value"
+    },
+    {
+      "input": "heckman y x, selectdep(s t) select(z)",
+      "error": "heckman option selectdep expects one variable"
+    },
+    {
+      "input": "heckman y x, selectdep(s)",
+      "error": "heckman option select expects at least one variable"
+    },
+    {
+      "input": "heckman y x, selectdep(s) select()",
+      "error": "option select expects at least one value"
+    },
+    {
+      "input": "heckman y x, selectdep(s) select(z) cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "heckman y x, selectdep(s) select(z) cluster(group firm)",
+      "error": "heckman option cluster expects one variable"
+    },
+    {
+      "input": "heckman y x, selectdep(s) select(z) robust cluster(group)",
+      "error": "heckman cannot combine robust and cluster"
+    },
+    {
+      "input": "heckman y x, selectdep(s) select(z) robust=true",
+      "error": "heckman option robust does not accept a value"
+    },
+    {
+      "input": "help",
+      "command": {
+        "type": "HelpCommand",
+        "fields": {
+          "topic": null
+        }
+      }
+    },
+    {
+      "input": "help summarize",
+      "command": {
+        "type": "HelpCommand",
+        "fields": {
+          "topic": "summarize"
+        }
+      }
+    },
+    {
+      "input": "histogram",
+      "error": "histogram expects exactly one variable"
+    },
+    {
+      "input": "histogram age",
+      "command": {
+        "type": "HistogramCommand",
+        "fields": {
+          "variable": "age",
+          "bins": null,
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "histogram age bmi",
+      "error": "histogram expects exactly one variable"
+    },
+    {
+      "input": "histogram age if age > 18",
+      "error": "histogram does not accept if clauses or assignment syntax"
+    },
+    {
+      "input": "histogram age, bins",
+      "error": "histogram option bins expects an integer value"
+    },
+    {
+      "input": "histogram age, bins=0",
+      "error": "histogram option bins must be at least 1"
+    },
+    {
+      "input": "histogram age, bins=20 saving(figures/age.svg) noopen",
+      "command": {
+        "type": "HistogramCommand",
+        "fields": {
+          "variable": "age",
+          "bins": 20,
+          "saving": "figures/age.svg",
+          "open_artifact": false
+        }
+      }
+    },
+    {
+      "input": "histogram age, bins=ten",
+      "error": "histogram option bins expects an integer value"
+    },
+    {
+      "input": "histogram age, noopen=false",
+      "error": "histogram option noopen does not accept a value"
+    },
+    {
+      "input": "histogram age, width=200",
+      "error": "histogram unsupported option: width"
+    },
+    {
+      "input": "ivregress",
+      "error": "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)"
+    },
+    {
+      "input": "ivregress 2sls cost age bmi, endog(hours) iv(distance policy)",
+      "command": {
+        "type": "IvRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [
+            "age",
+            "bmi"
+          ],
+          "endogenous": "hours",
+          "instruments": [
+            "distance",
+            "policy"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true,
+          "estimator": "2sls"
+        }
+      }
+    },
+    {
+      "input": "ivregress 2sls cost age, endog(hours) iv(distance) cluster(group_id) noconstant",
+      "command": {
+        "type": "IvRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [
+            "age"
+          ],
+          "endogenous": "hours",
+          "instruments": [
+            "distance"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": false,
+          "estimator": "2sls"
+        }
+      }
+    },
+    {
+      "input": "ivregress 2sls cost, endog(hours) iv(distance) robust",
+      "command": {
+        "type": "IvRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [],
+          "endogenous": "hours",
+          "instruments": [
+            "distance"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true,
+          "estimator": "2sls"
+        }
+      }
+    },
+    {
+      "input": "ivregress 2sls y x",
+      "error": "ivregress option endog expects one variable"
+    },
+    {
+      "input": "ivregress 2sls y x, endog(z w) iv(q)",
+      "error": "ivregress option endog expects one variable"
+    },
+    {
+      "input": "ivregress 2sls y x, endog(z)",
+      "error": "ivregress option iv expects at least one variable"
+    },
+    {
+      "input": "ivregress 2sls y x, endog(z) iv()",
+      "error": "option iv expects at least one value"
+    },
+    {
+      "input": "ivregress 2sls y x, endog(z) iv(w) robust cluster(g)",
+      "error": "ivregress cannot combine robust and cluster"
+    },
+    {
+      "input": "ivregress 2sls y x, endog(z) iv(w) robust=true",
+      "error": "ivregress option robust does not accept a value"
+    },
+    {
+      "input": "ivregress 2sls y x, iv(w)",
+      "error": "ivregress option endog expects one variable"
+    },
+    {
+      "input": "ivregress 2sls y z, endog(z) iv(w)",
+      "error": "ivregress endog variable must not appear in exogenous variables"
+    },
+    {
+      "input": "ivregress gmm cost age, endog(hours) iv(distance policy)",
+      "command": {
+        "type": "IvRegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "exogenous": [
+            "age"
+          ],
+          "endogenous": "hours",
+          "instruments": [
+            "distance",
+            "policy"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true,
+          "estimator": "gmm"
+        }
+      }
+    },
+    {
+      "input": "ivregress liml y x, endog(z) iv(w)",
+      "error": "ivregress estimator must be 2sls or gmm"
+    },
+    {
+      "input": "join",
+      "error": "join expects syntax: join <table> on <keylist>"
+    },
+    {
+      "input": "join active on id",
+      "error": "sql into cannot use reserved table name: active"
+    },
+    {
+      "input": "join bad-name on id",
+      "error": "unsupported token in command: -"
+    },
+    {
+      "input": "join lookup",
+      "error": "join expects syntax: join <table> on <keylist>"
+    },
+    {
+      "input": "join lookup `on` id",
+      "error": "join expects syntax: join <table> on <keylist>"
+    },
+    {
+      "input": "join lookup id",
+      "error": "join expects syntax: join <table> on <keylist>"
+    },
+    {
+      "input": "join lookup on",
+      "error": "join expects syntax: join <table> on <keylist>"
+    },
+    {
+      "input": "join lookup on firm_id year, how=left suffix(_lookup)",
+      "command": {
+        "type": "JoinCommand",
+        "fields": {
+          "table_name": "lookup",
+          "keys": [
+            "firm_id",
+            "year"
+          ],
+          "how": "left",
+          "suffix": "_lookup"
+        }
+      }
+    },
+    {
+      "input": "join lookup on id",
+      "command": {
+        "type": "JoinCommand",
+        "fields": {
+          "table_name": "lookup",
+          "keys": [
+            "id"
+          ],
+          "how": "inner",
+          "suffix": "_right"
+        }
+      }
+    },
+    {
+      "input": "join lookup on id id",
+      "error": "join key list contains duplicates"
+    },
+    {
+      "input": "join lookup on id, how=right",
+      "error": "join how must be inner or left"
+    },
+    {
+      "input": "join lookup on id, replace",
+      "error": "join unsupported option: replace"
+    },
+    {
+      "input": "join lookup on id, suffix()",
+      "error": "option suffix expects at least one value"
+    },
+    {
+      "input": "join lookup on id, suffix(_x) suffix(_y)",
+      "error": "join option suffix may only be supplied once"
+    },
+    {
+      "input": "keep",
+      "error": "keep expects a variable list or if clause"
+    },
+    {
+      "input": "keep age bmi",
+      "command": {
+        "type": "KeepCommand",
+        "fields": {
+          "variables": [
+            "age",
+            "bmi"
+          ],
+          "condition": null
+        }
+      }
+    },
+    {
+      "input": "keep age if age > 18",
+      "error": "keep cannot combine a variable list with an if clause"
+    },
+    {
+      "input": "keep if `if` == 1",
+      "command": {
+        "type": "KeepCommand",
+        "fields": {
+          "variables": [],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "if"
+                }
+              },
+              "operator": "==",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "keep if age >= 18",
+      "command": {
+        "type": "KeepCommand",
+        "fields": {
+          "variables": [],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "age"
+                }
+              },
+              "operator": ">=",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 18
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "lasso",
+      "error": "lasso expects syntax: lasso linear <y> <xvars>"
+    },
+    {
+      "input": "lasso linear",
+      "error": "lasso expects syntax: lasso linear <y> <xvars>"
+    },
+    {
+      "input": "lasso linear cost age bmi",
+      "command": {
+        "type": "LassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "alpha": 1.0,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "lasso linear cost age, alpha(0.25)",
+      "command": {
+        "type": "LassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 0.25,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "lasso linear cost age, noconstant",
+      "command": {
+        "type": "LassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 1.0,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "lasso linear y",
+      "error": "lasso expects syntax: lasso linear <y> <xvars>"
+    },
+    {
+      "input": "lasso linear y x if y > 0",
+      "error": "lasso expects syntax: lasso linear <y> <xvars>"
+    },
+    {
+      "input": "lasso linear y x, alpha()",
+      "error": "option alpha expects at least one value"
+    },
+    {
+      "input": "lasso linear y x, alpha(-1)",
+      "error": "lasso option alpha must be positive"
+    },
+    {
+      "input": "lasso linear y x, robust",
+      "error": "lasso unsupported option: robust"
+    },
+    {
+      "input": "lasso logistic y x",
+      "error": "lasso model must be linear"
+    },
+    {
+      "input": "lincom x1 - x2",
+      "command": {
+        "type": "LincomCommand",
+        "fields": {
+          "expression": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "x1"
+                }
+              },
+              "operator": "-",
+              "right": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "x2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "logit",
+      "error": "logit expects syntax: logit <y> <xvars>"
+    },
+    {
+      "input": "logit outcome x1 x2",
+      "command": {
+        "type": "LogitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "logit outcome x1, cluster(group_id)",
+      "command": {
+        "type": "LogitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "logit outcome x1, noconstant",
+      "command": {
+        "type": "LogitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "logit outcome x1, robust",
+      "command": {
+        "type": "LogitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "logit y",
+      "error": "logit expects syntax: logit <y> <xvars>"
+    },
+    {
+      "input": "logit y x if y == 1",
+      "error": "logit expects syntax: logit <y> <xvars>"
+    },
+    {
+      "input": "logit y x, cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "logit y x, cluster(group firm)",
+      "error": "logit option cluster expects one variable"
+    },
+    {
+      "input": "logit y x, robust cluster(group)",
+      "error": "logit cannot combine robust and cluster"
+    },
+    {
+      "input": "logit y x, robust=true",
+      "error": "logit option robust does not accept a value"
+    },
+    {
+      "input": "lowess",
+      "error": "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]"
+    },
+    {
+      "input": "lowess wage exper, gen(wage_lowess)",
+      "command": {
+        "type": "LowessCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictor": "exper",
+          "target_variable": "wage_lowess",
+          "bandwidth": 0.6666666666666666
+        }
+      }
+    },
+    {
+      "input": "lowess wage exper, gen(wage_lowess) bandwidth=0.5",
+      "command": {
+        "type": "LowessCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictor": "exper",
+          "target_variable": "wage_lowess",
+          "bandwidth": 0.5
+        }
+      }
+    },
+    {
+      "input": "lowess y",
+      "error": "lowess expects syntax: lowess <y> <x>, gen(<newvar>) [bandwidth=<0,1>]"
+    },
+    {
+      "input": "lowess y x",
+      "error": "lowess option gen expects one variable"
+    },
+    {
+      "input": "lowess y x, gen()",
+      "error": "option gen expects at least one value"
+    },
+    {
+      "input": "lowess y x, gen(y_hat) bandwidth=0",
+      "error": "lowess option bandwidth must be between 0 and 1"
+    },
+    {
+      "input": "lowess y x, gen(y_hat) bandwidth=1",
+      "error": "lowess option bandwidth must be between 0 and 1"
+    },
+    {
+      "input": "lowess y x, robust",
+      "error": "lowess unsupported option: robust"
+    },
+    {
+      "input": "nbreg",
+      "error": "nbreg expects syntax: nbreg <y> <xvars>"
+    },
+    {
+      "input": "nbreg outcome x1 x2",
+      "command": {
+        "type": "NbregCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "nbreg outcome x1, cluster(group_id)",
+      "command": {
+        "type": "NbregCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "nbreg outcome x1, noconstant",
+      "command": {
+        "type": "NbregCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "nbreg outcome x1, robust",
+      "command": {
+        "type": "NbregCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "nbreg y",
+      "error": "nbreg expects syntax: nbreg <y> <xvars>"
+    },
+    {
+      "input": "nbreg y x if y > 0",
+      "error": "nbreg expects syntax: nbreg <y> <xvars>"
+    },
+    {
+      "input": "nbreg y x, cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "nbreg y x, cluster(group firm)",
+      "error": "nbreg option cluster expects one variable"
+    },
+    {
+      "input": "nbreg y x, robust cluster(group)",
+      "error": "nbreg cannot combine robust and cluster"
+    },
+    {
+      "input": "nbreg y x, robust=true",
+      "error": "nbreg option robust does not accept a value"
+    },
+    {
+      "input": "nl",
+      "error": "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)"
+    },
+    {
+      "input": "nl y = a + b * x, params(a b) start(1 0.5)",
+      "command": {
+        "type": "NlCommand",
+        "fields": {
+          "outcome": "y",
+          "expression": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "a"
+                }
+              },
+              "operator": "+",
+              "right": {
+                "type": "BinaryExpression",
+                "fields": {
+                  "left": {
+                    "type": "IdentifierExpression",
+                    "fields": {
+                      "name": "b"
+                    }
+                  },
+                  "operator": "*",
+                  "right": {
+                    "type": "IdentifierExpression",
+                    "fields": {
+                      "name": "x"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "parameter_names": [
+            "a",
+            "b"
+          ],
+          "start_values": [
+            1.0,
+            0.5
+          ],
+          "robust": false,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "nl y = a + b*x if y > 0, params(a b) start(1 2)",
+      "error": "duplicate if clause"
+    },
+    {
+      "input": "nl y = a + b*x, params(a a) start(1 2)",
+      "error": "nl option params must not repeat parameter names"
+    },
+    {
+      "input": "nl y = a + b*x, params(a b)",
+      "error": "nl option start expects one-or-more numeric values"
+    },
+    {
+      "input": "nl y = a + b*x, params(a b) start(1 two)",
+      "error": "option start values must be numeric"
+    },
+    {
+      "input": "nl y = a + b*x, params(a b) start(1)",
+      "error": "nl option start count must match params count"
+    },
+    {
+      "input": "nl y = a + b*x, robust=true params(a b) start(1 2)",
+      "error": "nl option robust does not accept a value"
+    },
+    {
+      "input": "nl y = a + b*x, start(1 2)",
+      "error": "nl option params expects one-or-more parameter names"
+    },
+    {
+      "input": "nl y = exp(a + b * x), params(a b) start(0 1) robust noconstant",
+      "command": {
+        "type": "NlCommand",
+        "fields": {
+          "outcome": "y",
+          "expression": {
+            "type": "FunctionCallExpression",
+            "fields": {
+              "name": "exp",
+              "arguments": [
+                {
+                  "type": "BinaryExpression",
+                  "fields": {
+                    "left": {
+                      "type": "IdentifierExpression",
+                      "fields": {
+                        "name": "a"
+                      }
+                    },
+                    "operator": "+",
+                    "right": {
+                      "type": "BinaryExpression",
+                      "fields": {
+                        "left": {
+                          "type": "IdentifierExpression",
+                          "fields": {
+                            "name": "b"
+                          }
+                        },
+                        "operator": "*",
+                        "right": {
+                          "type": "IdentifierExpression",
+                          "fields": {
+                            "name": "x"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "parameter_names": [
+            "a",
+            "b"
+          ],
+          "start_values": [
+            0.0,
+            1.0
+          ],
+          "robust": true,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "nl y = x",
+      "error": "nl option params expects one-or-more parameter names"
+    },
+    {
+      "input": "nl y x",
+      "error": "nl expects syntax: nl <y> = <expr>, params(<params>) start(<values>)"
+    },
+    {
+      "input": "panel",
+      "command": {
+        "type": "PanelCommand",
+        "fields": {
+          "action": "report",
+          "id_variable": null,
+          "time_variable": null
+        }
+      }
+    },
+    {
+      "input": "panel `clear` year",
+      "command": {
+        "type": "PanelCommand",
+        "fields": {
+          "action": "set",
+          "id_variable": "clear",
+          "time_variable": "year"
+        }
+      }
+    },
+    {
+      "input": "panel clear",
+      "command": {
+        "type": "PanelCommand",
+        "fields": {
+          "action": "clear",
+          "id_variable": null,
+          "time_variable": null
+        }
+      }
+    },
+    {
+      "input": "panel clear now",
+      "error": "panel expects syntax: panel [<id_var> <time_var>|clear]"
+    },
+    {
+      "input": "panel firm_id = year",
+      "error": "panel expects syntax: panel [<id_var> <time_var>|clear]"
+    },
+    {
+      "input": "panel firm_id firm_id",
+      "error": "panel id and time variables must be distinct"
+    },
+    {
+      "input": "panel firm_id if year > 2020",
+      "error": "panel expects syntax: panel [<id_var> <time_var>|clear]"
+    },
+    {
+      "input": "panel firm_id year",
+      "command": {
+        "type": "PanelCommand",
+        "fields": {
+          "action": "set",
+          "id_variable": "firm_id",
+          "time_variable": "year"
+        }
+      }
+    },
+    {
+      "input": "panel firm_id year extra",
+      "error": "panel expects syntax: panel [<id_var> <time_var>|clear]"
+    },
+    {
+      "input": "panel firm_id year, replace",
+      "error": "panel expects syntax: panel [<id_var> <time_var>|clear]"
+    },
+    {
+      "input": "poisson",
+      "error": "poisson expects syntax: poisson <y> <xvars>"
+    },
+    {
+      "input": "poisson outcome x1 x2",
+      "command": {
+        "type": "PoissonCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "poisson outcome x1, cluster(group_id)",
+      "command": {
+        "type": "PoissonCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "poisson outcome x1, noconstant",
+      "command": {
+        "type": "PoissonCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "poisson outcome x1, robust",
+      "command": {
+        "type": "PoissonCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "poisson y",
+      "error": "poisson expects syntax: poisson <y> <xvars>"
+    },
+    {
+      "input": "poisson y x if y > 0",
+      "error": "poisson expects syntax: poisson <y> <xvars>"
+    },
+    {
+      "input": "poisson y x, cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "poisson y x, cluster(group firm)",
+      "error": "poisson option cluster expects one variable"
+    },
+    {
+      "input": "poisson y x, robust cluster(group)",
+      "error": "poisson cannot combine robust and cluster"
+    },
+    {
+      "input": "poisson y x, robust=true",
+      "error": "poisson option robust does not accept a value"
+    },
+    {
+      "input": "postlasso",
+      "error": "postlasso expects syntax: postlasso linear <y> <xvars>"
+    },
+    {
+      "input": "postlasso linear",
+      "error": "postlasso expects syntax: postlasso linear <y> <xvars>"
+    },
+    {
+      "input": "postlasso linear cost age bmi",
+      "command": {
+        "type": "PostlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "alpha": 1.0,
+          "robust": false,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "postlasso linear cost age, alpha(0.25)",
+      "command": {
+        "type": "PostlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 0.25,
+          "robust": false,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "postlasso linear cost age, noconstant",
+      "command": {
+        "type": "PostlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 1.0,
+          "robust": false,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "postlasso linear cost age, robust",
+      "command": {
+        "type": "PostlassoCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 1.0,
+          "robust": true,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "postlasso linear y",
+      "error": "postlasso expects syntax: postlasso linear <y> <xvars>"
+    },
+    {
+      "input": "postlasso linear y x if y > 0",
+      "error": "postlasso expects syntax: postlasso linear <y> <xvars>"
+    },
+    {
+      "input": "postlasso linear y x, alpha()",
+      "error": "option alpha expects at least one value"
+    },
+    {
+      "input": "postlasso linear y x, alpha(-1)",
+      "error": "postlasso option alpha must be positive"
+    },
+    {
+      "input": "postlasso linear y x, cv(5)",
+      "error": "postlasso unsupported option: cv"
+    },
+    {
+      "input": "postlasso logistic y x",
+      "error": "postlasso model must be linear"
+    },
+    {
+      "input": "predict",
+      "error": "predict expects syntax: predict <newvar>"
+    },
+    {
+      "input": "predict a b",
+      "error": "predict expects syntax: predict <newvar>"
+    },
+    {
+      "input": "predict cost_hat",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "cost_hat",
+          "kind": "xb",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict cost_hat if age > 18",
+      "error": "predict expects syntax: predict <newvar>"
+    },
+    {
+      "input": "predict cost_hat, posterior_predictive interval=true",
+      "error": "predict option interval does not accept a value"
+    },
+    {
+      "input": "predict cost_hat, posterior_predictive level(0)",
+      "error": "predict option level requires interval"
+    },
+    {
+      "input": "predict cost_hat, posterior_predictive level(100)",
+      "error": "predict option level requires interval"
+    },
+    {
+      "input": "predict cost_hat, posterior_predictive level(90)",
+      "error": "predict option level requires interval"
+    },
+    {
+      "input": "predict cost_hat, pr posterior_predictive",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, pr residuals",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, pr spatial_lag",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, residuals posterior_predictive",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, residuals spatial_lag",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, residuals=true",
+      "error": "predict option residuals does not accept a value"
+    },
+    {
+      "input": "predict cost_hat, spatial_lag posterior_predictive",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, xb interval",
+      "error": "predict interval options require posterior_predictive"
+    },
+    {
+      "input": "predict cost_hat, xb posterior_predictive",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, xb residuals",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict cost_hat, xb spatial_lag",
+      "error": "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    },
+    {
+      "input": "predict p_hat, pr",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "p_hat",
+          "kind": "pr",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict resid, residuals",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "resid",
+          "kind": "residuals",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict spatial_hat, spatial_lag",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "spatial_hat",
+          "kind": "spatial_lag",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive interval",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": true,
+          "level": 95.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive interval level(90)",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": true,
+          "level": 90.0,
+          "std": false,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive interval saving(draws.parquet)",
+      "error": "predict saving option cannot be combined with std or interval options"
+    },
+    {
+      "input": "predict y_pp, posterior_predictive saving(draws.parquet)",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": false,
+          "level": 95.0,
+          "std": false,
+          "saving": "draws.parquet"
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive std",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": false,
+          "level": 95.0,
+          "std": true,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive std interval level(90)",
+      "command": {
+        "type": "PredictCommand",
+        "fields": {
+          "target_variable": "y_pp",
+          "kind": "posterior_predictive",
+          "interval": true,
+          "level": 90.0,
+          "std": true,
+          "saving": null
+        }
+      }
+    },
+    {
+      "input": "predict y_pp, posterior_predictive std saving(draws.parquet)",
+      "error": "predict saving option cannot be combined with std or interval options"
+    },
+    {
+      "input": "predict y_pp, residuals saving(draws.parquet)",
+      "error": "predict std and saving options require posterior_predictive"
+    },
+    {
+      "input": "predict y_pp, xb std",
+      "error": "predict std and saving options require posterior_predictive"
+    },
+    {
+      "input": "probit",
+      "error": "probit expects syntax: probit <y> <xvars>"
+    },
+    {
+      "input": "probit outcome x1 x2",
+      "command": {
+        "type": "ProbitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "probit outcome x1, cluster(group_id)",
+      "command": {
+        "type": "ProbitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "probit outcome x1, noconstant",
+      "command": {
+        "type": "ProbitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "probit outcome x1, robust",
+      "command": {
+        "type": "ProbitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "probit y",
+      "error": "probit expects syntax: probit <y> <xvars>"
+    },
+    {
+      "input": "probit y x if y == 1",
+      "error": "probit expects syntax: probit <y> <xvars>"
+    },
+    {
+      "input": "probit y x, cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "probit y x, cluster(group firm)",
+      "error": "probit option cluster expects one variable"
+    },
+    {
+      "input": "probit y x, robust cluster(group)",
+      "error": "probit cannot combine robust and cluster"
+    },
+    {
+      "input": "probit y x, robust=true",
+      "error": "probit option robust does not accept a value"
+    },
+    {
+      "input": "qreg",
+      "error": "qreg expects syntax: qreg <y> <xvars>"
+    },
+    {
+      "input": "qreg cost age bmi",
+      "command": {
+        "type": "QregCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "quantile": 0.5,
+          "robust": false,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "qreg cost age, noconstant",
+      "command": {
+        "type": "QregCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "quantile": 0.5,
+          "robust": false,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "qreg cost age, quantile(0.25)",
+      "command": {
+        "type": "QregCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "quantile": 0.25,
+          "robust": false,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "qreg cost age, robust",
+      "command": {
+        "type": "QregCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "quantile": 0.5,
+          "robust": true,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "qreg y",
+      "error": "qreg expects syntax: qreg <y> <xvars>"
+    },
+    {
+      "input": "qreg y x if y > 0",
+      "error": "qreg expects syntax: qreg <y> <xvars>"
+    },
+    {
+      "input": "qreg y x, cluster(group)",
+      "error": "qreg unsupported option: cluster"
+    },
+    {
+      "input": "qreg y x, quantile()",
+      "error": "option quantile expects at least one value"
+    },
+    {
+      "input": "qreg y x, quantile(0)",
+      "error": "qreg option quantile must be between 0 and 1"
+    },
+    {
+      "input": "qreg y x, quantile(1)",
+      "error": "qreg option quantile must be between 0 and 1"
+    },
+    {
+      "input": "qreg y x, quantile(1.2)",
+      "error": "qreg option quantile must be between 0 and 1"
+    },
+    {
+      "input": "qreg y x, robust=true",
+      "error": "qreg option robust does not accept a value"
+    },
+    {
+      "input": "quit",
+      "command": {
+        "type": "ExitCommand",
+        "fields": {}
+      }
+    },
+    {
+      "input": "recode (1 = 0), replace",
+      "error": "recode command: no variables specified"
+    },
+    {
+      "input": "recode age (1 = 0), replace",
+      "command": {
+        "type": "RecodeCommand",
+        "fields": {
+          "variables": [
+            "age"
+          ],
+          "rules": [
+            {
+              "type": "RecodeRule",
+              "fields": {
+                "inputs": [
+                  1
+                ],
+                "output": 0
+              }
+            }
+          ],
+          "generate_variables": null,
+          "replace": true
+        }
+      }
+    },
+    {
+      "input": "recode age (min/17 = 0)",
+      "error": "recode command requires either generate() or replace option"
+    },
+    {
+      "input": "recode age (min/17 = 0) (18 19 20 = 1) (else = -1), generate(adult)",
+      "command": {
+        "type": "RecodeCommand",
+        "fields": {
+          "variables": [
+            "age"
+          ],
+          "rules": [
+            {
+              "type": "RecodeRule",
+              "fields": {
+                "inputs": [
+                  {
+                    "type": "RecodeRange",
+                    "fields": {
+                      "start": "min",
+                      "end": 17.0
+                    }
+                  }
+                ],
+                "output": 0
+              }
+            },
+            {
+              "type": "RecodeRule",
+              "fields": {
+                "inputs": [
+                  18,
+                  19,
+                  20
+                ],
+                "output": 1
+              }
+            },
+            {
+              "type": "RecodeRule",
+              "fields": {
+                "inputs": [
+                  "else"
+                ],
+                "output": -1
+              }
+            }
+          ],
+          "generate_variables": [
+            "adult"
+          ],
+          "replace": false
+        }
+      }
+    },
+    {
+      "input": "recode age (min/17 = 0), generate(adult) replace",
+      "error": "recode command: cannot specify both generate() and replace"
+    },
+    {
+      "input": "recode age, replace",
+      "error": "recode command: no rules specified"
+    },
+    {
+      "input": "regress",
+      "error": "regress expects syntax: regress <y> <xvars>"
+    },
+    {
+      "input": "regress cost",
+      "error": "regress expects syntax: regress <y> <xvars>"
+    },
+    {
+      "input": "regress cost age bmi",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "estimator": "ols",
+          "weight_variable": null,
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age if age > 18",
+      "error": "regress expects syntax: regress <y> <xvars>"
+    },
+    {
+      "input": "regress cost age, cluster",
+      "error": "regress option cluster expects variables"
+    },
+    {
+      "input": "regress cost age, cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "regress cost age, cluster(sex firm)",
+      "error": "regress option cluster expects one variable"
+    },
+    {
+      "input": "regress cost age, cluster(sex)",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "ols",
+          "weight_variable": null,
+          "robust": false,
+          "cluster_variable": "sex",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age, gls",
+      "error": "regress option gls expects variables"
+    },
+    {
+      "input": "regress cost age, gls()",
+      "error": "option gls expects at least one value"
+    },
+    {
+      "input": "regress cost age, gls(age bmi)",
+      "error": "regress option gls expects one variable"
+    },
+    {
+      "input": "regress cost age, gls(sigma)",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "gls",
+          "weight_variable": "sigma",
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age, gls(sigma) robust",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "gls",
+          "weight_variable": "sigma",
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age, noconstant",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "ols",
+          "weight_variable": null,
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "regress cost age, noconstant=true",
+      "error": "regress option noconstant does not accept a value"
+    },
+    {
+      "input": "regress cost age, robust",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "ols",
+          "weight_variable": null,
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age, robust cluster(sex)",
+      "error": "regress cannot combine robust and cluster"
+    },
+    {
+      "input": "regress cost age, robust=true",
+      "error": "regress option robust does not accept a value"
+    },
+    {
+      "input": "regress cost age, wls",
+      "error": "regress option wls expects variables"
+    },
+    {
+      "input": "regress cost age, wls()",
+      "error": "option wls expects at least one value"
+    },
+    {
+      "input": "regress cost age, wls(age bmi)",
+      "error": "regress option wls expects one variable"
+    },
+    {
+      "input": "regress cost age, wls(age) gls(sigma)",
+      "error": "regress cannot combine wls and gls"
+    },
+    {
+      "input": "regress cost age, wls(weight)",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "wls",
+          "weight_variable": "weight",
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "regress cost age, wls(weight) cluster(firm)",
+      "command": {
+        "type": "RegressCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "estimator": "wls",
+          "weight_variable": "weight",
+          "robust": false,
+          "cluster_variable": "firm",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "rename age",
+      "error": "rename expects exactly two variables: rename old new"
+    },
+    {
+      "input": "rename age years now",
+      "error": "rename expects exactly two variables: rename old new"
+    },
+    {
+      "input": "rename sex gender",
+      "command": {
+        "type": "RenameCommand",
+        "fields": {
+          "old_name": "sex",
+          "new_name": "gender"
+        }
+      }
+    },
+    {
+      "input": "replace cost",
+      "error": "replace expects syntax: replace existing = expression"
+    },
+    {
+      "input": "replace cost = cost * 2 if sex == 'F'",
+      "command": {
+        "type": "ReplaceCommand",
+        "fields": {
+          "variable": "cost",
+          "expression": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "cost"
+                }
+              },
+              "operator": "*",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 2
+                }
+              }
+            }
+          },
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "sex"
+                }
+              },
+              "operator": "==",
+              "right": {
+                "type": "StringExpression",
+                "fields": {
+                  "value": "F"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "input": "replace cost = cost * 2, force",
+      "error": "replace does not accept options"
+    },
+    {
+      "input": "reshape",
+      "error": "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)"
+    },
+    {
+      "input": "reshape long income = cost, i(id) j(year)",
+      "error": "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)"
+    },
+    {
+      "input": "reshape long income cost, i(id) j(year)",
+      "command": {
+        "type": "ReshapeCommand",
+        "fields": {
+          "direction": "long",
+          "variables": [
+            "income",
+            "cost"
+          ],
+          "identifiers": [
+            "id"
+          ],
+          "j_variable": "year"
+        }
+      }
+    },
+    {
+      "input": "reshape long income if age > 18, i(id) j(year)",
+      "error": "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)"
+    },
+    {
+      "input": "reshape long income income, i(id) j(year)",
+      "error": "reshape variable list contains duplicates"
+    },
+    {
+      "input": "reshape long income, i() j(year)",
+      "error": "option i expects at least one value"
+    },
+    {
+      "input": "reshape long income, i(id id) j(year)",
+      "error": "reshape variable list contains duplicates"
+    },
+    {
+      "input": "reshape long income, i(id)",
+      "error": "reshape expects exactly one j(name) option"
+    },
+    {
+      "input": "reshape long income, i(id) j(income)",
+      "error": "reshape variables, i(), and j() names must be distinct"
+    },
+    {
+      "input": "reshape long income, i(id) j(year month)",
+      "error": "reshape expects exactly one j(name) option"
+    },
+    {
+      "input": "reshape long income, i(id) j(year) replace",
+      "error": "reshape unsupported option: replace"
+    },
+    {
+      "input": "reshape long income, i(id) j(year), extra",
+      "error": "option names must be identifiers"
+    },
+    {
+      "input": "reshape long income, i(income) j(year)",
+      "error": "reshape variables, i(), and j() names must be distinct"
+    },
+    {
+      "input": "reshape long income, j(year)",
+      "error": "reshape expects exactly one i(id_vars) option"
+    },
+    {
+      "input": "reshape long, i(id) j(year)",
+      "error": "reshape expects syntax: reshape long|wide varlist, i(id_vars) j(name)"
+    },
+    {
+      "input": "reshape wide income cost, i(firm_id person_id) j(year)",
+      "command": {
+        "type": "ReshapeCommand",
+        "fields": {
+          "direction": "wide",
+          "variables": [
+            "income",
+            "cost"
+          ],
+          "identifiers": [
+            "firm_id",
+            "person_id"
+          ],
+          "j_variable": "year"
+        }
+      }
+    },
+    {
+      "input": "reshape wider income, i(id) j(year)",
+      "error": "reshape direction must be long or wide"
+    },
+    {
+      "input": "ridge",
+      "error": "ridge expects syntax: ridge linear <y> <xvars>"
+    },
+    {
+      "input": "ridge linear",
+      "error": "ridge expects syntax: ridge linear <y> <xvars>"
+    },
+    {
+      "input": "ridge linear cost age bmi",
+      "command": {
+        "type": "RidgeCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age",
+            "bmi"
+          ],
+          "alpha": 1.0,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "ridge linear cost age, alpha(0.25)",
+      "command": {
+        "type": "RidgeCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 0.25,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "ridge linear cost age, noconstant",
+      "command": {
+        "type": "RidgeCommand",
+        "fields": {
+          "outcome": "cost",
+          "predictors": [
+            "age"
+          ],
+          "alpha": 1.0,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "ridge linear y",
+      "error": "ridge expects syntax: ridge linear <y> <xvars>"
+    },
+    {
+      "input": "ridge linear y x if y > 0",
+      "error": "ridge expects syntax: ridge linear <y> <xvars>"
+    },
+    {
+      "input": "ridge linear y x, alpha()",
+      "error": "option alpha expects at least one value"
+    },
+    {
+      "input": "ridge linear y x, alpha(-1)",
+      "error": "ridge option alpha must be positive"
+    },
+    {
+      "input": "ridge linear y x, robust",
+      "error": "ridge unsupported option: robust"
+    },
+    {
+      "input": "ridge logistic y x",
+      "error": "ridge model must be linear"
+    },
+    {
+      "input": "run",
+      "error": "run expects exactly one path: run <script>"
+    },
+    {
+      "input": "run analysis.td",
+      "command": {
+        "type": "RunCommand",
+        "fields": {
+          "path": "analysis.td"
+        }
+      }
+    },
+    {
+      "input": "run first.td second.td",
+      "error": "run expects exactly one path: run <script>"
+    },
+    {
+      "input": "save",
+      "error": "save expects exactly one path"
+    },
+    {
+      "input": "save out.parquet, force",
+      "error": "save unsupported option: force"
+    },
+    {
+      "input": "save out.parquet, replace=true",
+      "error": "save option replace does not accept a value"
+    },
+    {
+      "input": "save output.parquet",
+      "command": {
+        "type": "SaveCommand",
+        "fields": {
+          "path": "output.parquet",
+          "replace": false
+        }
+      }
+    },
+    {
+      "input": "scatter bmi",
+      "error": "scatter expects syntax: scatter y_var x_var"
+    },
+    {
+      "input": "scatter bmi age",
+      "command": {
+        "type": "ScatterCommand",
+        "fields": {
+          "y_variable": "bmi",
+          "x_variable": "age",
+          "saving": null,
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "scatter bmi age cost",
+      "error": "scatter expects syntax: scatter y_var x_var"
+    },
+    {
+      "input": "scatter bmi age, bins=20",
+      "error": "scatter unsupported option: bins"
+    },
+    {
+      "input": "scatter bmi age, noopen=true",
+      "error": "scatter option noopen does not accept a value"
+    },
+    {
+      "input": "scatter bmi age, saving(artifacts/bmi-age.png)",
+      "command": {
+        "type": "ScatterCommand",
+        "fields": {
+          "y_variable": "bmi",
+          "x_variable": "age",
+          "saving": "artifacts/bmi-age.png",
+          "open_artifact": true
+        }
+      }
+    },
+    {
+      "input": "select",
+      "error": "select expects at least one variable"
+    },
+    {
+      "input": "select `a,b`",
+      "command": {
+        "type": "SelectCommand",
+        "fields": {
+          "variables": [
+            "a,b"
+          ]
+        }
+      }
+    },
+    {
+      "input": "select age if age > 18",
+      "error": "select only accepts a variable list"
+    },
+    {
+      "input": "select age sex",
+      "command": {
+        "type": "SelectCommand",
+        "fields": {
+          "variables": [
+            "age",
+            "sex"
+          ]
+        }
+      }
+    },
+    {
+      "input": "select bmi-zscore",
+      "error": "unsupported token in command: -"
+    },
+    {
+      "input": "set",
+      "error": "set expects syntax: set name value"
+    },
+    {
+      "input": "set artifact_dir \"my plots\"",
+      "command": {
+        "type": "SetCommand",
+        "fields": {
+          "name": "artifact_dir",
+          "value": "my plots"
+        }
+      }
+    },
+    {
+      "input": "set artifact_dir artifacts/custom",
+      "command": {
+        "type": "SetCommand",
+        "fields": {
+          "name": "artifact_dir",
+          "value": "artifacts/custom"
+        }
+      }
+    },
+    {
+      "input": "set graph_format",
+      "error": "set expects syntax: set name value"
+    },
+    {
+      "input": "set graph_format png",
+      "command": {
+        "type": "SetCommand",
+        "fields": {
+          "name": "graph_format",
+          "value": "png"
+        }
+      }
+    },
+    {
+      "input": "set graph_open off",
+      "command": {
+        "type": "SetCommand",
+        "fields": {
+          "name": "graph_open",
+          "value": "off"
+        }
+      }
+    },
+    {
+      "input": "set unknown on",
+      "error": "unknown setting: unknown"
+    },
+    {
+      "input": "sql",
+      "error": "sql expects a query"
+    },
+    {
+      "input": "sql \"\"\"\nselect sex, count(*) as n\nfrom active\n\"\"\"",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select sex, count(*) as n\nfrom active",
+          "into": null
+        }
+      }
+    },
+    {
+      "input": "sql \"\"\"\nselect sex, count(*) as n\nfrom active\n\"\"\" into grouped",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select sex, count(*) as n\nfrom active",
+          "into": "grouped"
+        }
+      }
+    },
+    {
+      "input": "sql \"\"\"\nselect value, label\nfrom active\norder by value desc, label\n\"\"\" into ordered",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select value, label\nfrom active\norder by value desc, label",
+          "into": "ordered"
+        }
+      }
+    },
+    {
+      "input": "sql \"\"\"select * from active",
+      "error": "sql multiline query is missing closing \"\"\""
+    },
+    {
+      "input": "sql select * from active   into summary",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select * from active",
+          "into": "summary"
+        }
+      }
+    },
+    {
+      "input": "sql select * from active into",
+      "error": "sql into expects syntax: sql <query> into <table>"
+    },
+    {
+      "input": "sql select * from active into __tabdat_next",
+      "error": "sql into cannot use reserved table name: __tabdat_next"
+    },
+    {
+      "input": "sql select * from active into active",
+      "error": "sql into cannot use reserved table name: active"
+    },
+    {
+      "input": "sql select * from active into bad-name",
+      "error": "sql into table name must be an identifier"
+    },
+    {
+      "input": "sql select sex, avg(bmi) as mean_bmi from active group by sex",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select sex, avg(bmi) as mean_bmi from active group by sex",
+          "into": null
+        }
+      }
+    },
+    {
+      "input": "sql select sex, avg(bmi) from active group by sex into summary",
+      "command": {
+        "type": "SqlCommand",
+        "fields": {
+          "query": "select sex, avg(bmi) from active group by sex",
+          "into": "summary"
+        }
+      }
+    },
+    {
+      "input": "status",
+      "command": {
+        "type": "StatusCommand",
+        "fields": {}
+      }
+    },
+    {
+      "input": "status now",
+      "error": "status does not accept arguments, if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "status, verbose",
+      "error": "status does not accept arguments, if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "streg",
+      "error": "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)"
+    },
+    {
+      "input": "streg time",
+      "error": "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)"
+    },
+    {
+      "input": "streg time age",
+      "error": "streg option failure expects one variable"
+    },
+    {
+      "input": "streg time age if time > 0, failure(event) dist(weibull)",
+      "error": "streg expects syntax: streg <time_var> <xvars>, failure(<event>) dist(...)"
+    },
+    {
+      "input": "streg time age income, failure(died) dist(weibull)",
+      "command": {
+        "type": "StregCommand",
+        "fields": {
+          "time_variable": "time",
+          "predictors": [
+            "age",
+            "income"
+          ],
+          "failure_variable": "died",
+          "distribution": "weibull",
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "streg time age, failure() dist(weibull)",
+      "error": "option failure expects at least one value"
+    },
+    {
+      "input": "streg time age, failure(died) dist(exponential) robust",
+      "command": {
+        "type": "StregCommand",
+        "fields": {
+          "time_variable": "time",
+          "predictors": [
+            "age"
+          ],
+          "failure_variable": "died",
+          "distribution": "exponential",
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "streg time age, failure(died) dist(weibull) cluster(group_id) noconstant",
+      "command": {
+        "type": "StregCommand",
+        "fields": {
+          "time_variable": "time",
+          "predictors": [
+            "age"
+          ],
+          "failure_variable": "died",
+          "distribution": "weibull",
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "streg time age, failure(event event2) dist(weibull)",
+      "error": "streg option failure expects one variable"
+    },
+    {
+      "input": "streg time age, failure(event) dist()",
+      "error": "option dist expects at least one value"
+    },
+    {
+      "input": "streg time age, failure(event) dist(loglogistic)",
+      "error": "streg option dist must be weibull or exponential"
+    },
+    {
+      "input": "streg time age, failure(event) dist(weibull) cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "streg time age, failure(event) dist(weibull) cluster(group firm)",
+      "error": "streg option cluster expects one variable"
+    },
+    {
+      "input": "streg time age, failure(event) dist(weibull) robust cluster(group)",
+      "error": "streg cannot combine robust and cluster"
+    },
+    {
+      "input": "streg time age, failure(event) dist(weibull) robust=true",
+      "error": "streg option robust does not accept a value"
+    },
+    {
+      "input": "summarize",
+      "command": {
+        "type": "SummarizeCommand",
+        "fields": {
+          "variables": []
+        }
+      }
+    },
+    {
+      "input": "summarize `bmi-zscore` `cost.2024` `x/y`",
+      "command": {
+        "type": "SummarizeCommand",
+        "fields": {
+          "variables": [
+            "bmi-zscore",
+            "cost.2024",
+            "x/y"
+          ]
+        }
+      }
+    },
+    {
+      "input": "summarize age = 5",
+      "error": "summarize does not accept assignment syntax"
+    },
+    {
+      "input": "summarize age `bmi-zscore` if age >= 18",
+      "command": {
+        "type": "ParsedCommand",
+        "fields": {
+          "name": "summarize",
+          "arguments": [
+            "age",
+            "bmi-zscore"
+          ],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "age"
+                }
+              },
+              "operator": ">=",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 18
+                }
+              }
+            }
+          },
+          "options": [],
+          "expression": null
+        }
+      }
+    },
+    {
+      "input": "summarize age bmi",
+      "command": {
+        "type": "SummarizeCommand",
+        "fields": {
+          "variables": [
+            "age",
+            "bmi"
+          ]
+        }
+      }
+    },
+    {
+      "input": "summarize age bmi, detail limit=10",
+      "command": {
+        "type": "ParsedCommand",
+        "fields": {
+          "name": "summarize",
+          "arguments": [
+            "age",
+            "bmi"
+          ],
+          "condition": null,
+          "options": [
+            {
+              "type": "CommandOption",
+              "fields": {
+                "name": "detail",
+                "value": true
+              }
+            },
+            {
+              "type": "CommandOption",
+              "fields": {
+                "name": "limit",
+                "value": 10
+              }
+            }
+          ],
+          "expression": null
+        }
+      }
+    },
+    {
+      "input": "summarize age if",
+      "error": "missing expression after if"
+    },
+    {
+      "input": "summarize age if age $ 18",
+      "error": "unsupported token in command: $"
+    },
+    {
+      "input": "summarize age if age > 18 if bmi > 20",
+      "error": "duplicate if clause"
+    },
+    {
+      "input": "summarize age if age >=",
+      "error": "incomplete expression after >="
+    },
+    {
+      "input": "summarize age if if age > 18",
+      "error": "duplicate if clause"
+    },
+    {
+      "input": "summarize age if sex == \"F",
+      "error": "unterminated quoted string"
+    },
+    {
+      "input": "summarize age if sex == \"F\", detail",
+      "command": {
+        "type": "ParsedCommand",
+        "fields": {
+          "name": "summarize",
+          "arguments": [
+            "age"
+          ],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "sex"
+                }
+              },
+              "operator": "==",
+              "right": {
+                "type": "StringExpression",
+                "fields": {
+                  "value": "F"
+                }
+              }
+            }
+          },
+          "options": [
+            {
+              "type": "CommandOption",
+              "fields": {
+                "name": "detail",
+                "value": true
+              }
+            }
+          ],
+          "expression": null
+        }
+      }
+    },
+    {
+      "input": "summarize age,",
+      "error": "comma must be followed by at least one option"
+    },
+    {
+      "input": "summarize age, limit 10",
+      "error": "option limit value must use option=value syntax"
+    },
+    {
+      "input": "summarize age, limit=",
+      "error": "option limit requires a value after ="
+    },
+    {
+      "input": "tabulate",
+      "error": "tabulate expects one or two variables or rows()/columns() options"
+    },
+    {
+      "input": "tabulate age bmi sex",
+      "error": "tabulate expects one or two variables or rows()/columns() options"
+    },
+    {
+      "input": "tabulate age bmi, exact",
+      "error": "tabulate unsupported option: exact"
+    },
+    {
+      "input": "tabulate age bmi, stat(mean)",
+      "error": "tabulate values() and stat() must be specified together"
+    },
+    {
+      "input": "tabulate age bmi, values(cost)",
+      "error": "tabulate values() and stat() must be specified together"
+    },
+    {
+      "input": "tabulate age bmi, values(cost) stat(mean) row",
+      "error": "tabulate row and col percentages are only supported for frequencies"
+    },
+    {
+      "input": "tabulate age, row",
+      "error": "one-way tabulate does not accept row or col options"
+    },
+    {
+      "input": "tabulate sex",
+      "command": {
+        "type": "TabulateCommand",
+        "fields": {
+          "row_variables": [
+            "sex"
+          ],
+          "column_variables": [],
+          "condition": null,
+          "value_variable": null,
+          "statistic": null,
+          "row_percent": false,
+          "column_percent": false,
+          "include_missing": false,
+          "nolabel": false
+        }
+      }
+    },
+    {
+      "input": "tabulate sex age, row col missing",
+      "command": {
+        "type": "TabulateCommand",
+        "fields": {
+          "row_variables": [
+            "sex"
+          ],
+          "column_variables": [
+            "age"
+          ],
+          "condition": null,
+          "value_variable": null,
+          "statistic": null,
+          "row_percent": true,
+          "column_percent": true,
+          "include_missing": true,
+          "nolabel": false
+        }
+      }
+    },
+    {
+      "input": "tabulate sex if age >= 18",
+      "command": {
+        "type": "TabulateCommand",
+        "fields": {
+          "row_variables": [
+            "sex"
+          ],
+          "column_variables": [],
+          "condition": {
+            "type": "BinaryExpression",
+            "fields": {
+              "left": {
+                "type": "IdentifierExpression",
+                "fields": {
+                  "name": "age"
+                }
+              },
+              "operator": ">=",
+              "right": {
+                "type": "NumberExpression",
+                "fields": {
+                  "value": 18
+                }
+              }
+            }
+          },
+          "value_variable": null,
+          "statistic": null,
+          "row_percent": false,
+          "column_percent": false,
+          "include_missing": false,
+          "nolabel": false
+        }
+      }
+    },
+    {
+      "input": "tabulate, rows(age age)",
+      "error": "tabulate duplicate variable: age"
+    },
+    {
+      "input": "tabulate, rows(age) columns(age)",
+      "error": "tabulate duplicate variable: age"
+    },
+    {
+      "input": "tabulate, rows(age) values(age) stat(mean)",
+      "error": "tabulate values() variable cannot also be a row or column variable"
+    },
+    {
+      "input": "tabulate, rows(region sex) columns(outcome year) values(cost) stat(mean)",
+      "command": {
+        "type": "TabulateCommand",
+        "fields": {
+          "row_variables": [
+            "region",
+            "sex"
+          ],
+          "column_variables": [
+            "outcome",
+            "year"
+          ],
+          "condition": null,
+          "value_variable": "cost",
+          "statistic": "mean",
+          "row_percent": false,
+          "column_percent": false,
+          "include_missing": false,
+          "nolabel": false
+        }
+      }
+    },
+    {
+      "input": "tail",
+      "command": {
+        "type": "TailCommand",
+        "fields": {
+          "limit": 5
+        }
+      }
+    },
+    {
+      "input": "tail -1",
+      "error": "unsupported token in command: -"
+    },
+    {
+      "input": "tail 000",
+      "command": {
+        "type": "TailCommand",
+        "fields": {
+          "limit": 0
+        }
+      }
+    },
+    {
+      "input": "tail 1 2",
+      "error": "tail accepts at most one row limit"
+    },
+    {
+      "input": "tail 1.5",
+      "error": "tail row limit must be a non-negative integer"
+    },
+    {
+      "input": "tail 2",
+      "command": {
+        "type": "TailCommand",
+        "fields": {
+          "limit": 2
+        }
+      }
+    },
+    {
+      "input": "tail five",
+      "error": "tail row limit must be a non-negative integer"
+    },
+    {
+      "input": "tail if age > 18",
+      "error": "tail does not accept if clauses, options, or assignment syntax"
+    },
+    {
+      "input": "test (x1 = x2) (x3 = 0)",
+      "command": {
+        "type": "TestCommand",
+        "fields": {
+          "constraints": [
+            {
+              "type": "BinaryExpression",
+              "fields": {
+                "left": {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "x1"
+                  }
+                },
+                "operator": "-",
+                "right": {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "x2"
+                  }
+                }
+              }
+            },
+            {
+              "type": "BinaryExpression",
+              "fields": {
+                "left": {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "x3"
+                  }
+                },
+                "operator": "-",
+                "right": {
+                  "type": "NumberExpression",
+                  "fields": {
+                    "value": 0
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": "test x1",
+      "command": {
+        "type": "TestCommand",
+        "fields": {
+          "constraints": [
+            {
+              "type": "IdentifierExpression",
+              "fields": {
+                "name": "x1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": "test x1 = x2",
+      "command": {
+        "type": "TestCommand",
+        "fields": {
+          "constraints": [
+            {
+              "type": "BinaryExpression",
+              "fields": {
+                "left": {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "x1"
+                  }
+                },
+                "operator": "-",
+                "right": {
+                  "type": "IdentifierExpression",
+                  "fields": {
+                    "name": "x2"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": "test x1 x2",
+      "command": {
+        "type": "TestCommand",
+        "fields": {
+          "constraints": [
+            {
+              "type": "IdentifierExpression",
+              "fields": {
+                "name": "x1"
+              }
+            },
+            {
+              "type": "IdentifierExpression",
+              "fields": {
+                "name": "x2"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "input": "tobit",
+      "error": "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]"
+    },
+    {
+      "input": "tobit outcome x1 x2, ll(-1) ul(10) robust",
+      "command": {
+        "type": "TobitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "lower_limit": -1.0,
+          "upper_limit": 10.0,
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "tobit outcome x1, ll(0)",
+      "command": {
+        "type": "TobitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "lower_limit": 0.0,
+          "upper_limit": null,
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "tobit outcome x1, ll(0) cluster(group_id) noconstant",
+      "command": {
+        "type": "TobitCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "lower_limit": 0.0,
+          "upper_limit": null,
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "tobit y",
+      "error": "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]"
+    },
+    {
+      "input": "tobit y x",
+      "error": "tobit option ll expects one numeric value"
+    },
+    {
+      "input": "tobit y x if y > 0",
+      "error": "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]"
+    },
+    {
+      "input": "tobit y x, ll()",
+      "error": "option ll expects at least one value"
+    },
+    {
+      "input": "tobit y x, ll(0) cluster()",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "tobit y x, ll(0) cluster(group firm)",
+      "error": "tobit option cluster expects one variable"
+    },
+    {
+      "input": "tobit y x, ll(0) robust cluster(group)",
+      "error": "tobit cannot combine robust and cluster"
+    },
+    {
+      "input": "tobit y x, ll(0) robust=true",
+      "error": "tobit option robust does not accept a value"
+    },
+    {
+      "input": "tobit y x, ll(low)",
+      "error": "option ll expects a numeric value"
+    },
+    {
+      "input": "tobit y x, ul(1)",
+      "error": "tobit option ll expects one numeric value"
+    },
+    {
+      "input": "ttest x == 10",
+      "command": {
+        "type": "TtestCommand",
+        "fields": {
+          "varname1": "x",
+          "varname2": null,
+          "value": 10.0,
+          "by_variable": null,
+          "welch": false
+        }
+      }
+    },
+    {
+      "input": "ttest x == y",
+      "command": {
+        "type": "TtestCommand",
+        "fields": {
+          "varname1": "x",
+          "varname2": "y",
+          "value": null,
+          "by_variable": null,
+          "welch": false
+        }
+      }
+    },
+    {
+      "input": "ttest x, by(g)",
+      "command": {
+        "type": "TtestCommand",
+        "fields": {
+          "varname1": "x",
+          "varname2": null,
+          "value": null,
+          "by_variable": "g",
+          "welch": false
+        }
+      }
+    },
+    {
+      "input": "ttest x, by(g) unequal",
+      "command": {
+        "type": "TtestCommand",
+        "fields": {
+          "varname1": "x",
+          "varname2": null,
+          "value": null,
+          "by_variable": "g",
+          "welch": true
+        }
+      }
+    },
+    {
+      "input": "ttest x, by(g) welch",
+      "command": {
+        "type": "TtestCommand",
+        "fields": {
+          "varname1": "x",
+          "varname2": null,
+          "value": null,
+          "by_variable": "g",
+          "welch": true
+        }
+      }
+    },
+    {
+      "input": "unknown",
+      "error": "unknown command: unknown"
+    },
+    {
+      "input": "use",
+      "error": "use expects exactly one path: use <path>"
+    },
+    {
+      "input": "use data.parquet",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "data.parquet",
+          "execution_mode": "eager",
+          "lazy_engine": null,
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use data.parquet,",
+      "error": "comma must be followed by at least one option"
+    },
+    {
+      "input": "use data.parquet, eager",
+      "error": "unknown use option: eager"
+    },
+    {
+      "input": "use data.parquet, engine=duckdb",
+      "error": "use engine option requires lazy mode"
+    },
+    {
+      "input": "use data.parquet, lazy",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "data.parquet",
+          "execution_mode": "lazy",
+          "lazy_engine": "duckdb",
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use data.parquet, lazy engine=duckdb",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "data.parquet",
+          "execution_mode": "lazy",
+          "lazy_engine": "duckdb",
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use data.parquet, lazy engine=polars",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "data.parquet",
+          "execution_mode": "lazy",
+          "lazy_engine": "polars",
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use data.parquet, lazy engine=spark",
+      "error": "use engine must be duckdb or polars"
+    },
+    {
+      "input": "use data.parquet, lazy lazy",
+      "error": "use option specified more than once"
+    },
+    {
+      "input": "use data.parquet, lazy=true",
+      "error": "use lazy option does not accept a value"
+    },
+    {
+      "input": "use https://example.com/data.parquet",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "https://example.com/data.parquet",
+          "execution_mode": "eager",
+          "lazy_engine": null,
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use one.parquet two.parquet",
+      "error": "use expects exactly one path: use <path>"
+    },
+    {
+      "input": "use s3://bucket/data.parquet, lazy",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "s3://bucket/data.parquet",
+          "execution_mode": "lazy",
+          "lazy_engine": "duckdb",
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use summary",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "summary",
+          "execution_mode": "eager",
+          "lazy_engine": null,
+          "delimiter": null,
+          "has_header": null
+        }
+      }
+    },
+    {
+      "input": "use survey.csv, delimiter(\",\") has_header(true)",
+      "command": {
+        "type": "UseCommand",
+        "fields": {
+          "path": "survey.csv",
+          "execution_mode": "eager",
+          "lazy_engine": null,
+          "delimiter": ",",
+          "has_header": true
+        }
+      }
+    },
+    {
+      "input": "xtabond",
+      "error": "xtabond expects syntax: xtabond <y> [xvars] [, robust lags(#) instlag(#)]"
+    },
+    {
+      "input": "xtabond wage",
+      "command": {
+        "type": "XtAbondCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [],
+          "robust": false,
+          "lag_depth": 1,
+          "instrument_lag_start": 2
+        }
+      }
+    },
+    {
+      "input": "xtabond wage exposure, lags(2) instlag(3)",
+      "command": {
+        "type": "XtAbondCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [
+            "exposure"
+          ],
+          "robust": false,
+          "lag_depth": 2,
+          "instrument_lag_start": 3
+        }
+      }
+    },
+    {
+      "input": "xtabond wage exposure, robust",
+      "command": {
+        "type": "XtAbondCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [
+            "exposure"
+          ],
+          "robust": true,
+          "lag_depth": 1,
+          "instrument_lag_start": 2
+        }
+      }
+    },
+    {
+      "input": "xtabond y if year > 2020",
+      "error": "xtabond expects syntax: xtabond <y> [xvars] [, robust lags(#) instlag(#)]"
+    },
+    {
+      "input": "xtabond y, cluster(firm_id)",
+      "error": "xtabond unsupported option: cluster"
+    },
+    {
+      "input": "xtabond y, instlag(1)",
+      "error": "xtabond option instlag must be at least 2"
+    },
+    {
+      "input": "xtabond y, lags(0)",
+      "error": "xtabond option lags must be at least 1"
+    },
+    {
+      "input": "xtabond y, lags(2) instlag(2)",
+      "error": "xtabond option instlag must be greater than option lags"
+    },
+    {
+      "input": "xtabond y, robust=true",
+      "error": "xtabond option robust does not accept a value"
+    },
+    {
+      "input": "xtdata",
+      "error": "xtdata expects syntax: xtdata <varlist>, within|between"
+    },
+    {
+      "input": "xtdata wage",
+      "error": "xtdata requires exactly one of within or between"
+    },
+    {
+      "input": "xtdata wage exper, within",
+      "command": {
+        "type": "XtDataCommand",
+        "fields": {
+          "variables": [
+            "wage",
+            "exper"
+          ],
+          "transform": "within"
+        }
+      }
+    },
+    {
+      "input": "xtdata wage if year > 2020, within",
+      "error": "xtdata expects syntax: xtdata <varlist>, within|between"
+    },
+    {
+      "input": "xtdata wage, between",
+      "command": {
+        "type": "XtDataCommand",
+        "fields": {
+          "variables": [
+            "wage"
+          ],
+          "transform": "between"
+        }
+      }
+    },
+    {
+      "input": "xtdata wage, detail",
+      "error": "xtdata unsupported option: detail"
+    },
+    {
+      "input": "xtdata wage, within between",
+      "error": "xtdata requires exactly one of within or between"
+    },
+    {
+      "input": "xtdata wage, within=true",
+      "error": "xtdata option within does not accept a value"
+    },
+    {
+      "input": "xtlogit",
+      "error": "xtlogit expects syntax: xtlogit <y> <xvars>, fe [robust]"
+    },
+    {
+      "input": "xtlogit promoted training tenure, fe",
+      "command": {
+        "type": "XtLogitCommand",
+        "fields": {
+          "outcome": "promoted",
+          "predictors": [
+            "training",
+            "tenure"
+          ],
+          "robust": false
+        }
+      }
+    },
+    {
+      "input": "xtlogit promoted training, fe robust",
+      "command": {
+        "type": "XtLogitCommand",
+        "fields": {
+          "outcome": "promoted",
+          "predictors": [
+            "training"
+          ],
+          "robust": true
+        }
+      }
+    },
+    {
+      "input": "xtlogit y x",
+      "error": "xtlogit requires option fe"
+    },
+    {
+      "input": "xtlogit y x, fe cluster(firm)",
+      "error": "xtlogit unsupported option: cluster"
+    },
+    {
+      "input": "xtlogit y x, fe re",
+      "error": "xtlogit unsupported option: re"
+    },
+    {
+      "input": "xtlogit y x, robust",
+      "error": "xtlogit requires option fe"
+    },
+    {
+      "input": "xtreg",
+      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re"
+    },
+    {
+      "input": "xtreg wage exper tenure, fe",
+      "command": {
+        "type": "XtRegCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [
+            "exper",
+            "tenure"
+          ],
+          "estimator": "fe",
+          "robust": false,
+          "cluster_variable": null
+        }
+      }
+    },
+    {
+      "input": "xtreg wage exper, fe cluster(firm_id)",
+      "command": {
+        "type": "XtRegCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [
+            "exper"
+          ],
+          "estimator": "fe",
+          "robust": false,
+          "cluster_variable": "firm_id"
+        }
+      }
+    },
+    {
+      "input": "xtreg wage exper, re robust",
+      "command": {
+        "type": "XtRegCommand",
+        "fields": {
+          "outcome": "wage",
+          "predictors": [
+            "exper"
+          ],
+          "estimator": "re",
+          "robust": true,
+          "cluster_variable": null
+        }
+      }
+    },
+    {
+      "input": "xtreg y x",
+      "error": "xtreg requires exactly one of fe or re"
+    },
+    {
+      "input": "xtreg y x, cluster(firm)",
+      "error": "xtreg requires exactly one of fe or re"
+    },
+    {
+      "input": "xtreg y x, fe cluster(firm year)",
+      "error": "xtreg option cluster expects one variable"
+    },
+    {
+      "input": "xtreg y x, fe cluster(firm) robust",
+      "error": "xtreg cannot combine robust and cluster"
+    },
+    {
+      "input": "xtreg y x, fe re",
+      "error": "xtreg requires exactly one of fe or re"
+    },
+    {
+      "input": "xtreg y x, fe=true",
+      "error": "xtreg option fe does not accept a value"
+    },
+    {
+      "input": "xtreg y x, robust",
+      "error": "xtreg requires exactly one of fe or re"
+    },
+    {
+      "input": "xtreg y, fe",
+      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re"
+    },
+    {
+      "input": "zinb",
+      "error": "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zinb outcome x1 x2, inflate(z1 z2)",
+      "command": {
+        "type": "ZinbCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "inflate_predictors": [
+            "z1",
+            "z2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zinb outcome x1, inflate(z1) cluster(group_id)",
+      "command": {
+        "type": "ZinbCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zinb outcome x1, inflate(z1) noconstant",
+      "command": {
+        "type": "ZinbCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "zinb outcome x1, inflate(z1) robust",
+      "command": {
+        "type": "ZinbCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zinb y",
+      "error": "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zinb y x",
+      "error": "zinb option inflate expects one-or-more variables"
+    },
+    {
+      "input": "zinb y x if y > 0, inflate(z)",
+      "error": "zinb expects syntax: zinb <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zinb y x, cluster() inflate(z)",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "zinb y x, cluster(group firm) inflate(z)",
+      "error": "zinb option cluster expects one variable"
+    },
+    {
+      "input": "zinb y x, inflate()",
+      "error": "option inflate expects at least one value"
+    },
+    {
+      "input": "zinb y x, robust cluster(group) inflate(z)",
+      "error": "zinb cannot combine robust and cluster"
+    },
+    {
+      "input": "zinb y x, robust=true inflate(z)",
+      "error": "zinb option robust does not accept a value"
+    },
+    {
+      "input": "zip",
+      "error": "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zip outcome x1 x2, inflate(z1 z2)",
+      "command": {
+        "type": "ZipCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1",
+            "x2"
+          ],
+          "inflate_predictors": [
+            "z1",
+            "z2"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zip outcome x1, inflate(z1) cluster(group_id)",
+      "command": {
+        "type": "ZipCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": "group_id",
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zip outcome x1, inflate(z1) noconstant",
+      "command": {
+        "type": "ZipCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": false,
+          "cluster_variable": null,
+          "include_intercept": false
+        }
+      }
+    },
+    {
+      "input": "zip outcome x1, inflate(z1) robust",
+      "command": {
+        "type": "ZipCommand",
+        "fields": {
+          "outcome": "outcome",
+          "predictors": [
+            "x1"
+          ],
+          "inflate_predictors": [
+            "z1"
+          ],
+          "robust": true,
+          "cluster_variable": null,
+          "include_intercept": true
+        }
+      }
+    },
+    {
+      "input": "zip y",
+      "error": "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zip y x",
+      "error": "zip option inflate expects one-or-more variables"
+    },
+    {
+      "input": "zip y x if y > 0, inflate(z)",
+      "error": "zip expects syntax: zip <y> <xvars>, inflate(<zvars>)"
+    },
+    {
+      "input": "zip y x, cluster() inflate(z)",
+      "error": "option cluster expects at least one value"
+    },
+    {
+      "input": "zip y x, cluster(group firm) inflate(z)",
+      "error": "zip option cluster expects one variable"
+    },
+    {
+      "input": "zip y x, inflate()",
+      "error": "option inflate expects at least one value"
+    },
+    {
+      "input": "zip y x, robust cluster(group) inflate(z)",
+      "error": "zip cannot combine robust and cluster"
+    },
+    {
+      "input": "zip y x, robust=true inflate(z)",
+      "error": "zip option robust does not accept a value"
+    }
+  ]
+}
