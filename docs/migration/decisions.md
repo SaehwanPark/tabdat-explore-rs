@@ -14,6 +14,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0006 | Accepted | CLI script exit categories | Classify failure sources instead of diagnostic words; explicit corrections and compatibility impact in PR #205 and details below. |
 
+| MIG-0007 | Accepted | Summary finite sample | Per-variable finite non-NULL sample for all summary aggregates; correct non-finite failures without masking poisoned output. PR #209; details below. |
+
 MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
@@ -145,3 +147,28 @@ updates also get an entry identifying old/new pins and affected contract checks.
   policy; no architecture or public API expansion, so no new ADR. Full Python
   seed parity is not claimed. Specify and validate deterministic RNG semantics
   separately before adding a command that consumes this context value.
+
+### MIG-0007: finite summary samples
+
+- **Scope/reproduction:** Rust `71c24e0` runs native count/avg/stddev/min/max over
+  non-NULL values. A loaded DOUBLE column `[1.5, NULL, NaN, +inf, -inf, 3, 4]`
+  fails `summarize` during native variance aggregation. Merely turning non-finite
+  output into null does not prevent this error or define a coherent sample.
+- **Decision/impact:** PR #209 filters each variable to finite, non-NULL numeric
+  values before every aggregate: count 3, mean 8.5/3, sample SD with denominator
+  2, minimum 1.5, maximum 4. All-invalid/empty samples have count zero and absent
+  statistics; singleton SD is absent. NaN/infinity no longer contribute to
+  summary counts or extrema. `missing` remains SQL-NULL-only; whole relation
+  count, finite-data behavior, typed extrema, ordering and state are unchanged.
+  This is an intentional Rust contract correction, not a Python parity claim.
+- **Implementation/limits:** native `isfinite` predicate with uncast aggregate
+  input, rather than eager row extraction, duplicate calculations, or poisoning
+  some statistics while retaining inconsistent counts/extrema. No new dependency
+  or unsafe ownership change. Finite native arithmetic can still overflow and
+  means/SD retain the engine's floating precision; no broad stability guarantee.
+- **Evidence:** `summary-finite-reference.json` and its regeneration tool record
+  Python/NumPy/SciPy versions, exact candidate indices and tolerances. Shell,
+  batch/nested JSON, loaded-value sample indices, all-invalid/NaN-only/singleton/
+  empty cases, metadata/model/row invariants and existing finite regressions are
+  tested. Runtime typed fixtures check BIGINT/UBIGINT and DECIMAL(38,2) extrema
+  without narrowing, quoted identifiers, and REAL NaN/infinity filtering.

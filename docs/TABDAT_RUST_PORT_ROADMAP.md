@@ -79,10 +79,12 @@ covered without changing calculations or model state.
 Owned SQL-NULL missingness now reports in terminal/CLI-v1 JSON (#208), preserving
 types, order/duplicates, counts, percentages and the empty-relation 0% convention.
 Mixed NULL/NaN/infinity/stored-empty/sentinel checks distinguish NULL counts from
-finite t-test samples; success/error/nested/state paths are covered. Next concrete
-issue: native summarize aggregates currently fail on infinity-containing columns.
-Choose and document non-finite summary sample semantics with independent numerical
-evidence before changing those aggregates.
+finite t-test samples; success/error/nested/state paths are covered. Summarize now
+uses per-variable finite, non-NULL samples for all aggregates (#209), fixing the
+reproduced non-finite aggregate failure. NumPy/SciPy references, loaded sample
+indices, singleton/all-invalid/empty cases, exact wide integer/decimal extrema,
+finite regressions and read-only state are checked. Native finite-arithmetic
+overflow remains outside this correction; see MIG-0007 for the explicit policy.
 
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 
