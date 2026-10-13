@@ -43,8 +43,10 @@ and typed report/spatial option forms; execution remains unchanged (VIF only).
 Artifact generation and spatial diagnostics are not implemented by this syntax
 slice. Conditional summarize and keep/drop row-filter forms now own typed
 expressions/options while execution explicitly rejects these new forms; existing
-unconditional operations remain unchanged. Full AST, script, property/fuzz and
-whole-phase acceptance remain pending.
+unconditional operations remain unchanged. Conditional/multidimensional/value-
+aggregate `TabulateQuery` syntax is also accepted but explicitly deferred by
+execution; bounded positional frequency tables still run. Full AST, script,
+property/fuzz and whole-phase acceptance remain pending.
 
 ## Current behavior
 

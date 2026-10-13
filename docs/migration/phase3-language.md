@@ -124,3 +124,26 @@ an expression-argument comma/option-boundary bug during development, fixed with
 a depth-aware boundary helper and nested-call regression tests; follow-up checks
 pass. Three local owner passes cover AST, errors/boundaries and runtime isolation.
 Whole AST equivalence and arbitrary generic option semantics remain later evidence.
+
+## Slice 5: conditional/multidimensional tabulate syntax
+
+**Python contract:** pinned `_parse_tabulate` accepts positional or explicit
+rows/columns, predicates and paired values/stat options. Finite statistics are
+count/mean/sum/min/max. Validation rejects dimensions duplicated across axes,
+value/dimension overlap, incomplete aggregation pairs and percentages on values.
+Repeated flags are idempotent; repeated value-bearing options are errors.
+
+**Rust contract:** existing `Tabulate` retains bounded eager frequency execution;
+`TabulateQuery` owns richer dimensions/predicate and an optional atomic
+value/statistic pair. All new queries remain unsupported by execution.
+
+**Test contract:** failing-before-implementation acceptance, retained dimension/
+aggregation fields, repeated flags and complete corpus replay. Eleven differences
+resolved; **3 remain**. Historical bounded diagnostics were reconciled with pinned
+Python, not accepted as deliberate deviations.
+
+**Implementation mapping:** safe domain metadata and a dedicated syntax validator;
+no aggregation or conditional runtime added. Root formatting, locked workspace
+check/test/Clippy and diff check passed. Three local owner reviews covered
+validation ordering, type/effect isolation and compatibility. Case normalization
+was caught by existing uppercase tests and fixed before verification.

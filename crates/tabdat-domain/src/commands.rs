@@ -97,6 +97,12 @@ pub enum Command {
   Label { command: LabelCommand },
   /// Produce bounded eager frequency tables for one or two variables.
   Tabulate { command: TabulateCommand },
+  /// Syntax-only conditional, multidimensional or value-aggregation table.
+  TabulateQuery {
+    command: TabulateCommand,
+    condition: Option<GenerateExpression>,
+    aggregation: Option<TabulateAggregation>,
+  },
   /// Join the active dataset with a named table (execution is deferred).
   Join { command: JoinCommand },
   /// Append rows from a named table (execution is deferred).
@@ -313,6 +319,13 @@ pub struct TabulateCommand {
   pub include_missing: bool,
   /// Suppress attached value-label display.
   pub nolabel: bool,
+}
+
+/// A tabulate value variable and statistic are present together or not at all.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TabulateAggregation {
+  pub variable: String,
+  pub statistic: CollapseStatistic,
 }
 
 /// The finite aggregate functions accepted by bounded `collapse`.

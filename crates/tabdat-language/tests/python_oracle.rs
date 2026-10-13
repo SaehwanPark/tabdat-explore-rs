@@ -35,7 +35,7 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
           let mut kind = value["kind"].as_str().unwrap().replace('_', "");
           if kind == "summarizequery" && expected == "parsed" {
             kind = "parsed".into();
-          } else if kind == "rowfilter" {
+          } else if kind == "rowfilter" || kind == "tabulatequery" {
             kind = name.into();
           }
           (kind != expected).then(|| format!("expected variant {expected}, got {kind}"))

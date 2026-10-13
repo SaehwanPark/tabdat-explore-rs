@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod script;
+mod tabulate;
 pub use script::{
   ControlFlowDirective, ElseDirective, EndDirective, IfDirective, LetDirective, ScriptBlockState,
   ScriptCommand, ScriptContext, ScriptDirective, ScriptError, SeedDirective,
@@ -7894,7 +7895,13 @@ fn parse_collapse_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_tabulate_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "tabulate expects one or two variables";
+  tabulate::parse(body)
+}
+
+// Retained frequency constructor after the full syntax validator has checked
+// predicates and richer forms. Never receives syntax-only aggregate queries.
+fn parse_frequency_tabulate(body: &str) -> Result<Command, ParseError> {
+  let syntax = "tabulate expects one or two variables or rows()/columns() options";
   let (variable_body, option_body) = match first_unquoted_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
     None => (body, None),
@@ -7944,11 +7951,6 @@ fn parse_tabulate_command(body: &str) -> Result<Command, ParseError> {
   let mut option_names = Vec::with_capacity(options.len());
   for option in &options {
     let name = option.name.to_ascii_lowercase();
-    if option_names.iter().any(|previous| previous == &name) {
-      return Err(ParseError::new(format!(
-        "tabulate option {name} can only be specified once"
-      )));
-    }
     if option.value != UseOptionValue::Flag {
       return Err(ParseError::new(format!(
         "tabulate option {name} does not accept a value"
@@ -7961,7 +7963,7 @@ fn parse_tabulate_command(body: &str) -> Result<Command, ParseError> {
   let column_percent = option_names.iter().any(|name| name == "col");
   if variables.len() == 1 && (row_percent || column_percent) {
     return Err(ParseError::new(
-      "tabulate one-way tables do not accept row or col options",
+      "one-way tabulate does not accept row or col options",
     ));
   }
 
