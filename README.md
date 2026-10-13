@@ -68,6 +68,24 @@ Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery
 includes commands that parse but do not yet execute.
 
+## Bounded JSON results
+
+Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
+for versioned line-delimited envelopes. Successful execution output currently
+supports use, count, summarize, head and tail; nested scripts stream leaf results.
+Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
+`result_type: "SummarizeResult"` and `data.rows`, with each row containing
+`variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
+
+Summary rows preserve requested order and duplicate variables; omitted variables
+select numeric columns in schema order. `count` is the non-null count and
+`std_dev` is sample standard deviation (undefined below two observations).
+Missing/undefined and non-finite values serialize as `null`, consistent with
+CLI-v1 preview output. Extrema reuse preview scalar encoding: integers remain
+JSON numbers, decimals are exact scaled strings. Consumers needing large-integer
+precision should use a lossless JSON number parser. This is an additive result
+surface, not full-command JSON support.
+
 ## Development direction
 
 The immediate priority is a usable end-to-end EDA/linear-model workflow:

@@ -2,15 +2,15 @@
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
-use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult};
+use tabdat_domain::{
+  CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult, SummarizeResult,
+};
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str =
-  "--json successful batch results are currently supported only for use, count, head, and tail";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str =
-  "--json successful script results are currently supported only for use, count, head, and tail";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, head, and tail";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, head, and tail";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -18,6 +18,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     command,
     Command::Use { .. }
       | Command::Count
+      | Command::Summarize { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
       | Command::Exit
@@ -32,6 +33,7 @@ pub fn supports_script_command(command: &Command) -> bool {
     command,
     Command::Use { .. }
       | Command::Count
+      | Command::Summarize { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
       | Command::Exit
@@ -47,6 +49,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
+    ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       (preview_result_data(preview), "PreviewResult")
     }
@@ -55,6 +58,19 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn summarize_result_data(result: &SummarizeResult) -> Value {
+  json!({
+    "rows": result.rows.iter().map(|row| json!({
+      "variable": row.variable,
+      "count": row.count,
+      "mean": row.mean.and_then(Number::from_f64),
+      "std_dev": row.std_dev.and_then(Number::from_f64),
+      "minimum": row.minimum.as_ref().map(cell_value_data),
+      "maximum": row.maximum.as_ref().map(cell_value_data),
+    })).collect::<Vec<_>>()
+  })
 }
 
 fn preview_result_data(result: &PreviewResult) -> Value {
@@ -131,6 +147,79 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn summary_serialization_preserves_order_precision_and_null_policies() {
+    use tabdat_domain::SummaryRow;
+    let large = SummaryRow {
+      variable: "large".to_owned(),
+      count: u64::MAX,
+      mean: None,
+      std_dev: None,
+      minimum: Some(CellValue::SignedInteger(i128::MIN)),
+      maximum: Some(CellValue::UnsignedInteger(u128::MAX)),
+    };
+    let result = ExecutionResult::Summarize(SummarizeResult {
+      rows: vec![
+        large.clone(),
+        SummaryRow {
+          variable: "empty".to_owned(),
+          count: 0,
+          mean: None,
+          std_dev: None,
+          minimum: None,
+          maximum: None,
+        },
+        SummaryRow {
+          variable: "decimal".to_owned(),
+          count: 1,
+          mean: Some(0.01),
+          std_dev: None,
+          minimum: Some(CellValue::Decimal {
+            width: 38,
+            scale: 2,
+            value: 1,
+          }),
+          maximum: Some(CellValue::Decimal {
+            width: 38,
+            scale: 2,
+            value: 1,
+          }),
+        },
+        SummaryRow {
+          variable: "nonfinite".to_owned(),
+          count: 2,
+          mean: Some(f64::INFINITY),
+          std_dev: Some(f64::NAN),
+          minimum: Some(CellValue::Float(f64::NEG_INFINITY)),
+          maximum: Some(CellValue::Float(f64::INFINITY)),
+        },
+        large,
+      ],
+    });
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(envelope["schema_version"], 1);
+    assert_eq!(envelope["result_type"], "SummarizeResult");
+    let rows = envelope["data"]["rows"].as_array().unwrap();
+    assert_eq!(rows.len(), 5);
+    assert_eq!(rows[0], rows[4]);
+    assert_eq!(rows[0]["count"], json!(u64::MAX));
+    assert_eq!(rows[0]["minimum"], json!(i128::MIN));
+    assert_eq!(rows[0]["maximum"], json!(u128::MAX));
+    assert_eq!(
+      rows[1],
+      json!({"variable": "empty", "count": 0, "mean": null, "std_dev": null, "minimum": null, "maximum": null})
+    );
+    assert_eq!(
+      rows[2],
+      json!({"variable": "decimal", "count": 1, "mean": 0.01, "std_dev": null, "minimum": "0.01", "maximum": "0.01"})
+    );
+    assert_eq!(
+      rows[3],
+      json!({"variable": "nonfinite", "count": 2, "mean": null, "std_dev": null, "minimum": null, "maximum": null})
+    );
+  }
 
   #[test]
   fn preview_serialization_preserves_cell_conversion_policies() {

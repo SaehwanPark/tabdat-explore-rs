@@ -29,7 +29,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |
 | Statistics | Pure Rust linear model/inference utilities, bounded `regress`, `ttest`, `predict`, `test`, `lincom`, VIF; readable shell results for `regress`/`predict`/`lincom`/`test` | Other estimator families largely parser-only; reference validation remains feature-specific |
-| Structured interfaces | Selected CLI JSON envelopes/results and typed transport-independent MCP boundary | No full-results JSON surface or MCP transport/server |
+| Structured interfaces | CLI-v1 JSON load/count/summarize/preview results, ordered script streams, discovery, and typed transport-independent MCP boundary | No full-results JSON surface or MCP transport/server |
 | Visualization | Several command forms parse | Rendering/plot execution not installed |
 | Native capabilities | Phase 1 DuckDB/ReadStat/libgretl/plotting feasibility decisions and prototypes | ReadStat, libgretl and plotting adapters are not production integrations |
 

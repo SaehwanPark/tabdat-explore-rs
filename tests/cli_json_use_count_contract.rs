@@ -54,9 +54,9 @@ fn help_describes_the_current_json_result_boundary() {
   assert!(output.status.success());
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   assert!(stdout.contains("batch success output"));
-  assert!(stdout.contains("supports use/count/head/tail"));
+  assert!(stdout.contains("supports use/count/summarize/head/tail"));
   assert!(stdout.contains("scripts stream"));
-  assert!(stdout.contains("use/count/head/tail"));
+  assert!(stdout.contains("use/count/summarize/head/tail"));
 }
 
 fn fixture_csv(dir: &TestDir) -> PathBuf {
@@ -114,6 +114,156 @@ fn json_batch_emits_load_and_count_result_envelopes() {
   assert_eq!(envelopes[1]["data"], serde_json::json!({"row_count": 2}));
 }
 
+fn summary_csv(dir: &TestDir) -> PathBuf {
+  let path = dir.path().join("summary.csv");
+  fs::write(&path, "x,y,label\n1,10,a\n3,,b\n5,,c\n,,d\n").unwrap();
+  path
+}
+
+fn json_lines(output: &[u8]) -> Vec<serde_json::Value> {
+  std::str::from_utf8(output)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect()
+}
+
+#[test]
+fn json_summaries_preserve_requested_order_duplicates_and_singleton_missingness() {
+  let dir = TestDir::new();
+  let path = summary_csv(&dir);
+  let output = tabdat_bin()
+    .args([
+      "--json",
+      "-c",
+      &format!("use {}", path.display()),
+      "-c",
+      "summarize y x y",
+      "-c",
+      "summarize",
+    ])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelopes = json_lines(&output.stdout);
+  assert_eq!(envelopes.len(), 3);
+  let y = serde_json::json!({"variable": "y", "count": 1, "mean": 10.0, "std_dev": null, "minimum": 10, "maximum": 10});
+  // Hand-checkable independent moments: [1,3,5] has mean 3 and sample SD 2.
+  let x = serde_json::json!({"variable": "x", "count": 3, "mean": 3.0, "std_dev": 2.0, "minimum": 1, "maximum": 5});
+  assert_eq!(
+    envelopes[1],
+    serde_json::json!({"schema_version": 1, "result_type": "SummarizeResult", "data": {"rows": [y.clone(), x.clone(), y.clone()]}})
+  );
+  assert_eq!(envelopes[2]["data"], serde_json::json!({"rows": [x, y]}));
+}
+
+#[test]
+fn json_nested_scripts_stream_summaries_in_leaf_order_without_metadata() {
+  let dir = TestDir::new();
+  let path = summary_csv(&dir);
+  write_script(&dir, "summary-child.td", "summarize y\n");
+  let parent = write_script(
+    &dir,
+    "summary-parent.td",
+    &format!(
+      "use {}\nsummarize x\nrun summary-child.td\ncount\n",
+      path.display()
+    ),
+  );
+  let output = tabdat_bin()
+    .args(["--json", "-f", &parent.to_string_lossy()])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelopes = json_lines(&output.stdout);
+  assert_eq!(
+    envelopes
+      .iter()
+      .map(|value| value["result_type"].as_str().unwrap())
+      .collect::<Vec<_>>(),
+    [
+      "LoadResult",
+      "SummarizeResult",
+      "SummarizeResult",
+      "CountResult"
+    ]
+  );
+  assert_eq!(envelopes[1]["data"]["rows"][0]["variable"], "x");
+  assert_eq!(envelopes[2]["data"]["rows"][0]["variable"], "y");
+  assert_eq!(envelopes[3]["data"]["row_count"], 4);
+}
+
+#[test]
+fn json_summary_errors_preserve_prior_envelopes_and_nested_locations() {
+  let dir = TestDir::new();
+  let path = summary_csv(&dir);
+  let child = write_script(
+    &dir,
+    "invalid-summary.td",
+    "summarize y\nsummarize absent\n",
+  );
+  let parent = write_script(
+    &dir,
+    "parent-summary.td",
+    &format!("use {}\nrun invalid-summary.td\ncount\n", path.display()),
+  );
+  let output = tabdat_bin()
+    .args(["--json", "-f", &parent.to_string_lossy()])
+    .output()
+    .unwrap();
+  assert_eq!(output.status.code(), Some(1));
+  let envelopes = json_lines(&output.stdout);
+  assert_eq!(envelopes.len(), 3);
+  assert_eq!(envelopes[0]["result_type"], "LoadResult");
+  assert_eq!(envelopes[1]["result_type"], "SummarizeResult");
+  assert_eq!(envelopes[2]["error"]["type"], "ScriptError");
+  assert_eq!(envelopes[2]["error"]["line"], 2);
+  assert_eq!(
+    envelopes[2]["error"]["path"],
+    child.canonicalize().unwrap().to_string_lossy().as_ref()
+  );
+  assert!(
+    envelopes[2]["error"]["message"]
+      .as_str()
+      .unwrap()
+      .contains("absent")
+  );
+}
+
+#[test]
+fn json_summary_runtime_failures_do_not_emit_success_results() {
+  let dir = TestDir::new();
+  let path = summary_csv(&dir);
+  for command in ["summarize label", "summarize absent"] {
+    let output = tabdat_bin()
+      .args([
+        "--json",
+        "-c",
+        &format!("use {}", path.display()),
+        "-c",
+        command,
+      ])
+      .output()
+      .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let envelopes = json_lines(&output.stdout);
+    assert_eq!(envelopes.len(), 2);
+    assert_eq!(envelopes[1]["error"]["type"], "ExecutionError");
+    assert!(envelopes[1].get("result_type").is_none());
+  }
+  let output = tabdat_bin()
+    .args(["--json", "-c", "summarize"])
+    .output()
+    .unwrap();
+  assert_eq!(output.status.code(), Some(1));
+  assert_eq!(
+    json_lines(&output.stdout)[0]["error"]["type"],
+    "ExecutionError"
+  );
+}
+
 #[test]
 fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   let temp_dir = TestDir::new();
@@ -138,7 +288,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   assert!(!exported_path.exists());
   assert_eq!(
     output.stderr,
-    b"Error: --json successful batch results are currently supported only for use, count, head, and tail\n"
+    b"Error: --json successful batch results are currently supported only for use, count, summarize, head, and tail\n"
   );
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   let envelopes = stdout
@@ -154,7 +304,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
     serde_json::json!({
       "schema_version": 1,
       "error": {
-        "message": "--json successful batch results are currently supported only for use, count, head, and tail",
+        "message": "--json successful batch results are currently supported only for use, count, summarize, head, and tail",
         "type": "JsonResultUnsupported"
       }
     })
@@ -371,7 +521,7 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
   assert_eq!(envelopes[1]["error"]["line"], 2);
   assert_eq!(
     envelopes[1]["error"]["message"],
-    "--json successful script results are currently supported only for use, count, head, and tail"
+    "--json successful script results are currently supported only for use, count, summarize, head, and tail"
   );
   assert!(
     String::from_utf8(output.stderr)
