@@ -87,6 +87,8 @@ impl Command {
         required.insert(Data);
       }
       Self::Summarize { .. }
+      | Self::SummarizeQuery { .. }
+      | Self::RowFilter { .. }
       | Self::Datasignature
       | Self::Codebook { .. }
       | Self::Missing { .. }

@@ -3319,14 +3319,6 @@ fn summarize_is_a_public_syntax_only_command() {
 fn summarize_preserves_exact_public_diagnostics() {
   let cases = [
     (
-      "summarize age if age > 18",
-      "summarize does not accept if clauses or options",
-    ),
-    (
-      "summarize age, detail",
-      "summarize does not accept if clauses or options",
-    ),
-    (
       "summarize age = other",
       "summarize does not accept assignment syntax",
     ),
@@ -4001,10 +3993,6 @@ fn keep_preserves_bounded_projection_diagnostics() {
     ("keep", "keep expects a variable list or if clause"),
     ("keep if", "missing expression after if"),
     (
-      "keep if age > 0",
-      "keep if execution is deferred in the bounded runtime",
-    ),
-    (
       "keep age if age > 0",
       "keep cannot combine a variable list with an if clause",
     ),
@@ -4024,10 +4012,6 @@ fn keep_preserves_bounded_projection_diagnostics() {
     (
       "keep if age > 0, stable",
       "keep does not accept options or assignment syntax",
-    ),
-    (
-      "keep if age > 0,",
-      "keep if execution is deferred in the bounded runtime",
     ),
     (
       "keep age if age > 0, stable",
@@ -4065,10 +4049,6 @@ fn drop_preserves_bounded_projection_diagnostics() {
     ("drop", "drop expects a variable list or if clause"),
     ("drop if", "missing expression after if"),
     (
-      "drop if age > 0",
-      "drop if execution is deferred in the bounded runtime",
-    ),
-    (
       "drop age if age > 0",
       "drop cannot combine a variable list with an if clause",
     ),
@@ -4088,10 +4068,6 @@ fn drop_preserves_bounded_projection_diagnostics() {
     (
       "drop if age > 0, stable",
       "drop does not accept options or assignment syntax",
-    ),
-    (
-      "drop if age > 0,",
-      "drop if execution is deferred in the bounded runtime",
     ),
     (
       "drop age if age > 0, stable",

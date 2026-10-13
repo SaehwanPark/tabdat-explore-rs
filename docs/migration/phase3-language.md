@@ -97,3 +97,30 @@ no backend, artifact I/O, statistical or spatial execution added. All root Cargo
 checks and diff check passed. Three local owner review passes checked finite
 state/JSON, options/diagnostics, and unchanged runtime dispatch; no actionable
 issues remained. These are not independent model/hosted reviews.
+
+## Slice 4: conditional summary and row-filter syntax
+
+**Python contract:** pinned `_parse_command_parts`, `_parse_keep` and `_parse_drop`
+retain conditions; generic `ParsedCommand` retains summary arguments, conditions,
+and options. Row filters cannot combine a variable list with a predicate.
+
+**Rust contract:** `SummarizeQuery` owns variables, optional expression and typed
+options; `RowFilter` has a finite keep/drop action and mandatory expression.
+Existing no-condition column operations and eager summaries retain their old
+representations. Both new variants remain explicitly unsupported by execution,
+so parsing cannot silently execute a projection or unconditional summary.
+
+**Test contract:** new tests fail before implementation; typed condition/option
+fields, quoted `if`, nested function commas, and Python's accepted trailing comma
+on row filters are covered. Obsolete bounded syntax rejections are replaced by
+acceptance tests, not silently retained as runtime constraints. Corpus equivalence
+explicitly maps Python generic summary/condition-bearing keep/drop to the new
+specific Rust variants. Thirteen differences resolved; **14 remain**.
+
+**Implementation mapping:** safe language/domain with conservative metadata;
+no new runtime data operation. Runtime tests assert unsupported diagnostics and
+no backend initialization. All root Cargo/diff checks pass. Owner reviews found
+an expression-argument comma/option-boundary bug during development, fixed with
+a depth-aware boundary helper and nested-call regression tests; follow-up checks
+pass. Three local owner passes cover AST, errors/boundaries and runtime isolation.
+Whole AST equivalence and arbitrary generic option semantics remain later evidence.

@@ -28,8 +28,16 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
         .to_lowercase();
       match result {
         Ok(command) => {
+          // Rust uses specific typed query/filter variants where Python uses a
+          // generic ParsedCommand or a condition field on column operations.
+          let name = command.name();
           let value = serde_json::to_value(command).unwrap();
-          let kind = value["kind"].as_str().unwrap().replace('_', "");
+          let mut kind = value["kind"].as_str().unwrap().replace('_', "");
+          if kind == "summarizequery" && expected == "parsed" {
+            kind = "parsed".into();
+          } else if kind == "rowfilter" {
+            kind = name.into();
+          }
           (kind != expected).then(|| format!("expected variant {expected}, got {kind}"))
         }
         Err(error) => Some(format!("expected {expected}, got error {error}")),

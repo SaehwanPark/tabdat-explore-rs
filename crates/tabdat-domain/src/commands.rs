@@ -16,6 +16,17 @@ pub enum Command {
   Doctor,
   /// Compute descriptive statistics for selected columns.
   Summarize { variables: Vec<String> },
+  /// Syntax-only conditional/option-bearing summary, not eager summary execution.
+  SummarizeQuery {
+    variables: Vec<String>,
+    condition: Option<GenerateExpression>,
+    options: Vec<SyntaxOption>,
+  },
+  /// Syntax-only row selection; distinct from column keep/drop operations.
+  RowFilter {
+    action: RowFilterAction,
+    condition: GenerateExpression,
+  },
   /// Compute a signature for the active dataset in the bounded eager runtime.
   Datasignature,
   /// Profile selected columns.
@@ -1157,6 +1168,31 @@ pub struct TtestCommand {
   pub by_variable: Option<String>,
   /// Whether unequal-variance inference was requested.
   pub welch: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RowFilterAction {
+  Keep,
+  Drop,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SyntaxOption {
+  pub name: String,
+  pub value: SyntaxOptionValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
+pub enum SyntaxOptionValue {
+  Flag,
+  Number(String),
+  String(String),
+  Boolean(bool),
+  Identifiers(Vec<String>),
+  Numbers(Vec<String>),
+  Prior(String, String),
 }
 
 /// Post-estimation diagnostic syntax; options exist only on applicable variants.
