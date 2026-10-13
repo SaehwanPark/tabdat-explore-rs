@@ -94,20 +94,20 @@ fn json_transform_fit_predict_export_pipeline_matches_values_and_nested_stream()
   assert_success(&output);
   let results = lines(&output.stdout);
   assert_eq!(results.len(), 11);
-  for index in 1..=4 {
-    assert_eq!(results[index]["schema_version"], 1);
+  for (index, result) in results.iter().enumerate().take(5).skip(1) {
+    assert_eq!(result["schema_version"], 1);
     assert_eq!(
-      results[index]["result_type"],
+      result["result_type"],
       if index == 1 {
         "GenerateResult"
       } else {
         "ReplaceResult"
       }
     );
-    assert_eq!(results[index]["data"]["dataset"]["row_count"], 6);
-    assert_eq!(results[index]["data"]["dataset"]["path"], "data.csv");
+    assert_eq!(result["data"]["dataset"]["row_count"], 6);
+    assert_eq!(result["data"]["dataset"]["path"], "data.csv");
     assert_eq!(
-      results[index]["data"]["dataset"]["columns"]
+      result["data"]["dataset"]["columns"]
         .as_array()
         .unwrap()
         .iter()
@@ -115,7 +115,7 @@ fn json_transform_fit_predict_export_pipeline_matches_values_and_nested_stream()
         .collect::<Vec<_>>(),
       ["x", "y", "label", "doubled"]
     );
-    assert!(results[index]["data"].get("affected_rows").is_none());
+    assert!(result["data"].get("affected_rows").is_none());
   }
   assert_eq!(
     results[5]["data"]["rows"],
