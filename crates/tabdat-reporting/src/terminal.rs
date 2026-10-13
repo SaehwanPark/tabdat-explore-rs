@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use tabdat_domain::{CellValue, ExecutionResult};
+use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult};
 
 fn cell(value: &CellValue) -> String {
   match value {
@@ -60,7 +60,15 @@ fn table(columns: &[String], rows: &[Vec<CellValue>]) -> String {
   output
 }
 
-/// Render the initial interactive EDA subset without changing owned results.
+fn dataset_outcome(action: &str, dataset: &DatasetInfo) -> String {
+  format!(
+    "{action}: {} rows, {} columns\n",
+    dataset.row_count,
+    dataset.columns.len()
+  )
+}
+
+/// Render the supported interactive EDA subset without changing owned results.
 /// Other executed results receive an explicit display limitation, not silence.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
@@ -117,6 +125,27 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       table(&preview.columns, &preview.rows)
     }
     ExecutionResult::Table(result) => table(&result.headers, &result.rows),
+    ExecutionResult::Tabulate(result) => table(&result.headers, &result.rows),
+    ExecutionResult::Generate(result) => dataset_outcome("Generated", &result.dataset),
+    ExecutionResult::Replace(result) => dataset_outcome("Replaced", &result.dataset),
+    ExecutionResult::Rename(result) => dataset_outcome("Renamed", &result.dataset),
+    ExecutionResult::Sort(result) => dataset_outcome("Sorted", &result.dataset),
+    ExecutionResult::Gsort(result) => dataset_outcome("Sorted", &result.dataset),
+    ExecutionResult::Keep(result) => dataset_outcome("Kept", &result.dataset),
+    ExecutionResult::Drop(result) => dataset_outcome("Dropped", &result.dataset),
+    ExecutionResult::Select(result) => dataset_outcome("Selected", &result.dataset),
+    ExecutionResult::Save(result) => format!(
+      "Saved {} rows, {} columns to {}\n",
+      result.dataset.row_count,
+      result.dataset.columns.len(),
+      result.path.to_string_lossy().escape_debug()
+    ),
+    ExecutionResult::Export(result) => format!(
+      "Exported {} rows, {} columns to {}\n",
+      result.dataset.row_count,
+      result.dataset.columns.len(),
+      result.path.to_string_lossy().escape_debug()
+    ),
     ExecutionResult::Run(run) => format!(
       "Executed {} commands from {}\n",
       run.executed_commands,
@@ -162,6 +191,50 @@ mod tests {
       "\"NA\\t\\n\\u{1b}\""
     );
     assert_eq!(cell(&CellValue::Bytes(vec![0, 255])), "0x00ff");
+  }
+
+  #[test]
+  fn frequency_display_preserves_owned_order_labels_and_empty_tables() {
+    let result = ExecutionResult::Tabulate(tabdat_domain::TabulateResult {
+      headers: vec![
+        "category".to_owned(),
+        "Count".to_owned(),
+        "Percent".to_owned(),
+      ],
+      rows: vec![
+        vec![
+          CellValue::Text("label\t10".to_owned()),
+          CellValue::SignedInteger(2),
+          CellValue::Float(50.0),
+        ],
+        vec![
+          CellValue::SignedInteger(2),
+          CellValue::SignedInteger(1),
+          CellValue::Float(25.0),
+        ],
+        vec![
+          CellValue::Null,
+          CellValue::SignedInteger(1),
+          CellValue::Float(25.0),
+        ],
+      ],
+    });
+    assert_eq!(
+      render_execution_result(&result),
+      "category\tCount\tPercent\n\"label\\t10\"\t2\t50\n2\t1\t25\nNA\t1\t25\n(3 rows shown)\n"
+    );
+    let empty = ExecutionResult::Tabulate(tabdat_domain::TabulateResult {
+      headers: vec![
+        "category".to_owned(),
+        "Count".to_owned(),
+        "Percent".to_owned(),
+      ],
+      rows: vec![],
+    });
+    assert_eq!(
+      render_execution_result(&empty),
+      "category\tCount\tPercent\n(0 rows shown)\n"
+    );
   }
 
   #[test]
