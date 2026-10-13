@@ -100,7 +100,7 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, codebook, summarize, missing, tabulate, head/tail and the bounded
+supports use, count, codebook, summarize, missing, tabulate, head/tail, `estat vif` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
@@ -121,6 +121,21 @@ percentages are supplied by execution without recomputation. Missing categories
 are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
+
+`estat vif` returns an additive `TableResult` envelope with `data.headers`
+(`Variable`, `VIF`) and ordered `data.rows`, including the supplied `mean_vif`
+aggregate when available. It preserves the owned table rather than identifying
+results by header/label heuristics. A predictor may itself be named `mean_vif`;
+rows and labels are not deduplicated. Unavailable/non-finite cells encode as
+`null`; finite zero remains numeric. Generic table serialization does not enable
+SQL or other `estat` commands in CLI-v1 JSON.
+
+VIF uses **unweighted auxiliary regressions on the retained parent-fit sample**,
+with the parent's intercept convention, including after WLS/GLS. It does not
+rescan/refit changed current data or modify the dataset/model. Parent fit counts,
+estimator and sample metadata remain in the preceding `RegressionResult`.
+Auxiliary failure (including single-predictor/no-intercept) is an execution error;
+JSON null does not distinguish unavailable/infinite cells. See `help estat`.
 
 Linear JSON results reuse the supplied statistics without recalculation:
 

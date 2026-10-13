@@ -1,0 +1,266 @@
+{
+  "provenance": {
+    "python": "3.13.3",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "statsmodels": "0.14.6",
+    "method": "statsmodels variance_inflation_factor: unweighted auxiliary OLS on each parent's retained sample; matching intercept convention",
+    "tolerance": "max(1e-10 absolute, 1e-9 * abs(expected)); no rounding"
+  },
+  "columns": [
+    "x1",
+    "x2",
+    "z",
+    "y",
+    "w",
+    "sigma",
+    "group"
+  ],
+  "rows": [
+    [
+      -2.0,
+      -3.0,
+      2.0,
+      1.0,
+      100.0,
+      100.0,
+      "a"
+    ],
+    [
+      -1.0,
+      -4.0,
+      3.0,
+      2.0,
+      1.0,
+      1.0,
+      "a"
+    ],
+    [
+      0.0,
+      2.0,
+      1.0,
+      3.0,
+      1.0,
+      1.0,
+      "b"
+    ],
+    [
+      1.0,
+      0.0,
+      6.0,
+      4.0,
+      1.0,
+      1.0,
+      "b"
+    ],
+    [
+      2.0,
+      5.0,
+      4.0,
+      6.0,
+      1.0,
+      1.0,
+      "c"
+    ],
+    [
+      3.0,
+      2.0,
+      1.0,
+      4.0,
+      null,
+      null,
+      null
+    ],
+    [
+      4.0,
+      4.0,
+      2.0,
+      null,
+      1.0,
+      1.0,
+      "c"
+    ],
+    [
+      "NaN",
+      3.0,
+      3.0,
+      8.0,
+      1.0,
+      1.0,
+      "c"
+    ],
+    [
+      5.0,
+      "Infinity",
+      2.0,
+      9.0,
+      1.0,
+      1.0,
+      "c"
+    ]
+  ],
+  "cases": [
+    {
+      "name": "ols",
+      "command": "regress y x2 x1 z",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "vifs": [
+        2.6736315572862255,
+        2.6917323582486468,
+        1.0150932345585209
+      ],
+      "mean_vif": 2.126819050031131
+    },
+    {
+      "name": "robust",
+      "command": "regress y x2 x1 z, robust",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "vifs": [
+        2.6736315572862255,
+        2.6917323582486468,
+        1.0150932345585209
+      ],
+      "mean_vif": 2.126819050031131
+    },
+    {
+      "name": "cluster",
+      "command": "regress y x2 x1 z, cluster(group)",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "vifs": [
+        13.849740932642487,
+        20.290155440414484,
+        5.367875647668393
+      ],
+      "mean_vif": 13.169257340241787
+    },
+    {
+      "name": "wls",
+      "command": "regress y x2 x1 z, wls(w)",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "vifs": [
+        13.849740932642487,
+        20.290155440414484,
+        5.367875647668393
+      ],
+      "mean_vif": 13.169257340241787
+    },
+    {
+      "name": "gls",
+      "command": "regress y x2 x1 z, gls(sigma)",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "vifs": [
+        13.849740932642487,
+        20.290155440414484,
+        5.367875647668393
+      ],
+      "mean_vif": 13.169257340241787
+    },
+    {
+      "name": "no_intercept",
+      "command": "regress y x2 x1 z, noconstant",
+      "predictors": [
+        "x2",
+        "x1",
+        "z"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "vifs": [
+        2.702120899197713,
+        2.9053141631583137,
+        1.133608706013186
+      ],
+      "mean_vif": 2.247014589456404
+    },
+    {
+      "name": "single",
+      "command": "regress y x1",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": true,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        8
+      ],
+      "vifs": [
+        1.0000000000000002
+      ],
+      "mean_vif": 1.0000000000000002
+    }
+  ]
+}
