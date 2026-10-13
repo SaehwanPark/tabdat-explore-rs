@@ -151,9 +151,12 @@ state are handled correctly.
   records validated fresh-process version/core JSON workflows and separate session
   CSV load/summary/OLS/prediction times (#218); see the
   [measurement guide](performance/core-workflow.md). One excluded warmup, raw
-  samples and profile/scope metadata are explicit. Local debug smoke is verified,
-  not release or OS-cold-cache performance; interactive/other data shapes remain
-  unmeasured. Optimize only demonstrated regressions from comparable profiles.
+  samples and profile/scope metadata are explicit. A matching local release
+  baseline now retains two 10000-row runs and a 1000000-row run on macOS/aarch64
+  (#219), with full release tests and unchanged correctness guards. This is not
+  OS-cold-cache performance or cross-platform/release certification; interactive
+  and other data shapes remain unmeasured. Optimize only demonstrated regressions
+  from comparable profiles.
 - Improve history/completion and display as needed for daily use. In-session
   `help`/`?` now provides bounded workflow guidance and packaged reference topics,
   including new `lincom`/`test` topics (#202); reference syntax is not an execution

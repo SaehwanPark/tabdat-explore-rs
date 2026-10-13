@@ -90,3 +90,48 @@ Bad/malformed/missing results, unsuccessful child exits or child diagnostics abo
 the run rather than contributing timings. Output is emitted only after all cases
 succeed; errors exit 1, invalid options exit 2. Temporary fixtures are removed by
 RAII on ordinary success/failure (not a process-kill cleanup guarantee).
+
+## Local release baseline
+
+[Raw samples and build context](baselines/macos-aarch64-core-release.json) record
+matching binary/example release builds of code revision `255d596` (measurement
+checkout `f9186ea`, an empty starting commit with no code changes). This is one
+local **macOS 27.0.1 / aarch64 / Apple M1 Max** observation, using Rust/Cargo
+1.97.1, the default Cargo release profile, no observed environment/repository or
+global Cargo profile/flag overrides, and unchanged bundled DuckDB dependencies.
+Available host Clang and exact Cargo package versions are recorded in the artifact.
+Machine-local binary paths alone were normalized to repository-relative paths for
+publication; no samples or other harness fields were changed.
+
+Both binary and example built together with the locked release command in Run.
+The complete
+`cargo test --locked --release --workspace --all-targets` run passed **850 tests,
+zero failures across 128 suites**, including the five measurement-example tests.
+Every measured run passed the existing count/mean/design/coefficient/prediction
+and sample-identity guards; no tolerance or application code changed.
+
+Median times in milliseconds (rounded here; raw/min/max retained in the artifact):
+
+| Case | 10000 rows, run A (7 samples) | 10000 rows, run B (7 samples) | 1000000 rows (3 samples) |
+| --- | ---: | ---: | ---: |
+| Fresh-process version | 12.526 | 12.543 | 13.171 |
+| Fresh-process JSON workflow | 39.255 | 40.024 | 310.703 |
+| Session CSV load | 18.312 | 18.750 | 75.761 |
+| Session summary | 0.765 | 0.861 | 6.055 |
+| Session OLS | 1.675 | 1.686 | 163.471 |
+| Session prediction | 1.554 | 1.559 | 8.690 |
+
+CSV sizes were 184365 and 21989580 bytes respectively. Each case had one excluded
+warmup. The two small-workload runs were sequential repeats, not independently
+controlled machines; the larger workload is a different workload, not a regression
+comparison. Ordinary scheduler/thermal/cache effects were not isolated. Do not
+subtract process/session times to infer a specific overhead or extrapolate from
+this two-parameter finite-numeric fixture to other datasets/designs.
+
+The recorded release workflow medians are about 39–40 ms for 10000 rows and
+311 ms for 1000000 rows on this host. They provide a repeatable local starting
+point, **not an optimization result, performance promise, timing gate or evidence
+of release readiness**. Debug measurements in PR #218 validate the harness but
+are a different profile, not a comparable regression baseline. No code
+optimization is justified solely by this one-host record; collect matching
+before/after or workflow-specific evidence when a real responsiveness issue appears.
