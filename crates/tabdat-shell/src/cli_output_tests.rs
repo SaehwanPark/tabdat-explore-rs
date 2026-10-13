@@ -136,6 +136,51 @@ fn batch_stops_at_first_middle_and_final_result_output_failures() {
 }
 
 #[test]
+fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=if script { 4 } else { 3 } {
+        let fixture = Fixture::new();
+        let saved = fixture.0.join("saved.parquet");
+        let exported = fixture.0.join("exported.csv");
+        let later = fixture.0.join("later.csv");
+        let save = format!("save \"{}\"", saved.display());
+        let export = format!("export \"{}\"", exported.display());
+        let args = if script {
+          let child = fixture.0.join("child.td");
+          let parent = fixture.0.join("parent.td");
+          std::fs::write(&child, format!("{save}\n{export}\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!(
+              "{}\nrun {}\nexport \"{}\"\n",
+              fixture.load(),
+              child.display(),
+              later.display()
+            ),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&["--json", "-c", &fixture.load(), "-c", &save, "-c", &export])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(saved.exists(), fail_at >= 2);
+        assert_eq!(exported.exists(), fail_at >= 3);
+        assert_eq!(later.exists(), script && fail_at >= 4);
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn nested_script_guard_stops_later_observers_and_preserves_final_output_error() {
   let fixture = Fixture::new();
   let child = fixture.0.join("child.td");

@@ -125,6 +125,12 @@ state are handled correctly.
   (#213), completing canonical `use` → `describe` → `summarize` JSON scripts.
   Empty/current-prediction schema, nested equivalence, errors and state preservation
   are covered; label/panel fields retain existing null-placeholder semantics.
+  Save/export JSON now reports owned requested destinations and output metadata
+  (#215), supporting prediction-to-persistence workflows. CSV/Parquet roundtrips,
+  overwrite refusal/replace, empty data, native/preflight failures and session
+  preservation are covered. Injected write/flush failures directly prevent later
+  file writes, without rolling back completed files. Native publication remains
+  non-atomic; CSV is not a general type/label archive.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

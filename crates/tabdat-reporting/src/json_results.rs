@@ -10,14 +10,16 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Save { .. }
+      | Command::Export { .. }
       | Command::Describe
       | Command::Count
       | Command::Codebook { .. }
@@ -48,6 +50,8 @@ pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Save { .. }
+      | Command::Export { .. }
       | Command::Describe
       | Command::Count
       | Command::Codebook { .. }
@@ -79,6 +83,14 @@ pub fn supports_script_command(command: &Command) -> bool {
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
+    ExecutionResult::Save(result) => (
+      persistence_result_data(&result.path, &result.dataset),
+      "SaveResult",
+    ),
+    ExecutionResult::Export(result) => (
+      persistence_result_data(&result.path, &result.dataset),
+      "ExportResult",
+    ),
     ExecutionResult::Describe(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "DescribeResult",
@@ -126,6 +138,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn persistence_result_data(path: &std::path::Path, dataset: &DatasetInfo) -> Value {
+  json!({"path": path.to_string_lossy(), "dataset": dataset_info_data(dataset)})
 }
 
 fn table_result_data(headers: &[String], rows: &[Vec<CellValue>]) -> Value {
@@ -294,6 +310,56 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn persistence_json_encodes_requested_paths_and_owned_output_metadata() {
+    let path = std::path::PathBuf::from("目录/out\t\".parquet");
+    let dataset = DatasetInfo {
+      source: path.clone(),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "wide\n".to_owned(),
+        data_type: "DECIMAL(38,2)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, result_type) in [
+      (
+        ExecutionResult::Save(tabdat_domain::SaveResult {
+          path: path.clone(),
+          dataset: dataset.clone(),
+        }),
+        "SaveResult",
+      ),
+      (
+        ExecutionResult::Export(tabdat_domain::ExportResult {
+          path: path.clone(),
+          dataset: dataset.clone(),
+        }),
+        "ExportResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(value["schema_version"], 1);
+      assert_eq!(value["result_type"], result_type);
+      assert_eq!(value["data"]["path"], "目录/out\t\".parquet");
+      assert_eq!(value["data"]["dataset"], dataset_info_data(&dataset));
+      assert_eq!(value["data"]["dataset"]["row_count"], u64::MAX);
+    }
+    for input in [
+      "save out.parquet",
+      "save out.parquet, replace",
+      "export out.csv",
+      "export out.csv, replace",
+    ] {
+      let command = tabdat_language::parse_command(input).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+  }
 
   #[test]
   fn describe_json_preserves_owned_metadata_with_existing_placeholder_policy() {
