@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::is_command_whitespace;
+
 /// A single discrete command line extracted from a script file or buffer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScriptCommand {
@@ -151,9 +153,9 @@ pub fn parse_script(text: &str, path: &Path) -> Result<Vec<ScriptCommand>, Scrip
   let mut pending_sql: Vec<String> = Vec::new();
   let mut pending_start: usize = 0;
 
-  for (line_index, raw_line) in text.lines().enumerate() {
+  for (line_index, raw_line) in script_lines(text).enumerate() {
     let line_number = line_index + 1;
-    let stripped = raw_line.trim();
+    let stripped = raw_line.trim_matches(is_command_whitespace);
 
     if !pending_sql.is_empty() {
       pending_sql.push(raw_line.to_string());
@@ -194,11 +196,55 @@ pub fn parse_script(text: &str, path: &Path) -> Result<Vec<ScriptCommand>, Scrip
   Ok(commands)
 }
 
+// Python splitlines treats these Unicode/control separators as line boundaries;
+// CRLF is one boundary and a final separator does not create another empty line.
+fn script_lines(text: &str) -> impl Iterator<Item = &str> {
+  let mut remaining = text;
+  std::iter::from_fn(move || {
+    if remaining.is_empty() {
+      return None;
+    }
+    let Some(end) = remaining.find(|character| {
+      matches!(
+        character,
+        '\n'
+          | '\r'
+          | '\u{b}'
+          | '\u{c}'
+          | '\u{1c}'
+          | '\u{1d}'
+          | '\u{1e}'
+          | '\u{85}'
+          | '\u{2028}'
+          | '\u{2029}'
+      )
+    }) else {
+      let line = remaining;
+      remaining = "";
+      return Some(line);
+    };
+    let line = &remaining[..end];
+    let boundary = &remaining[end..];
+    let width = if boundary.starts_with("\r\n") {
+      2
+    } else {
+      boundary.chars().next().unwrap().len_utf8()
+    };
+    remaining = &remaining[end + width..];
+    Some(line)
+  })
+}
+
 fn starts_multiline_sql(stripped_line: &str) -> bool {
-  let mut parts = stripped_line.split_whitespace();
+  let mut parts = stripped_line
+    .split(is_command_whitespace)
+    .filter(|part| !part.is_empty());
   match (parts.next(), parts.next()) {
     (Some(cmd), Some(rest)) => {
-      cmd.eq_ignore_ascii_case("sql") && rest.trim_start().starts_with("\"\"\"")
+      cmd.eq_ignore_ascii_case("sql")
+        && rest
+          .trim_start_matches(is_command_whitespace)
+          .starts_with("\"\"\"")
     }
     _ => false,
   }
@@ -270,15 +316,19 @@ pub fn parse_script_directive(
   path: &Path,
   line: usize,
 ) -> Result<Option<ScriptDirective>, ScriptError> {
-  let stripped = text.trim();
+  let stripped = text.trim_matches(is_command_whitespace);
   let command_name = stripped
-    .split_whitespace()
+    .split(is_command_whitespace)
+    .filter(|part| !part.is_empty())
     .next()
     .unwrap_or("")
     .to_ascii_lowercase();
 
   if command_name == "seed" {
-    let parts: Vec<&str> = stripped.split_whitespace().collect();
+    let parts: Vec<&str> = stripped
+      .split(is_command_whitespace)
+      .filter(|part| !part.is_empty())
+      .collect();
     if parts.len() != 2 {
       return Err(ScriptError::new(path, line, "seed expects an integer"));
     }
@@ -289,12 +339,12 @@ pub fn parse_script_directive(
   }
 
   if command_name == "let" {
-    let body = stripped[3..].trim();
+    let body = stripped[3..].trim_matches(is_command_whitespace);
     let (name, value) = body
       .split_once('=')
       .ok_or_else(|| ScriptError::new(path, line, "let expects syntax: let <name> = <value>"))?;
-    let name = name.trim();
-    let value = value.trim();
+    let name = name.trim_matches(is_command_whitespace);
+    let value = value.trim_matches(is_command_whitespace);
     if name.is_empty() {
       return Err(ScriptError::new(
         path,
@@ -338,9 +388,9 @@ pub fn parse_control_flow_directive(
   path: &Path,
   line: usize,
 ) -> Result<Option<ControlFlowDirective>, ScriptError> {
-  let stripped = text.trim();
+  let stripped = text.trim_matches(is_command_whitespace);
   let (command_name, body) = match stripped.split_once(' ') {
-    Some((cmd, rest)) => (cmd, rest.trim()),
+    Some((cmd, rest)) => (cmd, rest.trim_matches(is_command_whitespace)),
     None => (stripped, ""),
   };
   let normalized = command_name.to_ascii_lowercase();
@@ -384,7 +434,9 @@ pub fn evaluate_script_condition(
   path: &Path,
   line: usize,
 ) -> Result<bool, ScriptError> {
-  let normalized = condition.trim().to_ascii_lowercase();
+  let normalized = condition
+    .trim_matches(is_command_whitespace)
+    .to_ascii_lowercase();
   match normalized.as_str() {
     "true" | "on" | "1" => return Ok(true),
     "false" | "off" | "0" => return Ok(false),
@@ -393,8 +445,8 @@ pub fn evaluate_script_condition(
 
   for operator in ["==", "!="] {
     if let Some((left, right)) = condition.split_once(operator) {
-      let left_val = left.trim();
-      let right_val = right.trim();
+      let left_val = left.trim_matches(is_command_whitespace);
+      let right_val = right.trim_matches(is_command_whitespace);
       if left_val.is_empty() || right_val.is_empty() {
         return Err(ScriptError::new(
           path,

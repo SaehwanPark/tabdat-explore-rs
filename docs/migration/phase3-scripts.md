@@ -55,3 +55,26 @@ backend integration, CLI transport or production Python dependency is implied.
 Full parser AST/tokenizer comparison and the final Phase 3 audit remain separate
 required loops after this slice. Current evidence proves only oracle recovery;
 capture, differential replay, corrections and final verification remain open.
+
+## Capture and first correction
+
+`tools/capture_script_oracle.py` verified the pin/tree/lock/clean checkout and
+ran all 27 original script tests successfully, then added source-established
+boundary probes. It captured **91** calls in
+`crates/tabdat-language/tests/fixtures/python-script.json`. Synthetic source paths
+normalize only to filenames; text, lines and diagnostic messages are exact.
+Seed values use canonical decimal strings to avoid JSON integer range loss.
+
+The initial Rust replay failed with **25 differences** (local raw log:
+`target/phase3-script-initial-replay.log`). Python-compatible line splitting
+(including CRLF as one boundary and Unicode/control separators), trimming and
+splitting resolved **20**. The updated replay still intentionally fails for
+**five** seed cases: underscore notation, Unicode decimal digits, and three
+values outside `i64`. Its expected oracle values are unchanged; no gap is blessed
+or removed. Raw follow-up: `target/phase3-script-lines-replay.log`.
+The existing 119 language unit and nine script contract tests still pass.
+
+Next: represent/parse the full recovered seed integer contract, extend boundary
+coverage, capture canonical shared `.td` state/command streams and nested/error
+coordination evidence, then complete root checks/reviews. PR remains draft;
+script gates and Phase 3 completion remain unproven.

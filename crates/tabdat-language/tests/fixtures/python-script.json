@@ -1,0 +1,1654 @@
+{
+  "revision": "16b45d9b66b0d80f32d4d220e84d81bc5180bdbe",
+  "tree": "601b236788872323af9277d2276a236154a0f129",
+  "python": "3.13.3 (main, Apr  9 2025, 03:47:57) [Clang 20.1.0 ]",
+  "pytest": "9.0.3",
+  "path_normalization": "synthetic filename only",
+  "seed_representation": "canonical decimal string (no integer range loss)",
+  "cases": [
+    {
+      "operation": "read_script",
+      "inputs": {
+        "path": "missing.td"
+      },
+      "file_text": null,
+      "error": {
+        "path": "missing.td",
+        "line": 1,
+        "message": "script file not found"
+      }
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": " == a",
+        "path": "boundary.td",
+        "line": 6
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 6,
+        "message": "if condition expects true/false, 1/0, on/off, ==, or !="
+      }
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "0",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "1",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "\u001ctrue\u001c",
+        "path": "boundary.td",
+        "line": 6
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "a != ",
+        "path": "boundary.td",
+        "line": 6
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 6,
+        "message": "if condition expects true/false, 1/0, on/off, ==, or !="
+      }
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "a != A",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "a != a == a",
+        "path": "boundary.td",
+        "line": 6
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "a == a == a",
+        "path": "boundary.td",
+        "line": 6
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "a == a",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "duckdb != polars",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "duckdb == duckdb",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "duckdb == polars",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "duckdb",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "if condition expects true/false, 1/0, on/off, ==, or !="
+      }
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "false",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "false",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "off",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": false
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "on",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "true",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": true
+    },
+    {
+      "operation": "evaluate_script_condition",
+      "inputs": {
+        "condition": "true",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": true
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "$missing",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 3
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 3,
+        "message": "undefined macro: missing"
+      }
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "$x $$x $1 $_a $x界",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 3
+      },
+      "result": "value $value $1 alpha value界"
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "$x$x",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 3
+      },
+      "result": "valuevalue"
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "'$x'",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 3
+      },
+      "result": "'value'"
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "literal $",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 3
+      },
+      "result": "literal $"
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let 1y = x",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "macro name must be an identifier: 1y"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let = x",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "let expects syntax: let <name> = <value>"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let x = new",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "macro already defined: x"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let y = $x",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "LetDirective",
+        "fields": {
+          "name": "y",
+          "value": "$x"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let y = a=b",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "LetDirective",
+        "fields": {
+          "name": "y",
+          "value": "a=b"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let y =",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "macro value cannot be empty: y"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed +1",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "1"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed -1",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "-1"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed -9223372036854775809",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "-9223372036854775809"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 1.0",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "seed expects an integer"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 1_000",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "1000"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 1__0",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 4,
+        "message": "seed expects an integer"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 9223372036854775808",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "9223372036854775808"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "99999999999999999999999999999999999999999999999999999999999999999999999999999999"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed ٠١٢",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "12"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed\u001c42",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "x": "value",
+              "_a": "alpha"
+            },
+            "seed": null
+          }
+        },
+        "path": "boundary.td",
+        "line": 4
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "42"
+        }
+      }
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "use $data\nkeep if $condition",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "data": "patients.parquet",
+              "condition": "age >= 18"
+            },
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 2
+      },
+      "result": "use patients.parquet\nkeep if age >= 18"
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let data = other.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "data": "patients.parquet"
+            },
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "macro already defined: data"
+      }
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "let file = $root/patients.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "root": "data"
+            },
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 2
+      },
+      "result": "let file = data/patients.parquet"
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let file = data/patients.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {
+              "root": "data"
+            },
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 2
+      },
+      "result": {
+        "type": "LetDirective",
+        "fields": {
+          "name": "file",
+          "value": "data/patients.parquet"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let 1data = patients.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "macro name must be an identifier: 1data"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let data = ",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "macro value cannot be empty: data"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let data = patients.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": {
+        "type": "LetDirective",
+        "fields": {
+          "name": "data",
+          "value": "patients.parquet"
+        }
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "let data patients.parquet",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "let expects syntax: let <name> = <value>"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 1.5",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "seed expects an integer"
+      }
+    },
+    {
+      "operation": "parse_script_directive",
+      "inputs": {
+        "text": "seed 123",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": {
+        "type": "SeedDirective",
+        "fields": {
+          "value": "123"
+        }
+      }
+    },
+    {
+      "operation": "expand_script_macros",
+      "inputs": {
+        "text": "use $data",
+        "context": {
+          "type": "ScriptContext",
+          "fields": {
+            "macros": {},
+            "seed": null
+          }
+        },
+        "path": "analysis.td",
+        "line": 3
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 3,
+        "message": "undefined macro: data"
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if true",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "result": {
+        "type": "IfDirective",
+        "fields": {
+          "active": true
+        }
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if",
+        "path": "analysis.td",
+        "line": 1
+      },
+      "error": {
+        "path": "analysis.td",
+        "line": 1,
+        "message": "if expects a condition"
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "else",
+        "path": "analysis.td",
+        "line": 2
+      },
+      "result": {
+        "type": "ElseDirective",
+        "fields": {}
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "end",
+        "path": "analysis.td",
+        "line": 3
+      },
+      "result": {
+        "type": "EndDirective",
+        "fields": {}
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "count",
+        "path": "analysis.td",
+        "line": 4
+      },
+      "result": null
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "IF true",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": {
+        "type": "IfDirective",
+        "fields": {
+          "active": true
+        }
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "else extra",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 5,
+        "message": "else does not accept a condition"
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "end extra",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 5,
+        "message": "end does not accept arguments"
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if a != A",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": {
+        "type": "IfDirective",
+        "fields": {
+          "active": true
+        }
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if a == a",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": {
+        "type": "IfDirective",
+        "fields": {
+          "active": true
+        }
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if false",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": {
+        "type": "IfDirective",
+        "fields": {
+          "active": false
+        }
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "error": {
+        "path": "boundary.td",
+        "line": 5,
+        "message": "if expects a condition"
+      }
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if\ttrue",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": null
+    },
+    {
+      "operation": "parse_control_flow_directive",
+      "inputs": {
+        "text": "if\u001ctrue",
+        "path": "boundary.td",
+        "line": 5
+      },
+      "result": null
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\fstatus\fcount\f",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\nstatus\ncount\n",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\r\nstatus\r\ncount\r\n",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\rstatus\rcount\r",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\u000bstatus\u000bcount\u000b",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\u001cstatus\u001ccount\u001c",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\u001dstatus\u001dcount\u001d",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment\u001estatus\u001ecount\u001e",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# commentstatuscount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment status count ",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "# comment status count ",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "status",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 3
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "\n    # load data\n\n    use patients.parquet\n      # inspect data\n    describe\n    ",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "    use patients.parquet",
+            "start_line": 4
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "    describe",
+            "start_line": 6
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\fselect 1\f\"\"\"\fcount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\nselect 1\n\"\"\"\ncount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\r\nselect 1\r\n\"\"\"\r\ncount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\rselect 1\r\"\"\"\rcount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\u000bselect 1\u000b\"\"\"\u000bcount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\u001cselect 1\u001c\"\"\"\u001ccount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\u001dselect 1\u001d\"\"\"\u001dcount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"\u001eselect 1\u001e\"\"\"\u001ecount",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\"select 1\"\"\"count",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\" select 1 \"\"\" count",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "sql \"\"\" select 1 \"\"\" count",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect 1\n\"\"\"",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 4
+          }
+        }
+      ]
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "use patients.parquet\nsql \"\"\"\nselect *\n",
+        "path": "<script>"
+      },
+      "error": {
+        "path": "<script>",
+        "line": 2,
+        "message": "sql multiline query is missing closing \"\"\""
+      }
+    },
+    {
+      "operation": "parse_script",
+      "inputs": {
+        "text": "use patients.parquet\nsql \"\"\"\nselect *\nfrom active\n\"\"\"\ncount\n",
+        "path": "<script>"
+      },
+      "result": [
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "use patients.parquet",
+            "start_line": 1
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "sql \"\"\"\nselect *\nfrom active\n\"\"\"",
+            "start_line": 2
+          }
+        },
+        {
+          "type": "ScriptCommand",
+          "fields": {
+            "text": "count",
+            "start_line": 6
+          }
+        }
+      ]
+    }
+  ]
+}
