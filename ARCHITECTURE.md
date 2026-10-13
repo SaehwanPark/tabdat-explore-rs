@@ -1,6 +1,7 @@
 # TabDat Rust architecture: current boundaries
 
-**Snapshot:** `main` at `333b97dd55524dbf5ce55fac510375df99e4649e`.
+**Snapshot:** refreshed baseline plus bounded scripts (#195) and the minimal
+interactive shell (#196).
 The existing Phase 2 workspace is implemented, but the product is not feature
 complete. A compiled command type is not evidence of runtime support. Consult
 [SPEC.md](SPEC.md) for the current capability envelope.
@@ -15,11 +16,11 @@ complete. A compiled command type is not evidence of runtime support. Consult
 | `tabdat-io` | Local path/format and script I/O validation |
 | `tabdat-data` | DuckDB, relations, SQL generation and owned row/cell conversion |
 | `tabdat-execution` | Session coordination, data/statistical dispatch and script execution |
-| `tabdat-reporting` | Help/catalog and bounded structured reporting |
-| `tabdat-shell` | Existing batch CLI/argument handling |
+| `tabdat-reporting` | Help/catalog, bounded structured reporting and core terminal result rendering |
+| `tabdat-shell` | Batch CLI/argument handling and line-oriented persistent session I/O |
 | `tabdat-mcp` | Transport-independent typed tools; **no MCP server** |
 | `tabdat-runtime` | Compatibility re-exports and integration entry points |
-| Root binary | Delegates to shell; still has scaffold no-argument behavior |
+| Root binary | Delegates to shell; no arguments enter the line session |
 
 All eleven first-party packages currently forbid unsafe Rust. The Rust workspace
 is not an instruction to create more crates. Prefer coherent internal modules;
@@ -46,7 +47,7 @@ consider merging crates only when actual change patterns justify the cost.
 ## Data and execution flow
 
 ```text
-CLI today / future REPL / future MCP transport
+Batch CLI / line session / future MCP transport
                    |
               shared parser
                    |

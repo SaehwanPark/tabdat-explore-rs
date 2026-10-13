@@ -1,8 +1,9 @@
 # TabDat Explore Rust: current product and implementation contract
 
 **Snapshot:** refreshed documentation baseline plus the bounded script slice in
-[PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195).
-Verification details are in its PR thread and [script evidence](docs/migration/phase3-scripts.md).
+[PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195) and minimal
+interactive shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/pull/196).
+Verification details are in the PR threads and [script evidence](docs/migration/phase3-scripts.md).
 Update this summary when implementation changes.
 
 ## Product intent
@@ -22,8 +23,8 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 
 | Area | Current state | Important limit |
 | --- | --- | --- |
-| Binary and CLI | Batch `-c`, scripts `-f`/positional, help, discovery, bounded JSON | No-argument invocation still prints `Hello, world!` |
-| Interactive shell | Not implemented | No REPL, persistent history, completion or interactive cancellation |
+| Binary and CLI | Batch `-c`, scripts `-f`/positional, help, discovery, bounded JSON | No-argument invocation starts a persistent line session; batch/script output unchanged |
+| Interactive shell | Line-oriented session, recoverable command errors, terminal-only prompts, exit/EOF; readable core inspection results | No history, completion, multiline input or recoverable Ctrl-C cancellation; other result details explicitly deferred |
 | Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
@@ -77,7 +78,8 @@ changes; reserve a new ADR for consequential architecture, backend, or API choic
 The next meaningful milestone is **an interactive, dependable core EDA workflow**, not
 completion of an exhaustive language phase. Target:
 
-- Run a session interactively without scaffold output; load local CSV/Parquet.
+- Run a session interactively without scaffold output; load local CSV/Parquet
+  (minimal line session implemented; advanced editing/cancellation remain deferred).
 - Inspect, summarize, tabulate, and transform representative small datasets.
 - Fit and inspect a supported linear model; predict/test without silent state loss.
 - Produce readable terminal results and stable structured output for the advertised subset.
