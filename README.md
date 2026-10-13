@@ -228,6 +228,21 @@ uses multiple steps, with no general atomic rollback guarantee. Ordinary
 validation/binder/unsupported-cell failures are tested; do not infer whole-SQL,
 composite-type, filesystem, lazy/remote or security support. See `help sql`.
 
+Bounded `join lookup on keys [, how=inner|left suffix(...)]` returns
+`JoinResult` with owned `data.dataset` metadata, not keys/matching/cardinality
+or affected-row diagnostics. Join a registered named table after SQL setup and
+primary activation. Inner is the default; left retains unmatched rows with
+NULL right fields. SQL NULL keys do not match each other. Duplicate matches
+multiply rows, grouped by prior active-row order and stored right-match order.
+Right keys are omitted; nonkeys append with existing suffix/collision rules;
+final native names/types/count/source are reported, without a wide cross-type
+matching or case-collision naming guarantee. Labels/definitions/attachments for
+retained left variables and the original cached fit/sample remain; explicitly
+refit on enriched rows. Active named tables are updated under existing rules.
+Dataset label/panel fields stay null placeholders; no cardinality validation,
+right-label propagation, by/lazy/remote execution or general merge parity is
+implied. See `help join`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and

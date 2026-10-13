@@ -374,7 +374,7 @@ pub enum JoinHow {
   Left,
 }
 
-/// The named-table join form retained for a later runtime slice.
+/// The bounded named-table join form used by the execution boundary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JoinCommand {
   /// The user-visible named table to join.
@@ -383,7 +383,7 @@ pub struct JoinCommand {
   pub keys: Vec<String>,
   /// Whether unmatched active rows are retained.
   pub how: JoinHow,
-  /// Suffix used by the eventual runtime for colliding right-side columns.
+  /// Suffix used for colliding right-side columns before native name validation.
   pub suffix: String,
 }
 
