@@ -12,58 +12,6 @@
     "difference": "expected drop, got error drop if execution is deferred in the bounded runtime"
   },
   {
-    "input": "estat report",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat report, invalid",
-    "difference": "expected error \"estat report unsupported option: invalid\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat report, noopen",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat report, saving()",
-    "difference": "expected error \"option saving expects at least one value\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat report, saving(my_report.html)",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat spatial",
-    "difference": "expected error \"estat spatial requires either coord() or weights() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat spatial, coord(lat lon) id(neighborhood)",
-    "difference": "expected error \"estat spatial option id can only be used with weights() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat spatial, coord(lat lon) knn(5)",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat spatial, coord(lat lon) weights(columbus.gal)",
-    "difference": "expected error \"estat spatial option coord and weights are mutually exclusive\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat spatial, coord(lat) knn(5)",
-    "difference": "expected error \"estat spatial option coord expects exactly two variables representing latitude and longitude coordinates\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(invalid)",
-    "difference": "expected error \"estat spatial option contiguity must be 'queen' or 'rook'\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
-    "input": "estat spatial, weights(columbus.gal) id(neighborhood) contiguity(rook)",
-    "difference": "expected estat, got error estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report"
-  },
-  {
-    "input": "estat spatial, weights(columbus.gal) knn(5)",
-    "difference": "expected error \"estat spatial option knn/coord can only be used with coord() option\", got Err(ParseError { message: \"estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report\" })"
-  },
-  {
     "input": "keep if `if` == 1",
     "difference": "expected keep, got error keep if execution is deferred in the bounded runtime"
   },

@@ -6517,6 +6517,13 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
 
   let argument = &parts.arguments[0];
   let normalized_subcommand = argument.text.to_ascii_lowercase();
+  if !argument.backtick_quoted && matches!(normalized_subcommand.as_str(), "report" | "spatial") {
+    let options = first_unquoted_comma(body)
+      .map(|index| parse_use_options(&body[index + 1..]))
+      .transpose()?
+      .unwrap_or_default();
+    return parse_estat_options(&normalized_subcommand, &options);
+  }
   let subcommand = match (normalized_subcommand.as_str(), argument.backtick_quoted) {
     ("residuals", false) => EstatSubcommand::Residuals,
     ("ovtest", false) => EstatSubcommand::Ovtest,
@@ -6544,6 +6551,153 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     )));
   }
 
+  Ok(Command::Estat {
+    command: EstatCommand { subcommand },
+  })
+}
+
+fn parse_estat_options(name: &str, options: &[UseOption]) -> Result<Command, ParseError> {
+  let context = format!("estat {name}");
+  let supported: &[&str] = if name == "report" {
+    &["saving", "noopen"]
+  } else {
+    &["coord", "knn", "weights", "id", "contiguity"]
+  };
+  let mut unsupported = options
+    .iter()
+    .map(|option| option.name.as_str())
+    .filter(|name| !supported.contains(name))
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "{context} unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+  let has = |name: &str| options.iter().any(|option| option.name == name);
+  let one = |name: &str| -> Result<Option<&UseOptionValue>, ParseError> {
+    let matches = options
+      .iter()
+      .filter(|option| option.name == name)
+      .collect::<Vec<_>>();
+    if matches.len() > 1 {
+      return Err(ParseError::new(format!(
+        "{context} option {name} may only be supplied once"
+      )));
+    }
+    Ok(matches.first().map(|option| &option.value))
+  };
+  let text = |name: &str| -> Result<Option<String>, ParseError> {
+    match one(name)? {
+      None => Ok(None),
+      Some(UseOptionValue::Identifiers(values)) if values.len() == 1 => Ok(Some(values[0].clone())),
+      Some(UseOptionValue::String(value)) => Ok(Some(value.clone())),
+      Some(UseOptionValue::Identifiers(_)) => Err(ParseError::new(format!(
+        "{context} option {name} expects one value"
+      ))),
+      _ => Err(ParseError::new(format!(
+        "{context} option {name} expects a value"
+      ))),
+    }
+  };
+  let path = |name: &str| -> Result<Option<String>, ParseError> {
+    match one(name)? {
+      None => Ok(None),
+      Some(UseOptionValue::String(value)) => Ok(Some(value.clone())),
+      _ => Err(ParseError::new(format!(
+        "{context} option {name} expects a path"
+      ))),
+    }
+  };
+  let subcommand = if name == "report" {
+    if options
+      .iter()
+      .any(|option| option.name == "noopen" && option.value != UseOptionValue::Flag)
+    {
+      return Err(ParseError::new(
+        "estat report option noopen does not accept a value",
+      ));
+    }
+    EstatSubcommand::Report {
+      saving: path("saving")?,
+      open_artifact: !has("noopen"),
+    }
+  } else if has("coord") {
+    if has("weights") {
+      return Err(ParseError::new(
+        "estat spatial option coord and weights are mutually exclusive",
+      ));
+    }
+    for name in ["id", "contiguity"] {
+      if has(name) {
+        return Err(ParseError::new(format!(
+          "estat spatial option {name} can only be used with weights() option"
+        )));
+      }
+    }
+    let Some(UseOptionValue::Identifiers(values)) = one("coord")? else {
+      return Err(ParseError::new(
+        "estat spatial option coord expects variables",
+      ));
+    };
+    if values.len() != 2 {
+      return Err(ParseError::new(
+        "estat spatial option coord expects exactly two variables representing latitude and longitude coordinates",
+      ));
+    }
+    let knn = match one("knn")? {
+      None => 5,
+      Some(UseOptionValue::Number(value)) => value
+        .parse::<i64>()
+        .map_err(|_| ParseError::new("estat spatial option knn expects an integer value"))?,
+      _ => {
+        return Err(ParseError::new(
+          "estat spatial option knn expects an integer value",
+        ));
+      }
+    };
+    if knn < 1 {
+      return Err(ParseError::new(
+        "estat spatial option knn must be at least 1",
+      ));
+    }
+    EstatSubcommand::SpatialCoordinates {
+      latitude: values[0].clone(),
+      longitude: values[1].clone(),
+      knn,
+    }
+  } else if has("weights") {
+    if has("knn") {
+      return Err(ParseError::new(
+        "estat spatial option knn/coord can only be used with coord() option",
+      ));
+    }
+    let path = path("weights")?
+      .ok_or_else(|| ParseError::new("estat spatial option weights() expects a path"))?;
+    let id_variable = text("id")?.ok_or_else(|| {
+      ParseError::new("estat spatial option id() is required when weights() is specified")
+    })?;
+    let contiguity = match text("contiguity")?.as_deref().unwrap_or("queen") {
+      "queen" => SpregressContiguity::Queen,
+      "rook" => SpregressContiguity::Rook,
+      _ => {
+        return Err(ParseError::new(
+          "estat spatial option contiguity must be 'queen' or 'rook'",
+        ));
+      }
+    };
+    EstatSubcommand::SpatialWeights {
+      path,
+      id_variable,
+      contiguity,
+    }
+  } else {
+    return Err(ParseError::new(
+      "estat spatial requires either coord() or weights() option",
+    ));
+  };
   Ok(Command::Estat {
     command: EstatCommand { subcommand },
   })
