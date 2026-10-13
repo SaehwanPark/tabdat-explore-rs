@@ -76,6 +76,14 @@ owned inference, explicit Student-t/95% metadata, nullable independent differenc
 counts, and the shared SciPy fixture; nested streams and error/null paths are
 covered without changing calculations or model state.
 
+Owned SQL-NULL missingness now reports in terminal/CLI-v1 JSON (#208), preserving
+types, order/duplicates, counts, percentages and the empty-relation 0% convention.
+Mixed NULL/NaN/infinity/stored-empty/sentinel checks distinguish NULL counts from
+finite t-test samples; success/error/nested/state paths are covered. Next concrete
+issue: native summarize aggregates currently fail on infinity-containing columns.
+Choose and document non-finite summary sample semantics with independent numerical
+evidence before changing those aggregates.
+
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 
 - `regress` with explicitly supported covariance modes, then `predict`, `test`,

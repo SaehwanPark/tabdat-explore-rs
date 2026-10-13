@@ -3,15 +3,15 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
-  CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult, RegressionResult,
-  SummarizeResult, TtestGroupStats, TtestResult,
+  CellValue, DatasetInfo, ExecutionResult, LoadResult, MissingResult, PreviewResult,
+  RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
 };
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, test, and ttest";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -20,6 +20,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Count
       | Command::Summarize { .. }
+      | Command::Missing { .. }
       | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
@@ -41,6 +42,7 @@ pub fn supports_script_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Count
       | Command::Summarize { .. }
+      | Command::Missing { .. }
       | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
@@ -63,6 +65,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
+    ExecutionResult::Missing(result) => (missing_result_data(result), "MissingResult"),
     ExecutionResult::Tabulate(table) => (
       json!({
         "headers": table.headers,
@@ -101,6 +104,17 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn missing_result_data(result: &MissingResult) -> Value {
+  json!({
+    "missing_definition": "sql_null",
+    "rows": result.rows.iter().map(|row| json!({
+      "variable": row.variable, "data_type": row.data_type, "total": row.total,
+      "missing": row.missing, "nonmissing": row.nonmissing,
+      "missing_percent": Number::from_f64(row.missing_percent),
+    })).collect::<Vec<_>>()
+  })
 }
 
 fn ttest_group_data(group: &TtestGroupStats, count: Option<usize>) -> Value {
@@ -240,6 +254,37 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn missing_json_preserves_large_counts_labels_null_percent_and_empty_rows() {
+    let result = ExecutionResult::Missing(MissingResult {
+      rows: vec![tabdat_domain::MissingRow {
+        variable: "label\t\"\n".to_owned(),
+        data_type: "DECIMAL(38,2)".to_owned(),
+        total: u64::MAX,
+        missing: 1,
+        nonmissing: u64::MAX - 1,
+        missing_percent: f64::NAN,
+      }],
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let envelope: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(
+      envelope,
+      json!({"schema_version": 1, "result_type": "MissingResult", "data": {
+        "missing_definition": "sql_null", "rows": [{"variable": "label\t\"\n", "data_type": "DECIMAL(38,2)",
+        "total": u64::MAX, "missing": 1, "nonmissing": u64::MAX - 1, "missing_percent": null}]
+      }})
+    );
+    let empty = ExecutionResult::Missing(MissingResult { rows: vec![] });
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&empty).unwrap()).unwrap();
+    assert_eq!(
+      envelope["data"],
+      json!({"missing_definition": "sql_null", "rows": []})
+    );
+  }
 
   #[test]
   fn ttest_json_boundary_preserves_labels_zero_and_null_policies() {
