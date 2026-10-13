@@ -91,7 +91,7 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, summarize, missing, tabulate, head/tail and the bounded
+supports use, count, codebook, summarize, missing, tabulate, head/tail and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
@@ -199,6 +199,21 @@ without changing result field shapes or finite-data behavior. Reporting
 is read-only, retains types/data/model state, and streams in nested scripts.
 Current runtime support is eager local CSV/Parquet through DuckDB, not broader
 lazy/remote modes.
+
+`codebook [variables]` now reports owned column profiles in the shell and
+CLI-v1 JSON. `CodebookResult.data` contains `missing_definition: "sql_null"`,
+`example_limit: 3`, `examples_nonfinite_encoding: "null"`, and ordered `rows`
+with `variable`, `data_type`, `nonmissing`, `missing`, `distinct`, and `examples`.
+Schema/requested order and duplicates are preserved. Distinct counts use native
+non-NULL semantics; examples are up to three non-NULL scan values and can repeat.
+Empty/all-NULL profiles have empty example arrays.
+
+JSON examples reuse preview scalar encoding: integer numbers, exact decimal
+strings, base64-prefixed bytes, and null for non-finite floats. Thus an encoded
+null example can be a selected non-NULL NaN/infinity, not SQL missingness. The
+terminal displays those non-finite examples directly. Types/counts, scans, data,
+and model state are unchanged; unsupported composite example conversions still
+fail meaningfully rather than produce a false profile.
 
 ## Development direction
 

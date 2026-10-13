@@ -241,7 +241,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
     None => Ok(concat!(
       "Interactive core workflow\n",
       "  Load local eager CSV/Parquet: use <path>\n",
-      "  Inspect: describe, summarize [variables], missing [variables], tabulate, count, head/tail\n",
+      "  Inspect: describe, codebook [variables], summarize [variables], missing [variables], tabulate, count, head/tail\n",
       "  Transform: generate, replace, rename, sort/gsort, keep/drop/select\n",
       "  Linear analysis: regress, predict, lincom, test\n",
       "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
@@ -305,6 +305,25 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
             .as_ref()
             .map(cell)
             .unwrap_or_else(|| "NA".to_owned())
+        )
+        .unwrap();
+      }
+      output
+    }
+    ExecutionResult::Codebook(result) => {
+      let mut output = String::from(
+        "Codebook: SQL NULL missingness; native non-NULL distinct counts. Examples are up to three non-NULL scan values, not necessarily unique.\nVariable\tType\tNonmissing\tMissing\tDistinct\tExamples\n",
+      );
+      for row in &result.rows {
+        writeln!(
+          output,
+          "{}\t{}\t{}\t{}\t{}\t[{}]",
+          row.variable.escape_debug(),
+          row.data_type.escape_debug(),
+          row.nonmissing,
+          row.missing,
+          row.distinct,
+          row.examples.iter().map(cell).collect::<Vec<_>>().join(", ")
         )
         .unwrap();
       }
@@ -414,6 +433,38 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn codebook_display_preserves_examples_and_escapes_controls() {
+    let result = ExecutionResult::Codebook(tabdat_domain::CodebookResult {
+      rows: vec![tabdat_domain::CodebookRow {
+        variable: "x\tline\n\u{1b}[2J".to_owned(),
+        data_type: "TYPE\nFAKE".to_owned(),
+        nonmissing: 3,
+        missing: 0,
+        distinct: 2,
+        examples: vec![
+          CellValue::Text("a\t\n\u{1b}[2J".to_owned()),
+          CellValue::Decimal {
+            width: 38,
+            scale: 2,
+            value: -1,
+          },
+          CellValue::Bytes(vec![0, 255]),
+        ],
+      }],
+    });
+    let text = render_execution_result(&result);
+    assert!(text.contains("x\\tline\\n\\u{1b}[2J\tTYPE\\nFAKE\t3\t0\t2\t["));
+    assert!(text.contains("-0.01, 0x00ff]"));
+    assert!(!text.contains('\u{1b}'));
+    assert!(text.contains("not necessarily unique"));
+    let empty =
+      render_execution_result(&ExecutionResult::Codebook(tabdat_domain::CodebookResult {
+        rows: vec![],
+      }));
+    assert!(empty.ends_with("Variable\tType\tNonmissing\tMissing\tDistinct\tExamples\n"));
+  }
 
   #[test]
   fn missing_display_escapes_owned_names_and_types_without_fabricating_percent() {
