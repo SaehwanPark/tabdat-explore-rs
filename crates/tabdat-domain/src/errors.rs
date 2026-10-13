@@ -3,22 +3,57 @@ use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+/// Source category of a located script failure, independent of diagnostic wording.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScriptErrorKind {
+  /// Command execution, recursion, or caller preflight failed.
+  Execution,
+  /// Script syntax, directives, macro expansion, or control structure is invalid.
+  Parse,
+  /// Script text could not be loaded, or a command reported a missing data file.
+  File,
+}
+
 /// Recoverable script parsing or execution error containing source location.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScriptError {
   path: PathBuf,
   line: usize,
   message: String,
+  kind: ScriptErrorKind,
 }
 
 impl ScriptError {
-  /// Construct a new script error with file path, 1-based line number, and diagnostic message.
+  /// Construct an execution/preflight error with a path and 1-based line number.
+  /// Parser and file-loading producers should use `parse` and `file` instead.
   pub fn new(path: impl Into<PathBuf>, line: usize, message: impl Into<String>) -> Self {
     Self {
       path: path.into(),
       line,
       message: message.into(),
+      kind: ScriptErrorKind::Execution,
     }
+  }
+
+  /// Construct an invalid script syntax/directive error without inspecting its message.
+  pub fn parse(path: impl Into<PathBuf>, line: usize, message: impl Into<String>) -> Self {
+    Self {
+      kind: ScriptErrorKind::Parse,
+      ..Self::new(path, line, message)
+    }
+  }
+
+  /// Construct a script-loading or missing-data-file error.
+  pub fn file(path: impl Into<PathBuf>, line: usize, message: impl Into<String>) -> Self {
+    Self {
+      kind: ScriptErrorKind::File,
+      ..Self::new(path, line, message)
+    }
+  }
+
+  /// Failure source category; presentation text is not a classification protocol.
+  pub fn kind(&self) -> ScriptErrorKind {
+    self.kind
   }
 
   /// The path to the script file where the error occurred.

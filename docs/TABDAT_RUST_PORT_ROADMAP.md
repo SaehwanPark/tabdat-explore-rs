@@ -64,9 +64,10 @@ It also tests failed estimation/model clearing and recovery. This reporting-only
 slice does not expand covariance/estimator support or claim validation of every
 mode. CLI-v1 now includes bounded regress/predict/lincom/test results (#204),
 with independent OLS/reference and error/null-policy checks, omitting full model
-arrays. `ttest`/VIF reporting remains follow-up work. Correct the message-based
-script exit classifier: model coefficient “not found” currently gets file-like
-exit 3 despite its located model-error envelope.
+arrays. Script exit codes now use source categories (#205), fixing model errors
+misclassified by “not found” and malformed scripts missed by text heuristics;
+child locations and existing JSON fields are retained. `ttest`/VIF reporting
+remains follow-up work.
 
 **Goal:** a complete, scientifically trustworthy linear-model workflow.
 

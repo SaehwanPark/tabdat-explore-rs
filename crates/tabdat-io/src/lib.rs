@@ -78,18 +78,18 @@ pub fn validate_local_input_path(path: &Path) -> Result<(), RuntimeError> {
 
 pub fn read_script_text(path: &Path) -> Result<String, ScriptError> {
   if !path.exists() {
-    return Err(ScriptError::new(path, 1, "script file not found"));
+    return Err(ScriptError::file(path, 1, "script file not found"));
   }
   if path.is_dir() {
-    return Err(ScriptError::new(path, 1, "script path is a directory"));
+    return Err(ScriptError::file(path, 1, "script path is a directory"));
   }
   let bytes = match std::fs::read(path) {
     Ok(b) => b,
     Err(e) => {
       if e.kind() == std::io::ErrorKind::NotFound {
-        return Err(ScriptError::new(path, 1, "script file not found"));
+        return Err(ScriptError::file(path, 1, "script file not found"));
       }
-      return Err(ScriptError::new(
+      return Err(ScriptError::file(
         path,
         1,
         format!("could not read script: {e}"),
@@ -101,7 +101,7 @@ pub fn read_script_text(path: &Path) -> Result<String, ScriptError> {
     Err(e) => {
       let valid_up_to = e.valid_up_to();
       let line = bytes[..valid_up_to].iter().filter(|&&b| b == b'\n').count() + 1;
-      return Err(ScriptError::new(
+      return Err(ScriptError::file(
         path,
         line,
         "script file must be UTF-8 text",

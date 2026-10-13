@@ -479,13 +479,10 @@ pub fn run_cli(args: CliArgs) -> i32 {
           );
           println!("{}", serde_json::to_string(&envelope).unwrap());
         }
-        let msg = err.message();
-        if msg.contains("not found") || msg.contains("could not read script") {
-          3
-        } else if msg.contains("parse") || msg.contains("syntax") || msg.contains("expected") {
-          2
-        } else {
-          1
+        match err.kind() {
+          tabdat_domain::ScriptErrorKind::Execution => 1,
+          tabdat_domain::ScriptErrorKind::Parse => 2,
+          tabdat_domain::ScriptErrorKind::File => 3,
         }
       }
       Err(err) => {

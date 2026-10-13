@@ -186,7 +186,7 @@ pub fn parse_script(text: &str, path: &Path) -> Result<Vec<ScriptCommand>, Scrip
   }
 
   if !pending_sql.is_empty() {
-    return Err(ScriptError::new(
+    return Err(ScriptError::parse(
       path,
       pending_start,
       "sql multiline query is missing closing \"\"\"",
@@ -283,7 +283,7 @@ pub fn expand_script_macros(
       let value = context
         .macros
         .get(macro_name)
-        .ok_or_else(|| ScriptError::new(path, line, format!("undefined macro: {macro_name}")))?;
+        .ok_or_else(|| ScriptError::parse(path, line, format!("undefined macro: {macro_name}")))?;
       result.push_str(value);
       i = end;
       continue;
@@ -329,11 +329,11 @@ pub fn parse_script_directive(
       .filter(|part| !part.is_empty())
       .collect();
     if parts.len() != 2 {
-      return Err(ScriptError::new(path, line, "seed expects an integer"));
+      return Err(ScriptError::parse(path, line, "seed expects an integer"));
     }
     let value = parts[1]
       .parse::<i64>()
-      .map_err(|_| ScriptError::new(path, line, "seed expects an integer"))?;
+      .map_err(|_| ScriptError::parse(path, line, "seed expects an integer"))?;
     return Ok(Some(ScriptDirective::Seed(SeedDirective { value })));
   }
 
@@ -341,32 +341,32 @@ pub fn parse_script_directive(
     let body = stripped[3..].trim_matches(is_command_whitespace);
     let (name, value) = body
       .split_once('=')
-      .ok_or_else(|| ScriptError::new(path, line, "let expects syntax: let <name> = <value>"))?;
+      .ok_or_else(|| ScriptError::parse(path, line, "let expects syntax: let <name> = <value>"))?;
     let name = name.trim_matches(is_command_whitespace);
     let value = value.trim_matches(is_command_whitespace);
     if name.is_empty() {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         "let expects syntax: let <name> = <value>",
       ));
     }
     if !is_macro_identifier(name) {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         format!("macro name must be an identifier: {name}"),
       ));
     }
     if value.is_empty() {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         format!("macro value cannot be empty: {name}"),
       ));
     }
     if context.macros.contains_key(name) {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         format!("macro already defined: {name}"),
@@ -396,7 +396,7 @@ pub fn parse_control_flow_directive(
 
   if normalized == "if" {
     if body.is_empty() {
-      return Err(ScriptError::new(path, line, "if expects a condition"));
+      return Err(ScriptError::parse(path, line, "if expects a condition"));
     }
     let active = evaluate_script_condition(body, path, line)?;
     return Ok(Some(ControlFlowDirective::If(IfDirective { active })));
@@ -404,7 +404,7 @@ pub fn parse_control_flow_directive(
 
   if normalized == "else" {
     if !body.is_empty() {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         "else does not accept a condition",
@@ -415,7 +415,7 @@ pub fn parse_control_flow_directive(
 
   if normalized == "end" {
     if !body.is_empty() {
-      return Err(ScriptError::new(
+      return Err(ScriptError::parse(
         path,
         line,
         "end does not accept arguments",
@@ -447,7 +447,7 @@ pub fn evaluate_script_condition(
       let left_val = left.trim_matches(is_command_whitespace);
       let right_val = right.trim_matches(is_command_whitespace);
       if left_val.is_empty() || right_val.is_empty() {
-        return Err(ScriptError::new(
+        return Err(ScriptError::parse(
           path,
           line,
           "if condition expects true/false, 1/0, on/off, ==, or !=",
@@ -461,7 +461,7 @@ pub fn evaluate_script_condition(
     }
   }
 
-  Err(ScriptError::new(
+  Err(ScriptError::parse(
     path,
     line,
     "if condition expects true/false, 1/0, on/off, ==, or !=",
