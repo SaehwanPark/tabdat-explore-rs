@@ -28,7 +28,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |
-| Statistics | Pure Rust linear model/inference utilities, bounded `regress`, `ttest`, `predict`, `test`, `lincom`, VIF; readable shell results for `regress`/`predict`/`lincom`/`test` | Other estimator families largely parser-only; reference validation remains feature-specific |
+| Statistics | Pure Rust linear model/inference utilities, bounded `regress`, `ttest`, `predict`, `test`, `lincom`, VIF; readable shell results for `regress`/`predict`/`lincom`/`test` and all four bounded `ttest` forms | Other estimator families largely parser-only; reference validation remains feature-specific |
 | Structured interfaces | CLI-v1 JSON core EDA and bounded regress/predict/lincom/test results, ordered script streams, discovery, and typed transport-independent MCP boundary | No full-results JSON surface or MCP transport/server |
 | Visualization | Several command forms parse | Rendering/plot execution not installed |
 | Native capabilities | Phase 1 DuckDB/ReadStat/libgretl/plotting feasibility decisions and prototypes | ReadStat, libgretl and plotting adapters are not production integrations |

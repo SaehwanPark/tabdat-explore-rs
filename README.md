@@ -147,6 +147,22 @@ Classification comes from the error source, not words such as “not found” or
 message-based heuristic; JSON envelope fields and diagnostic text are unchanged.
 Batch `-c` exit behavior is unchanged.
 
+Interactive mean comparisons now display the existing bounded `ttest` results:
+`ttest x == 0` (one-sample), `ttest x == y` (paired), `ttest x, by(group)`
+(pooled equal-variance), and `ttest x, by(group) welch` (unequal-variance).
+Output includes ordered sample summaries, fixed 95% Student-t intervals, the
+mean/difference null, t statistic, reference DF (fractional for Welch), and
+left-/two-sided/right-tail probabilities. Paired samples use joint complete
+finite observations; independent samples exclude invalid tested values and
+missing group keys. The contrast follows the supplied group order.
+
+Independent difference rows show `NA` for N because the owned legacy field is
+not a sample count; real group counts and reference DF are shown separately.
+Undefined statistics display `NA`, not invented zeros. Rendering does not change
+calculations, samples, data, or the saved regression. Nested interactive `run`
+streams these results; batch output and the JSON success boundary are unchanged
+(`ttest` JSON is not yet supported).
+
 ## Development direction
 
 The immediate priority is a usable end-to-end EDA/linear-model workflow:

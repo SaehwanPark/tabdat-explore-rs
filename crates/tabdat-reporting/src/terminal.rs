@@ -131,6 +131,110 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
   output
 }
 
+fn ttest_sample_row(output: &mut String, sample: &tabdat_domain::TtestGroupStats, n: &str) {
+  writeln!(
+    output,
+    "{}\t{n}\t{}\t{}\t{}\t{}\t{}",
+    sample.name.escape_debug(),
+    inference_number(sample.mean),
+    inference_number(sample.standard_error),
+    inference_number(sample.standard_deviation),
+    inference_number(sample.ci_lower),
+    inference_number(sample.ci_upper)
+  )
+  .unwrap();
+}
+
+fn ttest(result: &tabdat_domain::TtestResult) -> String {
+  let independent = result.by_variable.is_some();
+  let mode = if result.is_paired {
+    "paired"
+  } else if independent {
+    if result.is_welch {
+      "Welch unequal-variance"
+    } else {
+      "pooled equal-variance"
+    }
+  } else {
+    "one-sample"
+  };
+  let mut output = format!(
+    "T test: {mode}\nVariable: {}",
+    result.varname1.escape_debug()
+  );
+  if let Some(variable) = &result.varname2 {
+    write!(output, "; paired variable: {}", variable.escape_debug()).unwrap();
+  }
+  if let Some(variable) = &result.by_variable {
+    write!(output, "; by: {}", variable.escape_debug()).unwrap();
+  }
+  output.push('\n');
+  output.push_str("Sample\tN\tMean\tStd. error\tStd. dev.\tCI lower (95%)\tCI upper (95%)\n");
+  for sample in std::iter::once(&result.group1_stats)
+    .chain(result.group2_stats.iter())
+    .chain(result.combined_stats.iter())
+  {
+    ttest_sample_row(&mut output, sample, &sample.observations.to_string());
+  }
+  // Independent difference counts are legacy residual-df/zero values, not N.
+  let difference_n = if independent {
+    "NA".to_owned()
+  } else {
+    result.difference_stats.observations.to_string()
+  };
+  ttest_sample_row(&mut output, &result.difference_stats, &difference_n);
+  if independent {
+    writeln!(
+      output,
+      "Contrast: {} - {}",
+      result.group1_stats.name.escape_debug(),
+      result
+        .group2_stats
+        .as_ref()
+        .map(|group| group.name.escape_debug().to_string())
+        .unwrap_or_else(|| "NA".to_owned())
+    )
+    .unwrap();
+    output.push_str("Difference N is not an observation count; use group N and reference df.\n");
+  } else if result.is_paired {
+    writeln!(
+      output,
+      "Contrast: {} - {}",
+      result.varname1.escape_debug(),
+      result.varname2.as_deref().unwrap_or("NA").escape_debug()
+    )
+    .unwrap();
+  }
+  writeln!(
+    output,
+    "Null {} = {}",
+    if independent || result.is_paired {
+      "difference"
+    } else {
+      "mean"
+    },
+    inference_number(result.null_value)
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "t reference; df = {}; t = {}",
+    inference_number(result.degrees_of_freedom),
+    inference_number(result.t_statistic)
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "P(left-tail) = {}; P(two-sided) = {}; P(right-tail) = {}",
+    inference_number(result.p_left),
+    inference_number(result.p_two),
+    inference_number(result.p_right)
+  )
+  .unwrap();
+  output.push_str("NA = unavailable, undefined, or not an observation count.\n");
+  output
+}
+
 /// Present core workflow guidance or a packaged reference topic without execution.
 pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
   match topic {
@@ -140,6 +244,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "  Inspect: describe, summarize [variables], tabulate, count, head/tail\n",
       "  Transform: generate, replace, rename, sort/gsort, keep/drop/select\n",
       "  Linear analysis: regress, predict, lincom, test\n",
+      "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
       "  Scripts/files: run <script.td>, save <file.parquet>, export <file.csv>\n",
       "  Help: help [topic] or ?[topic]; example: help summarize\n",
       "  Leave: exit, quit, or EOF\n",
@@ -231,6 +336,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.path.to_string_lossy().escape_debug()
     ),
     ExecutionResult::Regression(result) => regression(result),
+    ExecutionResult::Ttest(result) => ttest(result),
     ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),
     ExecutionResult::Lincom(result) => format!(
       "Linear combination: {}\nt reference; residual df = {}\nEstimate\tStd. error\tt\tP(two-sided)\tCI lower ({}%)\tCI upper ({}%)\n{}\t{}\t{}\t{}\t{}\t{}\nNA = unavailable or undefined.\n",
@@ -288,6 +394,45 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn ttest_display_escapes_labels_and_keeps_singleton_inference_undefined() {
+    let sample = tabdat_domain::TtestGroupStats {
+      name: "label\tline\n\u{1b}[2J".to_owned(),
+      observations: 1,
+      mean: 2.0,
+      standard_error: f64::NAN,
+      standard_deviation: f64::NAN,
+      ci_lower: f64::NAN,
+      ci_upper: f64::NAN,
+    };
+    let result = ExecutionResult::Ttest(Box::new(tabdat_domain::TtestResult {
+      varname1: "x\nbad".to_owned(),
+      varname2: None,
+      by_variable: None,
+      is_paired: false,
+      is_welch: false,
+      null_value: 2.0,
+      group1_stats: sample.clone(),
+      group2_stats: None,
+      combined_stats: None,
+      difference_stats: tabdat_domain::TtestGroupStats {
+        name: "mean".to_owned(),
+        ..sample
+      },
+      t_statistic: f64::NAN,
+      degrees_of_freedom: 0.0,
+      p_left: f64::NAN,
+      p_two: f64::NAN,
+      p_right: f64::NAN,
+    }));
+    let text = render_execution_result(&result);
+    assert!(text.contains("Variable: x\\nbad\n"));
+    assert!(text.contains("label\\tline\\n\\u{1b}[2J\t1\t2\tNA\tNA\tNA\tNA\n"));
+    assert!(!text.contains('\u{1b}'));
+    assert!(text.contains("t reference; df = 0; t = NA\n"));
+    assert!(text.contains("P(left-tail) = NA; P(two-sided) = NA; P(right-tail) = NA\n"));
+  }
 
   #[test]
   fn scalar_display_preserves_integer_decimal_and_missing_values() {
