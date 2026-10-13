@@ -192,11 +192,11 @@ fn reshape_preserves_bounded_parser_diagnostics() {
     ),
     (
       "reshape long income, i() j(year)",
-      "reshape expects exactly one i(id_vars) option",
+      "option i expects at least one value",
     ),
     (
       "reshape long income, i(id) j()",
-      "reshape expects exactly one j(name) option",
+      "option j expects at least one value",
     ),
     (
       "reshape long income, i(id) j(year month)",
@@ -3151,7 +3151,7 @@ fn collapse_preserves_bounded_parser_diagnostics() {
     ),
     (
       "collapse mean age, by()",
-      "collapse by() expects at least one grouping variable",
+      "option by expects at least one value",
     ),
     (
       "collapse mean age if age > 0, by(sex)",

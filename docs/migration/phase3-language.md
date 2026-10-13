@@ -147,3 +147,16 @@ no aggregation or conditional runtime added. Root formatting, locked workspace
 check/test/Clippy and diff check passed. Three local owner reviews covered
 validation ordering, type/effect isolation and compatibility. Case normalization
 was caught by existing uppercase tests and fixed before verification.
+
+## Slice 6: final captured diagnostics
+
+**Python contract:** tokenizer/options reject empty parenthesized values before
+command-specific validation; an empty `by:` prefix reports `unknown command: by`.
+**Rust contract:** remove obsolete exceptions for empty by/i/j values and preserve
+that boundary diagnostic. No commands or runtime effects are added.
+**Test contract:** failing-before-implementation diagnostics and reconciled older
+bounded tests; all **672 captured inputs now agree on acceptance, equivalent typed
+variant and exact error text**. The gap ledger is empty, not a blanket AST or
+script parity assertion. **Implementation mapping:** safe syntax validation only.
+All root Cargo checks and diff check pass; three owner review passes covered
+error precedence, empty option regressions and scope. No independent review claimed.

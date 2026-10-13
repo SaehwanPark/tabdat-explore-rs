@@ -87,10 +87,7 @@ fn ttest_preserves_bounded_parser_diagnostics() {
       "ttest wage, by(group) by(other)",
       "ttest option by may only be supplied once",
     ),
-    (
-      "ttest wage, by()",
-      "ttest command requires option by(<variable>)",
-    ),
+    ("ttest wage, by()", "option by expects at least one value"),
     (
       "ttest wage, by(group other)",
       "ttest command requires option by(<variable>)",

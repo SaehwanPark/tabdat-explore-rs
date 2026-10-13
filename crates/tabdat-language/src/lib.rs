@@ -113,6 +113,13 @@ pub fn parse_command(input: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new(leading_quote_error(command, quote)));
   }
 
+  if command
+    .get(..3)
+    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("by:"))
+  {
+    return Err(ParseError::new("unknown command: by"));
+  }
+
   if let Some(help_body) = command.strip_prefix('?') {
     return parse_help(help_body.trim());
   }
@@ -8769,18 +8776,12 @@ fn parse_use_option_tokens(tokens: Vec<UseToken>) -> Result<Vec<UseOption>, Pars
           "option {name} is missing closing )"
         )));
       }
-      if value_tokens.is_empty() && !name.eq_ignore_ascii_case("by") && name != "i" && name != "j" {
+      if value_tokens.is_empty() {
         return Err(ParseError::new(format!(
           "option {name} expects at least one value"
         )));
       }
-      value = if value_tokens.is_empty()
-        && (name.eq_ignore_ascii_case("by") || name == "i" || name == "j")
-      {
-        UseOptionValue::Identifiers(Vec::new())
-      } else {
-        parse_use_parenthesized_value(&name, value_tokens)?
-      };
+      value = parse_use_parenthesized_value(&name, value_tokens)?;
     }
 
     if stream.peek_is_symbol("=") {
