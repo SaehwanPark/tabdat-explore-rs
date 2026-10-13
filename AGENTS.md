@@ -1,134 +1,92 @@
 # Working on TabDat Explore Rust
 
-## Purpose and current state
+## Mission and priority
 
-TabDat is a terminal-first statistical/EDA environment with a Stata-inspired
-language. This repository is its Rust-native successor. Phase 2 establishes a
-safe, directional core workspace and bounded batch/script CLI/runtime paths;
-no-argument execution remains a scaffold greeting, and no REPL or MCP server is
-implemented. Current supported scope and build checks are recorded in
-[SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md) and
-[CONTRIBUTING.md](CONTRIBUTING.md). Do not describe proposed commands, backend
-integrations, or later-phase capabilities as present merely because types compile.
+Build a small, fast, dependable, terminal-first statistical/EDA application in
+Rust. Prefer **complete, usable workflows** to broad syntax scaffolding or exact
+replication of Python implementation details.
 
-Read the relevant sections of:
-- [Project proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md): product intent,
-  architecture, migration method, and constraints.
-- [Architecture](ARCHITECTURE.md): current-versus-proposed Rust boundaries,
-  ownership, state/effect rules, and explicit deferrals.
-- [Roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md): phased work and acceptance gates.
+The source code and tests define implemented behavior. [SPEC.md](SPEC.md) is the
+short, current capability map; the [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md)
+is a revisable priority list, not a sequence of mandatory phase gates. The
+[architecture](ARCHITECTURE.md) explains boundaries. Historical proposal, ADRs,
+old migration evidence, and Git history are references **when relevant**, not
+required reading for every task.
 
-The proposal and roadmap are plans; architecture records current-versus-proposed
-boundaries. Source/tests establish implemented behavior;
-unchecked tasks are not evidence of support. The initial Python oracle revision and
-authority policy are recorded in [docs/migration/](docs/migration/); recover the
-pinned checkout and slice-specific evidence before claiming migration parity.
-Record conflicts or intentional deviations rather than silently choosing a behavior.
+## Non-negotiable engineering rules
 
-## Engineering boundaries
+- **Statistical trust:** Define estimation samples, missingness, formula/design
+  semantics, covariance corrections, degrees of freedom, and model state
+  explicitly. Validate changed numerical results against a trusted independent
+  reference when appropriate; never make unexplained differences pass by widening
+  tolerances.
+- **Data integrity:** Preserve ordering, types, labels, and state where promised.
+  Test failure paths for operations that mutate data, session state, or files.
+- **Safe boundaries:** Prefer safe Rust; keep approved native/FFI unsafety local,
+  documented, and out of domain/application APIs. DuckDB remains the canonical
+  initial data engine. No production Python or R dependency.
+- **Honest status:** Distinguish parser acceptance, executable behavior, tested
+  behavior, and future intent. Do not claim whole-command parity, release
+  readiness, or platform support from a passing unit test.
+- **Compatibility by impact:** Preserve supported user workflows, data/statistical
+  semantics, documented machine contracts, and meaningful errors. Exact Python
+  wording, obscure lexical behavior, and unsupported features may diverge after
+  a short, explicit decision; see [migration guidance](docs/migration/README.md).
+- **Minimal architecture:** Reuse existing crates/modules. Introduce abstractions,
+  dependencies, configuration, ADRs, or new crates only for a demonstrated need.
 
-- Preserve public behavior, not Python module layouts. Use typed commands,
-  results, errors, and explicit session/model state.
-- Keep language → execution → backend dependencies directional; domain types
-  must not depend on runtime backends. Human/JSON/MCP surfaces share typed results.
-- DuckDB is the planned canonical data engine. A second engine needs benchmark
-  evidence and a recorded decision. Initialize specialized capabilities lazily.
-- Core distribution must need neither Python nor R; external validation tools
-  are separate from runtime dependencies.
-- Use safe Rust by default and `#![forbid(unsafe_code)]` in ordinary new crates.
-  Confine approved FFI unsafety to low-level adapters with safe facades, owned
-  results, RAII, and adjacent `// SAFETY:` reasoning. No raw foreign ownership
-  or native model types in domain/application APIs.
-- Statistical parity needs trusted references as well as the Python oracle.
-  Never hide disagreements by silently widening tolerances.
-- Record major backend, FFI, packaging, or dependency decisions in ADRs (create
-  `docs/adr/` when the first decision is needed). Review native dependency license
-  compatibility and redistribution obligations against the proposal's AGPL intent.
-- Be aware of AI subscription usage limits and reset windows. The parent/current
-  agent checks limits directly per `docs/ai-usage-policy.md`; never spawn a model-backed
-  subagent solely to monitor usage.
+## Everyday development loop
 
-## Checks and change discipline
+1. Read the immediate request, relevant source/tests, and the short capability
+   status. Select the **smallest end-to-end user-visible outcome** that fits.
+2. Define a few observable acceptance cases and important failure cases. Do not
+   build an exhaustive requirements matrix for a routine change.
+3. Implement, run focused tests, then the applicable checks in
+   [CONTRIBUTING.md](CONTRIBUTING.md). Keep test fixtures small and inspectable.
+4. Check the diff, report what was and was not verified, and update the current
+   specification/roadmap only if public capability or priority changed.
+5. Commit, push, create PRs, or merge **only within the user's actual authorization**.
+   A general instruction to continue developing is not a grant to merge or
+   change unrelated work. Draft PRs are useful for a substantial WIP handoff,
+   not required for every small change.
 
-From the repository root, the baseline Rust checks are:
+For straightforward changes, a concise PR explanation and focused tests are
+sufficient. Do **not** require three self-review passes, a failed test observed
+before implementation, four handoff documents, or full Python differential
+replays by default. Escalate evidence proportional to risk:
 
-```sh
-cargo fmt --all -- --check
-cargo check --locked --workspace --all-targets
-cargo test --locked --workspace --all-targets
-cargo clippy --locked --workspace --all-targets -- -D warnings
-```
+| Change | Evidence expected |
+| --- | --- |
+| Docs, formatting, low-risk refactor | Diff and relevant checks |
+| Parser, script, CLI, command dispatch | Focused acceptance, error, and regression tests |
+| Data mutation, persistence, state | Invariants, failure/rollback, representative end-to-end case |
+| Estimator, covariance, inference | Independent numerical/reference comparison and documented tolerances |
+| Unsafe/FFI, native distribution | Ownership/safety, platform, licensing and specialized testing |
 
-These do not establish command or statistical parity. Differential/reference
-fixtures and performance harnesses remain roadmap work; do not claim they ran merely
-because Cargo passed. The pinned dependency/advisory/unsafe-code commands in
-`CONTRIBUTING.md` are separate policy checks and cover only the Rust workspace.
-For documentation changes, validate links, skill frontmatter, scenario coverage,
-and `git diff --check`.
-Update only roadmap items supported by evidence, not entire phases by inference.
-Preserve unrelated work. Commit/push only when authorized; do not force-push.
+## Scope control
 
-## Repo-local skills
+- Prefer finishing `use` → `summarize`/`tabulate` → `regress`/`predict` →
+  reporting in the CLI/REPL over adding syntax-only estimator families.
+- Do not turn a rare Python edge case into a dependency or public API expansion
+  without a real user/reproducibility need. Document supported limits clearly.
+- Avoid speculative security hardening. Keep reproduced parser-crash regressions
+  and sensible input bounds; run extended fuzz/sanitizer campaigns when parser or
+  native risk warrants them, not for unrelated changes.
+- Implement future features only when requested or prioritized. A checkbox in an
+  old roadmap is not an instruction to implement it now.
 
-Use [the routing and handoff guide](docs/harness/tabdat/team-spec.md) to select
-only the relevant skills:
+## Agent operation and handoff
 
-- [tabdat-migration](.agents/skills/tabdat-migration/SKILL.md): recover a behavior
-  contract and port one bounded language/runtime/interface slice.
-- [tabdat-data-semantics](.agents/skills/tabdat-data-semantics/SKILL.md): DuckDB
-  relations, transformations, missingness, labels, and session invariants.
-- [tabdat-statistical-validation](.agents/skills/tabdat-statistical-validation/SKILL.md):
-  estimator semantics, inference, post-estimation, and reference evidence.
-- [tabdat-native-backends](.agents/skills/tabdat-native-backends/SKILL.md): feasibility
-  spikes, FFI safety, native dependency decisions, and capability costs.
+Work single-agent by default. Delegate only a bounded, independent task with a
+clear benefit, returning conclusions and file/test evidence. See
+[optional skill routing](docs/harness/tabdat/team-spec.md); select only relevant
+skills. No particular harness, subagent topology, quota-monitoring tool, or
+model route is required.
 
-Skills are portable markdown; no particular agent runtime or delegation is required.
+Never wait/sleep through a model quota reset or promise unattended continuation.
+If blocked, leave a compact handoff: branch/commit, changes, focused test
+results, remaining issue, next command or decision. Do not conceal failed tests.
 
-## Subagents
-
-Stay single-agent by default. Delegate only when the context, specialization, or
-parallel-latency benefit clearly outweighs the additional model-turn cost.
-
-* Default to at most one active model-backed child. Use two concurrently only for clearly independent work with an explicit benefit and healthy usage headroom.
-* Delegate bounded, self-contained investigation or implementation tasks when the parent mainly needs the result, not the working process.
-* Prefer a child for unusually read-heavy or specialized work, not as the default way to run tests, inspect a few files, monitor quota, or perform routine verification.
-* Give subagents only the context and scope needed for their task; avoid copying the full parent conversation unless necessary.
-* Ask subagents to return concise findings, evidence/references, risks, and recommended actions rather than raw working context.
-* Keep architectural decisions, cross-component integration, final verification, and usage monitoring with the parent agent.
-* Do not recursively spawn model-backed grandchildren unless the user or change owner explicitly authorizes that topology.
-* Do not silently escalate a child to a more expensive model tier. Inherit the exact parent route or use an explicitly configured same/lower-cost route. Sol/Astra-class routes require explicit user authorization for repository development.
-* Avoid redundant subagents inspecting the same scope unless independent review is intentional.
-* If a subagent's scope expands substantially, it should escalate back to the parent rather than absorbing unrelated work.
-* Use the main context for decisions; use subagent contexts only where they provide a clear net benefit.
-
-See `docs/subagents_policy.md` for detailed delegation patterns and guidance.
-
-## Asynchronous GitHub Communication
-
-Use GitHub proactively as the durable communication channel when human collaborators are unavailable or work may continue across sessions.
-
-* Prefer remote branches, commits, PRs, and GitHub discussions/comments over keeping important state only in local context.
-* Push meaningful work to a remote branch regularly when it is safe and useful to preserve progress.
-* Open a draft PR early for non-trivial work when it provides a useful place for status, design notes, review, and human steering.
-* Keep PR descriptions and comments updated with current status, key decisions, unresolved questions, risks, and next steps.
-* Use commits and PRs to leave a durable trail that another human or agent can resume without reconstructing the full conversation.
-* When blocked on a human decision, record the question and relevant context in the PR or issue rather than leaving it only in transient agent context.
-* Prefer small, reviewable commits and branches with clear scope.
-* Do not merge, close, force-push shared work, or perform other irreversible repository actions unless explicitly authorized or clearly permitted by project policy.
-* Never commit secrets, credentials, private data, or machine-specific sensitive artifacts.
-
-Use local context for active reasoning; use GitHub for durable project state and asynchronous human communication.
-
-## Agentic Loop
-
-Use agentic loops for long-running tasks or when pursuing goals.
-
-One loop is defined by
-
-1. Select target slice (what to implement/examine/do)
-2. Design a plan
-3. Execute the plan
-4. Test and verify
-5. Update documents if necessary
-6. PR handoff and merge autonomously
-7. Move on to the next task or slice
+Use two-space indentation; preserve format-specific conventions. Keep functions
+organized so dependencies precede callers where practical. Never add non-breaking
+spaces to source or docs.

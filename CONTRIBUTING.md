@@ -1,30 +1,29 @@
-# Contributing
+# Contributing to TabDat Explore Rust
 
-## Toolchain and formatting
+This is an incremental, outcome-driven Rust project. Read [AGENTS.md](AGENTS.md)
+for invariant boundaries and [SPEC.md](SPEC.md) for supported features. The
+[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) lists current priorities, not mandatory
+phase gates. For small changes, read only the relevant code/tests.
 
-Use rustup; entering this repository selects the exact version in
-`rust-toolchain.toml` and installs its rustfmt/Clippy components when needed.
-The pin is the supported development toolchain, not a promised MSRV. Upgrade it
-in a dedicated PR that runs all checks locally. Commit `Cargo.lock`
-for this binary and use `--locked` so builds cannot silently change resolution.
+## Development
 
-Use two spaces, no hard tabs. EditorConfig covers editable text and rustfmt covers
-Rust. Markdown keeps intentional trailing spaces for hard line breaks. Generated
-files and formats with mandatory indentation retain their required syntax.
+Use [rustup](https://rustup.rs/) and the repo's pinned `rust-toolchain.toml`.
+Commit `Cargo.lock` for dependency changes and use `--locked` in checks.
+Use two-space indentation, no hard tabs or non-breaking spaces; respect syntax
+or generated-file formatting requirements.
 
-## Development loop
+A practical change should:
 
-Read [AGENTS.md](AGENTS.md), [SPEC.md](SPEC.md), and the relevant
-[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) gate. Work on a branch from updated
-`main`; one bounded slice corresponds to one PR. Record acceptance and exclusions
-before implementation, write behavior tests first and observe their intended
-failure, then implement and reconcile documentation with evidence. Characterization
-tests for unchanged behavior may pass immediately; record that distinction.
-Prefer pure domain functions, explicit state and errors, and effects at boundaries.
+1. State what user-visible behavior or internal invariant changes.
+2. Add or adjust the few relevant tests; include realistic failure cases.
+3. Implement the smallest solution within existing boundaries.
+4. Run focused tests, inspect the diff, and summarize residual limitations.
+5. Update brief current-status docs only if supported behavior changes.
 
-## Required checks
+A new failure-first test is helpful for a bug fix, not a mandatory ceremonial
+step. A PR or design note should be as short as the actual complexity allows.
 
-Run from the repository root:
+## Normal Rust checks
 
 ```sh
 cargo fmt --all -- --check
@@ -34,129 +33,41 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 git diff --check
 ```
 
-## Phase 2 workspace boundaries
+Run focused commands while iterating. Before publishing a completed code change,
+run the relevant full checks; report any failure rather than hiding it. GitHub
+Actions are currently **disabled**: checks do not run automatically. CI status
+must not be inferred from old workflow records.
 
-The runtime crate is a compatibility facade; scan/test all workspace packages,
-not just that facade. Domain, language, I/O, stats and reporting must remain
-runtime-backend-independent; execution uses owned data values, never DuckDB rows
-or connections. `tests/workspace_boundaries.rs` protects this direction and safe
-crate roots. Existing CLI JSON and numerical contracts must survive structural
-moves. The full geiger metadata loop below discovers every current package.
+## Proportional additional verification
 
-### DuckDB metadata timing
+| Scope | Additional checks |
+| --- | --- |
+| Parser/script/CLI | Focused valid/invalid examples, line/path diagnostics and existing regression tests |
+| Data/session/file effects | Schema and missingness, order, rollback/failure state, output recovery |
+| Statistics | Independent reference (e.g., trusted numerical package), sample/design verification, justified tolerances |
+| Native/FFI work | Ownership, failure/teardown, sanitizer/leak checks when appropriate, platform and licensing evidence |
+| Release/dependency update | `cargo deny check`, `cargo audit -D warnings`, distribution/license review as applicable |
 
-With `duckdb` 1.10505.0, `Statement::column_count()` after `prepare()` but before
-execution panics with **"The statement was not executed yet"**. The owned-row
-adapter obtains metadata from the executed row's statement, so it also handles
-empty queries without double execution. Keep metadata reads after execution and
-run `cargo test --locked -p tabdat-data --test owned_rows`; its tests protect
-metadata timing, skipped unsupported cells, empty results and visitor/query error
-recovery. See `crates/tabdat-data/src/owned_rows.rs`. This is an upstream timing
-constraint, not a reason to expose native rows across the execution boundary.
+`cargo-geiger` may assist an unsafe-code inventory, but it is not proof of
+native safety and **does not need to be run on every documentation or parser PR**.
+The previous full geiger procedure and toolchain caveats remain in the
+[historical contributor guide](https://github.com/SaehwanPark/tabdat-explore-rs/blob/333b97dd55524dbf5ce55fac510375df99e4649e/CONTRIBUTING.md).
 
-## GitHub Actions status
+For reproducible parser robustness work, keep the existing isolated
+[`fuzz/`](fuzz/README.md) workspace and its reproduced stack-overflow regression.
+Do not launch long fuzz campaigns for routine non-parser changes. Use the
+[syntax budget ADR](docs/adr/0023-syntax-resource-budgets-and-fuzz-tooling.md)
+for current input limits.
 
-GitHub Actions are disabled at the repository level and all tracked workflow
-definitions are removed in this change because the Actions usage budget is
-limited. No PR, push, or manual GitHub workflow runs automatically. Run the checks
-in this guide locally before merging. Historical workflow links elsewhere in the
-repository document past evidence; they do not describe active automation. See
-[ADR 0009](docs/adr/0009-disable-github-actions.md).
+## PRs, approvals, and handoffs
 
-For the dependency and unsafe-code policy slice, install the pinned tools and run:
+Keep scope small and reviewable. Do not overwrite unrelated uncommitted work.
+Push/merge only under explicit task authorization; no required automatic PR
+creation, review-pass count, delegation, or wait-for-quota loop. On an incomplete
+change, record the branch/commit, successful and failing tests, remaining
+question and smallest next action. Leave important WIP evidence in the draft PR
+when one exists.
 
-```sh
-cargo install cargo-deny --version 0.20.2 --locked
-cargo install cargo-audit --version 0.22.2 --locked
-cargo install cargo-geiger --version 0.13.0 --locked
-cargo deny check
-cargo audit -D warnings
-set -euo pipefail
-tmp_root="${RUNNER_TEMP:-$(mktemp -d)}"
-reports_dir="$tmp_root/tabdat-geiger-reports"
-mkdir -p "$reports_dir"
-metadata_file="$tmp_root/tabdat-cargo-metadata.json"
-cargo metadata --no-deps --format-version 1 --locked >"$metadata_file"
-jq -r '.packages[].manifest_path' "$metadata_file" \
-  | while IFS= read -r manifest; do
-      package_name="$(jq -er --arg manifest "$manifest" \
-        '.packages[] | select(.manifest_path == $manifest) | .name' \
-        "$metadata_file")"
-      CARGO_TARGET_DIR=target/geiger-policy cargo geiger \
-        --manifest-path "$manifest" \
-        --all-dependencies \
-        --all-targets \
-        --locked \
-        --output-format Json >"$reports_dir/$package_name.json" || geiger_status=$?
-      geiger_status="${geiger_status:-0}"
-      if [[ "$(jq --arg package "$package_name" \
-        '[.packages[] | select(.package.id.name == $package)] | length' \
-        "$reports_dir/$package_name.json")" != "1" ]]; then
-        echo "cargo geiger did not report exactly one first-party package: $package_name" >&2
-        exit 1
-      fi
-      jq -e --arg package "$package_name" '
-        [.packages[] | select(.package.id.name == $package)][0]
-        | (.unsafety.forbids_unsafe == true)
-          and ([(.unsafety.used | to_entries[] | .value.unsafe_ // 0)] | all(. == 0))
-      ' "$reports_dir/$package_name.json" >/dev/null
-      if [[ "$geiger_status" -ne 0 ]]; then
-        echo "cargo geiger reported dependency inventory warnings for $package_name (exit $geiger_status); first-party package is clean" >&2
-      fi
-      unset geiger_status
-    done
-```
-
-`deny.toml` rejects unknown sources, disallowed licenses, wildcard dependencies,
-and advisories are checked without local ignores. The current unpublished scaffold
-is explicitly excluded from dependency-license resolution until release licensing
-is decided; external crates are not. The metadata loop runs `cargo geiger` once for
-every workspace package, so the report covers current workspace and transitive
-unsafe usage. The JSON loop mirrors CI: it resolves each package name from the
-matching manifest path, retains one report per package, checks
-`forbid(unsafe_code)` and zero first-party unsafe usage, and treats a nonzero
-geiger status as dependency-inventory warning only. When a dependency subtree
-contains unsafe code, `cargo geiger` may return a nonzero inventory status even
-though the first-party package is clean. This does not prove FFI safety or
-replace review.
-
-Use a dedicated `target/geiger-policy` directory for the scan. `cargo-geiger`
-0.13.0 internally cleans package artifacts; a root target containing large nested
-native-spike builds can spend minutes recursively globbing during that clean,
-without producing a report. During Phase 1 verification, process sampling showed
-that clean/glob path after 200- and 900-second timeouts. The dedicated directory
-completed all four workspace scans without changing policy coverage. Do not
-replace the full scan with `--forbid-only`, which omits the unsafe-usage inventory.
-
-This loop otherwise matches the former hosted policy job; policy checks now run only when
-invoked locally. No branch protection is configured.
-
-For docs, also validate relative links, skill frontmatter where affected, and
-normal/blocked guidance scenarios. The one scaffold integration test only checks
-successful exit, exact greeting, and empty stderr. None of these checks validates
-TabDat semantics, statistical accuracy, dependency security, or native packaging.
-Those need separate roadmap evidence. The binary and integration test forbid
-unsafe code; future ordinary crates must do the same.
-
-The isolated DuckDB feasibility prototype is not part of the root workspace. When
-working on `spikes/duckdb-prototype/`, use its committed lockfile and keep build
-artifacts under the ignored root target directory:
-
-```sh
-cargo fmt --manifest-path spikes/duckdb-prototype/Cargo.toml -- --check
-CARGO_TARGET_DIR=target/duckdb-spike cargo test --manifest-path spikes/duckdb-prototype/Cargo.toml --locked
-CARGO_TARGET_DIR=target/duckdb-spike cargo build --manifest-path spikes/duckdb-prototype/Cargo.toml --release --locked
-target/duckdb-spike/release/measure
-```
-
-The former path-scoped `DuckDB feasibility spike` workflow covered Linux
-build/tests. Its run is historical; macOS Apple Silicon evidence, dependency
-audit, and native unsafe inventory remain explicitly recorded in
-`docs/feasibility/duckdb.md`, not presented as a product-support guarantee.
-
-## Language fuzz validation
-
-The separate [fuzz workspace](fuzz/README.md) uses pinned cargo-fuzz/libfuzzer-sys
-and a nightly toolchain. Seed from the pinned parser fixtures and adversarial
-recursive cases before a bounded sanitizer campaign. This external facility is
-not a root workspace/runtime dependency; root Cargo checks do not run it.
+For Python compatibility, use [migration guidance](docs/migration/README.md).
+Differences affecting mathematical results or supported user workflows deserve
+strong evidence; harmless error-message/lexical differences can be documented.
