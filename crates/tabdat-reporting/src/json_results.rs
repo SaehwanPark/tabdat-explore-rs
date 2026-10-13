@@ -4,14 +4,14 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
   CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult, RegressionResult,
-  SummarizeResult,
+  SummarizeResult, TtestGroupStats, TtestResult,
 };
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, and test";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, and test";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, test, and ttest";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -27,6 +27,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
       | Command::Predict { .. }
       | Command::Lincom { .. }
       | Command::Test { .. }
+      | Command::Ttest { .. }
       | Command::Exit
   )
 }
@@ -47,6 +48,7 @@ pub fn supports_script_command(command: &Command) -> bool {
       | Command::Predict { .. }
       | Command::Lincom { .. }
       | Command::Test { .. }
+      | Command::Ttest { .. }
       | Command::Exit
       | Command::Run { .. }
   )
@@ -72,6 +74,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       (preview_result_data(preview), "PreviewResult")
     }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
+    ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),
     ExecutionResult::Prediction(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "PredictionResult",
@@ -98,6 +101,35 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn ttest_group_data(group: &TtestGroupStats, count: Option<usize>) -> Value {
+  json!({
+    "name": group.name, "count": count,
+    "mean": Number::from_f64(group.mean), "standard_error": Number::from_f64(group.standard_error),
+    "standard_deviation": Number::from_f64(group.standard_deviation),
+    "ci_lower": Number::from_f64(group.ci_lower), "ci_upper": Number::from_f64(group.ci_upper),
+  })
+}
+
+fn ttest_result_data(result: &TtestResult) -> Value {
+  // Independent differences store legacy residual-df/zero, not an observation
+  // count. Never expose that field as a sample size in the CLI contract.
+  let difference_count = result
+    .by_variable
+    .is_none()
+    .then_some(result.difference_stats.observations);
+  json!({
+    "varname1": result.varname1, "varname2": result.varname2, "by_variable": result.by_variable,
+    "is_paired": result.is_paired, "is_welch": result.is_welch,
+    "null_value": Number::from_f64(result.null_value), "reference_distribution": "student_t", "ci_level": 95.0,
+    "group1_stats": ttest_group_data(&result.group1_stats, Some(result.group1_stats.observations)),
+    "group2_stats": result.group2_stats.as_ref().map(|group| ttest_group_data(group, Some(group.observations))),
+    "combined_stats": result.combined_stats.as_ref().map(|group| ttest_group_data(group, Some(group.observations))),
+    "difference_stats": ttest_group_data(&result.difference_stats, difference_count),
+    "t_statistic": Number::from_f64(result.t_statistic), "degrees_of_freedom": Number::from_f64(result.degrees_of_freedom),
+    "p_left": Number::from_f64(result.p_left), "p_two": Number::from_f64(result.p_two), "p_right": Number::from_f64(result.p_right),
+  })
 }
 
 fn regression_result_data(result: &RegressionResult) -> Value {
@@ -208,6 +240,68 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn ttest_json_boundary_preserves_labels_zero_and_null_policies() {
+    let group = TtestGroupStats {
+      name: "label\tline\n\"quoted\"".to_owned(),
+      observations: 3,
+      mean: f64::NAN,
+      standard_error: 0.0,
+      standard_deviation: f64::INFINITY,
+      ci_lower: f64::NEG_INFINITY,
+      ci_upper: 2.0,
+    };
+    // Synthetic owned values exercise the encoder, not a fitted inference case.
+    let result = ExecutionResult::Ttest(Box::new(TtestResult {
+      varname1: "x".to_owned(),
+      varname2: None,
+      by_variable: Some("grp".to_owned()),
+      is_paired: false,
+      is_welch: false,
+      null_value: 0.0,
+      group1_stats: group.clone(),
+      group2_stats: Some(TtestGroupStats {
+        name: "B".to_owned(),
+        ..group.clone()
+      }),
+      combined_stats: Some(TtestGroupStats {
+        name: "combined".to_owned(),
+        observations: 6,
+        ..group.clone()
+      }),
+      difference_stats: TtestGroupStats {
+        name: "diff".to_owned(),
+        observations: 4,
+        ..group
+      },
+      t_statistic: f64::INFINITY,
+      degrees_of_freedom: 4.0,
+      p_left: 0.0,
+      p_two: f64::INFINITY,
+      p_right: f64::NAN,
+    }));
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let envelope: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(envelope["result_type"], "TtestResult");
+    let data = &envelope["data"];
+    assert_eq!(
+      data["group1_stats"],
+      json!({
+        "name": "label\tline\n\"quoted\"", "count": 3, "mean": null,
+        "standard_error": 0.0, "standard_deviation": null, "ci_lower": null, "ci_upper": 2.0,
+      })
+    );
+    assert_eq!(data["combined_stats"]["count"], 6);
+    assert!(data["difference_stats"]["count"].is_null());
+    assert_eq!(data["null_value"], 0.0);
+    assert_eq!(data["p_left"], 0.0);
+    assert!(data["p_two"].is_null());
+    assert!(data["p_right"].is_null());
+    assert!(data["t_statistic"].is_null());
+    assert_eq!(data["degrees_of_freedom"], 4.0);
+  }
 
   #[test]
   fn tabulate_serialization_preserves_owned_labels_scalar_policies_and_empty_rows() {

@@ -92,7 +92,7 @@ includes commands that parse but do not yet execute.
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
 supports use, count, summarize, tabulate, head/tail and the bounded
-regress/predict/lincom/test workflow; nested scripts stream leaf results.
+regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
@@ -160,8 +160,23 @@ Independent difference rows show `NA` for N because the owned legacy field is
 not a sample count; real group counts and reference DF are shown separately.
 Undefined statistics display `NA`, not invented zeros. Rendering does not change
 calculations, samples, data, or the saved regression. Nested interactive `run`
-streams these results; batch output and the JSON success boundary are unchanged
-(`ttest` JSON is not yet supported).
+streams these results; non-JSON batch output is unchanged.
+
+CLI-v1 JSON also supports all four bounded `ttest` forms. `TtestResult.data`
+contains `varname1`, nullable `varname2`/`by_variable`, `is_paired`, `is_welch`,
+`null_value`, `reference_distribution: "student_t"`, `ci_level: 95.0`,
+`group1_stats`, nullable `group2_stats`/`combined_stats`, `difference_stats`,
+`t_statistic`, `degrees_of_freedom`, and `p_left`/`p_two`/`p_right`.
+Each summary contains `name`, `count`, `mean`, `standard_error`,
+`standard_deviation`, `ci_lower`, and `ci_upper`. Counts are integer observation
+counts, except independent difference `count` is null; its legacy DF/zero field
+is deliberately not exposed as N. The supplied order defines group1 minus
+group2 (or varname1 minus varname2 for paired tests). One-sample differences
+report the tested mean, not the mean minus the null. Group intervals use their
+own sample DF; the tested interval and probabilities use the supplied reference
+DF, including fractional Welch DF. Missing summaries and non-finite statistics
+serialize as null; finite zero remains a number. Rendering and serialization do
+not change the estimation sample or saved model.
 
 ## Development direction
 
