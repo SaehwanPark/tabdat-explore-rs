@@ -3,7 +3,8 @@
 **Snapshot:** refreshed documentation baseline plus the bounded script slice in
 [PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195) and minimal
 interactive shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/pull/196),
-with core EDA outcome reporting in [PR #197](https://github.com/SaehwanPark/tabdat-explore-rs/pull/197).
+with core EDA outcome reporting in [PR #197](https://github.com/SaehwanPark/tabdat-explore-rs/pull/197)
+and bounded linear-analysis reporting in [PR #198](https://github.com/SaehwanPark/tabdat-explore-rs/pull/198).
 Verification details are in the PR threads and [script evidence](docs/migration/phase3-scripts.md).
 Update this summary when implementation changes.
 
@@ -30,7 +31,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |
-| Statistics | Pure Rust linear model/inference utilities, bounded `regress`, `ttest`, `predict`, `test`, `lincom`, VIF | Other estimator families largely parser-only; reference validation remains feature-specific |
+| Statistics | Pure Rust linear model/inference utilities, bounded `regress`, `ttest`, `predict`, `test`, `lincom`, VIF; readable shell results for `regress`/`predict`/`lincom`/`test` | Other estimator families largely parser-only; reference validation remains feature-specific |
 | Structured interfaces | Selected CLI JSON envelopes/results and typed transport-independent MCP boundary | No full-results JSON surface or MCP transport/server |
 | Visualization | Several command forms parse | Rendering/plot execution not installed |
 | Native capabilities | Phase 1 DuckDB/ReadStat/libgretl/plotting feasibility decisions and prototypes | ReadStat, libgretl and plotting adapters are not production integrations |

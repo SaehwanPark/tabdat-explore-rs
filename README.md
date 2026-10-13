@@ -44,6 +44,13 @@ head/tail, frequency tables, SQL table results and run metadata. Core
 row/column counts; save/export confirm the written path and row/column counts. Table output
 preserves existing result order and labels; SQL-null cells display as `NA`, while
 text is quoted to distinguish literal `"NA"` and escape control characters.
+For the supported linear model subset, `regress y x` displays the estimator,
+covariance, sample size/exclusions, residual degrees of freedom, fit measures and
+ordered coefficient inference. Follow with `predict fitted`, `lincom x`, or
+`test x` for prediction confirmation, linear-combination inference or a named
+reference-distribution test. These displays use existing results, not a second
+statistical calculation. Undefined inference displays as `NA`; regression
+coefficient confidence intervals are not added by the renderer.
 Other executed results explicitly report that terminal details are not yet supported. Batch/script output contracts
 are unchanged. There is no history, completion, or multiline interactive input.
 Ctrl-C retains default OS process termination; recoverable cancellation and
