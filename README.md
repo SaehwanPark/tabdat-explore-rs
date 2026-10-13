@@ -211,6 +211,23 @@ null. Numeric codes alone do not install factor/dummy/ordinal model semantics;
 choose a supported explicit design/transform. Dictionary persistence remains
 uninstalled; CSV reload may turn empty strings into NULL. See `help encode`/`decode`.
 
+`sql SELECT/WITH ...` returns `TableResult` with owned `data.headers`/`rows`
+using the existing scalar policy; headers can repeat, empty queries retain
+headers, nonfinite numbers encode as null, and decimals stay exact strings.
+Rows are not automatically truncated: specify SQL `LIMIT` when appropriate.
+`sql ... into name` returns `SqlCreateResult`, and `use name` for a registered
+named table returns `ActivateResult`, each with owned `data.table_name` and
+`dataset`. Their source path is the named-table identifier, not the original
+file. Publication/activation retains the cached fit/sample without refitting,
+clears session labels, and reports native schema/count; transformations update
+an active named table under existing rules. Dataset label/panel fields stay null.
+Use explicit `ORDER BY` plus tie keys for reproducible query/cohort ordering.
+Existing statement validation only checks the leading SELECT/WITH word; this
+is not a SQL sandbox or general read-only guarantee. Native named publication
+uses multiple steps, with no general atomic rollback guarantee. Ordinary
+validation/binder/unsupported-cell failures are tested; do not infer whole-SQL,
+composite-type, filesystem, lazy/remote or security support. See `help sql`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and

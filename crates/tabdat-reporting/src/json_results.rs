@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Encode { .. }
+    Command::Sql { .. }
+      | Command::Encode { .. }
       | Command::Decode { .. }
       | Command::Label { .. }
       | Command::Recode { .. }
@@ -61,7 +62,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Encode { .. }
+    Command::Sql { .. }
+      | Command::Encode { .. }
       | Command::Decode { .. }
       | Command::Label { .. }
       | Command::Recode { .. }
@@ -107,6 +109,14 @@ pub fn supports_script_command(command: &Command) -> bool {
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
+    ExecutionResult::SqlCreate(result) => (
+      json!({"table_name": result.table_name, "dataset": dataset_info_data(&result.dataset)}),
+      "SqlCreateResult",
+    ),
+    ExecutionResult::Activate(result) => (
+      json!({"table_name": result.table_name, "dataset": dataset_info_data(&result.dataset)}),
+      "ActivateResult",
+    ),
     ExecutionResult::Save(result) => (
       persistence_result_data(&result.path, &result.dataset),
       "SaveResult",
@@ -551,6 +561,53 @@ mod tests {
   }
 
   #[test]
+  fn sql_creation_and_activation_report_owned_names_and_metadata() {
+    let dataset = DatasetInfo {
+      source: "cohort\t目录".into(),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "x\n".into(),
+        data_type: "DECIMAL(38,4)".into(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, name) in [
+      (
+        ExecutionResult::SqlCreate(tabdat_domain::SqlCreateResult {
+          table_name: "cohort\t目录".into(),
+          dataset: dataset.clone(),
+        }),
+        "SqlCreateResult",
+      ),
+      (
+        ExecutionResult::Activate(tabdat_domain::ActivateResult {
+          table_name: "cohort\t目录".into(),
+          dataset: dataset.clone(),
+        }),
+        "ActivateResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(
+        value,
+        json!({"schema_version":1,"result_type":name,"data":{"table_name":"cohort\t目录","dataset":dataset_info_data(&dataset)}})
+      );
+    }
+    for source in [
+      "sql select 1",
+      "sql with q as (select 1 as x) select x from q into cohort",
+      "use cohort",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+  }
+
+  #[test]
   fn category_coding_reports_owned_schema_without_dictionary_or_guessed_counts() {
     let dataset = DatasetInfo {
       source: "source\t目录.csv".into(),
@@ -836,7 +893,7 @@ mod tests {
         [i128::MAX, "-0.01"],
       ])
     );
-    for input in ["estat residuals", "sql select 1"] {
+    for input in ["estat residuals", "by x: summarize x"] {
       let command = tabdat_language::parse_command(input).unwrap();
       assert!(!supports_batch_command(&command));
       assert!(!supports_script_command(&command));
