@@ -10,8 +10,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -20,6 +20,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Generate { .. }
       | Command::Replace { .. }
+      | Command::Keep { .. }
+      | Command::Drop { .. }
+      | Command::Select { .. }
       | Command::Save { .. }
       | Command::Export { .. }
       | Command::Describe
@@ -54,6 +57,9 @@ pub fn supports_script_command(command: &Command) -> bool {
     Command::Use { .. }
       | Command::Generate { .. }
       | Command::Replace { .. }
+      | Command::Keep { .. }
+      | Command::Drop { .. }
+      | Command::Select { .. }
       | Command::Save { .. }
       | Command::Export { .. }
       | Command::Describe
@@ -102,6 +108,18 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Replace(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "ReplaceResult",
+    ),
+    ExecutionResult::Keep(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "KeepResult",
+    ),
+    ExecutionResult::Drop(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "DropResult",
+    ),
+    ExecutionResult::Select(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "SelectResult",
     ),
     ExecutionResult::Describe(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -358,6 +376,60 @@ mod tests {
         value["data"],
         json!({"dataset": dataset_info_data(&dataset)})
       );
+    }
+  }
+
+  #[test]
+  fn projection_results_encode_owned_metadata_and_admit_only_variable_lists() {
+    let dataset = DatasetInfo {
+      source: std::path::PathBuf::from("source\t目录.parquet"),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "wide\n".to_owned(),
+        data_type: "DECIMAL(38,0)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, result_type) in [
+      (
+        ExecutionResult::Keep(tabdat_domain::KeepResult {
+          dataset: dataset.clone(),
+        }),
+        "KeepResult",
+      ),
+      (
+        ExecutionResult::Drop(tabdat_domain::DropResult {
+          dataset: dataset.clone(),
+        }),
+        "DropResult",
+      ),
+      (
+        ExecutionResult::Select(tabdat_domain::SelectResult {
+          dataset: dataset.clone(),
+        }),
+        "SelectResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(value["schema_version"], 1);
+      assert_eq!(value["result_type"], result_type);
+      assert_eq!(
+        value["data"],
+        json!({"dataset": dataset_info_data(&dataset)})
+      );
+    }
+    for source in ["keep x", "drop x", "select x x"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    for source in ["keep if x > 0", "drop if x == null"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(!supports_batch_command(&command));
+      assert!(!supports_script_command(&command));
     }
   }
 

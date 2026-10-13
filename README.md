@@ -154,6 +154,18 @@ Successful transforms retain the cached fit without refitting; replace removes
 the target value-label attachment under existing rules. Metadata label/panel
 fields remain null placeholders. See `help generate`/`help replace`.
 
+Column-list `keep`, `drop` and `select` return additive `KeepResult`, `DropResult`
+and `SelectResult` envelopes with the same `data.dataset` post-projection metadata.
+`keep`/`select` use request order; `drop` preserves remaining schema order. Rows,
+NULLs, native types and source are retained. Repeated keep/select names get native
+unique aliases (e.g. `x`, `x_1`); repeated drop names remove a column once. Empty
+data is supported; unknown columns or dropping every column fail without changes.
+Labels/attachments for absent names are pruned, definitions and cached fits retained
+without refitting. Prediction requires current predictors; post-estimation retains
+the owned fit. Label/panel JSON fields remain null placeholders, not full snapshots.
+Conditional `keep if`/`drop if` parses but does not execute and is not admitted in
+JSON. See `help keep`/`help drop`/`help select`.
+
 `save` (local Parquet) and `export` (local CSV) return additive `SaveResult` and
 `ExportResult` envelopes with requested `data.path` and output-oriented
 `data.dataset`, reusing the existing metadata shape. The reported dataset path

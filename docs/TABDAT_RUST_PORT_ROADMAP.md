@@ -135,6 +135,11 @@ state are handled correctly.
   predict → export. Exact previews/NULL conditions, closed-form OLS/sample identity,
   nested/persistence/error and label/model state paths are checked. Functions and
   affected/overflow-row diagnostics remain outside the installed result scope.
+  Column-list keep/drop/select JSON now reports owned projected metadata (#217),
+  enabling selected-schema fit/predict/persistence workflows. Request/remaining
+  order, native types, NULLs, empty/duplicate/quoted names, nested streams and
+  failure/output boundaries are checked; cached fits and existing label pruning
+  are retained. Conditional keep/drop row filters remain uninstalled.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

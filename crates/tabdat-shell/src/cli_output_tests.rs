@@ -185,6 +185,59 @@ fn expression_output_failure_stops_later_transforms_and_export() {
 }
 
 #[test]
+fn projection_output_failure_stops_later_projections_and_export() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=5 {
+        let fixture = Fixture::new();
+        let exported = fixture.0.join("projected.csv");
+        let export = format!("export \"{}\"", exported.display());
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, format!("keep y x\ndrop y\nselect x x\n{export}\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            "keep y x",
+            "-c",
+            "drop y",
+            "-c",
+            "select x x",
+            "-c",
+            &export,
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(exported.exists(), fail_at == 5);
+        if fail_at == 5 {
+          assert_eq!(
+            std::fs::read_to_string(&exported).unwrap(),
+            "x,x_1\n1,1\n2,2\n3,3\n4,4\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {
