@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
-//! Existing batch CLI and script interface. Interactive REPL remains later work.
+//! Batch CLI, scripts and a minimal persistent line-oriented interactive session.
 
 pub mod cli;
+mod interactive;
 pub use tabdat_reporting::{catalog, help, json_results};

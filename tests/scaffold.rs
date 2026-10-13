@@ -3,12 +3,12 @@
 use std::process::Command;
 
 #[test]
-fn scaffold_exits_successfully_with_only_the_placeholder_greeting() {
+fn no_argument_session_exits_cleanly_on_eof_without_scaffold_output() {
   let output = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
     .output()
-    .expect("scaffold binary should launch");
+    .expect("binary should launch");
 
   assert!(output.status.success());
-  assert_eq!(output.stdout, b"Hello, world!\n");
+  assert!(output.stdout.is_empty());
   assert!(output.stderr.is_empty());
 }

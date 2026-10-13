@@ -6,9 +6,9 @@ trustworthy workflow**, not exhaustive Python or Stata compatibility.
 
 **Current snapshot:** the Rust workspace supports bounded batch/script execution,
 local eager DuckDB CSV/Parquet workflows, inspection/transforms, linear statistical
-utilities, and selected JSON results. No-argument `tabdat` still prints
-`Hello, world!`: the interactive REPL is not yet implemented. The typed MCP
-boundary is not an MCP server. Syntax support for other commands does **not**
+utilities, and selected JSON results. No-argument `tabdat` starts a minimal
+persistent line-oriented session with readable core inspection results. The typed
+MCP boundary is not an MCP server. Syntax support for other commands does **not**
 imply executable statistical features.
 
 ## Try what works today
@@ -20,6 +20,30 @@ cargo run --locked -- --help
 cargo run --locked -- --json --list-commands
 cargo test --locked --workspace --all-targets
 ```
+
+Start a session with `cargo run --locked`, then try:
+
+```text
+use data.csv
+describe
+summarize
+head 5
+count
+exit
+```
+
+`exit`, `quit`, or EOF leaves the session. Command errors are reported and the
+session remains usable. Prompts appear only when stdin and stdout are terminals;
+piped input is also accepted, with no greeting or prompts. A clean exit returns
+0 even after recoverable command errors; input/output failure returns 1. Use batch
+`-c`/`-f` modes when command failures must determine a process exit code.
+
+Readable terminal details currently cover load, describe, summarize, count,
+head/tail, SQL table results and run metadata. Other executed results explicitly
+report that terminal details are not yet supported. Batch/script output contracts
+are unchanged. There is no history, completion, or multiline interactive input.
+Ctrl-C retains default OS process termination; recoverable cancellation and
+in-flight file-write safety are not promised.
 
 Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery

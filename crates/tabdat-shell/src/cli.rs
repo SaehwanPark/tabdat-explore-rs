@@ -16,6 +16,9 @@ usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--config CONFIG] [--json]
               [--explain] [--describe-command COMMAND] [--mcp]
               [script]
 
+With no arguments, start a persistent line-oriented session.
+Type exit/quit or send EOF to leave. Terminal input shows a prompt.
+
 positional arguments:
   script                run a TabDat script file and exit
 
@@ -494,9 +497,7 @@ pub fn run_cli(args: CliArgs) -> i32 {
     };
   }
 
-  // Fallback for no arguments: preserve scaffold behavior until interactive shell (§7.2).
-  println!("Hello, world!");
-  0
+  crate::interactive::run_interactive()
 }
 
 fn json_result_unsupported() -> i32 {

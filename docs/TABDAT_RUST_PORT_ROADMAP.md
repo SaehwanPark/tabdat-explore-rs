@@ -25,18 +25,11 @@ outputs with five explicit deviations, and tests canonical/nested execution and
 source diagnostics. See [script evidence](migration/phase3-scripts.md).
 Seed currently records context only; RNG semantics remain future command work.
 
-### 1. Deliver a minimal interactive shell
-
-**Goal:** `tabdat` starts a usable session for an analyst, not a greeting.
-
-- Interactive input, command execution, user-readable errors, and clean exit.
-- Basic output for core inspection; simple command history if cheap.
-- Handle EOF and interrupts safely without corrupting session state.
-- Defer advanced completion, highlighting and rich editor behavior until usage
-  demonstrates value.
-
-**Done when:** A short `use` → `describe` → `summarize` → `exit` interaction works
-in one process with readable results and appropriate failure behavior.
+The minimal shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/pull/196)
+provides persistent line input, core inspection output, recoverable command errors
+and clean exit/EOF. `use` → `describe` → `summarize` → `exit` is covered through
+the binary. History, completion, multiline input and recoverable Ctrl-C/in-flight
+cancellation remain deferred; default OS SIGINT terminates the process.
 
 ### 2. Close the core EDA loop
 

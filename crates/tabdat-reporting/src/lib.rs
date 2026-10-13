@@ -4,3 +4,4 @@
 pub mod catalog;
 pub mod help;
 pub mod json_results;
+pub mod terminal;
