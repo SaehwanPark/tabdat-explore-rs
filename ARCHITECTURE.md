@@ -17,7 +17,7 @@ complete. A compiled command type is not evidence of runtime support. Consult
 | `tabdat-data` | DuckDB, relations, SQL generation and owned row/cell conversion |
 | `tabdat-execution` | Session coordination, data/statistical dispatch and script execution |
 | `tabdat-reporting` | Help/catalog, bounded structured reporting and core terminal result rendering |
-| `tabdat-shell` | Batch CLI/argument handling and line-oriented persistent session I/O |
+| `tabdat-shell` | Batch CLI, persistent session I/O; terminal editing through Rustyline's safe facade, plain piped input |
 | `tabdat-mcp` | Transport-independent typed tools; **no MCP server** |
 | `tabdat-runtime` | Compatibility re-exports and integration entry points |
 | Root binary | Delegates to shell; no arguments enter the line session |

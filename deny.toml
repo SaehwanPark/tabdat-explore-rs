@@ -25,6 +25,19 @@ allow = [
   "Zlib",
 ]
 
+# Rustyline's mandatory Windows adapter subtree (PR #203). BSL-1.0 permits
+# redistribution; retain notices for source copies. These exact-version
+# exceptions do not broaden the global allow list or certify Windows support.
+[[licenses.exceptions]]
+name = "clipboard-win"
+version = "=5.4.1"
+allow = ["BSL-1.0"]
+
+[[licenses.exceptions]]
+name = "error-code"
+version = "=3.4.0"
+allow = ["BSL-1.0"]
+
 [licenses.private]
 # The scaffold is not published yet; resolve release licensing before packaging.
 ignore = true
