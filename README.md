@@ -107,6 +107,16 @@ Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery
 includes commands that parse but do not yet execute.
 
+## Local responsiveness measurements
+
+A development-only Rust example measures fresh-process startup/core JSON workflows
+and separate session CSV load, summary, OLS and prediction execution. It validates
+results, excludes one warmup per case, and records raw/minimum/median/maximum
+milliseconds with supplied build context. It introduces no production dependency
+or timing gate. Fresh-process is not OS-cold-cache timing, and debug smoke evidence
+is not release-performance evidence. See [the measurement guide](docs/performance/core-workflow.md)
+for matching-profile build/run commands, fixture semantics and limitations.
+
 ## Bounded JSON results
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
