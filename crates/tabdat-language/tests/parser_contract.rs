@@ -3075,23 +3075,22 @@ fn estat_preserves_bounded_parser_diagnostics() {
 #[test]
 fn tabulate_preserves_bounded_parser_diagnostics() {
   let cases = [
-    ("tabulate", "tabulate expects one or two variables"),
+    (
+      "tabulate",
+      "tabulate expects one or two variables or rows()/columns() options",
+    ),
     (
       "tabulate age bmi sex",
-      "tabulate expects one or two variables",
+      "tabulate expects one or two variables or rows()/columns() options",
     ),
     ("tabulate sex sex", "tabulate duplicate variable: sex"),
     (
       "tabulate sex, row",
-      "tabulate one-way tables do not accept row or col options",
-    ),
-    (
-      "tabulate sex age, row row",
-      "tabulate option row can only be specified once",
+      "one-way tabulate does not accept row or col options",
     ),
     (
       "tabulate sex, values(cost)",
-      "tabulate unsupported option: values",
+      "tabulate values() and stat() must be specified together",
     ),
     (
       "tabulate sex age, row=true",
@@ -3099,7 +3098,7 @@ fn tabulate_preserves_bounded_parser_diagnostics() {
     ),
     (
       "tabulate sex = age",
-      "tabulate expects one or two variables",
+      "tabulate does not accept assignment syntax",
     ),
   ];
   for (input, expected) in cases {

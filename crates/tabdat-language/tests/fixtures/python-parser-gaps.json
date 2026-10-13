@@ -10,49 +10,5 @@
   {
     "input": "reshape long income, i() j(year)",
     "difference": "expected error \"option i expects at least one value\", got Err(ParseError { message: \"reshape expects exactly one i(id_vars) option\" })"
-  },
-  {
-    "input": "tabulate",
-    "difference": "expected error \"tabulate expects one or two variables or rows()/columns() options\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
-  },
-  {
-    "input": "tabulate age bmi sex",
-    "difference": "expected error \"tabulate expects one or two variables or rows()/columns() options\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
-  },
-  {
-    "input": "tabulate age bmi, stat(mean)",
-    "difference": "expected error \"tabulate values() and stat() must be specified together\", got Err(ParseError { message: \"tabulate unsupported option: stat\" })"
-  },
-  {
-    "input": "tabulate age bmi, values(cost)",
-    "difference": "expected error \"tabulate values() and stat() must be specified together\", got Err(ParseError { message: \"tabulate unsupported option: values\" })"
-  },
-  {
-    "input": "tabulate age bmi, values(cost) stat(mean) row",
-    "difference": "expected error \"tabulate row and col percentages are only supported for frequencies\", got Err(ParseError { message: \"tabulate unsupported option: stat, values\" })"
-  },
-  {
-    "input": "tabulate age, row",
-    "difference": "expected error \"one-way tabulate does not accept row or col options\", got Err(ParseError { message: \"tabulate one-way tables do not accept row or col options\" })"
-  },
-  {
-    "input": "tabulate sex if age >= 18",
-    "difference": "expected tabulate, got error tabulate expects one or two variables"
-  },
-  {
-    "input": "tabulate, rows(age age)",
-    "difference": "expected error \"tabulate duplicate variable: age\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
-  },
-  {
-    "input": "tabulate, rows(age) columns(age)",
-    "difference": "expected error \"tabulate duplicate variable: age\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
-  },
-  {
-    "input": "tabulate, rows(age) values(age) stat(mean)",
-    "difference": "expected error \"tabulate values() variable cannot also be a row or column variable\", got Err(ParseError { message: \"tabulate expects one or two variables\" })"
-  },
-  {
-    "input": "tabulate, rows(region sex) columns(outcome year) values(cost) stat(mean)",
-    "difference": "expected tabulate, got error tabulate expects one or two variables"
   }
 ]

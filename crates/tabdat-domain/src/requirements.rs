@@ -107,6 +107,7 @@ impl Command {
       | Self::Decode { .. }
       | Self::Label { .. }
       | Self::Tabulate { .. }
+      | Self::TabulateQuery { .. }
       | Self::Join { .. }
       | Self::Append { .. }
       | Self::Reshape { .. }
