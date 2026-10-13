@@ -167,6 +167,19 @@ Successful transforms retain the cached fit without refitting; replace removes
 the target value-label attachment under existing rules. Metadata label/panel
 fields remain null placeholders. See `help generate`/`help replace`.
 
+`recode` returns additive `RecodeResult` with owned `data.dataset` metadata,
+not rules, changed-cell counts or overflow diagnostics. Exactly one `generate()`
+(new outputs in requested order) or `replace` target is required. Conditional
+rules match original values in order (first match, no cascade); numeric ranges
+are inclusive, `min`/`max` unbounded, and `else` is the final fallback. Unmatched
+values remain unless an `else` rule supplies a value. `missing`/`nonmissing` mean
+SQL NULL/non-NULL, not empty strings or general non-finiteness. Native output
+schema/promotion is reported; text output uses text conversion. Replacing removes
+selected value-label attachments, retains variable labels/definitions and cached
+fits without refitting. Metadata label/panel fields remain null placeholders.
+Parquet retains stored empty strings; CSV reload may turn empty fields into NULL.
+See `help recode` for bounded eager syntax and failure limits.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and

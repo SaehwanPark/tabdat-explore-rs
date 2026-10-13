@@ -151,6 +151,11 @@ state are handled correctly.
   NULLs, quoted names/empty data, label remapping, original cached-fit names/sample,
   validation/native case-collision, nested and output boundaries are checked.
   Renaming does not rewrite cached parameter names or install label/panel snapshots.
+  Recode JSON reports owned generate/replace metadata (#222) for cleaning and
+  categorization before tabulation/modeling. First-match/no-cascade ranges,
+  SQL NULL versus stored empty strings, multi-output order/native schema,
+  explicit cached-fit/label rules, nested/persistence/failure/output cases are
+  checked. No guessed rule/changed-cell fields or new recode semantics are added.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

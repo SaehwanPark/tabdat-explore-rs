@@ -344,6 +344,57 @@ fn rename_output_failure_stops_later_renames_and_export() {
 }
 
 #[test]
+fn recode_output_failure_stops_later_recodes_and_export() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=4 {
+        let fixture = Fixture::new();
+        let exported = fixture.0.join("recoded.csv");
+        let export = format!("export \"{}\"", exported.display());
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, format!("recode x (min/2=1) (else=2), generate(group)\nrecode y (2=3) (3=99), replace\n{export}\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            "recode x (min/2=1) (else=2), generate(group)",
+            "-c",
+            "recode y (2=3) (3=99), replace",
+            "-c",
+            &export,
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(exported.exists(), fail_at == 4);
+        if fail_at == 4 {
+          assert_eq!(
+            std::fs::read_to_string(&exported).unwrap(),
+            "x,y,group\n1,3,1\n2,5,1\n3,5,2\n4,9,2\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

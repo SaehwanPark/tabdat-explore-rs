@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Rename { .. }
+    Command::Recode { .. }
+      | Command::Rename { .. }
       | Command::Sort { .. }
       | Command::Gsort { .. }
       | Command::Use { .. }
@@ -57,7 +58,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Rename { .. }
+    Command::Recode { .. }
+      | Command::Rename { .. }
       | Command::Sort { .. }
       | Command::Gsort { .. }
       | Command::Use { .. }
@@ -126,6 +128,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Recode(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "RecodeResult",
     ),
     ExecutionResult::Rename(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -524,6 +530,40 @@ mod tests {
     let command = tabdat_language::parse_command("rename old new").unwrap();
     assert!(supports_batch_command(&command));
     assert!(supports_script_command(&command));
+  }
+
+  #[test]
+  fn recode_result_encodes_owned_metadata_without_rule_or_changed_cell_fields() {
+    let dataset = DatasetInfo {
+      source: std::path::PathBuf::from("source\t目录.csv"),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "recoded\n".to_owned(),
+        data_type: "DECIMAL(38,0)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    let result = ExecutionResult::Recode(tabdat_domain::RecodeResult {
+      dataset: dataset.clone(),
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result_type"], "RecodeResult");
+    assert_eq!(
+      value["data"],
+      json!({"dataset": dataset_info_data(&dataset)})
+    );
+    for source in [
+      "recode x (1=2), replace",
+      "recode x (missing=0), generate(flag)",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
   }
 
   #[test]
