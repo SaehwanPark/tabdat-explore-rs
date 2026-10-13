@@ -10,14 +10,16 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Generate { .. }
+      | Command::Replace { .. }
       | Command::Save { .. }
       | Command::Export { .. }
       | Command::Describe
@@ -50,6 +52,8 @@ pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
     Command::Use { .. }
+      | Command::Generate { .. }
+      | Command::Replace { .. }
       | Command::Save { .. }
       | Command::Export { .. }
       | Command::Describe
@@ -90,6 +94,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Export(result) => (
       persistence_result_data(&result.path, &result.dataset),
       "ExportResult",
+    ),
+    ExecutionResult::Generate(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "GenerateResult",
+    ),
+    ExecutionResult::Replace(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "ReplaceResult",
     ),
     ExecutionResult::Describe(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -310,6 +322,44 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn expression_results_encode_owned_metadata_without_affected_or_overflow_counts() {
+    let dataset = DatasetInfo {
+      source: std::path::PathBuf::from("source\t目录.csv"),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "new\n".to_owned(),
+        data_type: "DECIMAL(38,0)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, result_type) in [
+      (
+        ExecutionResult::Generate(tabdat_domain::GenerateResult {
+          dataset: dataset.clone(),
+        }),
+        "GenerateResult",
+      ),
+      (
+        ExecutionResult::Replace(tabdat_domain::ReplaceResult {
+          dataset: dataset.clone(),
+        }),
+        "ReplaceResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(value["schema_version"], 1);
+      assert_eq!(value["result_type"], result_type);
+      assert_eq!(
+        value["data"],
+        json!({"dataset": dataset_info_data(&dataset)})
+      );
+    }
+  }
 
   #[test]
   fn persistence_json_encodes_requested_paths_and_owned_output_metadata() {

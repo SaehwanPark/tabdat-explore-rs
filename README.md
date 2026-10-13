@@ -111,7 +111,8 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, describe, count, codebook, summarize, missing, tabulate, save/export,
+supports use, describe, count, codebook, summarize, missing, tabulate,
+generate/replace, save/export,
 head/tail, `estat vif` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
@@ -142,6 +143,16 @@ percentages are supplied by execution without recomputation. Missing categories
 are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
+
+`generate` and `replace` return additive `GenerateResult`/`ReplaceResult`
+envelopes with `data.dataset` post-transform metadata. Source path, total row
+count and ordered native schema are supplied, not changed-cell counts or overflow
+diagnostics. Inspect values with `head`/`tail`. Numeric arithmetic generate and
+numeric/string/NULL replace with boolean/NULL conditions use existing runtime
+rules; function calls remain unsupported. Failed transforms preserve prior state.
+Successful transforms retain the cached fit without refitting; replace removes
+the target value-label attachment under existing rules. Metadata label/panel
+fields remain null placeholders. See `help generate`/`help replace`.
 
 `save` (local Parquet) and `export` (local CSV) return additive `SaveResult` and
 `ExportResult` envelopes with requested `data.path` and output-oriented

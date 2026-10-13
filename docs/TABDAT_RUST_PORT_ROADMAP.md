@@ -130,7 +130,11 @@ state are handled correctly.
   overwrite refusal/replace, empty data, native/preflight failures and session
   preservation are covered. Injected write/flush failures directly prevent later
   file writes, without rolling back completed files. Native publication remains
-  non-atomic; CSV is not a general type/label archive.
+  non-atomic; CSV is not a general type/label archive. Generate/replace JSON now
+  reports owned post-transform metadata (#216), supporting transform → fit →
+  predict → export. Exact previews/NULL conditions, closed-form OLS/sample identity,
+  nested/persistence/error and label/model state paths are checked. Functions and
+  affected/overflow-row diagnostics remain outside the installed result scope.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

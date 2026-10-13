@@ -60,6 +60,7 @@ fn help_describes_the_current_json_result_boundary() {
   assert!(stdout.contains("scripts stream"));
   assert!(stdout.contains("regress/predict/lincom/test/ttest/estat vif"));
   assert!(stdout.contains("save/export"));
+  assert!(stdout.contains("generate/replace"));
   assert!(stdout.contains("use/describe/count/codebook/summarize/missing/tabulate/head/tail"));
 }
 
@@ -283,7 +284,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
       "-c",
       "count",
       "-c",
-      "generate later = x + 1",
+      "rename x later",
       "-c",
       &export_command,
     ])
@@ -294,7 +295,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   assert!(!exported_path.exists());
   assert_eq!(
     output.stderr,
-    b"Error: --json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif\n"
+    b"Error: --json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif\n"
   );
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   let envelopes = stdout
@@ -310,7 +311,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
     serde_json::json!({
       "schema_version": 1,
       "error": {
-        "message": "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif",
+        "message": "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif",
         "type": "JsonResultUnsupported"
       }
     })
@@ -498,7 +499,7 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
     &temp_dir,
     "unsupported.td",
     &format!(
-      "use {}\ngenerate later = x + 1\nexport {}\ncount\n",
+      "use {}\nrename x later\nexport {}\ncount\n",
       csv_path.display(),
       exported_path.display()
     ),
@@ -527,7 +528,7 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
   assert_eq!(envelopes[1]["error"]["line"], 2);
   assert_eq!(
     envelopes[1]["error"]["message"],
-    "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif"
+    "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif"
   );
   assert!(
     String::from_utf8(output.stderr)
@@ -544,10 +545,7 @@ fn json_nested_script_error_uses_child_path_and_emits_one_error() {
   let child_path = write_script(
     &temp_dir,
     "child.td",
-    &format!(
-      "generate later = x + 1\nexport {}\n",
-      exported_path.display()
-    ),
+    &format!("rename x later\nexport {}\n", exported_path.display()),
   );
   let parent_path = write_script(
     &temp_dir,
