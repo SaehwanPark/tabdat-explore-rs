@@ -1,4 +1,4 @@
-//! Exact replay of verified Python script APIs and source-established boundaries.
+//! Replay of pinned script APIs, with the five explicit MIG-0005 seed deviations.
 use serde_json::{Value, json};
 use std::{collections::HashMap, path::Path};
 use tabdat_language::script::{
@@ -93,6 +93,16 @@ fn pinned_python_script_fields_outputs_and_diagnostics() {
   );
   let cases = corpus["cases"].as_array().unwrap();
   assert_eq!(cases.len(), 91);
+  // Keep Python outputs intact. Only these exact inputs may use the documented
+  // Rust rejection; new differences still fail rather than being normalized away.
+  let seed_deviations = [
+    "seed -9223372036854775809",
+    "seed 1_000",
+    "seed 9223372036854775808",
+    "seed 99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+    "seed ٠١٢",
+  ];
+  let mut deviations_seen = Vec::new();
   let mut differences = Vec::new();
   for case in cases {
     let actual = match replay(case) {
@@ -107,13 +117,26 @@ fn pinned_python_script_fields_outputs_and_diagnostics() {
     } else {
       json!({"result": case["result"]})
     };
-    if actual != expected {
+    let text = case["inputs"]["text"].as_str().unwrap_or("");
+    if case["operation"] == "parse_script_directive" && seed_deviations.contains(&text) {
+      assert_eq!(case["result"]["type"], "SeedDirective");
+      assert_ne!(actual, expected, "MIG-0005 changed: {text}");
+      assert_eq!(
+        actual,
+        json!({"error": {
+          "path": "boundary.td", "line": 4, "message": "seed expects an integer"
+        }}),
+        "MIG-0005 rejection changed: {text}"
+      );
+      deviations_seen.push(text);
+    } else if actual != expected {
       differences.push(format!(
         "{} {}: expected {expected}, got {actual}",
         case["operation"], case["inputs"]
       ));
     }
   }
+  assert_eq!(deviations_seen, seed_deviations);
   assert!(
     differences.is_empty(),
     "script differences:\n{}",

@@ -1,9 +1,9 @@
 # TabDat Explore Rust: current product and implementation contract
 
-**Snapshot:** GitHub `main` at `333b97dd55524dbf5ce55fac510375df99e4649e`
-(2026-10-13). This is a **documentation baseline**, not a new test run.
-The open draft [PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195)
-is not included in this baseline. Update this summary when implementation changes.
+**Snapshot:** refreshed documentation baseline plus the bounded script slice in
+[PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195).
+Verification details are in its PR thread and [script evidence](docs/migration/phase3-scripts.md).
+Update this summary when implementation changes.
 
 ## Product intent
 
@@ -24,7 +24,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | --- | --- | --- |
 | Binary and CLI | Batch `-c`, scripts `-f`/positional, help, discovery, bounded JSON | No-argument invocation still prints `Hello, world!` |
 | Interactive shell | Not implemented | No REPL, persistent history, completion or interactive cancellation |
-| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors | Canonical Python script parity is still under review; PR #195 is WIP |
+| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |
@@ -94,7 +94,7 @@ These are **targets**, not statements of current support. See the
 - [Architecture](ARCHITECTURE.md): current module/crate boundaries and deferred integration.
 - [Migration authority](docs/migration/README.md): pinned Python oracle, compatibility and deviations.
 - [Phase 3 language evidence](docs/migration/phase3-language.md): 672-case corpus and parser/fuzz status.
-- [PR #195 script evidence](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195): draft work (not merged into this snapshot).
+- [Script evidence](docs/migration/phase3-scripts.md): pinned API replay, bounded seed contract and canonical/nested workflow tests.
 - [Phase 2 evidence](docs/migration/phase2-core-contracts.md), [Phase 1 report](docs/feasibility/phase1-final-report.md): completed historical decisions.
 - [Previous detailed implementation ledger](https://github.com/SaehwanPark/tabdat-explore-rs/blob/333b97dd55524dbf5ce55fac510375df99e4649e/SPEC.md): immutable historical snapshot.
 

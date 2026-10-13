@@ -251,6 +251,89 @@ fn json_nested_scripts_stream_supported_results_in_execution_order() {
 }
 
 #[test]
+fn canonical_script_shares_macros_with_child_and_skips_inactive_errors() {
+  let temp_dir = TestDir::new();
+  let csv_path = fixture_csv(&temp_dir);
+  write_script(
+    &temp_dir,
+    "child.td",
+    "# child\nseed -9223372036854775808\nlet next = count\n$action\n",
+  );
+  let parent = write_script(
+    &temp_dir,
+    "canonical.td",
+    &format!(
+      "# canonical workflow\nlet source = {}\nlet action = count\nseed +42\nuse $source\nif false\n$undefined\nseed 1_000\nelse\nrun child.td\nend\n$next\nexit\n$undefined\n",
+      csv_path.display()
+    ),
+  );
+  let output = tabdat_bin()
+    .args(["--json", "-f", &parent.to_string_lossy()])
+    .output()
+    .unwrap();
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  assert!(output.stderr.is_empty());
+  let envelopes: Vec<serde_json::Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert_eq!(envelopes.len(), 3);
+  assert_eq!(envelopes[0]["result_type"], "LoadResult");
+  for envelope in &envelopes[1..] {
+    assert_eq!(envelope["result_type"], "CountResult");
+    assert_eq!(envelope["data"]["row_count"], 2);
+  }
+}
+
+#[test]
+fn script_seed_and_control_failures_stop_with_location_after_prior_output() {
+  for (text, line, message) in [
+    ("seed 1_000\ncount\n", 2, "seed expects an integer"),
+    ("else\ncount\n", 2, "else without matching if"),
+    ("if true\ncount\n", 2, "if block is missing end"),
+    (
+      "run failure.td\ncount\n",
+      1,
+      "recursive script inclusion is not supported",
+    ),
+  ] {
+    let temp_dir = TestDir::new();
+    let csv = fixture_csv(&temp_dir);
+    let script = write_script(
+      &temp_dir,
+      "failure.td",
+      &format!("use {}\n{text}", csv.display()),
+    );
+    let output = tabdat_bin()
+      .args(["--json", "-f", &script.to_string_lossy()])
+      .output()
+      .unwrap();
+    assert!(!output.status.success());
+    let envelopes: Vec<serde_json::Value> = String::from_utf8(output.stdout)
+      .unwrap()
+      .lines()
+      .map(|line| serde_json::from_str(line).unwrap())
+      .collect();
+    let prior_count = usize::from(text.starts_with("if true"));
+    assert_eq!(envelopes.len(), 2 + prior_count);
+    assert_eq!(envelopes[0]["result_type"], "LoadResult");
+    let error = &envelopes.last().unwrap()["error"];
+    assert_eq!(error["type"], "ScriptError");
+    assert_eq!(error["line"], line);
+    assert_eq!(error["message"], message);
+    assert_eq!(
+      error["path"],
+      script.canonicalize().unwrap().to_string_lossy().as_ref()
+    );
+  }
+}
+
+#[test]
 fn json_script_rejects_unsupported_commands_before_they_execute() {
   let temp_dir = TestDir::new();
   let csv_path = fixture_csv(&temp_dir);

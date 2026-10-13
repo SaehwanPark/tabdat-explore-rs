@@ -10,7 +10,9 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0004 | Accepted | Syntax resource budgets | [ADR 0023](../adr/0023-syntax-resource-budgets-and-fuzz-tooling.md), PR #194: reject expressions above 256 tokens and command parsing at depth 32 to prevent reproduced stack exhaustion. |
 
-No other behavioral deviations have been accepted. MIG-0003 is limited to the
+| MIG-0005 | Accepted | Script seed syntax/range | Signed 64-bit ASCII decimal seeds; preserve pinned oracle outputs and assert the five explicit Rust rejections. PR #195; see details below. |
+
+MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
 
@@ -94,3 +96,26 @@ updates also get an entry identifying old/new pins and affected contract checks.
   pinned corpus replay, two successful bounded sanitizer campaigns; three local
   owner review passes in PR #194. Future budget changes require measured stack/AST
   lifecycle evidence. Unrestricted input acceptance is explicitly not claimed.
+
+### MIG-0005 details
+
+- **Contract/reproduction:** pinned Python `src/tabdat/script.py` accepts
+  `seed 1_000`, `seed ٠١٢`, and integers outside signed 64-bit range. The 91-call
+  captured oracle includes those two forms and three overflow examples. Rust
+  `parse_script_directive` rejects them with `seed expects an integer` and retains
+  the script path/line. Python fixture results remain unchanged.
+- **Decision/impact:** support optional sign plus ASCII decimal digits in `i64`
+  range. Ordinary decimal scripts retain their behavior; scripts using Python's
+  expanded integer grammar must use a supported seed. No new arbitrary-precision
+  representation or Unicode numeric dependency is warranted for a value currently
+  recorded only in ephemeral script context, not consumed by an execution RNG.
+  Supporting underscore/Unicode forms alone would not resolve the range issue.
+- **Evidence:** `script_seed_contract_is_signed_ascii_decimal_i64` tests signs,
+  leading zeros, endpoints and invalid inputs without context mutation.
+  `python_script_oracle` checks all 91 captured calls with exactly five explicit
+  exceptions and checks their exact Rust errors. Canonical/nested CLI tests verify
+  sequential execution and source diagnostics; see [script evidence](phase3-scripts.md).
+- **Scope/review:** bounded decision in PR #195 under the refreshed AGENTS.md
+  policy; no architecture or public API expansion, so no new ADR. Full Python
+  seed parity is not claimed. Specify and validate deterministic RNG semantics
+  separately before adding a command that consumes this context value.

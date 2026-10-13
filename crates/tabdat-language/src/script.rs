@@ -319,8 +319,7 @@ pub fn parse_script_directive(
   let stripped = text.trim_matches(is_command_whitespace);
   let command_name = stripped
     .split(is_command_whitespace)
-    .filter(|part| !part.is_empty())
-    .next()
+    .find(|part| !part.is_empty())
     .unwrap_or("")
     .to_ascii_lowercase();
 

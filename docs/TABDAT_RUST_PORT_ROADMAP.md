@@ -19,21 +19,11 @@ required. Work independently of unrelated pending items.
 
 ## Now: finish one coherent core workflow
 
-### 0. Resolve the ongoing script PR
-
-**State:** [PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195)
-is a draft on the snapshot date; the initial script differential work has five
-seed-integer mismatches.
-
-- Decide and document a **useful seed contract** (supported format/range and,
-  where relevant, deterministic RNG semantics); unrestricted Python integers
-  are not an automatic requirement.
-- Preserve ordinary canonical `.td` behavior, nested inclusion, ordering,
-  macro/condition state and meaningful path/line diagnostics.
-- Keep differential evidence without silently changing oracle expectations.
-  Approved deviations get tests and a short migration note.
-- Run script-focused and applicable workspace checks. Merge only if authorized
-  and the selected acceptance criteria pass.
+The bounded script slice in [PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195)
+records a signed 64-bit ASCII-decimal seed contract, retains all pinned oracle
+outputs with five explicit deviations, and tests canonical/nested execution and
+source diagnostics. See [script evidence](migration/phase3-scripts.md).
+Seed currently records context only; RNG semantics remain future command work.
 
 ### 1. Deliver a minimal interactive shell
 

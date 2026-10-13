@@ -202,6 +202,40 @@ fn script_contract_parses_seed_and_let_directives() {
 }
 
 #[test]
+fn script_seed_contract_is_signed_ascii_decimal_i64() {
+  let context = ScriptContext::empty();
+  let path = Path::new("seed.td");
+  for (input, value) in [
+    ("0", 0),
+    ("+42", 42),
+    ("-1", -1),
+    ("00042", 42),
+    ("-9223372036854775808", i64::MIN),
+    ("9223372036854775807", i64::MAX),
+  ] {
+    assert_eq!(
+      parse_script_directive(&format!("seed {input}"), &context, path, 7).unwrap(),
+      Some(ScriptDirective::Seed(SeedDirective { value }))
+    );
+  }
+  for input in [
+    "",
+    "+",
+    "1.0",
+    "1_000",
+    "٠١٢",
+    "0xff",
+    "1 2",
+    "-9223372036854775809",
+    "9223372036854775808",
+  ] {
+    let error = parse_script_directive(&format!("seed {input}"), &context, path, 7).unwrap_err();
+    assert_eq!(error.to_string(), "seed.td:7: seed expects an integer");
+  }
+  assert_eq!(context.seed, None);
+}
+
+#[test]
 fn script_contract_evaluates_conditions_and_control_flow() {
   let path = Path::new("control.td");
 
