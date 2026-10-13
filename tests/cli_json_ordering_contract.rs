@@ -155,6 +155,30 @@ fn ordered_predict_export_workflow_preserves_stable_ties_and_matches_nested_stre
     success(&fixture.batch(&["--json", "-f", "parent.td"])),
     results
   );
+  let preordered = success(&fixture.batch(&[
+    "--json",
+    "-c",
+    "use data.csv",
+    "-c",
+    "gsort -key +text -flag",
+    "-c",
+    "regress y x",
+    "-c",
+    "predict fitted",
+    "-c",
+    "head 10",
+  ]));
+  assert_eq!(preordered[2]["data"]["observation_count"], 4);
+  close(&preordered[2]["data"]["coefficients"][0]["value"], 0.0);
+  close(&preordered[2]["data"]["coefficients"][1]["value"], 2.1);
+  assert_eq!(ids(&preordered[4]), [1, 6, 3, 2, 5, 4]);
+  for row in preordered[4]["data"]["rows"].as_array().unwrap() {
+    if row[4].is_null() {
+      assert!(row[9].is_null());
+    } else {
+      close(&row[9], 2.1 * row[4].as_f64().unwrap());
+    }
+  }
 }
 
 #[test]
@@ -335,4 +359,16 @@ fn ordering_keeps_labels_and_owned_fit_sample_while_prediction_uses_current_row_
       close(&row[9], 2.1 * row[4].as_f64().unwrap());
     }
   }
+  execute(&mut session, "regress y x");
+  // A new fit uses sorted positions, unlike the preserved original fit above.
+  assert_eq!(
+    session
+      .last_regression()
+      .unwrap()
+      .sample
+      .as_ref()
+      .unwrap()
+      .retained_indices,
+    [0, 2, 3, 5]
+  );
 }
