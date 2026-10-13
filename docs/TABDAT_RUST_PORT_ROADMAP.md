@@ -43,6 +43,12 @@ streams readable nested leaf results and preserves prior output/state on located
 errors; output failure prevents subsequent mutations (#199). Broader options and other
 result families remain command-specific; this is not whole-command parity.
 
+`use` now accepts literal single/double-quoted paths with spaces, commas and
+Unicode (#211), fixing a reproduced local-loading obstacle. Quoted CSV options,
+CSV/Parquet roundtrips, nested JSON, source-classified failures and prior
+model/data preservation are covered. No shell escape decoding, quoted paths for
+other commands, or remote/lazy/DTA runtime is added.
+
 **Goal:** common local-data workflows are functional through the actual CLI/REPL.
 
 - `use`, `describe`, `head`/`tail`, `summarize`, `tabulate`, a practical subset of
