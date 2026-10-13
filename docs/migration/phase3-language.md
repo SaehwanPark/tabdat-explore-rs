@@ -35,7 +35,7 @@ corpus slice.
 ### Results and review
 
 The capture ran the original **489 parser tests**, all passing, on Python 3.13.3
-with pytest 8.3.5. It recorded **672 unique inputs**: 231 successful typed parses
+with pytest 9.0.3. It recorded **672 unique inputs**: 231 successful typed parses
 and 441 errors. The replay agrees on acceptance/variant/exact diagnostic for 623
 inputs and explicitly tracks **49 differences** in
 `crates/tabdat-language/tests/fixtures/python-parser-gaps.json`. That ledger is
