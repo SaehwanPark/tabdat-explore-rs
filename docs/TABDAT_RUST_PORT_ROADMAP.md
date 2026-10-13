@@ -147,8 +147,13 @@ state are handled correctly.
   final/nested/write/flush and closed stdout/stderr cases are covered. Existing
   successful bytes/categories are retained; prior effects are not rolled back
   and no atomic file-publication guarantee is implied (MIG-0008).
-- Add small performance benchmarks (cold start, simple command, representative
-  data access, model fit). Optimize only measured regressions.
+- Measure responsiveness before optimizing. A dependency-free Rust example now
+  records validated fresh-process version/core JSON workflows and separate session
+  CSV load/summary/OLS/prediction times (#218); see the
+  [measurement guide](performance/core-workflow.md). One excluded warmup, raw
+  samples and profile/scope metadata are explicit. Local debug smoke is verified,
+  not release or OS-cold-cache performance; interactive/other data shapes remain
+  unmeasured. Optimize only demonstrated regressions from comparable profiles.
 - Improve history/completion and display as needed for daily use. In-session
   `help`/`?` now provides bounded workflow guidance and packaged reference topics,
   including new `lincom`/`test` topics (#202); reference syntax is not an execution
