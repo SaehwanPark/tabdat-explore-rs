@@ -91,7 +91,8 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, summarize, tabulate, head and tail; nested scripts stream leaf results.
+supports use, count, summarize, tabulate, head/tail and the bounded
+regress/predict/lincom/test workflow; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
@@ -111,6 +112,34 @@ percentages are supplied by execution without recomputation. Missing categories
 are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
+
+Linear JSON results reuse the supplied statistics without recalculation:
+
+- `RegressionResult`: `outcome`, ordered `predictors`, `estimator`, `covariance`,
+  `observation_count`, `include_intercept`, `df_residual`, `r_squared`,
+  `adjusted_r_squared`, `root_mse`, `sample` and ordered `coefficients`.
+  `sample` contains `total_observations`/`dropped_observations`, or is null when
+  unavailable. Coefficients contain `name`, `value`, `standard_error`, `statistic`
+  and two-sided `p_value`. Full model matrices/row arrays are deliberately omitted.
+- `PredictionResult`: `dataset`, using the existing load metadata shape; follow
+  with head/tail to inspect values. Current prediction kinds are xb/residuals.
+- `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,
+  `ci_lower`, `ci_upper`, `ci_level`, `df_residual` (supplied Student-t inference).
+- `TestResult`: ordered `constraints`, `statistic`, upper-tail `p_value`, `df`,
+  `df_residual`, `is_chi2`; false means F with numerator/residual denominator DF.
+
+The current least-squares engine uses residual DF N − P for coefficient/lincom
+Student-t inference and the F denominator, including cluster mode (not G − 1).
+`robust` means HC1 (N/(N − P)); `cluster(name)` uses the supplied cluster
+covariance with G/(G − 1) × (N − 1)/(N − P) correction. Reporting changes none
+of these conventions.
+
+Finite statistics are JSON numbers; unavailable/non-finite values are null,
+not zero. Samples and inference remain estimator/mode-specific; reference tests
+cover named fixtures, not every accepted mode. Existing script exit codes are
+preserved: the current message-based classifier can assign exit 3 to a model
+coefficient “not found” error, even though the located envelope describes the
+model error rather than a missing file.
 
 ## Development direction
 
