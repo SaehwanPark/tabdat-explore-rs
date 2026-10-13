@@ -25,6 +25,18 @@ pub enum Capability {
   Mcp,
 }
 
+impl CommandEffect {
+  pub fn as_str(self) -> &'static str {
+    match self {
+      Self::Read => "read",
+      Self::Write => "write",
+      Self::Control => "control",
+      Self::Plot => "plot",
+      Self::Unknown => "unknown",
+    }
+  }
+}
+
 impl Command {
   pub fn name(&self) -> &'static str {
     match self {

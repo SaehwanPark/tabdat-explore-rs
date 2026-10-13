@@ -3,11 +3,13 @@
 ## Purpose and current state
 
 TabDat is a terminal-first statistical/EDA environment with a Stata-inspired
-language. This repository is its Rust-native successor. Today it contains a
-single Rust 2024 binary scaffold (`Cargo.toml`, `src/main.rs`), not a working
-TabDat CLI. Build tooling and the scaffold smoke test are described in
-[SPEC.md](SPEC.md) and [CONTRIBUTING.md](CONTRIBUTING.md). Do not describe proposed
-commands, crates, or backends as present.
+language. This repository is its Rust-native successor. Phase 2 establishes a
+safe, directional core workspace and bounded batch/script CLI/runtime paths;
+no-argument execution remains a scaffold greeting, and no REPL or MCP server is
+implemented. Current supported scope and build checks are recorded in
+[SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md). Do not describe proposed commands, backend
+integrations, or later-phase capabilities as present merely because types compile.
 
 Read the relevant sections of:
 - [Project proposal](docs/TABDAT_RUST_PORT_PROJECT_PROPOSAL.md): product intent,
@@ -16,7 +18,8 @@ Read the relevant sections of:
   ownership, state/effect rules, and explicit deferrals.
 - [Roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md): phased work and acceptance gates.
 
-Both documents are proposed plans. Source/tests establish implemented behavior;
+The proposal and roadmap are plans; architecture records current-versus-proposed
+boundaries. Source/tests establish implemented behavior;
 unchecked tasks are not evidence of support. The initial Python oracle revision and
 authority policy are recorded in [docs/migration/](docs/migration/); recover the
 pinned checkout and slice-specific evidence before claiming migration parity.

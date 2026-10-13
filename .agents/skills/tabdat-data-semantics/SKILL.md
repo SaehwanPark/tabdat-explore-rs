@@ -17,7 +17,9 @@ or low-level ReadStat ownership. Pair with those specialists at the boundary.
 - Existing session and data implementation, if present, plus Python fixtures and
   revision when parity is requested.
 - Relevant proposal §6 and roadmap Phase 4; start from
-  [AGENTS.md](../../../AGENTS.md). DuckDB is planned, not installed in the scaffold.
+  [AGENTS.md](../../../AGENTS.md). DuckDB is installed as the bounded `tabdat-data`
+  adapter; [SPEC.md](../../../SPEC.md) and source/tests define its actual envelope,
+  not the broader proposed Phase 4 backlog.
 
 ## Workflow
 

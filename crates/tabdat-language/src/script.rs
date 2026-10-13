@@ -138,38 +138,8 @@ pub use tabdat_domain::ScriptError;
 
 /// Read a script file from disk and parse it into discrete structured commands.
 pub fn read_script(path: &Path) -> Result<Vec<ScriptCommand>, ScriptError> {
-  if !path.exists() {
-    return Err(ScriptError::new(path, 1, "script file not found"));
-  }
-  if path.is_dir() {
-    return Err(ScriptError::new(path, 1, "script path is a directory"));
-  }
-  let bytes = match std::fs::read(path) {
-    Ok(b) => b,
-    Err(e) => {
-      if e.kind() == std::io::ErrorKind::NotFound {
-        return Err(ScriptError::new(path, 1, "script file not found"));
-      }
-      return Err(ScriptError::new(
-        path,
-        1,
-        format!("could not read script: {e}"),
-      ));
-    }
-  };
-  let text = match std::str::from_utf8(&bytes) {
-    Ok(s) => s,
-    Err(e) => {
-      let valid_up_to = e.valid_up_to();
-      let line = bytes[..valid_up_to].iter().filter(|&&b| b == b'\n').count() + 1;
-      return Err(ScriptError::new(
-        path,
-        line,
-        "script file must be UTF-8 text",
-      ));
-    }
-  };
-  parse_script(text, path)
+  let text = tabdat_io::read_script_text(path)?;
+  parse_script(&text, path)
 }
 
 /// Decompose raw script text into discrete commands.

@@ -1,0 +1,12 @@
+[package]
+name = "tabdat-shell"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }
+tabdat-language = { path = "../tabdat-language", version = "0.1.0" }
+tabdat-execution = { path = "../tabdat-execution", version = "0.1.0" }
+tabdat-reporting = { path = "../tabdat-reporting", version = "0.1.0" }
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
