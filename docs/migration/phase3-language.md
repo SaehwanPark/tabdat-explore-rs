@@ -1,6 +1,6 @@
 # Phase 3 language migration evidence
 
-## Slice 1: pinned parser corpus (in progress)
+## Slice 1: pinned parser corpus (complete; Phase 3 remains partial)
 
 ### Python contract
 
@@ -31,3 +31,27 @@ Safe Rust parser and checked-in synthetic JSON fixtures; Python/pytest only
 for explicit oracle regeneration. No backend initialization or runtime command
 execution is added. Property/fuzz and canonical script evidence follow this
 corpus slice.
+
+### Results and review
+
+The capture ran the original **489 parser tests**, all passing, on Python 3.13.3
+with pytest 8.3.5. It recorded **672 unique inputs**: 231 successful typed parses
+and 441 errors. The replay agrees on acceptance/variant/exact diagnostic for 623
+inputs and explicitly tracks **49 differences** in
+`crates/tabdat-language/tests/fixtures/python-parser-gaps.json`. That ledger is
+migration debt, not approved deviations or a parity assertion. All successful
+Python dataclass fields are retained for subsequent deeper comparisons.
+
+Validation: formatting, locked workspace check/test/all-target Clippy and
+`git diff --check` passed. The first 120-second workspace test invocation timed
+out during compilation; the complete rerun passed with a 600-second allowance.
+No runtime dependency was added; serde_json is test-only and already locked.
+
+Owner review used three separate passes (capture provenance/clean checkout;
+replay and exact mismatch accounting; scope/dependency/documentation integrity).
+No actionable issues remained. These were local owner reviews, not independent
+model or hosted reviews. No additional model-backed workers were launched.
+
+Next slices: reconcile conditional `summarize`/`keep`/`drop`, richer `tabulate`,
+and missing `estat` syntax; compare expression/command fields; validate canonical
+script behavior; add property/fuzz coverage; then perform the Phase 3 exit review.
