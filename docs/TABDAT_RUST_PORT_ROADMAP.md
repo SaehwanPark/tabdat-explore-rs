@@ -140,6 +140,12 @@ state are handled correctly.
   order, native types, NULLs, empty/duplicate/quoted names, nested streams and
   failure/output boundaries are checked; cached fits and existing label pruning
   are retained. Conditional keep/drop row filters remain uninstalled.
+  Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
+  previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
+  prior-order ties, quoted/repeated/empty keys, native schema, nested streams and
+  failure/output boundaries are checked. Labels and original fit/sample are
+  retained without refitting; prediction uses current rows. No lazy/by execution
+  or invented key/affected-row fields are implied.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

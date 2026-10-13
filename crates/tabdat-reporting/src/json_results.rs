@@ -10,14 +10,16 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Use { .. }
+    Command::Sort { .. }
+      | Command::Gsort { .. }
+      | Command::Use { .. }
       | Command::Generate { .. }
       | Command::Replace { .. }
       | Command::Keep { .. }
@@ -54,7 +56,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Use { .. }
+    Command::Sort { .. }
+      | Command::Gsort { .. }
+      | Command::Use { .. }
       | Command::Generate { .. }
       | Command::Replace { .. }
       | Command::Keep { .. }
@@ -120,6 +124,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Sort(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "SortResult",
+    ),
+    ExecutionResult::Gsort(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "GsortResult",
     ),
     ExecutionResult::Describe(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -431,6 +443,52 @@ mod tests {
       assert!(!supports_batch_command(&command));
       assert!(!supports_script_command(&command));
     }
+  }
+
+  #[test]
+  fn ordering_results_encode_owned_metadata_without_inventing_keys_or_counts() {
+    let dataset = DatasetInfo {
+      source: std::path::PathBuf::from("source\t目录.csv"),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "sort\n".to_owned(),
+        data_type: "DECIMAL(38,0)".to_owned(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    for (result, tag) in [
+      (
+        ExecutionResult::Sort(tabdat_domain::SortResult {
+          dataset: dataset.clone(),
+        }),
+        "SortResult",
+      ),
+      (
+        ExecutionResult::Gsort(tabdat_domain::GsortResult {
+          dataset: dataset.clone(),
+        }),
+        "GsortResult",
+      ),
+    ] {
+      let serialized = serialize_execution_result(&result).unwrap();
+      assert_eq!(serialized.lines().count(), 1);
+      let value: Value = serde_json::from_str(&serialized).unwrap();
+      assert_eq!(value["schema_version"], 1);
+      assert_eq!(value["result_type"], tag);
+      assert_eq!(
+        value["data"],
+        json!({"dataset": dataset_info_data(&dataset)})
+      );
+    }
+    for source in ["sort x x", "gsort -x +y", "gsort `-x`"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    let command = tabdat_language::parse_command("by x: sort y").unwrap();
+    assert!(!supports_batch_command(&command));
+    assert!(!supports_script_command(&command));
   }
 
   #[test]

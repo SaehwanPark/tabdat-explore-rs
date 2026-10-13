@@ -179,6 +179,18 @@ the owned fit. Label/panel JSON fields remain null placeholders, not full snapsh
 Conditional `keep if`/`drop if` parses but does not execute and is not admitted in
 JSON. See `help keep`/`help drop`/`help select`.
 
+`sort` (ascending) and `gsort` (per-key directions) return additive `SortResult`
+and `GsortResult` envelopes with the same owned `data.dataset` metadata. Ordered
+previews/predictions and exports use the actual current rows; result metadata
+supplies no key list, changed-row count or cell values. NULLs are last for either
+direction and full-key ties preserve their prior active-row order. Native schema,
+source, row count, labels and the cached fit are retained without refitting;
+retained sample indices still refer to the original fit, not reordered data.
+Prediction evaluates current rows. Unknown keys fail without changes; unsupported
+options/conditions fail before execution. Bounded local eager runtime only, not
+lazy/remote or `by:` execution. Label/panel fields remain null placeholders.
+See `help sort`/`help gsort`.
+
 `save` (local Parquet) and `export` (local CSV) return additive `SaveResult` and
 `ExportResult` envelopes with requested `data.path` and output-oriented
 `data.dataset`, reusing the existing metadata shape. The reported dataset path
