@@ -289,6 +289,61 @@ fn ordering_output_failure_stops_later_sorting_and_export() {
 }
 
 #[test]
+fn rename_output_failure_stops_later_renames_and_export() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=4 {
+        let fixture = Fixture::new();
+        let exported = fixture.0.join("renamed.csv");
+        let export = format!("export \"{}\"", exported.display());
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(
+            &child,
+            format!("rename x predictor\nrename y outcome\n{export}\n"),
+          )
+          .unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            "rename x predictor",
+            "-c",
+            "rename y outcome",
+            "-c",
+            &export,
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(exported.exists(), fail_at == 4);
+        if fail_at == 4 {
+          assert_eq!(
+            std::fs::read_to_string(&exported).unwrap(),
+            "predictor,outcome\n1,2\n2,5\n3,5\n4,9\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

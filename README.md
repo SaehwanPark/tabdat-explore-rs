@@ -167,6 +167,18 @@ Successful transforms retain the cached fit without refitting; replace removes
 the target value-label attachment under existing rules. Metadata label/panel
 fields remain null placeholders. See `help generate`/`help replace`.
 
+Single-column `rename old new` returns additive `RenameResult` with the same
+owned `data.dataset` post-operation metadata: native schema position/type, source
+and total row count, not old/new-name or affected-cell fields. Values/NULLs and
+row order are retained, including empty data and backtick-quoted names. Existing
+targets (including the old name) and native case-insensitive collisions fail
+without changing prior data/session state. Variable labels/value-label attachments
+move to the new name; definitions remain. Cached fits retain their original names
+and sample without refitting: post-estimation uses that fit, but prediction needs
+its original predictor columns in current data. Normalize before fitting or
+explicitly refit after renaming a predictor. Label/panel fields remain null
+placeholders. See `help rename`.
+
 Column-list `keep`, `drop` and `select` return additive `KeepResult`, `DropResult`
 and `SelectResult` envelopes with the same `data.dataset` post-projection metadata.
 `keep`/`select` use request order; `drop` preserves remaining schema order. Rows,
