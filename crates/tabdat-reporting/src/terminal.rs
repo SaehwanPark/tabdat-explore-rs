@@ -241,7 +241,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
     None => Ok(concat!(
       "Interactive core workflow\n",
       "  Load local eager CSV/Parquet: use <path>\n",
-      "  Inspect: describe, summarize [variables], tabulate, count, head/tail\n",
+      "  Inspect: describe, summarize [variables], missing [variables], tabulate, count, head/tail\n",
       "  Transform: generate, replace, rename, sort/gsort, keep/drop/select\n",
       "  Linear analysis: regress, predict, lincom, test\n",
       "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
@@ -308,6 +308,26 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         )
         .unwrap();
       }
+      output
+    }
+    ExecutionResult::Missing(result) => {
+      let mut output = String::from(
+        "Missingness: SQL NULL only (stored NaN, infinity, empty strings and sentinels are not missing).\nVariable\tType\tTotal\tMissing\tNonmissing\tMissing (%)\n",
+      );
+      for row in &result.rows {
+        writeln!(
+          output,
+          "{}\t{}\t{}\t{}\t{}\t{}",
+          row.variable.escape_debug(),
+          row.data_type.escape_debug(),
+          row.total,
+          row.missing,
+          row.nonmissing,
+          inference_number(row.missing_percent)
+        )
+        .unwrap();
+      }
+      output.push_str("Empty relations report 0% by convention; NA = unavailable or undefined.\n");
       output
     }
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
@@ -394,6 +414,24 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn missing_display_escapes_owned_names_and_types_without_fabricating_percent() {
+    let result = ExecutionResult::Missing(tabdat_domain::MissingResult {
+      rows: vec![tabdat_domain::MissingRow {
+        variable: "x\tline\n\u{1b}[2J".to_owned(),
+        data_type: "TYPE\nFAKE".to_owned(),
+        total: 1,
+        missing: 0,
+        nonmissing: 1,
+        missing_percent: f64::NAN,
+      }],
+    });
+    let text = render_execution_result(&result);
+    assert!(text.contains("x\\tline\\n\\u{1b}[2J\tTYPE\\nFAKE\t1\t0\t1\tNA\n"));
+    assert!(!text.contains('\u{1b}'));
+    assert!(text.starts_with("Missingness: SQL NULL only"));
+  }
 
   #[test]
   fn ttest_display_escapes_labels_and_keeps_singleton_inference_undefined() {

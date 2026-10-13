@@ -91,7 +91,7 @@ includes commands that parse but do not yet execute.
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
-supports use, count, summarize, tabulate, head/tail and the bounded
+supports use, count, summarize, missing, tabulate, head/tail and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
@@ -177,6 +177,23 @@ own sample DF; the tested interval and probabilities use the supplied reference
 DF, including fractional Welch DF. Missing summaries and non-finite statistics
 serialize as null; finite zero remains a number. Rendering and serialization do
 not change the estimation sample or saved model.
+
+`missing [variables]` now reports owned missingness rows in the shell and
+CLI-v1 JSON. `MissingResult.data` contains `missing_definition: "sql_null"` and
+ordered `rows` with `variable`, `data_type`, `total`, `missing`, `nonmissing`,
+and `missing_percent`. Default order follows the loaded schema; explicit order
+and repeated variables are preserved. Counts remain integer JSON numbers and
+finite percentages are unrounded; non-finite percentages serialize as null.
+An empty relation keeps the existing zero-count/0% convention.
+
+Missingness means SQL NULL **after loading**. Stored NaN/infinity, empty strings
+and sentinel codes are nonmissing; CSV loading can first turn empty fields into
+NULL. `ttest`/`regress` can exclude non-finite values separately. Current
+`summarize` still uses native aggregates and can fail on infinity-containing
+columns; missingness reporting does not change that aggregate policy. Reporting
+is read-only, retains types/data/model state, and streams in nested scripts.
+Current runtime support is eager local CSV/Parquet through DuckDB, not broader
+lazy/remote modes.
 
 ## Development direction
 
