@@ -24,7 +24,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | --- | --- | --- |
 | Binary and CLI | Batch `-c`, scripts `-f`/positional, help, discovery, bounded JSON | No-argument invocation starts a persistent line session; batch/script output unchanged |
 | Interactive shell | Persistent session, `help`/`?`, readable core EDA/linear results; capable-terminal editing, bounded session-local history and input Ctrl-C recovery; exit/EOF | No completion, persistent history, multiline continuation or in-flight cancellation guarantee; plain piped/dumb input; other result details deferred |
-| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors; interactive runs stream readable leaf results | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
+| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with source-classified CLI exits (execution 1, syntax 2, file 3); interactive runs stream readable leaf results | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |

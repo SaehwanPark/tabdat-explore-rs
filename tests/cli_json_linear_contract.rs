@@ -214,9 +214,7 @@ fn nested_json_linear_errors_keep_prior_results_and_child_location() {
   )
   .unwrap();
   let output = fixture.run(&["--json", "-f", "parent.td"]);
-  // Preserve the existing script classifier: coefficient "not found" also
-  // gets exit 3. The envelope still identifies the actual located model error.
-  assert_eq!(output.status.code(), Some(3));
+  assert_eq!(output.status.code(), Some(1));
   let envelopes = lines(&output.stdout);
   assert_eq!(envelopes.len(), 4);
   assert_eq!(envelopes[1]["result_type"], "RegressionResult");

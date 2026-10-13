@@ -89,7 +89,7 @@ impl Session {
         match control {
           ControlFlowDirective::If(directive) => {
             if block_state.is_some() {
-              return Err(RuntimeError::ScriptError(ScriptError::new(
+              return Err(RuntimeError::ScriptError(ScriptError::parse(
                 &resolved_path,
                 line,
                 "nested if blocks are not supported",
@@ -99,14 +99,14 @@ impl Session {
           }
           ControlFlowDirective::Else(_) => {
             let Some(ref mut state) = block_state else {
-              return Err(RuntimeError::ScriptError(ScriptError::new(
+              return Err(RuntimeError::ScriptError(ScriptError::parse(
                 &resolved_path,
                 line,
                 "else without matching if",
               )));
             };
             if state.in_else {
-              return Err(RuntimeError::ScriptError(ScriptError::new(
+              return Err(RuntimeError::ScriptError(ScriptError::parse(
                 &resolved_path,
                 line,
                 "if block already has an else branch",
@@ -116,7 +116,7 @@ impl Session {
           }
           ControlFlowDirective::End(_) => {
             if block_state.is_none() {
-              return Err(RuntimeError::ScriptError(ScriptError::new(
+              return Err(RuntimeError::ScriptError(ScriptError::parse(
                 &resolved_path,
                 line,
                 "end without matching if",
@@ -147,7 +147,7 @@ impl Session {
       let command = match tabdat_language::parse_command(&expanded_text) {
         Ok(cmd) => cmd,
         Err(err) => {
-          return Err(RuntimeError::ScriptError(ScriptError::new(
+          return Err(RuntimeError::ScriptError(ScriptError::parse(
             &resolved_path,
             line,
             err.to_string(),
@@ -188,18 +188,21 @@ impl Session {
             return Err(RuntimeError::ScriptError(err));
           }
           Err(err) => {
-            return Err(RuntimeError::ScriptError(ScriptError::new(
-              &resolved_path,
-              line,
-              err.to_string(),
-            )));
+            // Missing data files are file failures; other command errors stay
+            // execution failures, even if their text says syntax or expected.
+            let located = if matches!(err, RuntimeError::FileNotFound { .. }) {
+              ScriptError::file(&resolved_path, line, err.to_string())
+            } else {
+              ScriptError::new(&resolved_path, line, err.to_string())
+            };
+            return Err(RuntimeError::ScriptError(located));
           }
         },
       }
     }
 
     if let Some(state) = block_state {
-      return Err(RuntimeError::ScriptError(ScriptError::new(
+      return Err(RuntimeError::ScriptError(ScriptError::parse(
         &resolved_path,
         state.start_line,
         "if block is missing end",

@@ -136,10 +136,16 @@ of these conventions.
 
 Finite statistics are JSON numbers; unavailable/non-finite values are null,
 not zero. Samples and inference remain estimator/mode-specific; reference tests
-cover named fixtures, not every accepted mode. Existing script exit codes are
-preserved: the current message-based classifier can assign exit 3 to a model
-coefficient “not found” error, even though the located envelope describes the
-model error rather than a missing file.
+cover named fixtures, not every accepted mode.
+
+Script execution (`-f` or a positional script) exits 0 on success, 1 for command
+execution/preflight or recursive inclusion failures, 2 for invalid script syntax,
+directives, macros or control structure, and 3 for script-loading failures or a
+missing data file. Nested failures retain the child source location and category.
+Classification comes from the error source, not words such as “not found” or
+“expected” in diagnostics. These deliberate corrections replace the old
+message-based heuristic; JSON envelope fields and diagnostic text are unchanged.
+Batch `-c` exit behavior is unchanged.
 
 ## Development direction
 

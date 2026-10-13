@@ -12,6 +12,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0005 | Accepted | Script seed syntax/range | Signed 64-bit ASCII decimal seeds; preserve pinned oracle outputs and assert the five explicit Rust rejections. PR #195; see details below. |
 
+| MIG-0006 | Accepted | CLI script exit categories | Classify failure sources instead of diagnostic words; explicit corrections and compatibility impact in PR #205 and details below. |
+
 MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
@@ -96,6 +98,30 @@ updates also get an entry identifying old/new pins and affected contract checks.
   pinned corpus replay, two successful bounded sanitizer campaigns; three local
   owner review passes in PR #194. Future budget changes require measured stack/AST
   lifecycle evidence. Unrestricted input acceptance is explicitly not claimed.
+
+### MIG-0006: source-classified script exit codes
+
+- **Status/scope:** accepted bounded Rust correction in PR #205, replacing the
+  CLI message heuristic present at `4da9d96`. No Python oracle change or claim
+  of whole-script parity; library diagnostic text and CLI-v1 fields stay intact.
+- **Contract:** script success exits 0; command execution/preflight and recursion
+  failures exit 1; script syntax/directive/macro/control failures exit 2;
+  script-loading failures and missing data files exit 3. Nested failures retain
+  their originating category, path and line. Batch `-c` behavior is unchanged.
+- **Reproductions/impact:** after a valid `regress`, `test absent` previously
+  exited 3 because its diagnostic said “not found”; it now exits 1. A valid
+  `use` of a directory said “expected” and incorrectly exited 2; it now exits 1.
+  Unknown commands, invalid seeds, undefined macros and missing `end` now exit 2
+  rather than the old 1. Missing data files and directory/non-UTF-8 scripts now
+  exit 3 rather than the old 1. Automation depending on these misclassifications
+  must use the documented categories rather than diagnostic substrings.
+- **Decision/evidence:** retain category in owned `ScriptError` at language,
+  IO and execution producers instead of matching more words or storing arbitrary
+  CLI exit codes in domain errors. `cli_script_exit_contract` covers plain/JSON,
+  nested locations, misleading words, prior results/data, and later-file-effect
+  prevention. The linear JSON regression test now expects the corrected exit 1.
+  Existing script/oracle and workspace tests remain required; no numerical
+  calculation, sample, covariance, or model-state policy changes.
 
 ### MIG-0005 details
 
