@@ -73,8 +73,8 @@ at most 500 session-local submitted commands (blank/comments and cancelled input
 are excluded; consecutive duplicates are skipped). History is never saved to disk.
 Ctrl-C while composing a line cancels that input and preserves data/model state;
 Ctrl-D on an empty line exits. Piped input keeps the existing plain line behavior.
-Unsupported/dumb terminals may fall back to plain input. There is no completion
-or multiline command syntax. Ctrl-C during command execution is **not** a
+Unsupported/dumb terminals may fall back to plain input. Completion and a
+multiline continuation prompt are not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
 supported cancellation protocol and may terminate the process; in-flight file-write
 safety is not promised.
 

@@ -30,7 +30,7 @@ provides persistent line input, core inspection output, recoverable command erro
 and clean exit/EOF. `use` → `describe` → `summarize` → `exit` is covered through
 the binary. Capable-terminal editing, bounded in-memory history and input-level
 Ctrl-C recovery are now installed (#203); piped input remains plain. Completion,
-multiline syntax and in-flight cancellation remain deferred; an executing command
+interactive multiline continuation and in-flight cancellation remain deferred; an executing command
 may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
 
 ### 2. Close the core EDA loop
