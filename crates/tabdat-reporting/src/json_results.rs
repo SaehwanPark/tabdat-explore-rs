@@ -3,14 +3,15 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
-  CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult, SummarizeResult,
+  CellValue, DatasetInfo, ExecutionResult, LoadResult, PreviewResult, RegressionResult,
+  SummarizeResult,
 };
 use tabdat_language::{Command, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, and tail";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, and tail";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, and test";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, summarize, tabulate, head, tail, regress, predict, lincom, and test";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -22,6 +23,10 @@ pub fn supports_batch_command(command: &Command) -> bool {
       | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
+      | Command::Regress { .. }
+      | Command::Predict { .. }
+      | Command::Lincom { .. }
+      | Command::Test { .. }
       | Command::Exit
   )
 }
@@ -38,6 +43,10 @@ pub fn supports_script_command(command: &Command) -> bool {
       | Command::Tabulate { .. }
       | Command::Head { .. }
       | Command::Tail { .. }
+      | Command::Regress { .. }
+      | Command::Predict { .. }
+      | Command::Lincom { .. }
+      | Command::Test { .. }
       | Command::Exit
       | Command::Run { .. }
   )
@@ -62,11 +71,54 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       (preview_result_data(preview), "PreviewResult")
     }
+    ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
+    ExecutionResult::Prediction(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "PredictionResult",
+    ),
+    ExecutionResult::Lincom(result) => (
+      json!({
+        "label": result.label, "estimate": Number::from_f64(result.estimate),
+        "standard_error": Number::from_f64(result.standard_error), "statistic": Number::from_f64(result.statistic),
+        "p_value": Number::from_f64(result.p_value), "ci_lower": Number::from_f64(result.ci_lower),
+        "ci_upper": Number::from_f64(result.ci_upper), "ci_level": Number::from_f64(result.ci_level), "df_residual": result.df_residual,
+      }),
+      "LincomResult",
+    ),
+    ExecutionResult::Test(result) => (
+      json!({
+        "constraints": result.constraints, "statistic": Number::from_f64(result.statistic),
+        "p_value": Number::from_f64(result.p_value), "df": result.df,
+        "df_residual": result.df_residual, "is_chi2": result.is_chi2,
+      }),
+      "TestResult",
+    ),
     _ => return None,
   };
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn regression_result_data(result: &RegressionResult) -> Value {
+  json!({
+    "outcome": result.outcome, "predictors": result.predictors,
+    "estimator": result.estimator, "covariance": result.covariance,
+    "observation_count": result.observation_count, "include_intercept": result.include_intercept,
+    "df_residual": result.least_squares.fit_statistics.degrees_of_freedom,
+    "r_squared": result.r_squared.and_then(Number::from_f64),
+    "adjusted_r_squared": result.adjusted_r_squared.and_then(Number::from_f64),
+    "root_mse": result.root_mse.and_then(Number::from_f64),
+    "sample": result.least_squares.sample.as_ref().map(|sample| json!({
+      "total_observations": sample.total_observations, "dropped_observations": sample.dropped_observations,
+    })),
+    "coefficients": result.coefficients.iter().map(|coefficient| json!({
+      "name": coefficient.name, "value": Number::from_f64(coefficient.value),
+      "standard_error": coefficient.standard_error.and_then(Number::from_f64),
+      "statistic": coefficient.statistic.and_then(Number::from_f64),
+      "p_value": coefficient.p_value.and_then(Number::from_f64),
+    })).collect::<Vec<_>>()
+  })
 }
 
 fn summarize_result_data(result: &SummarizeResult) -> Value {
