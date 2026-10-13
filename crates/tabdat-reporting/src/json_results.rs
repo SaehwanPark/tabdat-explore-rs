@@ -6,12 +6,12 @@ use tabdat_domain::{
   CellValue, CodebookResult, DatasetInfo, ExecutionResult, LoadResult, MissingResult,
   PreviewResult, RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
 };
-use tabdat_language::{Command, ExecutionMode, LazyEngine};
+use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, and ttest";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, count, codebook, summarize, missing, tabulate, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -30,6 +30,12 @@ pub fn supports_batch_command(command: &Command) -> bool {
       | Command::Lincom { .. }
       | Command::Test { .. }
       | Command::Ttest { .. }
+      | Command::Estat {
+        command: EstatCommand {
+          subcommand: EstatSubcommand::Vif,
+          ..
+        },
+      }
       | Command::Exit
   )
 }
@@ -53,6 +59,12 @@ pub fn supports_script_command(command: &Command) -> bool {
       | Command::Lincom { .. }
       | Command::Test { .. }
       | Command::Ttest { .. }
+      | Command::Estat {
+        command: EstatCommand {
+          subcommand: EstatSubcommand::Vif,
+          ..
+        },
+      }
       | Command::Exit
       | Command::Run { .. }
   )
@@ -70,11 +82,12 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
     ExecutionResult::Missing(result) => (missing_result_data(result), "MissingResult"),
     ExecutionResult::Tabulate(table) => (
-      json!({
-        "headers": table.headers,
-        "rows": table.rows.iter().map(|row| row.iter().map(cell_value_data).collect::<Vec<_>>()).collect::<Vec<_>>(),
-      }),
+      table_result_data(&table.headers, &table.rows),
       "TabulateResult",
+    ),
+    ExecutionResult::Table(table) => (
+      table_result_data(&table.headers, &table.rows),
+      "TableResult",
     ),
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       (preview_result_data(preview), "PreviewResult")
@@ -107,6 +120,13 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
 
   let envelope = ResultEnvelope::new(data, result_type);
   Some(serde_json::to_string(&envelope).expect("JSON value envelopes serialize infallibly"))
+}
+
+fn table_result_data(headers: &[String], rows: &[Vec<CellValue>]) -> Value {
+  json!({
+    "headers": headers,
+    "rows": rows.iter().map(|row| row.iter().map(cell_value_data).collect::<Vec<_>>()).collect::<Vec<_>>(),
+  })
 }
 
 fn codebook_result_data(result: &CodebookResult) -> Value {
@@ -268,6 +288,60 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn owned_tables_encode_cells_without_reinterpreting_vif_labels() {
+    let result = ExecutionResult::Table(tabdat_domain::TableResult {
+      headers: vec!["Variable\n".to_owned(), "VIF".to_owned()],
+      rows: vec![
+        vec![
+          CellValue::Text("mean_vif".to_owned()),
+          CellValue::Float(0.0),
+        ],
+        vec![
+          CellValue::Text("mean_vif".to_owned()),
+          CellValue::Float(f64::INFINITY),
+        ],
+        vec![CellValue::Text("label\t\"\n".to_owned()), CellValue::Null],
+        vec![
+          CellValue::Float(f64::NAN),
+          CellValue::Float(f64::NEG_INFINITY),
+        ],
+        vec![
+          CellValue::SignedInteger(i128::MAX),
+          CellValue::Decimal {
+            width: 38,
+            scale: 2,
+            value: -1,
+          },
+        ],
+      ],
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result_type"], "TableResult");
+    assert_eq!(value["data"]["headers"], json!(["Variable\n", "VIF"]));
+    assert_eq!(
+      value["data"]["rows"],
+      json!([
+        ["mean_vif", 0.0],
+        ["mean_vif", null],
+        ["label\t\"\n", null],
+        [null, null],
+        [i128::MAX, "-0.01"],
+      ])
+    );
+    for input in ["estat residuals", "sql select 1"] {
+      let command = tabdat_language::parse_command(input).unwrap();
+      assert!(!supports_batch_command(&command));
+      assert!(!supports_script_command(&command));
+    }
+    let command = tabdat_language::parse_command("estat vif").unwrap();
+    assert!(supports_batch_command(&command));
+    assert!(supports_script_command(&command));
+  }
 
   #[test]
   fn codebook_json_uses_existing_scalar_policy_without_loss_of_owned_labels_or_counts() {

@@ -76,8 +76,12 @@ child locations and existing JSON fields are retained. Readable terminal `ttest`
 results now cover one-sample, paired, pooled and Welch forms (#206), with a
 SciPy display reference, asymmetric missingness, fractional DF, undefined
 inference, state preservation and nested-stream checks. VIF already uses the
-generic terminal table renderer; dedicated interface coverage/polish remains
-follow-up work. CLI-v1 `ttest` JSON now covers the same four forms (#207), using
+generic terminal table renderer. CLI-v1 now admits only `estat vif` among
+`estat` forms and reports its owned ordered `TableResult` (#212), without
+header-based type inference or changing terminal/library results. Independent
+statsmodels fixtures cover intercept conventions, actual retained samples and
+unweighted auxiliaries after WLS/GLS; nested/error/state paths are covered.
+SQL and other `estat` JSON remain unsupported. CLI-v1 `ttest` JSON now covers the same four forms (#207), using
 owned inference, explicit Student-t/95% metadata, nullable independent difference
 counts, and the shared SciPy fixture; nested streams and error/null paths are
 covered without changing calculations or model state.
