@@ -3,7 +3,7 @@ use std::io::{self, BufRead, IsTerminal, Write};
 
 use tabdat_execution::Session;
 use tabdat_language::{Command, parse_command};
-use tabdat_reporting::terminal::render_execution_result;
+use tabdat_reporting::terminal::{render_execution_result, render_interactive_help};
 
 fn run_session(
   input: &mut impl BufRead,
@@ -15,7 +15,7 @@ fn run_session(
   if prompt {
     writeln!(
       output,
-      "TabDat — use <file>, describe, summarize, head, count; exit to quit."
+      "TabDat — type help or ? for core workflows; exit to quit."
     )?;
   }
   let mut line = String::new();
@@ -43,6 +43,19 @@ fn run_session(
         continue;
       }
     };
+    if let Command::Help { topic } = &command {
+      match render_interactive_help(topic.as_deref()) {
+        Ok(text) => {
+          write!(output, "{text}")?;
+          output.flush()?;
+        }
+        Err(error) => {
+          writeln!(errors, "Error: {}", error.escape_debug())?;
+          errors.flush()?;
+        }
+      }
+      continue;
+    }
     if command == Command::Exit {
       return Ok(());
     }

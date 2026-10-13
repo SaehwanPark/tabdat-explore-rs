@@ -131,6 +131,27 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
   output
 }
 
+/// Present core workflow guidance or a packaged reference topic without execution.
+pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
+  match topic {
+    None => Ok(concat!(
+      "Interactive core workflow\n",
+      "  Load local eager CSV/Parquet: use <path>\n",
+      "  Inspect: describe, summarize [variables], tabulate, count, head/tail\n",
+      "  Transform: generate, replace, rename, sort/gsort, keep/drop/select\n",
+      "  Linear analysis: regress, predict, lincom, test\n",
+      "  Scripts/files: run <script.td>, save <file.parquet>, export <file.csv>\n",
+      "  Help: help [topic] or ?[topic]; example: help summarize\n",
+      "  Leave: exit, quit, or EOF\n",
+      "Supported forms/options are bounded; reference topics may include parser-only or future syntax.\n",
+      "See SPEC.md for current limits. Ctrl-C terminates the process; recoverable cancellation is not installed.\n"
+    ).to_owned()),
+    Some(topic) => crate::catalog::help_topic_result(topic).map(|topic| format!(
+      "Reference topic: supported forms/options are bounded; some syntax is parser-only or future. See SPEC.md.\n\n{}",
+      topic.text)),
+  }
+}
+
 /// Render the supported interactive EDA and linear-analysis results without recomputing statistics.
 /// Other executed results receive an explicit display limitation, not silence.
 pub fn render_execution_result(result: &ExecutionResult) -> String {

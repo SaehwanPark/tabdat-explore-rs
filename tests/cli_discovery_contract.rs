@@ -44,7 +44,12 @@ fn cli_json_lists_commands() {
   assert_eq!(summarize_entry["help_topic"], "summarize");
 
   let lincom_entry = commands.iter().find(|c| c["name"] == "lincom").unwrap();
-  assert!(lincom_entry["help_topic"].is_null());
+  assert_eq!(lincom_entry["help_topic"], "lincom");
+  let test_entry = commands
+    .iter()
+    .find(|entry| entry["name"] == "test")
+    .unwrap();
+  assert_eq!(test_entry["help_topic"], "test");
 }
 
 #[test]
@@ -168,6 +173,29 @@ fn cli_describe_command_requires_json() {
   assert!(output.stdout.is_empty());
   let stderr = String::from_utf8(output.stderr).expect("utf-8");
   assert!(stderr.contains("tabdat: error: --describe-command requires --json"));
+}
+
+#[test]
+fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
+  for (topic, phrase) in [("lincom", "Student-t"), ("test", "Wald F")] {
+    let output = tabdat_bin()
+      .args(["--json", "--help-topic", &topic.to_ascii_uppercase()])
+      .output()
+      .unwrap();
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["result_type"], "HelpTopicResult");
+    assert_eq!(envelope["data"]["help_topic"], topic);
+    assert!(envelope["data"]["text"].as_str().unwrap().contains(phrase));
+    let output = tabdat_bin()
+      .args(["--json", "--describe-command", topic])
+      .output()
+      .unwrap();
+    assert!(output.status.success());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["data"]["help_topic"], topic);
+  }
 }
 
 #[test]

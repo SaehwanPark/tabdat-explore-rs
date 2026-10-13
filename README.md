@@ -32,6 +32,14 @@ count
 exit
 ```
 
+Use `help` or `?` for core workflow guidance and `help summarize` or `?regress`
+for packaged topic help (case-insensitive). Unknown/malformed help requests
+report an error without losing session data. Reference topics may include
+parser-only/future syntax; their presence is not an execution-support promise.
+`lincom` and `test` have bounded topics describing the implemented inference.
+In-session help is a shell feature; batch/scripts retain their execution behavior,
+and JSON topic discovery remains available through `--json --help-topic`.
+
 `exit`, `quit`, or EOF leaves the session. Command errors are reported and the
 session remains usable. Prompts appear only when stdin and stdout are terminals;
 piped input is also accepted, with no greeting or prompts. A clean exit returns
