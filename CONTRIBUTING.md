@@ -153,3 +153,10 @@ The former path-scoped `DuckDB feasibility spike` workflow covered Linux
 build/tests. Its run is historical; macOS Apple Silicon evidence, dependency
 audit, and native unsafe inventory remain explicitly recorded in
 `docs/feasibility/duckdb.md`, not presented as a product-support guarantee.
+
+## Language fuzz validation
+
+The separate [fuzz workspace](fuzz/README.md) uses pinned cargo-fuzz/libfuzzer-sys
+and a nightly toolchain. Seed from the pinned parser fixtures and adversarial
+recursive cases before a bounded sanitizer campaign. This external facility is
+not a root workspace/runtime dependency; root Cargo checks do not run it.

@@ -160,3 +160,53 @@ variant and exact error text**. The gap ledger is empty, not a blanket AST or
 script parity assertion. **Implementation mapping:** safe syntax validation only.
 All root Cargo checks and diff check pass; three owner review passes covered
 error precedence, empty option regressions and scope. No independent review claimed.
+
+## Slice 7: generated parser properties and sanitizer fuzzing
+
+**Python contract:** retain the pinned 672 parser calls and their exact diagnostics;
+no corpus case changes. Large syntax is now subject to the explicit accepted
+safety restriction in [MIG-0004](decisions.md), rather than a parity claim for
+Python's interpreter recursion limits.
+
+**Rust contract:** pure syntax parsing rejects expressions above 256 tokens before
+recursive parsing/AST construction and rejects recursive command parsing at depth
+32. Both expression parsers and both recursive command prefixes share the limits.
+SQL/script byte length is not capped by these budgets. AST comparison/drop is
+covered as well as parsing; no backend is initialized.
+
+**Test contract:** 4,096 generated Unicode strings (fixed generator seed `0x5eed`)
+check deterministic parsing/tokenization/scripts and ordered Unicode-scalar token
+offsets. Quoted identifier roundtrips cover escaped backticks, Unicode and keyword
+names across case/whitespace forms. Adversarial parentheses, unary/function
+recursion, binary chains, `by` and `bayes:` prefixes and exact-budget boundaries
+have ordinary regressions. `tools/seed_parser_fuzz.py` seeds all pinned inputs and
+ten targeted cases; the standalone target checks command/token/script determinism.
+
+**Implementation mapping:** safe language source/tests plus a separate locked
+external libFuzzer validation workspace. Production Cargo dependencies are
+unchanged. [ADR 0023](../adr/0023-syntax-resource-budgets-and-fuzz-tooling.md) records
+the reproduced stack failure, resource restriction and tooling license obligations.
+
+Validation on macOS Apple Silicon: cargo-fuzz 0.13.2, libfuzzer-sys 0.4.13,
+`rustc 1.101.0-nightly (e9bbadf68 2026-10-12)`, AddressSanitizer, seed 24301,
+60-second budget, mutated length limit 4096. Two campaigns completed **931,231**
+and **508,958** executions in 61 seconds each with no crash; the second replayed
+an accumulated 10,335-file corpus including the original 40,014-byte failure and
+new seeds. Counts depend on accumulated corpus and hardware. The second raw log
+is local `target/phase3-properties-fuzz.log`; crashes/corpus remain ignored.
+This is bounded fuzz evidence, not unrestricted input/resource safety or parity.
+
+Review: three local owner passes covered (1) recursion/AST lifecycle and all
+recursive dispatch sites, (2) generated/boundary/corpus/fuzz evidence, and (3)
+dependency isolation, licenses, documentation and scope. The license pass found
+that the package's NCSA obligation was omitted from the initial ADR; corrected
+and rechecked against installed package metadata and bundled source headers.
+No blocking code findings remain; no independent model/hosted review is claimed.
+Full AST/canonical script evidence and whole-phase exit acceptance remain pending.
+
+Final local verification: root `cargo fmt --all -- --check`, locked workspace
+`cargo check`, all-target `cargo test` (**737 passed across 108 test binaries**),
+and all-target Clippy with `-D warnings` passed. Separate fuzz formatting,
+changed-document relative links and `git diff --check` passed. No skill/harness
+frontmatter or guidance scenarios were changed. Local test/Clippy logs are
+`target/phase3-properties-tests.log` and `target/phase3-properties-clippy.log`.

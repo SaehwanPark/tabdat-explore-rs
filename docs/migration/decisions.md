@@ -8,6 +8,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 | MIG-0002 | Unresolved | `status` tokenizer diagnostics beyond the bounded sign forms | At the pinned Python revision, `status -1` and `status +1` return `unsupported token in command: -` and `unsupported token in command: +`; the bounded PR #30 correction now matches those forms, including attached signs and a bare `status if`. The broader status lexical matrix (other punctuation, malformed numbers, and malformed condition expressions) remains unresolved until a future tokenizer slice. See the detailed reproduction, paths, impact, and resolution criteria below. Do not claim whole-parser/status parity from the bounded correction. |
 | MIG-0003 | Accepted for bounded evaluation | Eager local-Parquet `use` path normalization | Python expands `Path(path).expanduser()` before suffix/existence checks; the bounded Rust runtime accepts an already-resolved local path and deliberately leaves `~` expansion to its caller. This is the documented scope deviation in [ADR 0007](../adr/0007-eager-parquet-duckdb-runtime-boundary.md), `_workspace/use-eager-parquet/01-contract.md`, and `_workspace/use-eager-parquet/02-evidence-data.md`, reviewed in PR #22. |
 
+| MIG-0004 | Accepted | Syntax resource budgets | [ADR 0023](../adr/0023-syntax-resource-budgets-and-fuzz-tooling.md), PR #194: reject expressions above 256 tokens and command parsing at depth 32 to prevent reproduced stack exhaustion. |
+
 No other behavioral deviations have been accepted. MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
@@ -75,3 +77,20 @@ updates also get an entry identifying old/new pins and affected contract checks.
   URI, lazy, and option paths.
 - **Review tracking:** accepted for the bounded evaluation in PR #22 and linked
   from ADR 0007; supersede this entry if the runtime API later owns expansion.
+
+### MIG-0004 details
+
+- **Affected contract:** pinned Python parser accepts/rejects large syntax according
+  to interpreter recursion behavior; Rust PR #194 adds stable resource diagnostics
+  before recursive parsing/AST construction. Existing 672 captured inputs agree.
+- **Reproduction:** `generate x = ` plus 20,000 opening parentheses, `1`, and
+  20,000 closing parentheses previously triggered sanitizer stack overflow. Rust
+  now returns `expression exceeds limit of 256 tokens`. Deep `by`/`bayes:` input
+  returns `command nesting exceeds limit of 32`. See ADR 0023 for crash identity.
+- **Impact/alternatives:** large formulas must be split; unrestricted recursion or
+  simply moving it to a larger stack does not bound recursive AST lifecycle work.
+  Limits do not cap raw SQL, script bytes, tokenization memory or backend resources.
+- **Evidence/review:** exact-limit and adversarial property regressions, unchanged
+  pinned corpus replay, two successful bounded sanitizer campaigns; three local
+  owner review passes in PR #194. Future budget changes require measured stack/AST
+  lifecycle evidence. Unrestricted input acceptance is explicitly not claimed.

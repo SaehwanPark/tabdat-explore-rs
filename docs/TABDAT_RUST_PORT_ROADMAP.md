@@ -692,8 +692,10 @@ Port TabDat's language before implementing most execution.
 - [ ] Port parser error tests.
 - [ ] Port script tests.
 - [ ] Port expression tests.
-- [ ] Add property-based parser tests.
-- [ ] Add parser fuzz target.
+- [x] Add property-based parser tests (PR #194; deterministic generated Unicode,
+  tokenizer offset invariants, quoting roundtrips and resource-bound regressions).
+- [x] Add parser fuzz target (PR #194; isolated cargo-fuzz command/token/script
+  target with corpus/adversarial seeds and bounded AddressSanitizer smoke evidence).
 - [ ] Add Python/Rust parse-result differential tests where practical.
 
 ### Exit gate
