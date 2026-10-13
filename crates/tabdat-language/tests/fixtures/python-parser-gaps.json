@@ -8,60 +8,8 @@
     "difference": "expected error \"option by expects at least one value\", got Err(ParseError { message: \"collapse by() expects at least one grouping variable\" })"
   },
   {
-    "input": "drop if sex == 'F'",
-    "difference": "expected drop, got error drop if execution is deferred in the bounded runtime"
-  },
-  {
-    "input": "keep if `if` == 1",
-    "difference": "expected keep, got error keep if execution is deferred in the bounded runtime"
-  },
-  {
-    "input": "keep if age >= 18",
-    "difference": "expected keep, got error keep if execution is deferred in the bounded runtime"
-  },
-  {
     "input": "reshape long income, i() j(year)",
     "difference": "expected error \"option i expects at least one value\", got Err(ParseError { message: \"reshape expects exactly one i(id_vars) option\" })"
-  },
-  {
-    "input": "summarize age `bmi-zscore` if age >= 18",
-    "difference": "expected parsed, got error summarize does not accept if clauses or options"
-  },
-  {
-    "input": "summarize age bmi, detail limit=10",
-    "difference": "expected parsed, got error summarize does not accept if clauses or options"
-  },
-  {
-    "input": "summarize age if age $ 18",
-    "difference": "expected error \"unsupported token in command: $\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age if age > 18 if bmi > 20",
-    "difference": "expected error \"duplicate if clause\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age if age >=",
-    "difference": "expected error \"incomplete expression after >=\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age if if age > 18",
-    "difference": "expected error \"duplicate if clause\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age if sex == \"F",
-    "difference": "expected error \"unterminated quoted string\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age if sex == \"F\", detail",
-    "difference": "expected parsed, got error summarize does not accept if clauses or options"
-  },
-  {
-    "input": "summarize age, limit 10",
-    "difference": "expected error \"option limit value must use option=value syntax\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
-  },
-  {
-    "input": "summarize age, limit=",
-    "difference": "expected error \"option limit requires a value after =\", got Err(ParseError { message: \"summarize does not accept if clauses or options\" })"
   },
   {
     "input": "tabulate",

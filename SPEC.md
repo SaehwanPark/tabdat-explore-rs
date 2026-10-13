@@ -41,7 +41,10 @@ in `crates/tabdat-language/tests/fixtures/python-parser-gaps.json`, not approved
 deviations. The language now accepts the remaining no-option `estat` diagnostics
 and typed report/spatial option forms; execution remains unchanged (VIF only).
 Artifact generation and spatial diagnostics are not implemented by this syntax
-slice. Full AST, script, property/fuzz and whole-phase acceptance remain pending.
+slice. Conditional summarize and keep/drop row-filter forms now own typed
+expressions/options while execution explicitly rejects these new forms; existing
+unconditional operations remain unchanged. Full AST, script, property/fuzz and
+whole-phase acceptance remain pending.
 
 ## Current behavior
 

@@ -1803,9 +1803,38 @@ fn parse_summarize_command(body: &str) -> Result<Command, ParseError> {
     ));
   }
   if parts.has_condition || parts.has_options {
-    return Err(ParseError::new(
-      "summarize does not accept if clauses or options",
-    ));
+    let options = first_top_level_comma(body)
+      .map(|index| parse_use_options(&body[index + 1..]))
+      .transpose()?
+      .unwrap_or_default()
+      .into_iter()
+      .map(|option| SyntaxOption {
+        name: option.name,
+        value: match option.value {
+          UseOptionValue::Flag => SyntaxOptionValue::Flag,
+          UseOptionValue::Number(value) => SyntaxOptionValue::Number(value),
+          UseOptionValue::String(value) => SyntaxOptionValue::String(value),
+          UseOptionValue::Boolean(value) => SyntaxOptionValue::Boolean(value),
+          UseOptionValue::Identifiers(value) => SyntaxOptionValue::Identifiers(value),
+          UseOptionValue::Numbers(value) => SyntaxOptionValue::Numbers(value),
+          UseOptionValue::Prior(name, value) => SyntaxOptionValue::Prior(name, value),
+        },
+      })
+      .collect();
+    let condition = if parts.has_condition {
+      Some(parse_row_condition(body)?)
+    } else {
+      None
+    };
+    return Ok(Command::SummarizeQuery {
+      variables: parts
+        .arguments
+        .into_iter()
+        .map(|argument| argument.text)
+        .collect(),
+      condition,
+      options,
+    });
   }
   Ok(Command::Summarize {
     variables: parts
@@ -2039,9 +2068,10 @@ fn parse_keep_command(body: &str) -> Result<Command, ParseError> {
   }
   if parts.has_condition {
     if parts.arguments.is_empty() {
-      return Err(ParseError::new(
-        "keep if execution is deferred in the bounded runtime",
-      ));
+      return Ok(Command::RowFilter {
+        action: RowFilterAction::Keep,
+        condition: parse_row_condition(body)?,
+      });
     }
     return Err(ParseError::new(
       "keep cannot combine a variable list with an if clause",
@@ -2087,9 +2117,10 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
   }
   if parts.has_condition {
     if parts.arguments.is_empty() {
-      return Err(ParseError::new(
-        "drop if execution is deferred in the bounded runtime",
-      ));
+      return Ok(Command::RowFilter {
+        action: RowFilterAction::Drop,
+        condition: parse_row_condition(body)?,
+      });
     }
     return Err(ParseError::new(
       "drop cannot combine a variable list with an if clause",
@@ -2105,6 +2136,22 @@ fn parse_drop_command(body: &str) -> Result<Command, ParseError> {
       .map(|argument| argument.text)
       .collect(),
   })
+}
+
+fn parse_row_condition(body: &str) -> Result<GenerateExpression, ParseError> {
+  if let Some(error) = condition_syntax_error(body) {
+    return Err(error);
+  }
+  let expression_body = first_top_level_comma(body).map_or(body, |index| &body[..index]);
+  let tokens = tokenize(expression_body)?;
+  let start = tokens
+    .iter()
+    .position(|token| {
+      matches!(token.kind, TokenKind::Identifier { quoted: false })
+        && token.text.eq_ignore_ascii_case("if")
+    })
+    .ok_or_else(|| ParseError::new("missing expression after if"))?;
+  GenerateExpressionParser::new(tokens.into_iter().skip(start + 1).collect()).parse()
 }
 
 fn condition_syntax_error(body: &str) -> Option<ParseError> {
@@ -2158,57 +2205,41 @@ fn condition_syntax_error(body: &str) -> Option<ParseError> {
 }
 
 fn keep_condition_has_options(body: &str) -> bool {
-  let characters: Vec<char> = body.chars().collect();
+  first_top_level_comma(body).is_some_and(|index| {
+    !body[index + 1..]
+      .trim_matches(is_command_whitespace)
+      .is_empty()
+  })
+}
+
+// Function argument commas are expression syntax, not command option boundaries.
+fn first_top_level_comma(text: &str) -> Option<usize> {
+  let bytes = text.as_bytes();
+  let mut quote = None;
+  let mut depth = 0usize;
   let mut index = 0;
-  let mut condition_seen = false;
-  while index < characters.len() {
-    if matches!(characters[index], '\'' | '"' | '`') {
-      let quote = characters[index];
-      index += 1;
-      while index < characters.len() {
-        if characters[index] == quote {
-          if quote == '`' && characters.get(index + 1) == Some(&'`') {
-            index += 2;
-            continue;
-          }
-          index += 1;
-          break;
+  while index < bytes.len() {
+    let character = bytes[index];
+    if let Some(active) = quote {
+      if character == active {
+        if bytes.get(index + 1) == Some(&active) {
+          index += 2;
+          continue;
         }
-        index += 1;
+        quote = None;
       }
-      continue;
-    }
-    if characters[index].is_alphabetic() || characters[index] == '_' {
-      let start = index;
-      index += 1;
-      while index < characters.len()
-        && (characters[index].is_alphanumeric() || characters[index] == '_')
-      {
-        index += 1;
+    } else {
+      match character {
+        b'\'' | b'"' | b'`' => quote = Some(character),
+        b'(' => depth += 1,
+        b')' => depth = depth.saturating_sub(1),
+        b',' if depth == 0 => return Some(index),
+        _ => {}
       }
-      if !condition_seen
-        && characters[start..index]
-          .iter()
-          .collect::<String>()
-          .eq_ignore_ascii_case("if")
-      {
-        condition_seen = true;
-      }
-      continue;
-    }
-    if condition_seen && characters[index] == ',' {
-      let mut lookahead = index + 1;
-      while characters
-        .get(lookahead)
-        .is_some_and(|character| is_command_whitespace(*character))
-      {
-        lookahead += 1;
-      }
-      return characters.get(lookahead).is_some();
     }
     index += 1;
   }
-  false
+  None
 }
 
 fn parse_sort_command(body: &str) -> Result<Command, ParseError> {
@@ -9518,14 +9549,6 @@ mod tests {
   #[test]
   fn rejects_invalid_summarize_syntax_with_exact_diagnostics() {
     let cases = [
-      (
-        "summarize age if age > 0",
-        "summarize does not accept if clauses or options",
-      ),
-      (
-        "summarize age, detail",
-        "summarize does not accept if clauses or options",
-      ),
       (
         "summarize age = other",
         "summarize does not accept assignment syntax",
