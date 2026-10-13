@@ -160,6 +160,75 @@ fn failed_transformations_and_refused_overwrite_do_not_report_success_or_lose_da
   assert!(!fixture.0.join("invalid.csv").exists());
 }
 
+#[test]
+fn interactive_run_streams_nested_results_in_order_then_reports_completion() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("child.td"),
+    "generate z = x * 2\nsql \"\"\"\nselect 42 as answer\n\"\"\"\nsummarize z\ncount\n",
+  )
+  .unwrap();
+  fs::write(
+    fixture.0.join("parent.td"),
+    "use data.csv\nsummarize y\nrun child.td\ncount\n",
+  )
+  .unwrap();
+  let output = run(&fixture, b"run parent.td\ncount\nexit\n");
+  assert!(output.status.success());
+  assert!(
+    output.stderr.is_empty(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  let mut remaining = stdout.as_str();
+  for expected in [
+    "Loaded 2 rows, 2 columns",
+    "y\t1\t2\tNA\t2\t2\n",
+    "Generated: 2 rows, 3 columns",
+    "answer\n42\n(1 rows shown)\n",
+    "z\t2\t4\t",
+    "2 rows\n",
+    "2 rows\n",
+    "Executed 7 commands from ",
+  ] {
+    let index = remaining
+      .find(expected)
+      .unwrap_or_else(|| panic!("missing/out-of-order {expected}: {stdout}"));
+    remaining = &remaining[index + expected.len()..];
+  }
+  assert!(remaining.ends_with("parent.td\n2 rows\n"));
+  assert_eq!(stdout.matches("Executed ").count(), 1);
+}
+
+#[test]
+fn nested_script_error_keeps_prior_output_and_state_then_returns_to_the_shell() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("child.td"),
+    "count\nuse missing.csv\ncount\n",
+  )
+  .unwrap();
+  fs::write(
+    fixture.0.join("parent.td"),
+    "use data.csv\nrun child.td\nexport must-not-exist.csv\n",
+  )
+  .unwrap();
+  let output = run(&fixture, b"run parent.td\ncount\nexit\n");
+  assert!(output.status.success());
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 1);
+  assert!(stderr.contains(&format!(
+    "{}:2:",
+    fixture.0.join("child.td").canonicalize().unwrap().display()
+  )));
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  assert!(stdout.starts_with("Loaded 2 rows, 2 columns"));
+  assert!(stdout.ends_with("2 rows\n2 rows\n"));
+  assert!(!stdout.contains("Executed "));
+  assert!(!fixture.0.join("must-not-exist.csv").exists());
+}
+
 fn close_to_reference(actual: &str, expected: &serde_json::Value) {
   let actual: f64 = actual.parse().unwrap();
   let expected = expected.as_f64().unwrap();

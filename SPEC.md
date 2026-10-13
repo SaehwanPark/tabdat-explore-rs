@@ -1,12 +1,9 @@
 # TabDat Explore Rust: current product and implementation contract
 
-**Snapshot:** refreshed documentation baseline plus the bounded script slice in
-[PR #195](https://github.com/SaehwanPark/tabdat-explore-rs/pull/195) and minimal
-interactive shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/pull/196),
-with core EDA outcome reporting in [PR #197](https://github.com/SaehwanPark/tabdat-explore-rs/pull/197)
-and bounded linear-analysis reporting in [PR #198](https://github.com/SaehwanPark/tabdat-explore-rs/pull/198).
-Verification details are in the PR threads and [script evidence](docs/migration/phase3-scripts.md).
-Update this summary when implementation changes.
+**Status:** current supported behavior is summarized below; source/tests are
+authoritative. Verification details are in the relevant PR threads and
+[script evidence](docs/migration/phase3-scripts.md). Update this summary when
+implementation changes.
 
 ## Product intent
 
@@ -27,7 +24,7 @@ in [the preceding SPEC revision](https://github.com/SaehwanPark/tabdat-explore-r
 | --- | --- | --- |
 | Binary and CLI | Batch `-c`, scripts `-f`/positional, help, discovery, bounded JSON | No-argument invocation starts a persistent line session; batch/script output unchanged |
 | Interactive shell | Line-oriented session, recoverable command errors, terminal-only prompts, exit/EOF; readable core inspection/frequency tables and transformation/save/export outcomes | No history, completion, multiline input or recoverable Ctrl-C cancellation; other result details explicitly deferred |
-| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
+| Scripts | Line commands, comments, multiline SQL, macros, seed, `if`/`else`/`end`, nested `run` with errors; interactive runs stream readable leaf results | Bounded 91-call compatibility evidence with five explicit seed deviations; seed records context only, not RNG state |
 | Data loading and storage | Bounded local eager CSV/Parquet, local save/export paths | Broad remote/lazy and DTA runtime not installed |
 | Data exploration | Bounded inspection, summaries, frequency tables and preview operations | Not all accepted syntax executes |
 | Data transformation | Bounded projection, expressions, sort, recode/labels, join/append/reshape, named-table SQL and related operations | Exact support is command/option-specific; do not claim general parity |
