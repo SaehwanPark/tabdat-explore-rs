@@ -1,14 +1,1 @@
-[
-  {
-    "input": "by: summarize age",
-    "difference": "expected error \"unknown command: by\", got Err(ParseError { message: \"unknown command: by:\" })"
-  },
-  {
-    "input": "collapse mean age, by()",
-    "difference": "expected error \"option by expects at least one value\", got Err(ParseError { message: \"collapse by() expects at least one grouping variable\" })"
-  },
-  {
-    "input": "reshape long income, i() j(year)",
-    "difference": "expected error \"option i expects at least one value\", got Err(ParseError { message: \"reshape expects exactly one i(id_vars) option\" })"
-  }
-]
+[]
