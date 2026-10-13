@@ -32,6 +32,17 @@ MCP is a typed transport-independent tool boundary, **not a server**. The core
 schema/state and workspace exit gates are demonstrated; this is not Phase 3+
 whole-command, REPL, native runtime or release acceptance.
 
+## Phase 3 language reconciliation (in progress)
+
+[Language migration evidence](docs/migration/phase3-language.md) records a pinned
+Python parser corpus: 672 unique calls from 489 passing tests, replayed for Rust
+acceptance, typed variant and exact diagnostics. Remaining differences are explicit
+in `crates/tabdat-language/tests/fixtures/python-parser-gaps.json`, not approved
+deviations. The language now accepts the remaining no-option `estat` diagnostics
+and typed report/spatial option forms; execution remains unchanged (VIF only).
+Artifact generation and spatial diagnostics are not implemented by this syntax
+slice. Full AST, script, property/fuzz and whole-phase acceptance remain pending.
+
 ## Current behavior
 
 The Rust 2024 binary delegates to `tabdat-shell`: existing batch/script CLI,

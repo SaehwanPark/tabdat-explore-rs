@@ -1159,8 +1159,8 @@ pub struct TtestCommand {
   pub welch: bool,
 }
 
-/// The no-option post-estimation diagnostics accepted by this bounded `estat` parser slice.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Post-estimation diagnostic syntax; options exist only on applicable variants.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EstatSubcommand {
   Residuals,
@@ -1171,6 +1171,20 @@ pub enum EstatSubcommand {
   Drdid,
   Dml,
   Bayes,
+  Report {
+    saving: Option<String>,
+    open_artifact: bool,
+  },
+  SpatialCoordinates {
+    latitude: String,
+    longitude: String,
+    knn: i64,
+  },
+  SpatialWeights {
+    path: String,
+    id_variable: String,
+    contiguity: SpregressContiguity,
+  },
   /// Report variance inflation factors for a linear regression model.
   Vif,
   /// Report the first-stage diagnostic for an IV model.
@@ -1183,7 +1197,7 @@ pub enum EstatSubcommand {
   Hausman,
 }
 
-/// A no-option `estat` form accepted by the language layer; runtime support is
+/// An `estat` form accepted by the language layer; runtime support is
 /// subcommand-specific.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EstatCommand {

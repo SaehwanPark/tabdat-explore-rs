@@ -75,3 +75,25 @@ gaps. This does not establish report/spatial syntax or diagnostic execution.
 Local formatting, locked workspace check/test/Clippy and diff verification pass.
 Three owner review passes covered enum/serialization, parser/error behavior, and
 execution/dependency scope; no actionable findings. No delegated review claimed.
+
+## Slice 3: estat report and spatial option syntax
+
+**Python contract:** pinned `_parse_estat` accepts report saving/noopen; spatial
+coordinates with positive integer KNN (default 5), or weights file plus required
+ID and queen/rook contiguity (default queen). It rejects mutually exclusive
+sources and inapplicable options before constructing the command.
+
+**Rust contract:** variant-specific owned fields on `EstatSubcommand` avoid
+independently nullable report/coordinate/file options. Existing no-option JSON
+representations remain unchanged; new option variants are additive internal
+syntax representations. Runtime still supports only VIF.
+
+**Test contract:** failing-before-implementation acceptance tests, retained-field
+and default tests, plus full pinned corpus replay. Thirteen more differences
+resolved; **27 remain**. No corpus cases are dropped or oracle outputs rewritten.
+
+**Implementation mapping:** safe domain enum and language option validation;
+no backend, artifact I/O, statistical or spatial execution added. All root Cargo
+checks and diff check passed. Three local owner review passes checked finite
+state/JSON, options/diagnostics, and unchanged runtime dispatch; no actionable
+issues remained. These are not independent model/hosted reviews.
