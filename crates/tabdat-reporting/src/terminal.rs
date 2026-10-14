@@ -235,6 +235,58 @@ fn ttest(result: &tabdat_domain::TtestResult) -> String {
   output
 }
 
+fn label_key(key: &tabdat_domain::LabelValue) -> String {
+  match key {
+    tabdat_domain::LabelValue::Integer(value) => format!("integer {value}"),
+    tabdat_domain::LabelValue::Number(value) => format!("number {value:?}"),
+    tabdat_domain::LabelValue::Text(value) => format!("text {value:?}"),
+  }
+}
+
+fn label(result: &tabdat_domain::LabelResult) -> String {
+  use tabdat_domain::LabelResultAction;
+  let action = match result.action {
+    LabelResultAction::Variable => "variable",
+    LabelResultAction::Define => "define",
+    LabelResultAction::Values => "values",
+    LabelResultAction::List => "list",
+    LabelResultAction::Drop => "drop",
+  };
+  let mut output = format!("Label {action}: {}\n", result.message.escape_debug());
+  let Some(metadata) = &result.metadata else {
+    output.push_str("No label metadata.\n");
+    return output;
+  };
+  output.push_str("Variable labels:\n");
+  if metadata.variable_labels.is_empty() {
+    output.push_str("  (none)\n");
+  }
+  for (variable, text) in &metadata.variable_labels {
+    writeln!(output, "  {variable:?} -> {text:?}").unwrap();
+  }
+  output.push_str("Attachments:\n");
+  if metadata.attachments.is_empty() {
+    output.push_str("  (none)\n");
+  }
+  for (variable, set) in &metadata.attachments {
+    writeln!(output, "  {variable:?} -> {set:?}").unwrap();
+  }
+  output.push_str("Value-label sets:\n");
+  if metadata.value_sets.is_empty() {
+    output.push_str("  (none)\n");
+  }
+  for set in &metadata.value_sets {
+    writeln!(output, "  {:?}:", set.name).unwrap();
+    if set.mappings.is_empty() {
+      output.push_str("    (none)\n");
+    }
+    for (key, text) in &set.mappings {
+      writeln!(output, "    {} -> {text:?}", label_key(key)).unwrap();
+    }
+  }
+  output
+}
+
 /// Present core workflow guidance or a packaged reference topic without execution.
 pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
   match topic {
@@ -242,7 +294,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "Interactive core workflow\n",
       "  Load local eager CSV/Parquet: use <path>\n",
       "  Inspect: describe, codebook [variables], summarize [variables], missing [variables], tabulate, count, head/tail\n",
-      "  Transform: generate, replace, rename, sort/gsort, keep/drop/select\n",
+      "  Transform: generate, replace, rename, sort/gsort, keep/drop/select, encode/decode, label\n",
       "  Linear analysis: regress, predict, lincom, test\n",
       "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
       "  Scripts/files: run <script.td>, save <file.parquet>, export <file.csv>\n",
@@ -394,6 +446,9 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ExecutionResult::Table(result) => table(&result.headers, &result.rows),
     ExecutionResult::Tabulate(result) => table(&result.headers, &result.rows),
     ExecutionResult::Collapse(result) => dataset_outcome("Collapsed", &result.dataset),
+    ExecutionResult::Encode(result) => dataset_outcome("Encoded", &result.dataset),
+    ExecutionResult::Decode(result) => dataset_outcome("Decoded", &result.dataset),
+    ExecutionResult::Label(result) => label(result),
     ExecutionResult::Generate(result) => dataset_outcome("Generated", &result.dataset),
     ExecutionResult::Replace(result) => dataset_outcome("Replaced", &result.dataset),
     ExecutionResult::Rename(result) => dataset_outcome("Renamed", &result.dataset),
