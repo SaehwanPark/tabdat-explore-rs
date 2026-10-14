@@ -188,6 +188,18 @@ state are handled correctly.
   contrasts, exact wide/quoted/native predicates, read-only state, nested text/JSON,
   analysis/persistence, recovery/errors and output guards are checked. No variable
   counts/options, grouped conditional counts or broader expression grammar is added.
+  Selected-cohort linear estimation (#241) now fits the existing bounded regress
+  estimators (OLS/WLS/GLS, nonrobust/HC1/cluster covariance, intercept
+  conventions) on TRUE predicate rows without filtering active data. FALSE/UNKNOWN
+  rows are excluded before finite outcome/predictor, cluster and weight validation;
+  the estimation sample retains original active-row indices, total rows, exclusion
+  counts and aligned weights/clusters. Successful fits replace the cached model and
+  failed attempts clear it under existing policy; lincom/test/VIF consume the
+  retained design while prediction stays current-data. Independent statsmodels
+  selected-row references, bare-versus-selected sample contrasts, read-only state,
+  nested JSON/text/persistence and failure/output guards are checked. No numeric/
+  string truthiness, functions, logical breadth, richer formulas, temporary
+  filtering or automatic refits are added.
   Key-integrity terminal/JSON reporting (#232) now exposes existing duplicates/
   isid aggregates for diagnosis→validated lookup→join/analysis/persistence.
   Exact native NULL/nonfinite/key counters, missok failure rules, empty/repeated/

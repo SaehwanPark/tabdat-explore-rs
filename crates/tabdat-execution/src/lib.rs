@@ -119,6 +119,9 @@ impl Session {
       Command::Append { table_name } => self.execute_append(&table_name),
       Command::Reshape { command } => self.execute_reshape(&command),
       Command::Regress { command } => self.execute_regress(&command),
+      Command::RegressQuery { command, condition } => {
+        self.execute_regress_query(&command, &condition)
+      }
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

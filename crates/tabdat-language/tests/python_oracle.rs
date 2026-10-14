@@ -24,6 +24,14 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       ));
       continue;
     }
+    // Selected-cohort linear fitting intentionally enables this old rejection too.
+    if input == "regress cost age if age > 18" {
+      assert!(matches!(
+        result,
+        Ok(tabdat_domain::Command::RegressQuery { .. })
+      ));
+      continue;
+    }
     if input == "count age" {
       assert_eq!(
         result.unwrap_err().message(),

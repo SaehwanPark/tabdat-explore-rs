@@ -183,6 +183,11 @@ pub enum Command {
   Sql { command: SqlCommand },
   /// Fit a linear regression model (execution is deferred).
   Regress { command: RegressCommand },
+  /// Fit a linear model on TRUE predicate rows, retaining original sample indices.
+  RegressQuery {
+    command: RegressCommand,
+    condition: GenerateExpression,
+  },
   /// Fit a logistic regression model (execution is deferred).
   Logit { command: LogitCommand },
   /// Fit a probit regression model (execution is deferred).
@@ -470,8 +475,7 @@ pub enum RegressEstimator {
   Gls,
 }
 
-/// The parser-only `regress` form retained for a later statistical runtime
-/// slice.
+/// Supported linear estimator, covariance, weight and intercept conventions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegressCommand {
   /// The dependent variable.

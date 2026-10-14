@@ -50,7 +50,11 @@ impl Command {
       Self::BayesPlot { .. } => {
         required.extend([Bayesian, Plotting, FileIo]);
       }
-      Self::Regress { .. } | Self::Lincom { .. } | Self::Test { .. } | Self::Ttest { .. } => {
+      Self::Regress { .. }
+      | Self::RegressQuery { .. }
+      | Self::Lincom { .. }
+      | Self::Test { .. }
+      | Self::Ttest { .. } => {
         required.extend([Data, LinearStatistics]);
       }
       Self::IvRegress { .. }

@@ -2969,7 +2969,7 @@ fn regress_identifier_option(
 
 fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "regress expects syntax: regress <y> <xvars>";
-  let (argument_body, option_body) = match first_unquoted_comma(body) {
+  let (argument_body, option_body) = match first_top_level_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
     None => (body, None),
   };
@@ -2978,16 +2978,17 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
     .map(parse_use_options)
     .transpose()?
     .unwrap_or_default();
-
   let parts = parse_simple_body(argument_body, false)?;
-  if parts.has_condition
-    || parts.has_options
-    || parts.has_assignment
-    || parts.missing_condition_expression
-    || parts.arguments.len() < 2
-  {
+  if parts.has_options || parts.has_assignment || parts.arguments.len() < 2 {
     return Err(ParseError::new(syntax));
   }
+  if parts.missing_condition_expression {
+    return Err(ParseError::new("missing expression after if"));
+  }
+  let condition = parts
+    .has_condition
+    .then(|| parse_row_condition(argument_body))
+    .transpose()?;
 
   let mut unsupported = options
     .iter()
@@ -3057,19 +3058,21 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
     (RegressEstimator::Ols, None)
   };
 
-  Ok(Command::Regress {
-    command: RegressCommand {
-      outcome: parts.arguments[0].text.clone(),
-      predictors: parts.arguments[1..]
-        .iter()
-        .map(|argument| argument.text.clone())
-        .collect(),
-      estimator,
-      weight_variable,
-      robust,
-      cluster_variable,
-      include_intercept: !options.iter().any(|option| option.name == "noconstant"),
-    },
+  let command = RegressCommand {
+    outcome: parts.arguments[0].text.clone(),
+    predictors: parts.arguments[1..]
+      .iter()
+      .map(|argument| argument.text.clone())
+      .collect(),
+    estimator,
+    weight_variable,
+    robust,
+    cluster_variable,
+    include_intercept: !options.iter().any(|option| option.name == "noconstant"),
+  };
+  Ok(match condition {
+    Some(condition) => Command::RegressQuery { command, condition },
+    None => Command::Regress { command },
   })
 }
 
@@ -11625,10 +11628,7 @@ mod tests {
         "regress cost",
         "regress expects syntax: regress <y> <xvars>",
       ),
-      (
-        "regress cost age if age > 18",
-        "regress expects syntax: regress <y> <xvars>",
-      ),
+      ("regress cost age if", "missing expression after if"),
       (
         "regress cost age, robust cluster(sex)",
         "regress cannot combine robust and cluster",
