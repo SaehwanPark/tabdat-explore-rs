@@ -155,6 +155,12 @@ state are handled correctly.
   Exact native NULL/nonfinite/key counters, missok failure rules, empty/repeated/
   quoted keys, read-only state, nested/error/output guards are checked without
   duplicate repair, coercion or persistent cardinality enforcement.
+  Assertion/fingerprint terminal/JSON reporting (#233) now completes bounded
+  script-precondition→current-data record→analysis/prediction/persistence workflows.
+  Exact owned fields, pinned digest/Parquet roundtrip, schema/order sensitivity,
+  current-versus-model samples, read-only state, NULL/empty behavior, nested/terminal
+  recovery and output guards are checked. No new predicate/hash semantics, file-byte
+  checksum, authentication, saved-signature verification or lazy execution is added.
   Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
   previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
   prior-order ties, quoted/repeated/empty keys, native schema, nested streams and
