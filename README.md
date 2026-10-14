@@ -211,6 +211,22 @@ named relations and cached fits/samples are preserved. Selected counts and
 percentages are checked against a development-only pandas reference with exact
 counts and absolute percentage tolerance `1e-10` (no production Python dependency).
 
+`regress y xvars if expr` now fits the existing bounded linear estimators
+(OLS/WLS/GLS with nonrobust/HC1/cluster covariance and intercept conventions)
+on the TRUE predicate cohort without filtering active rows. FALSE/UNKNOWN rows
+are excluded before finite outcome/predictor, cluster and weight validation, and
+the estimation sample keeps original active-row indices, total rows and
+exclusion counts alongside aligned weights/clusters. Active data, schema, order,
+labels, named relations and source stay read-only; a successful fit replaces the
+cached model, while a failed attempted regression clears it under existing
+policy. `lincom`/`test`/`estat vif` consume the retained selected design and
+`predict` remains current-data prediction with fitted coefficients. Predicates
+reuse the bounded TRUE subset (no numeric/string truthiness, functions or
+logical breadth); temporary filtering and automatic refits stay unsupported.
+Coefficients, inference, VIF and predictions are checked against a
+development-only statsmodels selected-row reference with exact sample/cluster/
+weight membership (no production Python dependency).
+
 `generate` and `replace` return additive `GenerateResult`/`ReplaceResult`
 envelopes with `data.dataset` post-transform metadata. Source path, total row
 count and ordered native schema are supplied, not changed-cell counts or overflow
