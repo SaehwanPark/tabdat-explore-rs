@@ -257,6 +257,18 @@ fields stay null placeholders. Empty/self/repeated appends and ordinary
 validation/type/file/output boundaries are checked; native publication faults
 are not injected and no general atomicity guarantee is added. See `help append`.
 
+Only `by groups: count` is admitted as grouped CLI-v1 JSON execution. It returns
+owned `ByResult` `data.headers`/`rows`: raw group columns in requested order,
+then `Count`; native ascending NULL-last group order; COUNT(*) includes SQL
+NULL-key groups, and stored empty strings are distinct. Counts reconcile to
+all rows, with no finite-sample filtering or label substitution. Empty input
+has headers and no groups. Existing scalar policy applies; distinct native
+NaN and SQL NULL keys both encode as null, without merging their counted groups.
+Counting/reporting is read-only for data, labels, named state and cached fits.
+Other `by` children/nested by commands are not admitted. Grouped summaries are
+existing native AVG means, not the ordinary finite summarize contract; their
+JSON admission is deferred for separate statistical review. See `help by`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and

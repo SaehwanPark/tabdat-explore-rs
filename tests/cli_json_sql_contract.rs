@@ -342,6 +342,11 @@ fn query_reporting_validation_and_binder_failures_preserve_state_and_cached_orig
       .retained_indices,
     [0, 1, 2]
   );
-  let grouped = execute(&mut session, "by x: summarize x");
-  assert!(tabdat_reporting::json_results::serialize_execution_result(&grouped).is_none());
+  let grouped_command = parse_command("by x: summarize x").unwrap();
+  assert!(!tabdat_reporting::json_results::supports_batch_command(
+    &grouped_command
+  ));
+  assert!(!tabdat_reporting::json_results::supports_script_command(
+    &grouped_command
+  ));
 }

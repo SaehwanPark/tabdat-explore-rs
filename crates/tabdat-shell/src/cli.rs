@@ -33,7 +33,8 @@ options:
   -f, --file FILE       run a TabDat script file and exit
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
-                        supports use/describe/count/codebook/summarize/missing/tabulate/head/tail
+                        supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
+                        by ...: count
                         and generate/replace/rename/recode/label/encode/decode/sql/join/append,
                         keep/drop/select variable lists, sort/gsort,
                         regress/predict/lincom/test/ttest/estat vif, save/export;

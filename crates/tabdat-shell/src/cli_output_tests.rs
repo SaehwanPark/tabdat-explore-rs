@@ -737,6 +737,73 @@ fn append_output_failure_stops_later_stacking_and_files() {
 }
 
 #[test]
+fn grouped_count_output_failure_stops_later_counts_and_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=6 {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("counted.csv");
+        let second = fixture.0.join("second.csv");
+        let first_export = format!("export \"{}\"", first.display());
+        let second_export = format!("export \"{}\"", second.display());
+        let commands = [
+          "by x: count",
+          "by x y: count",
+          &first_export,
+          "by y: count",
+          &second_export,
+        ];
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, commands.join("\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            commands[0],
+            "-c",
+            commands[1],
+            "-c",
+            commands[2],
+            "-c",
+            commands[3],
+            "-c",
+            commands[4],
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 4);
+        assert_eq!(second.exists(), fail_at == 6);
+        for path in [&first, &second] {
+          if path.exists() {
+            assert_eq!(
+              std::fs::read_to_string(path).unwrap(),
+              "x,y\n1,2\n2,5\n3,5\n4,9\n"
+            );
+          }
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {
