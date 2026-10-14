@@ -115,6 +115,7 @@ impl Command {
       | Self::Collapse { .. }
       | Self::Rename { .. }
       | Self::Count
+      | Self::CountQuery { .. }
       | Self::Head { .. }
       | Self::Tail { .. }
       | Self::Sql { .. } => {

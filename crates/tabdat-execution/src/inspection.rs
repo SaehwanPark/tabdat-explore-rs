@@ -22,6 +22,39 @@ impl Session {
       row_count: dataset.row_count,
     }))
   }
+  pub(crate) fn execute_count_query(
+    &self,
+    condition: GenerateExpression,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "count" })?;
+    let predicate =
+      bounded_expression_to_assert(&condition).ok_or(RuntimeError::CountUnsupportedPredicate)?;
+    let unknown = expression_identifiers(&predicate)
+      .into_iter()
+      .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::CountUnknownVariable { variables: unknown });
+    }
+    let domain = expression_domain(&predicate, dataset).map_err(|error| match error {
+      RuntimeError::AssertTypeMismatch { message } => {
+        RuntimeError::CountPredicateTypeMismatch { message }
+      }
+      other => other,
+    })?;
+    if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+      return Err(RuntimeError::CountRequiresBoolean);
+    }
+    let backend = self.backend.as_ref().ok_or(RuntimeError::CountFailed)?;
+    let row_count = backend
+      .count_rows_if(&predicate, dataset)
+      .map_err(|_| RuntimeError::CountFailed)?;
+    Ok(ExecutionResult::Count(CountResult { row_count }))
+  }
+
   pub(crate) fn execute_summarize(
     &self,
     variables: Vec<String>,

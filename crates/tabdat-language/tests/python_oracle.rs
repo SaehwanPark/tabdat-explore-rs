@@ -15,6 +15,22 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
   for case in cases {
     let input = case["input"].as_str().unwrap();
     let result = parse_command(input);
+    // Conditional count is intentionally installed beyond this pinned parser.
+    // Keep the original corpus unchanged and verify the two deliberate differences.
+    if input == "count if age > 18" {
+      assert!(matches!(
+        result,
+        Ok(tabdat_domain::Command::CountQuery { .. })
+      ));
+      continue;
+    }
+    if input == "count age" {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "count does not accept arguments, options, or assignment syntax"
+      );
+      continue;
+    }
     let mismatch = if let Some(expected) = case["error"].as_str() {
       match result {
         Err(error) if error.message() == expected => None,

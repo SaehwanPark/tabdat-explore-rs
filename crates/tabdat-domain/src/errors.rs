@@ -137,6 +137,16 @@ pub enum RuntimeError {
   ExportFailed { path: PathBuf },
   /// DuckDB could not produce the requested preview.
   PreviewFailed { command: &'static str },
+  /// The count predicate names variables absent from the active schema.
+  CountUnknownVariable { variables: Vec<String> },
+  /// Conditional count requires a boolean/null predicate.
+  CountRequiresBoolean,
+  /// The count predicate has incompatible operand domains.
+  CountPredicateTypeMismatch { message: String },
+  /// Parsed function predicates are outside bounded count execution.
+  CountUnsupportedPredicate,
+  /// DuckDB could not count the selected rows.
+  CountFailed,
   /// The summary request named variables absent from the active schema.
   SummaryUnknownVariable { variables: Vec<String> },
   /// The summary request named variables that are not numeric.
@@ -560,6 +570,19 @@ impl fmt::Display for RuntimeError {
       ),
       Self::ExportFailed { path } => write!(formatter, "export failed: {}", path.display()),
       Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
+      Self::CountUnknownVariable { variables } => write!(
+        formatter,
+        "count unknown variable: {}",
+        variables.join(", ")
+      ),
+      Self::CountRequiresBoolean => {
+        formatter.write_str("count predicate requires boolean expression")
+      }
+      Self::CountPredicateTypeMismatch { message } => formatter.write_str(message),
+      Self::CountUnsupportedPredicate => {
+        formatter.write_str("count predicate does not support function calls")
+      }
+      Self::CountFailed => formatter.write_str("count failed"),
       Self::SummaryUnknownVariable { variables } => write!(
         formatter,
         "summarize unknown variable: {}",

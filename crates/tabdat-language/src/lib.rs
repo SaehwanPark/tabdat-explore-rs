@@ -1047,15 +1047,17 @@ fn parse_inspection_command(name: &str, body: &str) -> Result<Command, ParseErro
   }
 
   if name == "count" {
-    if parts.arguments.is_empty()
-      && !parts.has_options
-      && !parts.has_assignment
-      && !parts.has_condition
-    {
-      return Ok(Command::Count);
+    if parts.arguments.is_empty() && !parts.has_options && !parts.has_assignment {
+      return if parts.has_condition {
+        Ok(Command::CountQuery {
+          condition: parse_row_condition(body)?,
+        })
+      } else {
+        Ok(Command::Count)
+      };
     }
     return Err(ParseError::new(
-      "count does not accept arguments, if clauses, options, or assignment syntax",
+      "count does not accept arguments, options, or assignment syntax",
     ));
   }
 
@@ -10738,15 +10740,12 @@ mod tests {
     let cases = [
       (
         "count 1",
-        "count does not accept arguments, if clauses, options, or assignment syntax",
+        "count does not accept arguments, options, or assignment syntax",
       ),
-      (
-        "count if x",
-        "count does not accept arguments, if clauses, options, or assignment syntax",
-      ),
+      ("count if", "missing expression after if"),
       (
         "count, detail",
-        "count does not accept arguments, if clauses, options, or assignment syntax",
+        "count does not accept arguments, options, or assignment syntax",
       ),
       ("count = 1", "count assignment requires a target before ="),
       ("count == 1", "unsupported token in command: =="),

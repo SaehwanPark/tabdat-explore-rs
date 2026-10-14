@@ -173,6 +173,8 @@ pub enum Command {
   },
   /// Count rows in the active dataset.
   Count,
+  /// Count TRUE predicate rows without changing the active dataset.
+  CountQuery { condition: GenerateExpression },
   /// Preview the first `limit` rows of the active dataset.
   Head { limit: RowLimit },
   /// Preview the last `limit` rows of the active dataset.
