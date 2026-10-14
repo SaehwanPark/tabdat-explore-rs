@@ -66,6 +66,13 @@ control-safe names/scalars, recovery/locations and every terminal I/O boundary a
 checked. Exhaustive matching makes future result variants require a display decision.
 No new backend/parser/JSON admission, rescans or transaction guarantees are implied.
 
+Readable one-shot batch/script output is now opt-in via `--text` (#238), sharing
+the owned renderer while retaining quiet defaults and existing CLI-v1 JSON.
+Use→EDA→fit/inference/predict→persistence, native grouped means outside JSON,
+file/nested/batch-run leaf order, mode conflicts, source exits and every output/
+diagnostic failure boundary are covered. Text is a human surface, not a machine
+schema; no new scans, calculations or parser-command/backend breadth is added.
+
 **Goal:** common local-data workflows are functional through the actual CLI/REPL.
 
 - `use`, `describe`, `head`/`tail`, `summarize`, `tabulate`, a practical subset of
