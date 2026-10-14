@@ -83,10 +83,8 @@ clear benefit, returning conclusions and file/test evidence. See
 skills. No particular harness, subagent topology, quota-monitoring tool, or
 model route is required.
 
-Never wait/sleep through a model quota reset or promise unattended continuation.
-If blocked, leave a compact handoff: branch/commit, changes, focused test
-results, remaining issue, next command or decision. Do not conceal failed tests.
-
 Use two-space indentation; preserve format-specific conventions. Keep functions
 organized so dependencies precede callers where practical. Never add non-breaking
 spaces to source or docs.
+
+For AI subscription quota/budget policy, refer to [ai-usage-policy](docs/ai-usage-policy.md)

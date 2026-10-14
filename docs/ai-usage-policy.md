@@ -18,3 +18,16 @@ command, harness, model tier or quota-percentage threshold.
 
 The previous codexbar-specific thresholds are historical operational practice,
 not requirements for future contributors or agents.
+
+## codexbar
+
+Use `codexbar` to identify AI budgets for 5-hour and weekly windows.
+
+```bash
+codexbar --provider codex
+```
+
+Default policy:
+
+- Session (5-hour window): When 5% or less is left, wait until session limits reset (you may use `sleep` command); allow 2 minutes buffer. For example, if limit resets in 15 minutes, wait 17 minutes.
+- Weekly (7-day window): When 3% or less is left, wrap up any ongoing tasks quickly, commit/push, and if applicable merge PR into main.
