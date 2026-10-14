@@ -1,5 +1,9 @@
 # reshape
 
+Terminal success now shows `Reshaped: N rows, K columns` using owned metadata,
+not guessed direction/stubs/changed-row diagnostics. Inspect the selected layout
+with `head`/`describe`; no reporting scan or pivot-semantics change is added.
+
 How to invoke:
 `reshape long|wide varlist, i(idvars) j(jvar)`
 

@@ -1,5 +1,9 @@
 # join
 
+Terminal success now shows `Joined: N rows, K columns` using the owned post-join
+metadata. Inspect actual values with `head`/`describe`; no key, direction, matched-row,
+cardinality or affected-row counters are inferred or rescanned.
+
 How to invoke:
 `join table_name on keyvars [, how=inner|left suffix(_right)]`
 

@@ -57,6 +57,15 @@ nested recovery and all terminal write/flush boundaries are checked. Existing JS
 parser/native coding and factor/ordinal semantics are unchanged; dictionary
 persistence and general label-aware formatting remain uninstalled.
 
+Every current owned result variant now has an explicit terminal display (#236):
+named cohort creation/activation and join/append/reshape/recode outcomes reuse
+owned metadata; grouped tables reuse raw scalar rendering with native-mean semantics
+made explicit. Cohort enrichment/stacking/cleaning→analysis/persistence and reshape
+layouts, exact owned/nested equivalence, native NULL/nonfinite/empty grouped means,
+control-safe names/scalars, recovery/locations and every terminal I/O boundary are
+checked. Exhaustive matching makes future result variants require a display decision.
+No new backend/parser/JSON admission, rescans or transaction guarantees are implied.
+
 **Goal:** common local-data workflows are functional through the actual CLI/REPL.
 
 - `use`, `describe`, `head`/`tail`, `summarize`, `tabulate`, a practical subset of
