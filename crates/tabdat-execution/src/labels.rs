@@ -333,6 +333,14 @@ impl Session {
     &self,
     command: TabulateCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    self.execute_frequency_query(command, None)
+  }
+
+  pub(crate) fn execute_frequency_query(
+    &self,
+    command: TabulateCommand,
+    condition: Option<GenerateExpression>,
+  ) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
@@ -378,12 +386,37 @@ impl Session {
       return Err(RuntimeError::TabulateUnknownVariable { variables: unknown });
     }
 
+    let predicate = condition
+      .as_ref()
+      .map(|condition| {
+        let predicate = bounded_expression_to_assert(condition)
+          .ok_or(RuntimeError::TabulateUnsupportedPredicate)?;
+        let unknown = expression_identifiers(&predicate)
+          .into_iter()
+          .filter(|name| !known_variables.contains(name.as_str()))
+          .collect::<Vec<_>>();
+        if !unknown.is_empty() {
+          return Err(RuntimeError::TabulateUnknownVariable { variables: unknown });
+        }
+        let domain = expression_domain(&predicate, dataset).map_err(|error| match error {
+          RuntimeError::AssertTypeMismatch { message } => {
+            RuntimeError::TabulatePredicateTypeMismatch { message }
+          }
+          other => other,
+        })?;
+        if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+          return Err(RuntimeError::TabulateRequiresBoolean);
+        }
+        Ok(predicate)
+      })
+      .transpose()?;
     let backend = self.backend.as_ref().ok_or(RuntimeError::TabulateFailed)?;
     let counts = backend
-      .tabulate_counts(
+      .tabulate_counts_if(
         row_variable,
         column_variable.map(String::as_str),
         command.include_missing,
+        predicate.as_ref().map(|predicate| (predicate, dataset)),
       )
       .map_err(|_| RuntimeError::TabulateFailed)?;
 

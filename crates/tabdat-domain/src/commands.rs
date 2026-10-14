@@ -99,7 +99,7 @@ pub enum Command {
   Label { command: LabelCommand },
   /// Produce bounded eager frequency tables for one or two variables.
   Tabulate { command: TabulateCommand },
-  /// Syntax-only conditional, multidimensional or value-aggregation table.
+  /// Bounded conditional frequencies; multidimensional/value aggregation forms parse only.
   TabulateQuery {
     command: TabulateCommand,
     condition: Option<GenerateExpression>,

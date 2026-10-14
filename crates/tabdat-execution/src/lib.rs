@@ -97,6 +97,11 @@ impl Session {
       Command::Decode { source, generate } => self.execute_decode(source, generate),
       Command::Label { command } => self.execute_label(command),
       Command::Tabulate { command } => self.execute_tabulate(command),
+      Command::TabulateQuery {
+        command,
+        condition,
+        aggregation: None,
+      } => self.execute_frequency_query(command, condition),
       Command::By { command } => self.execute_by(command),
       Command::Collapse { command } => self.execute_collapse(command),
       Command::RowFilter { action, condition } => self.execute_row_filter(action, condition),

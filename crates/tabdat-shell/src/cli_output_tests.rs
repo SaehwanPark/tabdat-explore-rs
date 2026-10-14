@@ -940,6 +940,65 @@ fn row_filter_output_failure_stops_later_selection_and_files() {
 }
 
 #[test]
+fn conditional_frequency_output_failures_stop_later_files_in_json_and_text() {
+  for mode in ["--json", "--text"] {
+    for script in [false, true] {
+      for write_failure in [false, true] {
+        for fail_at in 1..=6 {
+          let fixture = Fixture::new();
+          let first = fixture.0.join("first.csv");
+          let second = fixture.0.join("second.csv");
+          let later = fixture.0.join("later.csv");
+          let commands = [
+            fixture.load(),
+            "tabulate x if x > 1".into(),
+            format!("export {}", first.display()),
+            "tabulate x y if x < 4, row col missing".into(),
+            format!("export {}", second.display()),
+            "count".into(),
+            format!("export {}", later.display()),
+          ];
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", commands[0], child.display()),
+          )
+          .unwrap();
+          std::fs::write(&child, commands[1..].join("\n")).unwrap();
+          let args = if script {
+            arguments(&[mode, "-f", parent.to_str().unwrap()])
+          } else {
+            let mut args = vec![mode];
+            for command in &commands {
+              args.extend(["-c", command]);
+            }
+            arguments(&args)
+          };
+          let mut output = FailedOutput::new(write_failure, fail_at);
+          let mut errors = Vec::new();
+          let error = run_cli_with_output(args, &mut output, &mut errors).unwrap_err();
+          assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+          assert!(errors.is_empty());
+          assert_eq!(first.exists(), fail_at >= 3);
+          assert_eq!(second.exists(), fail_at >= 5);
+          assert!(!later.exists());
+          for path in [&first, &second] {
+            if path.exists() {
+              assert_eq!(
+                std::fs::read_to_string(path).unwrap(),
+                "x,y\n1,2\n2,5\n3,5\n4,9\n"
+              );
+            }
+          }
+          assert_eq!(output.flushes, fail_at - usize::from(write_failure));
+        }
+      }
+    }
+  }
+}
+
+#[test]
 fn conditional_summary_output_failure_stops_later_filters_and_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

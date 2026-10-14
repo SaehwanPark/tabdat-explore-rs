@@ -99,6 +99,18 @@ impl DuckDbBackend {
     column_variable: Option<&str>,
     include_missing: bool,
   ) -> Result<Vec<TabulateCount>, DataError> {
+    self.tabulate_counts_if(row_variable, column_variable, include_missing, None)
+  }
+
+  /// Select TRUE predicate rows, then apply category NULL exclusions before grouping.
+  /// The caller validates the predicate domain against the active dataset schema.
+  pub fn tabulate_counts_if(
+    &self,
+    row_variable: &str,
+    column_variable: Option<&str>,
+    include_missing: bool,
+    condition: Option<(&AssertExpression, &DatasetInfo)>,
+  ) -> Result<Vec<TabulateCount>, DataError> {
     let quoted_row = quote_identifier(row_variable);
     let quoted_column = column_variable.map(quote_identifier);
     let select_columns = quoted_column.as_ref().map_or_else(
@@ -110,13 +122,22 @@ impl DuckDbBackend {
       || format!("{quoted_row} ASC NULLS LAST"),
       |column| format!("{quoted_row} ASC NULLS LAST, {column} ASC NULLS LAST"),
     );
-    let where_sql = if include_missing {
-      String::new()
-    } else {
-      let mut predicates = vec![format!("{quoted_row} IS NOT NULL")];
+    let mut predicates = Vec::new();
+    if let Some((expression, dataset)) = condition {
+      predicates.push(format!(
+        "({})",
+        compile_assert_expression(expression, dataset)?
+      ));
+    }
+    if !include_missing {
+      predicates.push(format!("{quoted_row} IS NOT NULL"));
       if let Some(column) = quoted_column.as_ref() {
         predicates.push(format!("{column} IS NOT NULL"));
       }
+    }
+    let where_sql = if predicates.is_empty() {
+      String::new()
+    } else {
       format!(" WHERE {}", predicates.join(" AND "))
     };
     let query = format!(

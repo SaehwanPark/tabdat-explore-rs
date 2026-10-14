@@ -192,6 +192,17 @@ are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
 
+Read-only `tabulate r [c] if expr` and equivalent single-variable
+`rows()`/`columns()` forms select only TRUE predicate rows. FALSE/NULL rows are
+excluded; category SQL NULLs are then excluded unless `missing`. All percentage
+denominators use that selected category sample, not original dataset totals or a
+cached estimation sample. Arithmetic/comparisons/boolean columns/NULL reuse the
+bounded predicate subset; functions/logical-expression breadth, multiple keys
+per dimension and value aggregation remain unsupported. Active data, labels,
+named relations and cached fits/samples are preserved. Selected counts and
+percentages are checked against a development-only pandas reference with exact
+counts and absolute percentage tolerance `1e-10` (no production Python dependency).
+
 `generate` and `replace` return additive `GenerateResult`/`ReplaceResult`
 envelopes with `data.dataset` post-transform metadata. Source path, total row
 count and ordered native schema are supplied, not changed-cell counts or overflow
