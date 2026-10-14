@@ -145,6 +145,11 @@ state are handled correctly.
   Cohort→explicit refit→prediction/persistence, exact row identity, native NULL/
   nonfinite/arithmetic semantics, validation/staging and output guards are checked;
   functions/logical-expression breadth and general native atomicity remain out.
+  Read-only conditional summaries (#231) now reuse bounded TRUE predicates and
+  ordinary per-variable finite samples for every aggregate, without data/model
+  mutation or option/grouped-mean admission. NumPy/SciPy selected-row references,
+  asymmetric missingness, exact extrema/ordering, empty/singleton/native-error
+  paths, named/cache invariants, nested/persistence and output guards are checked.
   Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
   previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
   prior-order ties, quoted/repeated/empty keys, native schema, nested streams and

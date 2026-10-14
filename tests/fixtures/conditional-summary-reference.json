@@ -1,0 +1,64 @@
+{
+  "provenance": {
+    "python": "3.13.3",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "selection": "g='A': indices [0,1,2,5]; FALSE/UNKNOWN excluded, then per-variable finite non-NULL sample",
+    "method": "NumPy mean/min/max; scipy.stats.tstd(ddof=1)",
+    "tolerance": "max(1e-10 absolute, 1e-9 * abs(expected)); no display rounding"
+  },
+  "selected_indices": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "rows": [
+    {
+      "variable": "x",
+      "retained_indices": [
+        0,
+        5
+      ],
+      "count": 2,
+      "mean": 2.25,
+      "std_dev": 1.0606601717798212,
+      "minimum": 1.5,
+      "maximum": 3.0
+    },
+    {
+      "variable": "y",
+      "retained_indices": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "count": 4,
+      "mean": 3.75,
+      "std_dev": 1.707825127659933,
+      "minimum": 2.0,
+      "maximum": 6.0
+    },
+    {
+      "variable": "bad",
+      "retained_indices": [],
+      "count": 0,
+      "mean": null,
+      "std_dev": null,
+      "minimum": null,
+      "maximum": null
+    },
+    {
+      "variable": "singleton",
+      "retained_indices": [
+        5
+      ],
+      "count": 1,
+      "mean": 5.0,
+      "std_dev": null,
+      "minimum": 5.0,
+      "maximum": 5.0
+    }
+  ]
+}

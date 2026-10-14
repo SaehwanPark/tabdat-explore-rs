@@ -26,12 +26,43 @@ impl Session {
     &self,
     variables: Vec<String>,
   ) -> Result<ExecutionResult, RuntimeError> {
+    self.execute_summary_query(variables, None)
+  }
+  pub(crate) fn execute_summary_query(
+    &self,
+    variables: Vec<String>,
+    condition: Option<GenerateExpression>,
+  ) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset {
         command: "summarize",
       })?;
+    let predicate = condition
+      .as_ref()
+      .map(|condition| {
+        let predicate = bounded_expression_to_assert(condition)
+          .ok_or(RuntimeError::SummaryUnsupportedPredicate)?;
+        let unknown = expression_identifiers(&predicate)
+          .into_iter()
+          .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+          .collect::<Vec<_>>();
+        if !unknown.is_empty() {
+          return Err(RuntimeError::SummaryUnknownVariable { variables: unknown });
+        }
+        let domain = expression_domain(&predicate, dataset).map_err(|error| match error {
+          RuntimeError::AssertTypeMismatch { message } => {
+            RuntimeError::SummaryPredicateTypeMismatch { message }
+          }
+          other => other,
+        })?;
+        if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+          return Err(RuntimeError::SummaryRequiresBoolean);
+        }
+        Ok(predicate)
+      })
+      .transpose()?;
     let column_types = dataset
       .columns
       .iter()
@@ -85,7 +116,10 @@ impl Session {
       .iter()
       .map(|variable| {
         backend
-          .summarize_variable(variable)
+          .summarize_variable_if(
+            variable,
+            predicate.as_ref().map(|predicate| (predicate, dataset)),
+          )
           .map_err(|_| RuntimeError::SummaryFailed {
             variable: variable.clone(),
           })

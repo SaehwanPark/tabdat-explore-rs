@@ -940,6 +940,77 @@ fn row_filter_output_failure_stops_later_selection_and_files() {
 }
 
 #[test]
+fn conditional_summary_output_failure_stops_later_filters_and_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=6 {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("first.csv");
+        let second = fixture.0.join("second.csv");
+        let first_export = format!("export \"{}\"", first.display());
+        let second_export = format!("export \"{}\"", second.display());
+        let commands = [
+          "summarize x y if x >= 2",
+          &first_export,
+          "summarize if x < 3",
+          "drop if x == 1",
+          &second_export,
+        ];
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, commands.join("\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            commands[0],
+            "-c",
+            commands[1],
+            "-c",
+            commands[2],
+            "-c",
+            commands[3],
+            "-c",
+            commands[4],
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 3);
+        assert_eq!(second.exists(), fail_at == 6);
+        if first.exists() {
+          assert_eq!(
+            std::fs::read_to_string(first).unwrap(),
+            "x,y\n1,2\n2,5\n3,5\n4,9\n"
+          );
+        }
+        if second.exists() {
+          assert_eq!(
+            std::fs::read_to_string(second).unwrap(),
+            "x,y\n2,5\n3,5\n4,9\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

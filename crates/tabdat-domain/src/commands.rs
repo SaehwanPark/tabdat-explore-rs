@@ -16,7 +16,8 @@ pub enum Command {
   Doctor,
   /// Compute descriptive statistics for selected columns.
   Summarize { variables: Vec<String> },
-  /// Syntax-only conditional/option-bearing summary, not eager summary execution.
+  /// Conditional/option-bearing summary syntax. Bounded no-option predicates
+  /// execute; option-bearing forms remain outside the installed summary runtime.
   SummarizeQuery {
     variables: Vec<String>,
     condition: Option<GenerateExpression>,
