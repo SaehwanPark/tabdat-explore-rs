@@ -17,6 +17,9 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 /// ByResult also represents native grouped means, so DTO serialization alone
 /// must not admit those commands under the finite-summary JSON contract.
 pub fn supports_batch_command(command: &Command) -> bool {
+  if matches!(command, Command::RegressQuery { .. }) {
+    return true;
+  }
   if matches!(command, Command::CountQuery { .. }) {
     return true;
   }
@@ -82,6 +85,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 /// success result. `run` is a container for nested commands and has no result
 /// envelope of its own.
 pub fn supports_script_command(command: &Command) -> bool {
+  if matches!(command, Command::RegressQuery { .. }) {
+    return true;
+  }
   if matches!(command, Command::CountQuery { .. }) {
     return true;
   }

@@ -6,12 +6,54 @@ impl Session {
     &mut self,
     command: &RegressCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    self.execute_regression_sample(command, None)
+  }
+
+  pub(crate) fn execute_regress_query(
+    &mut self,
+    command: &RegressCommand,
+    condition: &GenerateExpression,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    self.execute_regression_sample(command, Some(condition))
+  }
+
+  fn execute_regression_sample(
+    &mut self,
+    command: &RegressCommand,
+    condition: Option<&GenerateExpression>,
+  ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
     let dataset = self
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "regress" })?
       .clone();
+
+    let predicate = condition
+      .map(|condition| {
+        let predicate = bounded_expression_to_assert(condition)
+          .ok_or(RuntimeError::RegressUnsupportedPredicate)?;
+        let unknown = expression_identifiers(&predicate)
+          .into_iter()
+          .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+          .collect::<Vec<_>>();
+        if !unknown.is_empty() {
+          return Err(RuntimeError::RegressUnknownVariable { variables: unknown });
+        }
+        let domain = expression_domain(&predicate, &dataset).map_err(|error| match error {
+          RuntimeError::AssertTypeMismatch { message } => {
+            RuntimeError::RegressPredicateTypeMismatch { message }
+          }
+          other => other,
+        })?;
+        if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+          return Err(RuntimeError::RegressRequiresBoolean);
+        }
+        compile_assert_expression(&predicate, &dataset).map_err(|_| RuntimeError::RegressFailed {
+          message: "could not compile predicate".into(),
+        })
+      })
+      .transpose()?;
 
     let mut referenced_variables = Vec::new();
     referenced_variables.push(command.outcome.clone());
@@ -79,6 +121,13 @@ impl Session {
       select_columns.push(quote_identifier(w));
     }
 
+    // Project the flag rather than filtering SQL rows: sample indices and total_rows
+    // must still refer to the original active relation, including excluded rows.
+    let selection_idx = predicate.as_ref().map(|predicate| {
+      let index = select_columns.len();
+      select_columns.push(format!("({predicate})"));
+      index
+    });
     let select_sql = select_columns.join(", ");
     let query = format!("SELECT {select_sql} FROM {ACTIVE_TABLE}");
 
@@ -100,6 +149,17 @@ impl Session {
       |row| {
         let row_idx = total_rows;
         total_rows += 1;
+        if let Some(index) = selection_idx {
+          match read_owned_cell(row, index, true, "could not read predicate cell")? {
+            CellValue::Boolean(true) => {}
+            CellValue::Boolean(false) | CellValue::Null => return Ok(()),
+            _ => {
+              return Err(RuntimeError::RegressFailed {
+                message: "predicate did not produce boolean or NULL".into(),
+              });
+            }
+          }
+        }
 
         // Extract outcome
         let outcome_cell = read_owned_cell(row, 0, true, "could not read outcome cell")?;

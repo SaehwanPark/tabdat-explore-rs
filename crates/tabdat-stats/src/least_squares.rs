@@ -170,7 +170,13 @@ pub fn fit_least_squares_with_options(
   let adjusted_r_squared = if tss > 0.0 && nobs > 1 {
     let n_f = nobs as f64;
     let p_f = n_params as f64;
-    let adj = 1.0 - (rss / (n_f - p_f)) / (tss / (n_f - 1.0));
+    // Centered TSS loses one degree of freedom; uncentered TSS does not.
+    let tss_df = if problem.include_intercept {
+      n_f - 1.0
+    } else {
+      n_f
+    };
+    let adj = 1.0 - (rss / (n_f - p_f)) / (tss / tss_df);
     Some(adj)
   } else {
     None

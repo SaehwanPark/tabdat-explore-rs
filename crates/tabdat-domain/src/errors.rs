@@ -411,6 +411,12 @@ pub enum RuntimeError {
   ReshapeFailed,
   /// One or more variables or identifiers for regress were not found in the active dataset.
   RegressUnknownVariable { variables: Vec<String> },
+  /// A conditional fit requires a boolean/null predicate.
+  RegressRequiresBoolean,
+  /// The fit predicate has incompatible operand domains.
+  RegressPredicateTypeMismatch { message: String },
+  /// Function calls are outside bounded fit predicate execution.
+  RegressUnsupportedPredicate,
   /// The regress request named variables that are not numeric.
   RegressRequiresNumeric { variables: Vec<String> },
   /// The regress sample contained no complete observations.
@@ -976,6 +982,13 @@ impl fmt::Display for RuntimeError {
         )
       }
       Self::ReshapeFailed => formatter.write_str("reshape failed"),
+      Self::RegressRequiresBoolean => {
+        formatter.write_str("regress predicate requires boolean expression")
+      }
+      Self::RegressPredicateTypeMismatch { message } => formatter.write_str(message),
+      Self::RegressUnsupportedPredicate => {
+        formatter.write_str("regress predicate does not support function calls")
+      }
       Self::RegressUnknownVariable { variables } => {
         write!(
           formatter,

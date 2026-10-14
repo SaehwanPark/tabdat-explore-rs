@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::StatsError;
-use crate::estimates::CovarianceMatrix;
+use crate::estimates::{CovarianceMatrix, CovarianceType};
 use crate::matrix::{
   invert, multiply, multiply_vector, student_t_pvalue, student_t_quantile, transpose,
 };
@@ -71,11 +71,27 @@ impl PostEstimationModel {
   /// Create post-estimation model from an estimated least squares result.
   pub fn from_least_squares(result: &LeastSquaresResult) -> Self {
     let parameters: Vec<f64> = result.coefficients.iter().map(|c| c.value).collect();
+    // Cluster post-estimation must use the same G-1 inference df as coefficients,
+    // while fit statistics continue to report residual N-K degrees of freedom.
+    let degrees_of_freedom = match (
+      &result.covariance.covariance_type,
+      result
+        .sample
+        .as_ref()
+        .and_then(|sample| sample.cluster_groups.as_ref()),
+    ) {
+      (CovarianceType::Cluster(_), Some(groups)) => groups
+        .iter()
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+        .saturating_sub(1),
+      _ => result.fit_statistics.degrees_of_freedom,
+    };
     Self {
       parameter_names: result.parameter_names.clone(),
       parameters,
       covariance: result.covariance.clone(),
-      degrees_of_freedom: result.fit_statistics.degrees_of_freedom,
+      degrees_of_freedom,
     }
   }
 
