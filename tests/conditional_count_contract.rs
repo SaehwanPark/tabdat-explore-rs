@@ -2,8 +2,9 @@
 use serde_json::Value;
 use std::{
   fs,
+  io::Write,
   path::PathBuf,
-  process::Command,
+  process::{Command, Stdio},
   sync::atomic::{AtomicU64, Ordering},
 };
 use tabdat_language::parse_command;
@@ -103,6 +104,16 @@ fn selected_cohort_count_matches_independent_indices_not_category_or_model_sampl
   let table = execute(&mut session, "tabulate r c if e == 1");
   if let ExecutionResult::Tabulate(table) = table {
     assert_eq!(table.rows.len(), 2);
+    let total: i128 = table
+      .rows
+      .iter()
+      .flat_map(|row| &row[1..])
+      .map(|cell| match cell {
+        tabdat_domain::CellValue::SignedInteger(value) => *value,
+        other => panic!("{other:?}"),
+      })
+      .sum();
+    assert_eq!(total, 3); // Selected category-complete rows, not the six-row cohort.
   } else {
     panic!("{table:?}");
   }
@@ -133,6 +144,12 @@ fn predicates_validate_without_mutation_and_boolean_empty_native_errors_are_boun
     "sql select * from (values (true,cast('NaN' as double)),(false,NULL),(NULL,NULL),(true,cast('Infinity' as double))) as t(b,x) into flags",
   );
   assert_eq!(count(&mut session, "count if b"), 2);
+  let summary = execute(&mut session, "summarize x if b");
+  if let ExecutionResult::Summarize(result) = summary {
+    assert_eq!(result.rows[0].count, 0);
+  } else {
+    panic!("{summary:?}");
+  }
   assert_eq!(count(&mut session, "count"), 4);
   execute(
     &mut session,
@@ -147,6 +164,141 @@ fn predicates_validate_without_mutation_and_boolean_empty_native_errors_are_boun
     tabdat_domain::RuntimeError::NoActiveDataset { command: "count" }
   ));
 }
+#[test]
+fn quoted_wide_integer_and_native_nonfinite_predicates_keep_exact_read_only_counts() {
+  let fixture = Fixture::new();
+  let mut session = fixture.session();
+  execute(
+    &mut session,
+    "sql select * from (values (9007199254740993::bigint,cast('NaN' as double)),(9007199254740992::bigint,cast('Infinity' as double)),(-9007199254740993::bigint,cast('-Infinity' as double)),(NULL,NULL)) as t(\"wide 雪\",n) into native",
+  );
+  let signature = execute(&mut session, "datasignature");
+  for (source, expected) in [
+    ("count if `wide 雪` == 9007199254740993", 1),
+    ("count if `wide 雪` == -9007199254740993", 1),
+    ("count if `wide 雪` == null", 1),
+    ("count if n > 0", 2),
+    ("count if n == null", 1),
+  ] {
+    assert_eq!(count(&mut session, source), expected);
+    assert_eq!(execute(&mut session, "datasignature"), signature);
+  }
+}
+
+#[test]
+fn parser_admission_error_streams_file_guards_and_interactive_recovery_remain_bounded() {
+  let fixture = Fixture::new();
+  let query = parse_command("count if e == 1").unwrap();
+  assert_eq!(query.name(), "count");
+  assert_eq!(query.effects(), &[tabdat_domain::CommandEffect::Read]);
+  assert_eq!(
+    query.requirements(),
+    parse_command("count").unwrap().requirements()
+  );
+  assert!(tabdat_reporting::json_results::supports_batch_command(
+    &query
+  ));
+  assert!(tabdat_reporting::json_results::supports_script_command(
+    &query
+  ));
+  let grouped = tabdat_domain::Command::By {
+    command: tabdat_domain::ByCommand {
+      groups: vec!["r".into()],
+      command: Box::new(query),
+    },
+  };
+  assert!(!tabdat_reporting::json_results::supports_batch_command(
+    &grouped
+  ));
+  assert!(!tabdat_reporting::json_results::supports_script_command(
+    &grouped
+  ));
+  for (source, exit, message) in [
+    ("count if", 2, "missing expression after if"),
+    ("count x if e == 1", 2, "count does not accept arguments"),
+    (
+      "count if e == 1, missing",
+      2,
+      "count does not accept arguments",
+    ),
+    ("count if absent > 0", 1, "count unknown variable"),
+    (
+      "count if x",
+      1,
+      "count predicate requires boolean expression",
+    ),
+    ("count if r > 1", 1, "type"),
+    (
+      "count if lower(r) == 'a'",
+      1,
+      "count predicate does not support function calls",
+    ),
+    ("count if r == '\0'", 1, "count failed"),
+  ] {
+    fs::write(fixture.0.join("parent.td"), "use data.csv\nrun child.td\n").unwrap();
+    fs::write(
+      fixture.0.join("child.td"),
+      format!("{source}\nexport forbidden.csv\n"),
+    )
+    .unwrap();
+    for mode in ["--json", "--text"] {
+      // NUL is a native preparation failure in files, not a legal OS argument.
+      if !source.contains('\0') {
+        let batch = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+          .current_dir(&fixture.0)
+          .args([
+            mode,
+            "-c",
+            "use data.csv",
+            "-c",
+            source,
+            "-c",
+            "export forbidden.csv",
+          ])
+          .output()
+          .unwrap();
+        assert_eq!(batch.status.code(), Some(exit), "{source}");
+        assert!(String::from_utf8_lossy(&batch.stderr).contains(message));
+        assert!(!fixture.0.join("forbidden.csv").exists());
+      }
+      let script = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+        .current_dir(&fixture.0)
+        .args([mode, "-f", "parent.td"])
+        .output()
+        .unwrap();
+      assert_eq!(script.status.code(), Some(exit), "{source}");
+      assert!(String::from_utf8_lossy(&script.stderr).contains(message));
+      assert!(String::from_utf8_lossy(&script.stderr).contains("child.td:1:"));
+      assert!(!fixture.0.join("forbidden.csv").exists());
+      if mode == "--json" {
+        let rows: Vec<Value> = String::from_utf8(script.stdout)
+          .unwrap()
+          .lines()
+          .map(|line| serde_json::from_str(line).unwrap())
+          .collect();
+        assert_eq!(rows[0]["result_type"], "LoadResult");
+        assert!(rows.iter().all(|row| row["result_type"] != "CountResult"));
+      }
+    }
+  }
+  let mut child = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+    .current_dir(&fixture.0)
+    .env("TERM", "dumb")
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap();
+  child.stdin.take().unwrap().write_all(b"use data.csv\ncount if e == 1\ncount if absent > 0\ncount if e == null\ncount\nexport recovered.csv\nexit\n").unwrap();
+  let output = child.wait_with_output().unwrap();
+  assert!(output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("count unknown variable: absent"));
+  assert_eq!(
+    fs::read(fixture.0.join("recovered.csv")).unwrap(),
+    fs::read(fixture.0.join("data.csv")).unwrap()
+  );
+}
+
 #[test]
 fn actual_json_text_nested_analysis_and_persistence_streams_preserve_all_rows() {
   let fixture = Fixture::new();

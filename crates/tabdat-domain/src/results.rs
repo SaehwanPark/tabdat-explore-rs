@@ -63,10 +63,10 @@ pub struct DescribeResult {
   pub dataset: DatasetInfo,
 }
 
-/// The owned result returned after counting rows in the active dataset.
+/// The owned result after counting current rows, optionally restricted to TRUE predicate rows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CountResult {
-  /// The row count observed in the active relation.
+  /// The selected row count, or all active rows when no predicate was supplied.
   pub row_count: u64,
 }
 

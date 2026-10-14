@@ -1047,7 +1047,13 @@ fn parse_inspection_command(name: &str, body: &str) -> Result<Command, ParseErro
   }
 
   if name == "count" {
-    if parts.arguments.is_empty() && !parts.has_options && !parts.has_assignment {
+    // Simple-body parsing stops at `if`; inspect trailing command options separately.
+    let condition_has_options = parts.has_condition && first_top_level_comma(body).is_some();
+    if parts.arguments.is_empty()
+      && !parts.has_options
+      && !parts.has_assignment
+      && !condition_has_options
+    {
       return if parts.has_condition {
         Ok(Command::CountQuery {
           condition: parse_row_condition(body)?,

@@ -181,6 +181,13 @@ state are handled correctly.
   invariants, nested text/JSON/persistence and write/flush guards are checked.
   Multiple dimension keys, value aggregation, functions/logical-expression breadth
   and model-sample reinterpretation remain outside the installed scope.
+  Read-only conditional counts (#240) now check full selected-cohort cardinality
+  before finite summaries or category-complete frequency tables. Counts include
+  every TRUE row regardless of unrelated NULL/nonfinite values; bare count and
+  existing CountResult remain unchanged. Independent selected-index/cardinality
+  contrasts, exact wide/quoted/native predicates, read-only state, nested text/JSON,
+  analysis/persistence, recovery/errors and output guards are checked. No variable
+  counts/options, grouped conditional counts or broader expression grammar is added.
   Key-integrity terminal/JSON reporting (#232) now exposes existing duplicates/
   isid aggregates for diagnosis→validated lookup→join/analysis/persistence.
   Exact native NULL/nonfinite/key counters, missok failure rules, empty/repeated/
