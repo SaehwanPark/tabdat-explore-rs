@@ -30,14 +30,28 @@ impl DuckDbBackend {
     Ok(preview)
   }
   pub fn summarize_variable(&self, variable: &str) -> Result<SummaryRow, DataError> {
+    self.summarize_variable_if(variable, None)
+  }
+  pub fn summarize_variable_if(
+    &self,
+    variable: &str,
+    predicate: Option<(&AssertExpression, &DatasetInfo)>,
+  ) -> Result<SummaryRow, DataError> {
+    let condition = predicate
+      .map(|(expression, dataset)| compile_assert_expression(expression, dataset))
+      .transpose()?;
+    let selection = condition
+      .map(|sql| format!(" AND ({sql})"))
+      .unwrap_or_default();
     let quoted_variable = quote_identifier(variable);
     // One finite sample for every aggregate: NaN/infinity can poison variance.
-    // Only the predicate casts to DOUBLE (all supported exact numeric ranges
+    // The finiteness test casts to DOUBLE (all supported exact numeric ranges
     // fit); keep aggregate input uncast to retain integer/decimal extrema.
+    // The separate row predicate intersects this sample, never a listwise one.
     let mut statement = self
       .connection
       .prepare(&format!(
-        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE} WHERE isfinite(CAST({quoted_variable} AS DOUBLE))"
+        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE} WHERE isfinite(CAST({quoted_variable} AS DOUBLE)){selection}"
       ))
       .map_err(|_| DataError)?;
     let mut rows = statement.query([]).map_err(|_| DataError)?;

@@ -143,6 +143,12 @@ pub enum RuntimeError {
   SummaryRequiresNumeric { variables: Vec<String> },
   /// The active schema contains no numeric columns for a default summary.
   SummaryNoNumericColumns,
+  /// Conditional summary requires a boolean/null predicate.
+  SummaryRequiresBoolean,
+  /// The summary predicate has incompatible operand domains.
+  SummaryPredicateTypeMismatch { message: String },
+  /// Parsed function predicates are outside bounded summary execution.
+  SummaryUnsupportedPredicate,
   /// DuckDB could not produce or own one summary row.
   SummaryFailed { variable: String },
   /// The codebook request named variables absent from the active schema.
@@ -559,6 +565,13 @@ impl fmt::Display for RuntimeError {
         variables.join(", ")
       ),
       Self::SummaryNoNumericColumns => formatter.write_str("summarize found no numeric columns"),
+      Self::SummaryRequiresBoolean => {
+        formatter.write_str("summarize predicate requires boolean expression")
+      }
+      Self::SummaryPredicateTypeMismatch { message } => formatter.write_str(message),
+      Self::SummaryUnsupportedPredicate => {
+        formatter.write_str("summarize predicate does not support function calls")
+      }
       Self::SummaryFailed { variable } => {
         write!(formatter, "summarize failed for variable: {variable}")
       }

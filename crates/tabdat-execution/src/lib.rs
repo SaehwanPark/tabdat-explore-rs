@@ -61,6 +61,11 @@ impl Session {
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
       Command::Summarize { variables } => self.execute_summarize(variables),
+      Command::SummarizeQuery {
+        variables,
+        condition,
+        options,
+      } if options.is_empty() => self.execute_summary_query(variables, condition),
       Command::Codebook { variables } => self.execute_codebook(variables),
       Command::Missing { variables } => self.execute_missing(variables),
       Command::Duplicates { variables } => self.execute_duplicates(variables),

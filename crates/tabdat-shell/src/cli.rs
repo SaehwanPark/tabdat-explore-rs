@@ -37,6 +37,7 @@ options:
                         by ...: count
                         and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
                         keep/drop/select variable lists, bounded keep/drop if,
+                        no-option summarize if,
                         sort/gsort,
                         regress/predict/lincom/test/ttest/estat vif, save/export;
                         scripts stream the same successful leaf results)

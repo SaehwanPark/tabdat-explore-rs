@@ -59,7 +59,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
         },
       }
       | Command::Exit
-  ) || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
+  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
+    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
 }
 
 /// Whether a script command can execute without producing an unsupported JSON
@@ -109,7 +110,8 @@ pub fn supports_script_command(command: &Command) -> bool {
       }
       | Command::Exit
       | Command::Run { .. }
-  ) || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
+  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
+    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
 }
 
 /// Serialize owned execution results using the stable versioned CLI envelope.
@@ -453,6 +455,26 @@ mod tests {
         value["data"],
         json!({"dataset": dataset_info_data(&dataset)})
       );
+    }
+  }
+
+  #[test]
+  fn conditional_summary_admission_excludes_options_and_grouped_means() {
+    assert!(tabdat_language::parse_command("summarize x if x > 0,").is_err());
+    for source in ["summarize x if g == 'A'", "summarize if g == null"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    for source in [
+      "summarize x, detail",
+      "summarize x if g == 'A', detail",
+      "summarize x if x > 0, limit=2",
+      "by g: summarize x",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(!supports_batch_command(&command));
+      assert!(!supports_script_command(&command));
     }
   }
 

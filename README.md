@@ -257,6 +257,17 @@ fields stay null placeholders. Empty/self/repeated appends and ordinary
 validation/type/file/output boundaries are checked; native publication faults
 are not injected and no general atomicity guarantee is added. See `help append`.
 
+Read-only `summarize [varlist] if <predicate>` (no options) now supports the
+terminal and CLI-v1 `SummarizeResult` fields. It selects TRUE rows, then uses
+per-variable finite/non-NULL samples for all aggregates; counts can differ,
+not a fabricated global/model sample. Exact extrema, variable order/duplicates,
+empty/singleton policy and native finite-overflow limits remain unchanged.
+Predicates reuse the bounded keep-if rules, including explicit SQL-NULL and
+native direct nonfinite versus safe-arithmetic handling. Data/labels/named state
+and cached fits are untouched. Functions/logical-expression breadth, summary
+options and grouped-mean JSON remain uninstalled. See `help summarize` and the
+development-only NumPy/SciPy conditional-summary reference.
+
 Conditional `keep if <predicate>` / `drop if <predicate>` now execute in the
 CLI/REPL and CLI-v1 JSON, using existing KeepResult/DropResult dataset metadata.
 Keep retains TRUE rows; drop removes TRUE rows and keeps FALSE/UNKNOWN, so they
