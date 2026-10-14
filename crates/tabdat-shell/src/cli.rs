@@ -7,15 +7,15 @@ use tabdat_execution::{RuntimeError, Session};
 use tabdat_language::{Command, parse_command};
 
 pub const USAGE: &str = "\
-usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--config CONFIG] [--json]
+usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json]
               [--list-commands] [--list-command-effects] [--help-topic TOPIC]
-              [--explain] [--describe-command COMMAND] [--mcp]
+              [--explain] [--describe-command COMMAND]
               [script]";
 
 pub const HELP_TEXT: &str = "\
-usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--config CONFIG] [--json]
+usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json]
               [--list-commands] [--list-command-effects] [--help-topic TOPIC]
-              [--explain] [--describe-command COMMAND] [--mcp]
+              [--explain] [--describe-command COMMAND]
               [script]
 
 With no arguments, start a persistent line-oriented session.
@@ -31,7 +31,6 @@ options:
   -c, --command COMMAND
                         run a command and exit
   -f, --file FILE       run a TabDat script file and exit
-  --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
                         by ...: count, collapse count
@@ -49,8 +48,9 @@ options:
                         --json
   --describe-command COMMAND
                         emit one command's schema; requires --json
-  --mcp                 start the TabDat Model Context Protocol (MCP) server
-                        on stdio
+
+Configuration-file loading and an MCP transport/server are not installed.
+The typed transport-independent MCP boundary does not start a server.
 ";
 
 #[derive(Debug, Clone, PartialEq, Eq)]

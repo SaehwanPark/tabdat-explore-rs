@@ -103,6 +103,10 @@ disabled. Local Unix PTY verification is reproducible with
 `python3 tools/check_terminal_pty.py target/debug/tabdat-explore-rs` after
 `cargo build --locked`; this is not cross-platform release certification.
 
+Startup configuration-file loading and an MCP transport/server are not installed:
+`--config` and `--mcp` are rejected, not applied or silently ignored. The typed
+transport-independent MCP library boundary does not start a stdio server.
+
 Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery
 includes commands that parse but do not yet execute.
