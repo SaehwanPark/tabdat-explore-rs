@@ -1145,6 +1145,77 @@ fn reproducibility_guard_output_failure_stops_later_guards_and_files() {
 }
 
 #[test]
+fn collapse_count_output_failure_stops_later_aggregation_and_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=6 {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("counts.csv");
+        let second = fixture.0.join("second.csv");
+        let first_export = format!("export \"{}\"", first.display());
+        let second_export = format!("export \"{}\"", second.display());
+        let commands = [
+          "collapse count y, by(x)",
+          &first_export,
+          "collapse count count_y, by(x)",
+          &second_export,
+          "head 5",
+        ];
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, commands.join("\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            commands[0],
+            "-c",
+            commands[1],
+            "-c",
+            commands[2],
+            "-c",
+            commands[3],
+            "-c",
+            commands[4],
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 3);
+        assert_eq!(second.exists(), fail_at >= 5);
+        if first.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&first).unwrap(),
+            "x,count_y\n1,1\n2,1\n3,1\n4,1\n"
+          );
+        }
+        if second.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&second).unwrap(),
+            "x,count_count_y\n1,1\n2,1\n3,1\n4,1\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

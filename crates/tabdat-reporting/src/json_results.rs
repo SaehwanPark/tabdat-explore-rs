@@ -10,13 +10,17 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 /// ByResult also represents native grouped means, so DTO serialization alone
 /// must not admit those commands under the finite-summary JSON contract.
 pub fn supports_batch_command(command: &Command) -> bool {
+  if matches!(command, Command::Collapse { command } if command.statistic == tabdat_domain::CollapseStatistic::Count)
+  {
+    return true;
+  }
   matches!(
     command,
     Command::Assert { .. }
@@ -71,6 +75,10 @@ pub fn supports_batch_command(command: &Command) -> bool {
 /// success result. `run` is a container for nested commands and has no result
 /// envelope of its own.
 pub fn supports_script_command(command: &Command) -> bool {
+  if matches!(command, Command::Collapse { command } if command.statistic == tabdat_domain::CollapseStatistic::Count)
+  {
+    return true;
+  }
   matches!(
     command,
     Command::Assert { .. }
@@ -228,6 +236,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Datasignature(result) => (
       json!({"algorithm":result.algorithm,"signature":result.signature,"row_count":result.row_count,"column_count":result.column_count}),
       "DatasignatureResult",
+    ),
+    ExecutionResult::Collapse(result) => (
+      json!({"dataset":dataset_info_data(&result.dataset)}),
+      "CollapseResult",
     ),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),

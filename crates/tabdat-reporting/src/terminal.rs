@@ -393,6 +393,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     }
     ExecutionResult::Table(result) => table(&result.headers, &result.rows),
     ExecutionResult::Tabulate(result) => table(&result.headers, &result.rows),
+    ExecutionResult::Collapse(result) => dataset_outcome("Collapsed", &result.dataset),
     ExecutionResult::Generate(result) => dataset_outcome("Generated", &result.dataset),
     ExecutionResult::Replace(result) => dataset_outcome("Replaced", &result.dataset),
     ExecutionResult::Rename(result) => dataset_outcome("Renamed", &result.dataset),
