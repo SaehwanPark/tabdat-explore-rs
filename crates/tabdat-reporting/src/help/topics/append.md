@@ -1,5 +1,9 @@
 # append
 
+Terminal success now shows `Appended: N rows, K columns` using owned current
+metadata, without a rescan or invented source-size/added-row diagnostics. Inspect
+values with `head`/`describe`; existing compatible-schema and ordering rules remain.
+
 How to invoke:
 `append table_name`
 

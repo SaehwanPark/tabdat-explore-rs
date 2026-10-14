@@ -434,6 +434,113 @@ mod tests {
   }
 
   #[test]
+  fn cohort_output_failure_stops_later_transforms_and_files() {
+    struct FailedOutput {
+      fail_at: usize,
+      calls: usize,
+      fail_on_flush: bool,
+    }
+    impl Write for FailedOutput {
+      fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if !self.fail_on_flush {
+          self.calls += 1;
+          if self.calls == self.fail_at {
+            return Err(io::Error::other("write failed"));
+          }
+        }
+        Ok(bytes.len())
+      }
+      fn flush(&mut self) -> io::Result<()> {
+        if self.fail_on_flush {
+          self.calls += 1;
+          if self.calls == self.fail_at {
+            return Err(io::Error::other("flush failed"));
+          }
+        }
+        Ok(())
+      }
+    }
+    for script in [false, true] {
+      for fail_on_flush in [false, true] {
+        for fail_at in 1..=if script { 15 } else { 14 } {
+          let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+          let root = std::env::temp_dir().join(format!(
+            "tabdat-cohort-output-{}-{nonce}",
+            std::process::id()
+          ));
+          std::fs::create_dir(&root).unwrap();
+          let csv = root.join("data.csv");
+          std::fs::write(&csv, "id,x_a,x_b,y_a,y_b\n1,1,2,2,5\n2,3,4,5,9\n").unwrap();
+          let first = root.join("long.csv");
+          let second = root.join("wide.csv");
+          let later = root.join("later.csv");
+          let commands = [
+            format!("use {}", csv.display()),
+            "sql select * from active order by id into baseline".into(),
+            "sql select id, id*10 as z from active order by id into lookup".into(),
+            "use baseline".into(),
+            "join lookup on id".into(),
+            "sql select * from active order by id into followup".into(),
+            "use baseline".into(),
+            "append followup".into(),
+            "reshape long x y, i(id) j(period)".into(),
+            "recode x (1=10), replace".into(),
+            "by period: count".into(),
+            format!("export {}", first.display()),
+            "reshape wide x y, i(id) j(period)".into(),
+            format!("export {}", second.display()),
+          ];
+          let input = if script {
+            let parent = root.join("parent.td");
+            let child = root.join("child.td");
+            std::fs::write(
+              &parent,
+              format!("{}\nrun {}\n", commands[0], child.display()),
+            )
+            .unwrap();
+            std::fs::write(&child, commands[1..].join("\n")).unwrap();
+            format!("run {}\nexport {}\n", parent.display(), later.display())
+          } else {
+            format!("{}\nexport {}\n", commands.join("\n"), later.display())
+          };
+          let mut errors = Vec::new();
+          let result = run_session(
+            &mut Cursor::new(input.as_bytes()),
+            &mut FailedOutput {
+              fail_at,
+              calls: 0,
+              fail_on_flush,
+            },
+            &mut errors,
+            false,
+          );
+          assert!(result.is_err());
+          assert!(errors.is_empty());
+          assert_eq!(first.exists(), fail_at >= 12);
+          assert_eq!(second.exists(), fail_at >= 14);
+          assert!(!later.exists());
+          if first.exists() {
+            assert_eq!(
+              std::fs::read_to_string(&first).unwrap(),
+              "id,period,x,y\n1,a,10,2\n1,b,2,5\n2,a,3,5\n2,b,4,9\n1,a,10,2\n1,b,2,5\n2,a,3,5\n2,b,4,9\n"
+            );
+          }
+          if second.exists() {
+            assert_eq!(
+              std::fs::read_to_string(&second).unwrap(),
+              "id,x_a,x_b,y_a,y_b\n1,10,2,2,5\n2,3,4,5,9\n"
+            );
+          }
+          std::fs::remove_dir_all(&root).unwrap();
+        }
+      }
+    }
+  }
+
+  #[test]
   fn io_failures_propagate_instead_of_spinning_or_claiming_success() {
     struct FailedInput;
     impl io::Read for FailedInput {

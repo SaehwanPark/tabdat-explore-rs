@@ -294,7 +294,9 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "Interactive core workflow\n",
       "  Load local eager CSV/Parquet: use <path>\n",
       "  Inspect: describe, codebook [variables], summarize [variables], missing [variables], tabulate, count, head/tail\n",
-      "  Transform: generate, replace, rename, sort/gsort, keep/drop/select, encode/decode, label\n",
+      "  Transform: generate, replace, rename, sort/gsort, keep/drop/select, recode, encode/decode, label\n",
+      "  Cohorts/layouts: sql ... into <name>, use <name>, join, append, reshape, collapse\n",
+      "  Grouped EDA: by <keys>: count; by <keys>: summarize uses native means\n",
       "  Linear analysis: regress, predict, lincom, test\n",
       "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
       "  Scripts/files: run <script.td>, save <file.parquet>, export <file.csv>\n",
@@ -309,8 +311,8 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
   }
 }
 
-/// Render the supported interactive EDA and linear-analysis results without recomputing statistics.
-/// Other executed results receive an explicit display limitation, not silence.
+/// Render owned execution results without recomputing data or statistics.
+/// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
     ExecutionResult::Load(load) => format!(
@@ -443,6 +445,22 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       table(&preview.columns, &preview.rows)
     }
+    ExecutionResult::SqlCreate(result) => dataset_outcome(
+      &format!("Created and activated table {:?}", result.table_name),
+      &result.dataset,
+    ),
+    ExecutionResult::Activate(result) => dataset_outcome(
+      &format!("Activated table {:?}", result.table_name),
+      &result.dataset,
+    ),
+    ExecutionResult::Join(result) => dataset_outcome("Joined", &result.dataset),
+    ExecutionResult::Append(result) => dataset_outcome("Appended", &result.dataset),
+    ExecutionResult::Reshape(result) => dataset_outcome("Reshaped", &result.dataset),
+    ExecutionResult::Recode(result) => dataset_outcome("Recoded", &result.dataset),
+    ExecutionResult::By(result) => format!(
+      "Grouped results (native; no finite-sample reinterpretation)\n{}",
+      table(&result.headers, &result.rows)
+    ),
     ExecutionResult::Table(result) => table(&result.headers, &result.rows),
     ExecutionResult::Tabulate(result) => table(&result.headers, &result.rows),
     ExecutionResult::Collapse(result) => dataset_outcome("Collapsed", &result.dataset),
@@ -520,7 +538,6 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       run.executed_commands,
       run.path.to_string_lossy().escape_debug()
     ),
-    _ => "Command completed; terminal details for this result are not yet supported.\n".to_owned(),
   }
 }
 

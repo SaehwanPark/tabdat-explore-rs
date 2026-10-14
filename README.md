@@ -107,6 +107,18 @@ Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery
 includes commands that parse but do not yet execute.
 
+Every currently owned execution-result variant now has an explicit terminal
+representation. Named SQL creation/activation shows the quoted supplied name and
+row/column outcome; join/append/reshape/recode show owned post-operation dimensions.
+These are metadata outcomes, not invented matched/changed-row or shape-rule reports:
+inspect values with `head`/`describe`. Raw `by` tables display supplied keys/aggregates,
+including native grouped means with an explicit native-aggregation heading. Those
+means use existing SQL-NULL/nonfinite semantics, **not** ordinary finite-sample
+`summarize`; grouped-mean JSON remains unsupported. Rendering does not recompute,
+mutate state or broaden parser/backend/JSON support. Nested terminal workflows and
+output-error guards retain existing sequential effects. This is not whole-command
+parity, full model-array reporting or a transactional publication guarantee.
+
 ## Local responsiveness measurements
 
 A development-only Rust example measures fresh-process startup/core JSON workflows

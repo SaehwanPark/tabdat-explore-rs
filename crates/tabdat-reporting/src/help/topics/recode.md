@@ -1,5 +1,9 @@
 # recode
 
+Terminal success now shows `Recoded: N rows, K columns` using owned post-operation
+metadata. It does not infer rules, matches, changed-cell or overflow counts; inspect
+stored values with `head`. Existing first-match/native promotion semantics remain.
+
 How to invoke:
 `recode varlist (rule) [(rule) ...], generate(new_varlist)` or `..., replace`
 
