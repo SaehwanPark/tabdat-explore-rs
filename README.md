@@ -243,6 +243,20 @@ Dataset label/panel fields stay null placeholders; no cardinality validation,
 right-label propagation, by/lazy/remote execution or general merge parity is
 implied. See `help join`.
 
+`append followup` returns `AppendResult` with owned `data.dataset` metadata,
+not input paths or inferred added-row diagnostics. It requires the same column
+names and equal canonical native types (including numeric width/decimal scale),
+aligns right columns by name into left schema order, and preserves duplicates,
+NULLs and left-then-stored-right row order. No schema union, automatic coercion,
+sorting or deduplication is installed. Left labels/definitions/attachments and
+the original cached fit/sample remain; explicitly refit combined data.
+Append detaches active named-table ownership while retaining its source
+identifier; registered prior named relations are unchanged, and `use name`
+restores the preserved snapshot, not the stacked data. Metadata label/panel
+fields stay null placeholders. Empty/self/repeated appends and ordinary
+validation/type/file/output boundaries are checked; native publication faults
+are not injected and no general atomicity guarantee is added. See `help append`.
+
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source
 and total row count, not old/new-name or affected-cell fields. Values/NULLs and

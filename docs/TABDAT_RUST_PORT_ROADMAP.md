@@ -177,6 +177,11 @@ state are handled correctly.
   Multi/quoted keys, NULL nonmatches, suffixes, empty/self joins, cached original
   fits/labels/named updates, validation/native failures and output guards are
   checked; no guessed match diagnostics, cardinality checks or backend changes.
+  Append JSON now reports compatible stacked metadata (#227), complementing
+  lookup enrichment with left-then-right multi-source analysis/persistence.
+  Name alignment/type rules, NULLs/duplicates, empty/self/repeated appends,
+  cached/explicit-refit samples, preserved labels/named snapshots, detachment,
+  validation and output guards are checked without backend or schema-union changes.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

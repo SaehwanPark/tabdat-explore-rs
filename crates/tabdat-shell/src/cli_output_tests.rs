@@ -660,6 +660,83 @@ fn join_output_failure_stops_later_enrichment_and_files() {
 }
 
 #[test]
+fn append_output_failure_stops_later_stacking_and_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=7 {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("stacked.csv");
+        let second = fixture.0.join("second.csv");
+        let load = fixture.load();
+        let first_export = format!("export \"{}\"", first.display());
+        let second_export = format!("export \"{}\"", second.display());
+        let commands = [
+          load.as_str(),
+          "sql select x,y from active order by x into followup",
+          load.as_str(),
+          "append followup",
+          &first_export,
+          "append followup",
+          &second_export,
+        ];
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, commands[3..].join("\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", commands[..3].join("\n"), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            commands[0],
+            "-c",
+            commands[1],
+            "-c",
+            commands[2],
+            "-c",
+            commands[3],
+            "-c",
+            commands[4],
+            "-c",
+            commands[5],
+            "-c",
+            commands[6],
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 5);
+        assert_eq!(second.exists(), fail_at == 7);
+        let rows = "1,2\n2,5\n3,5\n4,9\n";
+        if first.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&first).unwrap(),
+            format!("x,y\n{rows}{rows}")
+          );
+        }
+        if second.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&second).unwrap(),
+            format!("x,y\n{rows}{rows}{rows}")
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

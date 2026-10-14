@@ -10,14 +10,15 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Join { .. }
+    Command::Append { .. }
+      | Command::Join { .. }
       | Command::Sql { .. }
       | Command::Encode { .. }
       | Command::Decode { .. }
@@ -63,7 +64,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Join { .. }
+    Command::Append { .. }
+      | Command::Join { .. }
       | Command::Sql { .. }
       | Command::Encode { .. }
       | Command::Decode { .. }
@@ -146,6 +148,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Append(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "AppendResult",
     ),
     ExecutionResult::Join(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -562,6 +568,33 @@ mod tests {
       json!({"dataset": dataset_info_data(&dataset)})
     );
     let command = tabdat_language::parse_command("rename old new").unwrap();
+    assert!(supports_batch_command(&command));
+    assert!(supports_script_command(&command));
+  }
+
+  #[test]
+  fn append_result_preserves_owned_metadata_without_guessing_added_rows_or_sources() {
+    let dataset = DatasetInfo {
+      source: "primary\t目录".into(),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "x\n".into(),
+        data_type: "BIGINT".into(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    let result = ExecutionResult::Append(tabdat_domain::AppendResult {
+      dataset: dataset.clone(),
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(
+      value,
+      json!({"schema_version":1,"result_type":"AppendResult","data":{"dataset":dataset_info_data(&dataset)}})
+    );
+    let command = tabdat_language::parse_command("append followup").unwrap();
     assert!(supports_batch_command(&command));
     assert!(supports_script_command(&command));
   }
