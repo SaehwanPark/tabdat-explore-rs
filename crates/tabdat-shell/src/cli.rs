@@ -36,7 +36,8 @@ options:
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
                         by ...: count
                         and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
-                        keep/drop/select variable lists, sort/gsort,
+                        keep/drop/select variable lists, bounded keep/drop if,
+                        sort/gsort,
                         regress/predict/lincom/test/ttest/estat vif, save/export;
                         scripts stream the same successful leaf results)
   --list-commands       emit the available command catalog; requires --json

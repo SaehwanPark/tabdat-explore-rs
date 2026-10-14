@@ -1,6 +1,49 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_row_filter(
+    &mut self,
+    action: RowFilterAction,
+    condition: GenerateExpression,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let keep = action == RowFilterAction::Keep;
+    let command = if keep { "keep" } else { "drop" };
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command })?
+      .clone();
+    let predicate = bounded_expression_to_assert(&condition)
+      .ok_or(RuntimeError::RowFilterUnsupportedExpression)?;
+    let missing = expression_identifiers(&predicate)
+      .into_iter()
+      .filter(|name| !dataset.columns.iter().any(|column| column.name == *name))
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::RowFilterUnknownVariable { variables: missing });
+    }
+    let domain = expression_domain(&predicate, &dataset).map_err(|error| match error {
+      RuntimeError::AssertTypeMismatch { message } => {
+        RuntimeError::RowFilterTypeMismatch { message }
+      }
+      other => other,
+    })?;
+    if !matches!(domain, ExpressionDomain::Boolean | ExpressionDomain::Null) {
+      return Err(RuntimeError::RowFilterRequiresBoolean);
+    }
+    let next = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::RowFilterFailed)?
+      .filter_rows(&dataset, &predicate, keep)
+      .map_err(|_| RuntimeError::RowFilterFailed)?;
+    let dataset = self.sync_active_dataset(next)?;
+    Ok(if keep {
+      ExecutionResult::Keep(KeepResult { dataset })
+    } else {
+      ExecutionResult::Drop(DropResult { dataset })
+    })
+  }
   /// Execute a SQL query, either returning a TableResult or registering and activating a named table.
   pub fn execute_sql(
     &mut self,

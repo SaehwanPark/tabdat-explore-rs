@@ -10,8 +10,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 /// ByResult also represents native grouped means, so DTO serialization alone
@@ -19,7 +19,8 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Reshape { .. }
+    Command::RowFilter { .. }
+      | Command::Reshape { .. }
       | Command::Append { .. }
       | Command::Join { .. }
       | Command::Sql { .. }
@@ -67,7 +68,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Reshape { .. }
+    Command::RowFilter { .. }
+      | Command::Reshape { .. }
       | Command::Append { .. }
       | Command::Join { .. }
       | Command::Sql { .. }
@@ -455,7 +457,7 @@ mod tests {
   }
 
   #[test]
-  fn projection_results_encode_owned_metadata_and_admit_only_variable_lists() {
+  fn projection_and_row_filter_commands_share_owned_dataset_envelopes() {
     let dataset = DatasetInfo {
       source: std::path::PathBuf::from("source\t目录.parquet"),
       row_count: u64::MAX,
@@ -496,12 +498,18 @@ mod tests {
         json!({"dataset": dataset_info_data(&dataset)})
       );
     }
-    for source in ["keep x", "drop x", "select x x"] {
+    for source in [
+      "keep x",
+      "drop x",
+      "select x x",
+      "keep if x > 0",
+      "drop if x == null",
+    ] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(supports_batch_command(&command));
       assert!(supports_script_command(&command));
     }
-    for source in ["keep if x > 0", "drop if x == null"] {
+    for source in ["by g: keep if x > 0", "by g: drop if x == null"] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(!supports_batch_command(&command));
       assert!(!supports_script_command(&command));

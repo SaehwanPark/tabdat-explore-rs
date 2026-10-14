@@ -65,13 +65,22 @@ pub fn replace_expression_identifiers(expression: &GenerateExpression) -> Vec<St
 pub fn replace_expression_to_assert(
   expression: &GenerateExpression,
 ) -> Result<AssertExpression, RuntimeError> {
+  bounded_expression_to_assert(expression).ok_or_else(|| {
+    RuntimeError::ReplaceUnsupportedExpression {
+      message: "replace does not support function calls".to_owned(),
+    }
+  })
+}
+
+/// Share the installed AST subset without assigning a caller's diagnostic context.
+pub fn bounded_expression_to_assert(expression: &GenerateExpression) -> Option<AssertExpression> {
   match expression {
-    GenerateExpression::Identifier(name) => Ok(AssertExpression::Identifier(name.clone())),
-    GenerateExpression::Number(value) => Ok(AssertExpression::Number(value.clone())),
-    GenerateExpression::String(value) => Ok(AssertExpression::String(value.clone())),
-    GenerateExpression::Null => Ok(AssertExpression::Null),
-    GenerateExpression::UnaryMinus(operand) => Ok(AssertExpression::UnaryMinus(Box::new(
-      replace_expression_to_assert(operand)?,
+    GenerateExpression::Identifier(name) => Some(AssertExpression::Identifier(name.clone())),
+    GenerateExpression::Number(value) => Some(AssertExpression::Number(value.clone())),
+    GenerateExpression::String(value) => Some(AssertExpression::String(value.clone())),
+    GenerateExpression::Null => Some(AssertExpression::Null),
+    GenerateExpression::UnaryMinus(operand) => Some(AssertExpression::UnaryMinus(Box::new(
+      bounded_expression_to_assert(operand)?,
     ))),
     GenerateExpression::Binary {
       left,
@@ -90,15 +99,13 @@ pub fn replace_expression_to_assert(
         GenerateBinaryOperator::Greater => AssertBinaryOperator::Greater,
         GenerateBinaryOperator::GreaterOrEqual => AssertBinaryOperator::GreaterOrEqual,
       };
-      Ok(AssertExpression::Binary {
-        left: Box::new(replace_expression_to_assert(left)?),
+      Some(AssertExpression::Binary {
+        left: Box::new(bounded_expression_to_assert(left)?),
         operator,
-        right: Box::new(replace_expression_to_assert(right)?),
+        right: Box::new(bounded_expression_to_assert(right)?),
       })
     }
-    GenerateExpression::FunctionCall { .. } => Err(RuntimeError::ReplaceUnsupportedExpression {
-      message: "replace does not support function calls".to_owned(),
-    }),
+    GenerateExpression::FunctionCall { .. } => None,
   }
 }
 

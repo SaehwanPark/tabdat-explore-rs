@@ -22,7 +22,8 @@ pub enum Command {
     condition: Option<GenerateExpression>,
     options: Vec<SyntaxOption>,
   },
-  /// Syntax-only row selection; distinct from column keep/drop operations.
+  /// Conditional row selection, with a bounded boolean/null expression runtime;
+  /// distinct from column keep/drop operations and parsed function-call support.
   RowFilter {
     action: RowFilterAction,
     condition: GenerateExpression,

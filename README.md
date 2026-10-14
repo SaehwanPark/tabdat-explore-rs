@@ -257,6 +257,19 @@ fields stay null placeholders. Empty/self/repeated appends and ordinary
 validation/type/file/output boundaries are checked; native publication faults
 are not injected and no general atomicity guarantee is added. See `help append`.
 
+Conditional `keep if <predicate>` / `drop if <predicate>` now execute in the
+CLI/REPL and CLI-v1 JSON, using existing KeepResult/DropResult dataset metadata.
+Keep retains TRUE rows; drop removes TRUE rows and keeps FALSE/UNKNOWN, so they
+partition input. Schema/types/source/relative order and labels survive; active
+named tables synchronize. Cached inference/sample stay original until explicit
+refit, while prediction uses current rows. Predicates reuse bounded comparisons,
+arithmetic, Boolean columns, strings and SQL-NULL equality; no numeric truthiness,
+functions, logical conjunction/disjunction or extra options. Direct NaN/infinity
+comparisons remain native, not finite-sample filtering; safe arithmetic can turn
+nonfinite/failed arithmetic into NULL/UNKNOWN. Stored empty strings are not NULL.
+No predicate/affected/overflow counts or general native atomicity are implied;
+column keep/drop remains unchanged. See `help keep`, `help drop`, MIG-0009.
+
 Bounded `reshape long|wide` returns additive `ReshapeResult` with owned
 `data.dataset` metadata, not inferred direction/stubs/changed-row fields.
 Long requires complete `stub_suffix` columns and emits identifier/j/stub columns

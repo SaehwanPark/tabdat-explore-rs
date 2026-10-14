@@ -139,7 +139,12 @@ state are handled correctly.
   enabling selected-schema fit/predict/persistence workflows. Request/remaining
   order, native types, NULLs, empty/duplicate/quoted names, nested streams and
   failure/output boundaries are checked; cached fits and existing label pruning
-  are retained. Conditional keep/drop row filters remain uninstalled.
+  are retained. Conditional keep/drop row filters are now installed (#230):
+  bounded TRUE selection with complementary UNKNOWN handling, preserved schema/
+  relative order/labels, named synchronization and original cached fit/sample.
+  Cohort→explicit refit→prediction/persistence, exact row identity, native NULL/
+  nonfinite/arithmetic semantics, validation/staging and output guards are checked;
+  functions/logical-expression breadth and general native atomicity remain out.
   Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
   previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
   prior-order ties, quoted/repeated/empty keys, native schema, nested streams and

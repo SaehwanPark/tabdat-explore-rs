@@ -1,6 +1,66 @@
 use crate::*;
 
 impl DuckDbBackend {
+  pub fn filter_rows(
+    &mut self,
+    dataset: &DatasetInfo,
+    predicate: &AssertExpression,
+    keep: bool,
+  ) -> Result<DatasetInfo, DataError> {
+    let predicate = compile_assert_expression(predicate, dataset)?;
+    // Drop is the exact complement of keep, including UNKNOWN predicates.
+    let selection = if keep {
+      format!("COALESCE(({predicate}), FALSE)")
+    } else {
+      format!("NOT COALESCE(({predicate}), FALSE)")
+    };
+    let used_names = dataset
+      .columns
+      .iter()
+      .map(|column| column.name.clone())
+      .collect::<HashSet<_>>();
+    let order = quote_identifier(&unique_internal_name(
+      "__tabdat_filter_row_order",
+      &used_names,
+    ));
+    self.drop_staging();
+    let query = format!(
+      "CREATE TEMP TABLE {STAGING_TABLE} AS \
+       SELECT * EXCLUDE ({order}) FROM (\
+         SELECT row_number() OVER () AS {order}, * FROM {ACTIVE_TABLE}\
+       ) AS filter_source WHERE {selection} ORDER BY {order}"
+    );
+    if self.connection.execute_batch(&query).is_err() {
+      self.drop_staging();
+      return Err(DataError);
+    }
+    let next = (|| {
+      let columns = self.staged_columns()?;
+      let row_count = self.staged_row_count()?;
+      if columns != dataset.columns || row_count > dataset.row_count {
+        return Err(DataError);
+      }
+      Ok(DatasetInfo {
+        source: dataset.source.clone(),
+        row_count,
+        columns,
+        execution_mode: dataset.execution_mode,
+        lazy_engine: dataset.lazy_engine,
+      })
+    })();
+    let dataset = match next {
+      Ok(dataset) => dataset,
+      Err(error) => {
+        self.drop_staging();
+        return Err(error);
+      }
+    };
+    if self.publish_staging().is_err() {
+      self.drop_staging();
+      return Err(DataError);
+    }
+    Ok(dataset)
+  }
   pub fn project_columns(
     &mut self,
     dataset: &DatasetInfo,

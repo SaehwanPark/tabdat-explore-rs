@@ -182,6 +182,16 @@ pub enum RuntimeError {
   AssertTypeMismatch { message: String },
   /// DuckDB could not produce the assertion aggregate.
   AssertFailed,
+  /// Conditional row selection named absent variables.
+  RowFilterUnknownVariable { variables: Vec<String> },
+  /// Conditional row selection has incompatible operand domains.
+  RowFilterTypeMismatch { message: String },
+  /// Row selection requires a boolean or null predicate, not numeric truthiness.
+  RowFilterRequiresBoolean,
+  /// Parsed function calls are outside bounded row selection.
+  RowFilterUnsupportedExpression,
+  /// DuckDB could not stage or publish the selected rows.
+  RowFilterFailed,
   /// The generate target already exists in the active schema.
   GenerateTargetExists { variable: String },
   /// The generate expression named variables absent from the active schema.
@@ -629,6 +639,19 @@ impl fmt::Display for RuntimeError {
       }
       Self::GenerateTypeMismatch { message } => formatter.write_str(message),
       Self::GenerateUnsupportedExpression { message } => formatter.write_str(message),
+      Self::RowFilterUnknownVariable { variables } => write!(
+        formatter,
+        "row filter unknown variable: {}",
+        variables.join(", ")
+      ),
+      Self::RowFilterTypeMismatch { message } => formatter.write_str(message),
+      Self::RowFilterRequiresBoolean => {
+        formatter.write_str("row filter requires boolean expression")
+      }
+      Self::RowFilterUnsupportedExpression => {
+        formatter.write_str("row filter does not support function calls")
+      }
+      Self::RowFilterFailed => formatter.write_str("row filter failed"),
       Self::GenerateFailed => formatter.write_str("generate failed"),
       Self::ReplaceTargetUnknownVariable { variable } => {
         write!(formatter, "replace unknown variable: {variable}")

@@ -218,7 +218,7 @@ fn quoted_duplicate_and_empty_projections_preserve_native_schema_and_scalar_valu
 }
 
 #[test]
-fn projection_errors_and_conditional_preflight_preserve_prior_results_and_stop_files() {
+fn projection_and_unsupported_predicate_errors_preserve_prior_results_and_stop_files() {
   let fixture = Fixture::new();
   for (source, code, kind) in [
     ("keep x absent", 1, "ExecutionError"),
@@ -229,8 +229,8 @@ fn projection_errors_and_conditional_preflight_preserve_prior_results_and_stop_f
     ("drop", 2, "ParseError"),
     ("select", 2, "ParseError"),
     ("select x if x > 0", 2, "ParseError"),
-    ("keep if x > 0", 2, "JsonResultUnsupported"),
-    ("drop if x == null", 2, "JsonResultUnsupported"),
+    ("keep if inrange(x, 1, 2)", 1, "ExecutionError"),
+    ("drop if x", 1, "ExecutionError"),
   ] {
     let output = fixture.batch(&[
       "--json",
