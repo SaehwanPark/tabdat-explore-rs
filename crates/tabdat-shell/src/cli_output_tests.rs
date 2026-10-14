@@ -1216,6 +1216,114 @@ fn collapse_count_output_failure_stops_later_aggregation_and_files() {
 }
 
 #[test]
+fn text_result_failures_stop_later_batch_script_and_batch_run_files() {
+  for mode in 0..3 {
+    for write_failure in [false, true] {
+      for fail_at in 1..=if mode == 2 { 7 } else { 6 } {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("first.csv");
+        let second = fixture.0.join("second.csv");
+        let later = fixture.0.join("later.csv");
+        let commands = [
+          fixture.load(),
+          "summarize x y".into(),
+          format!("export {}", first.display()),
+          "by x: count".into(),
+          "regress y x".into(),
+          format!("export {}", second.display()),
+        ];
+        let parent = fixture.0.join("parent.td");
+        let child = fixture.0.join("child.td");
+        std::fs::write(
+          &parent,
+          format!("{}\nrun {}\n", commands[0], child.display()),
+        )
+        .unwrap();
+        let later_export = format!("export {}", later.display());
+        let mut child_commands = commands[1..].join("\n");
+        if mode == 1 {
+          child_commands.push_str(&format!("\n{later_export}\n"));
+        }
+        std::fs::write(&child, child_commands).unwrap();
+        let args = match mode {
+          0 => arguments(&[
+            "--text",
+            "-c",
+            &commands[0],
+            "-c",
+            &commands[1],
+            "-c",
+            &commands[2],
+            "-c",
+            &commands[3],
+            "-c",
+            &commands[4],
+            "-c",
+            &commands[5],
+            "-c",
+            &later_export,
+          ]),
+          1 => arguments(&["--text", "-f", parent.to_str().unwrap()]),
+          _ => arguments(&[
+            "--text",
+            "-c",
+            &format!("run {}", parent.display()),
+            "-c",
+            &later_export,
+          ]),
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        let error = run_cli_with_output(args, &mut output, &mut errors).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 3);
+        assert_eq!(second.exists(), fail_at >= 6);
+        assert!(!later.exists());
+        for file in [&first, &second] {
+          if file.exists() {
+            assert_eq!(
+              std::fs::read_to_string(file).unwrap(),
+              "x,y\n1,2\n2,5\n3,5\n4,9\n"
+            );
+          }
+        }
+        assert_eq!(output.flushes, fail_at - usize::from(write_failure));
+      }
+    }
+  }
+}
+
+#[test]
+fn text_diagnostic_failures_do_not_execute_later_commands() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      let fixture = Fixture::new();
+      let later = fixture.0.join("later.csv");
+      let failed = "assert x > 10";
+      let export = format!("export {}", later.display());
+      let parent = fixture.0.join("parent.td");
+      std::fs::write(&parent, format!("{}\n{failed}\n{export}\n", fixture.load())).unwrap();
+      let args = if script {
+        arguments(&["--text", "-f", parent.to_str().unwrap()])
+      } else {
+        arguments(&["--text", "-c", &fixture.load(), "-c", failed, "-c", &export])
+      };
+      let mut output = Vec::new();
+      let error = run_cli_with_output(args, &mut output, &mut FailedOutput::new(write_failure, 1))
+        .unwrap_err();
+      assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+      assert!(
+        String::from_utf8(output)
+          .unwrap()
+          .starts_with("Loaded 4 rows")
+      );
+      assert!(!later.exists());
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

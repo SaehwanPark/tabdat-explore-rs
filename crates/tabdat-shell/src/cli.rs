@@ -7,13 +7,13 @@ use tabdat_execution::{RuntimeError, Session};
 use tabdat_language::{Command, parse_command};
 
 pub const USAGE: &str = "\
-usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json]
+usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json | --text]
               [--list-commands] [--list-command-effects] [--help-topic TOPIC]
               [--explain] [--describe-command COMMAND]
               [script]";
 
 pub const HELP_TEXT: &str = "\
-usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json]
+usage: tabdat [-h] [-v] [-c COMMAND] [-f FILE] [--json | --text]
               [--list-commands] [--list-command-effects] [--help-topic TOPIC]
               [--explain] [--describe-command COMMAND]
               [script]
@@ -31,6 +31,8 @@ options:
   -c, --command COMMAND
                         run a command and exit
   -f, --file FILE       run a TabDat script file and exit
+  --text                render readable batch/script results; requires -c or a
+                        script path; cannot be combined with --json/discovery
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
                         by ...: count, collapse count
@@ -58,6 +60,7 @@ pub struct CliArgs {
   pub version: bool,
   pub help: bool,
   pub json: bool,
+  pub text: bool,
   pub list_commands: bool,
   pub list_command_effects: bool,
   pub help_topic: Option<String>,
@@ -97,6 +100,7 @@ where
   let mut version = false;
   let mut help = false;
   let mut json = false;
+  let mut text = false;
   let mut list_commands = false;
   let mut list_command_effects = false;
   let mut help_topic = None;
@@ -116,6 +120,8 @@ where
       help = true;
     } else if arg == "--json" {
       json = true;
+    } else if arg == "--text" {
+      text = true;
     } else if arg == "--list-commands" {
       list_commands = true;
     } else if arg == "--list-command-effects" {
@@ -191,6 +197,7 @@ where
       version: false,
       help: true,
       json: false,
+      text: false,
       list_commands: false,
       list_command_effects: false,
       help_topic: None,
@@ -207,6 +214,7 @@ where
       version: true,
       help: false,
       json: false,
+      text: false,
       list_commands: false,
       list_command_effects: false,
       help_topic: None,
@@ -220,6 +228,20 @@ where
 
   if !unrecognized.is_empty() {
     return Err(CliError::UnrecognizedArguments(unrecognized));
+  }
+
+  if text && json {
+    return Err(CliError::Conflict("--text cannot be combined with --json"));
+  }
+  let has_discovery = list_commands
+    || list_command_effects
+    || help_topic.is_some()
+    || explain
+    || describe_command.is_some();
+  if text && has_discovery {
+    return Err(CliError::Conflict(
+      "--text cannot be combined with explain or discovery/describe flags",
+    ));
   }
 
   // Requires --json validation
@@ -294,11 +316,11 @@ where
       "-f/--file cannot be combined with a positional script",
     ));
   }
-  let has_discovery = list_commands
-    || list_command_effects
-    || help_topic.is_some()
-    || explain
-    || describe_command.is_some();
+  if text && !has_exec {
+    return Err(CliError::Conflict(
+      "--text requires -c/--command or a script path; the interactive session is already readable",
+    ));
+  }
   if json && !has_exec && !has_discovery {
     return Err(CliError::Conflict(
       "--json requires a command execution, script path, explain, or discovery/describe flag",
@@ -309,6 +331,7 @@ where
     version,
     help,
     json,
+    text,
     list_commands,
     list_command_effects,
     help_topic,
@@ -324,6 +347,56 @@ fn emit_cli_line(writer: &mut dyn Write, text: impl fmt::Display) -> io::Result<
   writeln!(writer, "{text}")?;
   // Detect buffered failures before the next command can have effects.
   writer.flush()
+}
+
+fn emit_text_result(
+  output: &mut dyn Write,
+  result: &tabdat_domain::ExecutionResult,
+) -> io::Result<()> {
+  write!(
+    output,
+    "{}",
+    tabdat_reporting::terminal::render_execution_result(result)
+  )?;
+  output.flush()
+}
+
+fn execute_reported_script(
+  session: &mut Session,
+  path: &Path,
+  json: bool,
+  output: &mut dyn Write,
+) -> io::Result<Result<tabdat_domain::RunResult, RuntimeError>> {
+  let output_error = RefCell::new(None);
+  let result = session.execute_run_with_callbacks(
+    path,
+    |command| {
+      if output_error.borrow().is_some() {
+        Err("CLI output failed".to_owned())
+      } else if json && !crate::json_results::supports_script_command(command) {
+        Err(crate::json_results::SCRIPT_UNSUPPORTED_MESSAGE.to_owned())
+      } else {
+        Ok(())
+      }
+    },
+    |result| {
+      let emission = if json {
+        let envelope = crate::json_results::serialize_execution_result(result)
+          .expect("JSON script preflight permits only serializable leaf results");
+        emit_cli_line(output, envelope)
+      } else {
+        emit_text_result(output, result)
+      };
+      if let Err(error) = emission {
+        *output_error.borrow_mut() = Some(error);
+      }
+    },
+  );
+  // Keep the original IO failure rather than its subsequent located guard error.
+  match output_error.into_inner() {
+    Some(error) => Err(error),
+    None => Ok(result),
+  }
 }
 
 fn json_result_unsupported(output: &mut dyn Write, errors: &mut dyn Write) -> io::Result<i32> {
@@ -433,7 +506,14 @@ fn run_cli_with_output(
       if args.json && !crate::json_results::supports_batch_command(&command) {
         return json_result_unsupported(output, errors);
       }
-      let result = match session.execute(command) {
+      let execution = match command {
+        Command::Run { path } if args.text => {
+          execute_reported_script(&mut session, Path::new(&path), false, output)?
+            .map(tabdat_domain::ExecutionResult::Run)
+        }
+        command => session.execute(command),
+      };
+      let result = match execution {
         Ok(result) => result,
         Err(err) => {
           emit_cli_line(errors, format_args!("Error: {err}"))?;
@@ -450,6 +530,8 @@ fn run_cli_with_output(
         } else {
           return json_result_unsupported(output, errors);
         }
+      } else if args.text {
+        emit_text_result(output, &result)?;
       }
     }
     return Ok(0);
@@ -471,37 +553,11 @@ fn run_cli_with_output(
     }
 
     let mut session = Session::new();
-    let output_error = RefCell::new(None);
-    let result = if args.json {
-      session
-        .execute_run_with_callbacks(
-          &path,
-          |command| {
-            if output_error.borrow().is_some() {
-              Err("CLI output failed".to_owned())
-            } else if crate::json_results::supports_script_command(command) {
-              Ok(())
-            } else {
-              Err(crate::json_results::SCRIPT_UNSUPPORTED_MESSAGE.to_owned())
-            }
-          },
-          |result| {
-            let envelope = crate::json_results::serialize_execution_result(result)
-              .expect("JSON script preflight permits only serializable leaf results");
-            if let Err(error) = emit_cli_line(output, envelope) {
-              *output_error.borrow_mut() = Some(error);
-            }
-          },
-        )
-        .map(|_| ())
+    let result = if args.json || args.text {
+      execute_reported_script(&mut session, &path, args.json, output)?.map(|_| ())
     } else {
       session.execute_run(&path).map(|_| ())
     };
-    // The observer cannot return an error. Keep the original I/O failure rather
-    // than expose the preflight stop as a command or located script failure.
-    if let Some(error) = output_error.into_inner() {
-      return Err(error);
-    }
     return Ok(match result {
       Ok(_) => 0,
       Err(RuntimeError::ScriptError(err)) => {

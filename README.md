@@ -62,9 +62,28 @@ one best-effort `Error: CLI I/O failed:` diagnostic on stderr. If stderr itself
 fails, exit 1 still applies. A failed argument-error diagnostic also returns 1;
 normal argument/syntax/file exit categories remain unchanged when streams work.
 A broken stream cannot be promised a JSON error envelope. Prior results/effects,
-and the command whose result failed to write, are not rolled back. Plain batch/
+and the command whose result failed to write, are not rolled back. Default batch/
 script success remains silent; unused streams are not proactively probed. This
 is not transactional or atomic file publication; see MIG-0008.
+
+For opt-in readable one-shot output, use:
+
+```sh
+tabdat-explore-rs --text -c "use data.csv" -c "summarize" -c "regress y x"
+tabdat-explore-rs --text -f analysis.td
+```
+
+`--text` shares the owned terminal renderer without additional scans or changed
+calculation/state semantics. It requires explicit batch/script execution and cannot
+be combined with `--json`, discovery or explain. Quiet defaults and CLI-v1 JSON
+remain unchanged. Text file/positional scripts stream leaf results without a final
+container summary; text `-c "run script.td"` streams leaves and the existing run
+summary, then continues the shared batch session. File/script mode keeps located
+execution/syntax/file exits 1/2/3; a failed `-c run` remains a batch execution error
+(exit 1). Write/flush failures return 1, stopping later commands/files while keeping
+completed effects and partial prior output. Text is for humans, not a stable machine
+schema; use `--json` for supported structured results. Text admission does not imply
+that every catalogued command executes or expand bounded JSON admission.
 
 Readable terminal details currently cover load, describe, summarize, count,
 head/tail, frequency tables, SQL table results and run metadata. Core
@@ -486,7 +505,7 @@ Independent difference rows show `NA` for N because the owned legacy field is
 not a sample count; real group counts and reference DF are shown separately.
 Undefined statistics display `NA`, not invented zeros. Rendering does not change
 calculations, samples, data, or the saved regression. Nested interactive `run`
-streams these results; non-JSON batch output is unchanged.
+streams these results; default quiet batch output is unchanged, with readable `--text` as a separate opt-in.
 
 CLI-v1 JSON also supports all four bounded `ttest` forms. `TtestResult.data`
 contains `varname1`, nullable `varname2`/`by_variable`, `is_paired`, `is_welch`,
