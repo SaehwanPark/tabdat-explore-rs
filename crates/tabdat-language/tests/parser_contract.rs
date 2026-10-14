@@ -5015,10 +5015,8 @@ fn regress_preserves_bounded_parser_diagnostics() {
       "regress cost",
       "regress expects syntax: regress <y> <xvars>",
     ),
-    (
-      "regress cost age if age > 18",
-      "regress expects syntax: regress <y> <xvars>",
-    ),
+    // Selected-cohort linear fitting intentionally enables `if` predicates;
+    // parse acceptance is covered by tests/conditional_regress.rs.
     (
       "regress cost age, robust cluster(sex)",
       "regress cannot combine robust and cluster",
