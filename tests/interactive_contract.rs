@@ -370,6 +370,26 @@ fn linear_workflow_display_matches_independent_statsmodels_scipy_reference() {
 }
 
 #[test]
+fn conditional_regress_reports_selected_cohort_samples_and_recovery_keeps_full_data() {
+  let fixture = model_fixture();
+  let output = run(
+    &fixture,
+    b"use model.csv\nregress y x if x >= 2\nregress y x if x >= 9\nregress y x\npredict fitted\nhead 8\nexit\n",
+  );
+  assert!(output.status.success());
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 1, "{stderr}");
+  assert!(stderr.contains("regress requires at least one complete observation"));
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  // The conditional fit reports the selected cohort sample, not the full data.
+  assert!(stdout.contains("N = 4; residual df = 2\nCandidate rows = 8; excluded = 4\n"));
+  // The failed attempted regression cleared the cached model; the bare refit
+  // keeps the ordinary sample and prediction stays current-data over all rows.
+  assert!(stdout.contains("N = 6; residual df = 4\nCandidate rows = 8; excluded = 2\n"));
+  assert!(stdout.contains("Predicted: 8 rows, 3 columns\n"));
+}
+
+#[test]
 fn failed_estimation_clears_model_but_preserves_data_and_allows_recovery() {
   let fixture = model_fixture();
   let output = run(&fixture, b"use model.csv\nregress y x\nregress y absent\npredict stale\nlincom x\ntest x\ncount\nregress y x\nlincom absent\npredict recovered\ncount\nexit\n");
