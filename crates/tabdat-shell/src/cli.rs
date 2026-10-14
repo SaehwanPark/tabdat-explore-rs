@@ -35,7 +35,7 @@ options:
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
                         by ...: count
-                        and generate/replace/rename/recode/label/encode/decode/sql/join/append,
+                        and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
                         keep/drop/select variable lists, sort/gsort,
                         regress/predict/lincom/test/ttest/estat vif, save/export;
                         scripts stream the same successful leaf results)
