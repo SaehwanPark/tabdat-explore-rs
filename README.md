@@ -257,6 +257,20 @@ fields stay null placeholders. Empty/self/repeated appends and ordinary
 validation/type/file/output boundaries are checked; native publication faults
 are not injected and no general atomicity guarantee is added. See `help append`.
 
+Bounded `reshape long|wide` returns additive `ReshapeResult` with owned
+`data.dataset` metadata, not inferred direction/stubs/changed-row fields.
+Long requires complete `stub_suffix` columns and emits identifier/j/stub columns
+in source-row then requested-stub/schema first-appearance suffix order; native
+UNION promotion and NULL values are retained. Wide casts non-NULL j keys to text,
+orders generated suffixes lexically, and uses native MAX for duplicate cells,
+not uniqueness rejection or a general lossless pivot; NULL j rows contribute no
+cell. Unrelated columns are omitted. Source identity is retained, named ownership
+detaches (registered snapshots survive), and only surviving label names/attachments
+remain; definitions and cached original fit/sample persist until explicit refit.
+Missing old predictors fail rather than silently fitting a new model. Native
+publication is not generally atomic; no panel/factor state is inferred. Empty
+long works with valid stubs; empty/all-NULL-j wide fails. See `help reshape`.
+
 Only `by groups: count` is admitted as grouped CLI-v1 JSON execution. It returns
 owned `ByResult` `data.headers`/`rows`: raw group columns in requested order,
 then `Count`; native ascending NULL-last group order; COUNT(*) includes SQL

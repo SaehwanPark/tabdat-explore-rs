@@ -187,6 +187,11 @@ state are handled correctly.
   repeated/quoted/empty groups, cached/state invariants and output/file guards.
   Only by-count commands are admitted; native grouped AVG means remain outside
   this surface pending a separate statistical/sample-semantics review.
+  Reshape JSON (#229) now connects bounded multistub wide/long preparation to
+  grouped EDA, explicit refitting, prediction and persistence. Owned metadata,
+  source/suffix ordering, native MAX duplicates/NULLs/types, selected-schema
+  roundtrips, label/cache/named rules, failure-state and output/file guards are
+  checked without installing a general lossless pivot or new panel semantics.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

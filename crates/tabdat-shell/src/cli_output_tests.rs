@@ -804,6 +804,77 @@ fn grouped_count_output_failure_stops_later_counts_and_files() {
 }
 
 #[test]
+fn reshape_output_failure_stops_later_pivots_and_files() {
+  for script in [false, true] {
+    for write_failure in [false, true] {
+      for fail_at in 1..=6 {
+        let fixture = Fixture::new();
+        let first = fixture.0.join("long.csv");
+        let second = fixture.0.join("wide.csv");
+        let first_export = format!("export \"{}\"", first.display());
+        let second_export = format!("export \"{}\"", second.display());
+        let commands = [
+          "sql select x as id,y as val_1,x as val_2 from active into base",
+          "reshape long val, i(id) j(t)",
+          &first_export,
+          "reshape wide val, i(id) j(t)",
+          &second_export,
+        ];
+        let args = if script {
+          let parent = fixture.0.join("parent.td");
+          let child = fixture.0.join("child.td");
+          std::fs::write(&child, commands.join("\n")).unwrap();
+          std::fs::write(
+            &parent,
+            format!("{}\nrun {}\n", fixture.load(), child.display()),
+          )
+          .unwrap();
+          arguments(&["--json", "-f", parent.to_str().unwrap()])
+        } else {
+          arguments(&[
+            "--json",
+            "-c",
+            &fixture.load(),
+            "-c",
+            commands[0],
+            "-c",
+            commands[1],
+            "-c",
+            commands[2],
+            "-c",
+            commands[3],
+            "-c",
+            commands[4],
+          ])
+        };
+        let mut output = FailedOutput::new(write_failure, fail_at);
+        let mut errors = Vec::new();
+        assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+        assert!(errors.is_empty());
+        assert_eq!(first.exists(), fail_at >= 4);
+        assert_eq!(second.exists(), fail_at == 6);
+        if first.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&first).unwrap(),
+            "id,t,val\n1,1,2\n1,2,1\n2,1,5\n2,2,2\n3,1,5\n3,2,3\n4,1,9\n4,2,4\n"
+          );
+        }
+        if second.exists() {
+          assert_eq!(
+            std::fs::read_to_string(&second).unwrap(),
+            "id,val_1,val_2\n1,2,1\n2,5,2\n3,5,3\n4,9,4\n"
+          );
+        }
+        assert_eq!(
+          output.completed_lines(),
+          fail_at - usize::from(write_failure)
+        );
+      }
+    }
+  }
+}
+
+#[test]
 fn output_failure_prevents_later_file_writes_without_rolling_back_completed_files() {
   for script in [false, true] {
     for write_failure in [false, true] {

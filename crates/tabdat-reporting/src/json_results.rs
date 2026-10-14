@@ -10,8 +10,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 /// ByResult also represents native grouped means, so DTO serialization alone
@@ -19,7 +19,8 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Append { .. }
+    Command::Reshape { .. }
+      | Command::Append { .. }
       | Command::Join { .. }
       | Command::Sql { .. }
       | Command::Encode { .. }
@@ -66,7 +67,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Append { .. }
+    Command::Reshape { .. }
+      | Command::Append { .. }
       | Command::Join { .. }
       | Command::Sql { .. }
       | Command::Encode { .. }
@@ -152,6 +154,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Select(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
+    ),
+    ExecutionResult::Reshape(result) => (
+      json!({"dataset": dataset_info_data(&result.dataset)}),
+      "ReshapeResult",
     ),
     ExecutionResult::By(result) => (table_result_data(&result.headers, &result.rows), "ByResult"),
     ExecutionResult::Append(result) => (
@@ -626,6 +632,40 @@ mod tests {
         }),
       },
     };
+    assert!(!supports_batch_command(&command));
+    assert!(!supports_script_command(&command));
+  }
+
+  #[test]
+  fn reshape_reports_owned_metadata_without_guessing_direction_or_changed_rows() {
+    let dataset = DatasetInfo {
+      source: "wide\t目录".into(),
+      row_count: u64::MAX,
+      columns: vec![tabdat_domain::ColumnInfo {
+        name: "x\n".into(),
+        data_type: "DECIMAL(38,4)".into(),
+      }],
+      execution_mode: ExecutionMode::Eager,
+      lazy_engine: None,
+    };
+    let result = ExecutionResult::Reshape(tabdat_domain::ReshapeResult {
+      dataset: dataset.clone(),
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    assert_eq!(
+      serde_json::from_str::<Value>(&serialized).unwrap(),
+      json!({"schema_version":1,"result_type":"ReshapeResult","data":{"dataset":dataset_info_data(&dataset)}})
+    );
+    for source in [
+      "reshape long x y, i(id) j(t)",
+      "reshape wide x, i(id `group name`) j(t)",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    let command = tabdat_language::parse_command("by id: reshape long x, i(id) j(t)").unwrap();
     assert!(!supports_batch_command(&command));
     assert!(!supports_script_command(&command));
   }
