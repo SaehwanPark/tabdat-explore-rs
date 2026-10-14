@@ -349,6 +349,34 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       output.push_str("Empty relations report 0% by convention; NA = unavailable or undefined.\n");
       output
     }
+    ExecutionResult::Duplicates(result) => format!(
+      "Duplicate key report\nKey variables: {}\nRows checked: {}\nDistinct key groups: {}\nDuplicate groups: {}\nRows in duplicate groups: {}\nSurplus rows: {}\nMaximum copies: {}\nSQL NULL key components are grouped; this report does not remove rows.\n",
+      result
+        .variables
+        .iter()
+        .map(|name| format!("{name:?}"))
+        .collect::<Vec<_>>()
+        .join(", "),
+      result.total_rows,
+      result.unique_groups,
+      result.duplicate_groups,
+      result.duplicate_rows,
+      result.extra_rows,
+      result.max_copies
+    ),
+    ExecutionResult::Isid(result) => format!(
+      "isid passed\nKey variables: {}\nRows checked: {}\nDistinct key groups: {}\nRows with SQL NULL keys: {}\nMissing keys allowed: {}\n",
+      result
+        .variables
+        .iter()
+        .map(|name| format!("{name:?}"))
+        .collect::<Vec<_>>()
+        .join(", "),
+      result.total_rows,
+      result.unique_groups,
+      result.missing_key_rows,
+      if result.missok { "yes" } else { "no" }
+    ),
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       table(&preview.columns, &preview.rows)
     }
@@ -433,6 +461,38 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn key_guard_display_escapes_names_and_preserves_owned_counters() {
+    let duplicates = ExecutionResult::Duplicates(tabdat_domain::DuplicatesResult {
+      variables: vec!["key\n列".into()],
+      total_rows: 5,
+      unique_groups: 3,
+      duplicate_groups: 1,
+      duplicate_rows: 3,
+      extra_rows: 2,
+      max_copies: 3,
+    });
+    let text = render_execution_result(&duplicates);
+    assert!(text.contains("Key variables: \"key\\n列\"\n"));
+    assert!(text.contains("Distinct key groups: 3\nDuplicate groups: 1\nRows in duplicate groups: 3\nSurplus rows: 2\nMaximum copies: 3\n"));
+    for missok in [false, true] {
+      let result = ExecutionResult::Isid(tabdat_domain::IsidResult {
+        variables: vec!["x\t".into()],
+        total_rows: 0,
+        unique_groups: 0,
+        missing_key_rows: 0,
+        missok,
+      });
+      let text = render_execution_result(&result);
+      assert!(text.starts_with("isid passed\nKey variables: \"x\\t\"\nRows checked: 0\n"));
+      assert!(text.contains(if missok {
+        "Missing keys allowed: yes"
+      } else {
+        "Missing keys allowed: no"
+      }));
+    }
+  }
 
   #[test]
   fn codebook_display_preserves_examples_and_escapes_controls() {
