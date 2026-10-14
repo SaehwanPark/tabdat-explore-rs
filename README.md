@@ -205,6 +205,18 @@ execution is added. Fingerprints are not file-byte checksums, authentication or
 cross-package signatures; CSV re-inference may change them. See `help assert` and
 `help datasignature` for bounded syntax and output-failure rules.
 
+Interactive `encode`/`decode` now report owned row/column outcomes, and `label`
+responses show the action/message plus readable variable labels, attachments and
+value-label sets. Names/text are quoted/control-safe. Mapping keys are explicitly
+`integer`, `number` (exact source spelling) or `text`, retaining owned order and
+wide integer precision without converting categories. Empty/absent dictionaries
+are explicit. Filtered `label list names` still includes all variable labels.
+These displays do not rescan data, change dictionaries/models or change JSON;
+labels are not automatic factors or general metadata-aware formatting for other
+commands. Nested terminal scripts stream the same leaf displays and can recover
+from located errors; output failure stops later effects without rolling back
+completed encoding, labels or files.
+
 Bounded session-local `label variable`, `define`, `values`, `list` and `drop`
 return `LabelResult` with `data.action`, `message` and owned `metadata` (null
 when empty). Metadata contains ordered `variable_labels` and `attachments`

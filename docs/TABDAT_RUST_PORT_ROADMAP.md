@@ -49,6 +49,14 @@ CSV/Parquet roundtrips, nested JSON, source-classified failures and prior
 model/data preservation are covered. No shell escape decoding, quoted paths for
 other commands, or remote/lazy/DTA runtime is added.
 
+Interactive category coding now reports encode/decode dataset outcomes and typed
+label dictionaries (#235), replacing unsupported-details fallback in the
+encode→inspect mappings→decode/persist workflow. Owned order/spelling and wide,
+control/Unicode/empty labels, list filtering, clearing/drop, cached-state invariants,
+nested recovery and all terminal write/flush boundaries are checked. Existing JSON,
+parser/native coding and factor/ordinal semantics are unchanged; dictionary
+persistence and general label-aware formatting remain uninstalled.
+
 **Goal:** common local-data workflows are functional through the actual CLI/REPL.
 
 - `use`, `describe`, `head`/`tail`, `summarize`, `tabulate`, a practical subset of

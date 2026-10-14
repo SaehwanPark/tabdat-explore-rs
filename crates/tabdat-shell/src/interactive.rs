@@ -333,6 +333,107 @@ mod tests {
   }
 
   #[test]
+  fn coding_output_failure_stops_later_dictionary_commands_and_files() {
+    struct FailedOutput {
+      fail_at: usize,
+      calls: usize,
+      fail_on_flush: bool,
+    }
+    impl Write for FailedOutput {
+      fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if !self.fail_on_flush {
+          self.calls += 1;
+          if self.calls == self.fail_at {
+            return Err(io::Error::other("write failed"));
+          }
+        }
+        Ok(bytes.len())
+      }
+      fn flush(&mut self) -> io::Result<()> {
+        if self.fail_on_flush {
+          self.calls += 1;
+          if self.calls == self.fail_at {
+            return Err(io::Error::other("flush failed"));
+          }
+        }
+        Ok(())
+      }
+    }
+    for script in [false, true] {
+      for fail_on_flush in [false, true] {
+        for fail_at in 1..=if script { 9 } else { 8 } {
+          let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+          let root = std::env::temp_dir().join(format!(
+            "tabdat-coding-output-{}-{nonce}",
+            std::process::id()
+          ));
+          std::fs::create_dir(&root).unwrap();
+          let csv = root.join("data.csv");
+          std::fs::write(&csv, "category\nb\na\n").unwrap();
+          let first = root.join("coded.csv");
+          let second = root.join("decoded.csv");
+          let later = root.join("later.csv");
+          let commands = [
+            format!("use {}", csv.display()),
+            "label variable category 'Category'".into(),
+            "encode category, generate(code)".into(),
+            "label list code".into(),
+            format!("export {}", first.display()),
+            "decode code, generate(readable)".into(),
+            "label drop code".into(),
+            format!("export {}", second.display()),
+          ];
+          let input = if script {
+            let parent = root.join("parent.td");
+            let child = root.join("child.td");
+            std::fs::write(
+              &parent,
+              format!("{}\nrun {}\n", commands[0], child.display()),
+            )
+            .unwrap();
+            std::fs::write(&child, commands[1..].join("\n")).unwrap();
+            format!("run {}\nexport {}\n", parent.display(), later.display())
+          } else {
+            format!("{}\nexport {}\n", commands.join("\n"), later.display())
+          };
+          let mut errors = Vec::new();
+          let result = run_session(
+            &mut Cursor::new(input.as_bytes()),
+            &mut FailedOutput {
+              fail_at,
+              calls: 0,
+              fail_on_flush,
+            },
+            &mut errors,
+            false,
+          );
+          assert!(result.is_err());
+          assert!(errors.is_empty());
+          assert_eq!(first.exists(), fail_at >= 5);
+          assert_eq!(second.exists(), fail_at >= 8);
+          assert!(!later.exists());
+          if first.exists() {
+            assert_eq!(
+              std::fs::read_to_string(&first).unwrap(),
+              "category,code\nb,2\na,1\n"
+            );
+          }
+          if second.exists() {
+            assert_eq!(
+              std::fs::read_to_string(&second).unwrap(),
+              "category,code,readable\nb,2,b\na,1,a\n"
+            );
+          }
+          std::fs::remove_dir_all(&root).unwrap();
+        }
+      }
+    }
+  }
+
+  #[test]
   fn io_failures_propagate_instead_of_spinning_or_claiming_success() {
     struct FailedInput;
     impl io::Read for FailedInput {
