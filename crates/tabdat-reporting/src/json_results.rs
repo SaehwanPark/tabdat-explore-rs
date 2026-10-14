@@ -10,8 +10,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, duplicates, isid, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, duplicates, isid, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 /// ByResult also represents native grouped means, so DTO serialization alone
@@ -19,7 +19,9 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Duplicates { .. }
+    Command::Assert { .. }
+      | Command::Datasignature
+      | Command::Duplicates { .. }
       | Command::Isid { .. }
       | Command::RowFilter { .. }
       | Command::Reshape { .. }
@@ -71,7 +73,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::Duplicates { .. }
+    Command::Assert { .. }
+      | Command::Datasignature
+      | Command::Duplicates { .. }
       | Command::Isid { .. }
       | Command::RowFilter { .. }
       | Command::Reshape { .. }
@@ -216,6 +220,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Isid(result) => (
       json!({"variables":result.variables,"total_rows":result.total_rows,"unique_groups":result.unique_groups,"missing_key_rows":result.missing_key_rows,"missok":result.missok}),
       "IsidResult",
+    ),
+    ExecutionResult::Assert(result) => (
+      json!({"checked":result.checked,"failed":result.failed}),
+      "AssertResult",
+    ),
+    ExecutionResult::Datasignature(result) => (
+      json!({"algorithm":result.algorithm,"signature":result.signature,"row_count":result.row_count,"column_count":result.column_count}),
+      "DatasignatureResult",
     ),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),

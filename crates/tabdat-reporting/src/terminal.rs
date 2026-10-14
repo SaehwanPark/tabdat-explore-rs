@@ -377,6 +377,17 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.missing_key_rows,
       if result.missok { "yes" } else { "no" }
     ),
+    ExecutionResult::Assert(result) => format!(
+      "assertion passed: {} rows\nFailed rows: {}\n",
+      result.checked, result.failed
+    ),
+    ExecutionResult::Datasignature(result) => format!(
+      "Data signature\nAlgorithm: {}\nRows: {}\nColumns: {}\nSignature: {}\n",
+      result.algorithm.escape_debug(),
+      result.row_count,
+      result.column_count,
+      result.signature.escape_debug()
+    ),
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       table(&preview.columns, &preview.rows)
     }

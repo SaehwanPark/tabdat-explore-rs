@@ -180,6 +180,19 @@ fits without refitting. Metadata label/panel fields remain null placeholders.
 Parquet retains stored empty strings; CSV reload may turn empty fields into NULL.
 See `help recode` for bounded eager syntax and failure limits.
 
+Read-only `assert` and `datasignature` now report in terminal/CLI-v1 JSON, enabling
+script preconditions and current-data fingerprint records before analysis/persistence.
+Successful `AssertResult` owns `data.checked`/`failed`; FALSE or SQL-NULL predicates
+fail (empty data passes), and failure is an execution error, not a successful
+assertion envelope. `DatasignatureResult` owns `data.algorithm`, `signature`,
+`row_count` and `column_count`: the existing versioned SHA-256 protocol covers
+public names/canonical types, row order and values, excluding labels/source paths.
+Both inspect current data without changing named ownership, labels or cached models/
+samples. No functions/logical breadth/Boolean literal keywords, `if`/options or `by:`
+execution is added. Fingerprints are not file-byte checksums, authentication or
+cross-package signatures; CSV re-inference may change them. See `help assert` and
+`help datasignature` for bounded syntax and output-failure rules.
+
 Bounded session-local `label variable`, `define`, `values`, `list` and `drop`
 return `LabelResult` with `data.action`, `message` and owned `metadata` (null
 when empty). Metadata contains ordered `variable_labels` and `attachments`
