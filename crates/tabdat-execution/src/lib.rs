@@ -94,6 +94,7 @@ impl Session {
       Command::Tabulate { command } => self.execute_tabulate(command),
       Command::By { command } => self.execute_by(command),
       Command::Collapse { command } => self.execute_collapse(command),
+      Command::RowFilter { action, condition } => self.execute_row_filter(action, condition),
       Command::Keep { variables } => self.execute_keep(variables),
       Command::Drop { variables } => self.execute_drop(variables),
       Command::Select { variables } => self.execute_select(variables),

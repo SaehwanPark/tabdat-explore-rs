@@ -18,6 +18,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0008 | Accepted | Noninteractive CLI I/O failures | Deliberate exit 1, fallible writes/flush boundaries and script stop guard instead of print-macro panic/exit 101. PR #214; details below. |
 
+| MIG-0009 | Accepted | Bounded conditional keep/drop | PR #230 installs TRUE-row selection with complementary FALSE/UNKNOWN handling and existing predicate rules, not implicit finite filtering or Python/Stata missing-order parity; details below. |
+
 MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.
@@ -174,6 +176,39 @@ updates also get an entry identifying old/new pins and affected contract checks.
   empty cases, metadata/model/row invariants and existing finite regressions are
   tested. Runtime typed fixtures check BIGINT/UBIGINT and DECIMAL(38,2) extrema
   without narrowing, quoted identifiers, and REAL NaN/infinity filtering.
+
+### MIG-0009: conditional row selection
+
+- **Scope:** PR #230 replaces the syntax-only Rust RowFilter rejection at
+  `4f77e92` with bounded execution in terminal/scripts/CLI-v1. Column projection
+  and its envelopes remain unchanged. This defines the new Rust subset, not a
+  changed Python pin or a claim of Python/Stata conditional/missing-order parity.
+- **Decision:** keep retains TRUE predicate rows; drop removes TRUE only, keeping
+  FALSE/UNKNOWN. Using raw `NOT predicate` for drop would lose UNKNOWN rows and
+  break the complementary partition. Only Boolean/NULL expression domains are
+  admitted; functions, numeric truthiness, logical-expression and option breadth
+  remain outside execution. The existing replace/assert AST/domain/compiler is
+  reused, preserving identifier/literal quoting and unsigned arithmetic limits.
+- **Missingness:** explicit equality with NULL tests SQL NULL; stored empty,
+  NaN/infinity are not implicitly missing. Direct DOUBLE `x > 0` uses native
+  comparison (NaN/+inf can match). Existing safe arithmetic `try(...)` and finite
+  checking turn invalid/nonfinite arithmetic into NULL: `(x + 0) > 0` is UNKNOWN
+  for nonfinite x, while `(x + 0) == null` matches it. This is intentionally not
+  the finite estimation/summary sample contract; users select it explicitly.
+- **State/impact:** preserve schema/types/source and relative row order, labels
+  and definitions; synchronize active named tables consistently with in-place
+  transforms. Retain cached original fit/sample/inference without remapping its
+  row indices; prediction uses selected current rows. Explicit refit uses the
+  selected finite estimation sample. No affected/overflow-row diagnostics or
+  general atomic native publication/named-synchronization guarantee is added.
+- **Evidence:** `conditional_row_filter_contract.rs` covers complements, NULL/
+  stored-empty/nonfinite/arithmetic, quoted/wide/decimal/Boolean/unsigned/empty
+  cases, exact row identity, labels/named/cache/failure invariants, native query
+  failure, closed-form selected OLS (slope1.3/intercept2.2 at fixed 1e-10), and
+  statsmodels 0.14.6/NumPy 2.4.4/SciPy 1.17.1 coefficient/SE/fit/prediction
+  agreement. Nested streams, persistence and terminal recovery are checked. Shell writer tests stop later
+  filters/files at every batch/nested write/flush failure, retaining completed
+  effects. Existing projection/replace/parser regressions remain required.
 
 ### MIG-0008: noninteractive CLI I/O failures
 

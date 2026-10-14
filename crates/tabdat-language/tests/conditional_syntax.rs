@@ -37,7 +37,7 @@ fn condition_and_option_fields_are_retained() {
 }
 
 #[test]
-fn conditional_commands_parse_without_execution_support() {
+fn conditional_forms_parse_independently_of_the_runtime_subset() {
   for input in [
     "keep if age >= 18",
     "drop if sex == 'F'",
