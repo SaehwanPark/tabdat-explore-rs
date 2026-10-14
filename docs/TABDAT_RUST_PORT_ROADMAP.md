@@ -182,6 +182,11 @@ state are handled correctly.
   Name alignment/type rules, NULLs/duplicates, empty/self/repeated appends,
   cached/explicit-refit samples, preserved labels/named snapshots, detachment,
   validation and output guards are checked without backend or schema-union changes.
+  Grouped count JSON (#228) now provides a bounded read-only subgroup EDA step:
+  raw ordered keys, SQL NULL/empty-string counts, typed scalar policy and totals,
+  repeated/quoted/empty groups, cached/state invariants and output/file guards.
+  Only by-count commands are admitted; native grouped AVG means remain outside
+  this surface pending a separate statistical/sample-semantics review.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

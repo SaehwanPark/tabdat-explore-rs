@@ -10,10 +10,12 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
+/// ByResult also represents native grouped means, so DTO serialization alone
+/// must not admit those commands under the finite-summary JSON contract.
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
@@ -55,7 +57,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
         },
       }
       | Command::Exit
-  )
+  ) || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
 }
 
 /// Whether a script command can execute without producing an unsupported JSON
@@ -103,10 +105,12 @@ pub fn supports_script_command(command: &Command) -> bool {
       }
       | Command::Exit
       | Command::Run { .. }
-  )
+  ) || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
 }
 
-/// Serialize supported execution results using the stable versioned CLI envelope.
+/// Serialize owned execution results using the stable versioned CLI envelope.
+/// CLI callers must apply command admission first: shared DTOs (such as ByResult)
+/// do not imply that every command producing them is supported in JSON execution.
 ///
 /// `None` means the corresponding command must be rejected before execution by
 /// [`supports_batch_command`].
@@ -149,6 +153,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "SelectResult",
     ),
+    ExecutionResult::By(result) => (table_result_data(&result.headers, &result.rows), "ByResult"),
     ExecutionResult::Append(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "AppendResult",
@@ -570,6 +575,59 @@ mod tests {
     let command = tabdat_language::parse_command("rename old new").unwrap();
     assert!(supports_batch_command(&command));
     assert!(supports_script_command(&command));
+  }
+
+  #[test]
+  fn grouped_tables_encode_owned_scalars_but_only_count_commands_are_admitted() {
+    let result = ExecutionResult::By(tabdat_domain::ByResult {
+      headers: vec!["group\t列".into(), "Count".into()],
+      rows: vec![
+        vec![
+          CellValue::Text("".into()),
+          CellValue::UnsignedInteger(u128::from(u64::MAX)),
+        ],
+        vec![CellValue::Null, CellValue::SignedInteger(1)],
+      ],
+    });
+    let serialized = serialize_execution_result(&result).unwrap();
+    assert_eq!(serialized.lines().count(), 1);
+    let value: Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(
+      value,
+      json!({"schema_version":1,"result_type":"ByResult","data":{"headers":["group\t列","Count"],"rows":[["",u64::MAX],[null,1]]}})
+    );
+    for source in ["by group: count", "by group other: count"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    for source in [
+      "by group: summarize x",
+      "by group: tabulate x",
+      "by group: sort x",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(!supports_batch_command(&command));
+      assert!(!supports_script_command(&command));
+    }
+  }
+
+  #[test]
+  fn nested_grouped_count_is_rejected_by_parser_and_raw_command_admission() {
+    assert!(tabdat_language::parse_command("by group: by other: count").is_err());
+    let command = Command::By {
+      command: tabdat_domain::ByCommand {
+        groups: vec!["group".into()],
+        command: Box::new(Command::By {
+          command: tabdat_domain::ByCommand {
+            groups: vec!["other".into()],
+            command: Box::new(Command::Count),
+          },
+        }),
+      },
+    };
+    assert!(!supports_batch_command(&command));
+    assert!(!supports_script_command(&command));
   }
 
   #[test]

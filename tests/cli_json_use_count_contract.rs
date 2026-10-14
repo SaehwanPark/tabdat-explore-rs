@@ -295,7 +295,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   assert!(!exported_path.exists());
   assert_eq!(
     output.stderr,
-    b"Error: --json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif\n"
+    b"Error: --json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif\n"
   );
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   let envelopes = stdout
@@ -311,7 +311,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
     serde_json::json!({
       "schema_version": 1,
       "error": {
-        "message": "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif",
+        "message": "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif",
         "type": "JsonResultUnsupported"
       }
     })
@@ -528,7 +528,7 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
   assert_eq!(envelopes[1]["error"]["line"], 2);
   assert_eq!(
     envelopes[1]["error"]["message"],
-    "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif"
+    "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, keep/drop/select variable lists, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif"
   );
   assert!(
     String::from_utf8(output.stderr)
