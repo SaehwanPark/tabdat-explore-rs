@@ -60,6 +60,7 @@ impl Session {
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
+      Command::CountQuery { condition } => self.execute_count_query(condition),
       Command::Summarize { variables } => self.execute_summarize(variables),
       Command::SummarizeQuery {
         variables,

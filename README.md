@@ -192,6 +192,14 @@ are excluded by default and included last with `missing`; their cells serialize
 as `null`. Two-way row/column percentage headers remain explicit. This does not
 install the broader parser-only tabulation/aggregation forms.
 
+Read-only `count if expr` returns existing `CountResult.data.row_count` for all
+TRUE predicate rows, including rows with unrelated NULL/nonfinite values. FALSE
+and UNKNOWN are excluded; empty selections return zero. It preserves the active
+dataset, labels, named relation and cached fit/sample. Use it to check cohort size
+before `summarize` (per-variable finite samples) or `tabulate` (category exclusions).
+Bare count is unchanged; variable lists/options, grouped conditional counts and
+function/logical-expression breadth remain unsupported. See `help count`.
+
 Read-only `tabulate r [c] if expr` and equivalent single-variable
 `rows()`/`columns()` forms select only TRUE predicate rows. FALSE/NULL rows are
 excluded; category SQL NULLs are then excluded unless `missing`. All percentage

@@ -280,6 +280,22 @@ impl DuckDbBackend {
 
     Ok((lower_hex(&digest.finalize()), row_count))
   }
+  /// Count every TRUE predicate row, without per-variable missingness exclusions.
+  /// The caller validates the predicate against the active schema.
+  pub fn count_rows_if(
+    &self,
+    expression: &AssertExpression,
+    dataset: &DatasetInfo,
+  ) -> Result<u64, DataError> {
+    let predicate = compile_assert_expression(expression, dataset)?;
+    let query = format!("SELECT COUNT(*) FROM {ACTIVE_TABLE} WHERE ({predicate})");
+    let count = self
+      .connection
+      .query_row(&query, [], |row| row.get::<_, i64>(0))
+      .map_err(|_| DataError)?;
+    u64::try_from(count).map_err(|_| DataError)
+  }
+
   pub fn assert_rows(
     &self,
     expression: &AssertExpression,
