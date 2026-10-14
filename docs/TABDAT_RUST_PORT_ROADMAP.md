@@ -150,6 +150,11 @@ state are handled correctly.
   mutation or option/grouped-mean admission. NumPy/SciPy selected-row references,
   asymmetric missingness, exact extrema/ordering, empty/singleton/native-error
   paths, named/cache invariants, nested/persistence and output guards are checked.
+  Key-integrity terminal/JSON reporting (#232) now exposes existing duplicates/
+  isid aggregates for diagnosis→validated lookup→join/analysis/persistence.
+  Exact native NULL/nonfinite/key counters, missok failure rules, empty/repeated/
+  quoted keys, read-only state, nested/error/output guards are checked without
+  duplicate repair, coercion or persistent cardinality enforcement.
   Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
   previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
   prior-order ties, quoted/repeated/empty keys, native schema, nested streams and

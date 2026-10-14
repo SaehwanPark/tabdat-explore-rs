@@ -10,8 +10,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, duplicates, isid, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, duplicates, isid, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command has a successful-result envelope in the batch CLI.
 /// ByResult also represents native grouped means, so DTO serialization alone
@@ -19,7 +19,9 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 pub fn supports_batch_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::RowFilter { .. }
+    Command::Duplicates { .. }
+      | Command::Isid { .. }
+      | Command::RowFilter { .. }
       | Command::Reshape { .. }
       | Command::Append { .. }
       | Command::Join { .. }
@@ -69,7 +71,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 pub fn supports_script_command(command: &Command) -> bool {
   matches!(
     command,
-    Command::RowFilter { .. }
+    Command::Duplicates { .. }
+      | Command::Isid { .. }
+      | Command::RowFilter { .. }
       | Command::Reshape { .. }
       | Command::Append { .. }
       | Command::Join { .. }
@@ -205,6 +209,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       "DescribeResult",
     ),
     ExecutionResult::Count(count) => (json!({ "row_count": count.row_count }), "CountResult"),
+    ExecutionResult::Duplicates(result) => (
+      json!({"variables":result.variables,"total_rows":result.total_rows,"unique_groups":result.unique_groups,"duplicate_groups":result.duplicate_groups,"duplicate_rows":result.duplicate_rows,"extra_rows":result.extra_rows,"max_copies":result.max_copies}),
+      "DuplicatesResult",
+    ),
+    ExecutionResult::Isid(result) => (
+      json!({"variables":result.variables,"total_rows":result.total_rows,"unique_groups":result.unique_groups,"missing_key_rows":result.missing_key_rows,"missok":result.missok}),
+      "IsidResult",
+    ),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
     ExecutionResult::Missing(result) => (missing_result_data(result), "MissingResult"),
@@ -455,6 +467,56 @@ mod tests {
         value["data"],
         json!({"dataset": dataset_info_data(&dataset)})
       );
+    }
+  }
+
+  #[test]
+  fn key_integrity_envelopes_preserve_owned_counts_names_and_do_not_admit_grouped_guards() {
+    let variables = vec!["key\t列".into(), "key\t列".into()];
+    let duplicates = ExecutionResult::Duplicates(tabdat_domain::DuplicatesResult {
+      variables: variables.clone(),
+      total_rows: u64::MAX,
+      unique_groups: 1,
+      duplicate_groups: 1,
+      duplicate_rows: u64::MAX,
+      extra_rows: u64::MAX - 1,
+      max_copies: u64::MAX,
+    });
+    let isid = ExecutionResult::Isid(tabdat_domain::IsidResult {
+      variables: variables.clone(),
+      total_rows: u64::MAX,
+      unique_groups: u64::MAX,
+      missing_key_rows: 1,
+      missok: true,
+    });
+    for (result, expected) in [
+      (
+        duplicates,
+        json!({"schema_version":1,"result_type":"DuplicatesResult","data":{"variables":variables,"total_rows":u64::MAX,"unique_groups":1,"duplicate_groups":1,"duplicate_rows":u64::MAX,"extra_rows":u64::MAX-1,"max_copies":u64::MAX}}),
+      ),
+      (
+        isid,
+        json!({"schema_version":1,"result_type":"IsidResult","data":{"variables":variables,"total_rows":u64::MAX,"unique_groups":u64::MAX,"missing_key_rows":1,"missok":true}}),
+      ),
+    ] {
+      let text = serialize_execution_result(&result).unwrap();
+      assert_eq!(text.lines().count(), 1);
+      assert_eq!(serde_json::from_str::<Value>(&text).unwrap(), expected);
+    }
+    for source in [
+      "duplicates",
+      "duplicates report x x",
+      "isid x",
+      "isid x y, missok",
+    ] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(supports_batch_command(&command));
+      assert!(supports_script_command(&command));
+    }
+    for source in ["by g: duplicates x", "by g: isid x"] {
+      let command = tabdat_language::parse_command(source).unwrap();
+      assert!(!supports_batch_command(&command));
+      assert!(!supports_script_command(&command));
     }
   }
 

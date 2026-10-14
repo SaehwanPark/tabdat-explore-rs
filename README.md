@@ -257,6 +257,18 @@ fields stay null placeholders. Empty/self/repeated appends and ordinary
 validation/type/file/output boundaries are checked; native publication faults
 are not injected and no general atomicity guarantee is added. See `help append`.
 
+Read-only `duplicates [report] [varlist]` and `isid varlist [, missok]` now
+report readable terminal diagnostics and additive CLI-v1 `DuplicatesResult` /
+`IsidResult` fields, connecting key diagnosis/validation to lookup preparation.
+Counters are owned current-data aggregates; `unique_groups` means all distinct
+combinations (including duplicate/NULL groups), not only singletons. Default
+isid rejects any SQL-NULL component; missok permits unique NULL-containing
+combinations but never duplicates. Failures remain execution errors, with no
+success-shaped or invented failure counters. Native grouping and stored-empty/
+nonfinite distinctions are unchanged. Data/labels/named/model state is read-only;
+no duplicate repair, key coercion, persistent cardinality rule or lazy loading
+is installed. See `help duplicates` and `help isid` for exact fields/limits.
+
 Read-only `summarize [varlist] if <predicate>` (no options) now supports the
 terminal and CLI-v1 `SummarizeResult` fields. It selects TRUE rows, then uses
 per-variable finite/non-NULL samples for all aggregates; counts can differ,
