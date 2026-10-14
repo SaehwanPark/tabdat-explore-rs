@@ -161,6 +161,13 @@ state are handled correctly.
   current-versus-model samples, read-only state, NULL/empty behavior, nested/terminal
   recovery and output guards are checked. No new predicate/hash semantics, file-byte
   checksum, authentication, saved-signature verification or lazy execution is added.
+  Count-only collapse JSON and generic terminal dataset outcomes (#234) now
+  finish grouped non-NULL counts→inspection→explicit aggregate-model refit/
+  prediction→persistence. Exact asymmetric per-variable counts versus COUNT(*),
+  NULL/empty/nonfinite values, multi/wide keys, label pruning/named synchronization,
+  original cached fits, staged collision failures, nested/error/output boundaries
+  are checked. Quoted by() names and mean/sum/min/max JSON remain unsupported;
+  no automatic weighting, alias repair or aggregation-semantic change is added.
   Sort/gsort JSON now reports owned current metadata (#220), enabling ranked
   previews and ordered prediction/persistence. Mixed directions, NULL-last/stable
   prior-order ties, quoted/repeated/empty keys, native schema, nested streams and

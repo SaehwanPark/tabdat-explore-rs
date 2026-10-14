@@ -34,7 +34,7 @@ options:
   --config CONFIG       load a TabDat TOML config file
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
-                        by ...: count
+                        by ...: count, collapse count
                         and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
                         keep/drop/select variable lists, bounded keep/drop if,
                         no-option summarize if, duplicates/isid, assert/datasignature,
