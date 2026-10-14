@@ -1,40 +1,52 @@
 # tabulate
 
 How to invoke:
-`tabulate varlist [if expr] [, row col missing]`
+`tabulate rowvar [colvar] [if expr] [, row col missing nolabel]`
 
-`tabulate [if expr], rows(varlist) [columns(varlist)] [values(var) stat(count|mean|sum|min|max)] [row col missing]`
+`tabulate [if expr], rows(rowvar) [columns(colvar)] [row col missing nolabel]`
 
 What it does:
-Show one-way, two-way, and multi-level frequency tables. With `values()` and `stat()`, fill
-cells with an aggregate instead of a frequency count.
+Show an eager one-way frequency/percent table or a two-way frequency table.
+`row` and `col` add explicitly headed row and column percentages to two-way
+cells; they are rejected for one-way tables. Equivalent single-variable
+`rows()`/`columns()` forms execute with or without a condition.
 
 What problem it answers:
-How are categorical values distributed, or how does a numeric value aggregate across row and
-column categories?
+How are categorical values distributed in the current data or a selected cohort,
+without filtering the active dataset or refitting a model?
 
-`if` conditions must produce boolean or missing values; numeric and string truthiness is rejected.
+A bounded `if` predicate selects TRUE rows only; FALSE and NULL/UNKNOWN rows are
+excluded. Arithmetic, comparisons, boolean columns and NULL are supported;
+numeric/string truthiness, function calls and broader logical expressions are
+not installed. Explicit comparisons with NULL test missingness. Arithmetic that
+becomes UNKNOWN is excluded; direct comparisons retain native DuckDB semantics.
 
-Grouped keys use native ordering: numeric values sort numerically, text values lexicographically,
-and booleans false before true; numeric labels are not ordered by rendered text. Missing values are excluded by default; they appear last with `missing`. Wide table headers follow the same order.
-Rendered multi-key labels are disambiguated when missing or separator text would otherwise make
-distinct categories look identical.
+Category SQL NULLs are excluded by default (either key in a two-way table).
+`missing` includes them, last in native key order. Stored empty strings, NaN and
+infinities are not SQL NULL. One-way totals and two-way row/column denominators
+come only from the selected rows surviving these category rules—not the original
+dataset or a cached estimation sample. Empty selections return empty tables.
 
-When a dimension variable has attached value labels (`label values`), category cells and wide
-column headers show those labels by default. Use `nolabel` to display raw codes instead. Sorting
-and aggregation still use the underlying stored values.
+Keys use native numeric/text/boolean ordering. When a dimension has attached
+value labels (`label values`), category cells and wide column headers show those
+labels by default; `nolabel` displays raw keys. Ordering/counting still use stored
+values. This read-only operation preserves the active data, source/schema/order,
+labels, named relation and cached model/sample.
 
-CLI JSON supports the bounded one/two-way frequency-table execution forms as
-`TabulateResult` with `data.headers` and `data.rows`. Existing order, labels, counts
-and percentages are preserved; cells reuse preview scalar encoding, including
-null missing categories. This reporting support does not install broader
-parser-only multi-dimensional/aggregation forms.
+Readable shell/`--text` and CLI JSON use the same owned `TabulateResult`.
+JSON provides `data.headers` and `data.rows`, with preview scalar encoding
+(including null missing/nonfinite cells and exact integer numbers). Consumers
+need lossless integer parsing for wide keys; JSON null does not merge distinct
+native nonfinite and SQL-NULL groups.
+
+Limits: exactly one row and at most one column variable. Multi-dimensional
+`rows()`/`columns()`, `values()`/`stat()` aggregation and `by ...: tabulate` remain
+parser-only/unsupported. No category repair, data mutation or model-sample
+reinterpretation is performed.
 
 Examples:
 - `tabulate sex`
 - `tabulate sex outcome, row col`
 - `tabulate sex if age >= 18`
-- `tabulate sex, nolabel`
-- `tabulate, rows(region sex) columns(outcome year)`
-- `tabulate, rows(region) columns(sex) values(cost) stat(mean)`
-- `by region: tabulate, rows(sex) columns(outcome) values(cost) stat(sum)`
+- `tabulate sex if age >= 18, missing nolabel`
+- `tabulate if age >= 18, rows(sex) columns(outcome) row col`

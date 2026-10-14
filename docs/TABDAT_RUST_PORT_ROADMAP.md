@@ -174,6 +174,13 @@ state are handled correctly.
   mutation or option/grouped-mean admission. NumPy/SciPy selected-row references,
   asymmetric missingness, exact extrema/ordering, empty/singleton/native-error
   paths, named/cache invariants, nested/persistence and output guards are checked.
+  Read-only conditional frequency tables (#239) reuse bounded TRUE predicates,
+  category SQL-NULL exclusions and existing one/two-way label/count/percentage
+  assembly. Equivalent single-key rows()/columns() forms execute; pandas selected
+  samples/counts/denominators, wide/quoted/nonfinite/empty keys, named/label/cache
+  invariants, nested text/JSON/persistence and write/flush guards are checked.
+  Multiple dimension keys, value aggregation, functions/logical-expression breadth
+  and model-sample reinterpretation remain outside the installed scope.
   Key-integrity terminal/JSON reporting (#232) now exposes existing duplicates/
   isid aggregates for diagnosis→validated lookup→join/analysis/persistence.
   Exact native NULL/nonfinite/key counters, missok failure rules, empty/repeated/

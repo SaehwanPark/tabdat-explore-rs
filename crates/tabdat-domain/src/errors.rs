@@ -298,6 +298,12 @@ pub enum RuntimeError {
   TabulateUnknownVariable { variables: Vec<String> },
   /// A percentage option was requested for a one-way table.
   TabulatePercentageRequiresTwoWay { option: &'static str },
+  /// The frequency predicate did not evaluate to a boolean or null domain.
+  TabulateRequiresBoolean,
+  /// The frequency predicate has incompatible operand domains.
+  TabulatePredicateTypeMismatch { message: String },
+  /// The frequency predicate is outside the bounded expression subset.
+  TabulateUnsupportedPredicate,
   /// DuckDB could not produce or own the frequency table.
   TabulateFailed,
   /// The by request did not name any grouping variables.
@@ -771,6 +777,13 @@ impl fmt::Display for RuntimeError {
           formatter,
           "tabulate option {option} requires a two-way table"
         )
+      }
+      Self::TabulateRequiresBoolean => {
+        formatter.write_str("tabulate predicate requires boolean expression")
+      }
+      Self::TabulatePredicateTypeMismatch { message } => formatter.write_str(message),
+      Self::TabulateUnsupportedPredicate => {
+        formatter.write_str("tabulate predicate does not support function calls")
       }
       Self::TabulateFailed => formatter.write_str("tabulate failed"),
       Self::ByNoGroups => formatter.write_str("by expects at least one grouping variable"),
