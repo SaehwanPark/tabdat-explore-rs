@@ -27,6 +27,12 @@ one-word literal syntax. Nested script paths are relative to the containing
 script; data/output paths remain relative to the process working directory.
 Existing script macros expand before parsing. Quoted paths now target the name
 without surrounding quotes, not a filename containing those delimiters.
+Capable-terminal Tab completion supports the first literal local path argument relative
+to the process working directory, not the last-run script directory. Start a compatible
+quote for spaces/commas/quotes; directories keep it open and files close it. Prefixes are
+case-sensitive; hidden names require a dot prefix. Suggestions do not validate script
+contents, expand shell paths, execute scripts, or change piped input.
+
 JSON streaming uses `--json -f`/positional scripts or batch `-c "run ..."`.
 Both stream supported leaf envelopes without a `RunResult` wrapper/summary.
 Batch commands before/after `run` share the same data/model session; empty runs

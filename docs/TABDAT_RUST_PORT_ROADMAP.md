@@ -31,9 +31,10 @@ and clean exit/EOF. `use` → `describe` → `summarize` → `exit` is covered t
 the binary. Capable-terminal editing, bounded in-memory history and input-level
 Ctrl-C recovery are now installed (#203); piped input remains plain. Bounded
 core-command/help-topic Tab completion now supports word-end prefixes and preserves
-arguments after the cursor. Variable/path completion, interactive multiline
-continuation and in-flight cancellation remain deferred; an executing command
-may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
+arguments after the cursor. Local literal `use`/`run` path completion now supports
+files/directories and compatible open quotes without shell expansion; variable,
+named-table/output-path completion, interactive multiline continuation and in-flight
+cancellation remain deferred; an executing command may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
 
 ### 2. Close the core EDA loop
 
@@ -323,10 +324,15 @@ state are handled correctly.
   from comparable profiles.
 - Improve history/completion and display as needed for daily use. Capable-terminal
   Tab completion now covers installed core command names and packaged `help`/`?`
-  topics using the existing editor, without executing commands or changing session
-  state. Focused prefix/cursor/Unicode tests and the controlling-PTY check cover
-  completion through regression/summary/help, retained-model prediction and input
-  recovery. Variable/path completion and persistent history remain deferred.
+  topics and the first local `use`/`run` path argument using the existing editor,
+  without executing commands or changing session state. Path prefixes are literal
+  and case-sensitive; compatible opening quotes enable spaces/commas/quotes, files
+  close quotes and directories remain open for navigation. Existing quote/option
+  suffixes survive; hidden names require a dot prefix. Parser roundtrips, native
+  symlinks, unavailable entries/control-name guards, real PTY quoted loading/replay
+  and unchanged piped tabs are checked alongside model-retention/input recovery.
+  No extension/loadability inference or shell expansion is added. Variable,
+  named-table/output-path completion and persistent history remain deferred.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including `lincom`/`test` topics (#202) and the four installed `ttest` forms
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`

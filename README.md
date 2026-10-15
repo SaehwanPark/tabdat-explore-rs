@@ -138,10 +138,21 @@ Unsupported/dumb terminals may fall back to plain input. Tab at the end of a
 command-name prefix completes installed core commands: for example, `summ<Tab>`
 becomes `summarize`. Ambiguous prefixes extend to their common prefix; another Tab
 lists alternatives. `help summ<Tab>` and `?summ<Tab>` complete packaged reference
-topics, which can include parser-only/future syntax. Matching is case-insensitive;
-completion preserves leading whitespace and any arguments after the cursor, and
-never executes a command. It does not complete inside a word, in command arguments,
-or variable/file names. No completion is applied to piped input.
+topics, which can include parser-only/future syntax. Command/topic matching is
+case-insensitive; completion preserves leading whitespace and arguments after the
+cursor, and never executes a command.
+
+Tab also completes the first local-path argument of `use` and `run`, using literal,
+case-sensitive prefixes relative to the process working directory or an absolute path.
+For spaces, commas or quotes, type a compatible opening single/double quote first:
+`use 'anal<Tab>` can navigate into `analysis files/`, then complete a filename. Files
+close an open quote; directories append a separator and leave it open for navigation.
+Existing closing quotes and `use` option suffixes are preserved. Hidden names require
+a dot prefix. Files/directories (including resolvable symlinks) are listed without
+extension or loadability validation; unavailable entries, control/non-UTF-8 names and
+names incompatible with the current quote are skipped. No shell escapes, home/environment
+or glob expansion, variable/named-table/output-path completion is provided. Completion
+does not replace the rest of a filename after the cursor. Piped input remains unchanged.
 A multiline continuation prompt is not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
 supported cancellation protocol and may terminate the process; in-flight file-write
 safety is not promised.

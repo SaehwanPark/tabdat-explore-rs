@@ -20,6 +20,7 @@ Examples:
 Notes:
 - Paths are bare single tokens or enclosed in matching single/double quotes. Quotes are removed; spaces, commas, Unicode and backslashes inside are literal. The matching quote cannot occur inside the path; use the other quote where possible. No shell escape decoding or tilde expansion is performed.
 - After a quoted path, only the end of input or a comma introducing options is allowed. Empty and unclosed quotes or extra paths are syntax errors.
+- In a capable interactive terminal, Tab completes the first local-path argument. Start a compatible quote to complete spaces/commas/quotes; directories append a separator and keep the quote open, files close it. Existing closing quotes/options are preserved. Prefixes are case-sensitive; hidden names require a dot prefix. Suggestions do not certify loadability or include named tables, shell expansions or piped input.
 - `delimiter` and `has_header` are only supported for CSV files.
 - `use name` reactivates a session-local named table and restores its stored row sequence.
 - Remote/URI, lazy and DTA loading are not installed in the bounded runtime, even where their syntax parses. Quoted paths for other commands are not implied.
