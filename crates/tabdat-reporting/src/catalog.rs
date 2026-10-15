@@ -2150,7 +2150,9 @@ mod tests {
     assert_eq!(summarize.arguments.len(), 1);
     assert_eq!(summarize.arguments[0].name, "variables");
     assert!(!summarize.arguments[0].required);
-    assert!(summarize.options.is_empty());
+    assert_eq!(summarize.options.len(), 1);
+    assert_eq!(summarize.options[0].name, "detail");
+    assert!(!summarize.options[0].required);
 
     assert_eq!(
       describe_command_result("   ").unwrap_err(),

@@ -584,17 +584,23 @@ mod tests {
   }
 
   #[test]
-  fn conditional_summary_admission_excludes_options_and_grouped_queries() {
+  fn conditional_summary_admission_allows_only_bare_detail_and_not_grouped_queries() {
     assert!(tabdat_language::parse_command("summarize x if x > 0,").is_err());
-    for source in ["summarize x if g == 'A'", "summarize if g == null"] {
+    for source in [
+      "summarize x if g == 'A'",
+      "summarize if g == null",
+      "summarize x, detail",
+      "summarize x if g == 'A', detail",
+    ] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(supports_batch_command(&command));
       assert!(supports_script_command(&command));
     }
     for source in [
-      "summarize x, detail",
-      "summarize x if g == 'A', detail",
+      "summarize x, detail detail",
+      "summarize x if g == 'A', detail(x)",
       "summarize x if x > 0, limit=2",
+      "by g: summarize x, detail",
       "by g: summarize x if x > 0",
     ] {
       let command = tabdat_language::parse_command(source).unwrap();
