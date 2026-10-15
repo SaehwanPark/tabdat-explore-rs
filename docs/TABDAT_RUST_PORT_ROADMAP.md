@@ -116,7 +116,9 @@ generic terminal table renderer. CLI-v1 now admits only `estat vif` among
 header-based type inference or changing terminal/library results. Independent
 statsmodels fixtures cover intercept conventions, actual retained samples and
 unweighted auxiliaries after WLS/GLS; nested/error/state paths are covered.
-SQL and other `estat` JSON remain unsupported. CLI-v1 `ttest` JSON now covers the same four forms (#207), using
+Other `estat` JSON remains unsupported. Direct SQL queries/named cohorts have their
+own JSON admission (#225), sharing table/metadata envelopes rather than inheriting
+support from VIF serialization. CLI-v1 `ttest` JSON covers the same four forms (#207), using
 owned inference, explicit Student-t/95% metadata, nullable independent difference
 counts, and the shared SciPy fixture; nested streams and error/null paths are
 covered without changing calculations or model state.
