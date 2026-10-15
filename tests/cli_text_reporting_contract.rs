@@ -154,8 +154,10 @@ fn text_nested_and_batch_run_stream_leaves_while_script_summary_policy_is_explic
   let denied = fixture.batch(Some("--json"), &commands);
   assert_eq!(denied.status.code(), Some(2));
   let messages = json_lines(&denied.stdout);
+  assert_eq!(messages.len(), 3);
   assert_eq!(messages[0]["result_type"], "LoadResult");
-  assert_eq!(messages[1]["error"]["type"], "JsonResultUnsupported");
+  assert_eq!(messages[1]["result_type"], "ByResult");
+  assert_eq!(messages[2]["error"]["type"], "JsonResultUnsupported");
 }
 #[test]
 fn text_failures_keep_prior_output_effects_and_source_classification_without_success_or_later_files()

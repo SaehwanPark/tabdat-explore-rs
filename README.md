@@ -173,8 +173,8 @@ These are metadata outcomes, not invented matched/changed-row or shape-rule repo
 inspect values with `head`/`describe`. Raw `by` tables display supplied keys/aggregates,
 including native grouped means with an explicit native-aggregation heading. Those
 means use existing SQL-NULL/nonfinite semantics, **not** ordinary finite-sample
-`summarize`; grouped-mean JSON remains unsupported. Rendering does not recompute,
-mutate state or broaden parser/backend/JSON support. Nested terminal workflows and
+`summarize`; bounded native grouped means now share CLI-v1 JSON `ByResult` tables.
+Rendering does not recompute, mutate state or broaden parser/backend support. Nested terminal workflows and
 output-error guards retain existing sequential effects. This is not whole-command
 parity, full model-array reporting or a transactional publication guarantee.
 
@@ -426,7 +426,7 @@ empty/singleton policy and native finite-overflow limits remain unchanged.
 Predicates reuse the bounded keep-if rules, including explicit SQL-NULL and
 native direct nonfinite versus safe-arithmetic handling. Data/labels/named state
 and cached fits are untouched. Functions/logical-expression breadth, summary
-options and grouped-mean JSON remain uninstalled. See `help summarize` and the
+options and conditional grouped summaries remain uninstalled. See `help summarize` and the
 development-only NumPy/SciPy conditional-summary reference.
 
 Conditional `keep if <predicate>` / `drop if <predicate>` now execute in the
@@ -456,17 +456,30 @@ Missing old predictors fail rather than silently fitting a new model. Native
 publication is not generally atomic; no panel/factor state is inferred. Empty
 long works with valid stubs; empty/all-NULL-j wide fails. See `help reshape`.
 
-Only `by groups: count` is admitted as grouped CLI-v1 JSON execution. It returns
-owned `ByResult` `data.headers`/`rows`: raw group columns in requested order,
-then `Count`; native ascending NULL-last group order; COUNT(*) includes SQL
-NULL-key groups, and stored empty strings are distinct. Counts reconcile to
-all rows, with no finite-sample filtering or label substitution. Empty input
-has headers and no groups. Existing scalar policy applies; distinct native
-NaN and SQL NULL keys both encode as null, without merging their counted groups.
-Counting/reporting is read-only for data, labels, named state and cached fits.
-Other `by` children/nested by commands are not admitted. Grouped summaries are
-existing native AVG means, not the ordinary finite summarize contract; their
-JSON admission is deferred for separate statistical review. See `help by`.
+`by groups: count` and `by groups: summarize [numeric_vars]` support CLI-v1 JSON
+`ByResult` with owned `data.headers`/`rows`. Raw group keys preserve requested
+order/duplicates; native group order is ascending NULLS LAST. SQL-NULL keys form
+groups and stored empty strings remain distinct; no value-label substitution is
+performed. Counts use COUNT(*) over all group rows. Means use existing native
+AVG: SQL NULLs are excluded independently per target, but NaN/infinity remain.
+Explicit targets preserve order/duplicates; defaults are numeric non-group columns
+in schema order. This returns `mean_<variable>` columns only, not ordinary finite
+`SummarizeResult` counts/SD/extrema or inferred sample diagnostics.
+
+Empty input has headers and no groups. Existing scalar policy applies: exact
+scaled decimals/wide integers and nonfinite cells encoded as null. Distinct native
+NaN and SQL NULL keys can encode identically without merging groups; an all-NULL
+mean and a native nonfinite mean can both encode null without implying the same
+sample. Terminal output preserves native NaN/infinity explicitly. For x=[3,infinity],
+the native mean is infinity (JSON null), while finite summarize reports N=1, mean=3.
+A development-only standard-library `statistics.mean` fixture records per-variable
+non-NULL input indices and tagged IEEE outputs; raw results are checked before JSON
+encoding. No overflow/stability guarantee or numerical/backend change is added.
+
+Inspection/reporting retains data/schema/source/order, labels, named state and
+cached fits/samples. Conditional/options-bearing grouped summaries, other `by`
+children and nested by remain unsupported. See `help by` for limits and reference
+regeneration; this is not general by execution or full grouped descriptive statistics.
 
 Single-column `rename old new` returns additive `RenameResult` with the same
 owned `data.dataset` post-operation metadata: native schema position/type, source

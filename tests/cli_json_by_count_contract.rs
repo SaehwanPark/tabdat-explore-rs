@@ -230,7 +230,11 @@ fn narrow_admission_failure_streams_and_count_serialization_preserve_all_session
   let fixture = Fixture::new();
   for (source, code, kind) in [
     ("by absent: count", 1, "ExecutionError"),
-    ("by g: summarize x", 2, "JsonResultUnsupported"),
+    ("by g: summarize x, detail", 2, "JsonResultUnsupported"),
+    ("by g: summarize x if x > 0", 2, "JsonResultUnsupported"),
+    ("by absent: summarize x", 1, "ExecutionError"),
+    ("by g: summarize absent", 1, "ExecutionError"),
+    ("by g: summarize g", 1, "ExecutionError"),
     ("by g: tabulate h", 2, "JsonResultUnsupported"),
     ("by g: sort x", 2, "JsonResultUnsupported"),
     ("by g count", 2, "ParseError"),
