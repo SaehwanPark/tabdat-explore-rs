@@ -10,10 +10,11 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
 pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
-/// Whether this command has a successful-result envelope in the batch CLI.
+/// Whether this command can execute in the JSON batch CLI. `run` streams
+/// supported script leaves without a container envelope; `exit` has no result.
 /// ByResult also represents native grouped means, so DTO serialization alone
 /// must not admit those commands under the finite-summary JSON contract.
 pub fn supports_batch_command(command: &Command) -> bool {
@@ -77,6 +78,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
         },
       }
       | Command::Exit
+      | Command::Run { .. }
   ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
     || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
 }
@@ -154,8 +156,9 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// CLI callers must apply command admission first: shared DTOs (such as ByResult)
 /// do not imply that every command producing them is supported in JSON execution.
 ///
-/// `None` means the corresponding command must be rejected before execution by
-/// [`supports_batch_command`].
+/// `None` means there is no leaf envelope: control containers such as `run`
+/// are handled by the caller; other unsupported commands must be rejected before
+/// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),

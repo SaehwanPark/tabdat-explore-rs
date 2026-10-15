@@ -508,8 +508,8 @@ fn run_cli_with_output(
         return json_result_unsupported(output, errors);
       }
       let execution = match command {
-        Command::Run { path } if args.text => {
-          execute_reported_script(&mut session, Path::new(&path), false, output)?
+        Command::Run { path } if args.json || args.text => {
+          execute_reported_script(&mut session, Path::new(&path), args.json, output)?
             .map(tabdat_domain::ExecutionResult::Run)
         }
         command => session.execute(command),
@@ -519,13 +519,24 @@ fn run_cli_with_output(
         Err(err) => {
           emit_cli_line(errors, format_args!("Error: {err}"))?;
           if args.json {
-            let envelope = crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError");
+            let envelope = match &err {
+              RuntimeError::ScriptError(error) => crate::catalog::ErrorEnvelope::with_location(
+                error.message(),
+                "ScriptError",
+                error.path().to_string_lossy(),
+                error.line(),
+              ),
+              _ => crate::catalog::ErrorEnvelope::new(err.to_string(), "ExecutionError"),
+            };
             emit_cli_line(output, serde_json::to_string(&envelope).unwrap())?;
           }
           return Ok(1);
         }
       };
       if args.json {
+        if matches!(result, tabdat_domain::ExecutionResult::Run(_)) {
+          continue;
+        }
         if let Some(envelope) = crate::json_results::serialize_execution_result(&result) {
           emit_cli_line(output, envelope)?;
         } else {

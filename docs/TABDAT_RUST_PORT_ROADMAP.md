@@ -54,7 +54,7 @@ accepts one literal single/double-quoted script path, closing the replay gap for
 script folders/names containing spaces or commas. Nested relative includes,
 ordered text/JSON-script leaf results, source-classified failures, recursion guards
 and retained model/data recovery are tested. No shell escapes, run options, process
-working-directory changes or JSON batch-`run` admission are added; see MIG-0010.
+working-directory changes are added; see MIG-0010 for the quoted-path correction.
 
 Interactive category coding now reports encode/decode dataset outcomes and typed
 label dictionaries (#235), replacing unsupported-details fallback in the
@@ -277,6 +277,13 @@ state are handled correctly.
   source/suffix ordering, native MAX duplicates/NULLs/types, selected-schema
   roundtrips, label/cache/named rules, failure-state and output/file guards are
   checked without installing a general lossless pivot or new panel semantics.
+- JSON batch `-c "run ..."` now reuses script callbacks and bounded leaf admission,
+  completing setup→nested replay→prediction/persistence in one shared batch session.
+  Leaves keep their existing envelopes/order without a run wrapper; empty/directive/
+  exit containers, quoted includes, unsupported-leaf preflight, located failures and
+  every leaf write/flush plus diagnostic/error-envelope boundary are checked. Failed
+  batch runs exit 1 while file/positional script source categories stay 1/2/3. No new
+  result families, runtime semantics, rollback or native publication guarantees.
 - Stabilize script reproducibility and practical error reporting, including
   canonical `.td` workflows and documented seed semantics. Noninteractive CLI
   streams now use fallible writes/flush boundaries (#214), fixing a reproduced

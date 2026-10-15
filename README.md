@@ -117,7 +117,17 @@ Nested `run` paths resolve relative to the containing script; data/output paths
 still resolve from the process working directory. Existing script macro expansion
 happens before command parsing. Quoted `run` no longer targets a filename that
 includes its surrounding quote characters. JSON leaf streaming remains supported
-via `--json -f`/positional scripts, not `--json -c "run ..."`.
+via `--json -f`/positional scripts and `--json -c "run ..."`.
+
+JSON batch `run` streams the same supported leaf envelopes as file/script mode,
+without a `RunResult` wrapper or run summary. Setup before the run and later
+`-c` commands share its data/model state. Empty/directive-only runs emit nothing;
+`exit` inside a script ends that script, not the surrounding batch. Unsupported
+leaf commands are rejected before execution. A failed run emits one located
+`ScriptError` envelope after prior leaves, stops later batch commands, and exits
+1; direct command-parse errors still exit 2, and `-f`/positional scripts retain
+source-classified exits 1/2/3. Output failure stops later effects but cannot undo
+completed commands/files or guarantee an error envelope on a broken stream.
 
 Capable terminals provide basic line editing and Up/Down command recall, with
 at most 500 session-local submitted commands (blank/comments and cancelled input

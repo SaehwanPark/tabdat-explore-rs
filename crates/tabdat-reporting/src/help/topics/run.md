@@ -27,8 +27,13 @@ one-word literal syntax. Nested script paths are relative to the containing
 script; data/output paths remain relative to the process working directory.
 Existing script macros expand before parsing. Quoted paths now target the name
 without surrounding quotes, not a filename containing those delimiters.
-JSON streaming uses `--json -f`/positional scripts; JSON batch `-c "run ..."`
-remains unsupported.
+JSON streaming uses `--json -f`/positional scripts or batch `-c "run ..."`.
+Both stream supported leaf envelopes without a `RunResult` wrapper/summary.
+Batch commands before/after `run` share the same data/model session; empty runs
+emit nothing. Script `exit` does not end the surrounding batch. Unsupported leaves
+are rejected before execution. Failed batch runs emit a located `ScriptError`,
+stop later batch commands and exit 1; file/positional scripts retain source-classified
+exits 1/2/3. A broken output stream cannot guarantee an error envelope.
 
 For batch or script execution, `tabdat --json -f analysis.td` emits one compact versioned JSON
 result envelope per successful command. JSON mode suppresses script metadata and command echoes;
