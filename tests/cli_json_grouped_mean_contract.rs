@@ -205,6 +205,76 @@ fn native_means_match_independent_statistics_reference_before_and_after_json_enc
     empty["data"],
     json!({"headers":["g","mean_x","mean_y","mean_bad"],"rows":[]})
   );
+
+  execute(&mut session, &source);
+  let collapsed = execute(&mut session, "collapse mean x y bad, by(g)");
+  let collapsed: Value = serde_json::from_str(
+    &tabdat_reporting::json_results::serialize_execution_result(&collapsed).unwrap(),
+  )
+  .unwrap();
+  assert_eq!(collapsed["result_type"], "CollapseResult");
+  assert_eq!(collapsed["data"]["dataset"]["row_count"], table.rows.len());
+  let preview = execute(&mut session, "head 20");
+  let ExecutionResult::Head(preview) = &preview else {
+    panic!("expected preview");
+  };
+  assert_eq!(preview.columns, table.headers);
+  assert_eq!(preview.rows.len(), table.rows.len());
+  for (actual, expected) in preview
+    .rows
+    .iter()
+    .flatten()
+    .zip(table.rows.iter().flatten())
+  {
+    if let CellValue::Float(value) = expected
+      && value.is_nan()
+    {
+      assert!(matches!(actual, CellValue::Float(value) if value.is_nan()));
+      continue;
+    }
+    assert_eq!(actual, expected);
+  }
+  let batch = success(fixture.batch(&[
+    "--json",
+    "-c",
+    "use data.csv",
+    "-c",
+    &source,
+    "-c",
+    "collapse mean x y bad, by(g)",
+    "-c",
+    "head 20",
+  ]));
+  assert_eq!(batch[2]["result_type"], "CollapseResult");
+  assert_eq!(batch[3]["data"]["columns"], encoded["data"]["headers"]);
+  assert_eq!(batch[3]["data"]["rows"], encoded["data"]["rows"]);
+  execute(
+    &mut session,
+    "sql select * from active where false into empty_means",
+  );
+  let empty = execute(&mut session, "collapse mean mean_x mean_y, by(g)");
+  let ExecutionResult::Collapse(empty) = empty else {
+    panic!("expected collapse");
+  };
+  assert_eq!(empty.dataset.row_count, 0);
+  assert_eq!(
+    empty
+      .dataset
+      .columns
+      .iter()
+      .map(|c| (c.name.as_str(), c.data_type.as_str()))
+      .collect::<Vec<_>>(),
+    [
+      ("g", "VARCHAR"),
+      ("mean_mean_x", "DOUBLE"),
+      ("mean_mean_y", "DOUBLE")
+    ]
+  );
+  let empty = execute(&mut session, "head 20");
+  let ExecutionResult::Head(empty) = empty else {
+    panic!("expected preview");
+  };
+  assert!(empty.rows.is_empty());
 }
 
 #[test]

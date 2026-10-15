@@ -351,7 +351,7 @@ fn json_batch_run_errors_are_located_exit_one_and_stop_later_commands() {
       "assert",
     ),
     (
-      "collapse mean x, by(y)",
+      "collapse sum x, by(y)",
       "analysis files/child script.td",
       3,
       "successful script results",
