@@ -30,9 +30,13 @@ def options(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("binary", type=Path)
     parser.add_argument("--measure", action="store_true", help="emit validated local timing JSON instead of the acceptance message")
-    parser.add_argument("--repetitions", type=int, default=7, help="1..50 measured cycles after one excluded warmup")
-    parser.add_argument("--label", default="unspecified", help="user-supplied source/profile context, not verified")
+    parser.add_argument("--repetitions", type=int, help="1..50 measured cycles after one excluded warmup (default 7)")
+    parser.add_argument("--label", help="user-supplied source/profile context, not verified")
     args = parser.parse_args(argv)
+    if not args.measure and (args.repetitions is not None or args.label is not None):
+        parser.error("--repetitions and --label require --measure")
+    args.repetitions = 7 if args.repetitions is None else args.repetitions
+    args.label = "unspecified" if args.label is None else args.label
     if not 1 <= args.repetitions <= 50:
         parser.error("--repetitions must be 1..50")
     args.binary = args.binary.resolve()
@@ -141,16 +145,14 @@ def run(args):
         status = None
         transcript = bytearray()
         timings = None
-        # A fresh PTY otherwise has a zero-sized window, unlike an actual terminal.
-        fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
-
         def expect(marker):
             start = len(transcript)
             deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
                 if select.select([fd], [], [], 0.2)[0]:
                     chunk = os.read(fd, 65536)
-                    assert chunk, "EOF before expected output"
+                    if not chunk:
+                        raise AssertionError("EOF before expected output")
                     transcript.extend(chunk)
                     if b"\x1b[6n" in chunk:
                         os.write(fd, b"\x1b[1;1R")
@@ -165,6 +167,8 @@ def run(args):
             return expect(marker)
 
         try:
+            # A fresh PTY otherwise has a zero-sized window, unlike an actual terminal.
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
             expect(b"TabDat")
             command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
             command(b"re\t\t", b"reshape")  # ambiguous prefix lists alternatives
@@ -196,11 +200,15 @@ def run(args):
                     except OSError as error:
                         if error.errno != errno.EIO:
                             raise
-            assert status is not None and os.waitstatus_to_exitcode(status) == 0, "EOF did not exit cleanly"
+            if status is None or os.waitstatus_to_exitcode(status) != 0:
+                raise AssertionError("EOF did not exit cleanly")
             flags = termios.tcgetattr(fd)[3]
-            assert flags & termios.ICANON and flags & termios.ECHO, "terminal mode not restored"
-            assert "cancelled.csv" not in os.listdir(directory)
-            assert b"Error:" not in transcript, bytes(transcript)
+            if not (flags & termios.ICANON and flags & termios.ECHO):
+                raise AssertionError("terminal mode not restored")
+            if "cancelled.csv" in os.listdir(directory):
+                raise AssertionError("cancelled export created a file")
+            if b"Error:" in transcript:
+                raise AssertionError(bytes(transcript))
         finally:
             os.close(fd)
             if status is None:
@@ -227,7 +235,8 @@ def main():
             "fixture": {"rows": 4, "csv": "x,y\n0,1\n1,2\n2,4\n3,6\n"},
             "repetitions": args.repetitions,
             "excluded_warmup_cycles": 1,
-            "timing_scope": "parent monotonic submit-to-result-and-prompt observation in a warmed persistent controlling PTY; includes parsing/execution/rendering/transport/scheduling, excludes result validation and preview",
+            "preconditioning": "existing completion/editing/cancellation/model-retention acceptance flow runs first in the same process",
+            "timing_scope": "parent monotonic submit-to-result-and-prompt observation in a warmed persistent controlling PTY; includes parsing/execution/rendering/transport/scheduling and observer ANSI/marker processing, excludes numeric validation and preview",
             "cases": timings,
         }
         print(json.dumps(report, allow_nan=False))
