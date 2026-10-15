@@ -94,8 +94,9 @@ fn quoted_run_replays_nested_relative_scripts_in_all_output_modes() {
   let actual = fixture.batch(&["--json", "-f", "wrapper.td"]);
   assert_success(&expected);
   assert_success(&actual);
-  let rejected = fixture.batch(&["--json", "-c", source]);
-  assert_eq!(rejected.status.code(), Some(2));
+  let batch = fixture.batch(&["--json", "-c", source]);
+  assert_success(&batch);
+  assert_eq!(envelopes(&batch.stdout), envelopes(&expected.stdout));
   assert_eq!(envelopes(&actual.stdout), envelopes(&expected.stdout));
   let types: Vec<_> = envelopes(&actual.stdout)
     .iter()
