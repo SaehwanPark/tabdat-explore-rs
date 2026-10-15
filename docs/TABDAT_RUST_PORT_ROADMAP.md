@@ -32,9 +32,12 @@ the binary. Capable-terminal editing, bounded in-memory history and input-level
 Ctrl-C recovery are now installed (#203); piped input remains plain. Bounded
 core-command/help-topic Tab completion now supports word-end prefixes and preserves
 arguments after the cursor. Local literal `use`/`run` path completion now supports
-files/directories and compatible open quotes without shell expansion; variable,
-named-table/output-path completion, interactive multiline continuation and in-flight
-cancellation remain deferred; an executing command may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
+files/directories and compatible open quotes without shell expansion. Basic bare EDA
+variable lists now complete current schema names from owned prompt-level snapshots,
+without scans or cached-model inference. Quoted-variable/expression/option/named-table/
+output-path completion, multiline continuation and in-flight cancellation remain
+deferred; an executing command may still terminate on SIGINT. Local Unix PTY
+evidence is not platform certification.
 
 ### 2. Close the core EDA loop
 
@@ -331,8 +334,15 @@ state are handled correctly.
   suffixes survive; hidden names require a dot prefix. Parser roundtrips, native
   symlinks, unavailable entries/control-name guards, real PTY quoted loading/replay
   and unchanged piped tabs are checked alongside model-retention/input recovery.
-  No extension/loadability inference or shell expansion is added. Variable,
-  named-table/output-path completion and persistent history remain deferred.
+  Basic bare EDA variable lists now complete literal case-sensitive current column
+  names. An owned snapshot refreshes before every prompt, including failed operations,
+  partial scripts and named-table switches, without backend scans or cached-fit names.
+  Parser-safe/Unicode names, cursor suffixes, schema refresh, real PTY generated/
+  renamed/scripted predictor completion and unchanged pipes are checked. Suggestions
+  do not certify type/model eligibility or suppress repeated variables.
+  No extension/loadability inference or shell expansion is added. Quoted-variable,
+  expression/option/named-table/output-path completion and persistent history remain
+  deferred.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including `lincom`/`test` topics (#202) and the four installed `ttest` forms
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`

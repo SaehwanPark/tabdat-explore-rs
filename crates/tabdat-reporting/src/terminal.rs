@@ -303,7 +303,8 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "  Help: help [topic] or ?[topic]; example: help summarize\n",
       "  Leave: exit, quit, or EOF\n",
       "Supported forms/options are bounded; reference topics may include parser-only or future syntax.\n",
-      "See SPEC.md for current limits. In capable terminals, Tab completes core command names and help topics at word ends (not variables/paths).\n",
+      "See SPEC.md for current limits. In capable terminals, Tab completes core commands/help topics, local use/run paths, and basic bare EDA variable lists.\n",
+      "Path/variable prefixes are literal and case-sensitive; open a compatible quote for spaced paths. Piped input is not completed.\n",
       "Ctrl-C cancels pending input; executing-command cancellation is not supported.\n"
     ).to_owned()),
     Some(topic) => crate::catalog::help_topic_result(topic).map(|topic| format!(

@@ -130,6 +130,13 @@ def measure_cycles(command, repetitions):
     return {case: timing_summary(values) for case, values in samples.items()}
 
 
+def validate_acceptance_errors(transcript):
+    errors = re.findall(rb"(?:^|\n)Error: ([^\r\n]*)", bytes(transcript))
+    if (len(errors) != 2 or errors[0] != b"rename unknown variable: absent"
+            or not errors[1].endswith(b"/analysis files/partial schema.td:2: unknown command: unknown_command")):
+        raise AssertionError(f"unexpected acceptance diagnostics: {errors!r}")
+
+
 def run(args):
     binary = str(args.binary)
     with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
@@ -138,6 +145,7 @@ def run(args):
         Path(directory, "analysis files").mkdir()
         Path(directory, "analysis files", "semi, 雪.csv").write_text("x;y\n0;1\n1;2\n2;4\n3;6\n")
         Path(directory, "analysis files", "child script.td").write_text("count\n")
+        Path(directory, "analysis files", "partial schema.td").write_text("rename refreshed_column scripted_column\nunknown_command\n")
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(directory)
@@ -183,6 +191,20 @@ def run(args):
             suffix_length = len(b'", delimiter(";")')
             command(line + b"\x1b[D" * suffix_length + b"\t" + b"\x1b[C" * suffix_length + b"\n", b"Loaded 4 rows, 2 columns")
             command(b"run 'ana\tchild\t\n", b"Executed 1 commands")
+            command(b"generate probe_column = x\n", b"Generated: 4 rows, 3 columns")
+            command(b"summarize probe_c\t\n", b"probe_column\t4\t1.5\t")
+            fit = command(b"regress y probe_c\t\n", b"probe_column\t")
+            rows = numeric_rows(fit, "Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)", 2)
+            for row, name, value in zip(rows, ["intercept", "probe_column"], [0.7, 1.7]):
+                if row[0] != name:
+                    raise ValueError("wrong completed predictor order")
+                close(row[1], value)
+            command(b"rename probe_column refreshed_column\n", b"Renamed: 4 rows, 3 columns")
+            command(b"rename absent ignored\n", b"Error:")
+            command(b"summarize refreshed_c\t\n", b"refreshed_column\t4\t1.5\t")
+            command(b"run 'analysis files/partial schema.td'\n", b"partial schema.td:2:")
+            command(b"summarize scripted_c\t\n", b"scripted_column\t4\t1.5\t")
+            command(b"drop scripted_c\t\n", b"Dropped: 4 rows, 2 columns")
             command(b"re\t\t", b"reshape")  # ambiguous prefix lists alternatives
             command(b"\x03", b"Input cancelled.")
             command(b"re\tg\t y x\n", b"Parameter\tCoefficient")
@@ -219,8 +241,7 @@ def run(args):
                 raise AssertionError("terminal mode not restored")
             if "cancelled.csv" in os.listdir(directory):
                 raise AssertionError("cancelled export created a file")
-            if b"Error:" in transcript:
-                raise AssertionError(bytes(transcript))
+            validate_acceptance_errors(transcript)
         finally:
             os.close(fd)
             if status is None:
@@ -253,7 +274,7 @@ def main():
         }
         print(json.dumps(report, allow_nan=False))
     else:
-        print("PTY passed: command/help/read-path completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        print("PTY passed: command/help/read-path/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
 
 
 if __name__ == "__main__":

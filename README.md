@@ -151,8 +151,20 @@ Existing closing quotes and `use` option suffixes are preserved. Hidden names re
 a dot prefix. Files/directories (including resolvable symlinks) are listed without
 extension or loadability validation; unavailable entries, control/non-UTF-8 names and
 names incompatible with the current quote are skipped. No shell escapes, home/environment
-or glob expansion, variable/named-table/output-path completion is provided. Completion
-does not replace the rest of a filename after the cursor. Piped input remains unchanged.
+or glob expansion, named-table/output-path completion is provided. Completion does not
+replace the rest of a filename after the cursor. Piped input remains unchanged.
+
+Basic bare-variable lists also complete current column names for `summarize`, `codebook`,
+`missing`, `tabulate`, `regress`, `keep`, `drop`, `select` and `sort`. For example,
+`summarize age_s<Tab>` can complete `age_squared`. Names use literal case-sensitive
+prefixes, sorted and deduplicated; bare letter/underscore identifiers (including Unicode)
+are offered, excluding the reserved `if` keyword. The owned snapshot refreshes from current
+schema before every prompt, including after failed commands, partial scripts and named-table
+switches; it does not scan data or use cached-model names. Suggestions are not numeric/type,
+formula or estimator validation, and repeated variables are not suppressed. Quoted names,
+factors, signed keys, expressions, predicates/options and new output names are not completed.
+Existing suffixes are preserved when completing before whitespace or a comma, not inside a
+variable name. Piped input still treats tabs as whitespace.
 A multiline continuation prompt is not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
 supported cancellation protocol and may terminate the process; in-flight file-write
 safety is not promised.
