@@ -295,6 +295,7 @@ fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
     ("lincom", "Student-t"),
     ("test", "Wald F"),
     ("ttest", "Student-t"),
+    ("predict", "Installed syntax:"),
   ] {
     let output = tabdat_bin()
       .args(["--json", "--help-topic", &topic.to_ascii_uppercase()])
@@ -338,6 +339,78 @@ fn ttest_discovery_describes_the_installed_comparisons_and_variance_flags() {
       {"name": "unequal", "required": false},
     ])
   );
+}
+
+#[test]
+fn predict_discovery_uses_parser_spelling_without_promising_execution() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "PREDICT"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(envelope["schema_version"], 1);
+  assert_eq!(envelope["data"]["help_topic"], "predict");
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "predict newvar [, xb | residuals | pr]"
+  );
+  assert_eq!(
+    envelope["data"]["options"],
+    serde_json::json!([
+      {"name": "xb", "required": false},
+      {"name": "residuals", "required": false},
+      {"name": "pr", "required": false}
+    ])
+  );
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "PREDICT"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
+  assert_eq!(envelope["data"]["text"], topic);
+  assert!(topic.contains("Only xb and residuals"));
+  assert!(topic.contains("reference/parser-only"));
+  assert!(topic.contains("`probabilities` is not an accepted option spelling"));
+  for source in [
+    "predict fitted",
+    "predict fitted, xb",
+    "predict residual, residuals",
+    "predict probability, pr",
+    "predict spillover, spatial_lag",
+    "predict posterior, posterior_predictive std interval level(90)",
+    "predict posterior, posterior_predictive saving(draws.parquet)",
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--explain", "-c", source])
+      .output()
+      .unwrap();
+    assert!(
+      output.status.success(),
+      "{source}: {}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["data"]["command_name"], "predict");
+    assert_eq!(envelope["data"]["execution"], "not_run");
+  }
+  for source in [
+    "predict probability, probabilities",
+    "predict both, xb residuals",
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--explain", "-c", source])
+      .output()
+      .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["error"]["type"], "ParseError");
+  }
 }
 
 #[test]

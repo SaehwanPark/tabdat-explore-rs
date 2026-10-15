@@ -185,7 +185,10 @@ now shows `[if expr]` for `count`, `summarize`, `tabulate` and `regress`, plus
 one/two-way and `rows()`/`columns()` frequency forms. Regression predictor
 requiredness matches the parser: at least one predictor is required. Tabulation
 lists installed frequency options alongside retained parser-reference `values`/
-`stat` descriptors; those aggregation forms remain uninstalled. Follow the linked
+`stat` descriptors; those aggregation forms remain uninstalled. Prediction discovery
+uses the accepted `pr` reference spelling, not the rejected `probabilities` option;
+only xb/residuals execute. `help predict` teaches current-data prediction, retained-fit
+and fresh-target rules, inspection/export and deferred forms. Follow the linked
 help for supported sample/option limits; `--json --explain -c "..."` checks syntax
 only (`execution: "not_run"`), not data validity or execution support.
 

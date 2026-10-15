@@ -354,7 +354,12 @@ state are handled correctly.
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`
   discovery now links its topic and comparison/variance-option syntax; executable
   topic examples, sorted rendered-group contrast direction and retained-model
-  help recovery are covered. Reference syntax is not a general execution guarantee.
+  help recovery are covered. Prediction help now teaches installed xb/residuals,
+  current-data/retained-fit and fresh-target rules through inspection/export;
+  executable examples reuse the independent linear reference and check recovery.
+  Discovery corrects the rejected `probabilities` spelling to parser-reference `pr`
+  without installing probability/Bayesian/spatial prediction (MIG-0012).
+  Reference syntax is not a general execution guarantee.
 - Add plotting or MCP transport only when a concrete workflow requires them.
 
 ## Later: optional estimator and backend breadth
