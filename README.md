@@ -190,6 +190,12 @@ for matching-profile build/run commands, fixture semantics and limitations.
 A [local matching release baseline](docs/performance/core-workflow.md#local-release-baseline)
 retains raw samples and context for one macOS/aarch64 host; it is not a timing
 threshold, OS-cold-cache measurement or release/platform certification.
+The existing Unix PTY acceptance tool now has opt-in `--measure` output for a
+validated four-row load/count/summary/OLS/prediction workflow in a warmed persistent
+shell. Raw samples, excluded warmup, timing boundaries and two local release
+observations are in the same guide. This includes editor/reporting/transport and
+observer overhead, not physical display-paint latency or a general performance
+promise; Python is used only by this external development tool.
 
 ## Bounded JSON results
 

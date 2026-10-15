@@ -91,6 +91,76 @@ the run rather than contributing timings. Output is emitted only after all cases
 succeed; errors exit 1, invalid options exit 2. Temporary fixtures are removed by
 RAII on ordinary success/failure (not a process-kill cleanup guarantee).
 
+## Controlling-PTY workflow observations
+
+`tools/check_terminal_pty.py` also provides an opt-in, standard-library-only Unix
+measurement mode. Its default acceptance invocation is unchanged. This is an
+external development tool, not a production Python dependency or a stable JSON
+machine contract.
+
+```sh
+cargo build --locked --release --bin tabdat-explore-rs
+python3 tools/check_terminal_pty.py target/release/tabdat-explore-rs \
+  --measure --repetitions 7 --label 'release; record source/tool revisions and flags' \
+  > target/pty-workflow-release.json
+python3 -m unittest discover -s tools -p 'test_check_terminal_pty.py'
+```
+
+`--repetitions` accepts 1..50 (default 7); it and `--label` require `--measure`.
+Invalid options or a missing/nonexecutable binary exit 2. Measurement failures exit
+nonzero without a success report; missing output/prompts use the existing 15-second
+acceptance timeout. The report is emitted only after acceptance, numeric validation,
+clean EOF and canonical/echo restoration. Ordinary failures
+close/reap the child and remove the temporary fixture; process-kill cleanup is not
+promised. Unit tests cover malformed arguments/results, raw sample aggregation,
+warmup exclusion, cycle order and failed-child cleanup/no report. A debug invocation
+is a harness smoke check only; use matching release builds for release observations.
+
+The existing completion/editing/history/cancellation/model-retention acceptance flow
+runs first in the same process. Then **one excluded warmup cycle** precedes measured
+cycles of load → count → summarize x y → regress y x → predict fitted. Every cycle
+reloads the same fixed four-row, two-column CSV, so prediction does not grow the
+schema between samples. Untimed `head 4` verifies actual current rows/predictions
+after each cycle. Counts, ordered means, model sample/design and coefficients are
+checked outside the timers. For `x=[0,1,2,3]`, `y=[1,2,4,6]`, exact OLS algebra gives
+intercept 7/10 and slope 17/10. Means/coefficients/predictions use absolute **1e-10**
+fixture health guards, not changed statistical test tolerances.
+
+Each observation uses the parent's monotonic clock from input submission through
+recognition of the expected output **and next prompt**. It includes parsing,
+execution, terminal rendering, transport, scheduling, and observer ANSI/marker
+processing; numeric validation and post-prediction previews are outside the timers.
+The JSON includes raw/min/median/max milliseconds, fixture content, warmup/sample
+counts, host/Python details, fixed xterm-256color 24×80 PTY and supplied label. The
+label does not verify source/profile. Record build commands, revisions and flags
+separately; no OS cache, CPU frequency or scheduler isolation is performed.
+
+This measures a **warmed persistent-session PTY round trip**, not physical display
+paint, startup, human keystrokes, completion latency, large-data performance or a
+cross-platform guarantee. Do not subtract the Rust example's session times from
+these observations: workload, reporting, transport and timing boundaries differ.
+No timing gate or optimization follows merely from these observations.
+
+[Raw PTY observations and context](baselines/macos-aarch64-pty-release.json) retain
+two sequential local release runs on Apple M1 Max/Darwin 27.0.0 arm64 with Rust
+1.97.1. Rust source is `a84f69a`, measurement tool is `5ccf10c`; no Rust/Cargo changes
+occur between them. Only machine-local binary paths were normalized. Each run has
+seven measured samples after its excluded warmup and acceptance preconditioning.
+
+| Command | Run A median ms | Run B median ms |
+| --- | ---: | ---: |
+| Load four-row CSV | 1.222 | 1.290 |
+| Count | 0.096 | 0.111 |
+| Summarize x y | 0.570 | 0.631 |
+| Regress y x | 0.215 | 0.244 |
+| Predict fitted | 0.830 | 0.903 |
+
+The release build and PTY acceptance/health guards passed. A full release Rust test
+suite was **not** run for this tooling-only slice; normal-profile repository checks
+remain separate evidence. The two repeats are not controlled independent machines
+or an optimization comparison. No production optimization is justified from this
+small warmed fixture alone.
+
 ## Local release baseline
 
 [Raw samples and build context](baselines/macos-aarch64-core-release.json) record
