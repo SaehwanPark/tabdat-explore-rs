@@ -302,8 +302,13 @@ state are handled correctly.
   samples and profile/scope metadata are explicit. A matching local release
   baseline now retains two 10000-row runs and a 1000000-row run on macOS/aarch64
   (#219), with full release tests and unchanged correctness guards. This is not
-  OS-cold-cache performance or cross-platform/release certification; interactive
-  and other data shapes remain unmeasured. Optimize only demonstrated regressions
+  OS-cold-cache performance or cross-platform/release certification. The existing
+  Unix PTY acceptance tool now offers opt-in warmed persistent-shell observations
+  for a fixed four-row load/count/summary/OLS/prediction cycle, including editor,
+  rendering, transport and observer overhead. Two local release repeats retain raw
+  samples/context; closed-form fixture guards, excluded warmup, cleanup and failure
+  rejection are tested. Physical display paint, cold interaction and larger/other
+  interactive data shapes remain unmeasured. Optimize only demonstrated regressions
   from comparable profiles.
 - Improve history/completion and display as needed for daily use. Capable-terminal
   Tab completion now covers installed core command names and packaged `help`/`?`

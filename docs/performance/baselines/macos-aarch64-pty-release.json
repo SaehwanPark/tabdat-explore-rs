@@ -1,0 +1,215 @@
+{
+  "context": {
+    "recorded_at_utc": "2026-10-15T10:44:15.144984+00:00",
+    "rust_source_revision": "a84f69a28abd025e18230ca84f73a4b0253e556b",
+    "measurement_tool_revision": "5ccf10c1c640dbcff312b706c867cd78f147c5bb",
+    "build_command": "cargo build --locked --release --bin tabdat-explore-rs",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "cpu": "Apple M1 Max",
+    "observed_build_environment_overrides": {},
+    "cargo_configuration": "No repository .cargo or global ~/.cargo/config* files observed",
+    "notes": [
+      "No Rust source or Cargo changes between the recorded Rust revision and tool revision.",
+      "Two sequential local runs, each with one excluded warmup cycle and seven measured cycles after the existing acceptance flow.",
+      "Only machine-local binary paths normalized; raw samples and other tool fields unchanged.",
+      "No cold-start/cache isolation, physical display-paint measurement, timing threshold, optimization or platform certification.",
+      "Release build and real-PTY acceptance/health guards passed; a full release Rust test suite was not run for this tooling-only change."
+    ]
+  },
+  "runs": [
+    {
+      "measurement_schema_version": 1,
+      "tool": "check_terminal_pty.py",
+      "binary": "target/release/tabdat-explore-rs",
+      "label": "release; Rust source a84f69a; local warmed PTY observation",
+      "host": {
+        "system": "Darwin",
+        "release": "27.0.0",
+        "machine": "arm64",
+        "python": "3.15.0"
+      },
+      "terminal": {
+        "TERM": "xterm-256color",
+        "rows": 24,
+        "columns": 80
+      },
+      "fixture": {
+        "rows": 4,
+        "csv": "x,y\n0,1\n1,2\n2,4\n3,6\n"
+      },
+      "repetitions": 7,
+      "excluded_warmup_cycles": 1,
+      "preconditioning": "existing completion/editing/cancellation/model-retention acceptance flow runs first in the same process",
+      "timing_scope": "parent monotonic submit-to-result-and-prompt observation in a warmed persistent controlling PTY; includes parsing/execution/rendering/transport/scheduling and observer ANSI/marker processing, excludes numeric validation and preview",
+      "cases": {
+        "load": {
+          "samples_ms": [
+            1.461167,
+            1.151,
+            1.227167,
+            1.222,
+            1.133167,
+            1.415083,
+            1.201875
+          ],
+          "min_ms": 1.133167,
+          "median_ms": 1.222,
+          "max_ms": 1.461167
+        },
+        "count": {
+          "samples_ms": [
+            0.106,
+            0.13475,
+            0.095834,
+            0.068333,
+            0.068541,
+            0.092625,
+            0.108792
+          ],
+          "min_ms": 0.068333,
+          "median_ms": 0.095834,
+          "max_ms": 0.13475
+        },
+        "summarize": {
+          "samples_ms": [
+            0.686208,
+            0.617125,
+            0.555709,
+            0.563167,
+            0.55875,
+            0.5835,
+            0.569834
+          ],
+          "min_ms": 0.555709,
+          "median_ms": 0.569834,
+          "max_ms": 0.686208
+        },
+        "regress": {
+          "samples_ms": [
+            0.264541,
+            0.201833,
+            0.176875,
+            0.206291,
+            0.215375,
+            0.221,
+            0.221333
+          ],
+          "min_ms": 0.176875,
+          "median_ms": 0.215375,
+          "max_ms": 0.264541
+        },
+        "predict": {
+          "samples_ms": [
+            0.942875,
+            0.791792,
+            0.844709,
+            0.791583,
+            0.829875,
+            0.830208,
+            0.817333
+          ],
+          "min_ms": 0.791583,
+          "median_ms": 0.829875,
+          "max_ms": 0.942875
+        }
+      }
+    },
+    {
+      "measurement_schema_version": 1,
+      "tool": "check_terminal_pty.py",
+      "binary": "target/release/tabdat-explore-rs",
+      "label": "release; Rust source a84f69a; local warmed PTY observation",
+      "host": {
+        "system": "Darwin",
+        "release": "27.0.0",
+        "machine": "arm64",
+        "python": "3.15.0"
+      },
+      "terminal": {
+        "TERM": "xterm-256color",
+        "rows": 24,
+        "columns": 80
+      },
+      "fixture": {
+        "rows": 4,
+        "csv": "x,y\n0,1\n1,2\n2,4\n3,6\n"
+      },
+      "repetitions": 7,
+      "excluded_warmup_cycles": 1,
+      "preconditioning": "existing completion/editing/cancellation/model-retention acceptance flow runs first in the same process",
+      "timing_scope": "parent monotonic submit-to-result-and-prompt observation in a warmed persistent controlling PTY; includes parsing/execution/rendering/transport/scheduling and observer ANSI/marker processing, excludes numeric validation and preview",
+      "cases": {
+        "load": {
+          "samples_ms": [
+            1.3335,
+            1.250875,
+            1.27925,
+            1.29225,
+            1.27075,
+            1.42125,
+            1.289625
+          ],
+          "min_ms": 1.250875,
+          "median_ms": 1.289625,
+          "max_ms": 1.42125
+        },
+        "count": {
+          "samples_ms": [
+            0.110792,
+            0.111083,
+            0.07175,
+            0.068167,
+            0.113917,
+            0.130667,
+            0.144416
+          ],
+          "min_ms": 0.068167,
+          "median_ms": 0.111083,
+          "max_ms": 0.144416
+        },
+        "summarize": {
+          "samples_ms": [
+            0.630667,
+            0.572666,
+            0.668917,
+            0.676625,
+            0.665792,
+            0.5885,
+            0.564833
+          ],
+          "min_ms": 0.564833,
+          "median_ms": 0.630667,
+          "max_ms": 0.676625
+        },
+        "regress": {
+          "samples_ms": [
+            0.244,
+            0.248,
+            0.247041,
+            0.261083,
+            0.227667,
+            0.231041,
+            0.213667
+          ],
+          "min_ms": 0.213667,
+          "median_ms": 0.244,
+          "max_ms": 0.261083
+        },
+        "predict": {
+          "samples_ms": [
+            0.902333,
+            0.946417,
+            0.90275,
+            0.911875,
+            1.001083,
+            0.802333,
+            0.742042
+          ],
+          "min_ms": 0.742042,
+          "median_ms": 0.90275,
+          "max_ms": 1.001083
+        }
+      }
+    }
+  ]
+}
