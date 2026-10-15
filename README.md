@@ -112,8 +112,15 @@ at most 500 session-local submitted commands (blank/comments and cancelled input
 are excluded; consecutive duplicates are skipped). History is never saved to disk.
 Ctrl-C while composing a line cancels that input and preserves data/model state;
 Ctrl-D on an empty line exits. Piped input keeps the existing plain line behavior.
-Unsupported/dumb terminals may fall back to plain input. Completion and a
-multiline continuation prompt are not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
+Unsupported/dumb terminals may fall back to plain input. Tab at the end of a
+command-name prefix completes installed core commands: for example, `summ<Tab>`
+becomes `summarize`. Ambiguous prefixes extend to their common prefix; another Tab
+lists alternatives. `help summ<Tab>` and `?summ<Tab>` complete packaged reference
+topics, which can include parser-only/future syntax. Matching is case-insensitive;
+completion preserves leading whitespace and any arguments after the cursor, and
+never executes a command. It does not complete inside a word, in command arguments,
+or variable/file names. No completion is applied to piped input.
+A multiline continuation prompt is not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
 supported cancellation protocol and may terminate the process; in-flight file-write
 safety is not promised.
 
