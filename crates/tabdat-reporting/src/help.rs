@@ -75,6 +75,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "tail",
   "test",
   "tobit",
+  "ttest",
   "use",
   "xtabond",
   "xtdata",
@@ -164,6 +165,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "tail" => Some(include_str!("help/topics/tail.md")),
     "test" => Some(include_str!("help/topics/test.md")),
     "tobit" => Some(include_str!("help/topics/tobit.md")),
+    "ttest" => Some(include_str!("help/topics/ttest.md")),
     "use" => Some(include_str!("help/topics/use.md")),
     "xtabond" => Some(include_str!("help/topics/xtabond.md")),
     "xtdata" => Some(include_str!("help/topics/xtdata.md")),
@@ -181,7 +183,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 81);
+    assert_eq!(available_help_topics().len(), 82);
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");
