@@ -10,13 +10,13 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count, generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
-/// ByResult also represents native grouped means, so DTO serialization alone
-/// must not admit those commands under the finite-summary JSON contract.
+/// ByResult retains native grouped AVG semantics; it is not a finite-sample
+/// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
   if matches!(command, Command::RegressQuery { .. }) {
     return true;
@@ -80,7 +80,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
       | Command::Exit
       | Command::Run { .. }
   ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
-    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
+    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
 }
 
 /// Whether a script command can execute without producing an unsupported JSON
@@ -149,7 +149,7 @@ pub fn supports_script_command(command: &Command) -> bool {
       | Command::Exit
       | Command::Run { .. }
   ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
-    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count))
+    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
 }
 
 /// Serialize owned execution results using the stable versioned CLI envelope.
@@ -568,7 +568,7 @@ mod tests {
   }
 
   #[test]
-  fn conditional_summary_admission_excludes_options_and_grouped_means() {
+  fn conditional_summary_admission_excludes_options_and_grouped_queries() {
     assert!(tabdat_language::parse_command("summarize x if x > 0,").is_err());
     for source in ["summarize x if g == 'A'", "summarize if g == null"] {
       let command = tabdat_language::parse_command(source).unwrap();
@@ -579,7 +579,7 @@ mod tests {
       "summarize x, detail",
       "summarize x if g == 'A', detail",
       "summarize x if x > 0, limit=2",
-      "by g: summarize x",
+      "by g: summarize x if x > 0",
     ] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(!supports_batch_command(&command));
@@ -723,7 +723,7 @@ mod tests {
   }
 
   #[test]
-  fn grouped_tables_encode_owned_scalars_but_only_count_commands_are_admitted() {
+  fn grouped_tables_encode_owned_scalars_with_bounded_count_and_mean_admission() {
     let result = ExecutionResult::By(tabdat_domain::ByResult {
       headers: vec!["group\t列".into(), "Count".into()],
       rows: vec![
@@ -741,13 +741,19 @@ mod tests {
       value,
       json!({"schema_version":1,"result_type":"ByResult","data":{"headers":["group\t列","Count"],"rows":[["",u64::MAX],[null,1]]}})
     );
-    for source in ["by group: count", "by group other: count"] {
+    for source in [
+      "by group: count",
+      "by group other: count",
+      "by group: summarize x",
+      "by group other: summarize",
+    ] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(supports_batch_command(&command));
       assert!(supports_script_command(&command));
     }
     for source in [
-      "by group: summarize x",
+      "by group: summarize x, detail",
+      "by group: summarize x if x > 0",
       "by group: tabulate x",
       "by group: sort x",
     ] {
@@ -1201,7 +1207,7 @@ mod tests {
         [i128::MAX, "-0.01"],
       ])
     );
-    for input in ["estat residuals", "by x: summarize x"] {
+    for input in ["estat residuals", "by x: summarize x, detail"] {
       let command = tabdat_language::parse_command(input).unwrap();
       assert!(!supports_batch_command(&command));
       assert!(!supports_script_command(&command));

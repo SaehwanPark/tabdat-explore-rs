@@ -36,7 +36,7 @@ options:
                         script path; cannot be combined with --json/discovery
   --json                emit versioned JSON envelopes (batch success output
                         supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
-                        by ...: count, collapse count
+                        by ...: count/summarize (native means), collapse count
                         and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
                         keep/drop/select variable lists, bounded keep/drop if,
                         no-option summarize if, duplicates/isid, assert/datasignature,
