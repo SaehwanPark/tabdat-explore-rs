@@ -94,6 +94,30 @@ pub struct SummarizeResult {
   pub rows: Vec<SummaryRow>,
 }
 
+/// Fixed percentiles reported by the bounded finite-sample detail workflow.
+pub const SUMMARY_PERCENTILES: [u8; 9] = [1, 5, 10, 25, 50, 75, 90, 95, 99];
+
+/// A type-7 linearly interpolated percentile after conversion to DOUBLE.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SummaryPercentile {
+  pub percentile: u8,
+  /// Undefined for an empty finite sample; not an exact integer/decimal scalar.
+  pub value: Option<f64>,
+}
+
+/// Ordinary finite statistics and percentiles of the same per-variable sample.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SummaryDetailRow {
+  pub summary: SummaryRow,
+  pub percentiles: Vec<SummaryPercentile>,
+}
+
+/// Read-only bounded detail rows, retaining request order and duplicates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SummarizeDetailResult {
+  pub rows: Vec<SummaryDetailRow>,
+}
+
 /// An owned codebook profile row for one active column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CodebookRow {
@@ -587,6 +611,7 @@ pub enum ExecutionResult {
   Count(CountResult),
   /// Descriptive statistics for selected numeric columns.
   Summarize(SummarizeResult),
+  SummarizeDetail(SummarizeDetailResult),
   /// Profiles selected columns in the active dataset.
   Codebook(CodebookResult),
   /// Reports SQL-NULL missingness for selected columns.

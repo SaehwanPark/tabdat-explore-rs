@@ -138,13 +138,16 @@ fn cli_json_describe_command_success() {
 
   let data = &envelope["data"];
   assert_eq!(data["name"], "summarize");
-  assert_eq!(data["syntax"], "summarize [varlist] [if expr]");
+  assert_eq!(data["syntax"], "summarize [varlist] [if expr] [, detail]");
   assert_eq!(data["help_topic"], "summarize");
   assert_eq!(
     data["arguments"],
     serde_json::json!([{"name": "variables", "required": false}])
   );
-  assert_eq!(data["options"], serde_json::json!([]));
+  assert_eq!(
+    data["options"],
+    serde_json::json!([{"name": "detail", "required": false}])
+  );
 }
 
 #[test]
@@ -153,9 +156,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
       "summarize",
-      "summarize [varlist] [if expr]",
+      "summarize [varlist] [if expr] [, detail]",
       serde_json::json!([{"name": "variables", "required": false}]),
-      vec![],
+      vec!["detail"],
     ),
     (
       "regress",

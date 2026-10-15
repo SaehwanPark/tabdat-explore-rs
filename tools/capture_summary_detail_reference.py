@@ -38,7 +38,7 @@ def capture():
         writer.writerows(rows)
         selected_indices = [i for i, row in enumerate(rows)
                             if selected_only is False or (selected_only is True and row[2] is True)]
-        condition = "selected == true" if selected_only is True else "false" if selected_only is None else None
+        condition = "selected" if selected_only is True else "(x + 0) > 1000" if selected_only is None else None
         summaries = []
         for column, variable in enumerate(["x", "y"]):
             finite_indices = [i for i in selected_indices

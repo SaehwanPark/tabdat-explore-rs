@@ -192,9 +192,16 @@ state are handled correctly.
   functions/logical-expression breadth and general native atomicity remain out.
   Read-only conditional summaries (#231) now reuse bounded TRUE predicates and
   ordinary per-variable finite samples for every aggregate, without data/model
-  mutation or option-bearing/grouped-conditional admission. NumPy/SciPy selected-row references,
+  mutation or grouped-conditional admission. NumPy/SciPy selected-row references,
   asymmetric missingness, exact extrema/ordering, empty/singleton/native-error
   paths, named/cache invariants, nested/persistence and output guards are checked.
+  One bare `detail` flag now adds fixed 1/5/10/25/50/75/90/95/99 type-7 DOUBLE
+  percentiles on the same per-variable finite sample, in terminal and a separate
+  CLI-v1 `SummarizeDetailResult`. Independent NumPy samples/values, default/requested
+  order/duplicates, empty/singleton/constant inputs, exact extrema, ordinary-result
+  equivalence, named/label/fit state, native failures and nested output/file guards
+  are covered. Higher moments, weights, configurable percentiles, extreme-value
+  lists, grouped detail and other option combinations remain uninstalled.
   Read-only conditional frequency tables (#239) reuse bounded TRUE predicates,
   category SQL-NULL exclusions and existing one/two-way label/count/percentage
   assembly. Equivalent single-key rows()/columns() forms execute; pandas selected

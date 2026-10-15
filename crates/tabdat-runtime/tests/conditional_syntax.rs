@@ -16,7 +16,9 @@ fn new_conditional_syntax_does_not_accidentally_execute_column_commands() {
     session
       .execute(parse_command("summarize age, detail").unwrap())
       .unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "summarize" }
+    RuntimeError::NoActiveDataset {
+      command: "summarize"
+    }
   );
   assert!(session.initialized_capabilities().is_empty());
   assert!(session.active_dataset().is_none());

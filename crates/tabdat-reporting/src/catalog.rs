@@ -1729,8 +1729,8 @@ fn get_command_schema(
       }],
       help_topic,
       name: "summarize".to_string(),
-      options: vec![],
-      syntax: "summarize [varlist] [if expr]".to_string(),
+      options: vec![OptionDescriptor { name: "detail".to_string(), required: false }],
+      syntax: "summarize [varlist] [if expr] [, detail]".to_string(),
     }),
     "tabulate" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

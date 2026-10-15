@@ -370,8 +370,12 @@ fn options_stay_outside_admission_and_error_streams_stop_files_with_terminal_rec
     ("summarize x if absent > 0", 1, "ExecutionError"),
     ("summarize x if x", 1, "ExecutionError"),
     ("summarize x if inrange(x, 1, 5)", 1, "ExecutionError"),
-    ("summarize x if id > 0, detail", 2, "JsonResultUnsupported"),
-    ("summarize x, detail", 2, "JsonResultUnsupported"),
+    (
+      "summarize x if id > 0, detail limit",
+      2,
+      "JsonResultUnsupported",
+    ),
+    ("summarize x, limit", 2, "JsonResultUnsupported"),
     ("summarize x if", 2, "ParseError"),
   ] {
     let output = fixture.batch(&[

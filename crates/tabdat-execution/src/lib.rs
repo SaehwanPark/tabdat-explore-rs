@@ -66,7 +66,9 @@ impl Session {
         variables,
         condition,
         options,
-      } if options.is_empty() => self.execute_summary_query(variables, condition),
+      } if options.is_empty() || summarize_detail_requested(&options) => {
+        self.execute_summary_query(variables, condition, summarize_detail_requested(&options))
+      }
       Command::Codebook { variables } => self.execute_codebook(variables),
       Command::Missing { variables } => self.execute_missing(variables),
       Command::Duplicates { variables } => self.execute_duplicates(variables),

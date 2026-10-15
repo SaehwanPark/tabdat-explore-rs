@@ -98,7 +98,7 @@
     {
       "name": "selected",
       "csv": "x,y,selected\n-7,1,True\n-1,,True\n0,7,True\n4,9,True\n12,19,False\n,2,True\nNaN,3,True\nInfinity,4,True\n-Infinity,NaN,True\n3,Infinity,False\n-2,-Infinity,False\n",
-      "condition": "selected == true",
+      "condition": "selected",
       "selected_indices": [
         0,
         1,
@@ -341,7 +341,7 @@
     {
       "name": "empty_selected",
       "csv": "x,y,selected\n-7,1,True\n-1,,True\n0,7,True\n4,9,True\n12,19,False\n,2,True\nNaN,3,True\nInfinity,4,True\n-Infinity,NaN,True\n3,Infinity,False\n-2,-Infinity,False\n",
-      "condition": "false",
+      "condition": "(x + 0) > 1000",
       "selected_indices": [],
       "rows": [
         {

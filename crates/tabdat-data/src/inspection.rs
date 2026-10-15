@@ -37,6 +37,23 @@ impl DuckDbBackend {
     variable: &str,
     predicate: Option<(&AssertExpression, &DatasetInfo)>,
   ) -> Result<SummaryRow, DataError> {
+    self
+      .summary_variable(variable, predicate, false)
+      .map(|row| row.summary)
+  }
+  pub fn summarize_detail_variable_if(
+    &self,
+    variable: &str,
+    predicate: Option<(&AssertExpression, &DatasetInfo)>,
+  ) -> Result<SummaryDetailRow, DataError> {
+    self.summary_variable(variable, predicate, true)
+  }
+  fn summary_variable(
+    &self,
+    variable: &str,
+    predicate: Option<(&AssertExpression, &DatasetInfo)>,
+    detail: bool,
+  ) -> Result<SummaryDetailRow, DataError> {
     let condition = predicate
       .map(|(expression, dataset)| compile_assert_expression(expression, dataset))
       .transpose()?;
@@ -44,6 +61,16 @@ impl DuckDbBackend {
       .map(|sql| format!(" AND ({sql})"))
       .unwrap_or_default();
     let quoted_variable = quote_identifier(variable);
+    let quantiles = if detail {
+      SUMMARY_PERCENTILES
+        .iter()
+        .map(|percentile| {
+          format!(", quantile_cont(CAST({quoted_variable} AS DOUBLE), {percentile}.0 / 100)")
+        })
+        .collect::<String>()
+    } else {
+      String::new()
+    };
     // One finite sample for every aggregate: NaN/infinity can poison variance.
     // The finiteness test casts to DOUBLE (all supported exact numeric ranges
     // fit); keep aggregate input uncast to retain integer/decimal extrema.
@@ -51,7 +78,7 @@ impl DuckDbBackend {
     let mut statement = self
       .connection
       .prepare(&format!(
-        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}) FROM {ACTIVE_TABLE} WHERE isfinite(CAST({quoted_variable} AS DOUBLE)){selection}"
+        "SELECT count({quoted_variable}), avg({quoted_variable}), stddev_samp({quoted_variable}), min({quoted_variable}), max({quoted_variable}){quantiles} FROM {ACTIVE_TABLE} WHERE isfinite(CAST({quoted_variable} AS DOUBLE)){selection}"
       ))
       .map_err(|_| DataError)?;
     let mut rows = statement.query([]).map_err(|_| DataError)?;
@@ -68,13 +95,30 @@ impl DuckDbBackend {
       ValueRef::Null => None,
       value => Some(cell_value_from_ref(value)?),
     };
-    Ok(SummaryRow {
-      variable: variable.to_owned(),
-      count,
-      mean,
-      std_dev,
-      minimum,
-      maximum,
+    let percentiles = if detail {
+      SUMMARY_PERCENTILES
+        .iter()
+        .enumerate()
+        .map(|(index, percentile)| {
+          Ok(SummaryPercentile {
+            percentile: *percentile,
+            value: row.get(5 + index).map_err(|_| DataError)?,
+          })
+        })
+        .collect::<Result<Vec<_>, DataError>>()?
+    } else {
+      Vec::new()
+    };
+    Ok(SummaryDetailRow {
+      summary: SummaryRow {
+        variable: variable.to_owned(),
+        count,
+        mean,
+        std_dev,
+        minimum,
+        maximum,
+      },
+      percentiles,
     })
   }
   pub fn codebook_variable(

@@ -245,13 +245,26 @@ A summary uses `schema_version: 1`,
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.
 
 Summary rows preserve requested order and duplicate variables; omitted variables
-select numeric columns in schema order. `count` is the non-null count and
+select numeric columns in schema order. `count` is the finite, non-NULL count and
 `std_dev` is sample standard deviation (undefined below two observations).
 Missing/undefined and non-finite values serialize as `null`, consistent with
 CLI-v1 preview output. Extrema reuse preview scalar encoding: integers remain
 JSON numbers, decimals are exact scaled strings. Consumers needing large-integer
 precision should use a lossless JSON number parser. This is an additive result
 surface, not full-command JSON support.
+
+`summarize [varlist] [if <predicate>], detail` additionally reports percentiles
+1/5/10/25/50/75/90/95/99 on that same per-variable finite sample. It uses type-7
+linear interpolation after DOUBLE conversion, not an exact integer/decimal quantile
+or a universal Stata percentile convention. Terminal output pairs each ordinary
+summary with a percentile table. CLI-v1 adds `SummarizeDetailResult` with
+`data.quantile_method: "linear_type_7"` and ordered rows containing `summary`
+(the unchanged ordinary fields) and `percentiles` (`percentile`, nullable `value`).
+Empty samples have undefined percentiles; singleton percentiles equal the one value.
+Ordinary `SummarizeResult` is unchanged. No higher moments, weights, extreme-value
+lists, configurable percentiles, grouped detail or other option combinations are
+installed. Native finite-arithmetic limits remain. See `help summarize` and the
+independent NumPy fixture `tests/fixtures/summary-detail-reference.json`.
 
 Bounded one/two-way `tabulate` uses `result_type: "TabulateResult"` with
 `data.headers` and `data.rows`. Header/cell order, value labels, counts and
@@ -455,8 +468,9 @@ not a fabricated global/model sample. Exact extrema, variable order/duplicates,
 empty/singleton policy and native finite-overflow limits remain unchanged.
 Predicates reuse the bounded keep-if rules, including explicit SQL-NULL and
 native direct nonfinite versus safe-arithmetic handling. Data/labels/named state
-and cached fits are untouched. Functions/logical-expression breadth, summary
-options and conditional grouped summaries remain uninstalled. See `help summarize` and the
+and cached fits are untouched. One bare `detail` flag adds the percentile report
+above. Functions/logical-expression breadth, other summary options and conditional
+grouped summaries remain uninstalled. See `help summarize` and the
 development-only NumPy/SciPy conditional-summary reference.
 
 Conditional `keep if <predicate>` / `drop if <predicate>` now execute in the

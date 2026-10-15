@@ -59,12 +59,13 @@ impl Session {
     &self,
     variables: Vec<String>,
   ) -> Result<ExecutionResult, RuntimeError> {
-    self.execute_summary_query(variables, None)
+    self.execute_summary_query(variables, None, false)
   }
   pub(crate) fn execute_summary_query(
     &self,
     variables: Vec<String>,
     condition: Option<GenerateExpression>,
+    detail: bool,
   ) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -145,6 +146,24 @@ impl Session {
       .ok_or_else(|| RuntimeError::SummaryFailed {
         variable: requested[0].clone(),
       })?;
+    if detail {
+      let rows = requested
+        .iter()
+        .map(|variable| {
+          backend
+            .summarize_detail_variable_if(
+              variable,
+              predicate.as_ref().map(|predicate| (predicate, dataset)),
+            )
+            .map_err(|_| RuntimeError::SummaryFailed {
+              variable: variable.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+      return Ok(ExecutionResult::SummarizeDetail(SummarizeDetailResult {
+        rows,
+      }));
+    }
     let rows = requested
       .iter()
       .map(|variable| {

@@ -16,8 +16,8 @@ pub enum Command {
   Doctor,
   /// Compute descriptive statistics for selected columns.
   Summarize { variables: Vec<String> },
-  /// Conditional/option-bearing summary syntax. Bounded no-option predicates
-  /// execute; option-bearing forms remain outside the installed summary runtime.
+  /// Conditional/option-bearing summary syntax. Bounded predicates and one bare
+  /// `detail` flag execute; other option-bearing forms remain uninstalled.
   SummarizeQuery {
     variables: Vec<String>,
     condition: Option<GenerateExpression>,
@@ -1214,6 +1214,12 @@ pub enum SyntaxOptionValue {
   Identifiers(Vec<String>),
   Numbers(Vec<String>),
   Prior(String, String),
+}
+
+/// Recognize the single bare detail flag shared by execution and JSON admission.
+/// This does not admit grouped summaries or validate a row predicate.
+pub fn summarize_detail_requested(options: &[SyntaxOption]) -> bool {
+  matches!(options, [SyntaxOption { name, value: SyntaxOptionValue::Flag }] if name == "detail")
 }
 
 /// Post-estimation diagnostic syntax; options exist only on applicable variants.
