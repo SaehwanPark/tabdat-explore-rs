@@ -558,12 +558,15 @@ Batch `-c` exit behavior is unchanged.
 
 Interactive mean comparisons now display the existing bounded `ttest` results:
 `ttest x == 0` (one-sample), `ttest x == y` (paired), `ttest x, by(group)`
-(pooled equal-variance), and `ttest x, by(group) welch` (unequal-variance).
+(pooled equal-variance), and `ttest x, by(group) welch` (unequal-variance;
+`unequal` is an alias). `help ttest`/`?ttest` and `--json --help-topic ttest`
+explain these forms, samples and limits; discovery links the packaged topic.
 Output includes ordered sample summaries, fixed 95% Student-t intervals, the
 mean/difference null, t statistic, reference DF (fractional for Welch), and
 left-/two-sided/right-tail probabilities. Paired samples use joint complete
 finite observations; independent samples exclude invalid tested values and
-missing group keys. The contrast follows the supplied group order.
+missing group keys. Independent group labels are rendered, then sorted as strings;
+the contrast is the first label minus the second, not input-row or numeric key order.
 
 Independent difference rows show `NA` for N because the owned legacy field is
 not a sample count; real group counts and reference DF are shown separately.
@@ -579,8 +582,8 @@ contains `varname1`, nullable `varname2`/`by_variable`, `is_paired`, `is_welch`,
 Each summary contains `name`, `count`, `mean`, `standard_error`,
 `standard_deviation`, `ci_lower`, and `ci_upper`. Counts are integer observation
 counts, except independent difference `count` is null; its legacy DF/zero field
-is deliberately not exposed as N. The supplied order defines group1 minus
-group2 (or varname1 minus varname2 for paired tests). One-sample differences
+is deliberately not exposed as N. Sorted rendered-label order defines group1 minus
+group2; paired tests use varname1 minus varname2. One-sample differences
 report the tested mean, not the mean minus the null. Group intervals use their
 own sample DF; the tested interval and probabilities use the supplied reference
 DF, including fractional Welch DF. Missing summaries and non-finite statistics

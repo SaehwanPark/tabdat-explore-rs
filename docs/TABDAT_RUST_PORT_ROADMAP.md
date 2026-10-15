@@ -308,8 +308,11 @@ state are handled correctly.
   completion through regression/summary/help, retained-model prediction and input
   recovery. Variable/path completion and persistent history remain deferred.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
-  including new `lincom`/`test` topics (#202); reference syntax is not an execution
-  support guarantee.
+  including `lincom`/`test` topics (#202) and the four installed `ttest` forms
+  (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`
+  discovery now links its topic and comparison/variance-option syntax; executable
+  topic examples, sorted rendered-group contrast direction and retained-model
+  help recovery are covered. Reference syntax is not a general execution guarantee.
 - Add plotting or MCP transport only when a concrete workflow requires them.
 
 ## Later: optional estimator and backend breadth
