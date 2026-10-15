@@ -12,8 +12,8 @@ use crate::{EstimationProblem, StatsError, fit_least_squares};
 ///
 /// # Errors
 ///
-/// Returns `StatsError` when the design is empty or malformed, or when any auxiliary model
-/// cannot be estimated.
+/// Returns `StatsError` when the design is empty or malformed, or when a required
+/// auxiliary fit fails.
 pub fn variance_inflation_factors(
   predictor_names: &[String],
   design_matrix: &[Vec<f64>],

@@ -209,7 +209,7 @@ fn estat_vif_returns_one_for_a_single_predictor() {
 }
 
 #[test]
-fn estat_vif_normalizes_auxiliary_fit_failures() {
+fn estat_vif_handles_single_no_intercept_without_mutating_the_parent_fit() {
   let fixture = Fixture::from_query(
     "SELECT * FROM (VALUES \
       (1.0, 2.0), \
@@ -223,12 +223,20 @@ fn estat_vif_normalizes_auxiliary_fit_failures() {
   session
     .execute(parse_command("regress y x, noconstant").unwrap())
     .expect("single-predictor no-intercept regression should fit");
-  assert_eq!(
+  let state = session.state();
+  let table = table_from(
     session
       .execute(parse_command("estat vif").unwrap())
-      .unwrap_err(),
-    RuntimeError::EstatVifFailed
+      .unwrap(),
   );
+  assert_eq!(
+    table.rows,
+    [
+      vec![CellValue::Text("x".into()), CellValue::Float(1.0)],
+      vec![CellValue::Text("mean_vif".into()), CellValue::Float(1.0)],
+    ]
+  );
+  assert_eq!(session.state(), state);
 }
 
 #[test]

@@ -115,8 +115,12 @@ generic terminal table renderer. CLI-v1 now admits only `estat vif` among
 `estat` forms and reports its owned ordered `TableResult` (#212), without
 header-based type inference or changing terminal/library results. Independent
 statsmodels fixtures cover intercept conventions, actual retained samples and
-unweighted auxiliaries after WLS/GLS; nested/error/state paths are covered.
-Other `estat` JSON remains unsupported. Direct SQL queries/named cohorts have their
+unweighted auxiliaries after WLS/GLS; nested/error/state paths are covered. The
+single-predictor/no-intercept case now uses the zero-column auxiliary projection
+(VIF 1 for a nonzero finite predictor), completing diagnostic→prediction/persistence
+without relaxing general model validation. Independent NumPy projection references
+cover retained OLS/robust/cluster/WLS/GLS samples, preserving all prior reference
+values/tolerances; see MIG-0011. Other `estat` JSON remains unsupported. Direct SQL queries/named cohorts have their
 own JSON admission (#225), sharing table/metadata envelopes rather than inheriting
 support from VIF serialization. CLI-v1 `ttest` JSON covers the same four forms (#207), using
 owned inference, explicit Student-t/95% metadata, nullable independent difference
