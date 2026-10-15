@@ -14,7 +14,7 @@ enum InputEvent {
 }
 
 fn run_session_with_input(
-  mut read_input: impl FnMut() -> io::Result<InputEvent>,
+  mut read_input: impl FnMut(&Session) -> io::Result<InputEvent>,
   output: &mut impl Write,
   errors: &mut impl Write,
   prompt: bool,
@@ -28,7 +28,7 @@ fn run_session_with_input(
       write!(output, "tabdat> ")?;
       output.flush()?;
     }
-    let line = match read_input()? {
+    let line = match read_input(&session)? {
       InputEvent::Line(line) => line,
       InputEvent::Interrupted => {
         writeln!(output, "Input cancelled.")?;
@@ -121,7 +121,7 @@ fn run_session(
   prompt: bool,
 ) -> io::Result<()> {
   run_session_with_input(
-    || {
+    |_| {
       let mut line = String::new();
       if input.read_line(&mut line)? == 0 {
         Ok(InputEvent::Eof)
@@ -145,27 +145,38 @@ fn run_editor_session(output: &mut impl Write, errors: &mut impl Write) -> io::R
     .build();
   let mut editor = Editor::<crate::completion::ShellHelper, DefaultHistory>::with_config(config)
     .map_err(io::Error::other)?;
-  editor.set_helper(Some(crate::completion::ShellHelper));
+  editor.set_helper(Some(crate::completion::ShellHelper::default()));
   writeln!(output, "{WELCOME}")?;
   output.flush()?;
   run_session_with_input(
-    || match editor.readline("tabdat> ") {
-      Ok(line) => {
-        let text = line.trim();
-        if !text.is_empty() && !text.starts_with('#') {
-          editor
-            .add_history_entry(line.as_str())
-            .map_err(io::Error::other)?;
+    |session| {
+      // Refresh from current metadata even after errors or partial script effects;
+      // cached-model names and backend scans are not completion sources.
+      if let Some(helper) = editor.helper_mut() {
+        helper.set_columns(
+          session
+            .active_dataset()
+            .map_or(&[], |dataset| dataset.columns.as_slice()),
+        );
+      }
+      match editor.readline("tabdat> ") {
+        Ok(line) => {
+          let text = line.trim();
+          if !text.is_empty() && !text.starts_with('#') {
+            editor
+              .add_history_entry(line.as_str())
+              .map_err(io::Error::other)?;
+          }
+          Ok(InputEvent::Line(line))
         }
-        Ok(InputEvent::Line(line))
+        Err(ReadlineError::Interrupted) => Ok(InputEvent::Interrupted),
+        #[cfg(unix)]
+        Err(ReadlineError::Signal(rustyline::error::Signal::Interrupt)) => {
+          Ok(InputEvent::Interrupted)
+        }
+        Err(ReadlineError::Eof) => Ok(InputEvent::Eof),
+        Err(error) => Err(io::Error::other(error)),
       }
-      Err(ReadlineError::Interrupted) => Ok(InputEvent::Interrupted),
-      #[cfg(unix)]
-      Err(ReadlineError::Signal(rustyline::error::Signal::Interrupt)) => {
-        Ok(InputEvent::Interrupted)
-      }
-      Err(ReadlineError::Eof) => Ok(InputEvent::Eof),
-      Err(error) => Err(io::Error::other(error)),
     },
     output,
     errors,
@@ -260,7 +271,7 @@ mod tests {
     let mut output = Vec::new();
     let mut errors = Vec::new();
     let result = run_session_with_input(
-      || Ok(events.next().unwrap()),
+      |_| Ok(events.next().unwrap()),
       &mut output,
       &mut errors,
       false,
@@ -271,6 +282,90 @@ mod tests {
     let output = String::from_utf8(output).unwrap();
     assert!(output.contains("Input cancelled.\nPredicted: 4 rows, 3 columns\n"));
     assert!(output.ends_with("4 rows\n"));
+  }
+
+  #[test]
+  fn input_observes_current_schema_after_failures_partial_scripts_and_named_table_switches() {
+    use rustyline::{Context, completion::Completer, history::DefaultHistory};
+    let nonce = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-column-snapshot-{}-{nonce}",
+      std::process::id()
+    ));
+    std::fs::create_dir(&root).unwrap();
+    let first = root.join("first.csv");
+    let second = root.join("second.csv");
+    let child = root.join("child.td");
+    std::fs::write(&first, "x,y\n1,2\n2,5\n3,5\n4,9\n").unwrap();
+    std::fs::write(&second, "z\n1\n2\n").unwrap();
+    std::fs::write(&child, "rename outcome scripted\nunknown_command\n").unwrap();
+    let mut events: std::vec::IntoIter<(Vec<&str>, InputEvent)> = vec![
+      (vec![], InputEvent::Line(format!("use {}", first.display()))),
+      (vec!["x", "y"], InputEvent::Line("generate new = x".into())),
+      (
+        vec!["new", "x", "y"],
+        InputEvent::Line("rename absent broken".into()),
+      ),
+      (
+        vec!["new", "x", "y"],
+        InputEvent::Line("rename y outcome".into()),
+      ),
+      (
+        vec!["new", "outcome", "x"],
+        InputEvent::Line("drop new".into()),
+      ),
+      (
+        vec!["outcome", "x"],
+        InputEvent::Line(format!("run {}", child.display())),
+      ),
+      (
+        vec!["scripted", "x"],
+        InputEvent::Line(format!("use {}", root.join("missing.csv").display())),
+      ),
+      (
+        vec!["scripted", "x"],
+        InputEvent::Line("sql select x from active into one".into()),
+      ),
+      (
+        vec!["x"],
+        InputEvent::Line(format!("use {}", second.display())),
+      ),
+      (vec!["z"], InputEvent::Line("use one".into())),
+      (vec!["x"], InputEvent::Interrupted),
+      (vec!["x"], InputEvent::Eof),
+    ]
+    .into_iter();
+    let mut helper = crate::completion::ShellHelper::default();
+    let mut output = Vec::new();
+    let mut errors = Vec::new();
+    let result = run_session_with_input(
+      |session| {
+        let (expected, event) = events.next().unwrap();
+        helper.set_columns(
+          session
+            .active_dataset()
+            .map_or(&[], |dataset| dataset.columns.as_slice()),
+        );
+        let actual = helper
+          .complete("summarize ", 10, &Context::new(&DefaultHistory::new()))
+          .unwrap()
+          .1;
+        assert_eq!(actual, expected);
+        Ok(event)
+      },
+      &mut output,
+      &mut errors,
+      false,
+    );
+    std::fs::remove_dir_all(&root).unwrap();
+    result.unwrap();
+    assert!(events.next().is_none());
+    let errors = String::from_utf8(errors).unwrap();
+    assert_eq!(errors.matches("Error:").count(), 3, "{errors}");
+    assert!(errors.contains("child.td:2:"));
   }
 
   #[test]

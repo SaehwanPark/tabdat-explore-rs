@@ -126,7 +126,56 @@ fn complete_path(
   (start, matches)
 }
 
-pub(crate) struct ShellHelper;
+fn is_bare_column(name: &str) -> bool {
+  let mut characters = name.chars();
+  !name.eq_ignore_ascii_case("if")
+    && characters
+      .next()
+      .is_some_and(|c| c.is_alphabetic() || c == '_')
+    && characters.all(|c| c.is_alphanumeric() || c == '_')
+}
+
+#[derive(Default)]
+pub(crate) struct ShellHelper {
+  columns: Vec<String>,
+}
+
+impl ShellHelper {
+  pub(crate) fn set_columns(&mut self, columns: &[tabdat_domain::ColumnInfo]) {
+    self.columns = columns
+      .iter()
+      .map(|column| column.name.as_str())
+      .filter(|name| is_bare_column(name))
+      .map(str::to_owned)
+      .collect();
+    self.columns.sort();
+    self.columns.dedup();
+  }
+
+  fn complete_columns(&self, argument: &str, pos: usize, suffix: &str) -> (usize, Vec<String>) {
+    if !argument.split_whitespace().all(is_bare_column)
+      || suffix
+        .chars()
+        .next()
+        .is_some_and(|c| !c.is_whitespace() && c != ',')
+    {
+      return (pos, Vec::new());
+    }
+    let prefix = argument
+      .rsplit(char::is_whitespace)
+      .next()
+      .unwrap_or_default();
+    (
+      pos - prefix.len(),
+      self
+        .columns
+        .iter()
+        .filter(|name| name.starts_with(prefix))
+        .cloned()
+        .collect(),
+    )
+  }
+}
 
 impl Completer for ShellHelper {
   type Candidate = String;
@@ -150,6 +199,22 @@ impl Completer for ShellHelper {
           &line[pos..],
           command.eq_ignore_ascii_case("use"),
         ));
+      }
+      if [
+        "summarize",
+        "codebook",
+        "missing",
+        "tabulate",
+        "regress",
+        "keep",
+        "drop",
+        "select",
+        "sort",
+      ]
+      .iter()
+      .any(|name| command.eq_ignore_ascii_case(name))
+      {
+        return Ok(self.complete_columns(&text[end..], pos, &line[pos..]));
       }
     }
     if line[pos..]
@@ -195,9 +260,152 @@ mod tests {
   use rustyline::history::DefaultHistory;
 
   fn complete(line: &str, pos: usize) -> (usize, Vec<String>) {
-    ShellHelper
+    ShellHelper::default()
       .complete(line, pos, &Context::new(&DefaultHistory::new()))
       .unwrap()
+  }
+
+  fn columns(names: &[&str]) -> Vec<tabdat_domain::ColumnInfo> {
+    names
+      .iter()
+      .map(|name| tabdat_domain::ColumnInfo {
+        name: (*name).into(),
+        data_type: "DOUBLE".into(),
+      })
+      .collect()
+  }
+
+  fn complete_with(helper: &ShellHelper, line: &str, pos: usize) -> (usize, Vec<String>) {
+    helper
+      .complete(line, pos, &Context::new(&DefaultHistory::new()))
+      .unwrap()
+  }
+
+  #[test]
+  fn bare_column_lists_use_current_literal_names_without_type_or_model_inference() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&[
+      "z",
+      "Age",
+      "_id",
+      "age",
+      "age_sq",
+      "变量",
+      "has space",
+      "if",
+      "IF",
+      "bad-name",
+      "2number",
+      "age",
+    ]));
+    let expected = ["Age", "_id", "age", "age_sq", "z", "变量"];
+    for command in [
+      "summarize",
+      "codebook",
+      "missing",
+      "tabulate",
+      "regress",
+      "keep",
+      "drop",
+      "select",
+      "sort",
+    ] {
+      let line = format!("{command} ");
+      assert_eq!(
+        complete_with(&helper, &line, line.len()),
+        (line.len(), expected.map(str::to_owned).to_vec())
+      );
+    }
+    for name in expected {
+      assert_eq!(
+        tabdat_language::parse_command(&format!("summarize {name}")).unwrap(),
+        tabdat_language::Command::Summarize {
+          variables: vec![name.into()]
+        }
+      );
+    }
+    assert_eq!(
+      complete_with(&helper, "summarize a", 11),
+      (10, vec!["age".into(), "age_sq".into()])
+    );
+    assert_eq!(
+      complete_with(&helper, "SUMMARIZE A", 11),
+      (10, vec!["Age".into()])
+    );
+    assert_eq!(
+      complete_with(&helper, "regress age a", 13),
+      (12, vec!["age".into(), "age_sq".into()])
+    );
+    let line = "regress age 变";
+    assert_eq!(
+      complete_with(&helper, line, line.len()),
+      (12, vec!["变量".into()])
+    );
+  }
+
+  #[test]
+  fn column_completion_preserves_suffixes_but_declines_richer_contexts_and_inside_words() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&["age", "age_sq"]));
+    let line = "  SuMmArIzE a if age > 0";
+    let pos = line.find("a if").unwrap() + 1;
+    let (start, candidates) = complete_with(&helper, line, pos);
+    assert_eq!(start, pos - 1);
+    let mut updated = line.to_owned();
+    updated.replace_range(start..pos, &candidates[1]);
+    assert_eq!(updated, "  SuMmArIzE age_sq if age > 0");
+    let tabdat_language::Command::SummarizeQuery {
+      variables, options, ..
+    } = tabdat_language::parse_command(&updated).unwrap()
+    else {
+      panic!("expected conditional summary")
+    };
+    assert_eq!(variables, ["age_sq"]);
+    assert!(options.is_empty());
+    let line = "regress age a, robust";
+    let pos = line.find(',').unwrap();
+    let (start, candidates) = complete_with(&helper, line, pos);
+    let mut updated = line.to_owned();
+    updated.replace_range(start..pos, &candidates[1]);
+    let tabdat_language::Command::Regress { command } =
+      tabdat_language::parse_command(&updated).unwrap()
+    else {
+      panic!("expected regress")
+    };
+    assert_eq!(command.predictors, ["age_sq"]);
+    assert!(command.robust);
+    for line in [
+      "summarize age if a",
+      "regress age a, robust",
+      "summarize 'a",
+      "by g: summarize a",
+      "predict a",
+      "generate new = a",
+      "sql select a",
+      "sort -a",
+      "count a",
+      "summarize a+1",
+    ] {
+      assert!(
+        complete_with(&helper, line, line.len()).1.is_empty(),
+        "{line}"
+      );
+    }
+    assert!(complete_with(&helper, "summarize age", 12).1.is_empty());
+    assert!(complete_with(&helper, "summarize 变量", 11).1.is_empty());
+  }
+
+  #[test]
+  fn column_snapshot_replaces_old_names_and_can_be_cleared_without_losing_command_help() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&["old", "x"]));
+    assert_eq!(complete_with(&helper, "summarize ", 10).1, ["old", "x"]);
+    helper.set_columns(&columns(&["new", "x"]));
+    assert_eq!(complete_with(&helper, "summarize ", 10).1, ["new", "x"]);
+    helper.set_columns(&[]);
+    assert!(complete_with(&helper, "summarize ", 10).1.is_empty());
+    assert_eq!(complete_with(&helper, "summ", 4).1, ["summarize"]);
+    assert_eq!(complete_with(&helper, "help summ", 9).1, ["summarize"]);
   }
 
   #[test]
