@@ -134,6 +134,10 @@ def run(args):
     binary = str(args.binary)
     with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
         Path(directory, "data.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
+        Path(directory, "data-extra.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
+        Path(directory, "analysis files").mkdir()
+        Path(directory, "analysis files", "semi, 雪.csv").write_text("x;y\n0;1\n1;2\n2;4\n3;6\n")
+        Path(directory, "analysis files", "child script.td").write_text("count\n")
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(directory)
@@ -170,7 +174,15 @@ def run(args):
             # A fresh PTY otherwise has a zero-sized window, unlike an actual terminal.
             fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
             expect(b"TabDat")
-            command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
+            command(b"use data.c\t\n", b"Loaded 4 rows, 2 columns")
+            command(b"use data\t\t", b"data-extra.csv")
+            command(b"\x03", b"Input cancelled.")
+            command(b"use 'ana\tsemi\t, delimiter(';')\n", b"Loaded 4 rows, 2 columns")
+            # Complete before a preexisting closing quote and option suffix.
+            line = b'use "analysis files/se", delimiter(";")'
+            suffix_length = len(b'", delimiter(";")')
+            command(line + b"\x1b[D" * suffix_length + b"\t" + b"\x1b[C" * suffix_length + b"\n", b"Loaded 4 rows, 2 columns")
+            command(b"run 'ana\tchild\t\n", b"Executed 1 commands")
             command(b"re\t\t", b"reshape")  # ambiguous prefix lists alternatives
             command(b"\x03", b"Input cancelled.")
             command(b"re\tg\t y x\n", b"Parameter\tCoefficient")
@@ -241,7 +253,7 @@ def main():
         }
         print(json.dumps(report, allow_nan=False))
     else:
-        print("PTY passed: command/help completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        print("PTY passed: command/help/read-path completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
 
 
 if __name__ == "__main__":

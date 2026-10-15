@@ -64,14 +64,16 @@ fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
 #[test]
 fn piped_tabs_remain_whitespace_and_do_not_complete_prefixes() {
   let fixture = Fixture::new();
+  fs::write(fixture.0.join("child.td"), "drop y\nexport never.csv\n").unwrap();
   let output = run(
     &fixture,
-    b"use data.csv\nsumm\t y\nhelp summ\t\ncount\t\nexit\n",
+    b"use data.csv\nsumm\t y\nhelp summ\t\nuse dat\t\nrun chi\t\ncount\t\nexit\n",
   );
   assert!(output.status.success());
   let stderr = String::from_utf8(output.stderr).unwrap();
-  assert_eq!(stderr.matches("Error:").count(), 2, "{stderr}");
+  assert_eq!(stderr.matches("Error:").count(), 4, "{stderr}");
   assert!(stderr.contains("unknown help topic: summ"));
+  assert!(!fixture.0.join("never.csv").exists());
   let stdout = String::from_utf8(output.stdout).unwrap();
   assert!(stdout.ends_with("2 rows\n"));
   assert!(!stdout.contains("tabdat>"));
