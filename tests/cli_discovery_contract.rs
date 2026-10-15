@@ -138,7 +138,7 @@ fn cli_json_describe_command_success() {
 
   let data = &envelope["data"];
   assert_eq!(data["name"], "summarize");
-  assert_eq!(data["syntax"], "summarize [varlist]");
+  assert_eq!(data["syntax"], "summarize [varlist] [if expr]");
   assert_eq!(data["help_topic"], "summarize");
   assert_eq!(
     data["arguments"],

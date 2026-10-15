@@ -612,7 +612,7 @@ fn get_command_schema(
       help_topic,
       name: "count".to_string(),
       options: vec![],
-      syntax: "count".to_string(),
+      syntax: "count [if expr]".to_string(),
     }),
     "cvelasticnet" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -1472,7 +1472,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "regress y x1 x2 [, robust cluster(var) noconstant wls(var) gls(var)]".to_string(),
+      syntax: "regress y [xvars] [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]".to_string(),
     }),
     "rename" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -1730,7 +1730,7 @@ fn get_command_schema(
       help_topic,
       name: "summarize".to_string(),
       options: vec![],
-      syntax: "summarize [varlist]".to_string(),
+      syntax: "summarize [varlist] [if expr]".to_string(),
     }),
     "tabulate" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {
@@ -1752,8 +1752,13 @@ fn get_command_schema(
           name: "stat".to_string(),
           required: false,
         },
+        OptionDescriptor { name: "row".to_string(), required: false },
+        OptionDescriptor { name: "col".to_string(), required: false },
+        OptionDescriptor { name: "nolabel".to_string(), required: false },
+        OptionDescriptor { name: "rows".to_string(), required: false },
+        OptionDescriptor { name: "columns".to_string(), required: false },
       ],
-      syntax: "tabulate varname".to_string(),
+      syntax: "tabulate rowvar [colvar] [if expr] [, row col missing nolabel] | tabulate [if expr], rows(rowvar) [columns(colvar)] [row col missing nolabel]".to_string(),
     }),
     "tail" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {
