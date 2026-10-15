@@ -292,17 +292,21 @@ fits without refitting. Metadata label/panel fields remain null placeholders.
 Parquet retains stored empty strings; CSV reload may turn empty fields into NULL.
 See `help recode` for bounded eager syntax and failure limits.
 
-`collapse count x y, by(group)` now emits `CollapseResult` with owned
-`data.dataset` metadata in CLI-v1 JSON and a readable terminal row/column outcome.
-It replaces active data with ordered group keys and native BIGINT `count_x`/`count_y`
-columns. Counts exclude SQL NULL independently per variable, unlike `by group: count`
-row totals; stored empty/nonfinite values count as non-NULL. NULL keys group natively,
-NULL-last; empty input remains empty. Group labels survive, aggregate-source labels
-prune, dictionaries remain and active named relations synchronize. Cached fits/samples
-are not refitted: use aggregate columns for explicit refit/prediction before persistence.
-Count columns are not automatic model weights. Repeated/colliding names can fail staged
-schema validation without repair. Mean/sum/min/max JSON remains unsupported; see
-`help collapse` for native semantics, syntax and state/output limitations.
+`collapse count x y, by(group)` and `collapse mean x y, by(group)` emit
+`CollapseResult` with owned `data.dataset` metadata in CLI-v1 JSON and a readable
+terminal row/column outcome. They replace active data with ordered group keys and
+native BIGINT `count_x`/`count_y` or DOUBLE `mean_x`/`mean_y` columns. Counts exclude
+SQL NULL independently per variable, unlike `by group: count` row totals; stored
+empty/nonfinite values count as non-NULL. Means require numeric targets and use native
+AVG with per-target SQL-NULL exclusion, retaining NaN/infinities, **not** finite-sample
+`summarize`. Inspect values with `head`; its existing JSON policy maps both nonfinite
+means and all-NULL means to null, without sample counts/diagnostics. NULL keys group
+natively, NULL-last; empty input remains empty. Group labels survive, aggregate-source
+labels prune, dictionaries remain and active named relations synchronize. Cached fits/
+samples are not refitted: use aggregate columns for explicit refit/prediction before
+persistence. Group aggregates are not individual observations or automatic model weights.
+Repeated/colliding names can fail staged schema validation without repair. Sum/min/max
+JSON remains unsupported; see `help collapse` for syntax and state/output limitations.
 
 Read-only `assert` and `datasignature` now report in terminal/CLI-v1 JSON, enabling
 script preconditions and current-data fingerprint records before analysis/persistence.
