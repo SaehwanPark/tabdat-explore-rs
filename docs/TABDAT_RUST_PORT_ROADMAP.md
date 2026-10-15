@@ -49,7 +49,12 @@ result families remain command-specific; this is not whole-command parity.
 Unicode (#211), fixing a reproduced local-loading obstacle. Quoted CSV options,
 CSV/Parquet roundtrips, nested JSON, source-classified failures and prior
 model/data preservation are covered. No shell escape decoding, quoted paths for
-other commands, or remote/lazy/DTA runtime is added.
+other commands, or remote/lazy/DTA runtime was added by that slice. `run` now also
+accepts one literal single/double-quoted script path, closing the replay gap for
+script folders/names containing spaces or commas. Nested relative includes,
+ordered text/JSON-script leaf results, source-classified failures, recursion guards
+and retained model/data recovery are tested. No shell escapes, run options, process
+working-directory changes or JSON batch-`run` admission are added; see MIG-0010.
 
 Interactive category coding now reports encode/decode dataset outcomes and typed
 label dictionaries (#235), replacing unsupported-details fallback in the

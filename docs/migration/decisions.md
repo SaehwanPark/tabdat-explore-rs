@@ -20,6 +20,8 @@ This log tracks authority changes and intentional deviations, not feature comple
 
 | MIG-0009 | Accepted | Bounded conditional keep/drop | PR #230 installs TRUE-row selection with complementary FALSE/UNKNOWN handling and existing predicate rules, not implicit finite filtering or Python/Stata missing-order parity; details below. |
 
+| MIG-0010 | Accepted | Literal quoted `run` paths | PR #243 intentionally changes `run "analysis.td"` from targeting a filename containing quotes to targeting `analysis.td`, and admits spaces/commas inside single/double-quoted paths. Nonempty literal paths only; no escaping, tilde expansion, run options or JSON batch-`run` expansion. Existing unquoted paths and nested-relative resolution remain unchanged. Evidence: parser tests in `crates/tabdat-language/src/lib.rs`/`tests/parser_contract.rs`, plus `tests/quoted_run_paths_contract.rs` for nested text/JSON-script results, located failures, recursion and data/model retention. This supersedes the former Rust quote-preservation expectation; no new Python parity claim is made. |
+
 MIG-0003 is limited to the
 bounded runtime evaluation; the recorded syntax ports establish Rust command
 behavior only for their recorded forms, not whole-language parity.

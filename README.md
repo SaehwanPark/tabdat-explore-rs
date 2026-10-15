@@ -39,7 +39,7 @@ literal, with no shell escape or tilde expansion. The matching quote cannot
 occur inside the path (use the other quote for a name containing an apostrophe).
 Existing options follow the closing quote, e.g.
 `use "semi, data.csv", delimiter(";") has_header(true)`. This does not enable
-remote/lazy/DTA loading or add quoted paths to other commands.
+remote/lazy/DTA loading.
 
 Use `help` or `?` for core workflow guidance and `help summarize` or `?regress`
 for packaged topic help (case-insensitive). Unknown/malformed help requests
@@ -106,6 +106,18 @@ results and completed state changes and returns to the shell with its source
 path/line; scripts are sequential, not atomic. A terminal output failure ends
 the session and prevents subsequent data/file operations, but does not
 roll back an already completed command.
+
+`run "analysis files/model.td"` and `run 'analysis files/model.td'` accept
+one nonempty literal path. Matching quotes are removed; internal whitespace,
+commas, Unicode and backslashes are preserved, with no shell escapes or tilde
+expansion. Use the other quote if the filename contains an apostrophe or double
+quote; the matching delimiter cannot occur inside the path. Extra arguments and
+options are rejected. Unquoted paths keep their existing one-word literal syntax.
+Nested `run` paths resolve relative to the containing script; data/output paths
+still resolve from the process working directory. Existing script macro expansion
+happens before command parsing. Quoted `run` no longer targets a filename that
+includes its surrounding quote characters. JSON leaf streaming remains supported
+via `--json -f`/positional scripts, not `--json -c "run ..."`.
 
 Capable terminals provide basic line editing and Up/Down command recall, with
 at most 500 session-local submitted commands (blank/comments and cancelled input
