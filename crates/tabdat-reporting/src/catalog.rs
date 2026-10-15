@@ -1343,11 +1343,11 @@ fn get_command_schema(
           required: false,
         },
         OptionDescriptor {
-          name: "probabilities".to_string(),
+          name: "pr".to_string(),
           required: false,
         },
       ],
-      syntax: "predict newvar [, xb residuals probabilities]".to_string(),
+      syntax: "predict newvar [, xb | residuals | pr]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![
