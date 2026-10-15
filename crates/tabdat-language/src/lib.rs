@@ -8452,8 +8452,29 @@ fn parse_decode_identifier_option(
 }
 
 fn parse_run_command(body: &str) -> Result<Command, ParseError> {
+  let body = body.trim_matches(is_command_whitespace);
+  if let Some(quote @ ('\'' | '"')) = body.chars().next() {
+    let closing = body
+      .char_indices()
+      .skip(1)
+      .find(|(_, character)| *character == quote)
+      .map(|(index, _)| index)
+      .ok_or_else(|| ParseError::new("unterminated quoted string"))?;
+    let path = &body[1..closing];
+    if path.is_empty()
+      || !body[closing + 1..]
+        .trim_matches(is_command_whitespace)
+        .is_empty()
+    {
+      return Err(ParseError::new(
+        "run expects exactly one path: run <script>",
+      ));
+    }
+    return Ok(Command::Run {
+      path: path.to_owned(),
+    });
+  }
   let mut path_parts = body
-    .trim_matches(is_command_whitespace)
     .split(is_command_whitespace)
     .filter(|part| !part.is_empty());
   let Some(path) = path_parts.next() else {
@@ -10290,7 +10311,7 @@ mod tests {
     assert_eq!(
       parse_command("run \"analysis.td\"").unwrap(),
       Command::Run {
-        path: "\"analysis.td\"".to_owned(),
+        path: "analysis.td".to_owned(),
       }
     );
     assert_eq!(
@@ -10308,6 +10329,42 @@ mod tests {
   }
 
   #[test]
+  fn parses_run_quoted_paths_as_literals() {
+    for (input, expected) in [
+      ("run \"a b.td\"", "a b.td"),
+      ("run '目录,é script.td'", "目录,é script.td"),
+      ("run \"owner's script.td\"", "owner's script.td"),
+      (r"run 'C:\new\script.td'", r"C:\new\script.td"),
+      ("run 'if = #, script.td'", "if = #, script.td"),
+      ("run ' analysis.td '\u{1c}", " analysis.td "),
+    ] {
+      assert_eq!(
+        parse_command(input).unwrap(),
+        Command::Run {
+          path: expected.into()
+        }
+      );
+    }
+    for input in [
+      "run ''",
+      "run \"\"",
+      "run 'a.td', replace",
+      "run 'a.td'junk",
+    ] {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        "run expects exactly one path: run <script>"
+      );
+    }
+    for input in ["run 'a.td", "run \"a.td"] {
+      assert_eq!(
+        parse_command(input).unwrap_err().message(),
+        "unterminated quoted string"
+      );
+    }
+  }
+
+  #[test]
   fn rejects_invalid_run_syntax_with_exact_diagnostics() {
     let cases = [
       ("run", "run expects exactly one path: run <script>"),
@@ -10317,7 +10374,7 @@ mod tests {
         "run expects exactly one path: run <script>",
       ),
       (
-        "run \"a b.td\"",
+        "run \"a b.td\" extra",
         "run expects exactly one path: run <script>",
       ),
       (
