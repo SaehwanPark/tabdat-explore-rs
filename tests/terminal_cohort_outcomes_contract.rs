@@ -148,10 +148,10 @@ fn grouped_owned_counts_native_means_scalars_and_empty_tables_keep_state_and_jso
   assert_eq!(session.active_label_metadata().unwrap(), &labels);
   assert_eq!(execute(&mut session, "head 10"), preview);
   assert_eq!(execute(&mut session, "lincom x"), inference);
-  assert!(!tabdat_reporting::json_results::supports_batch_command(
+  assert!(tabdat_reporting::json_results::supports_batch_command(
     &parse_command("by g: summarize x").unwrap()
   ));
-  assert!(!tabdat_reporting::json_results::supports_script_command(
+  assert!(tabdat_reporting::json_results::supports_script_command(
     &parse_command("by g: summarize x").unwrap()
   ));
   execute(

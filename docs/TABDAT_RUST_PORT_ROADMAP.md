@@ -75,7 +75,7 @@ No new backend/parser/JSON admission, rescans or transaction guarantees are impl
 
 Readable one-shot batch/script output is now opt-in via `--text` (#238), sharing
 the owned renderer while retaining quiet defaults and existing CLI-v1 JSON.
-Use→EDA→fit/inference/predict→persistence, native grouped means outside JSON,
+Use→EDA→fit/inference/predict→persistence, native grouped means with explicit sample rules,
 file/nested/batch-run leaf order, mode conflicts, source exits and every output/
 diagnostic failure boundary are covered. Text is a human surface, not a machine
 schema; no new scans, calculations or parser-command/backend breadth is added.
@@ -182,7 +182,7 @@ state are handled correctly.
   functions/logical-expression breadth and general native atomicity remain out.
   Read-only conditional summaries (#231) now reuse bounded TRUE predicates and
   ordinary per-variable finite samples for every aggregate, without data/model
-  mutation or option/grouped-mean admission. NumPy/SciPy selected-row references,
+  mutation or option-bearing/grouped-conditional admission. NumPy/SciPy selected-row references,
   asymmetric missingness, exact extrema/ordering, empty/singleton/native-error
   paths, named/cache invariants, nested/persistence and output guards are checked.
   Read-only conditional frequency tables (#239) reuse bounded TRUE predicates,
@@ -274,8 +274,16 @@ state are handled correctly.
   Grouped count JSON (#228) now provides a bounded read-only subgroup EDA step:
   raw ordered keys, SQL NULL/empty-string counts, typed scalar policy and totals,
   repeated/quoted/empty groups, cached/state invariants and output/file guards.
-  Only by-count commands are admitted; native grouped AVG means remain outside
-  this surface pending a separate statistical/sample-semantics review.
+  Bare `by ...: summarize [numeric_vars]` now also reports the existing owned
+  ByResult native AVG table. A separate sample review preserves per-target SQL-NULL
+  exclusion with NaN/infinity retained, not ordinary finite-summary samples. Python
+  standard-library statistics.mean references record actual per-variable input
+  indices and tagged IEEE results, checked before JSON's existing nonfinite-null
+  encoding. Defaults/repeated targets, typed/quoted/repeated groups, empty/all-NULL
+  results, cached/named/label state, nested fit/predict/persistence and output/failure
+  guards are covered. No backend numerics, rescan, inferred counts or JSON fields
+  change; conditional/options-bearing grouped summaries and other by children stay
+  unsupported.
   Reshape JSON (#229) now connects bounded multistub wide/long preparation to
   grouped EDA, explicit refitting, prediction and persistence. Owned metadata,
   source/suffix ordering, native MAX duplicates/NULLs/types, selected-schema

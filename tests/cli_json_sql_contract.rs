@@ -342,7 +342,7 @@ fn query_reporting_validation_and_binder_failures_preserve_state_and_cached_orig
       .retained_indices,
     [0, 1, 2]
   );
-  let grouped_command = parse_command("by x: summarize x").unwrap();
+  let grouped_command = parse_command("by x: summarize x if x > 0").unwrap();
   assert!(!tabdat_reporting::json_results::supports_batch_command(
     &grouped_command
   ));
