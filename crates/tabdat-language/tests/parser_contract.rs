@@ -4440,7 +4440,7 @@ fn run_is_a_public_syntax_only_command() {
   assert_eq!(
     parse_command("run \"analysis.td\"").unwrap(),
     Command::Run {
-      path: "\"analysis.td\"".to_owned(),
+      path: "analysis.td".to_owned(),
     }
   );
   assert_eq!(
@@ -4467,7 +4467,7 @@ fn run_preserves_exact_public_diagnostics() {
       "run expects exactly one path: run <script>",
     ),
     (
-      "run \"a b.td\"",
+      "run \"a b.td\" extra",
       "run expects exactly one path: run <script>",
     ),
     (
