@@ -157,7 +157,14 @@ transport-independent MCP library boundary does not start a stdio server.
 
 Use `-c` and `-f` for the currently supported command/script subsets. Consult
 [SPEC.md](SPEC.md) and the tests before relying on a specific option; discovery
-includes commands that parse but do not yet execute.
+includes commands that parse but do not yet execute. `--json --describe-command`
+now shows `[if expr]` for `count`, `summarize`, `tabulate` and `regress`, plus
+one/two-way and `rows()`/`columns()` frequency forms. Regression predictor
+requiredness matches the parser: at least one predictor is required. Tabulation
+lists installed frequency options alongside retained parser-reference `values`/
+`stat` descriptors; those aggregation forms remain uninstalled. Follow the linked
+help for supported sample/option limits; `--json --explain -c "..."` checks syntax
+only (`execution: "not_run"`), not data validity or execution support.
 
 Every currently owned execution-result variant now has an explicit terminal
 representation. Named SQL creation/activation shows the quoted supplied name and
