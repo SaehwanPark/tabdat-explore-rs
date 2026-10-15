@@ -3,8 +3,8 @@
 Run after `cargo build --locked`:
   python3 tools/check_terminal_pty.py target/debug/tabdat-explore-rs
 
-Checks real editing/recall, input-only Ctrl-C, retained data/model, EOF and
-canonical/echo terminal restoration. Does not test in-flight cancellation.
+Checks real completion/editing/recall, input-only Ctrl-C, retained data/model,
+EOF and canonical/echo terminal restoration. Does not test in-flight cancellation.
 """
 import errno
 import os
@@ -56,7 +56,12 @@ with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
     try:
         expect(b"TabDat")
         command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
-        command(b"regress y x\n", b"Parameter\tCoefficient")
+        command(b"re\t\t", b"reshape")  # ambiguous prefix lists alternatives
+        command(b"\x03", b"Input cancelled.")
+        command(b"re\tg\t y x\n", b"Parameter\tCoefficient")
+        command(b"  SuMm y\x1b[D\x1b[D\t\n", b"y\t4\t3.25\t")
+        command(b"help summ\t\n", b"How to invoke:")
+        command(b"?summ\t\n", b"How to invoke:")
         command(b"count\n", b"4 rows")
         command(b"\x1b[A\n", b"4 rows")  # recall last submitted command
         command(b"counx\x7ft\n", b"4 rows")  # edit a typo before submission
@@ -82,7 +87,8 @@ with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
         flags = termios.tcgetattr(fd)[3]
         assert flags & termios.ICANON and flags & termios.ECHO, "terminal mode not restored"
         assert "cancelled.csv" not in os.listdir(directory)
-        print("PTY passed: editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        assert b"Error:" not in transcript, bytes(transcript)
+        print("PTY passed: command/help completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
     finally:
         os.close(fd)
         if status is None:

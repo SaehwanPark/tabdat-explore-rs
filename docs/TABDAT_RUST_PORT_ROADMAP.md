@@ -29,8 +29,10 @@ The minimal shell in [PR #196](https://github.com/SaehwanPark/tabdat-explore-rs/
 provides persistent line input, core inspection output, recoverable command errors
 and clean exit/EOF. `use` → `describe` → `summarize` → `exit` is covered through
 the binary. Capable-terminal editing, bounded in-memory history and input-level
-Ctrl-C recovery are now installed (#203); piped input remains plain. Completion,
-interactive multiline continuation and in-flight cancellation remain deferred; an executing command
+Ctrl-C recovery are now installed (#203); piped input remains plain. Bounded
+core-command/help-topic Tab completion now supports word-end prefixes and preserves
+arguments after the cursor. Variable/path completion, interactive multiline
+continuation and in-flight cancellation remain deferred; an executing command
 may still terminate on SIGINT. Local Unix PTY evidence is not platform certification.
 
 ### 2. Close the core EDA loop
@@ -287,8 +289,13 @@ state are handled correctly.
   OS-cold-cache performance or cross-platform/release certification; interactive
   and other data shapes remain unmeasured. Optimize only demonstrated regressions
   from comparable profiles.
-- Improve history/completion and display as needed for daily use. In-session
-  `help`/`?` now provides bounded workflow guidance and packaged reference topics,
+- Improve history/completion and display as needed for daily use. Capable-terminal
+  Tab completion now covers installed core command names and packaged `help`/`?`
+  topics using the existing editor, without executing commands or changing session
+  state. Focused prefix/cursor/Unicode tests and the controlling-PTY check cover
+  completion through regression/summary/help, retained-model prediction and input
+  recovery. Variable/path completion and persistent history remain deferred.
+  In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including new `lincom`/`test` topics (#202); reference syntax is not an execution
   support guarantee.
 - Add plotting or MCP transport only when a concrete workflow requires them.

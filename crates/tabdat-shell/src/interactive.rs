@@ -136,13 +136,16 @@ fn run_session(
 }
 
 fn run_editor_session(output: &mut impl Write, errors: &mut impl Write) -> io::Result<()> {
-  use rustyline::{Config, DefaultEditor, error::ReadlineError};
+  use rustyline::{Config, Editor, error::ReadlineError, history::DefaultHistory};
   let config = Config::builder()
     .behavior(rustyline::config::Behavior::Stdio)
+    .completion_type(rustyline::config::CompletionType::List)
     .max_history_size(500)
     .map_err(io::Error::other)?
     .build();
-  let mut editor = DefaultEditor::with_config(config).map_err(io::Error::other)?;
+  let mut editor = Editor::<crate::completion::ShellHelper, DefaultHistory>::with_config(config)
+    .map_err(io::Error::other)?;
+  editor.set_helper(Some(crate::completion::ShellHelper));
   writeln!(output, "{WELCOME}")?;
   output.flush()?;
   run_session_with_input(

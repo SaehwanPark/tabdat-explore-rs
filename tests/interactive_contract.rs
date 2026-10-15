@@ -62,6 +62,23 @@ fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
 }
 
 #[test]
+fn piped_tabs_remain_whitespace_and_do_not_complete_prefixes() {
+  let fixture = Fixture::new();
+  let output = run(
+    &fixture,
+    b"use data.csv\nsumm\t y\nhelp summ\t\ncount\t\nexit\n",
+  );
+  assert!(output.status.success());
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 2, "{stderr}");
+  assert!(stderr.contains("unknown help topic: summ"));
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  assert!(stdout.ends_with("2 rows\n"));
+  assert!(!stdout.contains("tabdat>"));
+  assert!(!stdout.contains("Variable\tN\tMean"));
+}
+
+#[test]
 fn persistent_eda_session_reports_schema_statistics_and_previews() {
   let fixture = Fixture::new();
   let output = run(&fixture, b"# analyst session\n\nuse data.csv\ndescribe\nsummarize y\nhead 2\ncount\nexit\nnot_a_command\n");
