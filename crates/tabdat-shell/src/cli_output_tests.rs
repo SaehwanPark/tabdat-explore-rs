@@ -1334,8 +1334,8 @@ fn collapse_count_output_failure_stops_later_aggregation_and_files() {
 }
 
 #[test]
-fn text_result_failures_stop_later_batch_script_and_batch_run_files() {
-  for mode in 0..3 {
+fn reported_result_failures_stop_later_batch_script_and_batch_run_files() {
+  for mode in 0..4 {
     for write_failure in [false, true] {
       for fail_at in 1..=if mode == 2 { 7 } else { 6 } {
         let fixture = Fixture::new();
@@ -1383,7 +1383,7 @@ fn text_result_failures_stop_later_batch_script_and_batch_run_files() {
           ]),
           1 => arguments(&["--text", "-f", parent.to_str().unwrap()]),
           _ => arguments(&[
-            "--text",
+            if mode == 3 { "--json" } else { "--text" },
             "-c",
             &format!("run {}", parent.display()),
             "-c",
@@ -1408,6 +1408,36 @@ fn text_result_failures_stop_later_batch_script_and_batch_run_files() {
         }
         assert_eq!(output.flushes, fail_at - usize::from(write_failure));
       }
+    }
+  }
+}
+
+#[test]
+fn json_batch_run_diagnostic_and_error_envelope_failures_stop_later_commands() {
+  for write_failure in [false, true] {
+    for diagnostic in [false, true] {
+      let fixture = Fixture::new();
+      let parent = fixture.0.join("failed script.td");
+      let later = fixture.0.join("later.csv");
+      std::fs::write(&parent, "assert x > 10\n").unwrap();
+      let args = arguments(&[
+        "--json",
+        "-c",
+        &fixture.load(),
+        "-c",
+        &format!("run '{}'", parent.display()),
+        "-c",
+        &format!("export '{}'", later.display()),
+      ]);
+      let mut output = FailedOutput::new(write_failure, if diagnostic { usize::MAX } else { 2 });
+      let mut errors = FailedOutput::new(write_failure, if diagnostic { 1 } else { usize::MAX });
+      let error = run_cli_with_output(args, &mut output, &mut errors).unwrap_err();
+      assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+      assert_eq!(
+        output.completed_lines(),
+        if diagnostic || write_failure { 1 } else { 2 }
+      );
+      assert!(!later.exists());
     }
   }
 }
