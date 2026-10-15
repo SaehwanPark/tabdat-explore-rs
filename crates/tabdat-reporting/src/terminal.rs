@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult};
+use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow};
 
 fn cell(value: &CellValue) -> String {
   match value {
@@ -313,6 +313,32 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
   }
 }
 
+fn render_summary_rows(rows: &[SummaryRow]) -> String {
+  let mut output = String::from("Variable\tN\tMean\tStd. dev.\tMin\tMax\n");
+  for row in rows {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}",
+      row.variable.escape_debug(),
+      row.count,
+      optional_number(row.mean),
+      optional_number(row.std_dev),
+      row
+        .minimum
+        .as_ref()
+        .map(cell)
+        .unwrap_or_else(|| "NA".to_owned()),
+      row
+        .maximum
+        .as_ref()
+        .map(cell)
+        .unwrap_or_else(|| "NA".to_owned()),
+    )
+    .unwrap();
+  }
+  output
+}
+
 /// Render owned execution results without recomputing data or statistics.
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
@@ -341,28 +367,21 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       output
     }
     ExecutionResult::Count(count) => format!("{} rows\n", count.row_count),
-    ExecutionResult::Summarize(summary) => {
-      let mut output = String::from("Variable\tN\tMean\tStd. dev.\tMin\tMax\n");
-      for row in &summary.rows {
-        writeln!(
-          output,
-          "{}\t{}\t{}\t{}\t{}\t{}",
-          row.variable.escape_debug(),
-          row.count,
-          optional_number(row.mean),
-          optional_number(row.std_dev),
-          row
-            .minimum
-            .as_ref()
-            .map(cell)
-            .unwrap_or_else(|| "NA".to_owned()),
-          row
-            .maximum
-            .as_ref()
-            .map(cell)
-            .unwrap_or_else(|| "NA".to_owned())
-        )
-        .unwrap();
+    ExecutionResult::Summarize(summary) => render_summary_rows(&summary.rows),
+    ExecutionResult::SummarizeDetail(result) => {
+      let mut output = String::from("Detailed finite summary: type-7 linear DOUBLE percentiles\n");
+      for row in &result.rows {
+        output.push_str(&render_summary_rows(std::slice::from_ref(&row.summary)));
+        output.push_str("Percentile\tValue\n");
+        for percentile in &row.percentiles {
+          writeln!(
+            output,
+            "{}\t{}",
+            percentile.percentile,
+            optional_number(percentile.value)
+          )
+          .unwrap();
+        }
       }
       output
     }

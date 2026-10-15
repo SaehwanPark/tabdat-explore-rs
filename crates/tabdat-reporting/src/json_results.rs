@@ -4,7 +4,8 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
   CellValue, CodebookResult, CollapseStatistic, DatasetInfo, ExecutionResult, LoadResult,
-  MissingResult, PreviewResult, RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
+  MissingResult, PreviewResult, RegressionResult, SummarizeResult, SummaryRow, TtestGroupStats,
+  TtestResult, summarize_detail_requested,
 };
 use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, LazyEngine};
 
@@ -79,7 +80,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
       }
       | Command::Exit
       | Command::Run { .. }
-  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
+  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty() || summarize_detail_requested(options))
     || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
 }
 
@@ -148,7 +149,7 @@ pub fn supports_script_command(command: &Command) -> bool {
       }
       | Command::Exit
       | Command::Run { .. }
-  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty())
+  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty() || summarize_detail_requested(options))
     || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
 }
 
@@ -266,6 +267,19 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
+    ExecutionResult::SummarizeDetail(result) => (
+      json!({
+        "quantile_method": "linear_type_7",
+        "rows": result.rows.iter().map(|row| json!({
+          "summary": summary_row_data(&row.summary),
+          "percentiles": row.percentiles.iter().map(|percentile| json!({
+            "percentile": percentile.percentile,
+            "value": percentile.value.and_then(Number::from_f64),
+          })).collect::<Vec<_>>()
+        })).collect::<Vec<_>>()
+      }),
+      "SummarizeDetailResult",
+    ),
     ExecutionResult::Missing(result) => (missing_result_data(result), "MissingResult"),
     ExecutionResult::Tabulate(table) => (
       table_result_data(&table.headers, &table.rows),
@@ -391,17 +405,19 @@ fn regression_result_data(result: &RegressionResult) -> Value {
   })
 }
 
-fn summarize_result_data(result: &SummarizeResult) -> Value {
+fn summary_row_data(row: &SummaryRow) -> Value {
   json!({
-    "rows": result.rows.iter().map(|row| json!({
-      "variable": row.variable,
-      "count": row.count,
-      "mean": row.mean.and_then(Number::from_f64),
-      "std_dev": row.std_dev.and_then(Number::from_f64),
-      "minimum": row.minimum.as_ref().map(cell_value_data),
-      "maximum": row.maximum.as_ref().map(cell_value_data),
-    })).collect::<Vec<_>>()
+    "variable": row.variable,
+    "count": row.count,
+    "mean": row.mean.and_then(Number::from_f64),
+    "std_dev": row.std_dev.and_then(Number::from_f64),
+    "minimum": row.minimum.as_ref().map(cell_value_data),
+    "maximum": row.maximum.as_ref().map(cell_value_data),
   })
+}
+
+fn summarize_result_data(result: &SummarizeResult) -> Value {
+  json!({"rows": result.rows.iter().map(summary_row_data).collect::<Vec<_>>()})
 }
 
 fn preview_result_data(result: &PreviewResult) -> Value {
@@ -568,17 +584,23 @@ mod tests {
   }
 
   #[test]
-  fn conditional_summary_admission_excludes_options_and_grouped_queries() {
+  fn conditional_summary_admission_allows_only_bare_detail_and_not_grouped_queries() {
     assert!(tabdat_language::parse_command("summarize x if x > 0,").is_err());
-    for source in ["summarize x if g == 'A'", "summarize if g == null"] {
+    for source in [
+      "summarize x if g == 'A'",
+      "summarize if g == null",
+      "summarize x, detail",
+      "summarize x if g == 'A', detail",
+    ] {
       let command = tabdat_language::parse_command(source).unwrap();
       assert!(supports_batch_command(&command));
       assert!(supports_script_command(&command));
     }
     for source in [
-      "summarize x, detail",
-      "summarize x if g == 'A', detail",
+      "summarize x, detail detail",
+      "summarize x if g == 'A', detail(x)",
       "summarize x if x > 0, limit=2",
+      "by g: summarize x, detail",
       "by g: summarize x if x > 0",
     ] {
       let command = tabdat_language::parse_command(source).unwrap();
