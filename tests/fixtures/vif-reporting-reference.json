@@ -4,7 +4,7 @@
     "numpy": "2.4.4",
     "scipy": "1.17.1",
     "statsmodels": "0.14.6",
-    "method": "statsmodels variance_inflation_factor: unweighted auxiliary OLS on each parent's retained sample; matching intercept convention",
+    "method": "statsmodels variance_inflation_factor: unweighted auxiliary OLS on each parent's retained sample; matching intercept convention. Singleton/no-intercept uses NumPy zero-column least squares with uncentered R-squared; standalone statsmodels VIF rejects that empty design.",
     "tolerance": "max(1e-10 absolute, 1e-9 * abs(expected)); no rounding"
   },
   "columns": [
@@ -261,6 +261,190 @@
         1.0000000000000002
       ],
       "mean_vif": 1.0000000000000002
+    },
+    {
+      "name": "single_no_intercept",
+      "command": "regress y x1, noconstant",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        8
+      ],
+      "vifs": [
+        1.0
+      ],
+      "mean_vif": 1.0,
+      "zero_column_auxiliary": {
+        "column_count": 0,
+        "rank": 0,
+        "coefficients": [],
+        "fitted_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "residual_sum_squares": 44.0,
+        "uncentered_tss": 44.0,
+        "r_squared": 0.0
+      }
+    },
+    {
+      "name": "single_no_intercept_robust",
+      "command": "regress y x1, noconstant robust",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        8
+      ],
+      "vifs": [
+        1.0
+      ],
+      "mean_vif": 1.0,
+      "zero_column_auxiliary": {
+        "column_count": 0,
+        "rank": 0,
+        "coefficients": [],
+        "fitted_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "residual_sum_squares": 44.0,
+        "uncentered_tss": 44.0,
+        "r_squared": 0.0
+      }
+    },
+    {
+      "name": "single_no_intercept_cluster",
+      "command": "regress y x1, noconstant cluster(group)",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "vifs": [
+        1.0
+      ],
+      "mean_vif": 1.0,
+      "zero_column_auxiliary": {
+        "column_count": 0,
+        "rank": 0,
+        "coefficients": [],
+        "fitted_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "residual_sum_squares": 35.0,
+        "uncentered_tss": 35.0,
+        "r_squared": 0.0
+      }
+    },
+    {
+      "name": "single_no_intercept_wls",
+      "command": "regress y x1, noconstant wls(w)",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "vifs": [
+        1.0
+      ],
+      "mean_vif": 1.0,
+      "zero_column_auxiliary": {
+        "column_count": 0,
+        "rank": 0,
+        "coefficients": [],
+        "fitted_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "residual_sum_squares": 35.0,
+        "uncentered_tss": 35.0,
+        "r_squared": 0.0
+      }
+    },
+    {
+      "name": "single_no_intercept_gls",
+      "command": "regress y x1, noconstant gls(sigma)",
+      "predictors": [
+        "x1"
+      ],
+      "include_intercept": false,
+      "retained_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        8
+      ],
+      "vifs": [
+        1.0
+      ],
+      "mean_vif": 1.0,
+      "zero_column_auxiliary": {
+        "column_count": 0,
+        "rank": 0,
+        "coefficients": [],
+        "fitted_values": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "residual_sum_squares": 35.0,
+        "uncentered_tss": 35.0,
+        "r_squared": 0.0
+      }
     }
   ]
 }

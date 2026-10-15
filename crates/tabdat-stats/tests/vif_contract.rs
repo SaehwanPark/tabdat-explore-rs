@@ -55,6 +55,62 @@ fn variance_inflation_factors_return_none_for_undefined_auxiliary_r_squared() {
 }
 
 #[test]
+fn single_no_intercept_vif_uses_zero_column_auxiliary_without_changing_general_model_rules() {
+  let names = vec!["x".to_owned()];
+  for values in [
+    vec![1.0],
+    vec![2.0, 2.0, 2.0],
+    vec![-2.0, -1.0, 0.0, 1.0, 2.0],
+    vec![f64::MIN_POSITIVE, 0.0],
+    vec![f64::from_bits(1), 0.0],
+    vec![f64::MAX, -f64::MAX],
+  ] {
+    let design: Vec<_> = values.into_iter().map(|value| vec![value]).collect();
+    assert_eq!(
+      variance_inflation_factors(&names, &design, false).unwrap(),
+      [Some(1.0)]
+    );
+  }
+  assert_eq!(
+    variance_inflation_factors(&names, &[vec![0.0], vec![-0.0]], false).unwrap(),
+    [None]
+  );
+  let problem =
+    tabdat_stats::EstimationProblem::new("y", vec![], vec![1.0, 2.0], vec![vec![], vec![]])
+      .unwrap()
+      .with_intercept(false);
+  assert_eq!(
+    tabdat_stats::fit_least_squares(&problem).unwrap_err(),
+    StatsError::InvalidParameterName(
+      "model requires at least one predictor or an intercept".into()
+    )
+  );
+}
+
+#[test]
+fn single_no_intercept_vif_preserves_name_dimension_and_finite_validation() {
+  let names = vec!["x".to_owned()];
+  for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+    assert!(matches!(
+      variance_inflation_factors(&names, &[vec![value]], false),
+      Err(StatsError::NonFiniteValue(_))
+    ));
+  }
+  assert_eq!(
+    variance_inflation_factors(&names, &[], false).unwrap_err(),
+    StatsError::EmptySample
+  );
+  assert_eq!(
+    variance_inflation_factors(&names, &[vec![]], false).unwrap_err(),
+    StatsError::DimensionMismatch("VIF design row 0 has 0 columns, expected 1".into())
+  );
+  assert!(matches!(
+    variance_inflation_factors(&[" ".into()], &[vec![1.0]], false),
+    Err(StatsError::InvalidParameterName(_))
+  ));
+}
+
+#[test]
 fn variance_inflation_factors_reject_invalid_design_dimensions() {
   let predictor_names = vec!["x1".to_owned(), "x2".to_owned()];
   assert_eq!(

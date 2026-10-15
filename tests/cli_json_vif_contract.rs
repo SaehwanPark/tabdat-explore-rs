@@ -104,6 +104,76 @@ fn close(actual: &Value, expected: &Value) {
 }
 
 #[test]
+fn single_no_intercept_vif_continues_through_nested_prediction_export_and_terminal_reporting() {
+  let fixture = Fixture::new(&reference());
+  let commands = [
+    "use data.csv",
+    "regress y x1, noconstant",
+    "estat vif",
+    "predict fitted",
+    "export predicted.csv",
+    "head 9",
+  ];
+  let mut args = vec!["--json"];
+  for command in commands {
+    args.extend(["-c", command]);
+  }
+  let output = fixture.batch(&args);
+  assert_success(&output);
+  let results = lines(&output.stdout);
+  assert_eq!(results.len(), 6);
+  assert_eq!(
+    results[2]["data"],
+    json!({"headers":["Variable","VIF"],"rows":[["x1",1.0],["mean_vif",1.0]]})
+  );
+  assert_eq!(results[1]["data"]["observation_count"], 7);
+  assert_eq!(results[1]["data"]["df_residual"], 6);
+  assert_eq!(results[1]["data"]["include_intercept"], false);
+  // Through-origin OLS on retained rows has sum(x*y)=69 and sum(x*x)=44.
+  assert!(
+    (results[1]["data"]["coefficients"][0]["value"]
+      .as_f64()
+      .unwrap()
+      - 69.0 / 44.0)
+      .abs()
+      < 1e-10
+  );
+  assert_eq!(results[3]["result_type"], "PredictionResult");
+  assert_eq!(results[3]["data"]["dataset"]["row_count"], 9);
+  let exported = fs::read(fixture.0.join("predicted.csv")).unwrap();
+  fs::remove_file(fixture.0.join("predicted.csv")).unwrap();
+  let mut baseline_args = vec!["--json"];
+  for command in commands.iter().filter(|command| **command != "estat vif") {
+    baseline_args.extend(["-c", command]);
+  }
+  let baseline = fixture.batch(&baseline_args);
+  assert_success(&baseline);
+  let baseline = lines(&baseline.stdout);
+  assert_eq!(&baseline[..2], &results[..2]);
+  assert_eq!(&baseline[2..], &results[3..]);
+  assert_eq!(fs::read(fixture.0.join("predicted.csv")).unwrap(), exported);
+  fs::remove_file(fixture.0.join("predicted.csv")).unwrap();
+  fs::write(fixture.0.join("parent.td"), "use data.csv\nrun child.td\n").unwrap();
+  fs::write(fixture.0.join("child.td"), commands[1..].join("\n")).unwrap();
+  for args in [
+    vec!["--json", "-f", "parent.td"],
+    vec!["--json", "-c", "run parent.td"],
+  ] {
+    let output = fixture.batch(&args);
+    assert_success(&output);
+    assert_eq!(lines(&output.stdout), results);
+    assert_eq!(fs::read(fixture.0.join("predicted.csv")).unwrap(), exported);
+    fs::remove_file(fixture.0.join("predicted.csv")).unwrap();
+  }
+  let terminal = fixture.shell(&(commands.join("\n") + "\nexit\n"));
+  assert_success(&terminal);
+  let text = String::from_utf8(terminal.stdout).unwrap();
+  assert!(text.contains("Variable\tVIF\n\"x1\"\t1\n\"mean_vif\"\t1\n"));
+  assert!(text.contains("Predicted: 9 rows, 8 columns"));
+  assert_eq!(fs::read(fixture.0.join("predicted.csv")).unwrap(), exported);
+}
+
+#[test]
 fn packaged_estat_help_distinguishes_direct_sql_json_from_other_estat_forms() {
   let fixture = Fixture::new(&reference());
   let help = fixture.batch(&["--json", "--help-topic", "estat"]);
@@ -298,7 +368,6 @@ fn vif_errors_preserve_prior_streams_locations_and_stop_later_effects() {
   }
   for (setup, command, code) in [
     ("", "estat vif", 1),
-    ("regress y x1, noconstant\n", "estat vif", 1),
     ("regress y x2 x1 z\n", "estat residuals", 1),
     ("regress y x2 x1 z\n", "by x1: summarize x1, detail", 1),
   ] {
@@ -334,7 +403,7 @@ fn vif_errors_preserve_prior_streams_locations_and_stop_later_effects() {
 }
 
 #[test]
-fn vif_serialization_success_and_auxiliary_failure_do_not_change_data_or_model() {
+fn vif_serialization_with_or_without_intercept_preserves_data_and_original_model() {
   let fixture = Fixture::new(&reference());
   let mut session = Session::new();
   let execute =
@@ -349,13 +418,8 @@ fn vif_serialization_success_and_auxiliary_failure_do_not_change_data_or_model()
     let dataset = session.active_dataset().cloned();
     let model = session.last_regression().cloned();
     let before = format!("{:?}", execute(&mut session, "head 9").unwrap());
-    let result = execute(&mut session, "estat vif");
-    if regression.contains("noconstant") {
-      assert!(result.is_err());
-    } else {
-      let result = result.unwrap();
-      assert!(tabdat_reporting::json_results::serialize_execution_result(&result).is_some());
-    }
+    let result = execute(&mut session, "estat vif").unwrap();
+    assert!(tabdat_reporting::json_results::serialize_execution_result(&result).is_some());
     assert_eq!(session.active_dataset(), dataset.as_ref());
     assert_eq!(session.last_regression(), model.as_ref());
     assert_eq!(

@@ -565,15 +565,19 @@ no general filesystem rollback or platform guarantee is claimed. See `help save`
 aggregate when available. It preserves the owned table rather than identifying
 results by header/label heuristics. A predictor may itself be named `mean_vif`;
 rows and labels are not deduplicated. Unavailable/non-finite cells encode as
-`null`; finite zero remains numeric. Generic table serialization does not enable
-SQL or other `estat` commands in CLI-v1 JSON.
+`null`; finite zero remains numeric. Generic table serialization alone does not admit
+commands: SQL has separate JSON admission, while other `estat` forms remain unsupported.
 
 VIF uses **unweighted auxiliary regressions on the retained parent-fit sample**,
 with the parent's intercept convention, including after WLS/GLS. It does not
 rescan/refit changed current data or modify the dataset/model. Parent fit counts,
 estimator and sample metadata remain in the preceding `RegressionResult`.
-Auxiliary failure (including single-predictor/no-intercept) is an execution error;
-JSON null does not distinguish unavailable/infinite cells. See `help estat`.
+A lone no-intercept predictor now has VIF/mean-VIF 1: its zero-column auxiliary model
+predicts zero, giving SSR = uncentered TSS and R² = 0. The library's all-zero design has
+undefined R²; invalid/nonfinite input and general regression rank/zero-parameter rules
+still reject as before. Other auxiliary failures remain execution errors. This corrects
+the former valid-fit diagnostic failure, so subsequent script/batch commands can proceed
+(MIG-0011). JSON null does not distinguish unavailable/infinite cells. See `help estat`.
 
 Linear JSON results reuse the supplied statistics without recalculation:
 
