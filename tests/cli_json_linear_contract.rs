@@ -243,7 +243,13 @@ fn json_model_and_prediction_failures_never_emit_false_success() {
     assert_eq!(envelopes.len(), 2);
     assert_eq!(envelopes[1]["error"]["type"], "ExecutionError");
   }
-  for command in ["predict x", "predict probability, pr"] {
+  for command in [
+    "predict x",
+    "predict probability, pr",
+    "predict spillover, spatial_lag",
+    "predict posterior, posterior_predictive std interval level(90)",
+    "predict posterior, posterior_predictive saving(draws.parquet)",
+  ] {
     let output = fixture.run(&[
       "--json",
       "-c",
@@ -257,6 +263,7 @@ fn json_model_and_prediction_failures_never_emit_false_success() {
     let envelopes = lines(&output.stdout);
     assert_eq!(envelopes.len(), 3);
     assert_eq!(envelopes[2]["error"]["type"], "ExecutionError");
+    assert!(!fixture.0.join("draws.parquet").exists());
   }
 }
 
