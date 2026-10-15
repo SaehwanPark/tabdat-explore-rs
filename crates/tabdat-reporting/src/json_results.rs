@@ -3,15 +3,15 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Number, Value, json};
 use tabdat_domain::{
-  CellValue, CodebookResult, DatasetInfo, ExecutionResult, LoadResult, MissingResult,
-  PreviewResult, RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
+  CellValue, CodebookResult, CollapseStatistic, DatasetInfo, ExecutionResult, LoadResult,
+  MissingResult, PreviewResult, RegressionResult, SummarizeResult, TtestGroupStats, TtestResult,
 };
 use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, LazyEngine};
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
@@ -28,7 +28,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
   {
     return true;
   }
-  if matches!(command, Command::Collapse { command } if command.statistic == tabdat_domain::CollapseStatistic::Count)
+  if matches!(command, Command::Collapse { command } if matches!(command.statistic, CollapseStatistic::Count | CollapseStatistic::Mean))
   {
     return true;
   }
@@ -97,7 +97,7 @@ pub fn supports_script_command(command: &Command) -> bool {
   {
     return true;
   }
-  if matches!(command, Command::Collapse { command } if command.statistic == tabdat_domain::CollapseStatistic::Count)
+  if matches!(command, Command::Collapse { command } if matches!(command.statistic, CollapseStatistic::Count | CollapseStatistic::Mean))
   {
     return true;
   }
