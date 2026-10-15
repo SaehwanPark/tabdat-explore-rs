@@ -6,7 +6,9 @@ use crate::{EstimationProblem, StatsError, fit_least_squares};
 ///
 /// Each auxiliary model regresses one predictor on the remaining predictors, using the
 /// supplied intercept convention. A missing R-squared is returned as `None`; infinite VIF
-/// values are preserved when an auxiliary fit explains a predictor exactly.
+/// values are preserved when an auxiliary fit explains a predictor exactly. A lone
+/// predictor without an intercept uses the zero-column auxiliary model: VIF is one
+/// for a nonzero finite predictor and undefined for an all-zero predictor.
 ///
 /// # Errors
 ///
@@ -65,9 +67,20 @@ pub fn variance_inflation_factors(
         auxiliary_predictor_names,
         response,
         auxiliary_design,
-      )?
-      .with_intercept(include_intercept);
-      let auxiliary_fit = fit_least_squares(&problem)?;
+      )?;
+      if !include_intercept && problem.predictor_names.is_empty() {
+        // Validation above still rejects malformed/nonfinite input. The empty
+        // auxiliary model predicts zero: SSR = uncentered TSS, so R² = 0 unless
+        // TSS is zero. Testing nonzero values avoids overflow/underflow in squares.
+        return Ok(
+          problem
+            .response
+            .iter()
+            .any(|value| *value != 0.0)
+            .then_some(1.0),
+        );
+      }
+      let auxiliary_fit = fit_least_squares(&problem.with_intercept(include_intercept))?;
       Ok(
         auxiliary_fit
           .r_squared()
