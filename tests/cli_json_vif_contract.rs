@@ -104,6 +104,61 @@ fn close(actual: &Value, expected: &Value) {
 }
 
 #[test]
+fn packaged_estat_help_distinguishes_direct_sql_json_from_other_estat_forms() {
+  let fixture = Fixture::new(&reference());
+  let help = fixture.batch(&["--json", "--help-topic", "estat"]);
+  assert_success(&help);
+  let help = lines(&help.stdout);
+  assert_eq!(help.len(), 1);
+  assert_eq!(help[0]["data"]["help_topic"], "estat");
+  let text = help[0]["data"]["text"].as_str().unwrap();
+  assert!(
+    text.contains("Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`")
+  );
+  assert!(text.contains("Other `estat` forms may parse, but are not installed"));
+  assert!(!text.contains("does not enable direct SQL JSON"));
+  let output = fixture.batch(&[
+    "--json",
+    "-c",
+    "use data.csv",
+    "-c",
+    "regress y x2 x1 z",
+    "-c",
+    "estat vif",
+    "-c",
+    "sql select 1 as marker",
+    "-c",
+    "sql select x1 from active order by x1 into cohort",
+    "-c",
+    "use cohort",
+  ]);
+  assert_success(&output);
+  let results = lines(&output.stdout);
+  assert_eq!(
+    results
+      .iter()
+      .map(|result| result["result_type"].as_str().unwrap())
+      .collect::<Vec<_>>(),
+    [
+      "LoadResult",
+      "RegressionResult",
+      "TableResult",
+      "TableResult",
+      "SqlCreateResult",
+      "ActivateResult"
+    ]
+  );
+  assert_eq!(results[2]["data"]["headers"], json!(["Variable", "VIF"]));
+  assert_eq!(
+    results[3]["data"],
+    json!({"headers":["marker"], "rows":[[1]]})
+  );
+  assert_eq!(results[4]["data"]["table_name"], "cohort");
+  assert_eq!(results[4]["data"]["dataset"]["row_count"], 9);
+  assert_eq!(results[5]["data"], results[4]["data"]);
+}
+
+#[test]
 fn json_vif_matches_independent_reference_and_actual_parent_sample_membership() {
   let reference = reference();
   let fixture = Fixture::new(&reference);
