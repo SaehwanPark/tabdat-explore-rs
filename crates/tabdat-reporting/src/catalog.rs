@@ -1445,7 +1445,7 @@ fn get_command_schema(
         },
         ArgumentDescriptor {
           name: "indepvars".to_string(),
-          required: false,
+          required: true,
         },
       ],
       help_topic,
@@ -1472,7 +1472,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "regress y [xvars] [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]".to_string(),
+      syntax: "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]".to_string(),
     }),
     "rename" => Ok(CommandSchemaResult {
       arguments: vec![

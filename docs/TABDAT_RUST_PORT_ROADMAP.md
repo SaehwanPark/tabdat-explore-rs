@@ -150,6 +150,10 @@ state are handled correctly.
 
 - Extend machine-readable output **for executed commands**, not the entire
   speculative command catalog; version changes to stable public envelopes.
+  Core `count`/`summarize`/`tabulate`/`regress` discovery syntax now includes installed
+  conditional forms; tabulation adds frequency-option descriptors and regression
+  correctly requires predictors. Existing reference descriptors remain; linked help
+  and syntax-only previews distinguish parser acceptance from executable support.
   CLI-v1 now includes ordered descriptive summaries and bounded frequency tables
   alongside load/count/preview results (#200/#201), including nested script
   streams and located failures. `describe` now reports owned current metadata

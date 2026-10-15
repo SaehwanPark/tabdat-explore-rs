@@ -148,6 +148,115 @@ fn cli_json_describe_command_success() {
 }
 
 #[test]
+fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
+  for (name, syntax, arguments, options) in [
+    ("count", "count [if expr]", serde_json::json!([]), vec![]),
+    (
+      "summarize",
+      "summarize [varlist] [if expr]",
+      serde_json::json!([{"name": "variables", "required": false}]),
+      vec![],
+    ),
+    (
+      "regress",
+      "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]",
+      serde_json::json!([
+        {"name": "depvar", "required": true}, {"name": "indepvars", "required": true}
+      ]),
+      vec!["robust", "cluster", "noconstant", "wls", "gls"],
+    ),
+    (
+      "tabulate",
+      "tabulate rowvar [colvar] [if expr] [, row col missing nolabel] | tabulate [if expr], rows(rowvar) [columns(colvar)] [row col missing nolabel]",
+      serde_json::json!([{"name": "variable", "required": true}]),
+      vec![
+        "missing", "values", "stat", "row", "col", "nolabel", "rows", "columns",
+      ],
+    ),
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--describe-command", &name.to_ascii_uppercase()])
+      .output()
+      .unwrap();
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["schema_version"], 1);
+    assert_eq!(envelope["result_type"], "CommandSchemaResult");
+    let data = &envelope["data"];
+    assert_eq!(data["name"], name);
+    assert_eq!(data["help_topic"], name);
+    assert_eq!(data["syntax"], syntax);
+    assert_eq!(data["arguments"], arguments);
+    let expected: Vec<_> = options
+      .into_iter()
+      .map(|option| serde_json::json!({"name": option, "required": false}))
+      .collect();
+    assert_eq!(data["options"], serde_json::json!(expected));
+    let help = tabdat_bin()
+      .args(["--json", "--help-topic", name])
+      .output()
+      .unwrap();
+    assert!(help.status.success());
+    let topic: serde_json::Value = serde_json::from_slice(&help.stdout).unwrap();
+    let text = topic["data"]["text"].as_str().unwrap();
+    assert!(text.contains("bounded"), "{name}");
+    if name == "tabulate" {
+      assert!(text.contains("values()`/`stat()` aggregation"));
+      assert!(text.contains("parser-only/unsupported"));
+    }
+  }
+}
+
+#[test]
+fn conditional_discovery_examples_preview_without_data_and_reject_malformed_syntax() {
+  for (name, source) in [
+    ("count", "count if eligible == 1"),
+    ("summarize", "summarize x if eligible == 1"),
+    ("regress", "regress y x if eligible == 1, robust"),
+    (
+      "tabulate",
+      "tabulate x y if eligible == 1, row col missing nolabel",
+    ),
+    (
+      "tabulate",
+      "tabulate if eligible == 1, rows(x) columns(y) row col",
+    ),
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--explain", "-c", source])
+      .output()
+      .unwrap();
+    assert!(
+      output.status.success(),
+      "{source}: {}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["result_type"], "CommandExplainResult");
+    assert_eq!(envelope["data"]["command_name"], name);
+    assert_eq!(envelope["data"]["execution"], "not_run");
+  }
+  for source in [
+    "count if",
+    "summarize x if",
+    "regress y x if",
+    "regress y",
+    "regress y if eligible == 1",
+    "tabulate x if",
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--explain", "-c", source])
+      .output()
+      .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{source}");
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["error"]["type"], "ParseError");
+  }
+}
+
+#[test]
 fn cli_json_describe_command_unknown() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "does-not-exist"])
