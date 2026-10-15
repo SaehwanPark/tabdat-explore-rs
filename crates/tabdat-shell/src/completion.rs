@@ -155,6 +155,8 @@ mod tests {
       assert_eq!(topics, available_help_topics());
     }
     assert!(complete("help log", 8).1.contains(&"logit".into()));
+    assert_eq!(complete("help tt", 7), (5, vec!["ttest".into()]));
+    assert_eq!(complete("?TT", 3), (1, vec!["ttest".into()]));
     assert!(complete("help summarize extra", 20).1.is_empty());
   }
 

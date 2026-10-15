@@ -156,6 +156,42 @@ fn four_ttest_modes_match_independent_scipy_display_reference_and_nested_stream(
 }
 
 #[test]
+fn packaged_ttest_examples_execute_after_help_without_losing_the_model() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("topic.csv"),
+    "x,y,group\n1,10,2\n2,12,10\n3,15,2\n4,18,10\n5,20,10\n6,25,2\n,9,10\n8,,\n",
+  )
+  .unwrap();
+  let topic = include_str!("../crates/tabdat-reporting/src/help/topics/ttest.md");
+  let examples: Vec<_> = topic
+    .lines()
+    .filter_map(|line| {
+      line
+        .strip_prefix("- `ttest ")
+        .and_then(|line| line.split_once('`'))
+        .map(|(body, _)| format!("ttest {body}\n"))
+    })
+    .collect();
+  assert_eq!(examples.len(), 4);
+  let input = format!(
+    "use topic.csv\nregress y x\nhelp TTEST\n?ttest\n{}ttest x, by(group) unequal\nhelp no_such_topic\npredict fitted\ncount\nexit\n",
+    examples.concat()
+  );
+  let output = fixture.run(&input);
+  assert!(output.status.success());
+  let errors = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(errors.matches("Error:").count(), 1, "{errors}");
+  assert!(errors.contains("unknown help topic: no_such_topic"));
+  let text = String::from_utf8(output.stdout).unwrap();
+  assert_eq!(text.matches(topic).count(), 2);
+  assert_eq!(text.matches("T test:").count(), 5);
+  assert!(text.contains("Contrast: 10 - 2\n"), "{text}");
+  assert!(text.contains("Predicted: 8 rows, 4 columns\n"));
+  assert!(text.ends_with("8 rows\n"));
+}
+
+#[test]
 fn ttest_failures_recover_and_all_forms_preserve_data_and_regression() {
   let fixture = Fixture::new();
   let output = fixture.run("use data.csv\nregress x2 x1\nttest x1, by(absent)\nttest x1 == 3\npredict fitted\ncount\nexit\n");

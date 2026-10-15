@@ -50,6 +50,11 @@ fn cli_json_lists_commands() {
     .find(|entry| entry["name"] == "test")
     .unwrap();
   assert_eq!(test_entry["help_topic"], "test");
+  let ttest_entry = commands
+    .iter()
+    .find(|entry| entry["name"] == "ttest")
+    .unwrap();
+  assert_eq!(ttest_entry["help_topic"], "ttest");
 }
 
 #[test]
@@ -177,7 +182,11 @@ fn cli_describe_command_requires_json() {
 
 #[test]
 fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
-  for (topic, phrase) in [("lincom", "Student-t"), ("test", "Wald F")] {
+  for (topic, phrase) in [
+    ("lincom", "Student-t"),
+    ("test", "Wald F"),
+    ("ttest", "Student-t"),
+  ] {
     let output = tabdat_bin()
       .args(["--json", "--help-topic", &topic.to_ascii_uppercase()])
       .output()
@@ -196,6 +205,30 @@ fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
     let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["data"]["help_topic"], topic);
   }
+}
+
+#[test]
+fn ttest_discovery_describes_the_installed_comparisons_and_variance_flags() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "TTEST"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(envelope["data"]["help_topic"], "ttest");
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "ttest x == value | ttest x == y | ttest x, by(group) [welch | unequal]"
+  );
+  assert_eq!(
+    envelope["data"]["options"],
+    serde_json::json!([
+      {"name": "by", "required": false},
+      {"name": "welch", "required": false},
+      {"name": "unequal", "required": false},
+    ])
+  );
 }
 
 #[test]

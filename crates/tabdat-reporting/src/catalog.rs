@@ -1819,11 +1819,21 @@ fn get_command_schema(
       }],
       help_topic,
       name: "ttest".to_string(),
-      options: vec![OptionDescriptor {
-        name: "by".to_string(),
-        required: false,
-      }],
-      syntax: "ttest varname [, by(var)]".to_string(),
+      options: vec![
+        OptionDescriptor {
+          name: "by".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
+          name: "welch".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
+          name: "unequal".to_string(),
+          required: false,
+        },
+      ],
+      syntax: "ttest x == value | ttest x == y | ttest x, by(group) [welch | unequal]".to_string(),
     }),
     "use" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {
@@ -2102,8 +2112,9 @@ mod tests {
         .iter()
         .find(|entry| entry.name == "ttest")
         .unwrap()
-        .help_topic,
-      None
+        .help_topic
+        .as_deref(),
+      Some("ttest")
     );
     let summarize_entry = catalog
       .commands
