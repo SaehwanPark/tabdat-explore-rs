@@ -117,10 +117,13 @@ warmup exclusion, cycle order and failed-child cleanup/no report. A debug invoca
 is a harness smoke check only; use matching release builds for release observations.
 
 The existing completion/editing/history/cancellation/model-retention acceptance flow
-runs first in the same process, including literal `use`/`run` path completion and
-quoted CSV option suffixes. Historical observations below pin the earlier tool
-revision/acceptance sequence; their samples are not replaced by this coverage change.
-Then **one excluded warmup cycle** precedes measured cycles of load → count → summarize x y → regress y x → predict fitted. Every cycle
+runs first in the same process, including literal `use`/`run` path completion,
+quoted CSV option suffixes and current-schema column completion after transformations
+and partial failed scripts. The two intentional recovery diagnostics are checked
+exactly; missing, changed or extra errors fail acceptance. Historical observations
+below pin the earlier tool revision/acceptance sequence; their samples are not
+replaced by this coverage change. Then **one excluded warmup cycle** precedes
+measured cycles of load → count → summarize x y → regress y x → predict fitted. Every cycle
 reloads the same fixed four-row, two-column CSV, so prediction does not grow the
 schema between samples. Untimed `head 4` verifies actual current rows/predictions
 after each cycle. Counts, ordered means, model sample/design and coefficients are

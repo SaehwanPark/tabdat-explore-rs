@@ -49,6 +49,9 @@ fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
   let stdout = String::from_utf8(output.stdout).unwrap();
   assert_eq!(stdout.matches("Interactive core workflow\n").count(), 2);
   assert!(stdout.contains("Load local eager CSV/Parquet: use <path>"));
+  assert!(stdout.contains("local use/run paths, and basic bare EDA variable lists"));
+  assert!(stdout.contains("Bare `by ...: summarize` reports native grouped means in CLI JSON"));
+  assert!(!stdout.contains("not variables/paths"));
   assert!(stdout.contains("parser-only or future syntax"));
   assert!(stdout.contains("# summarize\n"));
   assert!(stdout.contains("# lincom\n"));
@@ -67,11 +70,11 @@ fn piped_tabs_remain_whitespace_and_do_not_complete_prefixes() {
   fs::write(fixture.0.join("child.td"), "drop y\nexport never.csv\n").unwrap();
   let output = run(
     &fixture,
-    b"use data.csv\nsumm\t y\nhelp summ\t\nuse dat\t\nrun chi\t\ncount\t\nexit\n",
+    b"use data.csv\ngenerate known_column = x\nsummarize known_c\t\nsumm\t y\nhelp summ\t\nuse dat\t\nrun chi\t\ncount\t\nexit\n",
   );
   assert!(output.status.success());
   let stderr = String::from_utf8(output.stderr).unwrap();
-  assert_eq!(stderr.matches("Error:").count(), 4, "{stderr}");
+  assert_eq!(stderr.matches("Error:").count(), 5, "{stderr}");
   assert!(stderr.contains("unknown help topic: summ"));
   assert!(!fixture.0.join("never.csv").exists());
   let stdout = String::from_utf8(output.stdout).unwrap();

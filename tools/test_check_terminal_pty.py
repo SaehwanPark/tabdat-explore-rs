@@ -83,6 +83,18 @@ class ProbeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             probe.measure_cycles(bad_preview, 1)
 
+    def test_acceptance_allows_only_the_two_expected_recovery_errors(self):
+        expected = (b"Error: rename unknown variable: absent\r\n"
+                    b"Error: /temporary/analysis files/partial schema.td:2: unknown command: unknown_command\r\n")
+        probe.validate_acceptance_errors(expected)
+        for text in [b"", expected.splitlines(keepends=True)[0],
+                     expected + b"Error: additional failure\r\n",
+                     expected.replace(b"absent", b"other"),
+                     expected.replace(b"schema.td:2:", b"schema.td:3:"),
+                     b"\r\n".join(reversed(expected.splitlines()))]:
+            with self.subTest(text=text), self.assertRaises(AssertionError):
+                probe.validate_acceptance_errors(text)
+
     def test_failed_child_emits_no_report_and_removes_temporary_fixture(self):
         binary = shutil.which("false")
         if binary is None:
