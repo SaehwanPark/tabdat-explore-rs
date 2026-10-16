@@ -957,6 +957,19 @@ impl Session {
         _ => unreachable!("AR command checked above"),
       };
     }
+    if command.subcommand == EstatSubcommand::Overid {
+      let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
+        return Err(RuntimeError::EstatOveridRequiresPriorIv);
+      };
+      if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
+        return Err(RuntimeError::EstatOveridFailed(
+          "Sargan requires a nonrobust 2SLS fit; robust/cluster Hansen J is not implemented".into(),
+        ));
+      }
+      return tabdat_stats::sargan_test(&state.problem, &state.linear.result.residuals)
+        .map(ExecutionResult::Sargan)
+        .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
+    }
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
     }

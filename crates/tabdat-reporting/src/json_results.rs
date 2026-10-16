@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif/ar, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif/ar";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif/ar/overid, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif/ar/overid";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
@@ -85,7 +85,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
           subcommand:
             EstatSubcommand::Vif
             | EstatSubcommand::AndersonRubin { .. }
-            | EstatSubcommand::AndersonRubinConfidenceSet { .. },
+            | EstatSubcommand::AndersonRubinConfidenceSet { .. }
+            | EstatSubcommand::Overid,
           ..
         },
     }
@@ -111,6 +112,17 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::Sargan(result) => {
+      let mut data = serde_json::to_value(result).expect("finite Sargan result");
+      data["test"] = json!("sargan_n_r_squared");
+      data["covariance"] = json!("homoskedastic");
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["weak_iv_robust"] = json!(false);
+      data["null_hypothesis"] = json!("overidentifying_restrictions_hold_given_maintained_model");
+      data["assumptions"] =
+        json!("homoskedastic_errors_correctly_specified_maintained_model_strong_identification");
+      (data, "SarganResult")
+    }
     ExecutionResult::AndersonRubinConfidenceSet(result) => {
       let mut data = serde_json::to_value(result).expect("serializable AR confidence set");
       data["test"] = json!("anderson_rubin_scalar_confidence_set");

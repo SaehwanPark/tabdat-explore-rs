@@ -26,8 +26,11 @@ homoskedastic weak-IV-robust joint test of all endogenous coefficients; see
 coefficient p-values remain conventional. With exactly one endogenous regressor,
 `estat ar, ci [level(95)]` provides homoskedastic confidence sets,
 including empty or unbounded sets; see `help estat` for numerical limits.
-Overidentification tests, multi-endogenous confidence regions, robust/cluster AR
-and GMM are not implemented;
+Overidentified nonrobust fits additionally support `estat overid`: homoskedastic
+Sargan N*R² with asymptotic chi-square inference, not robust Hansen J or proof of
+instrument validity. See `help estat` for its strong-identification assumptions,
+DF, retained-residual and failure semantics. Endogeneity tests, robust/cluster
+overid, multi-endogenous confidence regions, robust/cluster AR and GMM are not implemented;
 `gmm` is parsed but execution reports it as unsupported.
 
 Examples:

@@ -447,6 +447,10 @@ pub enum RuntimeError {
   EstatArRequiresPriorIv,
   /// The joint AR null, covariance mode or auxiliary regression is unsupported/invalid.
   EstatArFailed(String),
+  /// Sargan requires structural residuals and design from a retained 2SLS fit.
+  EstatOveridRequiresPriorIv,
+  /// Covariance, identification or numerical limits invalidate Sargan inference.
+  EstatOveridFailed(String),
   /// `lincom` requires a preceding supported linear regression.
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
@@ -1056,6 +1060,10 @@ impl fmt::Display for RuntimeError {
       Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
       Self::EstatArRequiresPriorIv => formatter.write_str("estat ar requires a prior 2SLS fit"),
       Self::EstatArFailed(message) => write!(formatter, "estat ar: {message}"),
+      Self::EstatOveridRequiresPriorIv => {
+        formatter.write_str("estat overid requires a prior 2SLS fit")
+      }
+      Self::EstatOveridFailed(message) => write!(formatter, "estat overid: {message}"),
       Self::LincomRequiresPriorEstimation => {
         formatter.write_str("no active estimation results found")
       }

@@ -895,7 +895,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)]".to_string(),
+      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid".to_string(),
     }),
     "exit" => Ok(CommandSchemaResult {
       arguments: vec![],
