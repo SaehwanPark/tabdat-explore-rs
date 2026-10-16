@@ -28,6 +28,11 @@ pub enum StatsError {
   UnknownParameter(String),
   /// The hypothesis restriction matrix or vector is incompatible with model parameters.
   IncompatibleHypothesis(String),
+  /// The instrument set is too small to identify all included regressors.
+  Underidentified {
+    endogenous_regressors: usize,
+    excluded_instruments: usize,
+  },
   /// Insufficient observations or clusters for estimation or inference.
   InsufficientObservations(String),
 }
@@ -51,6 +56,13 @@ impl fmt::Display for StatsError {
       Self::CollinearPredictors(msg) => write!(f, "collinear predictors: {msg}"),
       Self::UnknownParameter(name) => write!(f, "unknown parameter: {name}"),
       Self::IncompatibleHypothesis(msg) => write!(f, "incompatible hypothesis test: {msg}"),
+      Self::Underidentified {
+        endogenous_regressors,
+        excluded_instruments,
+      } => write!(
+        f,
+        "2SLS is underidentified: {endogenous_regressors} endogenous regressors but only {excluded_instruments} excluded instruments"
+      ),
       Self::InsufficientObservations(msg) => write!(f, "insufficient observations: {msg}"),
     }
   }

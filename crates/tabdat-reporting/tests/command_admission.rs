@@ -9,6 +9,8 @@ fn batch_and_script_share_bounded_command_admission() {
     ("run child.td", true),
     ("count if x > 0", true),
     ("regress y x if x > 0", true),
+    ("ivregress 2sls y x, endog(z) iv(w)", true),
+    ("ivregress gmm y x, endog(z) iv(w)", false),
     ("summarize x if x > 0", true),
     ("summarize x if x > 0, detail", true),
     ("summarize x, detail detail", false),

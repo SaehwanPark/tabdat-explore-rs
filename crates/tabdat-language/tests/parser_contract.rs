@@ -394,12 +394,13 @@ fn xtdata_preserves_bounded_parser_diagnostics() {
 #[test]
 fn ivregress_parses_bounded_estimator_forms() {
   assert_eq!(
-    parse_command("ivregress 2sls cost age bmi, endog(hours) iv(distance policy)").unwrap(),
+    parse_command("ivregress 2sls cost age bmi, endog(hours exper expsq) iv(distance policy)")
+      .unwrap(),
     Command::IvRegress {
       command: IvRegressCommand {
         outcome: "cost".to_owned(),
         exogenous: vec!["age".to_owned(), "bmi".to_owned()],
-        endogenous: "hours".to_owned(),
+        endogenous: vec!["hours".to_owned(), "exper".to_owned(), "expsq".to_owned()],
         instruments: vec!["distance".to_owned(), "policy".to_owned()],
         robust: false,
         cluster_variable: None,
@@ -417,7 +418,7 @@ fn ivregress_parses_bounded_estimator_forms() {
       command: IvRegressCommand {
         outcome: "total cost".to_owned(),
         exogenous: vec!["age value".to_owned()],
-        endogenous: "hours value".to_owned(),
+        endogenous: vec!["hours value".to_owned()],
         instruments: vec!["distance value".to_owned()],
         robust: false,
         cluster_variable: Some("group_id".to_owned()),
@@ -432,7 +433,7 @@ fn ivregress_parses_bounded_estimator_forms() {
       command: IvRegressCommand {
         outcome: "cost".to_owned(),
         exogenous: vec![],
-        endogenous: "hours".to_owned(),
+        endogenous: vec!["hours".to_owned()],
         instruments: vec!["distance".to_owned()],
         robust: true,
         cluster_variable: None,
@@ -448,7 +449,7 @@ fn ivregress_preserves_bounded_parser_diagnostics() {
   let cases = [
     (
       "ivregress",
-      "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)",
+      "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<vars>) iv(<vars>)",
     ),
     (
       "ivregress liml y x, endog(z) iv(w)",
@@ -456,15 +457,15 @@ fn ivregress_preserves_bounded_parser_diagnostics() {
     ),
     (
       "ivregress 2sls y x",
-      "ivregress option endog expects one variable",
+      "ivregress option endog expects at least one variable",
     ),
     (
       "ivregress 2sls y x, endog(z)",
       "ivregress option iv expects at least one variable",
     ),
     (
-      "ivregress 2sls y x, endog(z w) iv(q)",
-      "ivregress option endog expects one variable",
+      "ivregress 2sls y x, endog() iv(q)",
+      "option endog expects at least one value",
     ),
     (
       "ivregress 2sls y x, endog(z) iv(w) robust=true",

@@ -114,7 +114,7 @@ pub enum EstimationFamily {
   ControlFunction,
 }
 
-/// Current linear runtime's complete owned post-estimation cache.
+/// Owned post-estimation cache for the executable linear OLS/2SLS paths.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinearRegressionState {
   pub outcome: String,
@@ -160,7 +160,7 @@ pub enum EstimationState {
   ZeroInflatedPoisson(ModelState),
   ZeroInflatedNegativeBinomial(ModelState),
   Survival(ModelState),
-  InstrumentalVariables(ModelState),
+  InstrumentalVariables(Box<LinearRegressionState>),
   PanelLinear(ModelState),
   PanelLogit(ModelState),
   Did(ModelState),
@@ -173,7 +173,7 @@ pub enum EstimationState {
 impl EstimationState {
   pub fn linear(&self) -> Option<&LinearRegressionState> {
     match self {
-      Self::Linear(state) => Some(state),
+      Self::Linear(state) | Self::InstrumentalVariables(state) => Some(state),
       _ => None,
     }
   }

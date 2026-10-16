@@ -1041,7 +1041,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "ivregress estimator y x, endog(vars) iv(vars)".to_string(),
+      syntax: "ivregress 2sls y [exog...], endog(endog_vars) iv(excluded_instruments) [robust|cluster(var)|noconstant]".to_string(),
     }),
     "join" => Ok(CommandSchemaResult {
       arguments: vec![

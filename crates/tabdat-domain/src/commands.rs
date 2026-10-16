@@ -1,5 +1,37 @@
 use serde::{Deserialize, Serialize};
 
+mod endogenous_variables_wire {
+  use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+  pub fn serialize<S>(values: &[String], serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    if values.len() == 1 {
+      serializer.serialize_str(&values[0])
+    } else {
+      values.serialize(serializer)
+    }
+  }
+
+  pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+      One(String),
+      Many(Vec<String>),
+    }
+
+    Ok(match OneOrMany::deserialize(deserializer)? {
+      OneOrMany::One(value) => vec![value],
+      OneOrMany::Many(values) => values,
+    })
+  }
+}
+
 /// The syntax-only command forms currently understood by the language layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -115,7 +147,7 @@ pub enum Command {
   Panel { command: PanelCommand },
   /// Apply a panel within/between transform (execution is deferred).
   XtData { command: XtDataCommand },
-  /// Fit an instrumental-variables model (execution is deferred).
+  /// Fit a bounded instrumental-variables model (2SLS is executable).
   IvRegress { command: IvRegressCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
   XtReg { command: XtRegCommand },
@@ -908,7 +940,7 @@ pub struct PredictCommand {
   pub saving: Option<String>,
 }
 
-/// The estimator forms accepted by the parser-only `ivregress` command.
+/// The bounded estimator forms accepted by `ivregress`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IvEstimator {
@@ -918,25 +950,26 @@ pub enum IvEstimator {
   GeneralizedMethodOfMoments,
 }
 
-/// The parser-only `ivregress` form retained for a later statistical runtime
-/// slice.
+/// Bounded `ivregress` syntax; the runtime currently executes 2SLS only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IvRegressCommand {
   /// The dependent variable.
   pub outcome: String,
   /// Ordered exogenous regressors.
   pub exogenous: Vec<String>,
-  /// The single endogenous regressor supported by this syntax slice.
-  pub endogenous: String,
+  /// Ordered endogenous regressors. The internal wire keeps a single variable
+  /// as the pre-list string form and uses an array for multiple variables.
+  #[serde(with = "endogenous_variables_wire")]
+  pub endogenous: Vec<String>,
   /// Ordered instrumental variables.
   pub instruments: Vec<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Request HC1 covariance; it cannot be combined with clustering.
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
+  /// Optional variable defining one-way cluster-robust covariance.
   pub cluster_variable: Option<String>,
-  /// Whether the eventual runtime should include an intercept.
+  /// Whether the fitted model includes an intercept.
   pub include_intercept: bool,
-  /// The requested IV estimator.
+  /// The requested IV estimator; only 2SLS is currently executed.
   pub estimator: IvEstimator,
 }
 

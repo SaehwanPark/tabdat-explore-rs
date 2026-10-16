@@ -1,14 +1,203 @@
+use std::fs;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use tabdat_domain::{Command, EstimationFamily, ExecutionResult};
 use tabdat_language::parse_command;
 use tabdat_runtime::{RuntimeError, Session};
 
-#[test]
-fn parsed_ivregress_remains_explicitly_deferred_at_runtime() {
-  let command = parse_command("ivregress 2sls y, endog(x) iv(z)")
-    .expect("the bounded ivregress syntax should parse");
+static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
+
+struct Fixture {
+  root: PathBuf,
+  parquet: PathBuf,
+}
+
+impl Fixture {
+  fn new_with_sql(sql: &str) -> Self {
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-runtime-iv-{}-{}-{}",
+      std::process::id(),
+      nonce,
+      fixture_id
+    ));
+    fs::create_dir_all(&root).expect("fixture directory should be created");
+    let parquet = root.join("iv.parquet");
+    let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
+    let parquet_string = parquet.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!("COPY ({sql}) TO ? (FORMAT PARQUET)"),
+        [&parquet_string],
+      )
+      .expect("fixture table should write to parquet");
+    Self { root, parquet }
+  }
+
+  fn school_like_sample() -> Self {
+    Self::new_with_sql(
+      "WITH base AS (\
+        SELECT i::DOUBLE AS i, sin(i / 7.0) + i / 90.0 AS w, \
+          cos(i / 5.0) + i / 70.0 AS z1, \
+          sin(i / 11.0) - cos(i / 13.0) + i / 200.0 AS z2, \
+          sin(i / 3.0) + cos(i / 9.0) AS v1, \
+          cos(i / 4.0) - sin(i / 6.0) AS v2 \
+        FROM range(1, 61) AS t(i)\
+      ), design AS (\
+        SELECT *, 0.3 + 0.4 * w + 0.9 * z1 + 0.2 * z2 + v1 AS x1, \
+          -0.2 + 0.2 * w - 0.3 * z1 + 1.1 * z2 + v2 AS x2 \
+        FROM base\
+      ), outcome AS (\
+        SELECT *, 1.2 + 0.5 * w + 1.7 * x1 - 0.6 * x2 + sin(i / 1.7) \
+          + cos(i / 2.3) + sin(i / 5.9) AS y \
+        FROM design\
+      ) SELECT CASE WHEN i = 1 THEN NULL ELSE y END AS y, w, \
+          CASE WHEN i = 2 THEN NULL ELSE x1 END AS x1, x2, z1, z2, \
+          CASE WHEN i = 3 THEN NULL ELSE CAST(CAST(i AS INTEGER) % 12 AS VARCHAR) END AS group_id \
+        FROM outcome",
+    )
+  }
+}
+
+impl Drop for Fixture {
+  fn drop(&mut self) {
+    let _ = fs::remove_dir_all(&self.root);
+  }
+}
+
+fn load(fixture: &Fixture) -> Session {
   let mut session = Session::new();
+  session
+    .execute(parse_command(&format!("use {}", fixture.parquet.display())).unwrap())
+    .unwrap();
+  session
+}
+
+#[test]
+fn ivregress_2sls_fits_multiple_endogenous_regressors_and_reports_sample() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let command =
+    parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2) cluster(group_id)").unwrap();
+  let ExecutionResult::Regression(result) = session.execute(command).unwrap() else {
+    panic!("expected a regression result");
+  };
+  assert_eq!(result.estimator, "2sls");
+  assert_eq!(result.covariance, "cluster(group_id)");
+  assert_eq!(result.predictors, ["w", "x1", "x2"]);
+  assert_eq!(result.observation_count, 57);
+  assert_eq!(
+    result
+      .least_squares
+      .sample
+      .as_ref()
+      .unwrap()
+      .total_observations,
+    60
+  );
+  assert_eq!(
+    result
+      .least_squares
+      .sample
+      .as_ref()
+      .unwrap()
+      .dropped_observations,
+    3
+  );
+  assert_eq!(result.first_stage.as_ref().unwrap().len(), 2);
+  assert_eq!(
+    result
+      .first_stage
+      .as_ref()
+      .unwrap()
+      .iter()
+      .map(|diagnostic| diagnostic.endogenous.as_str())
+      .collect::<Vec<_>>(),
+    ["x1", "x2"]
+  );
+  assert_eq!(
+    session.state().estimation.unwrap().family(),
+    EstimationFamily::InstrumentalVariables
+  );
+
+  let prediction = session
+    .execute(parse_command("predict fitted, xb").unwrap())
+    .unwrap();
+  let ExecutionResult::Prediction(prediction) = prediction else {
+    panic!("expected a prediction result");
+  };
+  assert_eq!(prediction.dataset.row_count, 60);
+  assert!(
+    prediction
+      .dataset
+      .columns
+      .iter()
+      .any(|column| column.name == "fitted")
+  );
+  let linear_combination = session
+    .execute(parse_command("lincom x1").unwrap())
+    .unwrap();
+  let ExecutionResult::Lincom(linear_combination) = linear_combination else {
+    panic!("expected a linear-combination result");
+  };
+  let coefficient = result
+    .coefficients
+    .iter()
+    .find(|coefficient| coefficient.name == "x1")
+    .unwrap();
+  assert!((linear_combination.estimate - coefficient.value).abs() < 1e-12);
+}
+
+#[test]
+fn ivregress_failure_clears_stale_model_state_but_gmm_is_explicitly_unsupported() {
+  let fixture = Fixture::new_with_sql(
+    "SELECT i::DOUBLE AS i, sin(i::DOUBLE) AS y, sin(i::DOUBLE * 0.4) AS w, \
+      i::DOUBLE * 2 AS x1, i::DOUBLE * 3 AS x2, i::DOUBLE AS z1, i::DOUBLE AS z2 \
+     FROM range(1, 31) AS t(i)",
+  );
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  assert!(session.state().estimation.is_some());
 
   assert_eq!(
-    session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "ivregress" }
+    session
+      .execute(parse_command("ivregress gmm y, endog(x) iv(z)").unwrap())
+      .unwrap_err(),
+    RuntimeError::IvRegressUnsupportedEstimator {
+      estimator: "gmm".into()
+    }
   );
+  assert!(session.state().estimation.is_none());
+
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  let Command::IvRegress { mut command } =
+    parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2) cluster(group_id)").unwrap()
+  else {
+    panic!("expected an IV command");
+  };
+  command.robust = true;
+  assert_eq!(
+    session.execute(Command::IvRegress { command }).unwrap_err(),
+    RuntimeError::IvRegressConflictingCovariance
+  );
+  assert!(session.state().estimation.is_none());
+
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  let error = session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap_err();
+  assert!(matches!(error, RuntimeError::IvRegressFailed { .. }));
+  assert!(session.state().estimation.is_none());
 }

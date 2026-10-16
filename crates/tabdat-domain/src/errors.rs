@@ -427,6 +427,18 @@ pub enum RuntimeError {
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
   RegressFailed { message: String },
+  /// The requested IV estimator is not executed by this runtime slice.
+  IvRegressUnsupportedEstimator { estimator: String },
+  /// One or more IV variables are absent from the active dataset.
+  IvRegressUnknownVariable { variables: Vec<String> },
+  /// One or more IV regressors, instruments, or the outcome are not numeric.
+  IvRegressRequiresNumeric { variables: Vec<String> },
+  /// HC1 and cluster covariance were requested together.
+  IvRegressConflictingCovariance,
+  /// The IV model has no complete finite observations.
+  IvRegressNoObservations,
+  /// The IV estimation failed.
+  IvRegressFailed { message: String },
   /// VIF requires a preceding supported linear regression.
   EstatRequiresPriorRegression,
   /// DuckDB-independent auxiliary fits for VIF could not be computed.
@@ -1013,6 +1025,27 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::IvRegressUnsupportedEstimator { estimator } => write!(
+        formatter,
+        "ivregress estimator '{estimator}' is not implemented; use 2sls"
+      ),
+      Self::IvRegressUnknownVariable { variables } => write!(
+        formatter,
+        "ivregress: unknown variable(s): {}",
+        variables.join(", ")
+      ),
+      Self::IvRegressRequiresNumeric { variables } => write!(
+        formatter,
+        "ivregress: numeric variables required: {}",
+        variables.join(", ")
+      ),
+      Self::IvRegressConflictingCovariance => {
+        formatter.write_str("ivregress cannot combine robust and cluster")
+      }
+      Self::IvRegressNoObservations => {
+        formatter.write_str("ivregress: no complete finite observations")
+      }
+      Self::IvRegressFailed { message } => write!(formatter, "ivregress failed: {message}"),
       Self::EstatRequiresPriorRegression => {
         formatter.write_str("estat requires a prior regress model")
       }

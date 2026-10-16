@@ -28,10 +28,21 @@ fn representative_commands_roundtrip_the_internal_wire_without_backend_use() {
     "sql select 1",
     "xtreg y x, fe",
     "ivregress 2sls y x, endog(z) iv(w)",
+    "ivregress 2sls y x, endog(z q) iv(w v)",
   ] {
     let command =
       tabdat_language::parse_command(input).unwrap_or_else(|error| panic!("{input}: {error}"));
     let wire = serde_json::to_string(&DomainEnvelope::new(command.clone())).unwrap();
+    let wire_value: serde_json::Value = serde_json::from_str(&wire).unwrap();
+    if input == "ivregress 2sls y x, endog(z) iv(w)" {
+      assert_eq!(wire_value["data"]["payload"]["command"]["endogenous"], "z");
+    }
+    if input == "ivregress 2sls y x, endog(z q) iv(w v)" {
+      assert_eq!(
+        wire_value["data"]["payload"]["command"]["endogenous"],
+        serde_json::json!(["z", "q"])
+      );
+    }
     let decoded: DomainEnvelope<Command> = serde_json::from_str(&wire).unwrap();
     assert_eq!(decoded.data, command, "{input}");
     let expected = oracle["data"]["commands"]

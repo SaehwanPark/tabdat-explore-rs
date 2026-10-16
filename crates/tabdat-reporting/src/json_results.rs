@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
@@ -36,6 +36,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
       command.command.as_ref(),
       Command::Count | Command::Summarize { .. }
     ),
+    Command::IvRegress { command } => {
+      command.estimator == tabdat_domain::IvEstimator::TwoStageLeastSquares
+    }
     Command::Status
     | Command::RegressQuery { .. }
     | Command::CountQuery { .. }
@@ -337,7 +340,7 @@ fn ttest_result_data(result: &TtestResult) -> Value {
 }
 
 fn regression_result_data(result: &RegressionResult) -> Value {
-  json!({
+  let mut data = json!({
     "outcome": result.outcome, "predictors": result.predictors,
     "estimator": result.estimator, "covariance": result.covariance,
     "observation_count": result.observation_count, "include_intercept": result.include_intercept,
@@ -354,7 +357,25 @@ fn regression_result_data(result: &RegressionResult) -> Value {
       "statistic": coefficient.statistic.and_then(Number::from_f64),
       "p_value": coefficient.p_value.and_then(Number::from_f64),
     })).collect::<Vec<_>>()
-  })
+  });
+  if let Some(first_stage) = &result.first_stage {
+    data["first_stage"] = json!({
+      "test": "classical_excluded_instrument_partial_f",
+      "weak_iv_robust_inference_available": false,
+      "coefficient_inference": "conventional_t_not_weak_iv_robust",
+      "rows": first_stage.iter().map(|diagnostic| json!({
+        "endogenous": diagnostic.endogenous,
+        "excluded_instruments": diagnostic.excluded_instruments,
+        "observation_count": diagnostic.observation_count,
+        "numerator_df": diagnostic.numerator_df,
+        "denominator_df": diagnostic.denominator_df,
+        "partial_r_squared": diagnostic.partial_r_squared.and_then(Number::from_f64),
+        "f_statistic": diagnostic.f_statistic.and_then(Number::from_f64),
+        "p_value": diagnostic.p_value.and_then(Number::from_f64),
+      })).collect::<Vec<_>>()
+    });
+  }
+  data
 }
 
 fn summary_row_data(row: &SummaryRow) -> Value {
