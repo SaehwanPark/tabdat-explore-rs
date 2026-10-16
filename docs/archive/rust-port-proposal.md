@@ -1,6 +1,10 @@
 # TabDat Explore Rust Port: Project Proposal
 
-**Status:** Proposed  
+**Historical proposal:** retained for design context, not current implementation
+instructions or a capability claim. Start with [SPEC](../../SPEC.md),
+[AGENTS](../../AGENTS.md) and the [current roadmap](../TABDAT_RUST_PORT_ROADMAP.md).
+
+**Original status:** Proposed
 **Date:** 2026-09-07  
 **Project:** TabDat Explore Rust Port  
 **Relationship to existing project:** Rust-native successor to the current Python implementation of TabDat Explore
@@ -533,7 +537,7 @@ Some features are better implemented directly in Rust because they are bounded a
 ### 7.4 Numerical libraries
 
 Phase 1 follow-up (2026-10-12):
-[ADR 0021](adr/0021-phase1-backend-and-linear-algebra-decisions.md) accepts
+[ADR 0021](../adr/0021-phase1-backend-and-linear-algebra-decisions.md) accepts
 libgretl as the primary compiled backend for the validated initial variants,
 ReadStat for patched DTA-only ingestion, canonical DuckDB and native SVG/resvg.
 Reuse libgretl's existing BLAS/LAPACK as the initial compiled linear-algebra

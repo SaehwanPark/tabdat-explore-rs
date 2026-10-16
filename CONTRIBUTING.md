@@ -29,6 +29,10 @@ A practical change should:
 A new failure-first test is helpful for a bug fix, not a mandatory ceremonial
 step. A PR or design note should be as short as the actual complexity allows.
 
+Keep the root README focused on orientation and a runnable quickstart. Follow the
+[documentation index](docs/README.md) for detailed guides, result contracts and
+historical evidence; put per-slice test logs in the PR, not the README or roadmap.
+
 ## Normal Rust checks
 
 ```sh
