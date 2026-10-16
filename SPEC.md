@@ -9,9 +9,18 @@ implementation changes.
 
 TabDat is a terminal-first, Rust-native, Stata-inspired statistical/EDA tool.
 Its value is responsive exploration, dependable statistical analysis, simple
-installation, and automation with consistent typed results. It is **not** a full
-Stata, Python, R, or earlier TabDat clone. Prefer usable end-to-end workflows to
-complete syntax catalogs.
+installation, and automation with consistent typed results. The intended audience
+includes **graduate-level econometrics**. The minimum long-term analytical target
+is reproducible support for the empirical analyses in Cameron and Trivedi,
+*Microeconometrics: Methods and Applications* (2005). This target is **not current
+capability**: the installed statistical subset remains primarily linear models.
+
+It is **not** a full Stata, Python, R, or earlier TabDat clone. Equivalent native
+workflows are preferred to source-language syntax parity. Deliver complete
+specify → fit → diagnose/interpret → report workflows, not syntax catalogs. The
+[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) prioritizes required graduate methods;
+the [coverage ledger](docs/reference/microeconometrics-coverage.md) tracks method
+gaps and textbook replication evidence.
 
 ## Implemented and deferred capabilities
 
@@ -74,8 +83,10 @@ changes; reserve a new ADR for consequential architecture, backend, or API choic
 
 ## Acceptance for next usable release candidate
 
-The next meaningful milestone is **an interactive, dependable core EDA workflow**, not
-completion of an exhaustive language phase. Target:
+The first useful release milestone remains **an interactive, dependable core EDA
+and linear-analysis workflow**, not completion of an exhaustive language phase.
+It is a foundation release, **not graduate-core or textbook-coverage acceptance**.
+Target:
 
 - Run a session interactively without scaffold output; load local CSV/Parquet
   (minimal line session implemented; advanced editing/cancellation remain deferred).
@@ -86,8 +97,27 @@ completion of an exhaustive language phase. Target:
 - Meet representative statistical reference and data-integrity tests.
 - Measure startup/command responsiveness without premature performance promises.
 
-These are **targets**, not statements of current support. See the
-[prioritized roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md).
+These are **targets**, not statements of current support. Remaining gaps and
+verification must be assessed against source/tests before declaring this milestone.
+
+## Required development beyond the core release
+
+The graduate-core target adds model-design semantics (factors/interactions),
+diagnostics/graphics and reusable reporting alongside IV/2SLS, logit/probit with
+marginal effects, Poisson/NB with offsets/exposure, linear panels, quantile
+regression and genuine seeded bootstrap. Required later coverage includes choice,
+selection/censoring, survival, GMM/dynamic and nonlinear panels, treatment effects,
+surveys, imputation, and the remaining semiparametric, simulation/Bayesian,
+mixture and measurement-error illustrations. These are **planned requirements**,
+not installed features or optional substitutes for the linear workflow.
+
+Graduate-core acceptance needs representative end-to-end, independently validated
+analyses across its required families. Full textbook acceptance additionally needs
+an inventory of the empirical illustrations and linked scripts/reference evidence
+for each; any exclusion requires an explicit scope decision. A passing parser test,
+one estimator or one example does not validate a family or chapter. See the
+[prioritized roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) and
+[coverage ledger](docs/reference/microeconometrics-coverage.md).
 
 ## Where to look for detail
 

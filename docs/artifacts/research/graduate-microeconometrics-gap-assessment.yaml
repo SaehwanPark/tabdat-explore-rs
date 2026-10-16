@@ -1,0 +1,214 @@
+task_id: graduate-microeconometrics-gap-assessment
+mode: explore
+scope:
+  paths:
+    - SPEC.md
+    - docs/TABDAT_RUST_PORT_ROADMAP.md
+    - crates/tabdat-execution/src
+    - crates/tabdat-stats/src
+    - crates/tabdat-runtime/tests
+    - tests/conditional_linear_contract.rs
+  description: >-
+    Assess executable development status against graduate econometrics and Cameron
+    and Trivedi, Microeconometrics: Methods and Applications (2005). Recommendations
+    do not change the supported capability contract or authorize implementation.
+metadata:
+  last_analyzed: '2026-10-16T07:31:10Z'
+  git_commit: e4ffd36e0d7272af873e3505c284643b5e2f7e9b
+  code_hash: e6102ca4c8038ace5c0a07cd95b7051ee265e783e640dd9ea6b5704c12726bc3
+  code_hash_method: >-
+    SHA256 of shasum -a 256 output for SPEC.md, docs/TABDAT_RUST_PORT_ROADMAP.md,
+    crates/tabdat-execution/src/lib.rs, crates/tabdat-execution/src/statistics.rs,
+    crates/tabdat-stats/src/least_squares.rs, crates/tabdat-stats/src/post_estimation.rs,
+    in that order.
+  tool_version: research-harness-1.0
+methodology:
+  - Manual Rust dispatch, numerical implementation, reference-fixture and contract-test inspection.
+  - Read current specification, roadmap, architecture and contribution guidance.
+  - Checked author-hosted textbook outline, part summaries and empirical dataset index.
+  - Ran focused statistical and runtime tests; no full-workspace or platform certification.
+findings:
+  architecture:
+    - type: capability-boundary
+      description: >-
+        Production execution provides bounded data preparation/EDA and linear analysis;
+        the extensive estimator syntax catalog is not an installed statistical suite.
+      evidence: 'crates/tabdat-execution/src/lib.rs:47-132'
+      severity: info
+  purity: []
+  data_flow:
+    - stage: 1
+      function: Session::execute
+      input_type: Command
+      output_type: Result<ExecutionResult, RuntimeError>
+      transformation: Shared runtime routes supported commands and rejects unmatched variants.
+  risks:
+    - type: product-scope
+      description: >-
+        The roadmap treats IV/panel, GLM/count and causal methods as optional breadth.
+        That priority is inconsistent with the requested textbook-level objective.
+      location: 'docs/TABDAT_RUST_PORT_ROADMAP.md:71-77'
+      mitigation: Separate the useful EDA milestone from a required graduate-core milestone and a broader textbook-replication target.
+    - type: stale-statistical-documentation
+      description: >-
+        The reference says clustered coefficient/lincom/test inference uses N-P.
+        Current code uses G-1, while fit residual degrees of freedom remain N-P.
+        Focused independent-reference tests pass for this distinction.
+      location: 'docs/reference/command-results.md:467-472'
+      mitigation: Correct the reference prose; do not change working inference to match stale documentation.
+    - type: reproducibility
+      description: Seed directives record script context only, not RNG state; this cannot support reproducible bootstrap or simulation claims.
+      location: 'crates/tabdat-execution/src/scripts.rs:131-137'
+      mitigation: Define and test an actual RNG, seed, stream and resampling contract before simulation-based features.
+  suggestions:
+    - type: priority
+      description: Promote model design, IV/2SLS, logit/probit with marginal effects, Poisson/NB and linear panels into required graduate-core work.
+      priority: high
+    - type: workflow
+      description: Add readable diagnostics, plots, named model comparison/export and reproducible textbook example scripts alongside estimators.
+      priority: high
+    - type: scope
+      description: Keep MCP transport, spatial modeling and regularization behind econometrics essentials unless a specific workflow requires them.
+      priority: medium
+coverage:
+  - chapters: '4, 7-8'
+    status: partial
+    current: OLS, WLS, diagonal-variance GLS, HC1, one-way cluster covariance, linear test/lincom, xb/residual prediction and VIF.
+    missing: IV, quantile regression, broader specification tests, influence diagnostics, nonlinear restrictions, model comparison and prediction uncertainty.
+  - chapters: '5-6, 10'
+    status: not-executable
+    missing: General ML/NLS, optimization diagnostics, GMM, systems estimation and associated inference.
+  - chapters: '9'
+    status: not-executable
+    missing: Kernel density/regression, local polynomial and semiparametric methods; lowess parsing is not execution.
+  - chapters: '11-13'
+    status: not-executable
+    missing: Actual seeded RNG, bootstrap, simulation-based estimation and Bayesian estimation/diagnostics.
+  - chapters: '14'
+    status: parser-only
+    missing: Logit/probit, robust/cluster inference, predicted probabilities, marginal effects and separation/convergence diagnostics.
+  - chapters: '15'
+    status: not-executable
+    missing: Multinomial/conditional/ordered choice and relevant nested or richer choice models needed by selected book examples.
+  - chapters: '16'
+    status: not-executable
+    missing: Tobit, truncation, Heckman selection, two-part models and model-specific effects/prediction.
+  - chapters: '17-19'
+    status: not-executable
+    missing: Survival data declaration, censoring/truncation handling, KM, parametric/Cox models, frailty/mixture and competing-risk/multiple-spell workflows.
+  - chapters: '20'
+    status: parser-only-for-several-families
+    missing: Poisson QMLE, NB, exposure/offset, hurdle/zero-inflated/mixture models and count-specific inference/prediction.
+  - chapters: '21'
+    status: parser-only
+    missing: Executable panel declaration, lag/lead/difference semantics, FE/RE/between/first-difference estimation and panel diagnostics.
+  - chapters: '22-23'
+    status: not-executable
+    missing: Dynamic panel GMM, instrument controls/diagnostics and nonlinear panel estimators.
+  - chapters: '24'
+    status: partial
+    current: One-way clustered covariance for supported linear models.
+    missing: Survey probability-weight, strata and PSU semantics, design-based estimation and survey diagnostics.
+  - chapters: '25'
+    status: not-executable
+    missing: Treatment-effect estimands, propensity-score matching/weighting, regression adjustment, overlap/balance checks and appropriate uncertainty.
+  - chapters: '26'
+    status: not-executable
+    missing: Measurement-error estimation workflows, including relevant IV and correction/sensitivity methods.
+  - chapters: '27'
+    status: partial-data-inspection-only
+    current: Missingness profiles and explicit finite-case estimation exclusions.
+    missing: Missing-data modeling, multiple imputation, pooling and imputation diagnostics; listwise deletion is not imputation support.
+recommended_sequence:
+  - milestone: graduate-foundation
+    outcomes:
+      - Explicit categorical reference levels, interactions, transformations and stable prediction design.
+      - Clarify WLS versus frequency/probability weights and diagonal GLS limits.
+      - Usable correlation/covariance tables, diagnostics, plots, model comparison/export and sample provenance.
+      - Correct stale inference documentation and establish textbook-replication fixtures.
+  - milestone: graduate-core
+    outcomes:
+      - IV/2SLS with first-stage, identification, weak-instrument and overidentification diagnostics where defined.
+      - Logit/probit with probability prediction, average marginal effects and delta-method uncertainty.
+      - Poisson QMLE and NB with offsets/exposure and robust/cluster inference.
+      - Linear panel FE/RE/first differences with valid panel keys/time semantics.
+      - Quantile regression and actual seeded iid/cluster bootstrap.
+  - milestone: applied-microeconometrics-breadth
+    outcomes:
+      - Multinomial/conditional choice, selection/Tobit and survival workflows.
+      - GMM/dynamic panels and treatment evaluation.
+      - Survey designs and multiple imputation.
+  - milestone: textbook-replication-completion
+    outcomes:
+      - Inventory every empirical illustration and its exact data/model/post-estimation requirements.
+      - Implement remaining mixture, competing-risk, nonlinear-panel, semiparametric, simulation/Bayesian and measurement-error examples.
+      - Maintain explicit implemented, validated, blocked and excluded statuses; do not infer whole-chapter coverage from one estimator.
+verification:
+  passed:
+    - command: cargo test --locked -p tabdat-stats
+      tests: 35
+    - command: cargo test --locked -p tabdat-runtime --test ivregress_contract --test logit_contract --test probit_contract --test poisson_contract --test nbreg_contract --test xtreg_contract --test qreg_contract --test panel_contract
+      tests: 8
+      interpretation: These passing tests confirm runtime deferral, not implemented estimators.
+    - command: cargo test --locked --test conditional_linear_contract
+      tests: 6
+      interpretation: Independent reference fixtures cover 18 selected linear specifications, including samples/covariance/inference and failure/state behavior.
+  not_run:
+    - Full workspace test/check/clippy suite.
+    - Fresh external numerical-reference generation.
+    - Complete textbook empirical-example replication.
+    - Distribution/platform certification.
+code_references:
+  - path: crates/tabdat-execution/src/lib.rs
+    line_range: '47-132'
+    description: Executable command boundary and unsupported fallback.
+  - path: crates/tabdat-execution/src/statistics.rs
+    line_range: '198-211'
+    description: WLS uses positive weights; GLS uses inverse positive supplied variance values, not arbitrary covariance matrices.
+  - path: crates/tabdat-stats/src/least_squares.rs
+    line_range: '227-325'
+    description: Robust/cluster covariance and G-1 clustered coefficient inference.
+  - path: crates/tabdat-stats/src/post_estimation.rs
+    line_range: '70-96'
+    description: G-1 clustered post-estimation inference versus N-P fit residual degrees of freedom.
+  - path: crates/tabdat-runtime/tests/ivregress_contract.rs
+    line_range: '1-14'
+    description: IV syntax explicitly rejects execution.
+  - path: crates/tabdat-runtime/tests/logit_contract.rs
+    line_range: '1-14'
+    description: Logit syntax explicitly rejects execution.
+  - path: tests/conditional_linear_contract.rs
+    line_range: '147-183'
+    description: Reference validation of retained-model inference degrees of freedom.
+insights:
+  - A useful introductory regression/EDA tool is a defensible milestone, but not evidence of graduate microeconometrics coverage.
+  - Full textbook empirical coverage is substantially larger than a sensible first graduate-core release.
+  - Current architecture supports incremental complete estimator workflows; this audit demonstrates no need for a new framework or crate.
+cross_references:
+  related_specs:
+    - SPEC.md
+    - docs/TABDAT_RUST_PORT_ROADMAP.md
+  related_contracts:
+    - docs/reference/command-results.md
+  related_tests:
+    - tests/conditional_linear_contract.rs
+    - crates/tabdat-stats/tests/longley_contract.rs
+    - crates/tabdat-runtime/tests/ivregress_contract.rs
+  related_implementation:
+    - crates/tabdat-execution/src/statistics.rs
+    - crates/tabdat-stats/src/least_squares.rs
+  gaps:
+    - artifact_type: textbook-example-ledger
+      finding: This assessment maps method families, not every printed table and example.
+      recommendation: Build a bounded replication ledger from the authors' programs/data before promising full-book coverage.
+external_sources:
+  - https://cameron.econ.ucdavis.edu/mmabook/mmaoutline.html
+  - https://cameron.econ.ucdavis.edu/mmabook/mmadata.html
+  - https://cameron.econ.ucdavis.edu/mmabook/mmapart2.html
+  - https://cameron.econ.ucdavis.edu/mmabook/mmapart4.html
+  - https://cameron.econ.ucdavis.edu/mmabook/mmapart5.html
+  - https://cameron.econ.ucdavis.edu/mmabook/mmapart6.html
+follow_up:
+  - Align SPEC product intent and roadmap priorities with the graduate/textbook target without rewriting current capability claims.
+  - Correct the documented cluster inference degrees of freedom.
+  - Select exact textbook replications for each proposed graduate-core workflow.

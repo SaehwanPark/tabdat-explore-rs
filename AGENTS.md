@@ -3,8 +3,11 @@
 ## Mission and priority
 
 Build a small, fast, dependable, terminal-first statistical/EDA application in
-Rust. Prefer **complete, usable workflows** to broad syntax scaffolding or exact
-replication of Python implementation details.
+Rust that is practically usable for **graduate-level econometrics**. The minimum
+long-term analytical target is the empirical analyses in Cameron and Trivedi,
+*Microeconometrics: Methods and Applications* (2005). Current EDA/linear support
+is a foundation, not completion of that target. Prefer **complete, usable
+workflows** to syntax scaffolding or exact Python/Stata implementation parity.
 
 The source code and tests define implemented behavior. [SPEC.md](SPEC.md) is the
 short, current capability map; the [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md)
@@ -65,8 +68,16 @@ replays by default. Escalate evidence proportional to risk:
 
 ## Scope control
 
-- Prefer finishing `use` → `summarize`/`tabulate` → `regress`/`predict` →
-  reporting in the CLI/REPL over adding syntax-only estimator families.
+- Deliver complete load/prepare → specify → fit → diagnose/interpret → report
+  workflows in the CLI/REPL, not syntax-only estimator families. Preserve the
+  working EDA/linear core while advancing the roadmap's required graduate methods;
+  do not indefinitely substitute editor/help polish for missing econometrics.
+- Use the [coverage ledger](docs/reference/microeconometrics-coverage.md) when
+  selecting textbook work. Specify one exact illustration, sample/design,
+  reference and failure case before implementing; update its status with evidence.
+  IV/panel, binary/count, resampling and later textbook methods are deferred
+  required work, not optional breadth. Do not demand the full book inventory or
+  every foundation feature before delivering one bounded analysis.
 - Do not turn a rare Python edge case into a dependency or public API expansion
   without a real user/reproducibility need. Document supported limits clearly.
 - Avoid speculative security hardening. Keep reproduced parser-crash regressions

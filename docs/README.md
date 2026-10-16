@@ -7,6 +7,7 @@
 - [CLI, scripts and interactive editing](guides/cli-and-editor.md)
 - [Command semantics and CLI-v1 result contracts](reference/command-results.md)
 - [Current outcome roadmap](TABDAT_RUST_PORT_ROADMAP.md)
+- [Graduate microeconometrics coverage and textbook replication ledger](reference/microeconometrics-coverage.md)
 - [Contributor workflow and local checks](../CONTRIBUTING.md)
 - [Architecture and module ownership](../ARCHITECTURE.md)
 - [Agent instructions](../AGENTS.md)
@@ -28,6 +29,7 @@ an ordered implementation backlog or a requirement to repeat every historical ga
 | [Archived proposal](archive/rust-port-proposal.md) | Original vision; superseded by current instructions and capability map |
 | [Archived delivery ledger](archive/delivered-workflows.md) | Completed slices and linked PR/reference evidence from the former long roadmap |
 | [Task evidence](../_workspace/README.md) | Historical per-slice contracts, implementation notes and reviews, retained at their original paths |
+| [Graduate microeconometrics assessment](artifacts/research/graduate-microeconometrics-gap-assessment.yaml) | Commit-specific capability/gap investigation; priorities and live replication status belong in the roadmap and coverage ledger |
 | [Native prototypes](../spikes/README.md) | Isolated feasibility work, not production runtime capabilities |
 | [Third-party notices](third-party-notices/) | Notices for referenced or bundled components |
 

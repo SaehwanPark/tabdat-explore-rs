@@ -2,7 +2,10 @@
 
 A Rust-native, terminal-first statistical and exploratory data analysis (EDA)
 application with Stata-inspired commands. The aim is a **small, responsive,
-trustworthy workflow**, not exhaustive Python or Stata compatibility.
+trustworthy workflow for graduate-level econometrics**, not exhaustive Python or
+Stata compatibility. The long-term analytical target includes the empirical
+analyses in Cameron and Trivedi, *Microeconometrics: Methods and Applications*
+(2005); the current release is an EDA/linear-analysis foundation, not that full suite.
 
 ## What works today
 
@@ -80,6 +83,7 @@ not transactions: later failures do not undo completed effects.
 | CLI modes, paths, scripts, editing and recovery | [User guide](docs/guides/cli-and-editor.md) |
 | Samples, missingness, state and structured fields | [Command and JSON contracts](docs/reference/command-results.md) |
 | Current priorities | [Outcome roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) |
+| Graduate-method gaps and textbook replication status | [Coverage ledger](docs/reference/microeconometrics-coverage.md) |
 | Build checks and contribution workflow | [Contributing](CONTRIBUTING.md) |
 | Module ownership and design boundaries | [Architecture](ARCHITECTURE.md) |
 | All guides, evidence and historical material | [Documentation index](docs/README.md) |

@@ -464,11 +464,14 @@ Linear JSON results reuse the supplied statistics without recalculation:
 - `TestResult`: ordered `constraints`, `statistic`, upper-tail `p_value`, `df`,
   `df_residual`, `is_chi2`; false means F with numerator/residual denominator DF.
 
-The current least-squares engine uses residual DF N − P for coefficient/lincom
-Student-t inference and the F denominator, including cluster mode (not G − 1).
-`robust` means HC1 (N/(N − P)); `cluster(name)` uses the supplied cluster
-covariance with G/(G − 1) × (N − 1)/(N − P) correction. Reporting changes none
-of these conventions.
+The current least-squares engine reports fit residual DF N − P. Nonrobust/HC1
+coefficient and `lincom` Student-t inference and `test` F denominators use N − P;
+clustered coefficient/`lincom` inference and `test` F denominators instead use
+G − 1, where G is the number of retained clusters. Thus `RegressionResult`'s
+`df_residual` remains N − P while clustered `LincomResult`/`TestResult` report
+G − 1 in their inference `df_residual` fields.
+`robust` means HC1 (N/(N − P)); `cluster(name)` uses covariance correction
+G/(G − 1) × (N − 1)/(N − P). Reporting changes none of these conventions.
 
 Finite statistics are JSON numbers; unavailable/non-finite values are null,
 not zero. Samples and inference remain estimator/mode-specific; reference tests

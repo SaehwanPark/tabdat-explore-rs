@@ -1,80 +1,171 @@
 # TabDat Explore Rust: outcome-oriented roadmap
 
-This is a revisable priority list, not mandatory phase gates or a promise of full
-Python/Stata parity. [SPEC.md](../SPEC.md) summarizes current supported behavior;
-source/tests are authoritative. Completed-slice details are retained in the
-[archived delivery ledger](archive/delivered-workflows.md), not repeated here.
+## Destination and current baseline
+
+Build a practically usable, terminal-first tool for **graduate-level econometrics**.
+The minimum long-term analytical target is the empirical analyses illustrated in
+Cameron and Trivedi, *Microeconometrics: Methods and Applications* (2005), not merely
+introductory OLS. This is a product commitment, **not a claim of current support**.
+Exact Stata/Python syntax parity and implementation of every theoretical derivation
+are not required; statistically equivalent, reproducible workflows are.
+
+[SPEC.md](../SPEC.md) describes the installed baseline: bounded local CSV/Parquet,
+EDA/preparation, scripts, terminal/JSON output and linear analysis. Most other
+estimator families remain parser-only. The [coverage ledger](reference/microeconometrics-coverage.md)
+maps required analytical work and textbook replication status. Completed-slice
+history stays in the [archived delivery ledger](archive/delivered-workflows.md).
+
+Maintain three distinct milestones:
+
+1. **Dependable core:** usable data preparation and linear-analysis workflows.
+2. **Graduate core:** common cross-section, IV, panel and nonlinear analyses with
+   interpretation, diagnostics and reproducible reporting.
+3. **Textbook empirical coverage:** validated replications of the book's empirical
+   illustrations, including the more advanced families below.
+
+The first milestone is useful but does not satisfy the second; the second does
+not establish full textbook coverage. Missing required methods are **deferred
+required work**, not optional breadth.
 
 ## How to select work
 
-Choose one small, complete user-visible improvement based on utility, correctness
-risk and dependency order. State the behavior, 2–5 acceptance cases, important
-failure mode, exclusions and verification before implementation. Prefer finishing
-load → inspect/transform → fit → predict/report/persist to adding parser-only
-estimator families. Existing syntax is not an instruction to implement it.
+Choose a small, complete **load/prepare → specify → fit → diagnose/interpret →
+report/reproduce** slice. Implement parse → execute → validate → report together;
+parser catalog entries and native prototypes do not count as delivered analyses.
 
-## Now: make the core workflow dependable
+- Follow the priority order below, adjusting for demonstrated dependencies and
+  correctness defects. The sections are not rigid phase gates: useful independent
+  estimator slices need not wait for every foundation or editor improvement.
+- Before implementation, state behavior, 2–5 acceptance cases, an important failure
+  case, exclusions and the independent reference. For textbook work, identify the
+  exact example/data and add or refine its coverage-ledger entry.
+- Do not make all textbook inventory work a prerequisite to implementing one
+  bounded example. Expand the ledger alongside delivery.
+- Address statistical/data-integrity defects before breadth. Do not let repeated
+  completion/help/editor polish indefinitely displace the missing graduate core.
+- Use existing crates and boundaries. This roadmap does not authorize a new
+  generic estimator framework, dependency or native integration by default.
 
-The installed baseline includes local CSV/Parquet, a persistent edited shell,
-readable and bounded JSON results, scripts, core EDA/transforms and linear
-analysis. Improve the practical gaps within that workflow rather than growing a
-command catalog.
+## Priority 1: foundations that unblock real analyses
 
-### Core EDA and data preparation
+Preserve the supported core while removing concrete barriers to the next analysis.
+These foundations should be delivered alongside the estimators that need them.
 
-**Outcome:** users can inspect, clean, combine and persist representative small
-local datasets through the real CLI/REPL.
+| Outcome | Required behavior and acceptance evidence |
+| --- | --- |
+| Reliable model design | Explicit categorical levels/reference categories, interactions and transformations; stable parameter order/names and prediction design. Test missing categories, absent/new prediction levels and collinearity policy against a trusted reference. Encoding numeric labels alone is not factor support. |
+| Deliberate samples and weights | Report estimation exclusions; keep selected-cohort and current-data prediction semantics explicit. Distinguish analytic/frequency/probability weights before advertising them. Current WLS and inverse-diagonal-variance GLS are not general survey estimation or arbitrary-covariance GLS. |
+| Interpretable results | Correlation/covariance tables, model-appropriate diagnostics, coefficient uncertainty and prediction uncertainty where defined. Preserve robust/cluster corrections and inference DF separately from fit residual DF. |
+| Analytical graphics | Executable scatter/distribution, fitted/residual and later model-specific plots, with a documented terminal/file output path. Rendering syntax alone is not completion. |
+| Reusable reporting | Named fit storage/comparison and exportable estimates/covariance/sample provenance; no silent refits or invented staleness guarantees. Preserve current advertised JSON contracts when extending results. |
+| Reproducible data access | Tested local data preparation/persistence and textbook data ingestion. Provide native DTA or an explicit reproducible conversion path; document type/label/missingness losses. Do not require production Python/R. |
 
-- Keep load/path handling, previews, summaries, frequencies and supported
-  transformations discoverable and recoverable.
-- Preserve missingness, native schema, ordering, labels and named-table ownership
-  where promised; make unsupported options fail clearly.
-- Keep ordinary finite summaries distinct from native grouped means and SQL-NULL
-  missingness; do not silently reinterpret samples.
+Keep ordinary finite summaries distinct from SQL-NULL missingness and native grouped
+means. Keep failure/state and file-output behavior tested. Improve help/discovery
+for each executed slice, rather than advertising future methods as available.
 
-**Evidence:** focused CSV/Parquet end-to-end fixtures and failure/state tests for
-changed behavior. Do not add general rollback or lossless-roundtrip claims.
+## Priority 2: required graduate econometrics core
 
-### Trustworthy linear analysis
+Default estimator delivery order is IV → binary outcomes → count outcomes → linear
+panels → quantile/resampling. A documented dependency or a concrete analysis may
+justify a smaller reordering. Each row is multiple bounded deliverables, not a
+single PR or a demand to expose every option immediately.
 
-**Outcome:** supported regress → diagnostics/inference → predict → persistence
-workflows have explicit statistical and retained-model semantics.
+| Workflow | Minimum complete outcome |
+| --- | --- |
+| **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
+| **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
+| **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. Deliver FE, RE, between and first-difference workflows with appropriate cluster inference and panel/model-comparison diagnostics. |
+| **Quantile regression** | Explicit quantile, estimation sample, solver/convergence policy, inference and predictions; independently validate coefficients and uncertainty. |
+| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Current context-only `seed` is not sufficient. |
 
-- Make supported estimator/covariance/weight options and recovery paths clear.
-- Preserve selected-cohort membership, predictor/order/intercept conventions,
-  covariance corrections, degrees of freedom and post-estimation state.
-- Keep current-data prediction distinct from retained-fit inference; do not add
-  automatic refits or guessed staleness/eligibility guarantees.
+Graduate-core acceptance requires representative end-to-end analyses across these
+families, the design/reporting foundations they need, usable terminal and script
+execution, and reference-validated interpretation and inference. An OLS result,
+a passing parser test or a coefficient-only estimator is not that milestone.
 
-**Evidence:** changed numerical behavior requires an independent trusted reference
-with exact sample/design checks and justified tolerances. Reporting-only changes
-reuse owned results and existing reference fixtures.
+## Priority 3: required applied microeconometrics coverage
 
-## Next: reduce friction and automate reliably
+Extend the same workflow/validation standard to:
 
-- **Help and discovery:** teach executed workflows and distinguish parser-reference
-  syntax from runtime support. Keep the README short; put detailed contracts in
-  [the reference](reference/command-results.md) and command help.
-- **Structured results:** extend versioned output for concrete executed workflows,
-  not the entire speculative command catalog. Preserve stable envelopes and
-  meaningful source-classified errors.
-- **Interactive ergonomics:** extend history/completion/display only for demonstrated
-  daily-use gaps. Current completion covers commands/help, local read paths, named
-  relation targets and bare/backtick EDA variables; expressions/options/output
-  paths, persistent history and multiline continuation remain deferred.
-- **Script reliability:** protect ordered effects, nested paths, source locations,
-  output-failure stopping and the documented context-only seed policy.
-- **Responsiveness:** use the existing [measurement harness](performance/core-workflow.md)
-  and comparable profiles before optimizing. Local observations are not latency
-  thresholds or platform certification.
+- **Choice:** multinomial and conditional choice, then ordered/nested or richer
+  specifications needed by the book's illustrations; choice-set structure,
+  probabilities, effects and relevant diagnostics.
+- **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
+  and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
+- **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
+  and Cox models, with baseline/survival/hazard outputs and diagnostics.
+- **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
+  one-/two-step covariance, convergence, overidentification and serial-correlation
+  diagnostics; control instrument proliferation rather than silently expanding it.
+- **Treatment evaluation:** explicit ATE/ATT and identification assumptions,
+  regression adjustment, propensity matching/weighting, balance/overlap diagnostics
+  and estimator-appropriate uncertainty. Add DID where the selected analysis needs
+  it; modern causal extensions must not displace the book's required workflows.
+- **Complex surveys:** probability weights, strata/PSUs and design-based variance;
+  one-way regression clustering alone does not satisfy this outcome.
+- **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
+  finite-case deletion and missingness profiles alone do not satisfy it.
 
-## Later: optional breadth
+Choose a specific example before fixing detailed parameterizations, algorithms or
+backend choices. Do not advertise a broad family based on one narrow estimator.
 
-Add an estimator/backend as a complete **parse → execute → validate → report**
-slice only for concrete demand. GLM/count, IV/panel, causal, regularization,
-spatial/Bayesian, plotting, ReadStat/libgretl and MCP transport remain optional
-breadth, not prerequisites for a useful core release. Prototype feasibility is
-not production integration. Evaluate packaging/licensing for named platforms.
+## Priority 4: complete the textbook empirical target
+
+Use the coverage ledger to close remaining illustration-specific gaps:
+
+- Nonparametric/semiparametric methods and quantile extensions.
+- General ML/NLS, numerical optimization and systems/GMM cases not covered above.
+- Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
+  competing-risk and multiple-spell survival models.
+- Nonlinear panel models and remaining dynamic-panel analyses.
+- Simulation-based and Bayesian estimation, including diagnostics and actual
+  reproducible random draws.
+- Measurement-error estimation and remaining missing-data analyses.
+
+**Completion rule:** inventory every empirical illustration in the stated edition,
+identify its data, preparation, model, inference and post-estimation requirements,
+and link executable scripts plus independent reference evidence. Mark each entry
+planned, in progress, blocked or validated. Any proposed exclusion requires an
+explicit product-scope decision; it cannot silently count as coverage. The present
+family-level ledger and seed examples are not a complete example inventory.
+
+Equivalent native workflows are acceptable; reproducing Stata do-file syntax,
+Python internals or every theoretical estimator discussed in prose is not the
+acceptance criterion. Resolve edition/example ambiguities explicitly in the ledger.
+
+## Supporting work and genuinely optional breadth
+
+- **Interface reliability:** protect ordered script effects, source-classified
+  errors, output-failure stopping and stable structured results. Add result access
+  or script iteration when an actual replication requires it, not a speculative
+  general programming language.
+- **Interactive ergonomics:** completion/history/multiline/cancellation work follows
+  demonstrated analysis friction, not command-catalog size.
+- **Responsiveness/distribution:** use the existing [measurement harness](performance/core-workflow.md);
+  packaging, licensing and platform claims need named-platform evidence.
+- **Optional unless a required analysis demonstrates a need:** MCP transport,
+  remote/lazy engines, spatial modeling, regularization and integrations beyond
+  the analytical target. ReadStat/libgretl/plotting adapters are implementation
+  choices, not product milestones or approved production dependencies.
+
+## Next bounded actions
+
+1. Correct stale current-behavior documentation and keep capability claims honest.
+   The cluster-DF reference correction accompanies this roadmap revision; no
+   statistical behavior changes are implied.
+2. Expand the ledger's schooling-IV seed into one exact replication contract:
+   source/program/table, prepared data schema, endogenous/exogenous/instrument
+   lists, sample, reference outputs and allowed tolerances. Resolve identification
+   and data access before implementing; record unresolved blockers rather than guess.
+3. Deliver the smallest complete IV/2SLS slice through existing domain, language,
+   statistics, execution and reporting modules. Add only design/preparation support
+   needed by that slice; keep remaining diagnostics/options explicitly pending.
+
+Implement the selected bounded plan without broadening scope. If it conflicts
+with the codebase or reference semantics, stop and report the conflict rather than
+improvising. Report changed files, tests, deviations and unresolved limitations.
 
 ## Verification and scope boundaries
 
@@ -82,14 +173,15 @@ Follow [AGENTS.md](../AGENTS.md) and [CONTRIBUTING.md](../CONTRIBUTING.md):
 
 | Change | Evidence |
 | --- | --- |
-| Docs or low-risk refactor | Diff and relevant checks |
+| Docs or low-risk refactor | Diff, links and relevant checks |
 | Grammar, script, CLI | Supported acceptance/error regressions |
 | Data, session or file effects | Invariants, failure state and representative end-to-end workflow |
-| Numerical inference | Independent reference, samples/design and justified tolerances |
+| Numerical inference | Independent reference, exact samples/design, parameterization, covariance/DF and justified tolerances; convergence/failure cases when applicable |
 | Native/FFI or distribution | Ownership, lifecycle, licensing and platform-specific checks |
 
-Do not reinstate exhaustive historical parity gates, routine repeated reviews,
-unrelated fuzz campaigns, speculative architecture or exact error-wording parity.
-Commit/push/PR/merge only within current user authorization. Update this roadmap
-when priorities change and SPEC when capabilities change; record detailed evidence
-in tests, PRs or the relevant subsystem documents rather than growing this ledger.
+Development-only reference tools may use R/Python/Stata; the production runtime
+must not require them. Never widen tolerances to conceal unexplained differences.
+Do not reinstate exhaustive historical parity gates, routine repeated reviews or
+unrelated fuzz campaigns. Commit/push/PR/merge only within current authorization.
+Update SPEC when capabilities change, the ledger when example evidence changes,
+and this roadmap when priorities change; keep detailed logs beside tests or PRs.

@@ -2,8 +2,11 @@
 
 This is an incremental, outcome-driven Rust project. Read [AGENTS.md](AGENTS.md)
 for invariant boundaries and [SPEC.md](SPEC.md) for supported features. The
-[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) lists current priorities, not mandatory
-phase gates. For small changes, read only the relevant code/tests.
+[roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) prioritizes graduate econometrics and
+Cameron–Trivedi empirical coverage, not mandatory phase gates. The
+[coverage ledger](docs/reference/microeconometrics-coverage.md) distinguishes
+required future methods from validated textbook replications. For small changes,
+read only the relevant code/tests; not every task requires a textbook replay.
 
 ## Development
 
@@ -29,7 +32,10 @@ A practical change should:
 2. Add or adjust the few relevant tests; include realistic failure cases.
 3. Implement the smallest solution within existing boundaries.
 4. Run focused tests, inspect the diff, and summarize residual limitations.
-5. Update brief current-status docs only if supported behavior changes.
+5. Update brief current-status docs when supported behavior changes. For a
+   textbook slice, refine one exact illustration's data/sample/design/reference
+   contract and update the coverage ledger with implementation/test evidence;
+   partial method support must not be labeled whole-example or chapter coverage.
 
 A new failure-first test is helpful for a bug fix, not a mandatory ceremonial
 step. A PR or design note should be as short as the actual complexity allows.
