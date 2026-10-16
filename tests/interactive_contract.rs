@@ -49,11 +49,9 @@ fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
   let stdout = String::from_utf8(output.stdout).unwrap();
   assert_eq!(stdout.matches("Interactive core workflow\n").count(), 2);
   assert!(stdout.contains("Load local eager CSV/Parquet: use <path>"));
-  assert!(
-    stdout.contains(
-      "local use/run paths, bare use registered names, and basic bare EDA variable lists"
-    )
-  );
+  assert!(stdout.contains(
+    "local use/run paths, bare use/append/join registered names, and basic bare EDA variable lists"
+  ));
   assert!(stdout.contains("Bare `by ...: summarize` reports native grouped means in CLI JSON"));
   assert!(!stdout.contains("not variables/paths"));
   assert!(stdout.contains("parser-only or future syntax"));
