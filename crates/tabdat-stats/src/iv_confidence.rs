@@ -43,6 +43,11 @@ fn invalid(message: &str) -> StatsError {
 }
 
 fn critical_f(alpha: f64, numerator_df: usize, denominator_df: usize) -> Result<f64, StatsError> {
+  if !alpha.is_finite() || alpha <= 0.0 || alpha >= 1.0 {
+    return Err(invalid(
+      "AR confidence level exceeds floating-point probability resolution",
+    ));
+  }
   let survival =
     |value| f_distribution_survival_probability(value, numerator_df as f64, denominator_df as f64);
   let mut high = 1.0;
@@ -274,11 +279,56 @@ pub fn anderson_rubin_confidence_set(
       ));
     }
   }
+  let rxx = dot(&rx, &rx);
+  let center = if rxx > 0.0 { dot(&rx, &ry) / rxx } else { 0.0 };
+  if !center.is_finite() {
+    return Err(invalid("AR confidence-set centering is non-finite"));
+  }
+  // Solve in beta-center coordinates: forming a discriminant around a large
+  // coefficient can otherwise erase a narrow, genuinely nonzero interval.
+  let centered_r = ry
+    .iter()
+    .zip(&rx)
+    .map(|(y, x)| y - center * x)
+    .collect::<Vec<_>>();
+  let centered_u = uy
+    .iter()
+    .zip(&ux)
+    .map(|(y, x)| y - center * x)
+    .collect::<Vec<_>>();
   let k = 1.0 + problem.instrument_names.len() as f64 * critical / df as f64;
-  let a = dot(&rx, &rx) - k * uxx;
-  let b = -2.0 * (dot(&rx, &ry) - k * uxy);
-  let c = dot(&ry, &ry) - k * uyy;
-  let (shape, intervals) = quadratic_set(a, b, c)?;
+  if !k.is_finite() || k <= 1.0 {
+    return Err(invalid(
+      "AR critical increment exceeds floating-point resolution",
+    ));
+  }
+  let a = rxx - k * uxx;
+  let b = -2.0 * (dot(&rx, &centered_r) - k * dot(&ux, &centered_u));
+  let c = dot(&centered_r, &centered_r) - k * dot(&centered_u, &centered_u);
+  let (shape, mut intervals) = quadratic_set(a, b, c)?;
+  for interval in &mut intervals {
+    for bound in [&mut interval.lower, &mut interval.upper]
+      .into_iter()
+      .flatten()
+    {
+      *bound += center;
+      if !bound.is_finite() {
+        return Err(invalid(
+          "AR confidence-set endpoint exceeds the finite numerical range",
+        ));
+      }
+    }
+  }
+  let collapsed = match shape {
+    ArConfidenceSetShape::Bounded => intervals[0].lower >= intervals[0].upper,
+    ArConfidenceSetShape::Disjoint => intervals[0].upper >= intervals[1].lower,
+    _ => false,
+  };
+  if collapsed {
+    return Err(invalid(
+      "AR confidence-set endpoints exceed floating-point resolution",
+    ));
+  }
   Ok(AndersonRubinConfidenceSet {
     endogenous: problem.endogenous_names[0].clone(),
     excluded_instruments: problem.instrument_names.clone(),

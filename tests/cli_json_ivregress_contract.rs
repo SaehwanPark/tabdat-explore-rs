@@ -167,6 +167,23 @@ fn scalar_ar_scripts_report_all_set_shapes_without_clipping_infinity() {
   assert_eq!(output.status.code(), Some(1));
   assert!(!fixture.0.join("should-not-exist.csv").exists());
   assert!(String::from_utf8_lossy(&output.stderr).contains("exactly one endogenous"));
+  fs::write(
+    fixture.0.join("data.csv"),
+    "y,x1,z1,z2\n0,1,1,0\n0,0,0,1\n1,0,0,0\n0,0,0,0\n",
+  )
+  .unwrap();
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y, endog(x1) iv(z1 z2) noconstant",
+      "estat ar, ci level(1e-16)",
+      "export numerical-not-written.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("probability resolution"));
+  assert!(!fixture.0.join("numerical-not-written.csv").exists());
 }
 
 fn json_lines(output: &Output) -> Vec<Value> {

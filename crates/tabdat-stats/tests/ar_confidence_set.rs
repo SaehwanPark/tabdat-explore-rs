@@ -140,6 +140,83 @@ fn noconstant_and_nondefault_level_match_r_and_zero_column_restriction_executes(
 }
 
 #[test]
+fn centered_inversion_preserves_narrow_sets_and_rejects_degenerate_variance() {
+  let mut problem = problem(2.0, 0.0, 0.0);
+  for noise in [1e-10, 1e-13] {
+    for (index, y) in problem.response.iter_mut().enumerate() {
+      let v = (2.0 * std::f64::consts::PI * 4.0 * (index + 1) as f64 / 40.0).cos();
+      *y = problem.endogenous[index][0] + noise * v + 0.5 * problem.exogenous[index][0];
+    }
+    let result = anderson_rubin_confidence_set(&problem, 95.0);
+    if noise == 1e-13 {
+      assert!(result.is_err());
+      continue;
+    }
+    let result = result.unwrap();
+    assert_eq!(result.shape, ArConfidenceSetShape::Bounded);
+    let (lower, upper) = (
+      result.intervals[0].lower.unwrap(),
+      result.intervals[0].upper.unwrap(),
+    );
+    // Orthogonal-design analytical half-width: the sigma=1 reference width
+    // scales with the outcome innovation. Do not collapse it to a singleton.
+    let width = noise * 0.217753629533153;
+    assert!((lower - (1.0 - width)).abs() < 1e-14);
+    assert!((upper - (1.0 + width)).abs() < 1e-14);
+    assert!(lower < 1.0 && upper > 1.0);
+  }
+}
+
+#[test]
+fn probability_increment_and_translated_endpoint_resolution_fail_explicitly() {
+  // Exact canonical design: q=df=2, RSS_R(beta)=beta²+1, RSS_U=1.
+  // At level=1e-16 percent the true bounds are approximately ±1e-9;
+  // complement rounding must not fabricate a singleton at zero.
+  let mut problem = InstrumentalVariablesProblem {
+    outcome: "y".into(),
+    exogenous_names: vec![],
+    endogenous_names: vec!["x".into()],
+    instrument_names: vec!["z1".into(), "z2".into()],
+    response: vec![0.0, 0.0, 1.0, 0.0],
+    exogenous: vec![vec![]; 4],
+    endogenous: vec![vec![1.0], vec![0.0], vec![0.0], vec![0.0]],
+    instruments: vec![
+      vec![1.0, 0.0],
+      vec![0.0, 1.0],
+      vec![0.0, 0.0],
+      vec![0.0, 0.0],
+    ],
+    include_intercept: false,
+    sample: None,
+  };
+  let error = anderson_rubin_confidence_set(&problem, 1e-16).unwrap_err();
+  assert!(error.to_string().contains("probability resolution"));
+  let mut increment = problem.clone();
+  increment.response.resize(1002, 0.0);
+  increment.exogenous.resize(1002, vec![]);
+  increment.endogenous.resize(1002, vec![0.0]);
+  increment.instruments.resize(1002, vec![0.0, 0.0]);
+  let error = anderson_rubin_confidence_set(&increment, 1e-12).unwrap_err();
+  assert!(error.to_string().contains("critical increment"));
+  // q=1, df=2: true bounds are 1 ± sqrt(F(1,2; .95)/2)*1e-20.
+  // The distinct centered bounds both round to 1 after translation.
+  problem.response = vec![1.0, 1e-20, 0.0];
+  problem.exogenous.truncate(3);
+  problem.endogenous.truncate(3);
+  problem.instruments.truncate(3);
+  problem.instrument_names.pop();
+  for row in &mut problem.instruments {
+    row.pop();
+  }
+  let error = anderson_rubin_confidence_set(&problem, 95.0).unwrap_err();
+  assert!(
+    error
+      .to_string()
+      .contains("endpoints exceed floating-point resolution")
+  );
+}
+
+#[test]
 fn invalid_scope_levels_rank_df_and_variance_are_errors() {
   let mut problem = problem(2.0, 0.0, 0.0);
   for level in [0.0, 100.0, -1.0, f64::NAN, f64::INFINITY] {

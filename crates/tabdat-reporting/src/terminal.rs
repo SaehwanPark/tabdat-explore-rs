@@ -427,7 +427,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         inference_number(result.p_value)
       )
       .unwrap();
-      output.push_str("Assumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. No confidence set or subvector inference.\n");
+      output.push_str("Assumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. No confidence set or subvector inference is included in this joint-test result.\n");
       output
     }
     ExecutionResult::Status(status) => {
