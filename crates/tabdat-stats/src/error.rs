@@ -16,6 +16,10 @@ pub enum StatsError {
     observations: usize,
     parameters: usize,
   },
+  /// The requested estimator's outcome, design or options are unsupported.
+  InvalidEstimation(String),
+  /// An iterative estimator could not produce a finite, identified, converged fit.
+  EstimationFailed(String),
   /// Weights are non-positive or invalid.
   NonPositiveWeights,
   /// A parameter or variable name is invalid or empty.
@@ -50,6 +54,8 @@ impl fmt::Display for StatsError {
         f,
         "least squares requires positive residual degrees of freedom (observations: {observations}, parameters: {parameters})"
       ),
+      Self::InvalidEstimation(msg) => write!(f, "invalid estimation specification: {msg}"),
+      Self::EstimationFailed(msg) => write!(f, "estimation failed: {msg}"),
       Self::NonPositiveWeights => write!(f, "weights must be positive"),
       Self::InvalidParameterName(msg) => write!(f, "invalid parameter name: {msg}"),
       Self::NonFiniteValue(msg) => write!(f, "non-finite value encountered: {msg}"),
