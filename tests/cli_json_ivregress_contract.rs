@@ -122,6 +122,10 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
     regression["first_stage"]["coefficient_inference"],
     "conventional_t_not_weak_iv_robust"
   );
+  assert_eq!(
+    regression["first_stage"]["joint_ar_postestimation_available"],
+    false
+  );
   let first_stage = regression["first_stage"]["rows"].as_array().unwrap();
   assert_eq!(first_stage.len(), 2);
   assert_eq!(first_stage[0]["endogenous"], "x1");
@@ -160,6 +164,10 @@ fn joint_ar_runs_in_scripts_and_json_with_explicit_inference_scope() {
   )
   .unwrap();
   let results = json_lines(&fixture.run(&["--json", "-f", "ar.td"]));
+  assert_eq!(
+    results[1]["data"]["first_stage"]["joint_ar_postestimation_available"],
+    true
+  );
   let ar = &results[2];
   assert_eq!(ar["result_type"], "AndersonRubinResult");
   let data = &ar["data"];

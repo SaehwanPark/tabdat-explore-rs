@@ -55,6 +55,27 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
+    // MIG-0013: the installed AR extension adds only `ar` to these diagnostic
+    // lists. Preserve the historical corpus and assert the exact new wording.
+    if matches!(
+      input,
+      "estat"
+        | "estat bayes detail"
+        | "estat detail"
+        | "estat endog"
+        | "estat first"
+        | "estat margin"
+        | "estat vif extra"
+        | "estat, vif"
+    ) {
+      let expected = case["error"]
+        .as_str()
+        .unwrap()
+        .replace("vif|firststage", "vif|ar|firststage")
+        .replace("vif, firststage", "vif, ar, firststage");
+      assert_eq!(result.unwrap_err().message(), expected);
+      continue;
+    }
     if input == "count age" {
       assert_eq!(
         result.unwrap_err().message(),
