@@ -663,6 +663,45 @@ mod tests {
   }
 
   #[test]
+  fn backtick_column_completion_is_literal_and_preserves_closing_quotes_and_options() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&[
+      "annual income", "annual cost", "if", "变量 名", "x", "a,b", "a`b", "bad\nname", "",
+    ]));
+    for (line, suffix, expected) in [
+      ("summarize `annual i", "", "summarize `annual income`"),
+      ("summarize `annual i", "`, detail", "summarize `annual income`, detail"),
+      ("regress x `annual i", "`, robust", "regress x `annual income`, robust"),
+      ("summarize `annual cost` `annual i", "", "summarize `annual cost` `annual income`"),
+      ("summarize `annual cost` x", "", "summarize `annual cost` x"),
+      ("summarize `if", "", "summarize `if`"),
+      ("summarize `变量", "", "summarize `变量 名`"),
+      ("summarize `a,", "", "summarize `a,b`"),
+    ] {
+      let mut updated = format!("{line}{suffix}");
+      let (start, candidates) = complete_with(&helper, &updated, line.len());
+      assert_eq!(candidates.len(), 1, "{line}{suffix}");
+      updated.replace_range(start..line.len(), &candidates[0]);
+      assert_eq!(updated, expected);
+      tabdat_language::parse_command(&updated).unwrap();
+    }
+    assert_eq!(complete_with(&helper, "summarize ", 10).1, ["x"]);
+    assert_eq!(complete_with(&helper, "summarize `annual ", 18).1,
+      ["annual cost`", "annual income`"]);
+    for (prefix, suffix) in [
+      ("summarize `annual ", "income`"),
+      ("summarize x if `annual i", ""),
+      ("summarize x, `annual i", ""),
+      ("summarize `annual i", "`tail"),
+      ("summarize `` `annual i", ""),
+      ("summarize `a``b` `annual i", ""),
+    ] {
+      let line = format!("{prefix}{suffix}");
+      assert!(complete_with(&helper, &line, prefix.len()).1.is_empty(), "{line}");
+    }
+  }
+
+  #[test]
   fn column_snapshot_replaces_old_names_and_can_be_cleared_without_losing_command_help() {
     let mut helper = ShellHelper::default();
     helper.set_columns(&columns(&["old", "x"]));
