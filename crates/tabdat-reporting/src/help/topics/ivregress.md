@@ -16,10 +16,12 @@ Rows with missing or non-finite values in the outcome, regressors, excluded
 instruments, or requested cluster variable are excluded together. Default
 covariance is classical; `robust` requests HC1 and `cluster(id)` requests
 one-way cluster-robust covariance. Results include conventional first-stage
-excluded-instrument partial F tests and partial R-squared values. These are
-relevance diagnostics, **not weak-instrument-robust inference**. Shea's partial
-R-squared, overidentification tests, weak-IV-robust intervals and GMM are not
-implemented; `gmm` is parsed but execution reports it as unsupported.
+excluded-instrument partial F tests, ordinary partial R-squared and Shea's partial
+R-squared. Shea's statistic accounts for the other endogenous regressors; it is a
+design diagnostic independent of the requested covariance on the same sample.
+These are relevance diagnostics, **not weak-instrument-robust inference**.
+Overidentification tests, weak-IV-robust intervals and GMM are not implemented;
+`gmm` is parsed but execution reports it as unsupported.
 
 Examples:
 - `ivregress 2sls wage age, endog(educ) iv(distance)`
