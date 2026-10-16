@@ -231,6 +231,22 @@ def run(args):
             command(b"\x1b[A\n", b"4 rows")  # cancelled lines must not enter history
             command(b"predict fitted\n", b"Predicted: 4 rows, 3 columns")
             command(b"summarize y\n", b"y\t4\t3.25\t")
+            # Registered append/join targets complete without filesystem candidates,
+            # so the same-name file must not override the registered table here.
+            command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
+            command(b"sql SELECT x, y AS lookup_y FROM active WHERE x <= 1 into lookup_probe\n", b'Created and activated table "lookup_probe": 2 rows, 2 columns')
+            command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
+            command(b"append cohort_pro\t\n", b"Appended: 6 rows, 2 columns")
+            appended = command(b"head 6\n", b"(6 rows shown)")
+            rows = numeric_rows(appended, "x\ty", 6)
+            for row, values in zip(rows, [[0, 1], [1, 2], [2, 4], [3, 6], [2, 4], [3, 6]]):
+                if len(row) != 2:
+                    raise ValueError("wrong appended schema")
+                for cell, value in zip(row, values):
+                    close(cell, value)
+            # A typed join suffix after the target survives completion and executes.
+            command(b"join lookup_pro\t on x, how=left suffix(_s)\n", b"Joined: 6 rows, 3 columns")
+            command(b"summarize lookup_y\n", b"lookup_y\t2\t1.5\t")
             if args.measure:
                 timings = measure_cycles(command, args.repetitions)
             os.write(fd, b"\x04")
@@ -286,7 +302,7 @@ def main():
         }
         print(json.dumps(report, allow_nan=False))
     else:
-        print("PTY passed: command/help/read-path/registered-name/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        print("PTY passed: command/help/read-path/registered-name/append-join-target/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
 
 
 if __name__ == "__main__":
