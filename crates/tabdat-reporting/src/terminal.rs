@@ -127,6 +127,31 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
     )
     .unwrap();
   }
+  if let Some(first_stage) = &result.first_stage {
+    output.push_str(
+      "Warning: coefficient p-values use conventional t inference; weak-IV-robust inference is unavailable.\n",
+    );
+    output.push_str(
+      "First stage: conventional excluded-instrument partial F tests (relevance diagnostics only)\n",
+    );
+    output.push_str("Endogenous\tF(q, df)\tPartial R-squared\tP-value\n");
+    for diagnostic in first_stage {
+      writeln!(
+        output,
+        "{}\tF({}, {}) = {}\t{}\t{}",
+        diagnostic.endogenous.escape_debug(),
+        diagnostic.numerator_df,
+        diagnostic.denominator_df,
+        diagnostic
+          .f_statistic
+          .map(inference_number)
+          .unwrap_or_else(|| "NA".to_owned()),
+        optional_inference(diagnostic.partial_r_squared),
+        optional_inference(diagnostic.p_value)
+      )
+      .unwrap();
+    }
+  }
   output.push_str("NA = unavailable or undefined.\n");
   output
 }

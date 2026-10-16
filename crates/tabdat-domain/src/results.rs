@@ -501,7 +501,7 @@ pub struct RegressionResult {
   pub outcome: String,
   /// Ordered predictor variable names.
   pub predictors: Vec<String>,
-  /// Estimator type ("ols", "wls", "gls").
+  /// Estimator type (for example, "ols", "wls", "gls", or "2sls").
   pub estimator: String,
   /// Covariance description (e.g. "nonrobust", "robust", "cluster(<var>)").
   pub covariance: String,
@@ -517,7 +517,10 @@ pub struct RegressionResult {
   pub root_mse: Option<f64>,
   /// Estimated coefficients and inference.
   pub coefficients: Vec<tabdat_stats::CoefficientEstimate>,
-  /// Underlying complete least squares result.
+  /// Conventional excluded-instrument first-stage tests for IV fits.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub first_stage: Option<Vec<tabdat_stats::FirstStageDiagnostic>>,
+  /// Underlying linear coefficient, covariance, fit-statistics, and sample payload.
   pub least_squares: tabdat_stats::LeastSquaresResult,
 }
 

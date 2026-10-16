@@ -4866,7 +4866,7 @@ fn parse_bayes_numeric_option(
 
 fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
   let syntax =
-    "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)";
+    "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<vars>) iv(<vars>)";
   let (argument_body, option_body) = match first_unquoted_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
     None => (body, None),
@@ -4924,16 +4924,13 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let endog_values = parse_identifier_option("ivregress", &options, "endog")?;
-  let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
+  let Some(endogenous) =
+    parse_identifier_option("ivregress", &options, "endog")?.filter(|values| !values.is_empty())
+  else {
     return Err(ParseError::new(
-      "ivregress option endog expects one variable",
+      "ivregress option endog expects at least one variable",
     ));
   };
-  let endogenous = endog_values
-    .into_iter()
-    .next()
-    .expect("ivregress endog option arity checked before extracting the variable");
 
   let instrument_values = parse_identifier_option("ivregress", &options, "iv")?;
   let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
@@ -4964,7 +4961,10 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     .iter()
     .map(|argument| argument.text.clone())
     .collect::<Vec<_>>();
-  if exogenous.iter().any(|variable| variable == &endogenous) {
+  if exogenous
+    .iter()
+    .any(|variable| endogenous.iter().any(|endogenous| endogenous == variable))
+  {
     return Err(ParseError::new(
       "ivregress endog variable must not appear in exogenous variables",
     ));

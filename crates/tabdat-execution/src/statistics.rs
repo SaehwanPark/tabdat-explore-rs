@@ -312,11 +312,262 @@ impl Session {
       adjusted_r_squared: least_squares_result.fit_statistics.adjusted_r_squared,
       root_mse: least_squares_result.fit_statistics.root_mse,
       coefficients: least_squares_result.coefficients.clone(),
+      first_stage: None,
       least_squares: least_squares_result,
     };
 
     Ok(ExecutionResult::Regression(Box::new(result)))
   }
+
+  pub(crate) fn execute_ivregress(
+    &mut self,
+    command: &IvRegressCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    self.estimation = None;
+    if command.estimator != IvEstimator::TwoStageLeastSquares {
+      return Err(RuntimeError::IvRegressUnsupportedEstimator {
+        estimator: "gmm".to_owned(),
+      });
+    }
+    if command.robust && command.cluster_variable.is_some() {
+      return Err(RuntimeError::IvRegressConflictingCovariance);
+    }
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset {
+        command: "ivregress",
+      })?
+      .clone();
+
+    let mut referenced_variables = Vec::new();
+    referenced_variables.push(command.outcome.clone());
+    referenced_variables.extend(command.exogenous.iter().cloned());
+    referenced_variables.extend(command.endogenous.iter().cloned());
+    referenced_variables.extend(command.instruments.iter().cloned());
+    if let Some(cluster) = &command.cluster_variable {
+      referenced_variables.push(cluster.clone());
+    }
+    let column_types = dataset
+      .columns
+      .iter()
+      .map(|column| (column.name.as_str(), column.data_type.as_str()))
+      .collect::<HashMap<_, _>>();
+    let missing = referenced_variables
+      .iter()
+      .filter(|variable| !column_types.contains_key(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::IvRegressUnknownVariable { variables: missing });
+    }
+
+    let mut numeric_variables = Vec::new();
+    numeric_variables.push(command.outcome.clone());
+    numeric_variables.extend(command.exogenous.iter().cloned());
+    numeric_variables.extend(command.endogenous.iter().cloned());
+    numeric_variables.extend(command.instruments.iter().cloned());
+    let non_numeric = numeric_variables
+      .iter()
+      .filter(|variable| {
+        column_types
+          .get(variable.as_str())
+          .is_none_or(|data_type| !is_numeric_data_type(data_type))
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !non_numeric.is_empty() {
+      return Err(RuntimeError::IvRegressRequiresNumeric {
+        variables: non_numeric,
+      });
+    }
+
+    let backend = self.backend.as_ref().ok_or(RuntimeError::NoActiveDataset {
+      command: "ivregress",
+    })?;
+    let mut select_columns = Vec::new();
+    select_columns.push(quote_identifier(&command.outcome));
+    select_columns.extend(command.exogenous.iter().map(|name| quote_identifier(name)));
+    select_columns.extend(command.endogenous.iter().map(|name| quote_identifier(name)));
+    select_columns.extend(
+      command
+        .instruments
+        .iter()
+        .map(|name| quote_identifier(name)),
+    );
+    if let Some(cluster) = &command.cluster_variable {
+      select_columns.push(quote_identifier(cluster));
+    }
+    let query = format!("SELECT {} FROM {ACTIVE_TABLE}", select_columns.join(", "));
+    let exogenous_count = command.exogenous.len();
+    let endogenous_count = command.endogenous.len();
+    let instrument_count = command.instruments.len();
+    let endogenous_start = 1 + exogenous_count;
+    let instrument_start = endogenous_start + endogenous_count;
+    let cluster_index = instrument_start + instrument_count;
+    let mut total_rows = 0usize;
+    let mut retained_indices = Vec::new();
+    let mut response = Vec::new();
+    let mut exogenous = Vec::new();
+    let mut endogenous = Vec::new();
+    let mut instruments = Vec::new();
+    let mut cluster_groups = Vec::new();
+
+    backend.visit_rows(
+      &query,
+      |row| {
+        let row_index = total_rows;
+        total_rows += 1;
+        let outcome = read_owned_cell(row, 0, true, "could not read IV outcome")?;
+        let Some(outcome) = cell_to_f64(outcome).filter(|value| value.is_finite()) else {
+          return Ok(());
+        };
+        let mut exogenous_row = Vec::with_capacity(exogenous_count);
+        for column in 0..exogenous_count {
+          let value = read_owned_cell(
+            row,
+            1 + column,
+            true,
+            "could not read IV exogenous regressor",
+          )?;
+          let Some(value) = cell_to_f64(value).filter(|value| value.is_finite()) else {
+            return Ok(());
+          };
+          exogenous_row.push(value);
+        }
+        let mut endogenous_row = Vec::with_capacity(endogenous_count);
+        for column in 0..endogenous_count {
+          let value = read_owned_cell(
+            row,
+            endogenous_start + column,
+            true,
+            "could not read IV endogenous regressor",
+          )?;
+          let Some(value) = cell_to_f64(value).filter(|value| value.is_finite()) else {
+            return Ok(());
+          };
+          endogenous_row.push(value);
+        }
+        let mut instrument_row = Vec::with_capacity(instrument_count);
+        for column in 0..instrument_count {
+          let value = read_owned_cell(
+            row,
+            instrument_start + column,
+            true,
+            "could not read excluded instrument",
+          )?;
+          let Some(value) = cell_to_f64(value).filter(|value| value.is_finite()) else {
+            return Ok(());
+          };
+          instrument_row.push(value);
+        }
+        let cluster_group = if command.cluster_variable.is_some() {
+          let value = read_owned_cell(row, cluster_index, true, "could not read IV cluster")?;
+          let Some(value) = cell_to_string(value) else {
+            return Ok(());
+          };
+          Some(value)
+        } else {
+          None
+        };
+
+        retained_indices.push(row_index);
+        response.push(outcome);
+        exogenous.push(exogenous_row);
+        endogenous.push(endogenous_row);
+        instruments.push(instrument_row);
+        if let Some(group) = cluster_group {
+          cluster_groups.push(group);
+        }
+        Ok(())
+      },
+      |message| RuntimeError::IvRegressFailed { message },
+    )?;
+
+    if retained_indices.is_empty() {
+      return Err(RuntimeError::IvRegressNoObservations);
+    }
+    let sample = tabdat_stats::EstimationSample::new(
+      retained_indices,
+      total_rows,
+      total_rows - response.len(),
+      None,
+      command.cluster_variable.is_some().then_some(cluster_groups),
+    )
+    .map_err(|error| RuntimeError::IvRegressFailed {
+      message: error.to_string(),
+    })?;
+    let mut predictor_names = command.exogenous.clone();
+    predictor_names.extend(command.endogenous.iter().cloned());
+    let predictor_design = exogenous
+      .iter()
+      .zip(&endogenous)
+      .map(|(exogenous, endogenous)| {
+        exogenous
+          .iter()
+          .chain(endogenous)
+          .copied()
+          .collect::<Vec<_>>()
+      })
+      .collect::<Vec<_>>();
+    let problem = tabdat_stats::InstrumentalVariablesProblem {
+      outcome: command.outcome.clone(),
+      exogenous_names: command.exogenous.clone(),
+      endogenous_names: command.endogenous.clone(),
+      instrument_names: command.instruments.clone(),
+      response,
+      exogenous,
+      endogenous,
+      instruments,
+      include_intercept: command.include_intercept,
+      sample: Some(sample),
+    };
+    let covariance_type = if let Some(cluster) = &command.cluster_variable {
+      tabdat_stats::CovarianceType::Cluster(cluster.clone())
+    } else if command.robust {
+      tabdat_stats::CovarianceType::RobustHc1
+    } else {
+      tabdat_stats::CovarianceType::NonRobust
+    };
+    let iv_result = tabdat_stats::fit_two_stage_least_squares(
+      &problem,
+      &tabdat_stats::IvOptions { covariance_type },
+    )
+    .map_err(|error| RuntimeError::IvRegressFailed {
+      message: error.to_string(),
+    })?;
+
+    self.estimation = Some(EstimationState::InstrumentalVariables(Box::new(
+      LinearRegressionState {
+        outcome: command.outcome.clone(),
+        predictors: predictor_names.clone(),
+        predictor_design,
+        include_intercept: command.include_intercept,
+        result: iv_result.regression.clone(),
+      },
+    )));
+    let covariance = match &iv_result.regression.covariance.covariance_type {
+      tabdat_stats::CovarianceType::NonRobust => "nonrobust".to_owned(),
+      tabdat_stats::CovarianceType::RobustHc1 => "robust".to_owned(),
+      tabdat_stats::CovarianceType::Cluster(variable) => format!("cluster({variable})"),
+    };
+    let fit = &iv_result.regression.fit_statistics;
+    Ok(ExecutionResult::Regression(Box::new(RegressionResult {
+      outcome: command.outcome.clone(),
+      predictors: predictor_names,
+      estimator: "2sls".to_owned(),
+      covariance,
+      observation_count: fit.observation_count,
+      include_intercept: command.include_intercept,
+      r_squared: fit.r_squared,
+      adjusted_r_squared: fit.adjusted_r_squared,
+      root_mse: fit.root_mse,
+      coefficients: iv_result.regression.coefficients.clone(),
+      first_stage: Some(iv_result.first_stage),
+      least_squares: iv_result.regression,
+    })))
+  }
+
   pub(crate) fn execute_lincom(
     &self,
     command: &LincomCommand,

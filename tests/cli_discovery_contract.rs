@@ -345,6 +345,42 @@ fn ttest_discovery_describes_the_installed_comparisons_and_variance_flags() {
 }
 
 #[test]
+fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "IVREGRESS"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(envelope["data"]["help_topic"], "ivregress");
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "ivregress 2sls y [exog...], endog(endog_vars) iv(excluded_instruments) [robust|cluster(var)|noconstant]"
+  );
+  assert_eq!(
+    envelope["data"]["options"],
+    serde_json::json!([
+      {"name": "endog", "required": true},
+      {"name": "iv", "required": true},
+      {"name": "robust", "required": false},
+      {"name": "cluster", "required": false},
+      {"name": "noconstant", "required": false}
+    ])
+  );
+
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "ivregress"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let help: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = help["data"]["text"].as_str().unwrap();
+  assert!(text.contains("not weak-instrument-robust inference"));
+  assert!(text.contains("`gmm` is parsed but execution reports it as unsupported"));
+}
+
+#[test]
 fn predict_discovery_uses_parser_spelling_without_promising_execution() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "PREDICT"])

@@ -15,8 +15,8 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
   for case in cases {
     let input = case["input"].as_str().unwrap();
     let result = parse_command(input);
-    // Conditional count is intentionally installed beyond this pinned parser.
-    // Keep the original corpus unchanged and verify the two deliberate differences.
+    // Keep the pinned corpus unchanged while checking the intentional local
+    // extensions and clearer IV syntax diagnostics below.
     if input == "count if age > 18" {
       assert!(matches!(
         result,
@@ -30,6 +30,29 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
         result,
         Ok(tabdat_domain::Command::RegressQuery { .. })
       ));
+      continue;
+    }
+    // IV estimation needs to accept multiple endogenous regressors; the pinned
+    // Python parser rejects this additive, ordered variable-list form.
+    if input == "ivregress 2sls y x, endog(z w) iv(q)" {
+      let Ok(tabdat_domain::Command::IvRegress { command }) = result else {
+        panic!("multi-endogenous ivregress syntax should be accepted");
+      };
+      assert_eq!(command.endogenous, ["z", "w"]);
+      continue;
+    }
+    if input == "ivregress" {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<vars>) iv(<vars>)"
+      );
+      continue;
+    }
+    if input == "ivregress 2sls y x" || input == "ivregress 2sls y x, iv(w)" {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "ivregress option endog expects at least one variable"
+      );
       continue;
     }
     if input == "count age" {

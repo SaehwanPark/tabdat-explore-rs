@@ -1,0 +1,149 @@
+#![forbid(unsafe_code)]
+
+use serde_json::{Value, json};
+use std::{
+  fmt::Write,
+  fs,
+  path::PathBuf,
+  process::{Command, Output},
+  sync::atomic::{AtomicU64, Ordering},
+};
+
+static NEXT_FIXTURE_ID: AtomicU64 = AtomicU64::new(0);
+
+struct Fixture(PathBuf);
+
+impl Fixture {
+  fn new() -> Self {
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-cli-json-iv-{}-{}",
+      std::process::id(),
+      NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::create_dir(&root).unwrap();
+    let mut csv = String::from("y,w,x1,x2,z1,z2\n");
+    for index in 1..=60 {
+      let i = index as f64;
+      let w = (i / 7.0).sin() + i / 90.0;
+      let z1 = (i / 5.0).cos() + i / 70.0;
+      let z2 = (i / 11.0).sin() - (i / 13.0).cos() + i / 200.0;
+      let v1 = (i / 3.0).sin() + (i / 9.0).cos();
+      let v2 = (i / 4.0).cos() - (i / 6.0).sin();
+      let x1 = 0.3 + 0.4 * w + 0.9 * z1 + 0.2 * z2 + v1;
+      let x2 = -0.2 + 0.2 * w - 0.3 * z1 + 1.1 * z2 + v2;
+      let y =
+        1.2 + 0.5 * w + 1.7 * x1 - 0.6 * x2 + (i / 1.7).sin() + (i / 2.3).cos() + (i / 5.9).sin();
+      writeln!(csv, "{y},{w},{x1},{x2},{z1},{z2}").unwrap();
+    }
+    fs::write(root.join("data.csv"), csv).unwrap();
+    Self(root)
+  }
+
+  fn run(&self, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+      .current_dir(&self.0)
+      .args(args)
+      .output()
+      .unwrap()
+  }
+
+  fn batch(&self, mode: &str, commands: &[&str]) -> Output {
+    let mut args = vec![mode];
+    for command in commands {
+      args.extend(["-c", command]);
+    }
+    self.run(&args)
+  }
+}
+
+impl Drop for Fixture {
+  fn drop(&mut self) {
+    let _ = fs::remove_dir_all(&self.0);
+  }
+}
+
+fn json_lines(output: &Output) -> Vec<Value> {
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  assert!(output.stderr.is_empty());
+  std::str::from_utf8(&output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect()
+}
+
+fn close(actual: &Value, expected: f64) {
+  let actual = actual.as_f64().unwrap();
+  assert!(
+    (actual - expected).abs() < 1e-8,
+    "expected {expected:.12}, got {actual:.12}"
+  );
+}
+
+#[test]
+fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
+  let fixture = Fixture::new();
+  let commands = [
+    "use data.csv",
+    "ivregress 2sls y w, endog(x1 x2) iv(z1 z2) robust",
+    "lincom x1",
+    "predict fitted, xb",
+  ];
+  let results = json_lines(&fixture.batch("--json", &commands));
+  assert_eq!(
+    results
+      .iter()
+      .map(|result| result["result_type"].as_str().unwrap())
+      .collect::<Vec<_>>(),
+    [
+      "LoadResult",
+      "RegressionResult",
+      "LincomResult",
+      "PredictionResult"
+    ]
+  );
+  let regression = &results[1]["data"];
+  assert_eq!(regression["estimator"], "2sls");
+  assert_eq!(regression["covariance"], "robust");
+  assert_eq!(regression["predictors"], json!(["w", "x1", "x2"]));
+  assert_eq!(
+    regression["sample"],
+    json!({"total_observations": 60, "dropped_observations": 0})
+  );
+  assert_eq!(
+    regression["first_stage"]["weak_iv_robust_inference_available"],
+    false
+  );
+  assert_eq!(
+    regression["first_stage"]["coefficient_inference"],
+    "conventional_t_not_weak_iv_robust"
+  );
+  let first_stage = regression["first_stage"]["rows"].as_array().unwrap();
+  assert_eq!(first_stage.len(), 2);
+  assert_eq!(first_stage[0]["endogenous"], "x1");
+  assert_eq!(first_stage[1]["endogenous"], "x2");
+  close(&first_stage[0]["f_statistic"], 56.6351625385778);
+  close(&first_stage[0]["partial_r_squared"], 0.6691682374068);
+  close(&regression["coefficients"][2]["value"], 1.43920781503306);
+  close(
+    &regression["coefficients"][2]["standard_error"],
+    0.17393281558833,
+  );
+  close(&results[2]["data"]["estimate"], 1.43920781503306);
+
+  let text = fixture.batch("--text", &commands[..2]);
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  let text = String::from_utf8(text.stdout).unwrap();
+  assert!(text.contains("First stage:"));
+  assert!(text.contains("F(2, 56)"));
+  assert!(text.contains("coefficient p-values use conventional t inference"));
+  assert!(text.contains("relevance diagnostics only"));
+}

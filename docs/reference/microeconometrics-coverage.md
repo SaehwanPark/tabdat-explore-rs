@@ -56,7 +56,7 @@ provenance and redistribution terms before adding fixtures.
 
 | ID | Book locator and data lead | Status | Next evidence / blocker |
 | --- | --- | --- | --- |
-| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — bounded 2SLS runtime | Exact source program, sample, design, Table 4.5 reference and limits are recorded below; implement executable 2SLS and first-stage diagnostics without bundling the source data |
+| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N and conventional first-stage F match the author output; Shea's statistic and weak-IV-robust inference remain planned below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-CHOICE | pp. 463–466, 486, 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact binary/multinomial model variants/effects |
@@ -70,7 +70,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
 
-### MMA-IV weak-instrument replication contract (bounded first slice)
+### MMA-IV weak-instrument replication contract and evidence
 
 - **Identity/source:** Cameron and Trivedi (2005), §4.9.6, pp. 110–112,
   Table 4.5; author program [`mma04p4ivweak.do`](https://cameron.econ.ucdavis.edu/mmabook/mma04p4ivweak.do)
@@ -92,11 +92,22 @@ provenance and redistribution terms before adding fixtures.
   The first-stage F is a conventional relevance diagnostic, **not** weak-IV-robust
   inference. Preserve the source's reported degrees of freedom for comparison;
   diagnose any sample/design discrepancy rather than adjusting tolerances.
+- **TabDat validation:** the runnable [`schooling_iv.td`](../../examples/mma04p4ivweak/schooling_iv.td)
+  and fixed-width [`data66_to_csv.awk`](../../examples/mma04p4ivweak/data66_to_csv.awk)
+  converter were executed against the authors' `DATA66.dat`/`.dct` without
+  copying source data into this repository. On the specified sample, TabDat
+  returned N=3,010, `grade76` coefficient 0.13244845, classical SE 0.04934188,
+  HC1 SE 0.04878509, and first-stage F(3, 2980)=8.06710. These match the author
+  Stata 8 output rounded to four decimals. The runtime's conventional first-stage
+  partial R² is 0.00805582; it is **not** Shea's 0.00640757. The independent
+  synthetic multi-endogenous R 4.6.1 reference and executable regression tests are
+  in `crates/tabdat-stats/tests/`.
 - **Access/limits:** source data remain external and are not copied into the
-  repository until redistribution rights are established. This bounded slice
-  does not implement GMM, overidentification tests (the example is just-identified),
-  Shea's statistic, or weak-IV-robust inference. A successful 2SLS fit or
-  conventional first-stage F does not resolve weak identification.
+  repository until redistribution rights are established. The converter retains
+  numeric values but not source labels. This bounded slice does not implement GMM,
+  overidentification tests (the example is just-identified), Shea's statistic, or
+  weak-IV-robust inference. A successful 2SLS fit or conventional first-stage F
+  does not resolve weak identification.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain

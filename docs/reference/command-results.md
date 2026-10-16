@@ -457,6 +457,14 @@ Linear JSON results reuse the supplied statistics without recalculation:
   `sample` contains `total_observations`/`dropped_observations`, or is null when
   unavailable. Coefficients contain `name`, `value`, `standard_error`, `statistic`
   and two-sided `p_value`. Full model matrices/row arrays are deliberately omitted.
+  For `ivregress 2sls`, `first_stage` is additive and contains `test` (the
+  conventional homoskedastic excluded-instrument partial F),
+  `weak_iv_robust_inference_available: false`,
+  `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
+  `rows` with endogenous name,
+  excluded instruments, N, numerator/denominator DF, partial R-squared, F and
+  p-value. Missing/non-finite diagnostic scalars are null. OLS results omit
+  `first_stage`.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,
@@ -474,8 +482,11 @@ G − 1 in their inference `df_residual` fields.
 G/(G − 1) × (N − 1)/(N − P). Reporting changes none of these conventions.
 
 Finite statistics are JSON numbers; unavailable/non-finite values are null,
-not zero. Samples and inference remain estimator/mode-specific; reference tests
-cover named fixtures, not every accepted mode.
+not zero. IV uses complete cases over the outcome, included and endogenous
+regressors, excluded instruments, and requested cluster variable. Its first-stage
+partial F is a relevance diagnostic, not weak-IV-robust inference; ordinary 2SLS
+coefficient tests do not resolve weak identification. Samples and inference remain
+estimator/mode-specific; reference tests cover named fixtures, not every accepted mode.
 
 ## Script exit categories
 

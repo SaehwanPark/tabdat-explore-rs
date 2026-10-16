@@ -10,6 +10,7 @@
 pub mod diagnostics;
 pub mod error;
 pub mod estimates;
+pub mod iv;
 pub mod least_squares;
 pub mod matrix;
 pub mod post_estimation;
@@ -23,6 +24,10 @@ pub use diagnostics::variance_inflation_factors;
 pub use error::StatsError;
 pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
+};
+pub use iv::{
+  FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
+  fit_two_stage_least_squares,
 };
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,

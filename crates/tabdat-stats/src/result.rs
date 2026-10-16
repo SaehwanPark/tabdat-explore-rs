@@ -7,7 +7,8 @@ use crate::estimates::{
 };
 use crate::sample::EstimationSample;
 
-/// Complete result returned after fitting a linear least squares estimation problem.
+/// Complete coefficient, covariance, sample and fit-statistics result for a
+/// linear least-squares or 2SLS fit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LeastSquaresResult {
   /// Parameter names in order (intercept followed by predictors).

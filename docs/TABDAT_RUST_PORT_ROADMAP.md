@@ -152,16 +152,17 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Correct stale current-behavior documentation and keep capability claims honest.
-   The cluster-DF reference correction accompanies this roadmap revision; no
-   statistical behavior changes are implied.
-2. Expand the ledger's schooling-IV seed into one exact replication contract:
-   source/program/table, prepared data schema, endogenous/exogenous/instrument
-   lists, sample, reference outputs and allowed tolerances. Resolve identification
-   and data access before implementing; record unresolved blockers rather than guess.
-3. Deliver the smallest complete IV/2SLS slice through existing domain, language,
-   statistics, execution and reporting modules. Add only design/preparation support
-   needed by that slice; keep remaining diagnostics/options explicitly pending.
+1. Extend the validated schooling-IV 2SLS core with Shea partial R-squared, using
+   the author output for the same DATA66 sample. Keep weak-IV-robust inference and
+   any overidentified examples explicitly separate until their samples, estimands
+   and independent references are specified.
+2. Define the first weak-IV-robust inference slice against an exact reference,
+   such as an Anderson–Rubin confidence set with a clear nuisance-parameter and
+   report contract. Do not infer such support from conventional Wald results or
+   first-stage relevance tests.
+3. Then select one binary-outcome textbook example and deliver a bounded
+   fit → marginal-effect/inference → report workflow, preserving the required
+   reference, sample and failure-case evidence.
 
 Implement the selected bounded plan without broadening scope. If it conflicts
 with the codebase or reference semantics, stop and report the conflict rather than
