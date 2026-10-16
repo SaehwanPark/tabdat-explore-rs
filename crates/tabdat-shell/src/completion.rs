@@ -139,6 +139,32 @@ fn is_bare_column(name: &str) -> bool {
   !name.eq_ignore_ascii_case("if") && is_bare_identifier(name)
 }
 
+fn column_prefix(mut argument: &str) -> Option<(&str, bool)> {
+  loop {
+    argument = argument.trim_start();
+    if let Some(quoted) = argument.strip_prefix('`') {
+      if let Some(end) = quoted.find('`') {
+        if end == 0 || quoted[..end].chars().any(char::is_control) {
+          return None;
+        }
+        argument = &quoted[end + 1..];
+        if !argument.starts_with(char::is_whitespace) {
+          return None;
+        }
+      } else {
+        return (!quoted.chars().any(char::is_control)).then_some((quoted, true));
+      }
+    } else if let Some(end) = argument.find(char::is_whitespace) {
+      if !is_bare_column(&argument[..end]) {
+        return None;
+      }
+      argument = &argument[end..];
+    } else {
+      return (argument.is_empty() || is_bare_column(argument)).then_some((argument, false));
+    }
+  }
+}
+
 #[derive(Default)]
 pub(crate) struct ShellHelper {
   columns: Vec<String>,
@@ -159,7 +185,7 @@ impl ShellHelper {
     self.columns = columns
       .iter()
       .map(|column| column.name.as_str())
-      .filter(|name| is_bare_column(name))
+      .filter(|name| !name.is_empty() && !name.contains('`') && !name.chars().any(char::is_control))
       .map(str::to_owned)
       .collect();
     self.columns.sort();
@@ -167,25 +193,32 @@ impl ShellHelper {
   }
 
   fn complete_columns(&self, argument: &str, pos: usize, suffix: &str) -> (usize, Vec<String>) {
-    if !argument.split_whitespace().all(is_bare_column)
-      || suffix
+    let Some((prefix, quoted)) = column_prefix(argument) else {
+      return (pos, Vec::new());
+    };
+    let closing_quote = quoted && suffix.starts_with('`');
+    let after = if closing_quote { &suffix[1..] } else { suffix };
+    if (quoted && !closing_quote && !suffix.is_empty())
+      || after
         .chars()
         .next()
         .is_some_and(|c| !c.is_whitespace() && c != ',')
     {
       return (pos, Vec::new());
     }
-    let prefix = argument
-      .rsplit(char::is_whitespace)
-      .next()
-      .unwrap_or_default();
     (
       pos - prefix.len(),
       self
         .columns
         .iter()
-        .filter(|name| name.starts_with(prefix))
-        .cloned()
+        .filter(|name| (quoted || is_bare_column(name)) && name.starts_with(prefix))
+        .map(|name| {
+          if quoted && !closing_quote {
+            format!("{name}`")
+          } else {
+            name.clone()
+          }
+        })
         .collect(),
     )
   }
@@ -660,6 +693,132 @@ mod tests {
     }
     assert!(complete_with(&helper, "summarize age", 12).1.is_empty());
     assert!(complete_with(&helper, "summarize 变量", 11).1.is_empty());
+  }
+
+  #[test]
+  fn backtick_column_completion_is_literal_and_preserves_closing_quotes_and_options() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&[
+      "annual income",
+      "annual cost",
+      "if",
+      "变量 名",
+      "x",
+      "a,b",
+      "a`b",
+      "bad\nname",
+      "",
+    ]));
+    for (line, suffix, expected) in [
+      ("summarize `annual i", "", "summarize `annual income`"),
+      (
+        "summarize `annual i",
+        "`, detail",
+        "summarize `annual income`, detail",
+      ),
+      (
+        "regress x `annual i",
+        "`, robust",
+        "regress x `annual income`, robust",
+      ),
+      (
+        "summarize `annual cost` `annual i",
+        "",
+        "summarize `annual cost` `annual income`",
+      ),
+      ("summarize `annual cost` x", "", "summarize `annual cost` x"),
+      (
+        "summarize `annual i",
+        "` if x > 0",
+        "summarize `annual income` if x > 0",
+      ),
+      ("summarize `if", "", "summarize `if`"),
+      ("summarize `变量", "", "summarize `变量 名`"),
+      ("summarize `a,", "", "summarize `a,b`"),
+    ] {
+      let mut updated = format!("{line}{suffix}");
+      let (start, candidates) = complete_with(&helper, &updated, line.len());
+      assert_eq!(candidates.len(), 1, "{line}{suffix}");
+      updated.replace_range(start..line.len(), &candidates[0]);
+      assert_eq!(updated, expected);
+      tabdat_language::parse_command(&updated).unwrap();
+    }
+    assert_eq!(complete_with(&helper, "summarize ", 10).1, ["x"]);
+    assert_eq!(
+      complete_with(&helper, "summarize `", 11).1,
+      [
+        "a,b`",
+        "annual cost`",
+        "annual income`",
+        "if`",
+        "x`",
+        "变量 名`"
+      ]
+    );
+    assert_eq!(
+      complete_with(&helper, "summarize `annual ", 18).1,
+      ["annual cost`", "annual income`"]
+    );
+    for (prefix, suffix) in [
+      ("summarize `annual ", "income`"),
+      ("summarize x if `annual i", ""),
+      ("summarize x, `annual i", ""),
+      ("summarize `annual i", "`tail"),
+      ("summarize `` `annual i", ""),
+      ("summarize `a``b` `annual i", ""),
+      ("summarize `x` + `annual i", ""),
+      ("summarize `bad\nname` `annual i", ""),
+      ("by x: summarize `annual i", ""),
+      ("generate new = `annual i", ""),
+      ("predict `annual i", ""),
+    ] {
+      let line = format!("{prefix}{suffix}");
+      assert!(
+        complete_with(&helper, &line, prefix.len()).1.is_empty(),
+        "{line}"
+      );
+    }
+  }
+
+  #[test]
+  fn backtick_columns_roundtrip_for_each_supported_list_and_refresh_with_schema() {
+    let mut helper = ShellHelper::default();
+    helper.set_columns(&columns(&["annual income", "if", "x", "annual income"]));
+    for command in [
+      "summarize",
+      "codebook",
+      "missing",
+      "tabulate",
+      "regress x",
+      "keep",
+      "drop",
+      "select",
+      "sort",
+    ] {
+      let line = format!("  {command} `annual i");
+      let (start, candidates) = complete_with(&helper, &line, line.len());
+      assert_eq!(start, line.len() - "annual i".len());
+      assert_eq!(candidates, ["annual income`"]);
+      let mut updated = line.clone();
+      updated.replace_range(start..line.len(), &candidates[0]);
+      assert_eq!(
+        tabdat_language::parse_command(&updated).unwrap(),
+        tabdat_language::parse_command(&format!("{command} `annual income`")).unwrap()
+      );
+    }
+    let line = "summarize `if` x `";
+    assert_eq!(
+      complete_with(&helper, line, line.len()).1,
+      ["annual income`", "if`", "x`"]
+    );
+    let line = "summarize `Annual";
+    assert!(complete_with(&helper, line, line.len()).1.is_empty());
+    helper.set_columns(&columns(&["new value"]));
+    assert_eq!(complete_with(&helper, "summarize `", 11).1, ["new value`"]);
+    assert!(complete_with(&helper, "summarize ", 10).1.is_empty());
+    helper.set_columns(&[]);
+    assert!(complete_with(&helper, "summarize `", 11).1.is_empty());
+    assert_eq!(complete_with(&helper, "summ", 4).1, ["summarize"]);
   }
 
   #[test]

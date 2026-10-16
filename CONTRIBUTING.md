@@ -9,6 +9,12 @@ phase gates. For small changes, read only the relevant code/tests.
 
 Use [rustup](https://rustup.rs/) and the repo's pinned `rust-toolchain.toml`.
 Commit `Cargo.lock` for dependency changes and use `--locked` in checks.
+If package-manager Rust is also installed, `rustup show active-toolchain` can report
+this pin while `cargo`/`rustc` on `PATH` still use another installation. If their
+versions disagree with the pin, put rustup's shims first before running checks:
+`export PATH="$HOME/.cargo/bin:$PATH"`. Avoid unrelated code changes just to satisfy
+a different toolchain's new lints.
+
 Use two-space indentation, no hard tabs or non-breaking spaces; respect syntax
 or generated-file formatting requirements.
 
