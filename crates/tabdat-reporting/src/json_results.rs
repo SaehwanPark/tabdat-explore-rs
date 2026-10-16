@@ -19,144 +19,80 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 /// ByResult retains native grouped AVG semantics; it is not a finite-sample
 /// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
-  if matches!(command, Command::Status) {
-    return true;
+  match command {
+    Command::TabulateQuery {
+      command,
+      aggregation: None,
+      ..
+    } => command.row_variables.len() == 1 && command.column_variables.len() <= 1,
+    Command::Collapse { command } => matches!(
+      command.statistic,
+      CollapseStatistic::Count | CollapseStatistic::Mean
+    ),
+    Command::SummarizeQuery { options, .. } => {
+      options.is_empty() || summarize_detail_requested(options)
+    }
+    Command::By { command } => matches!(
+      command.command.as_ref(),
+      Command::Count | Command::Summarize { .. }
+    ),
+    Command::Status
+    | Command::RegressQuery { .. }
+    | Command::CountQuery { .. }
+    | Command::Assert { .. }
+    | Command::Datasignature
+    | Command::Duplicates { .. }
+    | Command::Isid { .. }
+    | Command::RowFilter { .. }
+    | Command::Reshape { .. }
+    | Command::Append { .. }
+    | Command::Join { .. }
+    | Command::Sql { .. }
+    | Command::Encode { .. }
+    | Command::Decode { .. }
+    | Command::Label { .. }
+    | Command::Recode { .. }
+    | Command::Rename { .. }
+    | Command::Sort { .. }
+    | Command::Gsort { .. }
+    | Command::Use { .. }
+    | Command::Generate { .. }
+    | Command::Replace { .. }
+    | Command::Keep { .. }
+    | Command::Drop { .. }
+    | Command::Select { .. }
+    | Command::Save { .. }
+    | Command::Export { .. }
+    | Command::Describe
+    | Command::Count
+    | Command::Codebook { .. }
+    | Command::Summarize { .. }
+    | Command::Missing { .. }
+    | Command::Tabulate { .. }
+    | Command::Head { .. }
+    | Command::Tail { .. }
+    | Command::Regress { .. }
+    | Command::Predict { .. }
+    | Command::Lincom { .. }
+    | Command::Test { .. }
+    | Command::Ttest { .. }
+    | Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Vif,
+        ..
+      },
+    }
+    | Command::Exit
+    | Command::Run { .. } => true,
+    _ => false,
   }
-  if matches!(command, Command::RegressQuery { .. }) {
-    return true;
-  }
-  if matches!(command, Command::CountQuery { .. }) {
-    return true;
-  }
-  if matches!(command, Command::TabulateQuery {command, aggregation: None, ..} if command.row_variables.len() == 1 && command.column_variables.len() <= 1)
-  {
-    return true;
-  }
-  if matches!(command, Command::Collapse { command } if matches!(command.statistic, CollapseStatistic::Count | CollapseStatistic::Mean))
-  {
-    return true;
-  }
-  matches!(
-    command,
-    Command::Assert { .. }
-      | Command::Datasignature
-      | Command::Duplicates { .. }
-      | Command::Isid { .. }
-      | Command::RowFilter { .. }
-      | Command::Reshape { .. }
-      | Command::Append { .. }
-      | Command::Join { .. }
-      | Command::Sql { .. }
-      | Command::Encode { .. }
-      | Command::Decode { .. }
-      | Command::Label { .. }
-      | Command::Recode { .. }
-      | Command::Rename { .. }
-      | Command::Sort { .. }
-      | Command::Gsort { .. }
-      | Command::Use { .. }
-      | Command::Generate { .. }
-      | Command::Replace { .. }
-      | Command::Keep { .. }
-      | Command::Drop { .. }
-      | Command::Select { .. }
-      | Command::Save { .. }
-      | Command::Export { .. }
-      | Command::Describe
-      | Command::Count
-      | Command::Codebook { .. }
-      | Command::Summarize { .. }
-      | Command::Missing { .. }
-      | Command::Tabulate { .. }
-      | Command::Head { .. }
-      | Command::Tail { .. }
-      | Command::Regress { .. }
-      | Command::Predict { .. }
-      | Command::Lincom { .. }
-      | Command::Test { .. }
-      | Command::Ttest { .. }
-      | Command::Estat {
-        command: EstatCommand {
-          subcommand: EstatSubcommand::Vif,
-          ..
-        },
-      }
-      | Command::Exit
-      | Command::Run { .. }
-  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty() || summarize_detail_requested(options))
-    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
 }
 
 /// Whether a script command can execute without producing an unsupported JSON
-/// success result. `run` is a container for nested commands and has no result
-/// envelope of its own.
+/// success result. Scripts share the batch admission policy, including `run`
+/// containers (whose leaves are checked individually) and result-free `exit`.
 pub fn supports_script_command(command: &Command) -> bool {
-  if matches!(command, Command::Status) {
-    return true;
-  }
-  if matches!(command, Command::RegressQuery { .. }) {
-    return true;
-  }
-  if matches!(command, Command::CountQuery { .. }) {
-    return true;
-  }
-  if matches!(command, Command::TabulateQuery {command, aggregation: None, ..} if command.row_variables.len() == 1 && command.column_variables.len() <= 1)
-  {
-    return true;
-  }
-  if matches!(command, Command::Collapse { command } if matches!(command.statistic, CollapseStatistic::Count | CollapseStatistic::Mean))
-  {
-    return true;
-  }
-  matches!(
-    command,
-    Command::Assert { .. }
-      | Command::Datasignature
-      | Command::Duplicates { .. }
-      | Command::Isid { .. }
-      | Command::RowFilter { .. }
-      | Command::Reshape { .. }
-      | Command::Append { .. }
-      | Command::Join { .. }
-      | Command::Sql { .. }
-      | Command::Encode { .. }
-      | Command::Decode { .. }
-      | Command::Label { .. }
-      | Command::Recode { .. }
-      | Command::Rename { .. }
-      | Command::Sort { .. }
-      | Command::Gsort { .. }
-      | Command::Use { .. }
-      | Command::Generate { .. }
-      | Command::Replace { .. }
-      | Command::Keep { .. }
-      | Command::Drop { .. }
-      | Command::Select { .. }
-      | Command::Save { .. }
-      | Command::Export { .. }
-      | Command::Describe
-      | Command::Count
-      | Command::Codebook { .. }
-      | Command::Summarize { .. }
-      | Command::Missing { .. }
-      | Command::Tabulate { .. }
-      | Command::Head { .. }
-      | Command::Tail { .. }
-      | Command::Regress { .. }
-      | Command::Predict { .. }
-      | Command::Lincom { .. }
-      | Command::Test { .. }
-      | Command::Ttest { .. }
-      | Command::Estat {
-        command: EstatCommand {
-          subcommand: EstatSubcommand::Vif,
-          ..
-        },
-      }
-      | Command::Exit
-      | Command::Run { .. }
-  ) || matches!(command,Command::SummarizeQuery {options,..} if options.is_empty() || summarize_detail_requested(options))
-    || matches!(command, Command::By { command } if matches!(command.command.as_ref(), Command::Count | Command::Summarize { .. }))
+  supports_batch_command(command)
 }
 
 /// Serialize owned execution results using the stable versioned CLI envelope.

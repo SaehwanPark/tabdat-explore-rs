@@ -2263,7 +2263,7 @@ fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
     )));
   }
 
-  let identifiers = reshape_identifier_option(&options, "i")?;
+  let identifiers = parse_identifier_option("reshape", &options, "i")?;
   let Some(identifiers) = identifiers.filter(|identifiers| !identifiers.is_empty()) else {
     return Err(ParseError::new(
       "reshape expects exactly one i(id_vars) option",
@@ -2277,7 +2277,7 @@ fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("reshape variable list contains duplicates"));
   }
 
-  let j_values = reshape_identifier_option(&options, "j")?;
+  let j_values = parse_identifier_option("reshape", &options, "j")?;
   let Some(j_values) = j_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "reshape expects exactly one j(name) option",
@@ -2430,26 +2430,25 @@ fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn regress_identifier_option(
+fn parse_identifier_option(
+  command_name: &str,
   options: &[UseOption],
   name: &str,
 ) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "regress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
+  let mut matching = options.iter().filter(|option| option.name == name);
+  let Some(option) = matching.next() else {
     return Ok(None);
   };
+  // Duplicate-option diagnostics take precedence over the value's type.
+  if matching.next().is_some() {
+    return Err(ParseError::new(format!(
+      "{command_name} option {name} may only be supplied once"
+    )));
+  }
   match &option.value {
     UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
     _ => Err(ParseError::new(format!(
-      "regress option {name} expects variables"
+      "{command_name} option {name} expects variables"
     ))),
   }
 }
@@ -2507,7 +2506,7 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let cluster_values = regress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("regress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -2518,12 +2517,12 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
   }
   let cluster_variable = cluster_values.and_then(|mut values| values.pop());
 
-  let wls_values = regress_identifier_option(&options, "wls")?;
+  let wls_values = parse_identifier_option("regress", &options, "wls")?;
   if wls_values.as_ref().is_some_and(|values| values.len() != 1) {
     return Err(ParseError::new("regress option wls expects one variable"));
   }
 
-  let gls_values = regress_identifier_option(&options, "gls")?;
+  let gls_values = parse_identifier_option("regress", &options, "gls")?;
   if gls_values.as_ref().is_some_and(|values| values.len() != 1) {
     return Err(ParseError::new("regress option gls expects one variable"));
   }
@@ -4865,30 +4864,6 @@ fn parse_bayes_numeric_option(
   }
 }
 
-fn ivregress_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "ivregress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "ivregress option {name} expects variables"
-    ))),
-  }
-}
-
 fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
   let syntax =
     "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)";
@@ -4949,7 +4924,7 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let endog_values = ivregress_identifier_option(&options, "endog")?;
+  let endog_values = parse_identifier_option("ivregress", &options, "endog")?;
   let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "ivregress option endog expects one variable",
@@ -4960,14 +4935,14 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     .next()
     .expect("ivregress endog option arity checked before extracting the variable");
 
-  let instrument_values = ivregress_identifier_option(&options, "iv")?;
+  let instrument_values = parse_identifier_option("ivregress", &options, "iv")?;
   let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
     return Err(ParseError::new(
       "ivregress option iv expects at least one variable",
     ));
   };
 
-  let cluster_values = ivregress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("ivregress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -5007,30 +4982,6 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
       estimator,
     },
   })
-}
-
-fn xtreg_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "xtreg option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "xtreg option {name} expects variables"
-    ))),
-  }
 }
 
 fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
@@ -5078,7 +5029,7 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let cluster_values = xtreg_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("xtreg", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -5907,30 +5858,6 @@ fn parse_dml_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn cfregress_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "cfregress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "cfregress option {name} expects variables"
-    ))),
-  }
-}
-
 fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
   let trimmed = body.trim_start();
   if trimmed.starts_with("==") {
@@ -5991,7 +5918,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let endog_values = cfregress_identifier_option(&options, "endog")?;
+  let endog_values = parse_identifier_option("cfregress", &options, "endog")?;
   let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "cfregress option endog expects one variable",
@@ -6002,14 +5929,14 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
     .next()
     .expect("cfregress endog option arity checked before extracting the variable");
 
-  let instrument_values = cfregress_identifier_option(&options, "iv")?;
+  let instrument_values = parse_identifier_option("cfregress", &options, "iv")?;
   let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
     return Err(ParseError::new(
       "cfregress option iv expects at least one variable",
     ));
   };
 
-  let cluster_values = cfregress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("cfregress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -7012,30 +6939,6 @@ fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
       welch: false,
     },
   })
-}
-
-fn reshape_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "reshape option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "reshape option {name} expects variables"
-    ))),
-  }
 }
 
 fn parse_join_command(body: &str) -> Result<Command, ParseError> {
@@ -8080,35 +7983,16 @@ fn parse_rename_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn first_unquoted_comma(text: &str) -> Option<usize> {
-  let bytes = text.as_bytes();
-  let mut quote = None;
-  let mut index = 0;
-  while index < bytes.len() {
-    let character = bytes[index];
-    if let Some(active_quote) = quote {
-      if character == active_quote {
-        if active_quote == b'`' && bytes.get(index + 1) == Some(&active_quote) {
-          index += 2;
-          continue;
-        }
-        quote = None;
-      }
-      index += 1;
-      continue;
-    }
-    match character {
-      b'\'' | b'"' | b'`' => {
-        quote = Some(character);
-        index += 1;
-      }
-      b',' => return Some(index),
-      _ => index += 1,
-    }
-  }
-  None
+  first_unquoted_delimiter(text, b',')
 }
 
 fn first_unquoted_colon(text: &str) -> Option<usize> {
+  first_unquoted_delimiter(text, b':')
+}
+
+// Delimiters are ASCII, so returned byte offsets remain valid UTF-8 boundaries.
+// Backtick identifiers escape a backtick by doubling it; strings are literal.
+fn first_unquoted_delimiter(text: &str, delimiter: u8) -> Option<usize> {
   let bytes = text.as_bytes();
   let mut quote = None;
   let mut index = 0;
@@ -8130,7 +8014,7 @@ fn first_unquoted_colon(text: &str) -> Option<usize> {
         quote = Some(character);
         index += 1;
       }
-      b':' => return Some(index),
+      byte if byte == delimiter => return Some(index),
       _ => index += 1,
     }
   }
@@ -9010,6 +8894,32 @@ mod tests {
     SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TestCommand,
     TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
   };
+
+  #[test]
+  fn unquoted_delimiters_preserve_byte_offsets_and_literal_quoting() {
+    for delimiter in [b',', b':'] {
+      for prefix in ["λ", "'λ,:篇'", "\"λ,:篇\"", "`λ``,:篇`"] {
+        let text = format!("{prefix}{}rest", char::from(delimiter));
+        assert_eq!(
+          super::first_unquoted_delimiter(&text, delimiter),
+          Some(prefix.len())
+        );
+      }
+      for text in [
+        "plain λ",
+        "'λ,:篇'",
+        "\"λ,:篇\"",
+        "`λ``,:篇`",
+        "'unterminated,:λ",
+      ] {
+        assert_eq!(
+          super::first_unquoted_delimiter(text, delimiter),
+          None,
+          "{text}"
+        );
+      }
+    }
+  }
 
   #[test]
   fn parses_help_aliases_and_topics() {
