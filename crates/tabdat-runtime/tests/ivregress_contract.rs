@@ -221,6 +221,62 @@ fn anderson_rubin_uses_retained_sample_and_preserves_state_on_success_and_failur
 }
 
 #[test]
+fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisance_parameters() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let ci = parse_command("estat ar, ci").unwrap();
+  assert_eq!(
+    session.execute(ci.clone()).unwrap_err(),
+    RuntimeError::EstatArRequiresPriorIv
+  );
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
+    session
+      .execute(ci.clone())
+      .unwrap_err()
+      .to_string()
+      .contains("exactly one endogenous")
+  );
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2)").unwrap())
+    .unwrap();
+  let before = session.state();
+  let result = session.execute(ci.clone()).unwrap();
+  let ExecutionResult::AndersonRubinConfidenceSet(set) = &result else {
+    panic!("expected confidence set");
+  };
+  assert_eq!(set.endogenous, "x1");
+  assert_eq!(set.observation_count, 58);
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(ci.clone()).unwrap(), result);
+  assert_eq!(session.state(), changed);
+  for option in ["robust", "cluster(group_id)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {option}")).unwrap())
+      .unwrap();
+    let before = session.state();
+    assert!(
+      session
+        .execute(ci.clone())
+        .unwrap_err()
+        .to_string()
+        .contains("requires a nonrobust")
+    );
+    assert_eq!(session.state(), before);
+  }
+}
+
+#[test]
 fn ivregress_failure_clears_stale_model_state_but_gmm_is_explicitly_unsupported() {
   let fixture = Fixture::new_with_sql(
     "SELECT i::DOUBLE AS i, sin(i::DOUBLE) AS y, sin(i::DOUBLE * 0.4) AS w, \

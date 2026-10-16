@@ -1283,6 +1283,10 @@ pub enum EstatSubcommand {
   },
   /// Report variance inflation factors for a linear regression model.
   Vif,
+  /// Scalar homoskedastic AR confidence set; level is a percentage.
+  AndersonRubinConfidenceSet {
+    level: String,
+  },
   /// Joint homoskedastic Anderson-Rubin null, in endogenous fit order.
   AndersonRubin {
     null_values: Vec<String>,

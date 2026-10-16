@@ -82,7 +82,10 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Estat {
       command:
         EstatCommand {
-          subcommand: EstatSubcommand::Vif | EstatSubcommand::AndersonRubin { .. },
+          subcommand:
+            EstatSubcommand::Vif
+            | EstatSubcommand::AndersonRubin { .. }
+            | EstatSubcommand::AndersonRubinConfidenceSet { .. },
           ..
         },
     }
@@ -108,6 +111,16 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::AndersonRubinConfidenceSet(result) => {
+      let mut data = serde_json::to_value(result).expect("serializable AR confidence set");
+      data["test"] = json!("anderson_rubin_scalar_confidence_set");
+      data["covariance"] = json!("homoskedastic");
+      data["weak_iv_robust"] = json!(true);
+      data["endogenous_nuisance_policy"] = json!("none_single_endogenous_only");
+      data["assumptions"] =
+        json!("valid_instruments_homoskedastic_errors_exact_F_requires_conditional_normality");
+      (data, "AndersonRubinConfidenceSet")
+    }
     ExecutionResult::AndersonRubin(result) => {
       let mut data = serde_json::to_value(result).expect("finite AR result");
       data["test"] = json!("anderson_rubin_joint");
@@ -374,6 +387,7 @@ fn regression_result_data(result: &RegressionResult) -> Value {
       "test": "classical_excluded_instrument_partial_f",
       "weak_iv_robust_inference_available": false,
       "joint_ar_postestimation_available": result.covariance == "nonrobust",
+      "scalar_ar_confidence_set_available": result.covariance == "nonrobust" && first_stage.len() == 1,
       "coefficient_inference": "conventional_t_not_weak_iv_robust",
       "rows": first_stage.iter().map(|diagnostic| json!({
         "endogenous": diagnostic.endogenous,

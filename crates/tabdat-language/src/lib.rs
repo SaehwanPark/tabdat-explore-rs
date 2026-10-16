@@ -6004,9 +6004,55 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
       .map(|index| parse_use_options(&body[index + 1..]))
       .transpose()?
       .unwrap_or_default();
+    if options.iter().any(|option| option.name == "ci") {
+      if options.iter().filter(|option| option.name == "ci").count() != 1
+        || options
+          .iter()
+          .any(|option| !matches!(option.name.as_str(), "ci" | "level"))
+        || options
+          .iter()
+          .find(|option| option.name == "ci")
+          .unwrap()
+          .value
+          != UseOptionValue::Flag
+        || options
+          .iter()
+          .filter(|option| option.name == "level")
+          .count()
+          > 1
+      {
+        return Err(ParseError::new(
+          "estat ar confidence sets expect ci [level(95)], without null() or other options",
+        ));
+      }
+      let level = match options
+        .iter()
+        .find(|option| option.name == "level")
+        .map(|option| &option.value)
+      {
+        None => "95".to_owned(),
+        Some(UseOptionValue::Number(value))
+          if value
+            .parse::<f64>()
+            .is_ok_and(|level| level.is_finite() && level > 0.0 && level < 100.0) =>
+        {
+          value.clone()
+        }
+        _ => {
+          return Err(ParseError::new(
+            "estat ar level must be finite and strictly between 0 and 100",
+          ));
+        }
+      };
+      return Ok(Command::Estat {
+        command: EstatCommand {
+          subcommand: EstatSubcommand::AndersonRubinConfidenceSet { level },
+        },
+      });
+    }
     let [option] = options.as_slice() else {
       return Err(ParseError::new(
-        "estat ar requires exactly one null(b1 b2 ...) option",
+        "estat ar requires null(b1 b2 ...) or ci [level(95)]",
       ));
     };
     if option.name != "null" {

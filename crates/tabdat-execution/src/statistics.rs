@@ -921,7 +921,10 @@ impl Session {
     &self,
     command: &EstatCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
-    if let EstatSubcommand::AndersonRubin { null_values } = &command.subcommand {
+    if matches!(
+      &command.subcommand,
+      EstatSubcommand::AndersonRubin { .. } | EstatSubcommand::AndersonRubinConfidenceSet { .. }
+    ) {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatArRequiresPriorIv);
       };
@@ -930,14 +933,29 @@ impl Session {
           "this homoskedastic AR test requires a nonrobust 2SLS fit; robust/cluster AR is not implemented".into(),
         ));
       }
-      let null_values = null_values
-        .iter()
-        .map(|value| value.parse::<f64>())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| RuntimeError::EstatArFailed("null values must be finite numbers".into()))?;
-      let result = tabdat_stats::anderson_rubin_test(&state.problem, &null_values)
-        .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))?;
-      return Ok(ExecutionResult::AndersonRubin(result));
+      return match &command.subcommand {
+        EstatSubcommand::AndersonRubin { null_values } => {
+          let null_values = null_values
+            .iter()
+            .map(|value| value.parse::<f64>())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| {
+              RuntimeError::EstatArFailed("null values must be finite numbers".into())
+            })?;
+          tabdat_stats::anderson_rubin_test(&state.problem, &null_values)
+            .map(ExecutionResult::AndersonRubin)
+            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+        }
+        EstatSubcommand::AndersonRubinConfidenceSet { level } => {
+          let level = level
+            .parse::<f64>()
+            .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;
+          tabdat_stats::anderson_rubin_confidence_set(&state.problem, level)
+            .map(ExecutionResult::AndersonRubinConfidenceSet)
+            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+        }
+        _ => unreachable!("AR command checked above"),
+      };
     }
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
