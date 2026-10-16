@@ -1,47 +1,28 @@
 #![forbid(unsafe_code)]
 
+mod common;
+
+use common::{TestDir, tabdat_bin};
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
-static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
+#[test]
+fn test_directories_are_isolated_and_cleaned_up() {
+  let first = TestDir::new();
+  let first_path = first.path().to_owned();
+  let second = TestDir::new();
+  assert_ne!(first.path(), second.path());
+  fs::write(first.path().join("data.csv"), "x\n1\n").unwrap();
+  fs::write(second.path().join("data.csv"), "x\n2\n").unwrap();
 
-struct TestDir {
-  path: PathBuf,
-}
-
-impl TestDir {
-  fn new() -> Self {
-    let nonce = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("clock after epoch")
-      .as_nanos();
-    let test_id = NEXT_TEST_ID.fetch_add(1, Ordering::Relaxed);
-    let path = std::env::temp_dir().join(format!(
-      "tabdat-cli-test-{}-{}-{}",
-      std::process::id(),
-      nonce,
-      test_id
-    ));
-    fs::create_dir_all(&path).expect("create test dir");
-    Self { path }
-  }
-
-  fn path(&self) -> &Path {
-    &self.path
-  }
-}
-
-impl Drop for TestDir {
-  fn drop(&mut self) {
-    let _ = fs::remove_dir_all(&self.path);
-  }
-}
-
-fn tabdat_bin() -> Command {
-  Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+  drop(first);
+  assert!(!first_path.exists());
+  assert_eq!(
+    fs::read_to_string(second.path().join("data.csv")).unwrap(),
+    "x\n2\n"
+  );
+  let second_path = second.path().to_owned();
+  drop(second);
+  assert!(!second_path.exists());
 }
 
 #[test]

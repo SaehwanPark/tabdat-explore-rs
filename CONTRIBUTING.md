@@ -33,6 +33,27 @@ Keep the root README focused on orientation and a runnable quickstart. Follow th
 [documentation index](docs/README.md) for detailed guides, result contracts and
 historical evidence; put per-slice test logs in the PR, not the README or roadmap.
 
+## Finding the right code and tests
+
+Use [ARCHITECTURE.md](ARCHITECTURE.md) for crate ownership, then follow the
+command from `tabdat-language::parse_command` through
+`tabdat-execution::Session::execute` to its data/statistics adapter and reporting.
+Parser acceptance alone does not imply executable support.
+
+- `crates/tabdat-language/tests/`: syntax, diagnostics, tokenizer/script contracts,
+  properties and pinned compatibility fixtures; private parser tests also live in `src/lib.rs`.
+- `crates/tabdat-runtime/tests/`: execution contracts, including unsupported-command
+  errors, dataset/label preservation and retained model state.
+- `crates/tabdat-stats/tests/`: numerical reference fixtures and low-level shape/error contracts.
+- Root `tests/`: binary CLI, interactive, JSON/text and cross-crate workflow contracts.
+  `tests/common/` provides reusable CLI process and temporary-directory plumbing;
+  keep scenario-specific data and assertions beside their tests.
+- Crate-local unit tests cover private helpers and failure injection (for example,
+  shell output errors); `tests/workspace_boundaries.rs` checks dependency boundaries.
+
+Prefer a focused test beside the behavior it protects. Share repeated plumbing,
+not a test DSL that hides commands, expected rows, numerical tolerances or errors.
+
 ## Normal Rust checks
 
 ```sh

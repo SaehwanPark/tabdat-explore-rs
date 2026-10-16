@@ -1,48 +1,10 @@
 #![forbid(unsafe_code)]
 
+mod common;
+
+use common::{TestDir, tabdat_bin};
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
-
-static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
-
-struct TestDir {
-  path: PathBuf,
-}
-
-impl TestDir {
-  fn new() -> Self {
-    let nonce = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("clock after epoch")
-      .as_nanos();
-    let test_id = NEXT_TEST_ID.fetch_add(1, Ordering::Relaxed);
-    let path = std::env::temp_dir().join(format!(
-      "tabdat-cli-json-preview-{}-{}-{}",
-      std::process::id(),
-      nonce,
-      test_id
-    ));
-    fs::create_dir_all(&path).expect("create test dir");
-    Self { path }
-  }
-
-  fn path(&self) -> &Path {
-    &self.path
-  }
-}
-
-impl Drop for TestDir {
-  fn drop(&mut self) {
-    let _ = fs::remove_dir_all(&self.path);
-  }
-}
-
-fn tabdat_bin() -> Command {
-  Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
-}
+use std::path::PathBuf;
 
 fn write_csv(dir: &TestDir) -> PathBuf {
   let path = dir.path().join("preview.csv");
