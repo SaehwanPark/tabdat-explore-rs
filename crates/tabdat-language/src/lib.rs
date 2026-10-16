@@ -131,315 +131,52 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
     return parse_help(help_body.trim());
   }
 
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"use"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..6)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"rename"))
-    && command.as_bytes().get(6) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..4)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"sort"))
-    && command.as_bytes().get(4) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..6)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"select"))
-    && command.as_bytes().get(6) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"run"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"sql"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"regress"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"logit"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..6)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"probit"))
-    && command.as_bytes().get(6) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"poisson"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"nbreg"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"zip"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..4)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"zinb"))
-    && command.as_bytes().get(4) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..4)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"qreg"))
-    && command.as_bytes().get(4) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"tobit"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"heckman"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..2)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"nl"))
-    && command.as_bytes().get(2) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"streg"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..9)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"spregress"))
-    && command.as_bytes().get(9) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"lasso"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..9)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"postlasso"))
-    && command.as_bytes().get(9) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"ridge"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..10)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"elasticnet"))
-    && command.as_bytes().get(10) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvlasso"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvridge"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..12)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cvelasticnet"))
-    && command.as_bytes().get(12) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"predict"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"xtlogit"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..6)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"lowess"))
-    && command.as_bytes().get(6) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"did"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..5)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"drdid"))
-    && command.as_bytes().get(5) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"dml"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..9)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"cfregress"))
-    && command.as_bytes().get(9) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..6)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"lincom"))
-    && command.as_bytes().get(6) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..4)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"test"))
-    && command.as_bytes().get(4) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..9)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"histogram"))
-    && command.as_bytes().get(9) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..7)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"scatter"))
-    && command.as_bytes().get(7) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..3)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"bar"))
-    && command.as_bytes().get(3) == Some(&b':')
-  {
-    return Err(ParseError::new("unsupported token in command: :"));
-  }
-  if command
-    .as_bytes()
-    .get(..9)
-    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"bayesplot"))
-    && command.as_bytes().get(9) == Some(&b':')
+  // An attached colon is rejected only for this compatibility-defined set;
+  // `by`, `bayes`, and `gsort` have distinct command-boundary rules.
+  if let Some((name, _)) = command.split_once(':')
+    && [
+      "use",
+      "rename",
+      "sort",
+      "select",
+      "run",
+      "sql",
+      "regress",
+      "logit",
+      "probit",
+      "poisson",
+      "nbreg",
+      "zip",
+      "zinb",
+      "qreg",
+      "tobit",
+      "heckman",
+      "nl",
+      "streg",
+      "spregress",
+      "lasso",
+      "postlasso",
+      "ridge",
+      "elasticnet",
+      "cvlasso",
+      "cvridge",
+      "cvelasticnet",
+      "predict",
+      "xtlogit",
+      "lowess",
+      "did",
+      "drdid",
+      "dml",
+      "cfregress",
+      "lincom",
+      "test",
+      "histogram",
+      "scatter",
+      "bar",
+      "bayesplot",
+    ]
+    .iter()
+    .any(|candidate| name.eq_ignore_ascii_case(candidate))
   {
     return Err(ParseError::new("unsupported token in command: :"));
   }
@@ -518,321 +255,71 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
     parse_use_options(command[command_end + 1..].trim_matches(is_command_whitespace))?;
     return Err(ParseError::new("unknown command: use"));
   }
-  if name.eq_ignore_ascii_case("use") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("use assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("run") && delimiter == ',' {
-    if command[command_end + 1..]
-      .trim_matches(is_command_whitespace)
-      .is_empty()
+  if delimiter == ','
+    && let Some(name) = ["run", "lincom", "test", "sql"]
+      .into_iter()
+      .find(|candidate| name.eq_ignore_ascii_case(candidate))
+  {
+    if name != "sql"
+      && command[command_end + 1..]
+        .trim_matches(is_command_whitespace)
+        .is_empty()
     {
       return Err(ParseError::new(
         "comma must be followed by at least one option",
       ));
     }
-    return Err(ParseError::new("unknown command: run"));
+    return Err(ParseError::new(format!("unknown command: {name}")));
   }
-  if name.eq_ignore_ascii_case("run") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
+  if delimiter == '='
+    && let Some(name) = [
+      "use",
+      "run",
+      "sql",
+      "regress",
+      "logit",
+      "probit",
+      "bayes",
+      "poisson",
+      "nbreg",
+      "zip",
+      "zinb",
+      "qreg",
+      "tobit",
+      "heckman",
+      "nl",
+      "streg",
+      "spregress",
+      "lasso",
+      "postlasso",
+      "ridge",
+      "elasticnet",
+      "cvlasso",
+      "cvridge",
+      "cvelasticnet",
+      "predict",
+      "xtlogit",
+      "lowess",
+      "did",
+      "drdid",
+      "dml",
+      "cfregress",
+      "lincom",
+      "test",
+      "histogram",
+      "scatter",
+      "bar",
+      "bayesplot",
+    ]
+    .into_iter()
+    .find(|candidate| name.eq_ignore_ascii_case(candidate))
+  {
+    if body.starts_with("==") {
       return Err(ParseError::new("unsupported token in command: =="));
     }
-    return Err(ParseError::new("run assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("sql") && delimiter == ',' {
-    return Err(ParseError::new("unknown command: sql"));
-  }
-  if name.eq_ignore_ascii_case("lincom") && delimiter == ',' {
-    if command[command_end + 1..]
-      .trim_matches(is_command_whitespace)
-      .is_empty()
-    {
-      return Err(ParseError::new(
-        "comma must be followed by at least one option",
-      ));
-    }
-    return Err(ParseError::new("unknown command: lincom"));
-  }
-  if name.eq_ignore_ascii_case("test") && delimiter == ',' {
-    if command[command_end + 1..]
-      .trim_matches(is_command_whitespace)
-      .is_empty()
-    {
-      return Err(ParseError::new(
-        "comma must be followed by at least one option",
-      ));
-    }
-    return Err(ParseError::new("unknown command: test"));
-  }
-  if name.eq_ignore_ascii_case("sql") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("sql assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("regress") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "regress assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("logit") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "logit assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("probit") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "probit assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("bayes") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "bayes assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("poisson") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "poisson assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("nbreg") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "nbreg assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("zip") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("zip assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("zinb") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "zinb assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("qreg") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "qreg assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("tobit") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "tobit assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("heckman") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "heckman assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("nl") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("nl assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("streg") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "streg assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("spregress") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "spregress assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("lasso") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "lasso assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("postlasso") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "postlasso assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("ridge") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "ridge assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("elasticnet") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "elasticnet assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("cvlasso") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "cvlasso assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("cvridge") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "cvridge assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("cvelasticnet") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "cvelasticnet assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("predict") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "predict assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("xtlogit") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "xtlogit assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("lowess") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "lowess assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("did") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("did assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("drdid") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "drdid assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("dml") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("dml assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("cfregress") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "cfregress assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("lincom") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "lincom assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("test") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "test assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("histogram") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "histogram assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("scatter") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "scatter assignment requires a target before =",
-    ));
-  }
-  if name.eq_ignore_ascii_case("bar") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new("bar assignment requires a target before ="));
-  }
-  if name.eq_ignore_ascii_case("bayesplot") && delimiter == '=' {
-    if command[command_end..].starts_with("==") {
-      return Err(ParseError::new("unsupported token in command: =="));
-    }
-    return Err(ParseError::new(
-      "bayesplot assignment requires a target before =",
-    ));
+    return Err(ParseError::new(format!(
+      "{name} assignment requires a target before ="
+    )));
   }
   if name.eq_ignore_ascii_case("help") && !is_command_whitespace(delimiter) {
     return Err(ParseError::new("unknown command: help"));
@@ -2776,7 +2263,7 @@ fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
     )));
   }
 
-  let identifiers = reshape_identifier_option(&options, "i")?;
+  let identifiers = parse_identifier_option("reshape", &options, "i")?;
   let Some(identifiers) = identifiers.filter(|identifiers| !identifiers.is_empty()) else {
     return Err(ParseError::new(
       "reshape expects exactly one i(id_vars) option",
@@ -2790,7 +2277,7 @@ fn parse_reshape_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("reshape variable list contains duplicates"));
   }
 
-  let j_values = reshape_identifier_option(&options, "j")?;
+  let j_values = parse_identifier_option("reshape", &options, "j")?;
   let Some(j_values) = j_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "reshape expects exactly one j(name) option",
@@ -2943,26 +2430,25 @@ fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn regress_identifier_option(
+fn parse_identifier_option(
+  command_name: &str,
   options: &[UseOption],
   name: &str,
 ) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "regress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
+  let mut matching = options.iter().filter(|option| option.name == name);
+  let Some(option) = matching.next() else {
     return Ok(None);
   };
+  // Duplicate-option diagnostics take precedence over the value's type.
+  if matching.next().is_some() {
+    return Err(ParseError::new(format!(
+      "{command_name} option {name} may only be supplied once"
+    )));
+  }
   match &option.value {
     UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
     _ => Err(ParseError::new(format!(
-      "regress option {name} expects variables"
+      "{command_name} option {name} expects variables"
     ))),
   }
 }
@@ -3020,7 +2506,7 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let cluster_values = regress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("regress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -3031,12 +2517,12 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
   }
   let cluster_variable = cluster_values.and_then(|mut values| values.pop());
 
-  let wls_values = regress_identifier_option(&options, "wls")?;
+  let wls_values = parse_identifier_option("regress", &options, "wls")?;
   if wls_values.as_ref().is_some_and(|values| values.len() != 1) {
     return Err(ParseError::new("regress option wls expects one variable"));
   }
 
-  let gls_values = regress_identifier_option(&options, "gls")?;
+  let gls_values = parse_identifier_option("regress", &options, "gls")?;
   if gls_values.as_ref().is_some_and(|values| values.len() != 1) {
     return Err(ParseError::new("regress option gls expects one variable"));
   }
@@ -5378,30 +4864,6 @@ fn parse_bayes_numeric_option(
   }
 }
 
-fn ivregress_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "ivregress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "ivregress option {name} expects variables"
-    ))),
-  }
-}
-
 fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
   let syntax =
     "ivregress expects syntax: ivregress 2sls|gmm <y> [exog_vars], endog(<var>) iv(<vars>)";
@@ -5462,7 +4924,7 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let endog_values = ivregress_identifier_option(&options, "endog")?;
+  let endog_values = parse_identifier_option("ivregress", &options, "endog")?;
   let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "ivregress option endog expects one variable",
@@ -5473,14 +4935,14 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
     .next()
     .expect("ivregress endog option arity checked before extracting the variable");
 
-  let instrument_values = ivregress_identifier_option(&options, "iv")?;
+  let instrument_values = parse_identifier_option("ivregress", &options, "iv")?;
   let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
     return Err(ParseError::new(
       "ivregress option iv expects at least one variable",
     ));
   };
 
-  let cluster_values = ivregress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("ivregress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -5520,30 +4982,6 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
       estimator,
     },
   })
-}
-
-fn xtreg_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "xtreg option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "xtreg option {name} expects variables"
-    ))),
-  }
 }
 
 fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
@@ -5591,7 +5029,7 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let cluster_values = xtreg_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("xtreg", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -6420,30 +5858,6 @@ fn parse_dml_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
-fn cfregress_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "cfregress option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "cfregress option {name} expects variables"
-    ))),
-  }
-}
-
 fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
   let trimmed = body.trim_start();
   if trimmed.starts_with("==") {
@@ -6504,7 +5918,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
     }
   }
 
-  let endog_values = cfregress_identifier_option(&options, "endog")?;
+  let endog_values = parse_identifier_option("cfregress", &options, "endog")?;
   let Some(endog_values) = endog_values.filter(|values| values.len() == 1) else {
     return Err(ParseError::new(
       "cfregress option endog expects one variable",
@@ -6515,14 +5929,14 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
     .next()
     .expect("cfregress endog option arity checked before extracting the variable");
 
-  let instrument_values = cfregress_identifier_option(&options, "iv")?;
+  let instrument_values = parse_identifier_option("cfregress", &options, "iv")?;
   let Some(instruments) = instrument_values.filter(|values| !values.is_empty()) else {
     return Err(ParseError::new(
       "cfregress option iv expects at least one variable",
     ));
   };
 
-  let cluster_values = cfregress_identifier_option(&options, "cluster")?;
+  let cluster_values = parse_identifier_option("cfregress", &options, "cluster")?;
   if cluster_values
     .as_ref()
     .is_some_and(|values| values.len() != 1)
@@ -7525,30 +6939,6 @@ fn parse_ttest_command(body: &str) -> Result<Command, ParseError> {
       welch: false,
     },
   })
-}
-
-fn reshape_identifier_option(
-  options: &[UseOption],
-  name: &str,
-) -> Result<Option<Vec<String>>, ParseError> {
-  let matching = options
-    .iter()
-    .filter(|option| option.name == name)
-    .collect::<Vec<_>>();
-  if matching.len() > 1 {
-    return Err(ParseError::new(format!(
-      "reshape option {name} may only be supplied once"
-    )));
-  }
-  let Some(option) = matching.first() else {
-    return Ok(None);
-  };
-  match &option.value {
-    UseOptionValue::Identifiers(values) => Ok(Some(values.clone())),
-    _ => Err(ParseError::new(format!(
-      "reshape option {name} expects variables"
-    ))),
-  }
 }
 
 fn parse_join_command(body: &str) -> Result<Command, ParseError> {
@@ -8593,35 +7983,16 @@ fn parse_rename_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn first_unquoted_comma(text: &str) -> Option<usize> {
-  let bytes = text.as_bytes();
-  let mut quote = None;
-  let mut index = 0;
-  while index < bytes.len() {
-    let character = bytes[index];
-    if let Some(active_quote) = quote {
-      if character == active_quote {
-        if active_quote == b'`' && bytes.get(index + 1) == Some(&active_quote) {
-          index += 2;
-          continue;
-        }
-        quote = None;
-      }
-      index += 1;
-      continue;
-    }
-    match character {
-      b'\'' | b'"' | b'`' => {
-        quote = Some(character);
-        index += 1;
-      }
-      b',' => return Some(index),
-      _ => index += 1,
-    }
-  }
-  None
+  first_unquoted_delimiter(text, b',')
 }
 
 fn first_unquoted_colon(text: &str) -> Option<usize> {
+  first_unquoted_delimiter(text, b':')
+}
+
+// Delimiters are ASCII, so returned byte offsets remain valid UTF-8 boundaries.
+// Backtick identifiers escape a backtick by doubling it; strings are literal.
+fn first_unquoted_delimiter(text: &str, delimiter: u8) -> Option<usize> {
   let bytes = text.as_bytes();
   let mut quote = None;
   let mut index = 0;
@@ -8643,7 +8014,7 @@ fn first_unquoted_colon(text: &str) -> Option<usize> {
         quote = Some(character);
         index += 1;
       }
-      b':' => return Some(index),
+      byte if byte == delimiter => return Some(index),
       _ => index += 1,
     }
   }
@@ -9523,6 +8894,32 @@ mod tests {
     SpregressModelType, SqlCommand, StregCommand, StregDistribution, TabulateCommand, TestCommand,
     TobitCommand, XtLogitCommand, ZinbCommand, ZipCommand, parse_command,
   };
+
+  #[test]
+  fn unquoted_delimiters_preserve_byte_offsets_and_literal_quoting() {
+    for delimiter in *b",:" {
+      for prefix in ["λ", "'λ,:篇'", "\"λ,:篇\"", "`λ``,:篇`"] {
+        let text = format!("{prefix}{}rest", char::from(delimiter));
+        assert_eq!(
+          super::first_unquoted_delimiter(&text, delimiter),
+          Some(prefix.len())
+        );
+      }
+      for text in [
+        "plain λ",
+        "'λ,:篇'",
+        "\"λ,:篇\"",
+        "`λ``,:篇`",
+        "'unterminated,:λ",
+      ] {
+        assert_eq!(
+          super::first_unquoted_delimiter(text, delimiter),
+          None,
+          "{text}"
+        );
+      }
+    }
+  }
 
   #[test]
   fn parses_help_aliases_and_topics() {

@@ -112,7 +112,20 @@ pub fn transpose(matrix: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   Ok(transposed)
 }
 
-/// Multiply two conformable matrices: C = A * B.
+fn validate_row_lengths(matrix: &[Vec<f64>], columns: usize, name: &str) -> Result<(), StatsError> {
+  for (index, row) in matrix.iter().enumerate() {
+    if row.len() != columns {
+      return Err(StatsError::DimensionMismatch(format!(
+        "{name} row {index} length ({}) must match expected columns ({columns})",
+        row.len()
+      )));
+    }
+  }
+  Ok(())
+}
+
+/// Multiply two conformable rectangular matrices: C = A * B.
+/// Ragged inputs return `StatsError::DimensionMismatch`.
 pub fn multiply(left: &[Vec<f64>], right: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   if left.is_empty() || right.is_empty() {
     return Err(StatsError::DimensionMismatch(
@@ -130,6 +143,9 @@ pub fn multiply(left: &[Vec<f64>], right: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, 
     )));
   }
 
+  validate_row_lengths(left, left_cols, "left matrix")?;
+  validate_row_lengths(right, right_cols, "right matrix")?;
+
   let mut result = vec![vec![0.0; right_cols]; left_rows];
   for i in 0..left_rows {
     for k in 0..left_cols {
@@ -145,7 +161,8 @@ pub fn multiply(left: &[Vec<f64>], right: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, 
   Ok(result)
 }
 
-/// Multiply a matrix by a column vector: y = A * x.
+/// Multiply a rectangular matrix by a column vector: y = A * x.
+/// Ragged inputs return `StatsError::DimensionMismatch`.
 pub fn multiply_vector(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, StatsError> {
   if matrix.is_empty() {
     return Err(StatsError::DimensionMismatch(
@@ -160,6 +177,8 @@ pub fn multiply_vector(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, 
       vector.len()
     )));
   }
+
+  validate_row_lengths(matrix, cols, "matrix")?;
 
   let mut result = vec![0.0; rows];
   for (r, row) in matrix.iter().enumerate() {
@@ -295,6 +314,8 @@ pub fn qr_decompose_with_response(
     )));
   }
 
+  validate_row_lengths(a, n, "design matrix")?;
+
   let mut a_work: Vec<Vec<f64>> = a.to_vec();
   let mut qty = y.to_vec();
 
@@ -375,6 +396,8 @@ pub fn solve_upper_triangular(r: &[Vec<f64>], rhs: &[f64]) -> Result<Vec<f64>, S
     )));
   }
 
+  validate_row_lengths(r, n, "R")?;
+
   let mut beta = vec![0.0; n];
   for i in (0..n).rev() {
     let diag = r[i][i];
@@ -397,6 +420,7 @@ pub fn solve_upper_triangular(r: &[Vec<f64>], rhs: &[f64]) -> Result<Vec<f64>, S
 /// Because X'X = R'Q'QR = R'R, (X'X)^(-1) = R^(-1) * (R^(-1))'.
 pub fn xtx_inverse_from_r(r: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   let n = r.len();
+  validate_row_lengths(r, n, "R")?;
 
   // Compute R^(-1), which is also upper triangular
   let mut r_inv = vec![vec![0.0; n]; n];
