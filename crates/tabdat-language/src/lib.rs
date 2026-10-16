@@ -8897,7 +8897,7 @@ mod tests {
 
   #[test]
   fn unquoted_delimiters_preserve_byte_offsets_and_literal_quoting() {
-    for delimiter in [b',', b':'] {
+    for delimiter in *b",:" {
       for prefix in ["λ", "'λ,:篇'", "\"λ,:篇\"", "`λ``,:篇`"] {
         let text = format!("{prefix}{}rest", char::from(delimiter));
         assert_eq!(
