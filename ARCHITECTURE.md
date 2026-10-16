@@ -1,9 +1,7 @@
 # TabDat Rust architecture: current boundaries
 
-**Snapshot:** refreshed baseline plus bounded scripts (#195) and the minimal
-interactive shell (#196).
-The existing Phase 2 workspace is implemented, but the product is not feature
-complete. A compiled command type is not evidence of runtime support. Consult
+This is the production workspace's boundary overview, not a delivery ledger.
+The product is not feature complete. A compiled command type is not evidence of runtime support. Consult
 [SPEC.md](SPEC.md) for the current capability envelope.
 
 ## Physical workspace today

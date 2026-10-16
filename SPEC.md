@@ -92,6 +92,8 @@ These are **targets**, not statements of current support. See the
 ## Where to look for detail
 
 - Source/tests: authoritative for actual implementation and regressions.
+- [Documentation index](docs/README.md): user guides, command/result contracts and
+  historical reference navigation.
 - [Architecture](ARCHITECTURE.md): current module/crate boundaries and deferred integration.
 - [Migration authority](docs/migration/README.md): pinned Python oracle, compatibility and deviations.
 - [Phase 3 language evidence](docs/migration/phase3-language.md): 672-case corpus and parser/fuzz status.
