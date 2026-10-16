@@ -29,8 +29,13 @@ including empty or unbounded sets; see `help estat` for numerical limits.
 Overidentified nonrobust fits additionally support `estat overid`: homoskedastic
 Sargan N*R² with asymptotic chi-square inference, not robust Hansen J or proof of
 instrument validity. See `help estat` for its strong-identification assumptions,
-DF, retained-residual and failure semantics. Endogeneity tests, robust/cluster
-overid, multi-endogenous confidence regions, robust/cluster AR and GMM are not implemented;
+DF, retained-residual and failure semantics. `estat endogenous` additionally
+provides the joint homoskedastic regression-based Wu–Hausman F test of all declared
+endogenous regressors, even for just-identified models. It assumes valid
+instruments and uses N-K-m augmented-regression residual DF; it is not a Durbin LM,
+robust/cluster or endogenous-subset test. See `help estat` for numerical limits.
+Robust/cluster endogeneity/overid, multi-endogenous confidence regions,
+robust/cluster AR and GMM are not implemented;
 `gmm` is parsed but execution reports it as unsupported.
 
 Examples:

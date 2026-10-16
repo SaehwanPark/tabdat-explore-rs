@@ -34,7 +34,7 @@ Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
 supports use, describe, count, codebook, summarize, missing, tabulate,
 generate/replace, save/export,
-head/tail, `estat vif/ar/overid` and the bounded
+head/tail, `estat vif/ar/overid/endogenous` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
 `result_type: "DescribeResult"` and `data.dataset`, reusing the load/prediction
@@ -472,6 +472,27 @@ Linear JSON results reuse the supplied statistics without recalculation:
   identical sample; with one endogenous regressor it equals ordinary partial R²
   when that diagnostic is defined. Missing/non-finite diagnostic scalars are null.
   OLS results omit `first_stage`.
+- `WuHausmanResult` (`estat endogenous` after a nonrobust 2SLS fit):
+  `test: "wu_hausman_augmented_regression_f"`, `covariance: "homoskedastic"`,
+  `null_scope: "all_endogenous_joint"`,
+  `null_hypothesis: "all_declared_endogenous_regressors_exogenous"`,
+  `weak_iv_robust: false`,
+  `assumptions: "valid_instruments_homoskedastic_errors_maintained_model_strong_identification_exact_F_requires_conditional_normality"`,
+  ordered `endogenous` and `excluded_instruments`, `observation_count`,
+  `numerator_df`, `denominator_df`, `statistic` and upper-tail `p_value`.
+  The joint null sets all full-instrument first-stage innovation coefficients to
+  zero in an OLS augmentation of the original model. F uses m and N-K-m DF,
+  where m is the endogenous count and K the original parameter count including
+  intercept. This is not Durbin LM or a covariance-difference/robust Hausman test.
+  Just-identification is allowed. Valid instruments, homoskedasticity, maintained
+  specification and conventional strong-identification regularity are required;
+  exact F additionally requires conditional normality. Endogenous-subset and
+  robust/cluster parent forms are unsupported. Auxiliary predictors are rescaled,
+  not redefined; all rows/designs come from the retained problem. No 2SLS refit,
+  current-data scan or model/data mutation occurs. Rank/DF/finite/variance failures
+  and relative innovation/augmented-residual norm at most 1e-12 (see `help estat`)
+  are errors, not a claim of exogeneity. Failure to reject does not prove
+  exogeneity or instrument validity. Text/scripts expose the same owned result.
 - `SarganResult` (`estat overid` after an overidentified nonrobust 2SLS fit):
   `test: "sargan_n_r_squared"`, `covariance: "homoskedastic"`,
   `reference_distribution: "asymptotic_chi_square"`, `weak_iv_robust: false`,

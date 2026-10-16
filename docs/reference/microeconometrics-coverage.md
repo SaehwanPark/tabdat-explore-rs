@@ -171,9 +171,26 @@ tails; runtime/CLI cases cover exact retained indices, current-data changes,
 just-identified/robust/cluster rejection, undefined variance and stop-before-export.
 Inference is homoskedastic, correctly specified maintained model, conventional
 strong-identification asymptotics. Failure to reject does not prove instrument
-validity; robust/cluster Hansen J, endogeneity diagnostics and GMM remain required
-work. **This is method evidence only: no Cameron–Trivedi illustration row changes
-status or becomes validated because this external example works.**
+validity; robust/cluster Hansen J and GMM remain required work.
+
+The same exact sample/design additionally supports joint homoskedastic
+`estat endogenous`, using the independent
+[`reference_endogenous.R`](../../examples/cigarettes_iv/reference_endogenous.R).
+Restricted/innovation-augmented OLS RSS are 1.578794093504594 and
+1.475890440962176; Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956.
+Native F/tail match at 1e-12 absolute tolerance with the same pinned state IDs.
+The R script distinguishes an unimplemented HC0 contrast F=3.823467179945732,
+not an alternate target for the classical test. Tests additionally cover five
+R synthetic just-/overidentified, multiple-/single-endogenous, control/no-control,
+intercept/no-intercept designs, unit invariance, null/rank/DF/degenerate-variance
+cases and retained state/reporting. All m declared endogenous regressors are
+jointly tested with N-K-m denominator DF, conditional on valid instruments and
+the maintained model; no 2SLS refit or current-data rescan occurs. The conventional
+F is not weak-IV-robust coefficient inference; exact finite-sample F additionally
+requires conditional normality. Robust/cluster/subset endogeneity tests are not
+installed; any such inference required by the roadmap or exact illustrations
+remains unfinished, not excluded. **This is method evidence only: no Cameron–Trivedi illustration
+row changes status or becomes validated because this external example works.**
 
 ## How to turn a seed into an implementation contract
 

@@ -5,9 +5,10 @@ How to invoke:
 `estat ar, null(b1 b2 ...)`
 `estat ar, ci [level(95)]`
 `estat overid`
+`estat endogenous`
 
 What it does:
-Report variance-inflation factors from the retained linear-regression predictor design, in predictor order. Requires an active dataset and a prior successful bounded `regress` fit.
+For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
 
 What problem it answers:
 How much does the fitted predictor design inflate variance through linear dependence among predictors?
@@ -24,7 +25,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar` and `overid` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid` and `endogenous` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Sargan overidentification test
 
@@ -58,6 +59,51 @@ and excluded-instrument names, DF, statistic and upper-tail p-value. Scripts and
 `--text` expose the same owned results. Endogeneity tests, robust/cluster overid
 and GMM remain separate work. See the reproducible external-data example under
 `examples/cigarettes_iv/`.
+
+## Joint Wu–Hausman endogeneity test
+
+After a **nonrobust** 2SLS fit, including a just-identified model:
+
+```text
+ivregress 2sls y w, endog(x1 x2) iv(z1 z2)
+estat endogenous
+```
+
+The null is that **all** regressors declared in `endog()` are exogenous, given
+valid instruments and the maintained model. Full-instrument first stages use the
+parent's included exogenous variables/intercept and excluded instruments. The
+restricted auxiliary OLS fits y on the original regressors; the augmented OLS adds
+every first-stage innovation. Original coefficients are unrestricted in both
+fits; the m added innovation coefficients are jointly zero under the null.
+The homoskedastic Wu–Hausman statistic is
+`((RSS_restricted - RSS_augmented)/m) / (RSS_augmented/(N-K-m))`, where K includes
+the original intercept and regressors. It reports F(m, N-K-m), **not** the
+first-stage or 2SLS residual DF. No Durbin chi-square LM, covariance-difference
+Hausman, endogenous-subset, or robust/cluster variant is implied.
+
+The conventional reference requires valid instruments, homoskedastic errors,
+correct specification and standard strong-identification regularity. Exact
+finite-sample F additionally requires conditional normality. Rejection of joint
+exogeneity is conditional on these assumptions; invalid instruments or a
+misspecified model can invalidate that interpretation. Failure to reject does
+not prove exogeneity, instrument validity or weak-IV-robust coefficient inference.
+Robust/cluster parent fits are rejected, not silently converted.
+
+Auxiliary predictors are norm-rescaled without changing their column spaces.
+An innovation norm at most 1e-12 relative to the endogenous residual norm after
+included-exogenous controls is rejected as numerically degenerate. So is an
+augmented residual norm at most 1e-12 relative to the centered outcome norm
+(uncentered for noconstant). Constant outcomes with an intercept, nonfinite
+arithmetic, insufficient N-K-m DF, singular instrument/augmented designs and
+undefined variance fail explicitly; innovation rank is not silently reduced.
+
+Auxiliary fits use the retained complete-case problem even after current data
+changes; no 2SLS refit, current-column scan or dataset/model mutation occurs.
+`--text`, scripts and CLI-v1 JSON expose `WuHausmanResult`: tested endogenous
+names, excluded instruments, N, numerator/denominator DF, F, upper-tail p-value,
+joint-null scope and assumptions. The external AER example in
+`examples/cigarettes_iv/endogenous.td` distinguishes the classical F from an HC0
+contrast; neither is silently substituted for the other.
 
 ## Joint Anderson–Rubin test
 

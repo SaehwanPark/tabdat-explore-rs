@@ -152,15 +152,16 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Deliver bounded endogeneity diagnostics against an exact sample/design and
-   independent reference, reusing the specified overidentified AER example where
-   appropriate. Homoskedastic Sargan overidentification testing is now installed;
-   robust/cluster Hansen J remains separate work. Keep remaining robust/cluster AR
-   and endogenous-subvector confidence-set work explicit; conventional Wald
-   results and first-stage relevance tests do not establish weak-IV-robust inference.
-2. Then select one binary-outcome textbook example and deliver a bounded
+1. Select one binary-outcome textbook example and deliver a bounded
    fit → marginal-effect/inference → report workflow, preserving the required
-   reference, sample and failure-case evidence.
+   reference, sample and failure-case evidence. This follows the delivered
+   classical IV diagnostic slices; it does not mark the IV family complete.
+
+Keep GMM/Hansen J, robust/cluster AR, endogenous-subvector confidence sets and
+any further endogeneity inference required by exact illustrations explicit as
+remaining required work.
+Conventional Wald results, Sargan/Wu diagnostics and first-stage relevance tests
+do not establish weak-IV-robust coefficient inference.
 
 The schooling-IV 2SLS core now reports ordinary and Shea partial R-squared
 separately, validated against the author output on the DATA66 sample; see the
@@ -177,6 +178,11 @@ now validates `estat overid` Sargan N*R² with asymptotic homoskedastic chi-squa
 inference on 48 states in 1995. Its sample/design/reference is specified; this
 advances method coverage, not the Cameron–Trivedi empirical-illustration ledger.
 Sargan is not robust Hansen J, an endogeneity test, or proof of instrument validity.
+The same specified sample additionally validates joint homoskedastic
+`estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
+using auxiliary original/innovation-augmented OLS. Robust/cluster/subset forms
+remain unsupported; this conventional test assumes valid instruments and does
+not establish exogeneity or instrument validity by failing to reject.
 
 Implement the selected bounded plan without broadening scope. If it conflicts
 with the codebase or reference semantics, stop and report the conflict rather than
