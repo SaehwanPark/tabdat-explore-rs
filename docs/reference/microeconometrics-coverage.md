@@ -56,7 +56,7 @@ provenance and redistribution terms before adding fixtures.
 
 | ID | Book locator and data lead | Status | Next evidence / blocker |
 | --- | --- | --- | --- |
-| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | Planned — first estimator slice | Identify exact program/table, instruments, controls and sample; establish 2SLS and first-stage reference before implementation |
+| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — bounded 2SLS runtime | Exact source program, sample, design, Table 4.5 reference and limits are recorded below; implement executable 2SLS and first-stage diagnostics without bundling the source data |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-CHOICE | pp. 463–466, 486, 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact binary/multinomial model variants/effects |
@@ -69,6 +69,34 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
+
+### MMA-IV weak-instrument replication contract (bounded first slice)
+
+- **Identity/source:** Cameron and Trivedi (2005), §4.9.6, pp. 110–112,
+  Table 4.5; author program [`mma04p4ivweak.do`](https://cameron.econ.ucdavis.edu/mmabook/mma04p4ivweak.do)
+  and its [Stata 8 output](https://cameron.econ.ucdavis.edu/mmabook/mma04p4ivweak.txt).
+  The data page identifies `DATA66.dat`/`DATA66.dct` and cites Kling (2001),
+  “Interpreting Instrumental Variables Estimates of the Return to Schooling.”
+- **Prepared sample/design:** retain `nlsflt == 1` and nonmissing `wage76` and
+  `grade76`; the regression then uses complete cases over every model variable.
+  Outcome is `wage76` (log wages). Endogenous regressors are `grade76`, `exp76`,
+  `expsq76`; included exogenous controls, in source order, are `black`, `south76`,
+  `smsa76`, `reg2`–`reg9`, `smsa66`, `momdad14`, `sinmom14`, `nodaded`,
+  `nomomed`, `daded`, `momed`, `famed1`–`famed8`. Excluded instruments are `col4`,
+  `age76`, `agesq76`; the controls are also instruments. Include an intercept.
+  The source reports 3,010 observations for the retained analysis.
+- **Reference outputs:** Stata 8/Table 4.5 reports the `grade76` 2SLS coefficient
+  as 0.1324, with classical SE 0.0493 and robust SE 0.0488 (four-decimal
+  comparison). The first-stage excluded-instrument test for `grade76` is
+  F(3, 2980) = 8.07; the source additionally reports Shea partial R² = 0.00640757.
+  The first-stage F is a conventional relevance diagnostic, **not** weak-IV-robust
+  inference. Preserve the source's reported degrees of freedom for comparison;
+  diagnose any sample/design discrepancy rather than adjusting tolerances.
+- **Access/limits:** source data remain external and are not copied into the
+  repository until redistribution rights are established. This bounded slice
+  does not implement GMM, overidentification tests (the example is just-identified),
+  Shea's statistic, or weak-IV-robust inference. A successful 2SLS fit or
+  conventional first-stage F does not resolve weak identification.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain
