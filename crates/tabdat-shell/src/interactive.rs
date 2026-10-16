@@ -429,11 +429,26 @@ mod tests {
       (
         vec!["cohort_copy", "cohort_partial"],
         Some(2),
+        InputEvent::Line("append cohort_copy".into()),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(4),
+        InputEvent::Line(format!("use {}", csv.display())),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(4),
+        InputEvent::Line("join cohort_copy on x, how=left".into()),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(4),
         InputEvent::Interrupted,
       ),
       (
         vec!["cohort_copy", "cohort_partial"],
-        Some(2),
+        Some(4),
         InputEvent::Eof,
       ),
     ]
@@ -455,6 +470,16 @@ mod tests {
             .1,
           names
         );
+        for line in ["append cohort_", "join cohort_ on x, how=left"] {
+          let pos = line.find("cohort_").unwrap() + "cohort_".len();
+          assert_eq!(
+            helper
+              .complete(line, pos, &Context::new(&DefaultHistory::new()))
+              .unwrap()
+              .1,
+            names
+          );
+        }
         assert_eq!(session.active_dataset().map(|data| data.row_count), rows);
         assert_eq!(
           session
@@ -485,7 +510,7 @@ mod tests {
         .contains("Activated table \"cohort_partial\": 2 rows, 2 columns")
     );
     let plain = format!(
-      "use {}\nsql SELECT * FROM active WHERE x >= 2 into cohort_partial\nuse {}\nuse cohort_p\t\ncount\nuse cohort_partial\ncount\nexit\n",
+      "use {}\nsql SELECT * FROM active WHERE x >= 2 into cohort_partial\nuse {}\nuse cohort_p\t\nappend cohort_p\t\njoin cohort_p\t on x\ncount\nuse cohort_partial\ncount\nexit\n",
       csv.display(),
       csv.display()
     );
@@ -500,7 +525,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       String::from_utf8(errors).unwrap(),
-      "Error: unknown table: cohort_p\n"
+      "Error: unknown table: cohort_p\n".repeat(3)
     );
     assert!(
       String::from_utf8(output)
