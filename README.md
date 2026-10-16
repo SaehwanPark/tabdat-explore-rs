@@ -240,6 +240,14 @@ changing data/model state. The source path remains the load source, not a new
 output destination. `label_metadata` and `panel_metadata` remain the existing
 `null` placeholders, not a full session-label/panel snapshot.
 
+`status` reports current dataset/named-table metadata separately from the retained
+linear fit's names, intercept convention and original sample counts. It is read-only,
+works before loading without initializing DuckDB, and never clones model arrays.
+CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
+`active_table_name`, sorted `named_tables` and nullable `linear_model`. Status is
+not a current-data compatibility check or an automatic refit/stale flag. It does
+not invent estimator, covariance, operation or materialization tracking. See `help status`.
+
 A summary uses `schema_version: 1`,
 `result_type: "SummarizeResult"` and `data.rows`, with each row containing
 `variable`, `count`, `mean`, `std_dev`, `minimum` and `maximum`.

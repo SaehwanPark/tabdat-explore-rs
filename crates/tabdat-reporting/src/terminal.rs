@@ -293,7 +293,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
     None => Ok(concat!(
       "Interactive core workflow\n",
       "  Load local eager CSV/Parquet: use <path>\n",
-      "  Inspect: describe, codebook [variables], summarize [variables], missing [variables], tabulate, count, head/tail\n",
+      "  Inspect: status, describe, codebook [variables], summarize [variables], missing [variables], tabulate, count, head/tail\n",
       "  Transform: generate, replace, rename, sort/gsort, keep/drop/select, recode, encode/decode, label\n",
       "  Cohorts/layouts: sql ... into <name>, use <name>, join, append, reshape, collapse\n",
       "  Grouped EDA: by <keys>: count; by <keys>: summarize uses native means\n",

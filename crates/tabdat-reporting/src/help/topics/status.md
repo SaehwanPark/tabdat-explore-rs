@@ -4,27 +4,25 @@ How to invoke:
 `status`
 
 What it does:
-Show the current backend, active source, last successful operation, execution mode, materialization
-state, last tracked materialization reason, row-count knowledge, and column count without running a
-data operation.
+Inspect owned current-dataset/named-table metadata and the small retained linear
+model summary without scanning data, refitting or initializing DuckDB.
 
 What problem it answers:
-What execution state is TabDat holding before I run the next command?
+What data and original fitted model are held before my next inspection,
+prediction or explicit refit?
 
 Examples:
 - `status`
-- `use data.parquet, lazy engine=duckdb`
+- `use data.parquet`
+- `regress y x`
+- `rename x current_x`
 - `status`
-- `count`
-- `status`
+- `rename current_x x`
+- `predict fitted`
 
 Notes:
-- `Rows: unknown` is expected for a lazy dataset before `count` or another operation records a
-  current row count.
-- `status` does not materialize a lazy dataset.
-- `Last operation` is the previous successful command family; calling `status` does not replace it,
-  and a failed command leaves it unchanged.
-- `Last materialization reason: polars fallback` means an unsupported command collected a Polars
-  lazy frame into the eager DuckDB boundary.
-- `Last materialization reason: eager operation` means a successful command changed an active
-  DuckDB-lazy dataset to eager. The field resets after a successful `use` or named-table activation.
+- Empty-session status succeeds with no dataset/model and leaves the data engine uninitialized. After data operations, it reports actual engine initialization, current source/schema/row count, active named-table name and registered names in literal sorted order. It does not read named relations to collect counts.
+- Retained linear metadata reports the original outcome/predictor names, intercept convention, fitted N, residual degrees of freedom and original candidate/excluded counts when available. It copies no design, coefficient, fitted-value, weight, cluster or row-index arrays.
+- Current data and the retained model can differ after rename/drop/filter/activation. Status neither certifies prediction eligibility nor detects all value/type changes; restore required columns or explicitly refit as appropriate. Prediction uses current data, while lincom/test/VIF use the retained fit. Failed attempted regression clears the fit; failed load/other commands follow their existing state policy, not a new rollback guarantee.
+- CLI-v1 `StatusResult.data` contains `data_initialized`, nullable `dataset` (existing metadata encoding), nullable `active_table_name`, sorted `named_tables`, and nullable `linear_model`. Model fields are `outcome`, ordered `predictors`, `include_intercept`, `observation_count`, `degrees_of_freedom`, nullable `sample_total_observations` and `sample_dropped_observations`. Dataset label/panel placeholders remain null, not dictionary snapshots.
+- Shell/`--text` displays the bounded status. Default batch success stays quiet; use `--json` for structured metadata. No coefficients/inference listing, estimator/covariance inference, original fit source, automatic stale/ready flag, last-operation/materialization tracking, lazy/remote/panel runtime or future estimator-family status is installed.

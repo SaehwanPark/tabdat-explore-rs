@@ -39,6 +39,12 @@ output-path completion, multiline continuation and in-flight cancellation remain
 deferred; an executing command may still terminate on SIGINT. Local Unix PTY
 evidence is not platform certification.
 
+Bounded `status` now reports current dataset/active-named/registered-name metadata
+separately from retained linear names/intercept/sample counts, without scans,
+engine initialization or model-array clones. It supports the restore-required-columns
+or explicit-refit recovery workflow, not a prediction-eligibility/staleness test or
+uninstalled estimator/operation/materialization tracking.
+
 ### 2. Close the core EDA loop
 
 The shell now reports bounded frequency tables, common transformation metadata
