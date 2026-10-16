@@ -37,8 +37,10 @@ variable lists now complete current schema names from owned prompt-level snapsho
 without scans or cached-model inference. Bare `use` now also completes registered
 identifiers from prompt-level registry keys, merging sorted/deduplicated path candidates;
 name/file/directory precedence, partial-script refresh and plain-input behavior are checked.
-Explicit paths/quotes/options remain filesystem-only. Quoted-variable/expression/option/
-output-path and join/append named completion, multiline continuation and in-flight cancellation remain
+Bare `append`/`join` targets now also complete registered names only, without filesystem
+candidates, preserving typed join suffixes through real PTY append-order and join-suffix
+workflows. Explicit paths/quotes/options remain filesystem-only. Quoted-variable/expression/
+option/output-path completion, multiline continuation and in-flight cancellation remain
 deferred; an executing command may still terminate on SIGINT. Local Unix PTY
 evidence is not platform certification.
 
@@ -370,9 +372,11 @@ state are handled correctly.
   refreshed from registry keys after partial scripts/errors without scans or model-array
   copies. Native exact-name precedence and explicit path navigation remain unchanged;
   real PTY named-cohort switching and same-name file/directory cases are checked.
-  No extension/loadability inference or shell expansion is added. Quoted-variable,
-  expression/option/output-path and join/append named completion and persistent history
-  remain deferred.
+  Bare `append`/`join` targets now also complete literal registered names, offering no
+  filesystem candidates and preserving typed join suffixes; real PTY same-name append
+  ordering and join-suffix workflows are checked. No extension/loadability inference
+  or shell expansion is added. Quoted-variable, expression/option/output-path completion
+  and persistent history remain deferred.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including `lincom`/`test` topics (#202) and the four installed `ttest` forms
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`

@@ -206,6 +206,27 @@ impl Completer for ShellHelper {
     let text = before.trim_start();
     if let Some(end) = text.find(char::is_whitespace) {
       let command = &text[..end];
+      if command.eq_ignore_ascii_case("append") || command.eq_ignore_ascii_case("join") {
+        let argument = text[end..].trim_start();
+        let suffix = &line[pos..];
+        let join_suffix = command.eq_ignore_ascii_case("join")
+          && suffix.chars().next().is_some_and(char::is_whitespace);
+        if (argument.is_empty() || is_bare_identifier(argument))
+          && (suffix.trim().is_empty() || join_suffix)
+        {
+          return Ok((
+            pos - argument.len(),
+            self
+              .named_tables
+              .iter()
+              // These parsers treat bare if as a condition, unlike use.
+              .filter(|name| !name.eq_ignore_ascii_case("if") && name.starts_with(argument))
+              .cloned()
+              .collect(),
+          ));
+        }
+        return Ok((pos, Vec::new()));
+      }
       if command.eq_ignore_ascii_case("use") || command.eq_ignore_ascii_case("run") {
         let argument = text[end..].trim_start();
         let use_command = command.eq_ignore_ascii_case("use");
@@ -367,8 +388,6 @@ mod tests {
     helper.set_named_tables(["cohort_a", "data", "dataset", "nested"].into_iter());
     for line in [
       "run cohort_",
-      "append cohort_",
-      "join cohort_",
       "use './cohort_",
       "use \"cohort_",
       "use ./cohort_",
@@ -425,6 +444,108 @@ mod tests {
     expected.sort();
     expected.dedup();
     assert_eq!(complete_with(&helper, &line, line.len()).1, expected);
+  }
+
+  #[test]
+  fn cohort_targets_complete_only_registered_names_and_preserve_join_suffixes() {
+    let mut helper = ShellHelper::default();
+    helper.set_named_tables(["cohort_b", "cohort_a", "变量", "if", "IF", "in", "on"].into_iter());
+    for command in ["append", "join", "APPEND", "JOIN"] {
+      let line = format!("  {command} cohort_");
+      assert_eq!(
+        complete_with(&helper, &line, line.len()),
+        (line.len() - 7, vec!["cohort_a".into(), "cohort_b".into()])
+      );
+      let line = format!("{command} ");
+      assert_eq!(
+        complete_with(&helper, &line, line.len()).1,
+        ["cohort_a", "cohort_b", "in", "on", "变量"]
+      );
+    }
+    assert_eq!(complete_with(&helper, "use if", 6).1, ["if"]);
+    assert!(complete_with(&helper, "append if", 9).1.is_empty());
+    assert!(complete_with(&helper, "join IF", 7).1.is_empty());
+    assert!(tabdat_language::parse_command("append if").is_err());
+    assert!(tabdat_language::parse_command("join IF on x").is_err());
+    for name in ["cohort_a", "变量", "in", "on"] {
+      let append = format!("append {name}");
+      let (start, candidates) = complete_with(&helper, &append, append.len());
+      assert_eq!(start, 7);
+      assert_eq!(candidates, [name]);
+      assert_eq!(
+        tabdat_language::parse_command(&append).unwrap(),
+        tabdat_language::Command::Append {
+          table_name: name.into()
+        }
+      );
+      let line = format!("  JoIn {name} on x, how=left suffix(_lookup)");
+      let pos = "  JoIn ".len() + name.len();
+      let (start, candidates) = complete_with(&helper, &line, pos);
+      let mut updated = line.clone();
+      updated.replace_range(start..pos, &candidates[0]);
+      assert_eq!(updated, line);
+      let tabdat_language::Command::Join { command } =
+        tabdat_language::parse_command(&updated).unwrap()
+      else {
+        panic!("join")
+      };
+      assert_eq!(command.table_name, name);
+    }
+    let line = "join cohort_ on x, how=left";
+    let pos = line.find(" on").unwrap();
+    let (start, candidates) = complete_with(&helper, line, pos);
+    let mut updated = line.to_owned();
+    updated.replace_range(start..pos, &candidates[0]);
+    assert_eq!(updated, "join cohort_a on x, how=left");
+    helper.set_named_tables(["fresh"].into_iter());
+    assert_eq!(complete_with(&helper, "append ", 7).1, ["fresh"]);
+    helper.set_named_tables(std::iter::empty());
+    assert!(complete_with(&helper, "join ", 5).1.is_empty());
+  }
+
+  #[test]
+  fn cohort_target_completion_declines_paths_quotes_inside_words_keys_and_options() {
+    let mut helper = ShellHelper::default();
+    helper.set_named_tables(["cohort_a"].into_iter());
+    for line in [
+      "append ./cohort_",
+      "join ./cohort_",
+      "append 'cohort_",
+      "join \"cohort_",
+      "append cohort_a extra",
+      "join cohort_a on co",
+      "join cohort_a on x, how=co",
+      "append cohort_a, co",
+      "sql select cohort_",
+      "use ./cohort_",
+      "run cohort_",
+    ] {
+      assert!(
+        complete_with(&helper, line, line.len()).1.is_empty(),
+        "{line}"
+      );
+    }
+    for line in [
+      "append cohort_abc",
+      "join cohort_abc on x",
+      "append cohort_ extra",
+      "append cohort_, option",
+      "join cohort_, option",
+    ] {
+      let pos = line.find("cohort_").unwrap() + 7;
+      assert!(complete_with(&helper, line, pos).1.is_empty(), "{line}");
+    }
+    let files = Files::new();
+    for command in ["append", "join"] {
+      let line = format!("{command} {}", files.path("dat"));
+      assert!(complete_with(&helper, &line, line.len()).1.is_empty());
+    }
+    let line = "append cohort_   ";
+    let pos = line.len() - 3;
+    let (start, candidates) = complete_with(&helper, line, pos);
+    let mut updated = line.to_owned();
+    updated.replace_range(start..pos, &candidates[0]);
+    assert_eq!(updated, "append cohort_a   ");
   }
 
   #[test]
