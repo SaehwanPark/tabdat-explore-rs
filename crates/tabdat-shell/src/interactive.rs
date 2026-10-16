@@ -153,6 +153,7 @@ fn run_editor_session(output: &mut impl Write, errors: &mut impl Write) -> io::R
       // Refresh from current metadata even after errors or partial script effects;
       // cached-model names and backend scans are not completion sources.
       if let Some(helper) = editor.helper_mut() {
+        helper.set_named_tables(session.named_tables().keys().map(String::as_str));
         helper.set_columns(
           session
             .active_dataset()
@@ -366,6 +367,147 @@ mod tests {
     let errors = String::from_utf8(errors).unwrap();
     assert_eq!(errors.matches("Error:").count(), 3, "{errors}");
     assert!(errors.contains("child.td:2:"));
+  }
+
+  #[test]
+  fn input_refreshes_registered_names_after_partial_scripts_failed_loads_and_activation() {
+    use rustyline::{Context, completion::Completer, history::DefaultHistory};
+    let nonce = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-named-snapshot-{}-{nonce}",
+      std::process::id()
+    ));
+    std::fs::create_dir(&root).unwrap();
+    let csv = root.join("data.csv");
+    let child = root.join("child.td");
+    std::fs::write(&csv, "x,y\n0,1\n1,2\n2,4\n3,6\n").unwrap();
+    std::fs::write(
+      &child,
+      "sql SELECT * FROM active WHERE x >= 2 into cohort_partial\nrename absent broken\n",
+    )
+    .unwrap();
+    let mut events = vec![
+      (
+        vec![],
+        None,
+        InputEvent::Line(format!("use {}", csv.display())),
+      ),
+      (vec![], Some(4), InputEvent::Line("regress y x".into())),
+      (
+        vec![],
+        Some(4),
+        InputEvent::Line(format!("run {}", child.display())),
+      ),
+      (
+        vec!["cohort_partial"],
+        Some(2),
+        InputEvent::Line(format!("use {}", root.join("missing.csv").display())),
+      ),
+      (
+        vec!["cohort_partial"],
+        Some(2),
+        InputEvent::Line("sql SELECT * FROM active into cohort_copy".into()),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(2),
+        InputEvent::Line(format!("use {}", csv.display())),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(4),
+        InputEvent::Line("use cohort_partial".into()),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(2),
+        InputEvent::Line("use cohort_partial, has_header(false)".into()),
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(2),
+        InputEvent::Interrupted,
+      ),
+      (
+        vec!["cohort_copy", "cohort_partial"],
+        Some(2),
+        InputEvent::Eof,
+      ),
+    ]
+    .into_iter();
+    let mut helper = crate::completion::ShellHelper::default();
+    let mut index = 0;
+    let mut output = Vec::new();
+    let mut errors = Vec::new();
+    let result = run_session_with_input(
+      |session| {
+        let (names, rows, event) = events.next().unwrap();
+        let before = session.state();
+        let capabilities = session.initialized_capabilities().to_vec();
+        helper.set_named_tables(session.named_tables().keys().map(String::as_str));
+        assert_eq!(
+          helper
+            .complete("use cohort_", 11, &Context::new(&DefaultHistory::new()))
+            .unwrap()
+            .1,
+          names
+        );
+        assert_eq!(session.active_dataset().map(|data| data.row_count), rows);
+        assert_eq!(
+          session
+            .last_regression()
+            .map(|fit| fit.fit_statistics.observation_count),
+          (index >= 2).then_some(4)
+        );
+        assert_eq!(session.initialized_capabilities(), capabilities);
+        if index == 0 {
+          assert!(capabilities.is_empty());
+        }
+        assert_eq!(session.state(), before);
+        index += 1;
+        Ok(event)
+      },
+      &mut output,
+      &mut errors,
+      false,
+    );
+    result.unwrap();
+    assert!(events.next().is_none());
+    let errors = String::from_utf8(errors).unwrap();
+    assert_eq!(errors.matches("Error:").count(), 3, "{errors}");
+    assert!(errors.contains("child.td:2:"));
+    assert!(
+      String::from_utf8(output)
+        .unwrap()
+        .contains("Activated table \"cohort_partial\": 2 rows, 2 columns")
+    );
+    let plain = format!(
+      "use {}\nsql SELECT * FROM active WHERE x >= 2 into cohort_partial\nuse {}\nuse cohort_p\t\ncount\nuse cohort_partial\ncount\nexit\n",
+      csv.display(),
+      csv.display()
+    );
+    let mut output = Vec::new();
+    let mut errors = Vec::new();
+    run_session(
+      &mut Cursor::new(plain.as_bytes()),
+      &mut output,
+      &mut errors,
+      false,
+    )
+    .unwrap();
+    assert_eq!(
+      String::from_utf8(errors).unwrap(),
+      "Error: unknown table: cohort_p\n"
+    );
+    assert!(
+      String::from_utf8(output)
+        .unwrap()
+        .ends_with("4 rows\nActivated table \"cohort_partial\": 2 rows, 2 columns\n2 rows\n")
+    );
+    std::fs::remove_dir_all(&root).unwrap();
   }
 
   #[test]

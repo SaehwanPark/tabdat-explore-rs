@@ -85,12 +85,12 @@ class ProbeTests(unittest.TestCase):
 
     def test_acceptance_allows_only_the_two_expected_recovery_errors(self):
         expected = (b"Error: rename unknown variable: absent\r\n"
-                    b"Error: /temporary/analysis files/partial schema.td:2: unknown command: unknown_command\r\n")
+                    b"Error: /temporary/analysis files/partial schema.td:3: unknown command: unknown_command\r\n")
         probe.validate_acceptance_errors(expected)
         for text in [b"", expected.splitlines(keepends=True)[0],
                      expected + b"Error: additional failure\r\n",
                      expected.replace(b"absent", b"other"),
-                     expected.replace(b"schema.td:2:", b"schema.td:3:"),
+                     expected.replace(b"schema.td:3:", b"schema.td:2:"),
                      b"\r\n".join(reversed(expected.splitlines()))]:
             with self.subTest(text=text), self.assertRaises(AssertionError):
                 probe.validate_acceptance_errors(text)

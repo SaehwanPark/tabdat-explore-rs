@@ -34,8 +34,11 @@ core-command/help-topic Tab completion now supports word-end prefixes and preser
 arguments after the cursor. Local literal `use`/`run` path completion now supports
 files/directories and compatible open quotes without shell expansion. Basic bare EDA
 variable lists now complete current schema names from owned prompt-level snapshots,
-without scans or cached-model inference. Quoted-variable/expression/option/named-table/
-output-path completion, multiline continuation and in-flight cancellation remain
+without scans or cached-model inference. Bare `use` now also completes registered
+identifiers from prompt-level registry keys, merging sorted/deduplicated path candidates;
+name/file/directory precedence, partial-script refresh and plain-input behavior are checked.
+Explicit paths/quotes/options remain filesystem-only. Quoted-variable/expression/option/
+output-path and join/append named completion, multiline continuation and in-flight cancellation remain
 deferred; an executing command may still terminate on SIGINT. Local Unix PTY
 evidence is not platform certification.
 
@@ -363,9 +366,13 @@ state are handled correctly.
   Parser-safe/Unicode names, cursor suffixes, schema refresh, real PTY generated/
   renamed/scripted predictor completion and unchanged pipes are checked. Suggestions
   do not certify type/model eligibility or suppress repeated variables.
+  Bare `use` registered identifiers now share literal sorted/deduplicated path candidates,
+  refreshed from registry keys after partial scripts/errors without scans or model-array
+  copies. Native exact-name precedence and explicit path navigation remain unchanged;
+  real PTY named-cohort switching and same-name file/directory cases are checked.
   No extension/loadability inference or shell expansion is added. Quoted-variable,
-  expression/option/named-table/output-path completion and persistent history remain
-  deferred.
+  expression/option/output-path and join/append named completion and persistent history
+  remain deferred.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including `lincom`/`test` topics (#202) and the four installed `ttest` forms
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`

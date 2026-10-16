@@ -129,8 +129,9 @@ is a harness smoke check only; use matching release builds for release observati
 
 The existing completion/editing/history/cancellation/model-retention acceptance flow
 runs first in the same process, including literal `use`/`run` path completion,
-quoted CSV option suffixes and current-schema column completion after transformations
-and partial failed scripts. The two intentional recovery diagnostics are checked
+quoted CSV option suffixes, bare registered-name completion with same-name file/directory
+precedence, and current-schema column/registry refresh after transformations and partial
+failed scripts. The two intentional recovery diagnostics are checked
 exactly; missing, changed or extra errors fail acceptance. Historical observations
 below pin the earlier tool revision/acceptance sequence; their samples are not
 replaced by this coverage change. Then **one excluded warmup cycle** precedes

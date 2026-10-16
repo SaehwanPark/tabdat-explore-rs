@@ -127,21 +127,34 @@ fn complete_path(
   (start, matches)
 }
 
-fn is_bare_column(name: &str) -> bool {
+fn is_bare_identifier(name: &str) -> bool {
   let mut characters = name.chars();
-  !name.eq_ignore_ascii_case("if")
-    && characters
-      .next()
-      .is_some_and(|c| c.is_alphabetic() || c == '_')
+  characters
+    .next()
+    .is_some_and(|c| c.is_alphabetic() || c == '_')
     && characters.all(|c| c.is_alphanumeric() || c == '_')
+}
+
+fn is_bare_column(name: &str) -> bool {
+  !name.eq_ignore_ascii_case("if") && is_bare_identifier(name)
 }
 
 #[derive(Default)]
 pub(crate) struct ShellHelper {
   columns: Vec<String>,
+  named_tables: Vec<String>,
 }
 
 impl ShellHelper {
+  pub(crate) fn set_named_tables<'a>(&mut self, names: impl Iterator<Item = &'a str>) {
+    self.named_tables = names
+      .filter(|name| is_bare_identifier(name))
+      .map(str::to_owned)
+      .collect();
+    self.named_tables.sort();
+    self.named_tables.dedup();
+  }
+
   pub(crate) fn set_columns(&mut self, columns: &[tabdat_domain::ColumnInfo]) {
     self.columns = columns
       .iter()
@@ -194,12 +207,26 @@ impl Completer for ShellHelper {
     if let Some(end) = text.find(char::is_whitespace) {
       let command = &text[..end];
       if command.eq_ignore_ascii_case("use") || command.eq_ignore_ascii_case("run") {
-        return Ok(complete_path(
-          text[end..].trim_start(),
-          pos,
-          &line[pos..],
-          command.eq_ignore_ascii_case("use"),
-        ));
+        let argument = text[end..].trim_start();
+        let use_command = command.eq_ignore_ascii_case("use");
+        let (start, mut matches) = complete_path(argument, pos, &line[pos..], use_command);
+        // Named activation has no options. Keep quotes, path navigation and run
+        // on the existing filesystem-only path; explicit ./ disambiguates names.
+        if use_command
+          && line[pos..].trim().is_empty()
+          && (argument.is_empty() || is_bare_identifier(argument))
+        {
+          matches.extend(
+            self
+              .named_tables
+              .iter()
+              .filter(|name| name.starts_with(argument))
+              .cloned(),
+          );
+          matches.sort();
+          matches.dedup();
+        }
+        return Ok((start, matches));
       }
       if [
         "summarize",
@@ -280,6 +307,124 @@ mod tests {
     helper
       .complete(line, pos, &Context::new(&DefaultHistory::new()))
       .unwrap()
+  }
+
+  #[test]
+  fn named_use_completion_is_literal_sorted_and_roundtrips_without_model_inference() {
+    let mut helper = ShellHelper::default();
+    helper.set_named_tables(
+      [
+        "cohort_b",
+        "CoHort",
+        "cohort_a",
+        "cohort_a",
+        "if",
+        "变量",
+        "_sample",
+        "bad-name",
+        "../cohort",
+        "space table",
+        "control\t",
+        "2bad",
+      ]
+      .into_iter(),
+    );
+    assert_eq!(
+      helper.named_tables,
+      ["CoHort", "_sample", "cohort_a", "cohort_b", "if", "变量"]
+    );
+    for prefix in ["use cohort_", "  UsE cohort_"] {
+      let (start, matches) = complete_with(&helper, prefix, prefix.len());
+      assert_eq!(start, prefix.len() - "cohort_".len());
+      let mut expected = complete(prefix, prefix.len()).1;
+      expected.extend(["cohort_a".to_owned(), "cohort_b".to_owned()]);
+      expected.sort();
+      expected.dedup();
+      assert_eq!(matches, expected);
+    }
+    for name in &helper.named_tables {
+      let tabdat_language::Command::Use {
+        source: tabdat_language::DataSource::LocalPath(source),
+        ..
+      } = tabdat_language::parse_command(&format!("use {name}")).unwrap()
+      else {
+        panic!("use")
+      };
+      assert_eq!(&source, name);
+    }
+    let line = "use 变";
+    assert_eq!(complete_with(&helper, line, line.len()).1, ["变量"]);
+    helper.set_named_tables(["fresh_cohort"].into_iter());
+    assert_eq!(helper.named_tables, ["fresh_cohort"]);
+    helper.set_named_tables(std::iter::empty());
+    assert_eq!(complete_with(&helper, "use ", 4), complete("use ", 4));
+    assert_eq!(complete_with(&helper, "summ", 4).1, ["summarize"]);
+  }
+
+  #[test]
+  fn named_use_completion_leaves_paths_quotes_options_other_commands_and_suffixes_unchanged() {
+    let mut helper = ShellHelper::default();
+    helper.set_named_tables(["cohort_a", "data", "dataset", "nested"].into_iter());
+    for line in [
+      "run cohort_",
+      "append cohort_",
+      "join cohort_",
+      "use './cohort_",
+      "use \"cohort_",
+      "use ./cohort_",
+      "use ../cohort_",
+      "use folder/cohort_",
+      "use cohort_, delimiter(',')",
+    ] {
+      assert_eq!(
+        complete_with(&helper, line, line.len()),
+        complete(line, line.len()),
+        "{line}"
+      );
+    }
+    for suffix in [", delimiter(',')", " , lazy", " extra", "abc"] {
+      let line = format!("use cohort_{suffix}");
+      let pos = "use cohort_".len();
+      assert_eq!(
+        complete_with(&helper, &line, pos),
+        complete(&line, pos),
+        "{line}"
+      );
+    }
+    let line = "  UsE cohort_   ";
+    let pos = line.len() - 3;
+    let (start, candidates) = complete_with(&helper, line, pos);
+    let mut updated = line.to_owned();
+    let candidate = candidates
+      .iter()
+      .find(|name| name.as_str() == "cohort_a")
+      .unwrap();
+    updated.replace_range(start..pos, candidate);
+    assert_eq!(updated, "  UsE cohort_a   ");
+    let files = Files::new();
+    let line = format!("use {}", files.path("dat"));
+    assert_eq!(
+      complete_with(&helper, &line, line.len()),
+      complete(&line, line.len())
+    );
+    let directory = std::fs::read_dir(".")
+      .unwrap()
+      .flatten()
+      .find(|entry| {
+        entry.file_type().unwrap().is_dir()
+          && entry.file_name().to_str().is_some_and(is_bare_identifier)
+      })
+      .unwrap()
+      .file_name()
+      .into_string()
+      .unwrap();
+    helper.set_named_tables(std::iter::once(directory.as_str()));
+    let line = format!("use {directory}");
+    let mut expected = complete(&line, line.len()).1;
+    expected.push(directory);
+    expected.sort();
+    expected.dedup();
+    assert_eq!(complete_with(&helper, &line, line.len()).1, expected);
   }
 
   #[test]

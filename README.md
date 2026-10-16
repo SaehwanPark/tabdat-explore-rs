@@ -151,8 +151,17 @@ Existing closing quotes and `use` option suffixes are preserved. Hidden names re
 a dot prefix. Files/directories (including resolvable symlinks) are listed without
 extension or loadability validation; unavailable entries, control/non-UTF-8 names and
 names incompatible with the current quote are skipped. No shell escapes, home/environment
-or glob expansion, named-table/output-path completion is provided. Completion does not
+or glob expansion or output-path completion is provided. Completion does not
 replace the rest of a filename after the cursor. Piped input remains unchanged.
+
+At a bare `use` word end, registered table identifiers also join the sorted,
+deduplicated local-path candidates: `use cohort_p<Tab>` can complete `cohort_probe`.
+Names are literal/case-sensitive and refresh before each prompt, including partial
+scripts and failures, from registry keys without backend scans or model-array copies.
+An exact registered name retains native precedence over a same-name file/directory;
+explicit `./`/directory paths, quotes and option-bearing suffixes keep filesystem-only
+completion. This does not validate activation/loadability or add named completion to
+`run`, `join`, `append` or piped input.
 
 Basic bare-variable lists also complete current column names for `summarize`, `codebook`,
 `missing`, `tabulate`, `regress`, `keep`, `drop`, `select` and `sort`. For example,
