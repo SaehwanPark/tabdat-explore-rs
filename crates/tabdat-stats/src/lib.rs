@@ -26,8 +26,8 @@ pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
 };
 pub use iv::{
-  FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
-  fit_two_stage_least_squares,
+  AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
+  anderson_rubin_test, fit_two_stage_least_squares,
 };
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,

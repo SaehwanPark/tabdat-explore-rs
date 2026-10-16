@@ -1,6 +1,6 @@
 use tabdat_stats::{
   CovarianceType, EstimationSample, InstrumentalVariablesProblem, IvOptions, StatsError,
-  fit_two_stage_least_squares,
+  anderson_rubin_test, fit_two_stage_least_squares,
 };
 
 fn close(actual: f64, expected: f64) {
@@ -212,6 +212,87 @@ fn two_stage_least_squares_rejects_underidentification_and_rank_failure() {
   assert!(matches!(
     fit_two_stage_least_squares(&rank_deficient, &IvOptions::default()),
     Err(StatsError::SingularMatrix(_))
+  ));
+}
+
+#[test]
+fn anderson_rubin_matches_independent_r_auxiliary_regressions() {
+  let mut problem = reference_problem();
+  // R 4.6.1: fixtures/anderson_rubin_reference.R, stats::lm/anova.
+  for (null, expected_f, expected_p) in [
+    ([1.7, -0.6], 5.4227218199300502, 0.00703483761854517),
+    ([0.0, 0.0], 48.5717213299665, 5.84129841873989e-13),
+  ] {
+    let result = anderson_rubin_test(&problem, &null).unwrap();
+    assert_eq!(result.endogenous, ["x1", "x2"]);
+    assert_eq!(result.null_values, null);
+    assert_eq!(result.observation_count, 60);
+    assert_eq!((result.numerator_df, result.denominator_df), (2, 56));
+    close(result.statistic, expected_f);
+    assert!((result.p_value - expected_p).abs() < expected_p * 1e-8 + 1e-16);
+  }
+  problem.include_intercept = false;
+  let result = anderson_rubin_test(&problem, &[1.7, -0.6]).unwrap();
+  close(result.statistic, 5.98024398000216806);
+  close(result.p_value, 0.00438858080705134);
+  assert_eq!(result.denominator_df, 57);
+  problem.exogenous_names.clear();
+  for row in &mut problem.exogenous {
+    row.clear();
+  }
+  let result = anderson_rubin_test(&problem, &[1.7, -0.6]).unwrap();
+  close(result.statistic, 1.445372093898745);
+  close(result.p_value, 0.244019559181223);
+  assert_eq!(result.denominator_df, 58);
+}
+
+#[test]
+fn anderson_rubin_does_not_divide_by_first_stage_relevance() {
+  let mut problem = reference_problem();
+  let baseline = anderson_rubin_test(&problem, &[0.0, 0.0]).unwrap();
+  for strength in [1e-8, 0.0] {
+    for row in &mut problem.endogenous {
+      for value in row {
+        *value *= strength;
+      }
+    }
+    let result = anderson_rubin_test(&problem, &[0.0, 0.0]).unwrap();
+    assert_eq!(result, baseline);
+  }
+}
+
+#[test]
+fn anderson_rubin_rejects_invalid_nulls_and_undefined_auxiliary_variance() {
+  let mut problem = reference_problem();
+  assert!(anderson_rubin_test(&problem, &[0.0]).is_err());
+  assert!(anderson_rubin_test(&problem, &[f64::NAN, 0.0]).is_err());
+  assert!(anderson_rubin_test(&problem, &[f64::MAX, f64::MAX]).is_err());
+  for row in &mut problem.instruments {
+    row[1] = row[0];
+  }
+  assert!(matches!(
+    anderson_rubin_test(&problem, &[0.0, 0.0]),
+    Err(StatsError::SingularMatrix(_))
+  ));
+  problem = reference_problem();
+  problem.sample = None;
+  problem.response.truncate(5);
+  problem.exogenous.truncate(5);
+  problem.endogenous.truncate(5);
+  problem.instruments.truncate(5);
+  problem.instrument_names.push("z3".into());
+  for (index, row) in problem.instruments.iter_mut().enumerate() {
+    row.push((index as f64).powi(2));
+  }
+  assert!(matches!(
+    anderson_rubin_test(&problem, &[0.0, 0.0]),
+    Err(StatsError::ZeroDegreesOfFreedom { .. })
+  ));
+  problem = reference_problem();
+  problem.response.fill(0.0);
+  assert!(matches!(
+    anderson_rubin_test(&problem, &[0.0, 0.0]),
+    Err(StatsError::IncompatibleHypothesis(_))
   ));
 }
 

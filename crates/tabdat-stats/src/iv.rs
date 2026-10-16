@@ -514,6 +514,116 @@ pub fn fit_two_stage_least_squares(
   })
 }
 
+/// Homoskedastic Anderson–Rubin test of a joint null for every endogenous coefficient.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AndersonRubinResult {
+  pub endogenous: Vec<String>,
+  pub null_values: Vec<f64>,
+  pub excluded_instruments: Vec<String>,
+  pub observation_count: usize,
+  pub numerator_df: usize,
+  pub denominator_df: usize,
+  pub statistic: f64,
+  pub p_value: f64,
+}
+
+/// Test all endogenous coefficients jointly, leaving included-exogenous coefficients
+/// unrestricted. The auxiliary regression tests excluded instruments in y - X*b0.
+/// This is weak-identification robust, not heteroskedasticity/cluster robust or a
+/// test of instrument validity. Exact F inference requires classical normal errors;
+/// homoskedastic large-sample validity still requires valid instruments.
+///
+/// No endogenous nuisance coefficients may be left unspecified. The caller supplies
+/// the fixed complete estimation sample. Undefined auxiliary variance is an error.
+pub fn anderson_rubin_test(
+  problem: &InstrumentalVariablesProblem,
+  null_values: &[f64],
+) -> Result<AndersonRubinResult, StatsError> {
+  problem.validate()?;
+  if null_values.len() != problem.endogenous_names.len() {
+    return Err(StatsError::DimensionMismatch(
+      "Anderson-Rubin null must specify every endogenous coefficient in fit order".into(),
+    ));
+  }
+  if null_values.iter().any(|value| !value.is_finite()) {
+    return Err(StatsError::NonFiniteValue(
+      "Anderson-Rubin null must be finite".into(),
+    ));
+  }
+  let adjusted = problem
+    .response
+    .iter()
+    .zip(&problem.endogenous)
+    .map(|(y, row)| {
+      y - row
+        .iter()
+        .zip(null_values)
+        .map(|(x, beta)| x * beta)
+        .sum::<f64>()
+    })
+    .collect::<Vec<_>>();
+  if adjusted.iter().any(|value| !value.is_finite()) {
+    return Err(StatsError::NonFiniteValue(
+      "Anderson-Rubin adjusted outcome is non-finite".into(),
+    ));
+  }
+  let names = problem
+    .exogenous_names
+    .iter()
+    .chain(&problem.instrument_names)
+    .cloned()
+    .collect::<Vec<_>>();
+  let full = fit_least_squares(
+    &EstimationProblem::new(
+      "ar_adjusted_outcome",
+      names,
+      adjusted.clone(),
+      concatenate_columns(&problem.exogenous, &problem.instruments),
+    )?
+    .with_intercept(problem.include_intercept),
+  )?;
+  let restricted_rss = if problem.exogenous_names.is_empty() && !problem.include_intercept {
+    adjusted.iter().map(|value| value * value).sum::<f64>()
+  } else {
+    fit_least_squares(
+      &EstimationProblem::new(
+        "ar_adjusted_outcome",
+        problem.exogenous_names.clone(),
+        adjusted,
+        problem.exogenous.clone(),
+      )?
+      .with_intercept(problem.include_intercept),
+    )?
+    .residuals
+    .iter()
+    .map(|e| e * e)
+    .sum()
+  };
+  let unrestricted_rss = full.residuals.iter().map(|e| e * e).sum::<f64>();
+  let numerator_df = problem.instrument_names.len();
+  let denominator_df = full.fit_statistics.degrees_of_freedom;
+  // Nested residual sums of squares are monotone in exact arithmetic.
+  let statistic = ((restricted_rss - unrestricted_rss).max(0.0) / numerator_df as f64)
+    / (unrestricted_rss / denominator_df as f64);
+  if unrestricted_rss <= 0.0 || !statistic.is_finite() {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Anderson-Rubin auxiliary residual variance is undefined or non-finite".into(),
+    ));
+  }
+  let p_value =
+    f_distribution_survival_probability(statistic, numerator_df as f64, denominator_df as f64);
+  Ok(AndersonRubinResult {
+    endogenous: problem.endogenous_names.clone(),
+    null_values: null_values.to_vec(),
+    excluded_instruments: problem.instrument_names.clone(),
+    observation_count: problem.response.len(),
+    numerator_df,
+    denominator_df,
+    statistic,
+    p_value,
+  })
+}
+
 fn score_meat(design: &[Vec<f64>], residuals: &[f64], correction: f64) -> Vec<Vec<f64>> {
   let parameters = design[0].len();
   let mut meat = vec![vec![0.0; parameters]; parameters];

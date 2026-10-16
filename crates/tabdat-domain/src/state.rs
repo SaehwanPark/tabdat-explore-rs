@@ -124,6 +124,13 @@ pub struct LinearRegressionState {
   pub result: tabdat_stats::LeastSquaresResult,
 }
 
+/// Retained complete IV design for diagnostics; independent of subsequent data edits.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InstrumentalVariablesState {
+  pub linear: LinearRegressionState,
+  pub problem: tabdat_stats::InstrumentalVariablesProblem,
+}
+
 /// Common normalized non-linear fit state. Backend-specific scoring caches stay
 /// behind the adapter, and this record alone does not promise prediction support.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -160,7 +167,7 @@ pub enum EstimationState {
   ZeroInflatedPoisson(ModelState),
   ZeroInflatedNegativeBinomial(ModelState),
   Survival(ModelState),
-  InstrumentalVariables(Box<LinearRegressionState>),
+  InstrumentalVariables(Box<InstrumentalVariablesState>),
   PanelLinear(ModelState),
   PanelLogit(ModelState),
   Did(ModelState),
@@ -173,7 +180,8 @@ pub enum EstimationState {
 impl EstimationState {
   pub fn linear(&self) -> Option<&LinearRegressionState> {
     match self {
-      Self::Linear(state) | Self::InstrumentalVariables(state) => Some(state),
+      Self::Linear(state) => Some(state),
+      Self::InstrumentalVariables(state) => Some(&state.linear),
       _ => None,
     }
   }

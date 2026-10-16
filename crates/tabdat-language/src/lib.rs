@@ -5978,7 +5978,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
+  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
@@ -5999,6 +5999,43 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
 
   let argument = &parts.arguments[0];
   let normalized_subcommand = argument.text.to_ascii_lowercase();
+  if !argument.backtick_quoted && normalized_subcommand == "ar" {
+    let options = first_unquoted_comma(body)
+      .map(|index| parse_use_options(&body[index + 1..]))
+      .transpose()?
+      .unwrap_or_default();
+    let [option] = options.as_slice() else {
+      return Err(ParseError::new(
+        "estat ar requires exactly one null(b1 b2 ...) option",
+      ));
+    };
+    if option.name != "null" {
+      return Err(ParseError::new("estat ar supports only null(b1 b2 ...)"));
+    }
+    let null_values = match &option.value {
+      UseOptionValue::Number(value) => vec![value.clone()],
+      UseOptionValue::Numbers(values) => values.clone(),
+      _ => {
+        return Err(ParseError::new(
+          "estat ar null() requires finite numeric values",
+        ));
+      }
+    };
+    if null_values.is_empty()
+      || null_values
+        .iter()
+        .any(|value| !value.parse::<f64>().is_ok_and(|number| number.is_finite()))
+    {
+      return Err(ParseError::new(
+        "estat ar null() requires finite numeric values",
+      ));
+    }
+    return Ok(Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::AndersonRubin { null_values },
+      },
+    });
+  }
   if !argument.backtick_quoted && matches!(normalized_subcommand.as_str(), "report" | "spatial") {
     let options = first_unquoted_comma(body)
       .map(|index| parse_use_options(&body[index + 1..]))
@@ -6022,7 +6059,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     ("hausman", false) => EstatSubcommand::Hausman,
     _ => {
       return Err(ParseError::new(
-        "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
       ));
     }
   };
@@ -8376,6 +8413,33 @@ fn parse_use_parenthesized_value(
     }
     if values.len() == 1 {
       return Ok(UseOptionValue::Number(values.remove(0)));
+    }
+    return Ok(UseOptionValue::Numbers(values));
+  }
+
+  if name == "null" {
+    // Preserve adjacent exponent/sign tokens without changing the shared lexer.
+    // Whitespace separates null coefficients; quoted values are not numbers.
+    let mut values = Vec::<String>::new();
+    let mut previous_end = None;
+    for token in tokens {
+      if matches!(
+        token.kind,
+        UseTokenKind::String | UseTokenKind::Identifier { quoted: true }
+      ) {
+        return Err(ParseError::new("option null values must be numeric"));
+      }
+      if previous_end != Some(token.start) {
+        values.push(String::new());
+      }
+      values
+        .last_mut()
+        .expect("a numeric token group")
+        .push_str(&token.text);
+      previous_end = Some(token.end);
+    }
+    if values.iter().any(|value| value.parse::<f64>().is_err()) {
+      return Err(ParseError::new("option null values must be numeric"));
     }
     return Ok(UseOptionValue::Numbers(values));
   }
