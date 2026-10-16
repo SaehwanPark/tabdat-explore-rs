@@ -712,6 +712,8 @@ pub enum ExecutionResult {
   Lincom(LincomResult),
   /// The result of testing linear restrictions on regression coefficients.
   Test(TestResult),
+  /// Homoskedastic joint weak-IV-robust test on a retained IV design.
+  AndersonRubin(tabdat_stats::AndersonRubinResult),
   /// The result of a two-sided Student t-test over active dataset columns.
   Ttest(Box<TtestResult>),
 }

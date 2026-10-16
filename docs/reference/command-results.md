@@ -459,7 +459,9 @@ Linear JSON results reuse the supplied statistics without recalculation:
   and two-sided `p_value`. Full model matrices/row arrays are deliberately omitted.
   For `ivregress 2sls`, `first_stage` is additive and contains `test` (the
   conventional homoskedastic excluded-instrument partial F),
-  `weak_iv_robust_inference_available: false`,
+  `weak_iv_robust_inference_available: false` (these first-stage/coefficient
+  summaries do not contain weak-IV-robust inference),
+  `joint_ar_postestimation_available` (true only for nonrobust fits),
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
   `rows` with endogenous name,
   excluded instruments, N, numerator/denominator DF, ordinary `partial_r_squared`,
@@ -468,6 +470,21 @@ Linear JSON results reuse the supplied statistics without recalculation:
   identical sample; with one endogenous regressor it equals ordinary partial R²
   when that diagnostic is defined. Missing/non-finite diagnostic scalars are null.
   OLS results omit `first_stage`.
+- `AndersonRubinResult` (`estat ar, null(...)` after a nonrobust 2SLS fit):
+  `test: "anderson_rubin_joint"`, `covariance: "homoskedastic"`,
+  `null_scope: "all_endogenous_joint"`, `weak_iv_robust: true`, `assumptions`,
+  ordered `endogenous`/`null_values`, `excluded_instruments`, `observation_count`,
+  `numerator_df`, `denominator_df`, `statistic` and upper-tail `p_value`.
+  Null values specify every endogenous coefficient in fit order. Included exogenous
+  coefficients are unrestricted nuisance parameters. F uses q excluded instruments
+  and N − rank[W,Z] residual DF, not 2SLS residual DF. Valid instruments and
+  homoskedasticity are required; exact finite-sample F also requires conditional
+  normality. Retained fit data are used without refitting 2SLS or mutating state.
+  Robust/cluster parent fits, wrong-sized/nonfinite nulls and undefined auxiliary
+  variance/rank/DF are errors. No confidence-set or endogenous-subvector inference
+  is implied; ordinary coefficient/tests remain conventional. The preceding
+  first-stage availability flag remains false for those conventional summaries;
+  the separate joint-AR availability flag advertises this post-estimation command.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,

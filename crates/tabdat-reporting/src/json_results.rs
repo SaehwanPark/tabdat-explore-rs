@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif/ar, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif/ar";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
@@ -80,10 +80,11 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Test { .. }
     | Command::Ttest { .. }
     | Command::Estat {
-      command: EstatCommand {
-        subcommand: EstatSubcommand::Vif,
-        ..
-      },
+      command:
+        EstatCommand {
+          subcommand: EstatSubcommand::Vif | EstatSubcommand::AndersonRubin { .. },
+          ..
+        },
     }
     | Command::Exit
     | Command::Run { .. } => true,
@@ -107,6 +108,16 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::AndersonRubin(result) => {
+      let mut data = serde_json::to_value(result).expect("finite AR result");
+      data["test"] = json!("anderson_rubin_joint");
+      data["covariance"] = json!("homoskedastic");
+      data["null_scope"] = json!("all_endogenous_joint");
+      data["weak_iv_robust"] = json!(true);
+      data["assumptions"] =
+        json!("valid_instruments_homoskedastic_errors_exact_F_requires_conditional_normality");
+      (data, "AndersonRubinResult")
+    }
     ExecutionResult::Status(result) => (
       json!({
         "data_initialized": result.data_initialized,
@@ -362,6 +373,7 @@ fn regression_result_data(result: &RegressionResult) -> Value {
     data["first_stage"] = json!({
       "test": "classical_excluded_instrument_partial_f",
       "weak_iv_robust_inference_available": false,
+      "joint_ar_postestimation_available": result.covariance == "nonrobust",
       "coefficient_inference": "conventional_t_not_weak_iv_robust",
       "rows": first_stage.iter().map(|diagnostic| json!({
         "endogenous": diagnostic.endogenous,

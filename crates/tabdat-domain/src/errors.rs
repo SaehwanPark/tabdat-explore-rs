@@ -443,6 +443,10 @@ pub enum RuntimeError {
   EstatRequiresPriorRegression,
   /// DuckDB-independent auxiliary fits for VIF could not be computed.
   EstatVifFailed,
+  /// AR requires a retained IV design from a successful 2SLS fit.
+  EstatArRequiresPriorIv,
+  /// The joint AR null, covariance mode or auxiliary regression is unsupported/invalid.
+  EstatArFailed(String),
   /// `lincom` requires a preceding supported linear regression.
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
@@ -1050,6 +1054,8 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("estat requires a prior regress model")
       }
       Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
+      Self::EstatArRequiresPriorIv => formatter.write_str("estat ar requires a prior 2SLS fit"),
+      Self::EstatArFailed(message) => write!(formatter, "estat ar: {message}"),
       Self::LincomRequiresPriorEstimation => {
         formatter.write_str("no active estimation results found")
       }

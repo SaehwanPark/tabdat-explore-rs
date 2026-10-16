@@ -122,6 +122,10 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
     regression["first_stage"]["coefficient_inference"],
     "conventional_t_not_weak_iv_robust"
   );
+  assert_eq!(
+    regression["first_stage"]["joint_ar_postestimation_available"],
+    false
+  );
   let first_stage = regression["first_stage"]["rows"].as_array().unwrap();
   assert_eq!(first_stage.len(), 2);
   assert_eq!(first_stage[0]["endogenous"], "x1");
@@ -149,4 +153,66 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
   assert!(text.contains("F(2, 56)"));
   assert!(text.contains("coefficient p-values use conventional t inference"));
   assert!(text.contains("relevance diagnostics only"));
+}
+
+#[test]
+fn joint_ar_runs_in_scripts_and_json_with_explicit_inference_scope() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("ar.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1 x2) iv(z1 z2)\nestat ar, null(1.7 -0.6)\n",
+  )
+  .unwrap();
+  let results = json_lines(&fixture.run(&["--json", "-f", "ar.td"]));
+  assert_eq!(
+    results[1]["data"]["first_stage"]["joint_ar_postestimation_available"],
+    true
+  );
+  let ar = &results[2];
+  assert_eq!(ar["result_type"], "AndersonRubinResult");
+  let data = &ar["data"];
+  assert_eq!(data["test"], "anderson_rubin_joint");
+  assert_eq!(data["covariance"], "homoskedastic");
+  assert_eq!(data["null_scope"], "all_endogenous_joint");
+  assert_eq!(data["weak_iv_robust"], true);
+  assert_eq!(data["endogenous"], json!(["x1", "x2"]));
+  assert_eq!(data["null_values"], json!([1.7, -0.6]));
+  assert_eq!(data["observation_count"], 60);
+  assert_eq!(data["numerator_df"], 2);
+  assert_eq!(data["denominator_df"], 56);
+  close(&data["statistic"], 5.422_721_819_930_05);
+  close(&data["p_value"], 0.00703483761854517);
+  assert!(
+    data["assumptions"]
+      .as_str()
+      .unwrap()
+      .contains("valid_instruments")
+  );
+  let text = fixture.run(&["--text", "-f", "ar.td"]);
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  let text = String::from_utf8(text.stdout).unwrap();
+  assert!(text.contains("Anderson-Rubin joint test"));
+  assert!(text.contains("F(2, 56)"));
+  assert!(text.contains("unrestricted nuisance parameters"));
+  assert!(text.contains("No confidence set or subvector inference"));
+
+  for option in ["", "robust"] {
+    let null = if option.is_empty() { "0" } else { "0 0" };
+    let output = fixture.batch(
+      "--json",
+      &[
+        "use data.csv",
+        &format!("ivregress 2sls y w, endog(x1 x2) iv(z1 z2) {option}"),
+        &format!("estat ar, null({null})"),
+        "export should-not-exist.csv",
+      ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!fixture.0.join("should-not-exist.csv").exists());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("estat ar"));
+  }
 }

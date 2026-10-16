@@ -881,6 +881,10 @@ fn get_command_schema(
       name: "estat".to_string(),
       options: vec![
         OptionDescriptor {
+          name: "null".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
           name: "saving".to_string(),
           required: false,
         },
@@ -889,7 +893,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "estat subcommand".to_string(),
+      syntax: "estat vif | estat ar, null(b1 b2 ...)".to_string(),
     }),
     "exit" => Ok(CommandSchemaResult {
       arguments: vec![],

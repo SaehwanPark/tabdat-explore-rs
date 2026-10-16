@@ -155,6 +155,72 @@ fn ivregress_2sls_fits_multiple_endogenous_regressors_and_reports_sample() {
 }
 
 #[test]
+fn anderson_rubin_uses_retained_sample_and_preserves_state_on_success_and_failure() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let ar = parse_command("estat ar, null(1.7 -0.6)").unwrap();
+  assert_eq!(
+    session.execute(ar.clone()).unwrap_err(),
+    RuntimeError::EstatArRequiresPriorIv
+  );
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  assert_eq!(
+    session.execute(ar.clone()).unwrap_err(),
+    RuntimeError::EstatArRequiresPriorIv
+  );
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap();
+  let before = session.state();
+  let ExecutionResult::AndersonRubin(result) = session.execute(ar.clone()).unwrap() else {
+    panic!("expected AR test");
+  };
+  assert_eq!(result.observation_count, 58);
+  assert_eq!(session.state(), before);
+  let tabdat_domain::EstimationState::InstrumentalVariables(state) = before.estimation.unwrap()
+  else {
+    panic!("expected IV state");
+  };
+  assert_eq!(
+    state.problem.sample.as_ref().unwrap().retained_indices,
+    (2..60).collect::<Vec<_>>()
+  );
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(
+    session.execute(ar.clone()).unwrap(),
+    ExecutionResult::AndersonRubin(result)
+  );
+  assert_eq!(session.state(), changed);
+  assert!(
+    session
+      .execute(parse_command("estat ar, null(0)").unwrap())
+      .is_err()
+  );
+  assert_eq!(session.state(), changed);
+  for option in ["robust", "cluster(group_id)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x1 x2) iv(z1 z2) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let error = session.execute(ar.clone()).unwrap_err();
+    assert!(error.to_string().contains("requires a nonrobust 2SLS fit"));
+    assert_eq!(session.state(), before);
+  }
+}
+
+#[test]
 fn ivregress_failure_clears_stale_model_state_but_gmm_is_explicitly_unsupported() {
   let fixture = Fixture::new_with_sql(
     "SELECT i::DOUBLE AS i, sin(i::DOUBLE) AS y, sin(i::DOUBLE * 0.4) AS w, \

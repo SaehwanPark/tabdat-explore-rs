@@ -1283,6 +1283,10 @@ pub enum EstatSubcommand {
   },
   /// Report variance inflation factors for a linear regression model.
   Vif,
+  /// Joint homoskedastic Anderson-Rubin null, in endogenous fit order.
+  AndersonRubin {
+    null_values: Vec<String>,
+  },
   /// Report the first-stage diagnostic for an IV model.
   FirstStage,
   /// Report the overidentification diagnostic for an IV model.

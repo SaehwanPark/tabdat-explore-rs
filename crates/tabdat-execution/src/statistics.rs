@@ -538,12 +538,15 @@ impl Session {
     })?;
 
     self.estimation = Some(EstimationState::InstrumentalVariables(Box::new(
-      LinearRegressionState {
-        outcome: command.outcome.clone(),
-        predictors: predictor_names.clone(),
-        predictor_design,
-        include_intercept: command.include_intercept,
-        result: iv_result.regression.clone(),
+      InstrumentalVariablesState {
+        linear: LinearRegressionState {
+          outcome: command.outcome.clone(),
+          predictors: predictor_names.clone(),
+          predictor_design,
+          include_intercept: command.include_intercept,
+          result: iv_result.regression.clone(),
+        },
+        problem,
       },
     )));
     let covariance = match &iv_result.regression.covariance.covariance_type {
@@ -918,6 +921,24 @@ impl Session {
     &self,
     command: &EstatCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if let EstatSubcommand::AndersonRubin { null_values } = &command.subcommand {
+      let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
+        return Err(RuntimeError::EstatArRequiresPriorIv);
+      };
+      if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
+        return Err(RuntimeError::EstatArFailed(
+          "this homoskedastic AR test requires a nonrobust 2SLS fit; robust/cluster AR is not implemented".into(),
+        ));
+      }
+      let null_values = null_values
+        .iter()
+        .map(|value| value.parse::<f64>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| RuntimeError::EstatArFailed("null values must be finite numbers".into()))?;
+      let result = tabdat_stats::anderson_rubin_test(&state.problem, &null_values)
+        .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))?;
+      return Ok(ExecutionResult::AndersonRubin(result));
+    }
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
     }
