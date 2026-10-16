@@ -12,6 +12,7 @@ pub mod error;
 pub mod estimates;
 pub mod iv;
 mod iv_confidence;
+mod iv_endogenous;
 mod iv_overid;
 pub mod least_squares;
 pub mod matrix;
@@ -35,6 +36,7 @@ pub use iv_confidence::{
   AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape,
   anderson_rubin_confidence_set,
 };
+pub use iv_endogenous::{WuHausmanResult, wu_hausman_test};
 pub use iv_overid::{SarganResult, sargan_test};
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
