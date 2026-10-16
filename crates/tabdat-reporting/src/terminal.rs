@@ -134,11 +134,11 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
     output.push_str(
       "First stage: conventional excluded-instrument partial F tests (relevance diagnostics only)\n",
     );
-    output.push_str("Endogenous\tF(q, df)\tPartial R-squared\tP-value\n");
+    output.push_str("Endogenous\tF(q, df)\tPartial R-squared\tShea partial R-squared\tP-value\n");
     for diagnostic in first_stage {
       writeln!(
         output,
-        "{}\tF({}, {}) = {}\t{}\t{}",
+        "{}\tF({}, {}) = {}\t{}\t{}\t{}",
         diagnostic.endogenous.escape_debug(),
         diagnostic.numerator_df,
         diagnostic.denominator_df,
@@ -147,6 +147,7 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
           .map(inference_number)
           .unwrap_or_else(|| "NA".to_owned()),
         optional_inference(diagnostic.partial_r_squared),
+        optional_inference(diagnostic.shea_partial_r_squared),
         optional_inference(diagnostic.p_value)
       )
       .unwrap();

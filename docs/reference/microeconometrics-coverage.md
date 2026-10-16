@@ -56,7 +56,7 @@ provenance and redistribution terms before adding fixtures.
 
 | ID | Book locator and data lead | Status | Next evidence / blocker |
 | --- | --- | --- | --- |
-| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N and conventional first-stage F match the author output; Shea's statistic and weak-IV-robust inference remain planned below |
+| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; weak-IV-robust inference remains planned below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-CHOICE | pp. 463–466, 486, 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact binary/multinomial model variants/effects |
@@ -99,14 +99,24 @@ provenance and redistribution terms before adding fixtures.
   returned N=3,010, `grade76` coefficient 0.13244845, classical SE 0.04934188,
   HC1 SE 0.04878509, and first-stage F(3, 2980)=8.06710. These match the author
   Stata 8 output rounded to four decimals. The runtime's conventional first-stage
-  partial R² is 0.00805582; it is **not** Shea's 0.00640757. The independent
-  synthetic multi-endogenous R 4.6.1 reference and executable regression tests are
-  in `crates/tabdat-stats/tests/`.
+  partial R² is 0.00805582; it is distinct from the separately reported Shea
+  partial R²=0.006407574586203226, matching the author's 0.00640757 to eight
+  decimal places (absolute rounding tolerance 5e-9). The independent
+  [`reference_shea.R`](../../examples/mma04p4ivweak/reference_shea.R) uses base
+  R 4.6.1 residualization of original/projected columns on the identical
+  selected complete-case design; it also reports Shea values 0.0876256840 for
+  `exp76` and 0.0829397109 for `expsq76`. The synthetic multi-endogenous
+  R reference and executable regression tests in `crates/tabdat-stats/tests/`
+  check distinct ordinary/Shea statistics, covariance invariance, no-intercept
+  and single-endogenous designs, and zero/constant outcomes. The original data
+  SHA-256 is `a3fc1600cee50ccf565128118b4f901d03b07c46fb471a9c08464250eb39486a`;
+  dictionary SHA-256 is `600912c801d7e05489fd8651bd2659243a8a74b243b907bd56de8a07b8582988`.
+  These are bounded diagnostics, not a completed weak-instrument analysis.
 - **Access/limits:** source data remain external and are not copied into the
   repository until redistribution rights are established. The converter retains
   numeric values but not source labels. This bounded slice does not implement GMM,
-  overidentification tests (the example is just-identified), Shea's statistic, or
-  weak-IV-robust inference. A successful 2SLS fit or conventional first-stage F
+  overidentification tests (the example is just-identified), or weak-IV-robust
+  inference. A successful 2SLS fit or conventional first-stage F
   does not resolve weak identification.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)

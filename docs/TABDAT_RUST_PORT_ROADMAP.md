@@ -152,17 +152,19 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Extend the validated schooling-IV 2SLS core with Shea partial R-squared, using
-   the author output for the same DATA66 sample. Keep weak-IV-robust inference and
-   any overidentified examples explicitly separate until their samples, estimands
-   and independent references are specified.
-2. Define the first weak-IV-robust inference slice against an exact reference,
+1. Define the first weak-IV-robust inference slice against an exact reference,
    such as an Anderson–Rubin confidence set with a clear nuisance-parameter and
    report contract. Do not infer such support from conventional Wald results or
    first-stage relevance tests.
-3. Then select one binary-outcome textbook example and deliver a bounded
+2. Then select one binary-outcome textbook example and deliver a bounded
    fit → marginal-effect/inference → report workflow, preserving the required
    reference, sample and failure-case evidence.
+
+The schooling-IV 2SLS core now reports ordinary and Shea partial R-squared
+separately, validated against the author output on the DATA66 sample; see the
+[coverage ledger](reference/microeconometrics-coverage.md). This does not establish
+weak-IV-robust inference or complete the illustration. Keep overidentified
+examples separate until their samples, estimands and references are specified.
 
 Implement the selected bounded plan without broadening scope. If it conflicts
 with the codebase or reference semantics, stop and report the conflict rather than

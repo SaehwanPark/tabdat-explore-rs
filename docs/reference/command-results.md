@@ -462,9 +462,12 @@ Linear JSON results reuse the supplied statistics without recalculation:
   `weak_iv_robust_inference_available: false`,
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
   `rows` with endogenous name,
-  excluded instruments, N, numerator/denominator DF, partial R-squared, F and
-  p-value. Missing/non-finite diagnostic scalars are null. OLS results omit
-  `first_stage`.
+  excluded instruments, N, numerator/denominator DF, ordinary `partial_r_squared`,
+  `shea_partial_r_squared`, F and p-value. Shea's statistic accounts for the other
+  endogenous regressors and is independent of the requested covariance on an
+  identical sample; with one endogenous regressor it equals ordinary partial R²
+  when that diagnostic is defined. Missing/non-finite diagnostic scalars are null.
+  OLS results omit `first_stage`.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,

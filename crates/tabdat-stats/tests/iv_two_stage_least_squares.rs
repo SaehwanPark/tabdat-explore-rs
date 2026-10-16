@@ -90,6 +90,14 @@ fn two_endogenous_regressors_match_independent_r_reference() {
     close(diagnostic.partial_r_squared.unwrap(), expected_partial_r2);
   }
 
+  for (diagnostic, expected) in classical
+    .first_stage
+    .iter()
+    .zip([0.46058071111269, 0.29097041265132])
+  {
+    close(diagnostic.shea_partial_r_squared.unwrap(), expected);
+  }
+
   let robust = fit_two_stage_least_squares(
     &problem,
     &IvOptions {
@@ -113,6 +121,21 @@ fn two_endogenous_regressors_match_independent_r_reference() {
     },
   )
   .unwrap();
+  for ((classical, robust), clustered) in classical
+    .first_stage
+    .iter()
+    .zip(&robust.first_stage)
+    .zip(&clustered.first_stage)
+  {
+    assert_eq!(
+      classical.shea_partial_r_squared,
+      robust.shea_partial_r_squared
+    );
+    assert_eq!(
+      classical.shea_partial_r_squared,
+      clustered.shea_partial_r_squared
+    );
+  }
   for (coefficient, expected) in clustered.regression.coefficients.iter().zip([
     0.57024986793111,
     0.44391982639610,
@@ -120,6 +143,50 @@ fn two_endogenous_regressors_match_independent_r_reference() {
     0.43337204386643,
   ]) {
     close(coefficient.standard_error.unwrap(), expected);
+  }
+}
+
+#[test]
+fn shea_handles_no_intercept_and_is_independent_of_the_outcome() {
+  let mut problem = reference_problem();
+  problem.include_intercept = false;
+  let fit = fit_two_stage_least_squares(&problem, &IvOptions::default()).unwrap();
+  for (diagnostic, expected) in fit
+    .first_stage
+    .iter()
+    .zip([0.63244977946811, 0.41428783098388])
+  {
+    close(diagnostic.shea_partial_r_squared.unwrap(), expected);
+  }
+  // Constant/zero outcomes must not turn a design diagnostic into 0/0.
+  for outcome in [0.0, 3.0] {
+    problem.response.fill(outcome);
+    let changed = fit_two_stage_least_squares(&problem, &IvOptions::default()).unwrap();
+    for (before, after) in fit.first_stage.iter().zip(changed.first_stage) {
+      close(
+        after.shea_partial_r_squared.unwrap(),
+        before.shea_partial_r_squared.unwrap(),
+      );
+    }
+  }
+}
+
+#[test]
+fn single_endogenous_shea_equals_ordinary_partial_r_squared() {
+  let mut problem = reference_problem();
+  problem.endogenous_names.pop();
+  for row in &mut problem.endogenous {
+    row.pop();
+  }
+  // Two excluded instruments for one endogenous regressor: overidentified design.
+  for intercept in [true, false] {
+    problem.include_intercept = intercept;
+    let fit = fit_two_stage_least_squares(&problem, &IvOptions::default()).unwrap();
+    let diagnostic = &fit.first_stage[0];
+    close(
+      diagnostic.shea_partial_r_squared.unwrap(),
+      diagnostic.partial_r_squared.unwrap(),
+    );
   }
 }
 
