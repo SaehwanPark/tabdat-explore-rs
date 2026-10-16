@@ -50,7 +50,7 @@ fn interactive_help_aliases_topics_and_errors_preserve_session_data() {
   assert_eq!(stdout.matches("Interactive core workflow\n").count(), 2);
   assert!(stdout.contains("Load local eager CSV/Parquet: use <path>"));
   assert!(stdout.contains(
-    "local use/run paths, bare use/append/join registered names, and basic bare EDA variable lists"
+    "local use/run paths, bare use/append/join registered names, and basic bare/backtick EDA variable lists"
   ));
   assert!(stdout.contains("Bare `by ...: summarize` reports native grouped means in CLI JSON"));
   assert!(!stdout.contains("not variables/paths"));
@@ -83,6 +83,28 @@ fn piped_tabs_remain_whitespace_and_do_not_complete_prefixes() {
   assert!(stdout.ends_with("2 rows\n"));
   assert!(!stdout.contains("tabdat>"));
   assert!(!stdout.contains("Variable\tN\tMean"));
+}
+
+#[test]
+fn piped_backtick_prefixes_do_not_complete_and_full_names_recover() {
+  let fixture = Fixture::new();
+  fs::write(fixture.0.join("quoted.csv"), "annual income\n1\n3\n").unwrap();
+  let output = run(
+    &fixture,
+    b"use quoted.csv\nsummarize `annual i\t\nsummarize `annual income`\ncount\nexit\n",
+  );
+  assert!(output.status.success());
+  let stderr = String::from_utf8(output.stderr).unwrap();
+  assert_eq!(stderr.matches("Error:").count(), 1, "{stderr}");
+  assert!(stderr.contains("unterminated quoted identifier"));
+  let stdout = String::from_utf8(output.stdout).unwrap();
+  assert_eq!(
+    stdout.matches("annual income\t2\t2\t").count(),
+    1,
+    "{stdout}"
+  );
+  assert!(stdout.ends_with("2 rows\n"));
+  assert!(!stdout.contains("tabdat>"));
 }
 
 #[test]

@@ -131,8 +131,9 @@ The existing completion/editing/history/cancellation/model-retention acceptance 
 runs first in the same process, including literal `use`/`run` path completion,
 quoted CSV option suffixes, bare registered-name completion with same-name file/directory
 precedence, registered append/join target completion with a real append-order check and
-a preserved join suffix, and current-schema column/registry refresh after transformations
-and partial failed scripts. The two intentional recovery diagnostics are checked
+a preserved join suffix, current-schema column/registry refresh after transformations
+and partial failed scripts, and explicit backtick-column completion through quoted-header
+summary/robust-fit/prediction with Unicode, closing-quote/option suffix and rename refresh. The two intentional recovery diagnostics are checked
 exactly; missing, changed or extra errors fail acceptance. Historical observations
 below pin the earlier tool revision/acceptance sequence; their samples are not
 replaced by this coverage change. Then **one excluded warmup cycle** precedes

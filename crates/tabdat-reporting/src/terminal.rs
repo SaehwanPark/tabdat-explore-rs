@@ -303,7 +303,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "  Help: help [topic] or ?[topic]; example: help summarize\n",
       "  Leave: exit, quit, or EOF\n",
       "Supported forms/options are bounded; reference topics may include parser-only or future syntax.\n",
-      "See SPEC.md for current limits. In capable terminals, Tab completes core commands/help topics, local use/run paths, bare use/append/join registered names, and basic bare EDA variable lists.\n",
+      "See SPEC.md for current limits. In capable terminals, Tab completes core commands/help topics, local use/run paths, bare use/append/join registered names, and basic bare/backtick EDA variable lists. Open a backtick to complete headers with spaces; embedded-backtick/control names are excluded.\n",
       "Path/variable prefixes are literal and case-sensitive; open a compatible quote for spaced paths. Piped input is not completed.\n",
       "Ctrl-C cancels pending input; executing-command cancellation is not supported.\n"
     ).to_owned()),

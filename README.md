@@ -165,17 +165,21 @@ retains native precedence over a same-name file/directory; explicit `./`/directo
 paths, quotes and option-bearing suffixes keep filesystem-only completion. This does
 not validate activation/loadability or add named completion to `run` or piped input.
 
-Basic bare-variable lists also complete current column names for `summarize`, `codebook`,
+Basic variable lists also complete current column names for `summarize`, `codebook`,
 `missing`, `tabulate`, `regress`, `keep`, `drop`, `select` and `sort`. For example,
 `summarize age_s<Tab>` can complete `age_squared`. Names use literal case-sensitive
 prefixes, sorted and deduplicated; bare letter/underscore identifiers (including Unicode)
 are offered, excluding the reserved `if` keyword. The owned snapshot refreshes from current
 schema before every prompt, including after failed commands, partial scripts and named-table
 switches; it does not scan data or use cached-model names. Suggestions are not numeric/type,
-formula or estimator validation, and repeated variables are not suppressed. Quoted names,
-factors, signed keys, expressions, predicates/options and new output names are not completed.
-Existing suffixes are preserved when completing before whitespace or a comma, not inside a
-variable name. Piped input still treats tabs as whitespace.
+formula or estimator validation, and repeated variables are not suppressed. For a header with
+spaces, punctuation or the reserved `if` name, type an opening backtick before its prefix:
+``summarize `annual i<Tab>`` completes to ``summarize `annual income` ``. Backtick completion
+closes the name unless a closing backtick already follows the cursor; mixed bare/backtick
+lists and existing quote/option suffixes are preserved. Empty, control-bearing and embedded-
+backtick names are not offered; single/double quotes are not variable delimiters here.
+Factors, signed keys, expressions, predicates/options and new output names are not completed.
+Completion acts at a variable prefix end, not inside a name. Piped input never completes tabs.
 A multiline continuation prompt is not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a
 supported cancellation protocol and may terminate the process; in-flight file-write
 safety is not promised.

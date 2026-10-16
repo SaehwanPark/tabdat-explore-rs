@@ -142,6 +142,7 @@ def run(args):
     with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
         Path(directory, "data.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
         Path(directory, "data-extra.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
+        Path(directory, "quoted.csv").write_text("annual income,annual cost,变量 名\n0,1,0\n1,2,1\n2,4,2\n3,6,3\n", encoding="utf-8")
         Path(directory, "cohort_probe").write_text("a same-name file must not override the registered table")
         Path(directory, "cohort_dir").mkdir()
         Path(directory, "cohort_dir", "input.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
@@ -247,6 +248,23 @@ def run(args):
             # A typed join suffix after the target survives completion and executes.
             command(b"join lookup_pro\t on x, how=left suffix(_s)\n", b"Joined: 6 rows, 3 columns")
             command(b"summarize lookup_y\n", b"lookup_y\t2\t1.5\t")
+            command(b"use quoted.csv\n", b"Loaded 4 rows, 3 columns")
+            command(b"summarize `annual i\t\n", b"annual income\t4\t1.5\t")
+            command("summarize `变量\t\n".encode(), "变量 名\t4\t1.5\t".encode())
+            line = b"summarize `annual i`, detail"
+            suffix_length = len(b"`, detail")
+            command(line + b"\x1b[D" * suffix_length + b"\t" + b"\x1b[C" * suffix_length + b"\n", b"annual income\t4\t1.5\t")
+            fit = command(b"regress `annual c\t `annual i\t, robust\n", b"annual income\t")
+            rows = numeric_rows(fit, "Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)", 2)
+            for row, name, value in zip(rows, ["intercept", "annual income"], [0.7, 1.7]):
+                if row[0] != name:
+                    raise ValueError("wrong quoted predictor order")
+                close(row[1], value)
+            command(b"rename `annual income` `updated income`\n", b"Renamed: 4 rows, 3 columns")
+            command(b"summarize `updated i\t\n", b"updated income\t4\t1.5\t")
+            command(b"rename `updated income` `annual income`\n", b"Renamed: 4 rows, 3 columns")
+            command(b"predict fitted\n", b"Predicted: 4 rows, 4 columns")
+            command(b"summarize fitted\n", b"fitted\t4\t3.25\t")
             if args.measure:
                 timings = measure_cycles(command, args.repetitions)
             os.write(fd, b"\x04")
@@ -302,7 +320,7 @@ def main():
         }
         print(json.dumps(report, allow_nan=False))
     else:
-        print("PTY passed: command/help/read-path/registered-name/append-join-target/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        print("PTY passed: command/help/read-path/registered-name/append-join-target/bare-and-backtick-column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
 
 
 if __name__ == "__main__":

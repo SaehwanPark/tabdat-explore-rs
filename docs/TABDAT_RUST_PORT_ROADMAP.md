@@ -39,8 +39,10 @@ identifiers from prompt-level registry keys, merging sorted/deduplicated path ca
 name/file/directory precedence, partial-script refresh and plain-input behavior are checked.
 Bare `append`/`join` targets now also complete registered names only, without filesystem
 candidates, preserving typed join suffixes through real PTY append-order and join-suffix
-workflows. Explicit paths/quotes/options remain filesystem-only. Quoted-variable/expression/
-option/output-path completion, multiline continuation and in-flight cancellation remain
+workflows. Explicit `use` paths/quotes/options remain filesystem-only. EDA variable lists
+also complete explicitly opened backtick names (including spaces, punctuation and Unicode),
+with mixed lists and closing-quote/option suffix preservation; empty/control/embedded-backtick
+names remain excluded. Expression/option/output-path completion, multiline continuation and in-flight cancellation remain
 deferred; an executing command may still terminate on SIGINT. Local Unix PTY
 evidence is not platform certification.
 
@@ -375,8 +377,11 @@ state are handled correctly.
   Bare `append`/`join` targets now also complete literal registered names, offering no
   filesystem candidates and preserving typed join suffixes; real PTY same-name append
   ordering and join-suffix workflows are checked. No extension/loadability inference
-  or shell expansion is added. Quoted-variable, expression/option/output-path completion
-  and persistent history remain deferred.
+  or shell expansion is added. Explicitly opened backtick EDA variables now complete from
+  the same current-schema snapshot, closing names without duplicating a typed closing quote.
+  Mixed bare/quoted lists, Unicode, rename refresh and quoted summary→fit→prediction are
+  covered; embedded-backtick/control/empty names, expressions/options/output paths and
+  persistent history remain outside completion scope.
   In-session `help`/`?` provides bounded workflow guidance and packaged reference topics,
   including `lincom`/`test` topics (#202) and the four installed `ttest` forms
   (one-sample, paired, pooled and Welch, including the `unequal` alias). `ttest`
