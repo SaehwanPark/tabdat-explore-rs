@@ -34,7 +34,7 @@ Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
 supports use, describe, count, codebook, summarize, missing, tabulate,
 generate/replace, save/export,
-head/tail, `estat vif` and the bounded
+head/tail, `estat vif/ar/overid` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
 `result_type: "DescribeResult"` and `data.dataset`, reusing the load/prediction
@@ -472,6 +472,23 @@ Linear JSON results reuse the supplied statistics without recalculation:
   identical sample; with one endogenous regressor it equals ordinary partial R²
   when that diagnostic is defined. Missing/non-finite diagnostic scalars are null.
   OLS results omit `first_stage`.
+- `SarganResult` (`estat overid` after an overidentified nonrobust 2SLS fit):
+  `test: "sargan_n_r_squared"`, `covariance: "homoskedastic"`,
+  `reference_distribution: "asymptotic_chi_square"`, `weak_iv_robust: false`,
+  `null_hypothesis: "overidentifying_restrictions_hold_given_maintained_model"`,
+  `assumptions: "homoskedastic_errors_correctly_specified_maintained_model_strong_identification"`,
+  ordered `endogenous` and `excluded_instruments`, `observation_count`,
+  `degrees_of_freedom`, `statistic` and upper-tail `p_value`. Statistic is
+  N*(u'P_Z u)/(u'u), with retained structural residuals and full instrument design;
+  uncentered N*R² also defines noconstant behavior. DF = excluded instruments minus
+  endogenous regressors. No N-K correction, Basmann, robust Hansen J or exact F.
+  Strong-identification asymptotics, homoskedasticity and the correctly specified
+  maintained model are required. Just-identified/robust/cluster fits, zero or
+  nonfinite residual variance and auxiliary rank/DF/numerical failures are errors.
+  No sample rescan, 2SLS refit or state mutation occurs. Rejection can reflect
+  invalid instruments or model misspecification; failure to reject does not prove
+  instrument validity or resolve weak identification. The external AER example
+  in `examples/cigarettes_iv/` records independent numerical and sample evidence.
 - `AndersonRubinResult` (`estat ar, null(...)` after a nonrobust 2SLS fit):
   `test: "anderson_rubin_joint"`, `covariance: "homoskedastic"`,
   `null_scope: "all_endogenous_joint"`, `weak_iv_robust: true`, `assumptions`,

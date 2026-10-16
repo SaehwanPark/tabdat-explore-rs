@@ -7,7 +7,9 @@ stopifnot(length(args) == 1L)
 d <- read.csv(args[[1]])
 d <- d[d$year == 1995, ]
 d <- d[order(d$state), ]
-stopifnot(nrow(d) == 48L, !anyDuplicated(d$state))
+expected_states <- strsplit(paste("AL AR AZ CA CO CT DE FL GA IA ID IL IN KS KY LA MA MD ME MI MN MO MS MT",
+  "NC ND NE NH NJ NM NV NY OH OK OR PA RI SC SD TN TX UT VA VT WA WI WV WY"), " ")[[1]]
+stopifnot(nrow(d) == 48L, !anyDuplicated(d$state), identical(d$state, expected_states))
 y <- log(d$packs)
 w <- log(d$income / d$population / d$cpi)
 x <- log(d$price / d$cpi)

@@ -114,9 +114,9 @@ provenance and redistribution terms before adding fixtures.
   These are bounded diagnostics, not a completed weak-instrument analysis.
 - **Access/limits:** source data remain external and are not copied into the
   repository until redistribution rights are established. The converter retains
-  numeric values but not source labels. This bounded slice does not implement GMM,
-  overidentification tests (the example is just-identified), or schooling-specific
-  scalar weak-IV-robust intervals. A successful 2SLS fit or conventional first-stage
+  numeric values but not source labels. The example is just-identified, so an
+  overidentification test does not apply to this design. GMM and schooling-specific
+  scalar weak-IV-robust intervals remain unimplemented. A successful 2SLS fit or conventional first-stage
   F does not resolve weak identification.
 - **Bounded joint AR method:** `estat ar, null(b1 b2 ...)` after a nonrobust 2SLS
   fit tests all endogenous coefficients jointly using retained sample/design.
@@ -150,6 +150,30 @@ Missing seed rows (including simulation/Bayesian, measurement error and imputati
 are **un-inventoried required work**, not exclusions. Several locators may contain
 multiple analyses: split them into separately verifiable rows as they are inspected.
 Do not label the whole book covered until that inventory is complete.
+
+## Additional IV method evidence (not a textbook replication)
+
+The external AER `ivreg` CigarettesSW example is specified and reproduced in
+[`examples/cigarettes_iv/`](../../examples/cigarettes_iv/README.md). The script
+selects all 48 states observed in 1995, orders state codes, and fits log packs on
+log real price (endogenous) and log real per-capita income with an intercept;
+excluded instruments are real sales-tax difference and real cigarette tax.
+The README records source URL, CSV checksum and exact numerical/sample contract.
+Independent R 4.6.1 QR fits yield coefficients (9.8949555411551628,
+0.2804048250834234,-1.2774241334272722), Sargan N*R²=0.3326221419365246,
+chi-square DF=1, p=0.5641191400175745; native replay matches within 1e-12 absolute
+tolerance. The statistic is N*(u'P_Z u)/(u'u), not an N-K-corrected variant.
+
+`estat overid` uses retained structural residuals/design without refitting or
+mutating state. Numerical tests additionally validate two-endogenous,
+three-/four-instrument, intercept/no-intercept fixtures and independent chi-square
+tails; runtime/CLI cases cover exact retained indices, current-data changes,
+just-identified/robust/cluster rejection, undefined variance and stop-before-export.
+Inference is homoskedastic, correctly specified maintained model, conventional
+strong-identification asymptotics. Failure to reject does not prove instrument
+validity; robust/cluster Hansen J, endogeneity diagnostics and GMM remain required
+work. **This is method evidence only: no Cameron–Trivedi illustration row changes
+status or becomes validated because this external example works.**
 
 ## How to turn a seed into an implementation contract
 

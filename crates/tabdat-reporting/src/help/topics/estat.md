@@ -4,6 +4,7 @@ How to invoke:
 `estat vif`
 `estat ar, null(b1 b2 ...)`
 `estat ar, ci [level(95)]`
+`estat overid`
 
 What it does:
 Report variance-inflation factors from the retained linear-regression predictor design, in predictor order. Requires an active dataset and a prior successful bounded `regress` fit.
@@ -23,7 +24,40 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif` and `ar` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar` and `overid` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+
+## Sargan overidentification test
+
+After a **nonrobust**, overidentified 2SLS fit:
+
+```text
+ivregress 2sls y w, endog(x1 x2) iv(z1 z2 z3)
+estat overid
+```
+
+This reports the homoskedastic **Sargan N*R²** test. Let Z be all included
+exogenous/intercept columns plus excluded instruments and u the retained
+**structural** 2SLS residuals against the original regressors. The statistic is
+`N * (u' P_Z u) / (u' u)`, with asymptotic chi-square DF equal to excluded-instrument
+count minus endogenous-regressor count. The uncentered denominator also defines
+`noconstant` behavior; there is no N-K correction. This is not Basmann, robust
+Hansen J, or an exact finite-sample F test.
+
+The null is that the overidentifying restrictions hold, given the maintained
+model. Homoskedasticity, correct specification and standard strong-identification
+asymptotics are required. A small p-value can reflect invalid instruments or
+model misspecification; it does not identify which instrument is invalid.
+Failure to reject does not prove instrument validity or resolve weak identification.
+
+Just-identified and robust/cluster parent fits are rejected explicitly, as are
+zero/nonfinite structural residual variance and auxiliary rank/DF failures.
+Sargan uses the retained sample/design/residuals even after current data changes;
+it does not refit 2SLS, rescan current columns or mutate dataset/model state.
+CLI-v1 JSON returns `SarganResult` with test convention, assumptions, N, endogenous
+and excluded-instrument names, DF, statistic and upper-tail p-value. Scripts and
+`--text` expose the same owned results. Endogeneity tests, robust/cluster overid
+and GMM remain separate work. See the reproducible external-data example under
+`examples/cigarettes_iv/`.
 
 ## Joint Anderson–Rubin test
 
