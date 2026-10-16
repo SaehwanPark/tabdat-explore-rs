@@ -153,6 +153,7 @@ fn run_editor_session(output: &mut impl Write, errors: &mut impl Write) -> io::R
       // Refresh from current metadata even after errors or partial script effects;
       // cached-model names and backend scans are not completion sources.
       if let Some(helper) = editor.helper_mut() {
+        helper.set_named_tables(session.named_tables().keys().map(String::as_str));
         helper.set_columns(
           session
             .active_dataset()
