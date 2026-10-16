@@ -330,8 +330,12 @@ state are handled correctly.
   samples and profile/scope metadata are explicit. A matching local release
   baseline now retains two 10000-row runs and a 1000000-row run on macOS/aarch64
   (#219), with full release tests and unchanged correctness guards. This is not
-  OS-cold-cache performance or cross-platform/release certification. The existing
-  Unix PTY acceptance tool now offers opt-in warmed persistent-shell observations
+  OS-cold-cache performance or cross-platform/release certification. The same
+  measurement example now includes finite percentile detail with independent
+  closed-form sorted-position guards and current matching release observations
+  at 10000/1000000 rows; historical artifacts remain unchanged. This is execute-only
+  latency, not memory measurement or evidence justifying an optimization.
+  The existing Unix PTY acceptance tool now offers opt-in warmed persistent-shell observations
   for a fixed four-row load/count/summary/OLS/prediction cycle, including editor,
   rendering, transport and observer overhead. Two local release repeats retain raw
   samples/context; closed-form fixture guards, excluded warmup, cleanup and failure

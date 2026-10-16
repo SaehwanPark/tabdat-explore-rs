@@ -183,6 +183,44 @@ fn coefficients(rows: usize) -> (f64, f64) {
     (3.0 - 1.0 / n, 2.0)
   }
 }
+fn fixture_percentile(rows: usize, percentile: u8, outcome: bool) -> f64 {
+  let n = rows as f64;
+  // All even-index y values precede all odd-index y values. This derives
+  // sorted positions from fixture algebra, without sorting data or fitting a model.
+  let at = |index: usize| {
+    if outcome {
+      let evens = rows.div_ceil(2);
+      if index < evens {
+        2.0 + 4.0 * index as f64 / n
+      } else {
+        4.0 + (4.0 * (index - evens) as f64 + 2.0) / n
+      }
+    } else {
+      index as f64 / n
+    }
+  };
+  let position = f64::from(percentile) / 100.0 * (n - 1.0);
+  let lower = position.floor() as usize;
+  let upper = position.ceil() as usize;
+  at(lower) + (at(upper) - at(lower)) * position.fract()
+}
+fn validate_summary_rows(summaries: &[Value], rows: usize) -> Result<()> {
+  require(
+    summaries.len() == 2 && summaries[0]["variable"] == "x" && summaries[1]["variable"] == "y",
+    "summary order",
+  )?;
+  for row in summaries {
+    require(row["count"] == rows, "finite summary sample")?;
+  }
+  close(
+    &summaries[0]["mean"],
+    (rows - 1) as f64 / (2.0 * rows as f64),
+  )?;
+  close(
+    &summaries[1]["mean"],
+    4.0 - if rows.is_multiple_of(2) { 1.0 } else { 2.0 } / rows as f64,
+  )
+}
 fn validate(value: &Value, kind: &str, rows: usize) -> Result<()> {
   require(
     value["schema_version"] == 1 && value["result_type"] == kind,
@@ -196,21 +234,30 @@ fn validate(value: &Value, kind: &str, rows: usize) -> Result<()> {
     "CountResult" => require(data["row_count"] == rows, "count"),
     "SummarizeResult" => {
       let summaries = data["rows"].as_array().ok_or("summary rows absent")?;
+      validate_summary_rows(summaries, rows)
+    }
+    "SummarizeDetailResult" => {
       require(
-        summaries.len() == 2 && summaries[0]["variable"] == "x" && summaries[1]["variable"] == "y",
-        "summary order",
+        data["quantile_method"] == "linear_type_7",
+        "detail quantile method",
       )?;
-      for row in summaries {
-        require(row["count"] == rows, "finite summary sample")?;
+      let details = data["rows"].as_array().ok_or("detail rows absent")?;
+      let summaries: Vec<_> = details.iter().map(|row| row["summary"].clone()).collect();
+      validate_summary_rows(&summaries, rows)?;
+      for (column, detail) in details.iter().enumerate() {
+        let points = detail["percentiles"]
+          .as_array()
+          .ok_or("percentiles absent")?;
+        require(points.len() == 9, "percentile count")?;
+        for (point, percentile) in points.iter().zip([1_u8, 5, 10, 25, 50, 75, 90, 95, 99]) {
+          require(point["percentile"] == percentile, "percentile order")?;
+          close(
+            &point["value"],
+            fixture_percentile(rows, percentile, column == 1),
+          )?;
+        }
       }
-      close(
-        &summaries[0]["mean"],
-        (rows - 1) as f64 / (2.0 * rows as f64),
-      )?;
-      close(
-        &summaries[1]["mean"],
-        4.0 - if rows.is_multiple_of(2) { 1.0 } else { 2.0 } / rows as f64,
-      )
+      Ok(())
     }
     "RegressionResult" => {
       require(
@@ -383,6 +430,11 @@ fn run(options: Options) -> Result<Value> {
   for (name, source, kind) in [
     ("session_load_csv", "use", "LoadResult"),
     ("session_summarize", "summarize x y", "SummarizeResult"),
+    (
+      "session_summarize_detail",
+      "summarize x y, detail",
+      "SummarizeDetailResult",
+    ),
     ("session_regress", "regress y x", "RegressionResult"),
     ("session_predict", "predict fitted", "PredictionResult"),
   ] {
@@ -523,11 +575,68 @@ mod tests {
       for (source, kind) in [
         ("use", "LoadResult"),
         ("summarize x y", "SummarizeResult"),
+        ("summarize x y, detail", "SummarizeDetailResult"),
         ("regress y x", "RegressionResult"),
         ("predict fitted", "PredictionResult"),
       ] {
         assert!(sample_session(&fixture, rows, source, kind).unwrap() >= 0.0);
       }
+    }
+  }
+  #[test]
+  fn percentile_algebra_matches_hand_computed_even_and_odd_order_statistics() {
+    for (rows, expected_y) in [
+      (4, [2.03, 2.15, 2.3, 2.75, 3.75, 4.75, 5.2, 5.35, 5.47]),
+      (5, [2.032, 2.16, 2.32, 2.8, 3.6, 4.4, 4.88, 5.04, 5.168]),
+    ] {
+      for (percentile, expected) in [1_u8, 5, 10, 25, 50, 75, 90, 95, 99]
+        .into_iter()
+        .zip(expected_y)
+      {
+        close(&json!(fixture_percentile(rows, percentile, true)), expected).unwrap();
+        close(
+          &json!(fixture_percentile(rows, percentile, false)),
+          f64::from(percentile) / 100.0 * (rows - 1) as f64 / rows as f64,
+        )
+        .unwrap();
+      }
+    }
+  }
+  #[test]
+  fn invalid_detail_payloads_cannot_be_accepted_as_timings() {
+    let fixture = Fixture::new(4).unwrap();
+    let mut session = Session::new();
+    envelope(&mut session, fixture.load().unwrap()).unwrap();
+    let valid = envelope(
+      &mut session,
+      parse_command("summarize x y, detail").unwrap(),
+    )
+    .unwrap();
+    validate(&valid, "SummarizeDetailResult", 4).unwrap();
+    for defect in [
+      "method", "rows", "count", "mean", "points", "order", "value", "null",
+    ] {
+      let mut wrong = valid.clone();
+      match defect {
+        "method" => wrong["data"]["quantile_method"] = json!("different"),
+        "rows" => wrong["data"]["rows"].as_array_mut().unwrap().reverse(),
+        "count" => wrong["data"]["rows"][0]["summary"]["count"] = json!(3),
+        "mean" => wrong["data"]["rows"][0]["summary"]["mean"] = json!(100),
+        "points" => {
+          wrong["data"]["rows"][0]["percentiles"]
+            .as_array_mut()
+            .unwrap()
+            .pop();
+        }
+        "order" => wrong["data"]["rows"][0]["percentiles"][0]["percentile"] = json!(2),
+        "value" => wrong["data"]["rows"][1]["percentiles"][0]["value"] = json!(100),
+        "null" => wrong["data"]["rows"][0]["percentiles"][0]["value"] = Value::Null,
+        _ => unreachable!(),
+      }
+      assert!(
+        validate(&wrong, "SummarizeDetailResult", 4).is_err(),
+        "{defect}"
+      );
     }
   }
   #[test]

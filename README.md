@@ -207,7 +207,7 @@ parity, full model-array reporting or a transactional publication guarantee.
 ## Local responsiveness measurements
 
 A development-only Rust example measures fresh-process startup/core JSON workflows
-and separate session CSV load, summary, OLS and prediction execution. It validates
+and separate session CSV load, ordinary/percentile-detail summary, OLS and prediction execution. It validates
 results, excludes one warmup per case, and records raw/minimum/median/maximum
 milliseconds with supplied build context. It introduces no production dependency
 or timing gate. Fresh-process is not OS-cold-cache timing, and debug smoke evidence
