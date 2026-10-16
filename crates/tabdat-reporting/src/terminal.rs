@@ -357,6 +357,10 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
           dataset.columns.len()
         )
         .unwrap();
+        output.push_str("Current columns:\n");
+        for column in &dataset.columns {
+          writeln!(output, "  {:?}: {:?}", column.name, column.data_type).unwrap();
+        }
       } else {
         output.push_str("Active dataset: none\n");
       }
