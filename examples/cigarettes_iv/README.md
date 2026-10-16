@@ -1,8 +1,8 @@
 # Overidentified cigarette-demand IV example
 
 This reproduces the **AER `ivreg` example**, not an empirical illustration from
-Cameron–Trivedi (2005). It validates the Sargan method needed by the graduate IV
-workflow; it does not advance the book's empirical-illustration status.
+Cameron–Trivedi (2005). It validates Sargan and classical Wu–Hausman methods needed
+by the graduate IV workflow; it does not advance the book's empirical-illustration status.
 
 - Specification: [AER 1.2-12 `ivreg` documentation](https://search.r-project.org/CRAN/refmans/AER/html/ivreg.html).
 - Data: external [Rdatasets AER/CigarettesSW CSV](https://vincentarelbundock.github.io/Rdatasets/csv/AER/CigarettesSW.csv),
@@ -73,5 +73,51 @@ labelled relevance/weak-IV diagnostics.
 
 `estat overid` reuses the retained 2SLS sample/design/structural residuals without
 refitting or mutating state. Just-identified or robust/cluster parent fits and
-undefined residual variance/rank/DF fail explicitly. Endogeneity diagnostics,
-robust/cluster Hansen J and GMM remain separate required work.
+undefined residual variance/rank/DF fail explicitly. Robust/cluster Hansen J and
+GMM remain separate required work.
+
+## Classical joint Wu–Hausman endogeneity diagnostic
+
+Using the same `repo` and `work` directories from above:
+
+```sh
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text \
+  -f "$repo/examples/cigarettes_iv/endogenous.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/cigarettes_iv/endogenous.td")
+Rscript examples/cigarettes_iv/reference_endogenous.R "$work/CigarettesSW.csv"
+```
+
+This uses the identical pinned/sorted 48-state sample and 2SLS specification,
+reports Sargan and then `estat endogenous`. Base R4.6.1 independently fits the
+full-instrument first stage and compares OLS on the original regressors against
+OLS augmented by the first-stage innovation:
+
+| Quantity | Independent R reference |
+| --- | ---: |
+| Restricted OLS RSS | 1.578794093504594 |
+| Augmented OLS RSS | 1.475890440962176 |
+| Wu–Hausman F(1,44) | 3.067816272944078 |
+| Upper-tail p-value | 0.08682504624130956 |
+
+Native F and p match within 1e-12 absolute tolerance. The null tests exogeneity
+of **all** declared endogenous regressors, conditional on valid instruments and
+the maintained model. Here m=1 and K=3, giving N-K-m=44 residual DF. Unlike
+Sargan, this test also applies to just-identified designs.
+
+The R reference separately computes an **HC0 contrast**, F=3.823467179945732,
+p=0.05690916902691472. That is a different auxiliary covariance convention, not
+the implemented homoskedastic RSS test. No AER package execution, robust/cluster
+endogeneity or automatic covariance substitution is implied. Ordinary strong-
+identification conditions apply; exact finite-sample F additionally requires
+conditional normality. Failure to reject does not prove exogeneity or IV validity.
+
+The diagnostic uses auxiliary fits on the retained problem, with no 2SLS refit,
+current-data scan or model/data mutation. Auxiliary predictors are norm-scaled
+without changing their spaces. Numerically degenerate first-stage innovations
+(norm at most 1e-12 relative to the endogenous regressor after included controls)
+and augmented residuals (norm at most 1e-12 relative to centered outcome norm,
+uncentered for noconstant) are errors, not p-values asserting exogeneity. Rank,
+DF, constant-outcome and nonfinite cases also fail explicitly. Only the joint
+homoskedastic Wu F is installed; robust/cluster/subset endogeneity and other
+variants remain separate work. This adds method evidence, not a book replication.

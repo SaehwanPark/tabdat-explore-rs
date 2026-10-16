@@ -221,6 +221,73 @@ fn anderson_rubin_uses_retained_sample_and_preserves_state_on_success_and_failur
 }
 
 #[test]
+fn wu_hausman_reuses_retained_sample_and_supports_joint_just_identified_models() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let command = parse_command("estat endogenous").unwrap();
+  assert_eq!(
+    session.execute(command.clone()).unwrap_err(),
+    RuntimeError::EstatEndogenousRequiresPriorIv
+  );
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert_eq!(
+    session.execute(command.clone()).unwrap_err(),
+    RuntimeError::EstatEndogenousRequiresPriorIv
+  );
+  assert_eq!(session.state(), before);
+  let ExecutionResult::Regression(fit) = session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap()
+  else {
+    panic!("fit");
+  };
+  assert_eq!(
+    fit.least_squares.sample.as_ref().unwrap().retained_indices,
+    (2..60).collect::<Vec<_>>()
+  );
+  let before = session.state();
+  let result = session.execute(command.clone()).unwrap();
+  let ExecutionResult::WuHausman(test) = &result else {
+    panic!("Wu-Hausman result");
+  };
+  assert_eq!(test.endogenous, ["x1", "x2"]);
+  assert_eq!(test.observation_count, 58);
+  assert_eq!(test.numerator_df, 2);
+  assert_eq!(test.denominator_df, 52);
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(command.clone()).unwrap(), result);
+  assert_eq!(session.state(), changed);
+  for mode in ["robust", "cluster(group_id)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x1 x2) iv(z1 z2) {mode}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    assert!(
+      session
+        .execute(command.clone())
+        .unwrap_err()
+        .to_string()
+        .contains("requires a nonrobust")
+    );
+    assert_eq!(session.state(), before);
+  }
+}
+
+#[test]
 fn sargan_uses_retained_structural_residuals_and_preserves_success_and_failure_state() {
   let fixture = Fixture::school_like_sample();
   let mut session = load(&fixture);

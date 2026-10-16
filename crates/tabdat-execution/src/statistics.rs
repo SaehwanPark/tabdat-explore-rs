@@ -970,6 +970,19 @@ impl Session {
         .map(ExecutionResult::Sargan)
         .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
     }
+    if command.subcommand == EstatSubcommand::Endogenous {
+      let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
+        return Err(RuntimeError::EstatEndogenousRequiresPriorIv);
+      };
+      if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
+        return Err(RuntimeError::EstatEndogenousFailed(
+          "this homoskedastic Wu-Hausman F test requires a nonrobust 2SLS fit; robust/cluster endogeneity tests are not implemented".into(),
+        ));
+      }
+      return tabdat_stats::wu_hausman_test(&state.problem)
+        .map(ExecutionResult::WuHausman)
+        .map_err(|error| RuntimeError::EstatEndogenousFailed(error.to_string()));
+    }
     if command.subcommand != EstatSubcommand::Vif {
       return Err(RuntimeError::UnsupportedCommand { name: "estat" });
     }

@@ -79,6 +79,77 @@ fn confidence_fixture(strength: f64, direct_z1: f64, direct_z2: f64) -> Fixture 
 }
 
 #[test]
+fn wu_hausman_scripts_and_json_report_the_joint_null_and_stop_after_undefined_variance() {
+  // y=.9*x1+.5*w+.6*v+u with orthogonal x1=z1+v; RSS_R=23.6, RSS_U=20.
+  let fixture = confidence_fixture(1.0, -0.6, 0.0);
+  fs::write(
+    fixture.0.join("endogenous.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1) iv(z1 z2)\nestat endogenous\n",
+  )
+  .unwrap();
+  let rows = json_lines(&fixture.run(&["--json", "-f", "endogenous.td"]));
+  assert_eq!(rows[2]["result_type"], "WuHausmanResult");
+  let data = &rows[2]["data"];
+  assert_eq!(data["test"], "wu_hausman_augmented_regression_f");
+  assert_eq!(data["covariance"], "homoskedastic");
+  assert_eq!(data["weak_iv_robust"], false);
+  assert_eq!(data["null_scope"], "all_endogenous_joint");
+  assert_eq!(
+    data["null_hypothesis"],
+    "all_declared_endogenous_regressors_exogenous"
+  );
+  assert_eq!(data["endogenous"], json!(["x1"]));
+  assert_eq!(data["observation_count"], 40);
+  assert_eq!(data["numerator_df"], 1);
+  assert_eq!(data["denominator_df"], 36);
+  assert!((data["statistic"].as_f64().unwrap() - 6.48).abs() < 1e-12);
+  assert!((data["p_value"].as_f64().unwrap() - 0.01533570687687769).abs() < 1e-12);
+  let output = fixture.run(&["--text", "-f", "endogenous.td"]);
+  assert!(output.status.success());
+  let text = String::from_utf8(output.stdout).unwrap();
+  for expected in [
+    "Wu-Hausman joint endogeneity test",
+    "F(1, 36)",
+    "conditional normality",
+    "does not prove exogeneity",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
+  for mode in ["robust", "cluster(w)"] {
+    let fit = format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {mode}");
+    let output = fixture.batch(
+      "--json",
+      &[
+        "use data.csv",
+        &fit,
+        "estat endogenous",
+        "export not-written.csv",
+      ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!fixture.0.join("not-written.csv").exists());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("requires a nonrobust"));
+  }
+  fs::write(
+    fixture.0.join("data.csv"),
+    "y,x1,z1,z2\n0,0,1,0\n0,0,0,1\n0,1,0,0\n0,0,0,0\n",
+  )
+  .unwrap();
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y, endog(x1) iv(z1 z2)",
+      "estat endogenous",
+      "export not-written.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(!fixture.0.join("not-written.csv").exists());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("auxiliary residual variance"));
+}
+
+#[test]
 fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
   let fixture = confidence_fixture(2.0, 0.0, 0.3);
   fs::write(

@@ -451,6 +451,10 @@ pub enum RuntimeError {
   EstatOveridRequiresPriorIv,
   /// Covariance, identification or numerical limits invalidate Sargan inference.
   EstatOveridFailed(String),
+  /// Wu-Hausman requires the design/sample of a retained 2SLS fit.
+  EstatEndogenousRequiresPriorIv,
+  /// Unsupported covariance or an undefined auxiliary endogeneity test.
+  EstatEndogenousFailed(String),
   /// `lincom` requires a preceding supported linear regression.
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
@@ -1064,6 +1068,10 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("estat overid requires a prior 2SLS fit")
       }
       Self::EstatOveridFailed(message) => write!(formatter, "estat overid: {message}"),
+      Self::EstatEndogenousRequiresPriorIv => {
+        formatter.write_str("estat endogenous requires a prior 2SLS fit")
+      }
+      Self::EstatEndogenousFailed(message) => write!(formatter, "estat endogenous: {message}"),
       Self::LincomRequiresPriorEstimation => {
         formatter.write_str("no active estimation results found")
       }

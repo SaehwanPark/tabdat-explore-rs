@@ -369,6 +369,15 @@ fn render_summary_rows(rows: &[SummaryRow]) -> String {
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
+    ExecutionResult::WuHausman(result) => format!(
+      "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
+      result.endogenous,
+      result.observation_count,
+      result.numerator_df,
+      result.denominator_df,
+      inference_number(result.statistic),
+      inference_number(result.p_value),
+    ),
     ExecutionResult::Sargan(result) => format!(
       "Sargan overidentification test (homoskedastic N*R²)\nN = {}; chi-square({}) = {}; p-value = {}\nH0: overidentifying restrictions hold, given the maintained model.\nAsymptotic chi-square under homoskedasticity and strong identification; not robust Hansen J or a finite-sample F test.\nFailure to reject does not prove instrument validity or resolve weak identification.\n",
       result.observation_count,
