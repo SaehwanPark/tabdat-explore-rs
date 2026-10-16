@@ -131,6 +131,13 @@ pub struct InstrumentalVariablesState {
   pub problem: tabdat_stats::InstrumentalVariablesProblem,
 }
 
+/// Owned binary logit design and maximum likelihood fit, independent of current data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryLogitState {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub result: tabdat_stats::BinaryLogitResult,
+}
+
 /// Common normalized non-linear fit state. Backend-specific scoring caches stay
 /// behind the adapter, and this record alone does not promise prediction support.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -157,7 +164,7 @@ pub enum EstimationState {
   BayesMcmc(ModelState),
   Spatial(ModelState),
   Quantile(ModelState),
-  Logit(ModelState),
+  Logit(Box<BinaryLogitState>),
   Probit(ModelState),
   Tobit(ModelState),
   Heckman(ModelState),

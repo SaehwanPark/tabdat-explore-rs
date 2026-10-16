@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+pub use tabdat_stats::LogitEstimate;
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
@@ -83,6 +84,8 @@ pub struct StatusResult {
   pub active_table_name: Option<String>,
   /// Registered names in literal sorted order, without relation data or metadata copies.
   pub named_tables: Vec<String>,
+  /// Most recent retained estimator family, including non-linear models.
+  pub estimation_family: Option<crate::EstimationFamily>,
   pub linear_model: Option<LinearModelStatus>,
 }
 
@@ -706,7 +709,11 @@ pub enum ExecutionResult {
   Reshape(ReshapeResult),
   /// The result of executing a linear regression command.
   Regression(Box<RegressionResult>),
-  /// The result of appending linear fitted values or residuals.
+  /// Converged model-based binary logit maximum likelihood fit.
+  Logit(Box<tabdat_stats::BinaryLogitResult>),
+  /// Conditional-on-retained-X continuous average partial effects and delta inference.
+  LogitMarginalEffects(tabdat_stats::LogitMarginalEffects),
+  /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.
   Lincom(LincomResult),

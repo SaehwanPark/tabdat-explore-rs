@@ -152,10 +152,24 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Select one binary-outcome textbook example and deliver a bounded
-   fit → marginal-effect/inference → report workflow, preserving the required
-   reference, sample and failure-case evidence. This follows the delivered
-   classical IV diagnostic slices; it does not mark the IV family complete.
+1. Deliver the classical **probit counterpart** for the exact §14.2 fishing-mode
+   illustration, defining its optimizer and observed/Fisher covariance convention
+   against the author output and independent reference before implementation.
+   Preserve the same pinned sample and complete fit → effect/inference → report
+   evidence; follow with separately bounded robust/cluster and categorical/effect
+   work required by the roadmap/illustrations. Do not treat the binary family as
+   one oversized PR or its first logit slice as completion.
+
+The [§14.2 classical-logit slice](../examples/mma14p1binary/README.md) now supplies
+model-based MLE/normal coefficient and LR inference, current-data probabilities/xb,
+and retained-X continuous AME with conditional-design delta uncertainty through
+terminal/CLI-v1/scripts. R4.6.1 validates all 630 source-row identities and numeric
+outputs, including tiny test tails. Combined outlier/separating-direction tests
+cover the independent-review convergence defect; absolute normalized full-step
+and score bounds fail rather than publish an unconverged fit. Probit, robust
+columns, full model comparison and the actual Figure 14.1 graphic remain
+unfinished. This advances one textbook subset, not the full illustration or
+binary milestone; advancing from classical IV slices did not complete IV.
 
 Keep GMM/Hansen J, robust/cluster AR, endogenous-subvector confidence sets and
 any further endogeneity inference required by exact illustrations explicit as

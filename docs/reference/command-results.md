@@ -9,6 +9,7 @@ source and fixtures below are relative to the repository root; use in-session
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
+- [Binary logit and continuous marginal effects](#binary-logit-and-continuous-marginal-effects)
 - [Expressions and recoding](#expressions-and-recoding)
 - [Grouped collapse](#grouped-collapse)
 - [Assertions and fingerprints](#assertions-and-fingerprints)
@@ -51,9 +52,70 @@ output destination. `label_metadata` and `panel_metadata` remain the existing
 linear fit's names, intercept convention and original sample counts. It is read-only,
 works before loading without initializing DuckDB, and never clones model arrays.
 CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
-`active_table_name`, sorted `named_tables` and nullable `linear_model`. Status is
-not a current-data compatibility check or an automatic refit/stale flag. It does
-not invent estimator, covariance, operation or materialization tracking. See `help status`.
+`active_table_name`, sorted `named_tables`, nullable `estimation_family` and nullable
+`linear_model`. The family is the retained cache's snake-case tag (currently
+`linear`, `instrumental_variables` or `logit`), not a claim of current-data
+prediction eligibility. `linear_model` remains linear-only and is null after logit;
+its existing fields are unchanged. Status is not an automatic refit/stale flag and
+does not invent covariance, operation or materialization tracking. See `help status`.
+
+## Binary logit and continuous marginal effects
+
+`logit y x1 ... [, noconstant]` uses an unweighted independent-Bernoulli model.
+Outcome/predictor columns must be numeric. SQL NULL/nonfinite model values are
+excluded together; the retained outcome must contain both exact 0/1 classes.
+Other finite outcome values are errors, not silently recoded. Parameter order is
+intercept first (if included), then declared predictor columns; names are unique.
+A new fit attempt clears prior estimation state even if validation/estimation fails,
+without changing data/labels. Parsed robust/cluster forms explicitly fail.
+
+CLI-v1 `BinaryLogitResult` includes `estimator: "logit"`, outcome/predictors,
+intercept/N/event counts, `sample` with exact retained indices, `coefficients`,
+`covariance_matrix`, log/null likelihoods, LR statistic/df/p/reference and McFadden
+pseudo-R². Covariance is `model_based_fisher_information`, with **no N-K scaling**.
+Each coefficient has `name`, `value`, `standard_error`, normal `statistic`/`p_value`
+and `confidence_lower`/`confidence_upper`; `confidence_level` is fixed at 95.
+`reference_distribution` is `asymptotic_standard_normal`, not Student t. The LR
+reference is asymptotic chi-square: estimated constant-probability null with an
+intercept, otherwise probability 0.5; intercept-only fits have df 0 and null LR p.
+
+Only successful finite, numerically identified fits produce results. `converged`,
+`iterations` (information evaluations), `convergence_coordinate_system:
+"unit_column_norm"`, `convergence_absolute_tolerance: 1e-10` and final
+`max_abs_scaled_score`/`max_abs_scaled_newton_step` expose the stopping contract.
+Both the score and **full undamped** normalized Newton step must meet the absolute
+bound. Scaled QR/backtracking is limited to 100 evaluations. A flat likelihood or
+small score alone cannot certify a finite MLE under separation. This is not an
+analytic separation classifier: numerical singularity, insufficient resolution,
+backtracking failure and iteration exhaustion are explicit errors. Extreme finite
+models can fail these conservative numerical bounds. Training probability/weight
+arrays are not added to the public CLI envelope.
+
+After logit, `predict name, pr` appends stable sigmoid probabilities and `, xb`
+appends linear indices on **current** predictor rows, without the outcome. Bare
+`predict` deliberately keeps the existing xb default. Missing/nonfinite predictors
+or an unrepresentable index yield NULL. The canonical staging path preserves
+order, labels, row count and fit; target/type/required-column failures do not publish
+an output column. `PredictionResult` retains its existing metadata-only shape.
+Use head/tail/export to inspect or persist values. Residuals, intervals and other
+prediction forms are not installed after logit; linear prediction semantics stay
+unchanged.
+
+`estat margins` returns `LogitMarginalEffectsResult` with `estimator: "logit"`,
+`effect: "average_continuous_predictor_column_derivative"`,
+`sample: "retained_estimation_design"`, N and ordered `effects` (the same normal
+inference fields as coefficients, excluding the intercept). It averages
+`beta_j*p*(1-p)` over the retained design. `uncertainty:
+"conditional_on_observed_design_delta_method"` includes the full intercept/slopes'
+covariance through the delta gradient, **not** sampling uncertainty in the
+covariate distribution. Current-data changes do not redefine the estimand or
+rescan/refit the model. These are not automatic discrete changes or interaction
+chain rules. `lincom`/`test` after logit are explicitly unsupported rather than
+silently using linear Student-t/F inference.
+
+See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
+Probit, robust/cluster/weighted binary inference, factors/interactions/discrete
+changes and actual graphics remain unfinished required work where applicable.
 
 ## Summaries and percentiles
 

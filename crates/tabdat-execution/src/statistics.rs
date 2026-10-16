@@ -575,6 +575,12 @@ impl Session {
     &self,
     command: &LincomCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::Logit(_))) {
+      return Err(RuntimeError::LincomFailed {
+        message:
+          "lincom after logit is not implemented; logit reports normal coefficient inference".into(),
+      });
+    }
     let model = self
       .linear_state()
       .ok_or(RuntimeError::LincomRequiresPriorEstimation)?;
@@ -613,6 +619,11 @@ impl Session {
     &self,
     command: &TestCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::Logit(_))) {
+      return Err(RuntimeError::TestFailed {
+        message: "test after logit is not implemented; logit reports normal coefficient tests and an overall likelihood-ratio test".into(),
+      });
+    }
     let model = self
       .linear_state()
       .ok_or(RuntimeError::TestRequiresPriorEstimation)?;
@@ -970,6 +981,9 @@ impl Session {
         .map(ExecutionResult::Sargan)
         .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
     }
+    if command.subcommand == EstatSubcommand::Margins {
+      return self.execute_logit_margins();
+    }
     if command.subcommand == EstatSubcommand::Endogenous {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatEndogenousRequiresPriorIv);
@@ -1031,6 +1045,9 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::Logit(_))) {
+      return self.execute_logit_prediction(command);
+    }
     let dataset = self
       .active_dataset
       .as_ref()
@@ -1392,19 +1409,6 @@ fn python_float_literal(value: f64) -> String {
     format!("{}.{}", &significant[..split], &significant[split..])
   };
   format!("{sign}{fixed}")
-}
-
-fn cell_to_f64(cell: &CellValue) -> Option<f64> {
-  match cell {
-    CellValue::Float(f) => Some(*f),
-    CellValue::SignedInteger(i) => Some(*i as f64),
-    CellValue::UnsignedInteger(u) => Some(*u as f64),
-    CellValue::Decimal { value, scale, .. } => {
-      let divisor = 10f64.powi(*scale as i32);
-      Some(*value as f64 / divisor)
-    }
-    _ => None,
-  }
 }
 
 fn cell_to_string(cell: &CellValue) -> Option<String> {

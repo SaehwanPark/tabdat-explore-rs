@@ -412,8 +412,10 @@ fn predict_discovery_uses_parser_spelling_without_promising_execution() {
   let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
   assert_eq!(envelope["data"]["text"], topic);
-  assert!(topic.contains("Only xb and residuals"));
-  assert!(topic.contains("reference/parser-only"));
+  assert!(topic.contains("Linear fits support xb/residuals; logit supports pr/xb only"));
+  assert!(topic.contains("probit prediction"));
+  assert!(topic.contains("forms do not execute"));
+  assert!(topic.contains("Bare predict remains xb"));
   assert!(topic.contains("`probabilities` is not an accepted option spelling"));
   for source in [
     "predict fitted",

@@ -25,7 +25,7 @@ fn batch_and_script_share_bounded_command_admission() {
     ("estat vif", true),
     ("estat residuals", false),
     ("help", false),
-    ("logit y x", false),
+    ("logit y x", true),
   ] {
     let command = parse_command(source).unwrap_or_else(|error| panic!("{source}: {error}"));
     assert_eq!(

@@ -1,5 +1,12 @@
 use crate::*;
 
+#[derive(Clone, Copy)]
+enum PredictionLink {
+  Linear,
+  FiniteLinear,
+  Logistic,
+}
+
 impl DuckDbBackend {
   pub fn filter_rows(
     &mut self,
@@ -519,6 +526,33 @@ impl DuckDbBackend {
     dataset: &DatasetInfo,
     prediction: &LinearPrediction<'_>,
   ) -> Result<DatasetInfo, DataError> {
+    self.add_prediction_column(dataset, prediction, PredictionLink::Linear)
+  }
+
+  /// Apply a stable sigmoid or finite linear index through the same staging path.
+  pub fn add_logit_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+    probability: bool,
+  ) -> Result<DatasetInfo, DataError> {
+    if prediction.residuals {
+      return Err(DataError);
+    }
+    let link = if probability {
+      PredictionLink::Logistic
+    } else {
+      PredictionLink::FiniteLinear
+    };
+    self.add_prediction_column(dataset, prediction, link)
+  }
+
+  fn add_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+    link: PredictionLink,
+  ) -> Result<DatasetInfo, DataError> {
     if prediction.predictor_names.len() != prediction.predictor_coefficients.len() {
       return Err(DataError);
     }
@@ -555,6 +589,15 @@ impl DuckDbBackend {
       )
     } else {
       prediction_sql
+    };
+    let expression_sql = match link {
+      PredictionLink::Linear => expression_sql,
+      PredictionLink::FiniteLinear => {
+        format!("CASE WHEN isfinite(({expression_sql})) THEN ({expression_sql}) ELSE NULL END")
+      }
+      PredictionLink::Logistic => format!(
+        "CASE WHEN NOT isfinite(({expression_sql})) THEN NULL WHEN ({expression_sql}) >= 0 THEN 1.0 / (1.0 + exp(-({expression_sql}))) ELSE exp(({expression_sql})) / (1.0 + exp(({expression_sql}))) END"
+      ),
     };
     let target_sql = quote_identifier(prediction.target_variable);
 

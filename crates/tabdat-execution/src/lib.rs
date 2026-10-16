@@ -12,6 +12,7 @@ use tabdat_language::script::{
   ControlFlowDirective, ScriptBlockState, ScriptContext, ScriptDirective, expand_script_macros,
   parse_control_flow_directive, parse_script_directive, read_script,
 };
+mod binary;
 mod row_conversion;
 use row_conversion::*;
 mod inspection;
@@ -126,6 +127,7 @@ impl Session {
         self.execute_regress_query(&command, &condition)
       }
       Command::IvRegress { command } => self.execute_ivregress(&command),
+      Command::Logit { command } => self.execute_logit(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

@@ -41,7 +41,7 @@ options:
                         keep/drop/select variable lists, bounded keep/drop if,
                         no-option summarize if, duplicates/isid, assert/datasignature,
                         sort/gsort,
-                        regress/predict/lincom/test/ttest/estat vif/ar/overid/endogenous, save/export;
+                        regress/logit/predict/lincom/test/ttest/estat vif/ar/overid/endogenous/margins, save/export;
                         scripts stream the same successful leaf results)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects

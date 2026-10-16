@@ -25,11 +25,11 @@ not by implementing every estimator mentioned in a chapter.
 | Book chapters / area | Installed baseline | Required remaining outcomes |
 | --- | --- | --- |
 | 4: Linear, IV and quantile models | Bounded OLS/WLS/diagonal GLS, HC1/one-way cluster | IV/2SLS and diagnostics, quantile estimation; factor/interactions and weight semantics |
-| 5–6, 10: ML/NLS, GMM/systems, optimization | Least-squares machinery only | Executable nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
-| 7–8: Testing and specification | Linear restrictions, mean tests, VIF | Model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
+| 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares and bounded binary logit MLE/QR | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
+| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; logit LR/normal coefficient and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Context-only seed, no resampling/estimation workflow | Actual RNG contract, IID/cluster bootstrap, simulation/Bayesian estimation and diagnostics |
-| 14: Binary outcomes | Logit/probit parser only | Fit, robust/cluster inference, probabilities, marginal effects/discrete changes and uncertainty |
+| 14: Binary outcomes | Model-based logit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical-logit subset | Probit, robust/cluster binary inference, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
@@ -59,7 +59,9 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-CHOICE | pp. 463–466, 486, 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact binary/multinomial model variants/effects |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — classical logit column/probability data validated | Exact contract below; probit, robust columns, full comparison and actual graphic remain |
+| MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
+| MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -69,6 +71,42 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
+
+### MMA-BINARY classical-logit subset contract and evidence
+
+- **Identity:** Cameron–Trivedi (2005), §14.2 pp. 464–466; authors'
+  [`mma14p1binary.do`](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.do)
+  and [output](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.txt).
+  Validate the classical logit column of Table 14.2 and numeric logit
+  probabilities underlying Figure 14.1, not the whole table/graphic.
+- **Data/preparation/sample:** external `Nldata.asc`, 1,182 people, 16 numeric
+  fields per person; token-based CRLF/unterminated-last-line conversion preserves
+  original 1-based source IDs. Select mode 2 (pier) or 4 (charter): N630,
+  178 pier/452 charter, original row order, no additional complete-case drops.
+  Outcome `1(mode==4)`, x `ln(pcharter/ppier)`, intercept; unweighted float64
+  preparation. Executable author code/output resolve a reversed-code comment.
+- **Inference/workflow:** model-based inverse Fisher information, no N-K scaling;
+  normal95 coefficient inference, LR chi-square(1), current-X probabilities/xb,
+  retained-X continuous AME with full conditional-design normal delta inference.
+  The AME is an independently validated extension, not a published table claim.
+- **Evidence:** [runnable script, hashes, reference and tolerances](../../examples/mma14p1binary/README.md);
+  independent R4.6.1 glm/Fisher/delta reference; all 630 source IDs, outcomes,
+  design values, probabilities and indices compared. Intercept/slope
+  2.0531249423051365/-1.8225304317903031; log likelihood -206.82697122830305;
+  AME -0.18392143550221252, SE 0.0052985086445694511. Four small independent
+  synthetic designs additionally cover intercept/noconstant and multiple columns.
+  [PR #270](https://github.com/SaehwanPark/tabdat-explore-rs/pull/270).
+- **Failure/state evidence:** non-binary/nonvarying outcomes, rank/iteration limits,
+  ordinary and combined outlier/quasi-separation contrasts reject without fit
+  publication. Absolute normalized score/full-step convergence prevents a reviewed
+  false-convergence trap; saturated but identified outlier models remain valid.
+  Native tests verify retained sample identity, current-data prediction, preserved
+  data/labels/order on prediction failure, and stale-fit clearing on failed refit.
+- **Still required:** probit, robust logit/probit columns, full OLS comparison and
+  Figure 14.1 rendering, plus other exact binary illustrations and needed
+  factor/interactions/discrete-change foundations. Maximum score is a separate
+  required locator, not silently absorbed into logit or removed from the inventory.
+  This is neither complete binary-family nor full-book validation.
 
 ### MMA-IV weak-instrument replication contract and evidence
 
