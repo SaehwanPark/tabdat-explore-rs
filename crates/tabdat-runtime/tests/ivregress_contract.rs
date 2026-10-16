@@ -221,6 +221,78 @@ fn anderson_rubin_uses_retained_sample_and_preserves_state_on_success_and_failur
 }
 
 #[test]
+fn sargan_uses_retained_structural_residuals_and_preserves_success_and_failure_state() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let overid = parse_command("estat overid").unwrap();
+  assert_eq!(
+    session.execute(overid.clone()).unwrap_err(),
+    RuntimeError::EstatOveridRequiresPriorIv
+  );
+  session
+    .execute(parse_command("regress y w").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert_eq!(
+    session.execute(overid.clone()).unwrap_err(),
+    RuntimeError::EstatOveridRequiresPriorIv
+  );
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
+    session
+      .execute(overid.clone())
+      .unwrap_err()
+      .to_string()
+      .contains("requires overidentification")
+  );
+  assert_eq!(session.state(), before);
+  let ExecutionResult::Regression(fit) = session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2)").unwrap())
+    .unwrap()
+  else {
+    panic!("fit");
+  };
+  assert_eq!(
+    fit.least_squares.sample.as_ref().unwrap().retained_indices,
+    (2..60).collect::<Vec<_>>()
+  );
+  let before = session.state();
+  let result = session.execute(overid.clone()).unwrap();
+  let ExecutionResult::Sargan(test) = &result else {
+    panic!("Sargan result");
+  };
+  assert_eq!(test.observation_count, 58);
+  assert_eq!(test.degrees_of_freedom, 1);
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(overid.clone()).unwrap(), result);
+  assert_eq!(session.state(), changed);
+  for option in ["robust", "cluster(group_id)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {option}")).unwrap())
+      .unwrap();
+    let before = session.state();
+    assert!(
+      session
+        .execute(overid.clone())
+        .unwrap_err()
+        .to_string()
+        .contains("requires a nonrobust")
+    );
+    assert_eq!(session.state(), before);
+  }
+}
+
+#[test]
 fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisance_parameters() {
   let fixture = Fixture::school_like_sample();
   let mut session = load(&fixture);

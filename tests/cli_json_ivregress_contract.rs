@@ -79,6 +79,82 @@ fn confidence_fixture(strength: f64, direct_z1: f64, direct_z2: f64) -> Fixture 
 }
 
 #[test]
+fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
+  let fixture = confidence_fixture(2.0, 0.0, 0.3);
+  fs::write(
+    fixture.0.join("overid.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1) iv(z1 z2)\nestat overid\n",
+  )
+  .unwrap();
+  let rows = json_lines(&fixture.run(&["--json", "-f", "overid.td"]));
+  assert_eq!(rows[2]["result_type"], "SarganResult");
+  let data = &rows[2]["data"];
+  assert_eq!(data["test"], "sargan_n_r_squared");
+  assert_eq!(data["covariance"], "homoskedastic");
+  assert_eq!(data["reference_distribution"], "asymptotic_chi_square");
+  assert_eq!(data["weak_iv_robust"], false);
+  assert_eq!(
+    data["null_hypothesis"],
+    "overidentifying_restrictions_hold_given_maintained_model"
+  );
+  assert!(
+    data["assumptions"]
+      .as_str()
+      .unwrap()
+      .contains("strong_identification")
+  );
+  assert_eq!(data["observation_count"], 40);
+  assert_eq!(data["degrees_of_freedom"], 1);
+  assert!((data["statistic"].as_f64().unwrap() - 3.30275229357798).abs() < 1e-12);
+  assert!((data["p_value"].as_f64().unwrap() - 0.06916390601014773).abs() < 1e-12);
+  let output = fixture.run(&["--text", "-f", "overid.td"]);
+  assert!(output.status.success());
+  let text = String::from_utf8(output.stdout).unwrap();
+  for expected in [
+    "Sargan overidentification test (homoskedastic N*R²)",
+    "chi-square(1)",
+    "Asymptotic",
+    "Failure to reject does not prove",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
+  for fit in [
+    "ivregress 2sls y w, endog(x1) iv(z1)",
+    "ivregress 2sls y w, endog(x1) iv(z1 z2) robust",
+  ] {
+    let output = fixture.batch(
+      "--json",
+      &[
+        "use data.csv",
+        fit,
+        "estat overid",
+        "export not-written.csv",
+      ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!fixture.0.join("not-written.csv").exists());
+  }
+  // A genuine zero structural variance fit cannot supply the Sargan denominator.
+  fs::write(
+    fixture.0.join("data.csv"),
+    "y,x1,z1,z2\n0,1,1,0\n0,0,0,1\n0,0,0,0\n0,0,0,0\n",
+  )
+  .unwrap();
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y, endog(x1) iv(z1 z2)",
+      "estat overid",
+      "export not-written.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("structural residual variance"));
+  assert!(!fixture.0.join("not-written.csv").exists());
+}
+
+#[test]
 fn scalar_ar_scripts_report_all_set_shapes_without_clipping_infinity() {
   for (strength, z1, z2, shape, count, text_fragment) in [
     (2.0, 0.0, 0.0, "bounded", 1, "Anderson-Rubin confidence set"),
