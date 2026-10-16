@@ -177,7 +177,7 @@ spaces, punctuation or the reserved `if` name, type an opening backtick before i
 ``summarize `annual i<Tab>`` completes to ``summarize `annual income` ``. Backtick completion
 closes the name unless a closing backtick already follows the cursor; mixed bare/backtick
 lists and existing quote/option suffixes are preserved. Empty, control-bearing and embedded-
-backtick names are not offered; single/double quotes are not variable delimiters here.
+backtick names are not offered; this completion requires backticks rather than single/double quotes.
 Factors, signed keys, expressions, predicates/options and new output names are not completed.
 Completion acts at a variable prefix end, not inside a name. Piped input never completes tabs.
 A multiline continuation prompt is not installed; submitted text is parsed as one command. Ctrl-C during command execution is **not** a

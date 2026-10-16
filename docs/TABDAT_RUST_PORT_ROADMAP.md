@@ -42,8 +42,8 @@ candidates, preserving typed join suffixes through real PTY append-order and joi
 workflows. Explicit `use` paths/quotes/options remain filesystem-only. EDA variable lists
 also complete explicitly opened backtick names (including spaces, punctuation and Unicode),
 with mixed lists and closing-quote/option suffix preservation; empty/control/embedded-backtick
-names remain excluded. Expression/option/output-path completion, multiline continuation and in-flight cancellation remain
-deferred; an executing command may still terminate on SIGINT. Local Unix PTY
+names remain excluded. Expression/option/output-path completion, multiline continuation
+and in-flight cancellation remain deferred; an executing command may still terminate on SIGINT. Local Unix PTY
 evidence is not platform certification.
 
 Bounded `status` now reports current dataset/active-named/registered-name metadata

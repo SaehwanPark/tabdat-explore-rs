@@ -727,6 +727,11 @@ mod tests {
         "summarize `annual cost` `annual income`",
       ),
       ("summarize `annual cost` x", "", "summarize `annual cost` x"),
+      (
+        "summarize `annual i",
+        "` if x > 0",
+        "summarize `annual income` if x > 0",
+      ),
       ("summarize `if", "", "summarize `if`"),
       ("summarize `变量", "", "summarize `变量 名`"),
       ("summarize `a,", "", "summarize `a,b`"),
@@ -740,6 +745,17 @@ mod tests {
     }
     assert_eq!(complete_with(&helper, "summarize ", 10).1, ["x"]);
     assert_eq!(
+      complete_with(&helper, "summarize `", 11).1,
+      [
+        "a,b`",
+        "annual cost`",
+        "annual income`",
+        "if`",
+        "x`",
+        "变量 名`"
+      ]
+    );
+    assert_eq!(
       complete_with(&helper, "summarize `annual ", 18).1,
       ["annual cost`", "annual income`"]
     );
@@ -750,6 +766,11 @@ mod tests {
       ("summarize `annual i", "`tail"),
       ("summarize `` `annual i", ""),
       ("summarize `a``b` `annual i", ""),
+      ("summarize `x` + `annual i", ""),
+      ("summarize `bad\nname` `annual i", ""),
+      ("by x: summarize `annual i", ""),
+      ("generate new = `annual i", ""),
+      ("predict `annual i", ""),
     ] {
       let line = format!("{prefix}{suffix}");
       assert!(
