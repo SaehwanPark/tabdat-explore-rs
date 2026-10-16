@@ -128,6 +128,8 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
   assert_eq!(first_stage[1]["endogenous"], "x2");
   close(&first_stage[0]["f_statistic"], 56.6351625385778);
   close(&first_stage[0]["partial_r_squared"], 0.6691682374068);
+  close(&first_stage[0]["shea_partial_r_squared"], 0.46058071111269);
+  close(&first_stage[1]["shea_partial_r_squared"], 0.29097041265132);
   close(&regression["coefficients"][2]["value"], 1.43920781503306);
   close(
     &regression["coefficients"][2]["standard_error"],
@@ -143,6 +145,7 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
   );
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("First stage:"));
+  assert!(text.contains("Shea partial R-squared"));
   assert!(text.contains("F(2, 56)"));
   assert!(text.contains("coefficient p-values use conventional t inference"));
   assert!(text.contains("relevance diagnostics only"));

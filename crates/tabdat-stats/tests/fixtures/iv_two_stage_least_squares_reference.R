@@ -48,3 +48,18 @@ print(list(
   first_stage_2 = first_stage_f(first_stage[[2]], restricted[[2]]),
   shea_partial_r_squared = shea[c("x1", "x2")]
 ), digits = 14)
+
+# Independent residualization check: unique projected variation relative to
+# unique original variation, conditional on all the other design columns.
+shea_from_residuals <- function(original, projected) {
+  vapply(seq_len(ncol(original)), function(j) {
+    sum(lm.fit(projected[, -j, drop = FALSE], projected[, j])$residuals^2) /
+      sum(lm.fit(original[, -j, drop = FALSE], original[, j])$residuals^2)
+  }, numeric(1))
+}
+stopifnot(max(abs(shea_from_residuals(x, xhat)[3:4] - shea[3:4])) < 1e-12)
+no_intercept_projected <- cbind(w,
+  fitted(lm(x1 ~ w + z1 + z2 - 1)),
+  fitted(lm(x2 ~ w + z1 + z2 - 1)))
+print(list(no_intercept_shea = shea_from_residuals(cbind(w, x1, x2),
+  no_intercept_projected)[2:3]), digits = 14)

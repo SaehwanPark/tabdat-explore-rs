@@ -370,6 +370,7 @@ fn regression_result_data(result: &RegressionResult) -> Value {
         "numerator_df": diagnostic.numerator_df,
         "denominator_df": diagnostic.denominator_df,
         "partial_r_squared": diagnostic.partial_r_squared.and_then(Number::from_f64),
+        "shea_partial_r_squared": diagnostic.shea_partial_r_squared.and_then(Number::from_f64),
         "f_statistic": diagnostic.f_statistic.and_then(Number::from_f64),
         "p_value": diagnostic.p_value.and_then(Number::from_f64),
       })).collect::<Vec<_>>()

@@ -50,7 +50,7 @@ impl Default for IvOptions {
   }
 }
 
-/// Conventional first-stage joint test of the excluded instruments for one endogenous regressor.
+/// First-stage relevance diagnostics for one endogenous regressor (not weak-IV-robust inference).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FirstStageDiagnostic {
   pub endogenous: String,
@@ -59,6 +59,9 @@ pub struct FirstStageDiagnostic {
   pub numerator_df: usize,
   pub denominator_df: usize,
   pub partial_r_squared: Option<f64>,
+  /// Shea's design-only partial R-squared, accounting for other endogenous regressors.
+  #[serde(default)]
+  pub shea_partial_r_squared: Option<f64>,
   pub f_statistic: Option<f64>,
   pub p_value: Option<f64>,
 }
@@ -308,6 +311,7 @@ fn fit_first_stage(
       numerator_df,
       denominator_df,
       partial_r_squared,
+      shea_partial_r_squared: None,
       f_statistic,
       p_value,
     },
@@ -370,6 +374,18 @@ pub fn fit_two_stage_least_squares(
   let second_stage_qr = qr_decompose_with_response(&projected_design, &problem.response)?;
   let beta = solve_upper_triangular(&second_stage_qr.r, &second_stage_qr.qty)?;
   let bread = xtx_inverse_from_r(&second_stage_qr.r)?;
+  // Godfrey's classical OLS/IV variance-and-R² identity cancels the outcome
+  // variance and equal residual-DF corrections, leaving this design-only ratio.
+  // Do not use the requested HC1/cluster covariance: Shea measures relevance,
+  // and remains defined even when the outcome has zero residual variance.
+  let original_qr = qr_decompose_with_response(&original_design, &problem.response)?;
+  let original_bread = xtx_inverse_from_r(&original_qr.r)?;
+  let endogenous_offset = usize::from(problem.include_intercept) + problem.exogenous_names.len();
+  for (index, diagnostic) in first_stage.iter_mut().enumerate() {
+    let parameter = endogenous_offset + index;
+    let ratio = original_bread[parameter][parameter] / bread[parameter][parameter];
+    diagnostic.shea_partial_r_squared = ratio.is_finite().then(|| ratio.clamp(0.0, 1.0));
+  }
   let fitted_values = multiply_vector(&original_design, &beta)?;
   let residuals = problem
     .response
