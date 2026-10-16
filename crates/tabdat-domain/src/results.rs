@@ -63,6 +63,29 @@ pub struct DescribeResult {
   pub dataset: DatasetInfo,
 }
 
+/// Small projection of the retained fit, not its design, predictions or inference arrays.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinearModelStatus {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub include_intercept: bool,
+  pub observation_count: usize,
+  pub degrees_of_freedom: usize,
+  pub sample_total_observations: Option<usize>,
+  pub sample_dropped_observations: Option<usize>,
+}
+
+/// Metadata-only session inspection; not a model/current-data compatibility check.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatusResult {
+  pub data_initialized: bool,
+  pub dataset: Option<DatasetInfo>,
+  pub active_table_name: Option<String>,
+  /// Registered names in literal sorted order, without relation data or metadata copies.
+  pub named_tables: Vec<String>,
+  pub linear_model: Option<LinearModelStatus>,
+}
+
 /// The owned result after counting current rows, optionally restricted to TRUE predicate rows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CountResult {
@@ -609,6 +632,8 @@ pub enum ExecutionResult {
   Describe(DescribeResult),
   /// The row count for the currently active dataset.
   Count(CountResult),
+  /// Metadata-only current data and retained linear-fit inspection.
+  Status(StatusResult),
   /// Descriptive statistics for selected numeric columns.
   Summarize(SummarizeResult),
   SummarizeDetail(SummarizeDetailResult),

@@ -343,6 +343,47 @@ fn render_summary_rows(rows: &[SummaryRow]) -> String {
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
+    ExecutionResult::Status(status) => {
+      let mut output = format!(
+        "Session status\nData engine initialized: {}\n",
+        status.data_initialized
+      );
+      if let Some(dataset) = &status.dataset {
+        writeln!(
+          output,
+          "Active source: {:?}\nActive dimensions: {} rows, {} columns",
+          dataset.source.to_string_lossy(),
+          dataset.row_count,
+          dataset.columns.len()
+        )
+        .unwrap();
+      } else {
+        output.push_str("Active dataset: none\n");
+      }
+      writeln!(
+        output,
+        "Active named table: {}\nRegistered named tables: {:?}",
+        status
+          .active_table_name
+          .as_ref()
+          .map_or_else(|| "none".to_owned(), |name| format!("{name:?}")),
+        status.named_tables
+      )
+      .unwrap();
+      if let Some(model) = &status.linear_model {
+        writeln!(output, "Retained linear model: outcome={:?}; predictors={:?}; intercept={}\nRetained N = {}; residual df = {}\nOriginal candidate rows = {}; excluded = {}",
+          model.outcome, model.predictors, model.include_intercept, model.observation_count,
+          model.degrees_of_freedom,
+          model.sample_total_observations.map_or_else(|| "NA".to_owned(), |value| value.to_string()),
+          model.sample_dropped_observations.map_or_else(|| "NA".to_owned(), |value| value.to_string())).unwrap();
+        output.push_str(
+          "Retained fit describes its original sample, not current-data prediction eligibility.\n",
+        );
+      } else {
+        output.push_str("Retained linear model: none\n");
+      }
+      output
+    }
     ExecutionResult::Load(load) => format!(
       "Loaded {} rows, {} columns from {}\n",
       load.dataset.row_count,

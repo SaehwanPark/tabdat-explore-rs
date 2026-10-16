@@ -19,6 +19,9 @@ pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results a
 /// ByResult retains native grouped AVG semantics; it is not a finite-sample
 /// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
+  if matches!(command, Command::Status) {
+    return true;
+  }
   if matches!(command, Command::RegressQuery { .. }) {
     return true;
   }
@@ -88,6 +91,9 @@ pub fn supports_batch_command(command: &Command) -> bool {
 /// success result. `run` is a container for nested commands and has no result
 /// envelope of its own.
 pub fn supports_script_command(command: &Command) -> bool {
+  if matches!(command, Command::Status) {
+    return true;
+  }
   if matches!(command, Command::RegressQuery { .. }) {
     return true;
   }
@@ -162,6 +168,16 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::Status(result) => (
+      json!({
+        "data_initialized": result.data_initialized,
+        "dataset": result.dataset.as_ref().map(dataset_info_data),
+        "active_table_name": result.active_table_name,
+        "named_tables": result.named_tables,
+        "linear_model": result.linear_model,
+      }),
+      "StatusResult",
+    ),
     ExecutionResult::Load(load) => (load_result_data(load), "LoadResult"),
     ExecutionResult::SqlCreate(result) => (
       json!({"table_name": result.table_name, "dataset": dataset_info_data(&result.dataset)}),
