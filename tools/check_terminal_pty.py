@@ -133,7 +133,7 @@ def measure_cycles(command, repetitions):
 def validate_acceptance_errors(transcript):
     errors = re.findall(rb"(?:^|\n)Error: ([^\r\n]*)", bytes(transcript))
     if (len(errors) != 2 or errors[0] != b"rename unknown variable: absent"
-            or not errors[1].endswith(b"/analysis files/partial schema.td:2: unknown command: unknown_command")):
+            or not errors[1].endswith(b"/analysis files/partial schema.td:3: unknown command: unknown_command")):
         raise AssertionError(f"unexpected acceptance diagnostics: {errors!r}")
 
 
@@ -142,10 +142,13 @@ def run(args):
     with tempfile.TemporaryDirectory(prefix="tabdat-editor-pty-") as directory:
         Path(directory, "data.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
         Path(directory, "data-extra.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
+        Path(directory, "cohort_probe").write_text("a same-name file must not override the registered table")
+        Path(directory, "cohort_dir").mkdir()
+        Path(directory, "cohort_dir", "input.csv").write_text("x,y\n0,1\n1,2\n2,4\n3,6\n")
         Path(directory, "analysis files").mkdir()
         Path(directory, "analysis files", "semi, 雪.csv").write_text("x;y\n0;1\n1;2\n2;4\n3;6\n")
         Path(directory, "analysis files", "child script.td").write_text("count\n")
-        Path(directory, "analysis files", "partial schema.td").write_text("rename refreshed_column scripted_column\nunknown_command\n")
+        Path(directory, "analysis files", "partial schema.td").write_text("rename refreshed_column scripted_column\nsql SELECT * FROM active into scripted_cohort\nunknown_command\n")
         pid, fd = pty.fork()
         if pid == 0:
             os.chdir(directory)
@@ -183,6 +186,14 @@ def run(args):
             fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
             expect(b"TabDat")
             command(b"use data.c\t\n", b"Loaded 4 rows, 2 columns")
+            command(b"sql SELECT * FROM active WHERE x >= 2 into cohort_probe\n", b'Created and activated table "cohort_probe": 2 rows, 2 columns')
+            command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
+            command(b"use cohort_pro\t\n", b'Activated table "cohort_probe": 2 rows, 2 columns')
+            command(b"count\n", b"2 rows")
+            command(b"sql SELECT * FROM active into cohort_dir\n", b'Created and activated table "cohort_dir": 2 rows, 2 columns')
+            command(b"use data.csv\n", b"Loaded 4 rows, 2 columns")
+            command(b"use cohort_d\t\n", b'Activated table "cohort_dir": 2 rows, 2 columns')
+            command(b"use ./cohort_dir/in\t\n", b"Loaded 4 rows, 2 columns")
             command(b"use data\t\t", b"data-extra.csv")
             command(b"\x03", b"Input cancelled.")
             command(b"use 'ana\tsemi\t, delimiter(';')\n", b"Loaded 4 rows, 2 columns")
@@ -202,7 +213,8 @@ def run(args):
             command(b"rename probe_column refreshed_column\n", b"Renamed: 4 rows, 3 columns")
             command(b"rename absent ignored\n", b"Error:")
             command(b"summarize refreshed_c\t\n", b"refreshed_column\t4\t1.5\t")
-            command(b"run 'analysis files/partial schema.td'\n", b"partial schema.td:2:")
+            command(b"run 'analysis files/partial schema.td'\n", b"partial schema.td:3:")
+            command(b"use scripted_c\t\n", b'Activated table "scripted_cohort": 4 rows, 3 columns')
             command(b"summarize scripted_c\t\n", b"scripted_column\t4\t1.5\t")
             command(b"drop scripted_c\t\n", b"Dropped: 4 rows, 2 columns")
             command(b"re\t\t", b"reshape")  # ambiguous prefix lists alternatives
@@ -274,7 +286,7 @@ def main():
         }
         print(json.dumps(report, allow_nan=False))
     else:
-        print("PTY passed: command/help/read-path/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
+        print("PTY passed: command/help/read-path/registered-name/column completion, editing, recall, input cancellation, retained data/model, EOF, terminal restoration")
 
 
 if __name__ == "__main__":
