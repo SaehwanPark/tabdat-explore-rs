@@ -72,13 +72,13 @@ fn empty_status_is_read_only_backend_free_and_reports_explicit_absence() {
   assert_eq!(
     encoded(&result),
     json!({"schema_version":1,"result_type":"StatusResult","data":{
-      "data_initialized":false,"dataset":null,"active_table_name":null,"named_tables":[],"linear_model":null
+      "data_initialized":false,"dataset":null,"active_table_name":null,"named_tables":[],"estimation_family":null,"linear_model":null
     }})
   );
   let text = tabdat_reporting::terminal::render_execution_result(&ExecutionResult::Status(result));
   assert_eq!(
     text,
-    "Session status\nData engine initialized: false\nActive dataset: none\nActive named table: none\nRegistered named tables: []\nRetained linear model: none\n"
+    "Session status\nData engine initialized: false\nActive dataset: none\nActive named table: none\nRegistered named tables: []\nRetained estimation family: none\nRetained linear model: none\n"
   );
 }
 
