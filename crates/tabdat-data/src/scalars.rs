@@ -230,10 +230,7 @@ pub(super) fn mapping_entries(entries: &mut Vec<(Vec<u8>, Vec<u8>)>) -> Result<V
 
 pub(super) fn list_value_type(type_hint: Option<&str>) -> Option<&str> {
   let type_hint = type_hint?.trim();
-  if let Some(value) = type_hint
-    .strip_prefix("LIST(")
-    .and_then(|value| value.strip_suffix(')'))
-  {
+  if let Some(value) = type_hint.strip_circumfix("LIST(", ')') {
     return Some(value.trim());
   }
   type_hint.strip_suffix("[]").map(str::trim)
@@ -241,18 +238,14 @@ pub(super) fn list_value_type(type_hint: Option<&str>) -> Option<&str> {
 
 pub(super) fn map_value_types(type_hint: Option<&str>) -> Option<(String, String)> {
   let type_hint = type_hint?;
-  let body = type_hint
-    .strip_prefix("MAP(")
-    .and_then(|value| value.strip_suffix(')'))?;
+  let body = type_hint.strip_circumfix("MAP(", ')')?;
   let (key, value) = split_top_level_once(body)?;
   Some((key.trim().to_owned(), value.trim().to_owned()))
 }
 
 pub(super) fn struct_field_type(type_hint: Option<&str>, key: &str) -> Option<String> {
   let type_hint = type_hint?;
-  let body = type_hint
-    .strip_prefix("STRUCT(")
-    .and_then(|value| value.strip_suffix(')'))?;
+  let body = type_hint.strip_circumfix("STRUCT(", ')')?;
   for field in split_top_level_parts(body) {
     let field = field.trim();
     if field.is_empty() {
@@ -525,25 +518,17 @@ pub(super) fn canonical_signature_type(data_type: &str) -> String {
       return format!("TIMESTAMP_{unit}{timezone}");
     }
   }
-  if normalized.starts_with("LIST(") && normalized.ends_with(')') {
-    return format!(
-      "LIST({})",
-      canonical_signature_type(&normalized[5..normalized.len() - 1])
-    );
+  if let Some(element_type) = normalized.strip_circumfix("LIST(", ')') {
+    return format!("LIST({})", canonical_signature_type(element_type));
   }
-  if normalized.ends_with("[]") {
-    return format!(
-      "LIST({})",
-      canonical_signature_type(&normalized[..normalized.len() - 2])
-    );
+  if let Some(element_type) = normalized.strip_suffix("[]") {
+    return format!("LIST({})", canonical_signature_type(element_type));
   }
   normalized
 }
 
 pub(super) fn parse_decimal_precision_scale(data_type: &str) -> Option<(&str, &str)> {
-  let body = data_type
-    .strip_prefix("DECIMAL(PRECISION=")?
-    .strip_suffix(')')?;
+  let body = data_type.strip_circumfix("DECIMAL(PRECISION=", ')')?;
   let (precision, scale) = body.split_once(",SCALE=")?;
   if precision
     .chars()
@@ -638,4 +623,72 @@ pub fn validate_sql_query(query: &str) -> Result<(), RuntimeError> {
     return Err(RuntimeError::SqlNotSelectOrWith);
   }
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn type_wrappers_preserve_nested_types_whitespace_and_quoted_fields() {
+    assert_eq!(
+      list_value_type(Some(" LIST( MAP(VARCHAR, INTEGER) ) ")),
+      Some("MAP(VARCHAR, INTEGER)")
+    );
+    assert_eq!(list_value_type(Some(" INTEGER[] ")), Some("INTEGER"));
+    assert_eq!(
+      map_value_types(Some(
+        "MAP(VARCHAR, STRUCT(\"x,y\" INTEGER, nested LIST(DOUBLE)))"
+      )),
+      Some((
+        "VARCHAR".into(),
+        "STRUCT(\"x,y\" INTEGER, nested LIST(DOUBLE))".into()
+      ))
+    );
+    let structure = Some("STRUCT(\"λ\"\"名\" INTEGER, nested MAP(VARCHAR, LIST(INTEGER)))");
+    assert_eq!(
+      struct_field_type(structure, "λ\"名"),
+      Some("INTEGER".into())
+    );
+    assert_eq!(
+      struct_field_type(structure, "NESTED"),
+      Some("MAP(VARCHAR, LIST(INTEGER))".into())
+    );
+    assert_eq!(
+      parse_decimal_precision_scale("DECIMAL(PRECISION=38,SCALE=2)"),
+      Some(("38", "2"))
+    );
+    assert_eq!(
+      canonical_signature_type("LIST( DECIMAL(PRECISION=10,SCALE=2) )[]"),
+      "LIST(LIST(DECIMAL(10,2)))"
+    );
+  }
+
+  #[test]
+  fn type_wrappers_require_both_nonoverlapping_delimiters() {
+    assert_eq!(list_value_type(None), None);
+    assert_eq!(map_value_types(None), None);
+    assert_eq!(struct_field_type(None, "x"), None);
+    for hint in [
+      "LIST(",
+      "LIST(INTEGER",
+      "INTEGER)",
+      "LIST(INTEGER) trailing",
+    ] {
+      assert_eq!(list_value_type(Some(hint)), None, "{hint}");
+    }
+    for hint in ["MAP(", "MAP(INTEGER, VARCHAR", "INTEGER, VARCHAR)"] {
+      assert_eq!(map_value_types(Some(hint)), None, "{hint}");
+    }
+    for hint in ["STRUCT(", "STRUCT(x INTEGER", "x INTEGER)"] {
+      assert_eq!(struct_field_type(Some(hint), "x"), None, "{hint}");
+    }
+    for hint in [
+      "DECIMAL(PRECISION=",
+      "DECIMAL(PRECISION=10,SCALE=2",
+      "DECIMAL(PRECISION=x,SCALE=2)",
+    ] {
+      assert_eq!(parse_decimal_precision_scale(hint), None, "{hint}");
+    }
+  }
 }

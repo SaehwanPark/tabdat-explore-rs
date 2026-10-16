@@ -321,11 +321,7 @@ fn packaged_predict_examples_execute_through_inspection_and_export() {
   let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
   let examples: Vec<_> = topic
     .lines()
-    .filter_map(|line| {
-      line
-        .strip_prefix("- `")
-        .and_then(|line| line.strip_suffix('`'))
-    })
+    .filter_map(|line| line.strip_circumfix("- `", '`'))
     .collect();
   assert_eq!(examples.len(), 6);
   let output = run(
