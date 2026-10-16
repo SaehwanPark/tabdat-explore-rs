@@ -1,6 +1,35 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_status(&self) -> ExecutionResult {
+    let mut named_tables: Vec<_> = self.named_tables.keys().cloned().collect();
+    named_tables.sort();
+    // Do not use state(): that snapshot also clones retained design/model arrays.
+    let linear_model = self.linear_state().map(|model| LinearModelStatus {
+      outcome: model.outcome.clone(),
+      predictors: model.predictors.clone(),
+      include_intercept: model.include_intercept,
+      observation_count: model.result.fit_statistics.observation_count,
+      degrees_of_freedom: model.result.fit_statistics.degrees_of_freedom,
+      sample_total_observations: model
+        .result
+        .sample
+        .as_ref()
+        .map(|sample| sample.total_observations),
+      sample_dropped_observations: model
+        .result
+        .sample
+        .as_ref()
+        .map(|sample| sample.dropped_observations),
+    });
+    ExecutionResult::Status(StatusResult {
+      data_initialized: self.backend.is_some(),
+      dataset: self.active_dataset.clone(),
+      active_table_name: self.active_table_name.clone(),
+      named_tables,
+      linear_model,
+    })
+  }
   pub(crate) fn execute_describe(&self) -> Result<ExecutionResult, RuntimeError> {
     let dataset = self
       .active_dataset

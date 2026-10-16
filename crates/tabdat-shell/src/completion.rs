@@ -41,6 +41,7 @@ const CORE_COMMANDS: &[&str] = &[
   "select",
   "sort",
   "sql",
+  "status",
   "summarize",
   "tabulate",
   "tail",

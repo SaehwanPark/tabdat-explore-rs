@@ -58,6 +58,7 @@ impl Session {
         delimiter,
         has_header,
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
+      Command::Status => Ok(self.execute_status()),
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
       Command::CountQuery { condition } => self.execute_count_query(condition),

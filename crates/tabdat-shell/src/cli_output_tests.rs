@@ -1184,6 +1184,53 @@ fn detail_output_failure_stops_later_files_in_json_text_and_nested_streams() {
 }
 
 #[test]
+fn status_output_failure_stops_later_files_in_json_text_and_nested_streams() {
+  for mode in ["--json", "--text"] {
+    for route in ["batch", "file", "run"] {
+      for write_failure in [false, true] {
+        for fail_at in [1, 4] {
+          let fixture = Fixture::new();
+          let later = fixture.0.join("never.csv");
+          let commands = [
+            "status".into(),
+            fixture.load(),
+            "regress y x".into(),
+            "status".into(),
+            format!("export \"{}\"", later.display()),
+          ];
+          let args = if route == "batch" {
+            let values: Vec<_> = std::iter::once(mode)
+              .chain(commands.iter().flat_map(|source| ["-c", source.as_str()]))
+              .collect();
+            arguments(&values)
+          } else {
+            let parent = fixture.0.join("parent.td");
+            let child = fixture.0.join("child.td");
+            std::fs::write(
+              &parent,
+              format!("{}\nrun \"{}\"\n", commands[0], child.display()),
+            )
+            .unwrap();
+            std::fs::write(&child, commands[1..].join("\n")).unwrap();
+            if route == "file" {
+              arguments(&[mode, "-f", parent.to_str().unwrap()])
+            } else {
+              arguments(&[mode, "-c", &format!("run \"{}\"", parent.display())])
+            }
+          };
+          let mut output = FailedOutput::new(write_failure, fail_at);
+          let mut errors = Vec::new();
+          assert!(run_cli_with_output(args, &mut output, &mut errors).is_err());
+          assert!(errors.is_empty());
+          assert_eq!(output.flushes, fail_at - usize::from(write_failure));
+          assert!(!later.exists());
+        }
+      }
+    }
+  }
+}
+
+#[test]
 fn key_guard_output_failure_stops_later_guards_and_files() {
   for script in [false, true] {
     for write_failure in [false, true] {
