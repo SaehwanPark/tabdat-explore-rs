@@ -7,13 +7,18 @@ phase gates. For small changes, read only the relevant code/tests.
 
 ## Development
 
-Use [rustup](https://rustup.rs/) and the repo's pinned `rust-toolchain.toml`.
+Use [rustup](https://rustup.rs/) and the repo's pinned `rust-toolchain.toml`
+(currently Rust **1.99.1**, including Clippy and rustfmt). The workspace uses
+stable APIs added after 1.97, so use the pin rather than the old toolchain.
 Commit `Cargo.lock` for dependency changes and use `--locked` in checks.
 If package-manager Rust is also installed, `rustup show active-toolchain` can report
 this pin while `cargo`/`rustc` on `PATH` still use another installation. If their
 versions disagree with the pin, put rustup's shims first before running checks:
 `export PATH="$HOME/.cargo/bin:$PATH"`. Avoid unrelated code changes just to satisfy
-a different toolchain's new lints.
+a different toolchain's new lints. Verify both `rustc --version` and
+`cargo --version` after updating `PATH`. Historical performance/reference records
+retain the compiler versions on which they were measured; a pin update alone is
+not evidence of a compilation or runtime speedup.
 
 Use two-space indentation, no hard tabs or non-breaking spaces; respect syntax
 or generated-file formatting requirements.

@@ -1280,15 +1280,15 @@ fn python_temporal_label(value: &str) -> String {
 }
 
 fn decode_hex(value: &str) -> Option<Vec<u8>> {
-  if !value.len().is_multiple_of(2) {
+  let (pairs, remainder) = value.as_bytes().as_chunks::<2>();
+  if !remainder.is_empty() {
     return None;
   }
-  value
-    .as_bytes()
-    .chunks_exact(2)
-    .map(|pair| {
-      let high = (pair[0] as char).to_digit(16)?;
-      let low = (pair[1] as char).to_digit(16)?;
+  pairs
+    .iter()
+    .map(|&[high, low]| {
+      let high = char::from(high).to_digit(16)?;
+      let low = char::from(low).to_digit(16)?;
       Some(((high << 4) | low) as u8)
     })
     .collect()
@@ -1318,4 +1318,24 @@ fn python_bytes_repr(value: &[u8]) -> String {
   }
   rendered.push(char::from(quote));
   rendered
+}
+
+#[cfg(test)]
+mod tests {
+  use super::decode_hex;
+
+  #[test]
+  fn hex_decoding_requires_complete_valid_pairs() {
+    for (text, expected) in [
+      ("", vec![]),
+      ("00", vec![0]),
+      ("aF01", vec![175, 1]),
+      ("Ff", vec![255]),
+    ] {
+      assert_eq!(decode_hex(text), Some(expected), "{text}");
+    }
+    for text in ["0", "abc", "gg", "0g", "g0", "λ", "aλ", "00 1", "0x00"] {
+      assert_eq!(decode_hex(text), None, "{text}");
+    }
+  }
 }

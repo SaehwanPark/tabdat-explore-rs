@@ -692,7 +692,6 @@ pub fn validate_recode_number(value: &str) -> Result<(), DataError> {
   value
     .parse::<f64>()
     .is_ok_and(f64::is_finite)
-    .then_some(())
     .ok_or(DataError)
 }
 
