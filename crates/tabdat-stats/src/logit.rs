@@ -273,7 +273,9 @@ pub fn fit_binary_logit_with_options(
     }
     let step_norm = maximum_absolute(&step);
     let score_norm = maximum_absolute(&score);
-    if step_norm <= TOLERANCE * (1.0 + maximum_absolute(&beta)) && score_norm <= TOLERANCE {
+    // Absolute in unit-column-norm coordinates: another large coefficient
+    // must not relax the bound on a still-diverging separation direction.
+    if step_norm <= TOLERANCE && score_norm <= TOLERANCE {
       let scaled_covariance = xtx_inverse_from_r(&qr.r)?;
       let covariance: Vec<Vec<f64>> = scaled_covariance
         .iter()

@@ -261,6 +261,34 @@ fn complete_and_quasi_separation_never_publish_a_flat_likelihood_as_a_fit() {
 }
 
 #[test]
+fn large_identified_coefficient_cannot_hide_a_separating_direction() {
+  let base_x = [-2., -2., -1., -1., 0., 0., 1., 1., 2., 2., -1e11, 1e11];
+  let mut y = vec![0., 0., 0., 1., 0., 1., 0., 1., 1., 1., 0., 1.];
+  let mut x: Vec<_> = base_x.into_iter().map(|v| vec![v, 0.0]).collect();
+  x.extend([vec![0.0, -1.0], vec![0.0, 1.0]]);
+  y.extend([0.0, 1.0]);
+  for rotate in [false, true] {
+    let mut design = x.clone();
+    if rotate {
+      // A componentwise relative criterion is also unsafe: mix the large
+      // finite component into both coordinates while retaining a separating contrast.
+      for row in &mut design {
+        let finite = row[0] / 1e11;
+        let separating = row[1];
+        row[0] = finite + separating;
+        row[1] = finite - separating;
+      }
+    }
+    let p = EstimationProblem::new("y", vec!["x".into(), "z".into()], y.clone(), design).unwrap();
+    let result = fit_binary_logit(&p);
+    assert!(
+      result.is_err(),
+      "rotate={rotate}: quasi-separated model falsely converged: {result:?}"
+    );
+  }
+}
+
+#[test]
 fn iteration_exhaustion_and_invalid_specifications_are_explicit() {
   let p = problem(true, true);
   let error = fit_binary_logit_with_options(&p, &LogitOptions { max_iterations: 1 }).unwrap_err();
