@@ -46,7 +46,8 @@ artifact contains raw milliseconds plus minimum, median and maximum for:
 | `fresh_process_version` | Spawn through process completion/output capture of `--version` |
 | `fresh_process_json_workflow` | Fresh CLI process: use → count → summarize x y → regress y x → predict fitted → head 3, including JSON reporting and teardown |
 | `session_load_csv` | Execute load in a new session, including lazy DuckDB initialization |
-| `session_summarize` | Execute summary after loading outside the timer |
+| `session_summarize` | Execute ordinary summary after loading outside the timer |
+| `session_summarize_detail` | Execute fixed finite type-7 percentiles plus ordinary statistics after loading outside the timer |
 | `session_regress` | Execute OLS after loading outside the timer |
 | `session_predict` | Execute prediction after loading/fitting outside the timer |
 
@@ -58,7 +59,7 @@ supplied executable. Version equality alone cannot prove matching source/profile
 
 **Fresh process is not OS-cold cache.** The tool does not flush filesystem caches,
 control CPU frequency/thermal state, isolate scheduler activity, or measure
-interactive rendering/input latency. No Parquet/large-string/wide-design/weighted
+interactive rendering/input latency or per-command memory/peak RSS. No Parquet/large-string/wide-design/weighted
 model coverage, general performance guarantee or cross-platform certification is
 implied. Benchmark those separately when an actual need appears.
 
@@ -70,12 +71,22 @@ The predictor is normalized to [0,1) so the baseline measures a well-conditioned
 core workload, not accuracy under increasing predictor magnitude. The tool
 validates CLI-v1 tags/counts, ordered means,
 OLS/intercept/nonrobust metadata and sample size/DF, predictions and row order.
-Session cases also check exact retained indices `0..N`. Independent algebra gives:
+Model/prediction session cases also check exact retained indices `0..N`. Independent algebra gives:
 
 - Even N: slope `2+6*N/(N*N-1)`, intercept `3-3/(N+1)`.
 - Odd N: slope `2`, intercept `3-1/N`.
 
-Means, coefficients and preview predictions use a fixed absolute **1e-8** health
+Detail validation checks the type-7 method, two ordered finite samples, and all
+nine ordered percentiles. For x the sorted kth value is k/N. For y, all even-index
+observations precede the odd-index ones: with E=ceil(N/2), the sorted kth value is
+2+4k/N for k<E, otherwise 4+(4(k-E)+2)/N. Linear interpolation at p*(N-1)
+therefore supplies expected percentiles without sorting data or querying DuckDB.
+Even/odd hand-computed values and real sessions test this algebra. Missing/wrong
+method, sample, order, count, mean, percentile count/IDs or null/bad values reject
+the observation. The existing fresh-process workflow remains ordinary-summary-only;
+detail is an additional linked-runtime session case, not a new process/PTY workload.
+
+Means, coefficients, percentiles and preview predictions use a fixed absolute **1e-8** health
 check tolerance for this normalized fixture up to 1000000 rows. This is not a new
 estimator/inference validation contract, and it does not relax existing statistical
 test tolerances.
@@ -165,6 +176,33 @@ suite was **not** run for this tooling-only slice; normal-profile repository che
 remain separate evidence. The two repeats are not controlled independent machines
 or an optimization comparison. No production optimization is justified from this
 small warmed fixture alone.
+
+## Local detail-summary release observations
+
+[Raw detail-summary samples and build context](baselines/macos-aarch64-summary-detail-release.json)
+retain two sequential 10000-row runs (seven measured samples each) and one
+1000000-row run (three samples) on Apple M1 Max/macOS 27.0.1/aarch64, Rust 1.97.1.
+The locked release binary and example were built together at `f640b35`; only the
+measurement example differs from application source `2bf7357` (#255). Default
+release profile, inspected flags/config, hashes, native dependency context and
+raw/min/median/max samples are recorded; only machine-local binary paths were
+normalized. Every case has one excluded warmup and passes its correctness guards.
+
+| Session execute-only median ms | 10000 rows, A | 10000 rows, B | 1000000 rows |
+| --- | ---: | ---: | ---: |
+| Ordinary summarize x y | 0.674 | 0.733 | 6.319 |
+| Summarize x y, detail | 3.696 | 3.842 | 236.992 |
+
+These are different workloads in fresh sessions of the same linked harness, not
+an optimization comparison or isolated sorting-overhead measurement. Detail adds
+native percentile aggregation to ordinary statistics; do not subtract cases to
+attribute a particular internal cost. The two repeats are not independent hosts,
+and the larger row count is not a regression comparison. This fixture is finite,
+two-variable and normalized; null-heavy, wide, other-format and memory behavior
+remain unmeasured. No optimization, timing gate or performance/platform promise
+follows from this one-host record. Earlier baseline artifacts below remain pinned
+and unchanged; source, tool and preconditioning differ, so they are not controlled
+before/after comparisons with these observations.
 
 ## Local release baseline
 
