@@ -11,6 +11,7 @@ pub mod diagnostics;
 pub mod error;
 pub mod estimates;
 pub mod iv;
+mod iv_confidence;
 pub mod least_squares;
 pub mod matrix;
 pub mod post_estimation;
@@ -28,6 +29,10 @@ pub use estimates::{
 pub use iv::{
   AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
   anderson_rubin_test, fit_two_stage_least_squares,
+};
+pub use iv_confidence::{
+  AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape,
+  anderson_rubin_confidence_set,
 };
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,

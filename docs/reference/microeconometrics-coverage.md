@@ -129,8 +129,22 @@ provenance and redistribution terms before adding fixtures.
   relevance, and auxiliary failures; runtime/CLI tests verify retained sample,
   state, scripts and reporting. This is **method evidence**, not a newly validated
   book illustration or a scalar schooling confidence set with experience effects
-  left as endogenous nuisance parameters. Robust/cluster AR and confidence sets
-  remain required work.
+  left as endogenous nuisance parameters. Robust/cluster AR and endogenous-
+  subvector confidence sets remain required work.
+- **Bounded scalar AR confidence-set method:** after a nonrobust fit with exactly
+  one endogenous regressor, `estat ar, ci [level(95)]` analytically inverts the
+  homoskedastic AR test, leaving exogenous coefficients unrestricted. Independent
+  R 4.6.1 `lm.fit`/`qf`/`polyroot` evidence is in
+  `crates/tabdat-stats/tests/fixtures/ar_confidence_set_reference.R`. The 40-row
+  orthogonal fixtures validate bounded [1.282246370466847, 1.717753629533153],
+  disjoint (-inf, -4.536179309204275] union [5.198096652710294, +inf), all-real and
+  empty 95% sets, plus a 90% no-intercept reference. Tests compare roots/critical F
+  with absolute tolerance 1e-10, check membership against null tests, and exercise
+  linear/constant/singleton polynomial boundaries and retained state/reporting.
+  Rank/DF/nonfinite/range failures and numerically degenerate auxiliary residual
+  pairs are explicit errors; see `help estat` for the positive-variance condition.
+  This is synthetic method validation, not a newly replicated empirical
+  illustration or a schooling-only interval from the three-endogenous design.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain

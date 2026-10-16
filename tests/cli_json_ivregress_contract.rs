@@ -62,6 +62,130 @@ impl Drop for Fixture {
   }
 }
 
+fn confidence_fixture(strength: f64, direct_z1: f64, direct_z2: f64) -> Fixture {
+  let fixture = Fixture::new();
+  let mut csv = String::from("y,w,x1,z1,z2\n");
+  for i in 1..=40 {
+    let basis = |k: f64| (2.0 * std::f64::consts::PI * k * i as f64 / 40.0).cos();
+    let w = basis(5.0);
+    let z1 = basis(1.0);
+    let z2 = basis(2.0);
+    let x1 = strength * z1 + basis(3.0);
+    let y = 1.5 * x1 + 0.5 * w + direct_z1 * z1 + direct_z2 * z2 + basis(4.0);
+    writeln!(csv, "{y},{w},{x1},{z1},{z2}").unwrap();
+  }
+  fs::write(fixture.0.join("data.csv"), csv).unwrap();
+  fixture
+}
+
+#[test]
+fn scalar_ar_scripts_report_all_set_shapes_without_clipping_infinity() {
+  for (strength, z1, z2, shape, count, text_fragment) in [
+    (2.0, 0.0, 0.0, "bounded", 1, "Anderson-Rubin confidence set"),
+    (0.01, 0.0, 0.0, "all_real", 1, "(-inf, +inf)"),
+    (0.1, 2.0, 0.0, "disjoint", 2, " union "),
+    (2.0, 0.0, 10.0, "empty", 0, "Empty set"),
+  ] {
+    let fixture = confidence_fixture(strength, z1, z2);
+    fs::write(
+      fixture.0.join("ci.td"),
+      "use data.csv\nivregress 2sls y w, endog(x1) iv(z1 z2)\nestat ar, ci\n",
+    )
+    .unwrap();
+    let results = json_lines(&fixture.run(&["--json", "-f", "ci.td"]));
+    assert_eq!(
+      results[1]["data"]["first_stage"]["scalar_ar_confidence_set_available"],
+      true
+    );
+    assert_eq!(results[2]["result_type"], "AndersonRubinConfidenceSet");
+    let ci = &results[2]["data"];
+    assert_eq!(ci["shape"], shape);
+    assert_eq!(ci["confidence_level"], 95.0);
+    assert_eq!(ci["endogenous"], "x1");
+    assert_eq!(ci["observation_count"], 40);
+    assert_eq!(ci["numerator_df"], 2);
+    assert_eq!(ci["denominator_df"], 36);
+    assert_eq!(
+      ci["endogenous_nuisance_policy"],
+      "none_single_endogenous_only"
+    );
+    assert_eq!(ci["covariance"], "homoskedastic");
+    assert_eq!(ci["weak_iv_robust"], true);
+    close(&ci["critical_f"], 3.259446306144109);
+    assert_eq!(ci["intervals"].as_array().unwrap().len(), count);
+    match shape {
+      "bounded" => {
+        close(&ci["intervals"][0]["lower"], 1.282246370466847);
+        close(&ci["intervals"][0]["upper"], 1.717753629533153);
+      }
+      "all_real" => {
+        assert!(ci["intervals"][0]["lower"].is_null());
+        assert!(ci["intervals"][0]["upper"].is_null());
+      }
+      "disjoint" => {
+        assert!(ci["intervals"][0]["lower"].is_null());
+        assert!(ci["intervals"][1]["upper"].is_null());
+        close(&ci["intervals"][0]["upper"], -4.536179309204275);
+        close(&ci["intervals"][1]["lower"], 5.198096652710294);
+      }
+      _ => (),
+    }
+    let text = fixture.run(&["--text", "-f", "ci.td"]);
+    assert!(
+      text.status.success(),
+      "{}",
+      String::from_utf8_lossy(&text.stderr)
+    );
+    let text = String::from_utf8(text.stdout).unwrap();
+    assert!(text.contains(text_fragment));
+    assert!(text.contains("Exactly one endogenous coefficient"));
+  }
+  let fixture = confidence_fixture(2.0, 0.0, 0.0);
+  let results = json_lines(&fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y w, endog(x1) iv(z1 z2) noconstant",
+      "estat ar, ci level(90)",
+    ],
+  ));
+  let ci = &results[2]["data"];
+  assert_eq!(ci["confidence_level"], 90.0);
+  close(&ci["critical_f"], 2.45201433032702);
+  close(&ci["intervals"][0]["lower"], 1.314875969835299);
+  close(&ci["intervals"][0]["upper"], 1.685124030164702);
+  let fixture = Fixture::new();
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y w, endog(x1 x2) iv(z1 z2)",
+      "estat ar, ci",
+      "export should-not-exist.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(!fixture.0.join("should-not-exist.csv").exists());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("exactly one endogenous"));
+  fs::write(
+    fixture.0.join("data.csv"),
+    "y,x1,z1,z2\n0,1,1,0\n0,0,0,1\n1,0,0,0\n0,0,0,0\n",
+  )
+  .unwrap();
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y, endog(x1) iv(z1 z2) noconstant",
+      "estat ar, ci level(1e-16)",
+      "export numerical-not-written.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("probability resolution"));
+  assert!(!fixture.0.join("numerical-not-written.csv").exists());
+}
+
 fn json_lines(output: &Output) -> Vec<Value> {
   assert!(
     output.status.success(),

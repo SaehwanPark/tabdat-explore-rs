@@ -23,8 +23,11 @@ These are relevance diagnostics, **not weak-instrument-robust inference**.
 After a nonrobust fit, `estat ar, null(b1 b2 ...)` supplies a separate
 homoskedastic weak-IV-robust joint test of all endogenous coefficients; see
 `help estat` for null ordering, nuisance parameters and assumptions. Ordinary
-coefficient p-values remain conventional. Overidentification tests,
-weak-IV-robust intervals, robust/cluster AR and GMM are not implemented;
+coefficient p-values remain conventional. With exactly one endogenous regressor,
+`estat ar, ci [level(95)]` provides homoskedastic confidence sets,
+including empty or unbounded sets; see `help estat` for numerical limits.
+Overidentification tests, multi-endogenous confidence regions, robust/cluster AR
+and GMM are not implemented;
 `gmm` is parsed but execution reports it as unsupported.
 
 Examples:

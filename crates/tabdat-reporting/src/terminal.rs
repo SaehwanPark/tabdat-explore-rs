@@ -369,6 +369,42 @@ fn render_summary_rows(rows: &[SummaryRow]) -> String {
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
+    ExecutionResult::AndersonRubinConfidenceSet(result) => {
+      let mut output = format!(
+        "Anderson-Rubin confidence set (homoskedastic, weak-IV-robust)\n{}; level = {}%; N = {}; critical F({}, {}) = {}\n",
+        result.endogenous.escape_debug(),
+        inference_number(result.confidence_level),
+        result.observation_count,
+        result.numerator_df,
+        result.denominator_df,
+        inference_number(result.critical_f)
+      );
+      if result.intervals.is_empty() {
+        output.push_str("Empty set\n");
+      }
+      for (index, interval) in result.intervals.iter().enumerate() {
+        if index > 0 {
+          output.push_str(" union ");
+        }
+        write!(
+          output,
+          "{}{}, {}{}",
+          if interval.lower.is_some() { "[" } else { "(" },
+          interval
+            .lower
+            .map(inference_number)
+            .unwrap_or_else(|| "-inf".into()),
+          interval
+            .upper
+            .map(inference_number)
+            .unwrap_or_else(|| "+inf".into()),
+          if interval.upper.is_some() { "]" } else { ")" }
+        )
+        .unwrap();
+      }
+      output.push_str("\nAssumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous coefficient; no endogenous nuisance/subvector inference.\n");
+      output
+    }
     ExecutionResult::AndersonRubin(result) => {
       let mut output = String::from("Anderson-Rubin joint test (homoskedastic, weak-IV-robust)\n");
       output.push_str("H0: all endogenous coefficients jointly, in fit order\n");
@@ -391,7 +427,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         inference_number(result.p_value)
       )
       .unwrap();
-      output.push_str("Assumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. No confidence set or subvector inference.\n");
+      output.push_str("Assumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. No confidence set or subvector inference is included in this joint-test result.\n");
       output
     }
     ExecutionResult::Status(status) => {

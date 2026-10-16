@@ -3,6 +3,7 @@
 How to invoke:
 `estat vif`
 `estat ar, null(b1 b2 ...)`
+`estat ar, ci [level(95)]`
 
 What it does:
 Report variance-inflation factors from the retained linear-regression predictor design, in predictor order. Requires an active dataset and a prior successful bounded `regress` fit.
@@ -56,9 +57,56 @@ changed; AR does not refit 2SLS, reread current columns or mutate model/data sta
 excluded instruments, N, both DF, F, p-value and assumptions (`AndersonRubinResult`).
 A small p-value rejects the **entire supplied joint null** under these assumptions;
 it does not identify which endogenous coefficient differs.
-Confidence sets, endogenous nuisance coefficients and robust/cluster AR are not
-implemented. Ordinary coefficient p-values and `test` remain conventional, not
-weak-IV-robust inference.
+Endogenous nuisance coefficients and robust/cluster AR are not implemented.
+Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
+inference.
+
+## Scalar Anderson–Rubin confidence sets
+
+After a **nonrobust** 2SLS fit with **exactly one endogenous regressor**:
+
+```text
+ivregress 2sls y w, endog(x) iv(z1 z2)
+estat ar, ci
+estat ar, ci level(90)
+```
+
+`ci` explicitly requests a confidence set; it cannot be combined with `null()`.
+The default confidence level is 95 percent; `level()` must be finite and strictly
+between 0 and 100. Included exogenous coefficients remain unrestricted nuisance
+parameters. Multi-endogenous fits are rejected: the app does not plug in their
+estimated effects or silently interpret a joint region as a scalar interval.
+
+The set contains all scalar null values not rejected by the homoskedastic AR
+F test. Analytic quadratic inversion has no finite grid or arbitrary search
+range. Results may be a bounded interval, two disjoint rays, the whole real line,
+or an empty set. Linear/constant boundaries and singleton sets are retained.
+Finite endpoints are closed; terminal infinity is `-inf`/`+inf`. An empty set
+means every scalar null is rejected at the chosen level under these assumptions,
+not a convergence failure; an all-real set provides no finite bound.
+
+The retained fit sample/design and homoskedastic/valid-instrument assumptions
+are the same as for the joint test; exact F inference requires conditional
+normality. Rank, residual-DF, nonfinite arithmetic or endpoint-range failures are
+errors. This bounded implementation requires auxiliary residual variance to stay
+positive for every scalar null: zero residual outcome variance or an outcome/
+endogenous residual pair with relative innovation norm at most 1e-12 is rejected
+as numerically degenerate. This avoids inventing confidence bounds across a null
+with undefined variance. No near-zero quadratic coefficient is silently dropped;
+coefficient scaling underflow is an explicit error. A confidence level whose
+complementary probability or positive F multiplier loses floating-point resolution
+is also an error, even if it is syntactically valid. Distinct bounded/disjoint
+endpoints that coalesce when translated back to the original coefficient scale
+are rejected rather than relabelled as genuine singleton or all-real sets.
+
+CLI-v1 JSON returns `AndersonRubinConfidenceSet` with the endogenous name, level,
+N, both DF, critical F, `shape` and `intervals`. An absent lower/upper bound
+(`null`) means **negative/positive infinity**, not missingness; `empty` has an
+empty interval list and `all_real` has one interval with both bounds null.
+No heteroskedastic/cluster confidence sets or endogenous-subvector/nuisance
+projection are implied. In particular, this does not provide a schooling-only
+confidence set from the three-endogenous DATA66 specification.
+
 
 Links:
 - `SPEC.md`

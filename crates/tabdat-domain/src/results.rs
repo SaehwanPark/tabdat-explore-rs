@@ -714,6 +714,8 @@ pub enum ExecutionResult {
   Test(TestResult),
   /// Homoskedastic joint weak-IV-robust test on a retained IV design.
   AndersonRubin(tabdat_stats::AndersonRubinResult),
+  /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
+  AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.
   Ttest(Box<TtestResult>),
 }

@@ -880,6 +880,8 @@ fn get_command_schema(
       help_topic,
       name: "estat".to_string(),
       options: vec![
+        OptionDescriptor { name: "ci".to_string(), required: false },
+        OptionDescriptor { name: "level".to_string(), required: false },
         OptionDescriptor {
           name: "null".to_string(),
           required: false,
@@ -893,7 +895,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "estat vif | estat ar, null(b1 b2 ...)".to_string(),
+      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)]".to_string(),
     }),
     "exit" => Ok(CommandSchemaResult {
       arguments: vec![],

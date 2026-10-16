@@ -462,6 +462,8 @@ Linear JSON results reuse the supplied statistics without recalculation:
   `weak_iv_robust_inference_available: false` (these first-stage/coefficient
   summaries do not contain weak-IV-robust inference),
   `joint_ar_postestimation_available` (true only for nonrobust fits),
+  `scalar_ar_confidence_set_available` (true only for nonrobust/single-endogenous
+  fits; numerical/rank/variance validation can still fail),
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
   `rows` with endogenous name,
   excluded instruments, N, numerator/denominator DF, ordinary `partial_r_squared`,
@@ -485,6 +487,25 @@ Linear JSON results reuse the supplied statistics without recalculation:
   is implied; ordinary coefficient/tests remain conventional. The preceding
   first-stage availability flag remains false for those conventional summaries;
   the separate joint-AR availability flag advertises this post-estimation command.
+- `AndersonRubinConfidenceSet` (`estat ar, ci [level(95)]`): scalar nonrejection
+  set for exactly one endogenous coefficient, leaving included-exogenous
+  coefficients unrestricted. Fields: `test: "anderson_rubin_scalar_confidence_set"`,
+  `covariance: "homoskedastic"`, `weak_iv_robust: true`,
+  `endogenous_nuisance_policy: "none_single_endogenous_only"`, `assumptions`,
+  `endogenous`, `excluded_instruments`, `confidence_level` (percent),
+  `observation_count`, `numerator_df`, `denominator_df`, `critical_f`, `shape`
+  and ordered `intervals` with `lower`/`upper` bounds. Finite endpoints are closed;
+  **null lower/upper means negative/positive infinity**, not an unavailable
+  estimate. Shapes: `bounded`, `disjoint`, `all_real`, `empty`, `lower_ray`
+  ((-inf, upper]), `upper_ray` ([lower, +inf)), `singleton` ([b,b]). Empty sets
+  have no intervals; all-real sets have one interval with both bounds null.
+  Analytic quadratic inversion uses no finite grid/truncation. Confidence levels
+  are finite and strictly between 0 and 100. Multi-endogenous and robust/cluster
+  fits are rejected. Rank/DF/nonfinite/range failures and auxiliary residual
+  variance that cannot remain positive for all nulls are errors, not empty sets
+  (see `help estat` for the relative 1e-12 innovation-norm policy). Assumptions and
+  retained sample/state semantics match the homoskedastic joint test; this does
+  not project a region onto one coefficient with endogenous nuisance parameters.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,

@@ -152,10 +152,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Extend the bounded homoskedastic joint Anderson–Rubin test with confidence-set
-   inference against an exact reference, first specifying scalar versus joint
-   scope, endogenous nuisance-parameter policy and a report contract. Do not infer such support from conventional Wald results or
-   first-stage relevance tests.
+1. Select an exact overidentified IV example/reference and deliver bounded
+   endogeneity/overidentification diagnostics, with explicit covariance and
+   nuisance-parameter assumptions. Keep remaining robust/cluster AR and
+   endogenous-subvector confidence-set work explicit; conventional Wald results
+   and first-stage relevance tests do not establish weak-IV-robust inference.
 2. Then select one binary-outcome textbook example and deliver a bounded
    fit → marginal-effect/inference → report workflow, preserving the required
    reference, sample and failure-case evidence.
@@ -165,7 +166,10 @@ separately, validated against the author output on the DATA66 sample; see the
 [coverage ledger](reference/microeconometrics-coverage.md). This does not establish
 complete the illustration. A separate `estat ar, null(...)` command now supplies
 homoskedastic weak-IV-robust **joint tests of all endogenous coefficients** on the
-retained fit sample. It does not supply schooling-specific scalar confidence sets,
+retained fit sample. Single-endogenous fits additionally support analytic
+homoskedastic confidence sets via `estat ar, ci [level(95)]`, including disjoint,
+unbounded and empty sets within documented numerical limits. This does not supply
+schooling-specific scalar confidence sets with endogenous nuisance parameters,
 endogenous-subvector inference or heteroskedastic/cluster AR. Keep overidentified
 examples separate until their samples, estimands and references are specified.
 
