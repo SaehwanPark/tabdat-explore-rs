@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, estat vif/ar/overid/endogenous, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, predict, lincom, test, ttest, and estat vif/ar/overid/endogenous";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, and estat vif/ar/overid/endogenous/margins";
 
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
@@ -75,6 +75,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Head { .. }
     | Command::Tail { .. }
     | Command::Regress { .. }
+    | Command::Logit { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
     | Command::Test { .. }
@@ -87,7 +88,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::AndersonRubin { .. }
             | EstatSubcommand::AndersonRubinConfidenceSet { .. }
             | EstatSubcommand::Overid
-            | EstatSubcommand::Endogenous,
+            | EstatSubcommand::Endogenous
+            | EstatSubcommand::Margins,
           ..
         },
     }
@@ -162,6 +164,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "dataset": result.dataset.as_ref().map(dataset_info_data),
         "active_table_name": result.active_table_name,
         "named_tables": result.named_tables,
+        "estimation_family": result.estimation_family,
         "linear_model": result.linear_model,
       }),
       "StatusResult",
@@ -296,6 +299,37 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Head(preview) | ExecutionResult::Tail(preview) => {
       (preview_result_data(preview), "PreviewResult")
     }
+    ExecutionResult::Logit(result) => (
+      json!({
+        "outcome": result.outcome, "predictors": result.predictor_names,
+        "estimator": "logit", "covariance": "model_based_fisher_information",
+        "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
+        "include_intercept": result.include_intercept, "observation_count": result.observation_count,
+        "event_count": result.event_count, "coefficients": result.coefficients,
+        "covariance_matrix": result.covariance, "log_likelihood": result.log_likelihood,
+        "null_log_likelihood": result.null_log_likelihood, "likelihood_ratio": result.likelihood_ratio,
+        "likelihood_ratio_df": result.likelihood_ratio_df,
+        "likelihood_ratio_p_value": result.likelihood_ratio_p_value,
+        "likelihood_ratio_reference_distribution": "asymptotic_chi_square",
+        "mcfadden_r_squared": result.mcfadden_r_squared, "sample": result.sample,
+        "converged": true, "iterations": result.iterations,
+        "convergence_coordinate_system": "unit_column_norm",
+        "convergence_absolute_tolerance": 1e-10,
+        "max_abs_scaled_score": result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step": result.max_abs_scaled_newton_step,
+      }),
+      "BinaryLogitResult",
+    ),
+    ExecutionResult::LogitMarginalEffects(result) => (
+      json!({
+        "estimator": "logit", "effect": "average_continuous_predictor_column_derivative",
+        "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
+        "covariance": "model_based_fisher_information", "confidence_level": 95.0,
+        "reference_distribution": "asymptotic_standard_normal",
+        "observation_count": result.observation_count, "effects": result.effects,
+      }),
+      "LogitMarginalEffectsResult",
+    ),
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
     ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),
     ExecutionResult::Prediction(result) => (

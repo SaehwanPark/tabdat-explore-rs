@@ -10,7 +10,7 @@ The product is not feature complete. A compiled command type is not evidence of 
 | --- | --- |
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
-| `tabdat-stats` | Pure Rust regression, covariance/inference and hypothesis utilities |
+| `tabdat-stats` | Pure Rust linear/binary-logit estimation, covariance/inference and hypothesis utilities |
 | `tabdat-io` | Local path/format and script I/O validation |
 | `tabdat-data` | DuckDB, relations, SQL generation and owned row/cell conversion |
 | `tabdat-execution` | Session coordination, data/statistical dispatch and script execution |
@@ -33,7 +33,7 @@ consider merging crates only when actual change patterns justify the cost.
    one canonical initial tabular engine.
 3. **Deliberate state.** Parse and validate before mutations when possible;
    document and test whether failure leaves session state unchanged. Preserve
-   existing explicit exceptions (such as new-regression-attempt model clearing)
+   existing explicit exceptions (such as new-estimation-attempt model clearing)
    unless changing them intentionally.
 4. **Statistical correctness before implementation reuse.** TabDat owns its
    sample, missingness, covariance, post-estimation and reporting semantics;

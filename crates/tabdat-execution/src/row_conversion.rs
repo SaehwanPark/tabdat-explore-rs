@@ -1,5 +1,18 @@
 use crate::*;
 
+pub(crate) fn cell_to_f64(cell: &CellValue) -> Option<f64> {
+  match cell {
+    CellValue::Float(f) => Some(*f),
+    CellValue::SignedInteger(i) => Some(*i as f64),
+    CellValue::UnsignedInteger(u) => Some(*u as f64),
+    CellValue::Decimal { value, scale, .. } => {
+      let divisor = 10f64.powi(*scale as i32);
+      Some(*value as f64 / divisor)
+    }
+    _ => None,
+  }
+}
+
 pub(crate) fn read_owned_cell<'a>(
   row: &'a DataRow,
   index: usize,

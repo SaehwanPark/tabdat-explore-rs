@@ -27,6 +27,7 @@ impl Session {
       dataset: self.active_dataset.clone(),
       active_table_name: self.active_table_name.clone(),
       named_tables,
+      estimation_family: self.estimation.as_ref().map(EstimationState::family),
       linear_model,
     })
   }

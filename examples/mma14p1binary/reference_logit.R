@@ -1,8 +1,8 @@
 # Development-only R 4.6.1 stats::glm reference, no production R dependency.
 # Source specification: mma14p1binary.do, C&T (2005) section 14.2, Table14.2.
-# Rscript examples/mma14p1binary/reference_logit.R Nldata.csv [predictions.csv]
+# Rscript examples/mma14p1binary/reference_logit.R Nldata.csv [R.csv [native.csv]]
 args <- commandArgs(trailingOnly = TRUE)
-stopifnot(length(args) %in% 1:2)
+stopifnot(length(args) %in% 1:3)
 d <- read.csv(args[[1]])
 stopifnot(nrow(d)==1182L, identical(d$source_row,seq_len(1182L)))
 d <- d[d$mode %in% c(2,4), ]; d <- d[order(d$source_row), ]
@@ -35,5 +35,17 @@ print(list(observations=nrow(d),events=sum(d$charter),parameters=b,covariance=V,
   continuous_ame=ame,ame_gradient=g,ame_se=ame_se,
   ame_z=ame/ame_se,ame_p_value=2*pnorm(-abs(ame/ame_se)),
   ame_lower95=ame-critical*ame_se,ame_upper95=ame+critical*ame_se),digits=17)
-if(length(args)==2) write.csv(data.frame(source_row=d$source_row,charter=d$charter,
+if(length(args)>=2) write.csv(data.frame(source_row=d$source_row,charter=d$charter,
   lnrelp=d$lnrelp,probability=p),args[[2]],row.names=FALSE)
+if(length(args)==3) {
+  native <- read.csv(args[[3]])
+  stopifnot(all(c("source_row","charter","lnrelp","phat","log_odds") %in% names(native)),
+    nrow(native)==630L, identical(native$source_row,d$source_row),
+    identical(native$charter,d$charter),
+    max(abs(native$lnrelp-d$lnrelp))<1e-12,
+    max(abs(native$phat-p))<1e-10,
+    max(abs(native$log_odds-as.vector(X%*%b)))<1e-10)
+  cat("Native comparison: all 630 source-row identities, outcomes, designs, probabilities and indices match.\n")
+  print(c(max_probability_error=max(abs(native$phat-p)),
+    max_index_error=max(abs(native$log_odds-as.vector(X%*%b)))),digits=17)
+}

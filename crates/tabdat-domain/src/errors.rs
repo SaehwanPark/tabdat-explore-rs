@@ -427,6 +427,14 @@ pub enum RuntimeError {
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
   RegressFailed { message: String },
+  /// Invalid/unsupported binary logit specification or a failed finite-MLE fit.
+  LogitFailed { message: String },
+  /// Continuous logit marginal effects require an owned preceding logit fit.
+  EstatMarginsRequiresPriorLogit,
+  /// A retained-design delta calculation failed.
+  EstatMarginsFailed { message: String },
+  /// Only explicit pr/xb predictions without auxiliary interval options are supported.
+  PredictLogitUnsupported,
   /// The requested IV estimator is not executed by this runtime slice.
   IvRegressUnsupportedEstimator { estimator: String },
   /// One or more IV variables are absent from the active dataset.
@@ -1037,6 +1045,14 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::LogitFailed { message } => write!(formatter, "logit: {message}"),
+      Self::EstatMarginsRequiresPriorLogit => {
+        formatter.write_str("estat margins requires a prior logit fit")
+      }
+      Self::EstatMarginsFailed { message } => write!(formatter, "estat margins: {message}"),
+      Self::PredictLogitUnsupported => formatter.write_str(
+        "logit prediction supports only pr or xb, without interval, std or saving options",
+      ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,
         "ivregress estimator '{estimator}' is not implemented; use 2sls"

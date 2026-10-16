@@ -82,6 +82,35 @@ fn optional_inference(value: Option<f64>) -> String {
     .unwrap_or_else(|| "NA".to_owned())
 }
 
+fn logit_number(value: f64) -> String {
+  if value != 0.0 && value.abs() < 1e-6 {
+    format!("{value:.6e}")
+  } else {
+    inference_number(value)
+  }
+}
+
+fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
+  let mut output = String::from(
+    "Variable\tEstimate\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+  );
+  for c in estimates {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+      c.name.escape_debug(),
+      logit_number(c.value),
+      logit_number(c.standard_error),
+      logit_number(c.statistic),
+      logit_number(c.p_value),
+      logit_number(c.confidence_lower),
+      logit_number(c.confidence_upper)
+    )
+    .unwrap();
+  }
+  output
+}
+
 fn regression(result: &tabdat_domain::RegressionResult) -> String {
   let mut output = format!(
     "Regression: {} on {}\nEstimator: {}; covariance: {}; intercept: {}\nN = {}; residual df = {}\n",
@@ -477,6 +506,15 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         status.named_tables
       )
       .unwrap();
+      writeln!(
+        output,
+        "Retained estimation family: {}",
+        status
+          .estimation_family
+          .as_ref()
+          .map_or_else(|| "none".to_owned(), |family| format!("{family:?}"))
+      )
+      .unwrap();
       if let Some(model) = &status.linear_model {
         writeln!(output, "Retained linear model: outcome={:?}; predictors={:?}; intercept={}\nRetained N = {}; residual df = {}\nOriginal candidate rows = {}; excluded = {}",
           model.outcome, model.predictors, model.include_intercept, model.observation_count,
@@ -655,6 +693,41 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.dataset.row_count,
       result.dataset.columns.len(),
       result.path.to_string_lossy().escape_debug()
+    ),
+    ExecutionResult::Logit(result) => format!(
+      "Binary logit maximum likelihood (model-based inverse Fisher information)\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nIndependent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction.\n{}",
+      result.outcome.escape_debug(),
+      result.observation_count,
+      result.event_count,
+      result.iterations,
+      result
+        .sample
+        .as_ref()
+        .map_or(result.observation_count, |sample| sample.total_observations),
+      result
+        .sample
+        .as_ref()
+        .map_or(0, |sample| sample.dropped_observations),
+      inference_number(result.log_likelihood),
+      inference_number(result.null_log_likelihood),
+      result.likelihood_ratio_df,
+      inference_number(result.likelihood_ratio),
+      result
+        .likelihood_ratio_p_value
+        .map(logit_number)
+        .unwrap_or_else(|| "NA".to_owned()),
+      inference_number(result.mcfadden_r_squared),
+      logit_estimates(&result.coefficients)
+    ),
+    ExecutionResult::LogitMarginalEffects(result) => format!(
+      "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; model-based covariance, asymptotic normal 95% intervals.\n{}{}",
+      result.observation_count,
+      logit_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      }
     ),
     ExecutionResult::Regression(result) => regression(result),
     ExecutionResult::Ttest(result) => ttest(result),

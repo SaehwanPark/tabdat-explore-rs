@@ -526,8 +526,8 @@ pub struct RegressCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `logit` form retained for a later statistical runtime
-/// slice.
+/// Binary logit syntax; runtime supports unweighted model-based covariance.
+/// Robust and cluster forms remain parsed but are explicitly rejected.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogitCommand {
   /// The dependent variable.
