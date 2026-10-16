@@ -119,7 +119,10 @@ rule, or causal effect. Here the negative AME is probability units per unit of
 **log relative price**, not per price unit or an exact finite-change prediction.
 
 Fitting requires both outcome classes with exact 0/1 values on the complete
-finite sample. Scaled Newton/QR uses stable likelihood/curvature, backtracking,
+finite sample. Native Decimal outcomes are validated on their exact integer
+payload/scale before conversion: nearby values must not round into a binary one.
+Domain rejection follows complete-case selection, so an otherwise excluded row
+still does not enter the model. Scaled Newton/QR uses stable likelihood/curvature, backtracking,
 100 information evaluations and absolute `1e-10` score **and full undamped step**
 bounds in unit-column-norm coordinates. A flat likelihood/small score alone must
 not publish a separated fit. Combined outlier/separating-contrast regressions

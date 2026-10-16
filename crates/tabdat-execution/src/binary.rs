@@ -6,6 +6,18 @@ fn logit_error(message: impl Into<String>) -> RuntimeError {
   }
 }
 
+fn exact_binary_outcome(cell: &CellValue) -> bool {
+  match cell {
+    CellValue::Float(value) => *value == 0.0 || *value == 1.0,
+    CellValue::SignedInteger(value) => *value == 0 || *value == 1,
+    CellValue::UnsignedInteger(value) => *value == 0 || *value == 1,
+    CellValue::Decimal { value, scale, .. } => {
+      *value == 0 || 10_i128.checked_pow(u32::from(*scale)) == Some(*value)
+    }
+    _ => false,
+  }
+}
+
 impl Session {
   pub(crate) fn execute_logit(
     &mut self,
@@ -57,6 +69,7 @@ impl Session {
           let index = total_rows;
           total_rows += 1;
           let mut values = Vec::with_capacity(variables.len());
+          let mut outcome_is_binary = false;
           for j in 0..variables.len() {
             let cell = row.cell(j).map_err(|error| {
               logit_error(match error {
@@ -64,13 +77,25 @@ impl Session {
                 _ => "could not read logit numeric cell".into(),
               })
             })?;
+            if j == 0 {
+              // Validate the owned numeric value before f64 rounding can map a
+              // nearby nonbinary DECIMAL onto one. Exclusions still come first.
+              outcome_is_binary = exact_binary_outcome(cell);
+            }
             match cell_to_f64(cell) {
               Some(v) if v.is_finite() => values.push(v),
               _ => return Ok(()),
             }
           }
+          if !outcome_is_binary {
+            return Err(logit_error(
+              "outcome must be exactly 0 or 1 on the complete finite estimation sample",
+            ));
+          }
           retained.push(index);
-          response.push(values[0]);
+          // Canonicalize validated exact DECIMAL one: its f64 division need
+          // not itself round to bit-exact one at every scale.
+          response.push(if values[0] == 0.0 { 0.0 } else { 1.0 });
           design.push(values[1..].to_vec());
           Ok(())
         },

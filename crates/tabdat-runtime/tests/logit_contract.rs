@@ -298,6 +298,92 @@ fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
 }
 
 #[test]
+fn decimal_outcomes_are_validated_exactly_before_float_rounding_and_after_exclusions() {
+  let f = Fixture::new(false);
+  for (scale, nearby) in [
+    (18, "0.999999999999999999"),
+    (18, "1.000000000000000001"),
+    (37, "0.9999999999999999999999999999999999999"),
+  ] {
+    let mut s = f.load();
+    execute(&mut s, "logit y x1 x2");
+    execute(
+      &mut s,
+      &format!(
+        r#"sql """SELECT source_row, CASE WHEN y=1 THEN CAST('{nearby}' AS DECIMAL({},{})) ELSE CAST(0 AS DECIMAL({},{})) END AS y, x1, x2 FROM active""" into nearby"#,
+        scale + 1,
+        scale,
+        scale + 1,
+        scale
+      ),
+    );
+    let before = s.state();
+    let rows = preview(&mut s);
+    assert!(
+      fail(&mut s, "logit y x1 x2")
+        .to_string()
+        .contains("exactly 0 or 1")
+    );
+    assert!(s.state().estimation.is_none());
+    assert_eq!(s.state().active_dataset, before.active_dataset);
+    same_rows(&preview(&mut s), &rows);
+  }
+  for scale in [0, 18, 37] {
+    let mut s = f.load();
+    execute(
+      &mut s,
+      &format!(
+        r#"sql """SELECT source_row, CAST(y AS DECIMAL({},{})) AS y, x1, x2 FROM active""" into exact"#,
+        scale + 1,
+        scale
+      ),
+    );
+    let ExecutionResult::Logit(fit) = execute(&mut s, "logit y x1 x2") else {
+      panic!("expected logit")
+    };
+    close(fit.coefficients[1].value, 0.6009973792306854);
+    assert_eq!(fit.event_count, 22);
+  }
+  let mut s = f.load();
+  execute(
+    &mut s,
+    r#"sql """SELECT source_row, CAST(y AS DECIMAL(19,18)) AS y, x1, x2 FROM active UNION ALL SELECT 999, CAST('0.999999999999999999' AS DECIMAL(19,18)), CAST(NULL AS DOUBLE), 0""" into excluded"#,
+  );
+  let ExecutionResult::Logit(fit) = execute(&mut s, "logit y x1 x2") else {
+    panic!("expected logit")
+  };
+  assert_eq!(fit.observation_count, 40);
+  assert_eq!(
+    fit.sample.as_ref().unwrap().retained_indices,
+    (0..40).collect::<Vec<_>>()
+  );
+  assert_eq!(fit.sample.as_ref().unwrap().dropped_observations, 1);
+}
+
+#[test]
+fn unrepresentable_current_indices_produce_null_without_losing_rows_or_fit() {
+  let f = Fixture::new(false);
+  let mut s = f.load();
+  execute(&mut s, "logit y x1 x2");
+  let cache = s.state().estimation;
+  // Each product is finite, but the two negative terms overflow when summed.
+  execute(
+    &mut s,
+    r#"sql """SELECT source_row, y, CAST('-1.7976931348623157e308' AS DOUBLE) AS x1, CAST('1.7976931348623157e308' AS DOUBLE) AS x2 FROM active""" into overflowing_sum"#,
+  );
+  execute(&mut s, "predict p, pr");
+  execute(&mut s, "predict xb, xb");
+  let rows = preview(&mut s);
+  assert_eq!(rows.len(), 40);
+  assert!(
+    rows
+      .iter()
+      .all(|row| row[4] == CellValue::Null && row[5] == CellValue::Null)
+  );
+  assert_eq!(s.state().estimation, cache);
+}
+
+#[test]
 fn linear_only_postestimation_never_uses_logit_and_other_families_do_not_supply_margins() {
   let f = Fixture::new(false);
   let mut s = f.load();
