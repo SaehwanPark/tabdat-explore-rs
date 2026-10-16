@@ -84,169 +84,97 @@ impl std::error::Error for ScriptError {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeError {
   /// The runtime does not yet execute the named language command.
-  UnsupportedCommand {
-    name: &'static str,
-  },
+  UnsupportedCommand { name: &'static str },
   /// The command requires a dataset, but the session has not loaded one.
-  NoActiveDataset {
-    command: &'static str,
-  },
+  NoActiveDataset { command: &'static str },
   /// The request uses a source, mode, or option outside this slice.
   UnsupportedUseConfiguration,
   /// The source path does not have a UTF-8 representation accepted by DuckDB.
-  NonUtf8Path {
-    path: PathBuf,
-  },
+  NonUtf8Path { path: PathBuf },
   /// The source path does not exist.
-  FileNotFound {
-    path: PathBuf,
-  },
+  FileNotFound { path: PathBuf },
   /// The source path exists but is not a regular file.
-  NotAFile {
-    path: PathBuf,
-  },
+  NotAFile { path: PathBuf },
   /// The source path is not a local Parquet or CSV file.
-  UnsupportedFormat {
-    path: PathBuf,
-  },
+  UnsupportedFormat { path: PathBuf },
   /// DuckDB could not read the staged Parquet relation.
-  ParquetRead {
-    path: PathBuf,
-  },
+  ParquetRead { path: PathBuf },
   /// DuckDB could not inspect the staged schema.
-  SchemaRead {
-    path: PathBuf,
-  },
+  SchemaRead { path: PathBuf },
   /// DuckDB returned an invalid row count.
-  RowCount {
-    path: PathBuf,
-  },
+  RowCount { path: PathBuf },
   /// DuckDB could not read the staged CSV relation.
-  CsvRead {
-    path: PathBuf,
-  },
+  CsvRead { path: PathBuf },
   /// DuckDB could not inspect the staged CSV schema.
-  CsvSchemaRead {
-    path: PathBuf,
-  },
+  CsvSchemaRead { path: PathBuf },
   /// DuckDB returned an invalid CSV row count.
-  CsvRowCount {
-    path: PathBuf,
-  },
+  CsvRowCount { path: PathBuf },
   /// DuckDB could not atomically publish the staged CSV relation.
-  CsvTransaction {
-    path: PathBuf,
-  },
+  CsvTransaction { path: PathBuf },
   /// DuckDB could not atomically publish the staged relation.
-  Transaction {
-    path: PathBuf,
-  },
+  Transaction { path: PathBuf },
   /// DuckDB could not initialize its in-memory connection.
   BackendInitialization,
   /// The save destination is not a Parquet path.
-  SaveUnsupportedFormat {
-    path: PathBuf,
-  },
+  SaveUnsupportedFormat { path: PathBuf },
   /// The save destination already exists and replacement was not requested.
-  SaveTargetExists {
-    path: PathBuf,
-  },
+  SaveTargetExists { path: PathBuf },
   /// The save destination exists but is not a regular file.
-  SaveTargetNotAFile {
-    path: PathBuf,
-  },
+  SaveTargetNotAFile { path: PathBuf },
   /// The save destination's parent directory could not be created.
-  SaveParentFailed {
-    path: PathBuf,
-  },
+  SaveParentFailed { path: PathBuf },
   /// DuckDB could not write the active relation to the save destination.
-  SaveFailed {
-    path: PathBuf,
-  },
+  SaveFailed { path: PathBuf },
   /// The export destination is not a CSV path.
-  ExportUnsupportedFormat {
-    path: PathBuf,
-  },
+  ExportUnsupportedFormat { path: PathBuf },
   /// The export destination already exists and replacement was not requested.
-  ExportTargetExists {
-    path: PathBuf,
-  },
+  ExportTargetExists { path: PathBuf },
   /// The export destination exists but is not a regular file.
-  ExportTargetNotAFile {
-    path: PathBuf,
-  },
+  ExportTargetNotAFile { path: PathBuf },
   /// The export destination's parent directory could not be created.
-  ExportParentFailed {
-    path: PathBuf,
-  },
+  ExportParentFailed { path: PathBuf },
   /// DuckDB could not write the active relation to the export destination.
-  ExportFailed {
-    path: PathBuf,
-  },
+  ExportFailed { path: PathBuf },
   /// DuckDB could not produce the requested preview.
-  PreviewFailed {
-    command: &'static str,
-  },
+  PreviewFailed { command: &'static str },
   /// The count predicate names variables absent from the active schema.
-  CountUnknownVariable {
-    variables: Vec<String>,
-  },
+  CountUnknownVariable { variables: Vec<String> },
   /// Conditional count requires a boolean/null predicate.
   CountRequiresBoolean,
   /// The count predicate has incompatible operand domains.
-  CountPredicateTypeMismatch {
-    message: String,
-  },
+  CountPredicateTypeMismatch { message: String },
   /// Parsed function predicates are outside bounded count execution.
   CountUnsupportedPredicate,
   /// DuckDB could not count the selected rows.
   CountFailed,
   /// The summary request named variables absent from the active schema.
-  SummaryUnknownVariable {
-    variables: Vec<String>,
-  },
+  SummaryUnknownVariable { variables: Vec<String> },
   /// The summary request named variables that are not numeric.
-  SummaryRequiresNumeric {
-    variables: Vec<String>,
-  },
+  SummaryRequiresNumeric { variables: Vec<String> },
   /// The active schema contains no numeric columns for a default summary.
   SummaryNoNumericColumns,
   /// Conditional summary requires a boolean/null predicate.
   SummaryRequiresBoolean,
   /// The summary predicate has incompatible operand domains.
-  SummaryPredicateTypeMismatch {
-    message: String,
-  },
+  SummaryPredicateTypeMismatch { message: String },
   /// Parsed function predicates are outside bounded summary execution.
   SummaryUnsupportedPredicate,
   /// DuckDB could not produce or own one summary row.
-  SummaryFailed {
-    variable: String,
-  },
+  SummaryFailed { variable: String },
   /// The codebook request named variables absent from the active schema.
-  CodebookUnknownVariable {
-    variables: Vec<String>,
-  },
+  CodebookUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce or own one codebook row.
-  CodebookFailed {
-    variable: String,
-  },
+  CodebookFailed { variable: String },
   /// The missingness request named variables absent from the active schema.
-  MissingUnknownVariable {
-    variables: Vec<String>,
-  },
+  MissingUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce the missingness aggregate.
   MissingFailed,
   /// The duplicate request named variables absent from the active schema.
-  DuplicatesUnknownVariable {
-    variables: Vec<String>,
-  },
+  DuplicatesUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce the duplicate aggregate.
   DuplicatesFailed,
   /// The isid request named variables absent from the active schema.
-  IsidUnknownVariable {
-    variables: Vec<String>,
-  },
+  IsidUnknownVariable { variables: Vec<String> },
   /// The isid request did not name any key variables.
   IsidNoVariables,
   /// The active key values violate the requested isid constraints.
@@ -261,30 +189,19 @@ pub enum RuntimeError {
   /// DuckDB could not produce the datasignature scan or encoding.
   DatasignatureFailed,
   /// The assertion expression named variables absent from the active schema.
-  AssertUnknownVariable {
-    variables: Vec<String>,
-  },
+  AssertUnknownVariable { variables: Vec<String> },
   /// The assertion expression did not evaluate to a boolean or null domain.
   AssertRequiresBoolean,
   /// The assertion predicate found false or NULL rows.
-  AssertSemanticFailure {
-    checked: u64,
-    failed: u64,
-  },
+  AssertSemanticFailure { checked: u64, failed: u64 },
   /// The assertion expression has incompatible operand domains.
-  AssertTypeMismatch {
-    message: String,
-  },
+  AssertTypeMismatch { message: String },
   /// DuckDB could not produce the assertion aggregate.
   AssertFailed,
   /// Conditional row selection named absent variables.
-  RowFilterUnknownVariable {
-    variables: Vec<String>,
-  },
+  RowFilterUnknownVariable { variables: Vec<String> },
   /// Conditional row selection has incompatible operand domains.
-  RowFilterTypeMismatch {
-    message: String,
-  },
+  RowFilterTypeMismatch { message: String },
   /// Row selection requires a boolean or null predicate, not numeric truthiness.
   RowFilterRequiresBoolean,
   /// Parsed function calls are outside bounded row selection.
@@ -292,67 +209,43 @@ pub enum RuntimeError {
   /// DuckDB could not stage or publish the selected rows.
   RowFilterFailed,
   /// The generate target already exists in the active schema.
-  GenerateTargetExists {
-    variable: String,
-  },
+  GenerateTargetExists { variable: String },
   /// The generate expression named variables absent from the active schema.
-  GenerateUnknownVariable {
-    variables: Vec<String>,
-  },
+  GenerateUnknownVariable { variables: Vec<String> },
   /// The generate expression has incompatible operand domains.
-  GenerateTypeMismatch {
-    message: String,
-  },
+  GenerateTypeMismatch { message: String },
   /// The generate expression uses a form outside this bounded runtime slice.
-  GenerateUnsupportedExpression {
-    message: String,
-  },
+  GenerateUnsupportedExpression { message: String },
   /// DuckDB could not stage or publish the generated relation.
   GenerateFailed,
   /// The replace target is absent from the active schema.
-  ReplaceTargetUnknownVariable {
-    variable: String,
-  },
+  ReplaceTargetUnknownVariable { variable: String },
   /// The replace expression or predicate named variables absent from the active schema.
-  ReplaceUnknownVariable {
-    variables: Vec<String>,
-  },
+  ReplaceUnknownVariable { variables: Vec<String> },
   /// The replace expression or target has incompatible domains.
-  ReplaceTypeMismatch {
-    message: String,
-  },
+  ReplaceTypeMismatch { message: String },
   /// The replace predicate did not evaluate to a boolean or null domain.
   ReplaceRequiresBoolean,
   /// The replace expression uses a form outside this bounded runtime slice.
-  ReplaceUnsupportedExpression {
-    message: String,
-  },
+  ReplaceUnsupportedExpression { message: String },
   /// DuckDB could not stage or publish the replaced relation.
   ReplaceFailed,
   /// The rename request named a source column absent from the active schema.
-  RenameUnknownVariable {
-    variable: String,
-  },
+  RenameUnknownVariable { variable: String },
   /// The rename request named a target already present in the active schema.
-  RenameTargetExists {
-    variable: String,
-  },
+  RenameTargetExists { variable: String },
   /// DuckDB could not stage or publish the renamed relation.
   RenameFailed,
   /// The sort request did not name any variables.
   SortNoVariables,
   /// The sort request named variables absent from the active schema.
-  SortUnknownVariable {
-    variables: Vec<String>,
-  },
+  SortUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish the sorted relation.
   SortFailed,
   /// The gsort request did not name any variables.
   GsortNoVariables,
   /// The gsort request named variables absent from the active schema.
-  GsortUnknownVariable {
-    variables: Vec<String>,
-  },
+  GsortUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish the directed sorted relation.
   GsortFailed,
   /// The recode request did not name any source variables.
@@ -360,108 +253,65 @@ pub enum RuntimeError {
   /// The recode request did not contain any rules.
   RecodeNoRules,
   /// The recode request named variables absent from the active schema.
-  RecodeUnknownVariable {
-    variables: Vec<String>,
-  },
+  RecodeUnknownVariable { variables: Vec<String> },
   /// Generate mode did not provide one output per source variable.
   RecodeGenerateCountMismatch,
   /// Generate mode repeated an output variable.
   RecodeGenerateDuplicateVariable,
   /// Generate mode named an output already present in the active schema.
-  RecodeGenerateTargetExists {
-    variable: String,
-  },
+  RecodeGenerateTargetExists { variable: String },
   /// A numeric range was applied to a non-numeric source column.
-  RecodeRangeRequiresNumeric {
-    variable: String,
-  },
+  RecodeRangeRequiresNumeric { variable: String },
   /// DuckDB could not stage or publish the recoded relation.
   RecodeFailed,
   /// The encode request named a source column absent from the active schema.
-  EncodeUnknownVariable {
-    variable: String,
-  },
+  EncodeUnknownVariable { variable: String },
   /// The encode source column is not a string variable.
-  EncodeRequiresString {
-    variable: String,
-  },
+  EncodeRequiresString { variable: String },
   /// The encode target already exists in the active schema.
-  EncodeTargetExists {
-    variable: String,
-  },
+  EncodeTargetExists { variable: String },
   /// DuckDB could not stage or publish the encoded relation.
   EncodeFailed,
   /// The decode source has no encode-produced value-label map in this session.
-  DecodeRequiresAttachedLabels {
-    variable: String,
-  },
+  DecodeRequiresAttachedLabels { variable: String },
   /// The decode request named a source column absent from the active schema.
-  DecodeUnknownVariable {
-    variable: String,
-  },
+  DecodeUnknownVariable { variable: String },
   /// The decode source column is not numeric.
-  DecodeRequiresNumeric {
-    variable: String,
-  },
+  DecodeRequiresNumeric { variable: String },
   /// The decode target already exists in the active schema.
-  DecodeTargetExists {
-    variable: String,
-  },
+  DecodeTargetExists { variable: String },
   /// DuckDB could not stage or publish the decoded relation.
   DecodeFailed,
   /// The label request named a variable absent from the active schema.
-  LabelUnknownVariable {
-    variable: String,
-  },
+  LabelUnknownVariable { variable: String },
   /// A label definition repeated an existing set without `, replace`.
-  LabelDefineSetExists {
-    set_name: String,
-  },
+  LabelDefineSetExists { set_name: String },
   /// A label definition repeated one value within a set.
-  LabelDefineDuplicateValue {
-    set_name: String,
-    value: LabelValue,
-  },
+  LabelDefineDuplicateValue { set_name: String, value: LabelValue },
   /// A label definition had no value mappings.
   LabelDefineNoMappings,
   /// A values attachment named a set that does not exist.
-  LabelValuesUnknownSet {
-    set_name: String,
-  },
+  LabelValuesUnknownSet { set_name: String },
   /// A label list request named unknown sets.
-  LabelListUnknownSet {
-    names: Vec<String>,
-  },
+  LabelListUnknownSet { names: Vec<String> },
   /// A label drop request named unknown sets.
-  LabelDropUnknownSet {
-    names: Vec<String>,
-  },
+  LabelDropUnknownSet { names: Vec<String> },
   /// A decode attachment contains values outside the integer code domain.
-  DecodeRequiresIntegerLabels {
-    variable: String,
-  },
+  DecodeRequiresIntegerLabels { variable: String },
   /// The tabulate request did not name a row variable.
   TabulateNoVariables,
   /// The tabulate request named more than one row or column dimension.
   TabulateUnsupportedDimensions,
   /// The tabulate request repeated a dimension variable.
-  TabulateDuplicateVariable {
-    variable: String,
-  },
+  TabulateDuplicateVariable { variable: String },
   /// The tabulate request named variables absent from the active schema.
-  TabulateUnknownVariable {
-    variables: Vec<String>,
-  },
+  TabulateUnknownVariable { variables: Vec<String> },
   /// A percentage option was requested for a one-way table.
-  TabulatePercentageRequiresTwoWay {
-    option: &'static str,
-  },
+  TabulatePercentageRequiresTwoWay { option: &'static str },
   /// The frequency predicate did not evaluate to a boolean or null domain.
   TabulateRequiresBoolean,
   /// The frequency predicate has incompatible operand domains.
-  TabulatePredicateTypeMismatch {
-    message: String,
-  },
+  TabulatePredicateTypeMismatch { message: String },
   /// The frequency predicate is outside the bounded expression subset.
   TabulateUnsupportedPredicate,
   /// DuckDB could not produce or own the frequency table.
@@ -469,13 +319,9 @@ pub enum RuntimeError {
   /// The by request did not name any grouping variables.
   ByNoGroups,
   /// The by request named variables absent from the active schema.
-  ByUnknownVariable {
-    variables: Vec<String>,
-  },
+  ByUnknownVariable { variables: Vec<String> },
   /// A grouped summarize request named non-numeric variables.
-  BySummarizeRequiresNumeric {
-    variables: Vec<String>,
-  },
+  BySummarizeRequiresNumeric { variables: Vec<String> },
   /// The active schema contains no numeric non-group columns for a default
   /// grouped summarize.
   BySummarizeNoNumericColumns,
@@ -488,27 +334,19 @@ pub enum RuntimeError {
   /// The collapse request did not name any grouping variables.
   CollapseNoGroups,
   /// The collapse request named variables absent from the active schema.
-  CollapseUnknownVariable {
-    variables: Vec<String>,
-  },
+  CollapseUnknownVariable { variables: Vec<String> },
   /// A non-count collapse statistic was requested for non-numeric variables.
-  CollapseRequiresNumeric {
-    variables: Vec<String>,
-  },
+  CollapseRequiresNumeric { variables: Vec<String> },
   /// DuckDB could not stage or publish the collapsed relation.
   CollapseFailed,
   /// The keep request named variables absent from the active schema.
-  KeepUnknownVariable {
-    variables: Vec<String>,
-  },
+  KeepUnknownVariable { variables: Vec<String> },
   /// The keep request did not name any variables.
   KeepNoVariables,
   /// DuckDB could not stage or publish the projected relation.
   KeepFailed,
   /// The drop request named variables absent from the active schema.
-  DropUnknownVariable {
-    variables: Vec<String>,
-  },
+  DropUnknownVariable { variables: Vec<String> },
   /// The drop request did not name any variables.
   DropNoVariables,
   /// The drop request would leave the active relation without columns.
@@ -516,9 +354,7 @@ pub enum RuntimeError {
   /// DuckDB could not stage or publish the projected relation.
   DropFailed,
   /// The select request named variables absent from the active schema.
-  SelectUnknownVariable {
-    variables: Vec<String>,
-  },
+  SelectUnknownVariable { variables: Vec<String> },
   /// The select request did not name any variables.
   SelectNoVariables,
   /// DuckDB could not stage or publish the projected relation.
@@ -534,13 +370,9 @@ pub enum RuntimeError {
   /// Options were provided when activating a registered named table.
   UseOptionsNotSupportedForNamedTable,
   /// The requested named table does not exist in the session registry.
-  UnknownTable {
-    name: String,
-  },
+  UnknownTable { name: String },
   /// One or more join keys were not found in the active dataset.
-  JoinUnknownVariable {
-    variables: Vec<String>,
-  },
+  JoinUnknownVariable { variables: Vec<String> },
   /// One or more join keys were not found in the right named table.
   JoinUnknownVariableInTable {
     table_name: String,
@@ -549,9 +381,7 @@ pub enum RuntimeError {
   /// DuckDB could not stage or publish the joined relation.
   JoinFailed,
   /// The table to append contains variables not in the active dataset.
-  AppendUnknownVariable {
-    variables: Vec<String>,
-  },
+  AppendUnknownVariable { variables: Vec<String> },
   /// The table to append is missing variables present in the active dataset.
   AppendUnknownVariableInTable {
     table_name: String,
@@ -566,45 +396,29 @@ pub enum RuntimeError {
   /// DuckDB could not stage or publish the appended relation.
   AppendFailed,
   /// One or more variables or identifiers for reshape were not found in the active dataset.
-  ReshapeUnknownVariable {
-    variables: Vec<String>,
-  },
+  ReshapeUnknownVariable { variables: Vec<String> },
   /// The long reshape output j-variable already exists in the active dataset.
-  ReshapeOutputColumnExists {
-    variable: String,
-  },
+  ReshapeOutputColumnExists { variable: String },
   /// No columns matched the given stub prefix in a long reshape.
-  ReshapeLongFoundNoColumnsForStub {
-    stub: String,
-  },
+  ReshapeLongFoundNoColumnsForStub { stub: String },
   /// A required column for a discovered j value was missing from a stub in a long reshape.
-  ReshapeLongMissingColumn {
-    column: String,
-  },
+  ReshapeLongMissingColumn { column: String },
   /// No non-null j values were found for a wide reshape.
   ReshapeWideFoundNoJValues,
   /// A generated wide output column name already exists in non-participating columns.
-  ReshapeWideOutputColumnExists {
-    variable: String,
-  },
+  ReshapeWideOutputColumnExists { variable: String },
   /// DuckDB could not stage or publish the reshaped relation.
   ReshapeFailed,
   /// One or more variables or identifiers for regress were not found in the active dataset.
-  RegressUnknownVariable {
-    variables: Vec<String>,
-  },
+  RegressUnknownVariable { variables: Vec<String> },
   /// A conditional fit requires a boolean/null predicate.
   RegressRequiresBoolean,
   /// The fit predicate has incompatible operand domains.
-  RegressPredicateTypeMismatch {
-    message: String,
-  },
+  RegressPredicateTypeMismatch { message: String },
   /// Function calls are outside bounded fit predicate execution.
   RegressUnsupportedPredicate,
   /// The regress request named variables that are not numeric.
-  RegressRequiresNumeric {
-    variables: Vec<String>,
-  },
+  RegressRequiresNumeric { variables: Vec<String> },
   /// The regress sample contained no complete observations.
   RegressNoObservations,
   /// The regress request required positive weight values.
@@ -612,84 +426,55 @@ pub enum RuntimeError {
   /// The regress request required positive sigma values.
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
-  RegressFailed {
-    message: String,
-  },
+  RegressFailed { message: String },
   /// The requested IV estimator is not executed by this runtime slice.
-  IvRegressUnsupportedEstimator {
-    estimator: String,
-  },
+  IvRegressUnsupportedEstimator { estimator: String },
   /// One or more IV variables are absent from the active dataset.
-  IvRegressUnknownVariable {
-    variables: Vec<String>,
-  },
+  IvRegressUnknownVariable { variables: Vec<String> },
   /// One or more IV regressors, instruments, or the outcome are not numeric.
-  IvRegressRequiresNumeric {
-    variables: Vec<String>,
-  },
+  IvRegressRequiresNumeric { variables: Vec<String> },
   /// HC1 and cluster covariance were requested together.
   IvRegressConflictingCovariance,
   /// The IV model has no complete finite observations.
   IvRegressNoObservations,
   /// The IV estimation failed.
-  IvRegressFailed {
-    message: String,
-  },
+  IvRegressFailed { message: String },
   /// VIF requires a preceding supported linear regression.
   EstatRequiresPriorRegression,
   /// DuckDB-independent auxiliary fits for VIF could not be computed.
   EstatVifFailed,
+  /// AR requires a retained IV design from a successful 2SLS fit.
   EstatArRequiresPriorIv,
-  EstatArFailed {
-    message: String,
-  },
+  /// The joint AR null, covariance mode or auxiliary regression is unsupported/invalid.
+  EstatArFailed(String),
   /// `lincom` requires a preceding supported linear regression.
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
-  LincomFailed {
-    message: String,
-  },
+  LincomFailed { message: String },
   /// `test` requires a preceding supported linear regression.
   TestRequiresPriorEstimation,
   /// An expression or inference error while evaluating `test`.
-  TestFailed {
-    message: String,
-  },
+  TestFailed { message: String },
   /// One or more requested `ttest` variables are absent from the active dataset.
-  TtestUnknownVariable {
-    variables: Vec<String>,
-  },
+  TtestUnknownVariable { variables: Vec<String> },
   /// The tested `ttest` variables are not numeric.
-  TtestRequiresNumeric {
-    variables: Vec<String>,
-  },
+  TtestRequiresNumeric { variables: Vec<String> },
   /// A `ttest` sample contains no finite numeric observations.
   TtestNoValidNumericObservations,
   /// A paired `ttest` contains no complete finite pairs.
   TtestNoValidPairedNumericObservations,
   /// The filtered `by()` variable contains other than exactly two groups.
-  TtestInvalidGroupCount {
-    found: usize,
-  },
+  TtestInvalidGroupCount { found: usize },
   /// The group key type cannot be stringified with the pinned oracle behavior.
-  TtestUnsupportedGroupType {
-    variable: String,
-    data_type: String,
-  },
+  TtestUnsupportedGroupType { variable: String, data_type: String },
   /// A query, sample conversion, or statistical calculation failed.
-  TtestFailed {
-    message: String,
-  },
+  TtestFailed { message: String },
   /// Prediction requires a preceding supported linear regression.
   PredictRequiresPriorRegression,
   /// The prediction target already exists in the active schema.
-  PredictTargetExists {
-    variable: String,
-  },
+  PredictTargetExists { variable: String },
   /// One or more required model variables are absent from the active schema.
-  PredictUnknownVariable {
-    variables: Vec<String>,
-  },
+  PredictUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish fitted values or residuals.
   PredictFailed,
 }
@@ -1270,7 +1055,7 @@ impl fmt::Display for RuntimeError {
       }
       Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
       Self::EstatArRequiresPriorIv => formatter.write_str("estat ar requires a prior 2SLS fit"),
-      Self::EstatArFailed { message } => write!(formatter, "estat ar: {message}"),
+      Self::EstatArFailed(message) => write!(formatter, "estat ar: {message}"),
       Self::LincomRequiresPriorEstimation => {
         formatter.write_str("no active estimation results found")
       }

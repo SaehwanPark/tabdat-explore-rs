@@ -602,10 +602,15 @@ pub fn anderson_rubin_test(
   let unrestricted_rss = full.residuals.iter().map(|e| e * e).sum::<f64>();
   let numerator_df = problem.instrument_names.len();
   let denominator_df = full.fit_statistics.degrees_of_freedom;
+  if !restricted_rss.is_finite() || !unrestricted_rss.is_finite() || unrestricted_rss <= 0.0 {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Anderson-Rubin auxiliary residual variance is undefined or non-finite".into(),
+    ));
+  }
   // Nested residual sums of squares are monotone in exact arithmetic.
   let statistic = ((restricted_rss - unrestricted_rss).max(0.0) / numerator_df as f64)
     / (unrestricted_rss / denominator_df as f64);
-  if unrestricted_rss <= 0.0 || !statistic.is_finite() {
+  if !statistic.is_finite() {
     return Err(StatsError::IncompatibleHypothesis(
       "Anderson-Rubin auxiliary residual variance is undefined or non-finite".into(),
     ));

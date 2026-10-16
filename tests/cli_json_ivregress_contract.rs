@@ -172,7 +172,7 @@ fn joint_ar_runs_in_scripts_and_json_with_explicit_inference_scope() {
   assert_eq!(data["observation_count"], 60);
   assert_eq!(data["numerator_df"], 2);
   assert_eq!(data["denominator_df"], 56);
-  close(&data["statistic"], 5.4227218199300502);
+  close(&data["statistic"], 5.422_721_819_930_05);
   close(&data["p_value"], 0.00703483761854517);
   assert!(
     data["assumptions"]

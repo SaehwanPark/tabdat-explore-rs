@@ -22,3 +22,9 @@ ar <- function(null, intercept = TRUE, controls = TRUE) {
 print(list(nonzero_null = ar(c(1.7, -0.6)), zero_null = ar(c(0, 0)),
   no_intercept = ar(c(1.7, -0.6), FALSE),
   no_controls_or_intercept = ar(c(1.7, -0.6), FALSE, FALSE)), digits = 15)
+# One endogenous coefficient with two excluded instruments: numerator DF is 2,
+# not the dimension of the null. This also provides a scalar-test reference.
+adjusted <- y - 1.7 * x1
+one_endogenous <- anova(lm(adjusted ~ w), lm(adjusted ~ w + z1 + z2))
+print(c(one_endogenous_f = one_endogenous$F[2],
+  one_endogenous_p = one_endogenous$`Pr(>F)`[2]), digits = 15)

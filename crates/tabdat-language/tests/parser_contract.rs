@@ -3033,19 +3033,19 @@ fn estat_preserves_bounded_parser_diagnostics() {
   let cases = [
     (
       "estat",
-      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat firststage extra",
-      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat, firststage",
-      "estat expects syntax: estat <residuals|ovtest|vif|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat detail",
-      "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
     ),
     (
       "estat firststage, robust",
@@ -3060,7 +3060,7 @@ fn estat_preserves_bounded_parser_diagnostics() {
     ("estat firststage -x", "unsupported token in command: -"),
     (
       "estat `firststage`",
-      "estat subcommand must be residuals, ovtest, vif, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
+      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, gof, did, drdid, dml, bayes, spatial, or report",
     ),
   ];
 

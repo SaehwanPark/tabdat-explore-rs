@@ -56,7 +56,7 @@ provenance and redistribution terms before adding fixtures.
 
 | ID | Book locator and data lead | Status | Next evidence / blocker |
 | --- | --- | --- | --- |
-| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; weak-IV-robust inference remains planned below |
+| MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-CHOICE | pp. 463–466, 486, 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact binary/multinomial model variants/effects |
@@ -115,9 +115,22 @@ provenance and redistribution terms before adding fixtures.
 - **Access/limits:** source data remain external and are not copied into the
   repository until redistribution rights are established. The converter retains
   numeric values but not source labels. This bounded slice does not implement GMM,
-  overidentification tests (the example is just-identified), or weak-IV-robust
-  inference. A successful 2SLS fit or conventional first-stage F
-  does not resolve weak identification.
+  overidentification tests (the example is just-identified), or schooling-specific
+  scalar weak-IV-robust intervals. A successful 2SLS fit or conventional first-stage
+  F does not resolve weak identification.
+- **Bounded joint AR method:** `estat ar, null(b1 b2 ...)` after a nonrobust 2SLS
+  fit tests all endogenous coefficients jointly using retained sample/design.
+  Exogenous coefficients are unrestricted nuisance parameters; inference assumes
+  valid instruments and homoskedasticity (exact F additionally requires conditional
+  normality). `crates/tabdat-stats/tests/fixtures/anderson_rubin_reference.R`
+  uses independent R 4.6.1 `lm`/`anova` on the existing synthetic two-endogenous
+  fixture: null(1.7 -0.6) gives F(2,56)=5.42272181993005 and p=0.00703483761854517.
+  Rust tests cover zero/nonzero nulls, no-intercept/no-control designs, weak
+  relevance, and auxiliary failures; runtime/CLI tests verify retained sample,
+  state, scripts and reporting. This is **method evidence**, not a newly validated
+  book illustration or a scalar schooling confidence set with experience effects
+  left as endogenous nuisance parameters. Robust/cluster AR and confidence sets
+  remain required work.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain

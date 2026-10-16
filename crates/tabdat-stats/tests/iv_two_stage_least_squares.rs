@@ -220,7 +220,7 @@ fn anderson_rubin_matches_independent_r_auxiliary_regressions() {
   let mut problem = reference_problem();
   // R 4.6.1: fixtures/anderson_rubin_reference.R, stats::lm/anova.
   for (null, expected_f, expected_p) in [
-    ([1.7, -0.6], 5.4227218199300502, 0.00703483761854517),
+    ([1.7, -0.6], 5.422_721_819_930_05, 0.00703483761854517),
     ([0.0, 0.0], 48.5717213299665, 5.84129841873989e-13),
   ] {
     let result = anderson_rubin_test(&problem, &null).unwrap();
@@ -233,7 +233,7 @@ fn anderson_rubin_matches_independent_r_auxiliary_regressions() {
   }
   problem.include_intercept = false;
   let result = anderson_rubin_test(&problem, &[1.7, -0.6]).unwrap();
-  close(result.statistic, 5.98024398000216806);
+  close(result.statistic, 5.980_243_980_002_168);
   close(result.p_value, 0.00438858080705134);
   assert_eq!(result.denominator_df, 57);
   problem.exogenous_names.clear();
@@ -244,6 +244,15 @@ fn anderson_rubin_matches_independent_r_auxiliary_regressions() {
   close(result.statistic, 1.445372093898745);
   close(result.p_value, 0.244019559181223);
   assert_eq!(result.denominator_df, 58);
+  problem = reference_problem();
+  problem.endogenous_names.pop();
+  for row in &mut problem.endogenous {
+    row.pop();
+  }
+  let result = anderson_rubin_test(&problem, &[1.7]).unwrap();
+  assert_eq!(result.numerator_df, 2);
+  close(result.statistic, 13.5321584392006);
+  close(result.p_value, 1.60567933602485e-5);
 }
 
 #[test]
@@ -267,6 +276,11 @@ fn anderson_rubin_rejects_invalid_nulls_and_undefined_auxiliary_variance() {
   assert!(anderson_rubin_test(&problem, &[0.0]).is_err());
   assert!(anderson_rubin_test(&problem, &[f64::NAN, 0.0]).is_err());
   assert!(anderson_rubin_test(&problem, &[f64::MAX, f64::MAX]).is_err());
+  let mut large_outcome = problem.clone();
+  for value in &mut large_outcome.response {
+    *value *= 1e200;
+  }
+  assert!(anderson_rubin_test(&large_outcome, &[0.0, 0.0]).is_err());
   for row in &mut problem.instruments {
     row[1] = row[0];
   }
