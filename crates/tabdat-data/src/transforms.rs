@@ -5,6 +5,10 @@ enum PredictionLink {
   Linear,
   FiniteLinear,
   Logistic,
+  /// Binary probit inverse link through the registered, engine-validated
+  /// Gaussian UDF, so a probability column is bit-identical to the fit's
+  /// own probabilities under the same linear index.
+  Gaussian,
 }
 
 impl DuckDbBackend {
@@ -547,6 +551,25 @@ impl DuckDbBackend {
     self.add_prediction_column(dataset, prediction, link)
   }
 
+  /// Apply the normal inverse link or finite linear index through the same
+  /// staging path as the logit prediction.
+  pub fn add_probit_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+    probability: bool,
+  ) -> Result<DatasetInfo, DataError> {
+    if prediction.residuals {
+      return Err(DataError);
+    }
+    let link = if probability {
+      PredictionLink::Gaussian
+    } else {
+      PredictionLink::FiniteLinear
+    };
+    self.add_prediction_column(dataset, prediction, link)
+  }
+
   fn add_prediction_column(
     &mut self,
     dataset: &DatasetInfo,
@@ -597,6 +620,9 @@ impl DuckDbBackend {
       }
       PredictionLink::Logistic => format!(
         "CASE WHEN NOT isfinite(({expression_sql})) THEN NULL WHEN ({expression_sql}) >= 0 THEN 1.0 / (1.0 + exp(-({expression_sql}))) ELSE exp(({expression_sql})) / (1.0 + exp(({expression_sql}))) END"
+      ),
+      PredictionLink::Gaussian => format!(
+        "CASE WHEN NOT isfinite(({expression_sql})) THEN NULL ELSE tabdat_gauss_phi(({expression_sql})) END"
       ),
     };
     let target_sql = quote_identifier(prediction.target_variable);

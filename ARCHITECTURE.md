@@ -10,9 +10,9 @@ The product is not feature complete. A compiled command type is not evidence of 
 | --- | --- |
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
-| `tabdat-stats` | Pure Rust linear/binary-logit estimation, covariance/inference and hypothesis utilities |
+| `tabdat-stats` | Pure Rust linear/binary-logit/probit estimation, covariance/inference and hypothesis utilities |
 | `tabdat-io` | Local path/format and script I/O validation |
-| `tabdat-data` | DuckDB, relations, SQL generation and owned row/cell conversion |
+| `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and one registered scalar UDF (`tabdat_gauss_phi`, delegating to `tabdat-stats`' validated normal CDF); it depends on `tabdat-stats` only for that validated function, with no reverse edge |
 | `tabdat-execution` | Session coordination, data/statistical dispatch and script execution |
 | `tabdat-reporting` | Help/catalog, bounded structured reporting and core terminal result rendering |
 | `tabdat-shell` | Batch CLI, persistent session I/O; terminal editing through Rustyline's safe facade, plain piped input |

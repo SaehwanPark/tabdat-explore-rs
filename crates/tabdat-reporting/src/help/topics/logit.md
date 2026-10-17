@@ -39,9 +39,10 @@ Convergence and supported limits:
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
 - Robust/cluster forms still parse but explicitly fail. Weighted/survey logit,
-  probit, prediction intervals and general `lincom`/`test` after logit are not
-  installed. Normal coefficient inference and the overall LR test are reported
-  directly by `logit`; do not substitute linear t/F inference.
+  prediction intervals and general `lincom`/`test` after logit are not
+  installed (the probit counterpart is `help probit`). Normal coefficient
+  inference and the overall LR test are reported directly by `logit`; do not
+  substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryLogitResult`; `estat margins` returns
   `LogitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.

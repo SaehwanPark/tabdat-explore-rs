@@ -128,6 +128,7 @@ impl Session {
       }
       Command::IvRegress { command } => self.execute_ivregress(&command),
       Command::Logit { command } => self.execute_logit(&command),
+      Command::Probit { command } => self.execute_probit(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

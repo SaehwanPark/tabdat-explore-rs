@@ -138,6 +138,10 @@ pub struct BinaryLogitState {
   pub result: tabdat_stats::BinaryLogitResult,
 }
 
+/// Owned binary probit fit; the shared design/fit record with the family
+/// encoded by `EstimationState::Probit` and the fitted `result.model`.
+pub type BinaryProbitState = BinaryLogitState;
+
 /// Common normalized non-linear fit state. Backend-specific scoring caches stay
 /// behind the adapter, and this record alone does not promise prediction support.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -165,7 +169,7 @@ pub enum EstimationState {
   Spatial(ModelState),
   Quantile(ModelState),
   Logit(Box<BinaryLogitState>),
-  Probit(ModelState),
+  Probit(Box<BinaryProbitState>),
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),

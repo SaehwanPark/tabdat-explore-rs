@@ -6,7 +6,7 @@ How to invoke:
 `estat ar, ci [level(95)]`
 `estat overid`
 `estat endogenous`
-`estat margins` (after logit)
+`estat margins` (after logit or probit)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -26,26 +26,35 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous` and logit `margins` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous` and binary `margins` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
-## Logit continuous average partial effects
+## Binary continuous average partial effects
 
-After a successful model-based `logit y x1 ...`, `estat margins` reports
-`beta_j*mean(p*(1-p))` for each declared predictor column, excluding the intercept.
+After a successful model-based binary fit (`logit y x1 ...` or
+`probit y x1 ...`), `estat margins` reports, for each declared predictor column
+excluding the intercept, the family-specific average derivative:
+
+- logit: `beta_j*mean(p*(1-p))`
+- probit: `beta_j*mean(phi(beta_0 + beta'x))`
+
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
 
-Uncertainty is the full delta method using model-based inverse Fisher covariance,
-including intercept/slopes' covariance, **conditional on observed X**. It is not
-uncertainty in the covariate distribution. Output includes normal z/two-sided p
-and fixed 95% intervals; CLI-v1 returns `LogitMarginalEffectsResult`.
+Uncertainty is the full delta method using the fitted family's model-based
+covariance (logit: inverse Fisher information; probit: inverse observed
+information), including intercept/slopes' covariance, **conditional on observed
+X**. It is not uncertainty in the covariate distribution. Output includes normal
+z/two-sided p and fixed 95% intervals; CLI-v1 returns
+`LogitMarginalEffectsResult` or `ProbitMarginalEffectsResult` by fitted family.
 
 These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
 robust/cluster/weighted effects, level option, categorical/discrete-change or
-other model-family margins are installed. Restore/refit a successful logit after
-a failed new estimation attempt; see `help logit` and `help predict`.
+other model-family margins are installed. The retained fit decides which family
+runs; with no binary fit the margins call fails with the established prior-logit
+message. Restore/fit a successful logit or probit after a failed new estimation
+attempt; see `help logit`, `help probit` and `help predict`.
 
 ## Sargan overidentification test
 

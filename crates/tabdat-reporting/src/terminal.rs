@@ -729,6 +729,41 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::Probit(result) => format!(
+      "Binary probit maximum likelihood (model-based inverse observed information)\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nIndependent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction.\n{}",
+      result.outcome.escape_debug(),
+      result.observation_count,
+      result.event_count,
+      result.iterations,
+      result
+        .sample
+        .as_ref()
+        .map_or(result.observation_count, |sample| sample.total_observations),
+      result
+        .sample
+        .as_ref()
+        .map_or(0, |sample| sample.dropped_observations),
+      inference_number(result.log_likelihood),
+      inference_number(result.null_log_likelihood),
+      result.likelihood_ratio_df,
+      inference_number(result.likelihood_ratio),
+      result
+        .likelihood_ratio_p_value
+        .map(logit_number)
+        .unwrap_or_else(|| "NA".to_owned()),
+      inference_number(result.mcfadden_r_squared),
+      logit_estimates(&result.coefficients)
+    ),
+    ExecutionResult::ProbitMarginalEffects(result) => format!(
+      "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; model-based covariance, asymptotic normal 95% intervals.\n{}{}",
+      result.observation_count,
+      logit_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      }
+    ),
     ExecutionResult::Regression(result) => regression(result),
     ExecutionResult::Ttest(result) => ttest(result),
     ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),

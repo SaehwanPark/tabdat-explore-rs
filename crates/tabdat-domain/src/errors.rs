@@ -435,6 +435,10 @@ pub enum RuntimeError {
   EstatMarginsFailed { message: String },
   /// Only explicit pr/xb predictions without auxiliary interval options are supported.
   PredictLogitUnsupported,
+  /// Invalid/unsupported binary probit specification or a failed finite-MLE fit.
+  ProbitFailed { message: String },
+  /// Only explicit pr/xb probit predictions without auxiliary interval options are supported.
+  PredictBinaryUnsupported,
   /// The requested IV estimator is not executed by this runtime slice.
   IvRegressUnsupportedEstimator { estimator: String },
   /// One or more IV variables are absent from the active dataset.
@@ -1052,6 +1056,10 @@ impl fmt::Display for RuntimeError {
       Self::EstatMarginsFailed { message } => write!(formatter, "estat margins: {message}"),
       Self::PredictLogitUnsupported => formatter.write_str(
         "logit prediction supports only pr or xb, without interval, std or saving options",
+      ),
+      Self::ProbitFailed { message } => write!(formatter, "probit: {message}"),
+      Self::PredictBinaryUnsupported => formatter.write_str(
+        "probit prediction supports only pr or xb, without interval, std or saving options",
       ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,

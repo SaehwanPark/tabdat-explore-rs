@@ -7,6 +7,7 @@
 
 #![forbid(unsafe_code)]
 
+mod binary;
 pub mod diagnostics;
 mod distributions;
 pub mod error;
@@ -16,7 +17,6 @@ mod iv_confidence;
 mod iv_endogenous;
 mod iv_overid;
 pub mod least_squares;
-mod logit;
 pub mod matrix;
 pub mod post_estimation;
 pub mod problem;
@@ -25,7 +25,14 @@ pub mod sample;
 pub mod traits;
 pub mod ttest;
 
+pub use binary::{
+  BinaryLogitResult, BinaryMleResult, BinaryModel, LogitEstimate, LogitMarginalEffects,
+  LogitOptions, ProbitOptions, binary_average_marginal_effects, fit_binary_logit,
+  fit_binary_logit_with_options, fit_binary_probit, fit_binary_probit_with_options,
+  logit_average_marginal_effects,
+};
 pub use diagnostics::variance_inflation_factors;
+pub use distributions::{normal_cdf, normal_pdf, normal_quantile};
 pub use error::StatsError;
 pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
@@ -43,10 +50,6 @@ pub use iv_overid::{SarganResult, sargan_test};
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
   fit_least_squares_with_options, predict_linear_response,
-};
-pub use logit::{
-  BinaryLogitResult, LogitEstimate, LogitMarginalEffects, LogitOptions, fit_binary_logit,
-  fit_binary_logit_with_options, logit_average_marginal_effects,
 };
 pub use matrix::{
   covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
