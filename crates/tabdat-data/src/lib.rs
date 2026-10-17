@@ -32,6 +32,7 @@ pub struct LinearPrediction<'a> {
 
 mod expressions;
 pub use expressions::*;
+mod gauss_phi;
 mod scalars;
 use scalars::*;
 pub use scalars::{python_float_hex, validate_sql_query};
@@ -49,6 +50,9 @@ impl DuckDbBackend {
   pub fn new() -> Result<Self, RuntimeError> {
     let connection =
       Connection::open_in_memory().map_err(|_| RuntimeError::BackendInitialization)?;
+    connection
+      .register_scalar_function::<gauss_phi::GaussPhi>("tabdat_gauss_phi")
+      .map_err(|_| RuntimeError::BackendInitialization)?;
     connection
       .execute_batch("SET preserve_insertion_order = true")
       .map_err(|_| RuntimeError::BackendInitialization)?;
