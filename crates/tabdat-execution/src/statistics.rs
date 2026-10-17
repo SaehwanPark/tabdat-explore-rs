@@ -982,7 +982,12 @@ impl Session {
         .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
     }
     if command.subcommand == EstatSubcommand::Margins {
-      return self.execute_logit_margins();
+      return match &self.estimation {
+        Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
+        // Preserves the pinned logit margins contract, including its
+        // prior-logit wording when no binary fit precedes the margins call.
+        _ => self.execute_logit_margins(),
+      };
     }
     if command.subcommand == EstatSubcommand::Endogenous {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
@@ -1047,6 +1052,9 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     if matches!(self.estimation, Some(EstimationState::Logit(_))) {
       return self.execute_logit_prediction(command);
+    }
+    if matches!(self.estimation, Some(EstimationState::Probit(_))) {
+      return self.execute_probit_prediction(command);
     }
     let dataset = self
       .active_dataset

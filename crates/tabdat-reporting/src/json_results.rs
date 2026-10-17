@@ -76,6 +76,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Tail { .. }
     | Command::Regress { .. }
     | Command::Logit { .. }
+    | Command::Probit { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
     | Command::Test { .. }
@@ -329,6 +330,37 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "LogitMarginalEffectsResult",
+    ),
+    ExecutionResult::Probit(result) => (
+      json!({
+        "outcome": result.outcome, "predictors": result.predictor_names,
+        "estimator": "probit", "covariance": "model_based_observed_information",
+        "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
+        "include_intercept": result.include_intercept, "observation_count": result.observation_count,
+        "event_count": result.event_count, "coefficients": result.coefficients,
+        "covariance_matrix": result.covariance, "log_likelihood": result.log_likelihood,
+        "null_log_likelihood": result.null_log_likelihood, "likelihood_ratio": result.likelihood_ratio,
+        "likelihood_ratio_df": result.likelihood_ratio_df,
+        "likelihood_ratio_p_value": result.likelihood_ratio_p_value,
+        "likelihood_ratio_reference_distribution": "asymptotic_chi_square",
+        "mcfadden_r_squared": result.mcfadden_r_squared, "sample": result.sample,
+        "converged": true, "iterations": result.iterations,
+        "convergence_coordinate_system": "unit_column_norm",
+        "convergence_absolute_tolerance": 1e-10,
+        "max_abs_scaled_score": result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step": result.max_abs_scaled_newton_step,
+      }),
+      "BinaryProbitResult",
+    ),
+    ExecutionResult::ProbitMarginalEffects(result) => (
+      json!({
+        "estimator": "probit", "effect": "average_continuous_predictor_column_derivative",
+        "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
+        "covariance": "model_based_observed_information", "confidence_level": 95.0,
+        "reference_distribution": "asymptotic_standard_normal",
+        "observation_count": result.observation_count, "effects": result.effects,
+      }),
+      "ProbitMarginalEffectsResult",
     ),
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
     ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),
