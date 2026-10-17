@@ -9,7 +9,7 @@ source and fixtures below are relative to the repository root; use in-session
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
-- [Binary logit and continuous marginal effects](#binary-logit-and-continuous-marginal-effects)
+- [Binary logit/probit and continuous marginal effects](#binary-logitprobit-and-continuous-marginal-effects)
 - [Expressions and recoding](#expressions-and-recoding)
 - [Grouped collapse](#grouped-collapse)
 - [Assertions and fingerprints](#assertions-and-fingerprints)
@@ -54,12 +54,13 @@ works before loading without initializing DuckDB, and never clones model arrays.
 CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
 `active_table_name`, sorted `named_tables`, nullable `estimation_family` and nullable
 `linear_model`. The family is the retained cache's snake-case tag (currently
-`linear`, `instrumental_variables` or `logit`), not a claim of current-data
-prediction eligibility. `linear_model` remains linear-only and is null after logit;
+`linear`, `instrumental_variables`, `logit` or `probit`), not a claim of current-data
+prediction eligibility. `linear_model` remains linear-only and is null after logit or
+probit;
 its existing fields are unchanged. Status is not an automatic refit/stale flag and
 does not invent covariance, operation or materialization tracking. See `help status`.
 
-## Binary logit and continuous marginal effects
+## Binary logit/probit and continuous marginal effects
 
 `logit y x1 ... [, noconstant]` uses an unweighted independent-Bernoulli model.
 Outcome/predictor columns must be numeric. SQL NULL/nonfinite model values are
@@ -113,8 +114,23 @@ rescan/refit the model. These are not automatic discrete changes or interaction
 chain rules. `lincom`/`test` after logit are explicitly unsupported rather than
 silently using linear Student-t/F inference.
 
+`probit y x1 ... [, noconstant]` shares the whole contract above with these
+family deltas. The engine fits Newton steps against the per-observation observed
+information with a per-iteration Fisher fallback, and the reported covariance is
+`model_based_observed_information` (inverse observed information at the
+converged fit from the converged QR), not the logit's Fisher matrix. CLI-v1
+returns `BinaryProbitResult` (`estimator: "probit"`, same field layout, same
+convergence fields) and `ProbitMarginalEffectsResult` after `estat margins`
+(`estimator: "probit"`; margins average `beta_j*phi(beta_0 + beta'x)` over the
+retained design). `predict ... , pr` computes probabilities with the same
+registered `tabdat_gauss_phi` Gaussian function the fit used, keeping SQL
+probabilities bit-identical to engine probabilities under the same index; `, xb`
+appends the finite linear index, and unsupported predict forms fail with the
+probit wording. With no binary fit, `estat margins` keeps the established
+prior-logit message.
+
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Probit, robust/cluster/weighted binary inference, factors/interactions/discrete
+Robust/cluster/weighted binary inference, factors/interactions/discrete
 changes and actual graphics remain unfinished required work where applicable.
 
 ## Summaries and percentiles
