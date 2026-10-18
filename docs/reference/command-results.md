@@ -581,9 +581,19 @@ Linear JSON results reuse the supplied statistics without recalculation:
 - `RegressionResult`: `outcome`, ordered `predictors`, `estimator`, `covariance`,
   `observation_count`, `include_intercept`, `df_residual`, `r_squared`,
   `adjusted_r_squared`, `root_mse`, `sample` and ordered `coefficients`.
+  Additive `covariance_matrix` contains the selected coefficient covariance,
+  with explicit `covariance_parameter_names` row/column order. It is not a
+  design or row-level data matrix. Additive `log_likelihood` is reported only
+  for unweighted OLS (including robust/cluster covariance), with
+  `log_likelihood_convention: "gaussian_working_model_ml_variance_rss_over_n"`.
+  This Gaussian working-density value uses ML variance RSS/N, not the RSS/(N-K)
+  variance used for coefficient covariance; it is not Bernoulli likelihood,
+  robust LR inference or a cross-family LR test. WLS/GLS/2SLS and zero/nonfinite
+  residual variance return null likelihood/convention, rather than inventing
+  an unsupported weighted/IV or degenerate convention.
   `sample` contains `total_observations`/`dropped_observations`, or is null when
   unavailable. Coefficients contain `name`, `value`, `standard_error`, `statistic`
-  and two-sided `p_value`. Full model matrices/row arrays are deliberately omitted.
+  and two-sided `p_value`. Training design matrices/row arrays are deliberately omitted.
   For `ivregress 2sls`, `first_stage` is additive and contains `test` (the
   conventional homoskedastic excluded-instrument partial F),
   `weak_iv_robust_inference_available: false` (these first-stage/coefficient

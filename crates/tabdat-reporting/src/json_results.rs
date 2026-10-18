@@ -482,6 +482,10 @@ fn regression_result_data(result: &RegressionResult) -> Value {
     "r_squared": result.r_squared.and_then(Number::from_f64),
     "adjusted_r_squared": result.adjusted_r_squared.and_then(Number::from_f64),
     "root_mse": result.root_mse.and_then(Number::from_f64),
+    "log_likelihood": result.gaussian_working_log_likelihood().and_then(Number::from_f64),
+    "log_likelihood_convention": result.gaussian_working_log_likelihood().map(|_| "gaussian_working_model_ml_variance_rss_over_n"),
+    "covariance_matrix": result.least_squares.covariance.matrix,
+    "covariance_parameter_names": result.least_squares.covariance.parameter_names,
     "sample": result.least_squares.sample.as_ref().map(|sample| json!({
       "total_observations": sample.total_observations, "dropped_observations": sample.dropped_observations,
     })),

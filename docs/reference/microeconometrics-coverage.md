@@ -59,7 +59,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — classical/robust logit and probit coefficient/AME workflows validated at converged information | Exact contract below; full comparison, remaining author outputs and actual graphic remain |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — six-model classical/robust logit/probit/OLS numerical comparison, binary AME and all-row predictions validated | Exact contract below; remaining Table14.1/author outputs and actual graphic remain; no native stored-fit table claim |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
@@ -72,7 +72,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
 
-### MMA-BINARY classical/robust logit and probit subset contract and evidence
+### MMA-BINARY classical/robust six-model subset contract and evidence
 
 - **Identity:** Cameron–Trivedi (2005), §14.2 pp. 464–466; authors'
   [`mma14p1binary.do`](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.do)
@@ -138,8 +138,20 @@ provenance and redistribution terms before adding fixtures.
   checks remain. Sixteen synthetic robust/clustered family/design variants
   validate W/df/tails; singular/rank-limited restrictions produce explicit
   unavailable tests, not pseudoinverses/reduced-q inference or discarded fits.
-- **Still required:** full OLS comparison and
-  Figure 14.1 rendering, plus other exact binary illustrations and needed
+- **OLS/six-column comparison:** [PR #275](https://github.com/SaehwanPark/tabdat-explore-rs/pull/275)
+  adds `comparison.td`, independently checked by base R4.6.1 and a standard-library
+  checker: all 94 classical/robust logit/probit/OLS numerical quantities and all
+  630 source/outcome/design/prediction records match. OLS intercept/slope are
+  0.784154230742988/-0.242913654440961; classical slope SE 0.0104328468939993,
+  HC1 slope SE 0.00862919092660423, R² 0.463304487997616 and Gaussian working
+  log likelihood -195.167320651517 (ML variance RSS/N, not RSS/(N-K)). OLS uses
+  t(628), binary fits normal z; linear fitted values span -0.202734122 to
+  1.307384388 and are not clipped or relabeled probabilities. Native JSON/text
+  reports the six ordered fits and selected covariance; the optional checker's
+  joined comparison is not native named-fit storage/table support. No R/Python
+  production dependency is introduced, and no cross-family LR test is implied.
+- **Still required:** remaining Table14.1/author outputs and Figure14.1 rendering,
+  native reusable reporting foundations, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
   This is neither complete binary-family nor full-book validation.
