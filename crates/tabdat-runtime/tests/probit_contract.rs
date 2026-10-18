@@ -287,7 +287,7 @@ fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
   let f = Fixture::new(false);
   for command in [
     "probit missing x1, robust",
-    "probit y x1, cluster(source_row)",
+    "probit y x1, cluster(missing)",
     "probit missing x1",
     "probit y x1 x1",
   ] {
@@ -309,8 +309,8 @@ fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
   }
   let mut s = f.load();
   assert_eq!(
-    fail(&mut s, "probit y x1, cluster(source_row)").to_string(),
-    "probit: cluster probit covariance is not implemented; use an unclustered fit"
+    fail(&mut s, "probit y x1, cluster(missing)").to_string(),
+    "probit: unknown cluster variable: missing"
   );
   for value in ["2", "0"] {
     let mut s = f.load();
@@ -454,6 +454,114 @@ fn prior_margins_wording_stays_logit_and_other_families_do_not_supply_margins() 
     fail(&mut s, "predict unused, pr"),
     RuntimeError::UnsupportedCommand { name: "predict" }
   ));
+}
+
+#[test]
+fn clustered_binary_inference_owns_groups_and_retained_delta_design() {
+  let f = Fixture::new(true);
+  for (family, covariance12, ame_se) in [
+    ("logit", 0.0305324276218534, 0.0535030958247444),
+    ("probit", 0.0155928852262543, 0.0570919529285024),
+  ] {
+    let mut s = f.load();
+    execute(
+      &mut s,
+      r#"sql """SELECT *, (source_row*7)%9 AS cluster_id FROM active""" into grouped"#,
+    );
+    execute(&mut s, "label variable x1 \"first predictor\"");
+    let before = s.state();
+    let result = execute(&mut s, &format!("{family} y x1 x2, cluster(cluster_id)"));
+    let (ExecutionResult::Logit(fit) | ExecutionResult::Probit(fit)) = result else {
+      panic!("binary fit")
+    };
+    assert_eq!(fit.cluster.as_ref().unwrap().variable, "cluster_id");
+    assert_eq!(fit.cluster.as_ref().unwrap().group_count, 9);
+    assert_eq!(
+      fit.sample.as_ref().unwrap().retained_indices,
+      (1..=40).collect::<Vec<_>>()
+    );
+    assert_eq!(
+      fit
+        .sample
+        .as_ref()
+        .unwrap()
+        .cluster_groups
+        .as_ref()
+        .unwrap(),
+      &(1..=40)
+        .map(|i| ((i * 7) % 9).to_string())
+        .collect::<Vec<_>>()
+    );
+    assert_eq!(s.state().active_dataset, before.active_dataset);
+    assert_eq!(s.state().labels, before.labels);
+    close(fit.covariance[1][2], covariance12);
+    assert!(fit.likelihood_ratio_p_value.is_none());
+    let effects = execute(&mut s, "estat margins");
+    let ame = match &effects {
+      ExecutionResult::LogitMarginalEffects(ame) => ame,
+      ExecutionResult::ProbitMarginalEffects(ame) => ame.as_ref(),
+      _ => panic!("effects"),
+    };
+    close(ame.effects[0].standard_error, ame_se);
+    assert_eq!(ame.cluster, fit.cluster);
+    execute(&mut s, "replace x1 = x1 + 10");
+    execute(&mut s, "replace cluster_id = 99");
+    assert_eq!(execute(&mut s, "estat margins"), effects);
+    let cache = s.state().estimation;
+    execute(&mut s, "predict p, pr");
+    assert_eq!(s.state().estimation, cache);
+    let rows = preview(&mut s);
+    assert!(
+      fail(&mut s, &format!("{family} y x1 x2, cluster(cluster_id)"))
+        .to_string()
+        .contains("at least two")
+    );
+    assert!(s.state().estimation.is_none());
+    for (a, b) in preview(&mut s).iter().zip(&rows) {
+      same_cells(a, b);
+    }
+  }
+}
+
+#[test]
+fn cluster_missingness_precedes_outcome_domain_and_wide_ids_never_round_together() {
+  let f = Fixture::new(true);
+  for family in ["logit", "probit"] {
+    let mut s = f.load();
+    execute(
+      &mut s,
+      r#"sql """SELECT source_row, CASE WHEN source_row=1 THEN 2 ELSE y END AS y, x1, x2, CASE WHEN source_row IN (1,2) THEN NULL WHEN source_row=3 THEN CAST('NaN' AS DOUBLE) ELSE CAST(source_row%9 AS DOUBLE) END AS cluster_id FROM active""" into grouped"#,
+    );
+    let result = execute(&mut s, &format!("{family} y x1 x2, cluster(cluster_id)"));
+    let (ExecutionResult::Logit(fit) | ExecutionResult::Probit(fit)) = result else {
+      panic!("fit")
+    };
+    assert_eq!(
+      fit.sample.as_ref().unwrap().retained_indices,
+      (4..=40).collect::<Vec<_>>()
+    );
+    assert_eq!(fit.sample.as_ref().unwrap().dropped_observations, 7);
+    let mut s = f.load();
+    execute(
+      &mut s,
+      r#"sql """SELECT *, CAST('9007199254740992' AS DECIMAL(38,0)) + CAST(source_row%2 AS DECIMAL(38,0)) AS cluster_id FROM active""" into wide_groups"#,
+    );
+    let result = execute(&mut s, &format!("{family} y x1 x2, cluster(cluster_id)"));
+    let (ExecutionResult::Logit(fit) | ExecutionResult::Probit(fit)) = result else {
+      panic!("fit")
+    };
+    assert_eq!(fit.cluster.as_ref().unwrap().group_count, 2);
+    let mut s = f.load();
+    execute(
+      &mut s,
+      r#"sql """SELECT *, CASE WHEN source_row%2=0 THEN 'a,b' ELSE 'a' END AS cluster_id FROM active""" into text_groups"#,
+    );
+    let result = execute(&mut s, &format!("{family} y x1 x2, cluster(cluster_id)"));
+    let (ExecutionResult::Logit(fit) | ExecutionResult::Probit(fit)) = result else {
+      panic!("fit")
+    };
+    assert_eq!(fit.cluster.as_ref().unwrap().group_count, 2);
+  }
 }
 
 #[test]

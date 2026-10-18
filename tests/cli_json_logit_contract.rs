@@ -64,6 +64,52 @@ fn close(v: &Value, expected: f64) {
 }
 
 #[test]
+fn clustered_binary_json_and_text_expose_ml_correction_and_normal_inference() {
+  let f = Fixture::new();
+  for (family, slope_se, ame_se) in [
+    ("logit", 0.283539214648444, 0.0535030958247444),
+    ("probit", 0.179030998772335, 0.0570919529285024),
+  ] {
+    let fit = format!("{family} y x1 x2, cluster(cluster_id)");
+    let commands = [
+      "use data.csv",
+      r#"sql """SELECT *, (source_row*7)%9 AS cluster_id FROM active""" into grouped"#,
+      &fit,
+      "estat margins",
+    ];
+    let rows = envelopes(&f.batch("--json", &commands));
+    assert_eq!(rows.len(), 4);
+    let fit = &rows[2]["data"];
+    assert_eq!(fit["covariance"], "cluster_sandwich_g_over_g_minus_1");
+    assert_eq!(
+      fit["cluster"],
+      serde_json::json!({"variable":"cluster_id","group_count":9})
+    );
+    assert_eq!(fit["reference_distribution"], "asymptotic_standard_normal");
+    assert_eq!(fit["likelihood_ratio_p_value"], Value::Null);
+    assert_eq!(fit["likelihood_ratio_reference_distribution"], Value::Null);
+    close(&fit["coefficients"][1]["standard_error"], slope_se);
+    let ame = &rows[3]["data"];
+    assert_eq!(ame["covariance"], "cluster_sandwich_g_over_g_minus_1");
+    assert_eq!(ame["cluster"], fit["cluster"]);
+    close(&ame["effects"][0]["standard_error"], ame_se);
+    let text = f.batch("--text", &commands);
+    assert!(text.status.success());
+    let text = String::from_utf8(text.stdout).unwrap();
+    for expected in [
+      "G = 9",
+      "G/(G-1) correction",
+      "not G-1 Student t",
+      "unreliable with few clusters",
+    ] {
+      assert!(text.contains(expected), "{text}");
+    }
+    assert!(!text.contains("N/(N-1) correction"));
+    assert!(!text.contains("LR chi2"));
+  }
+}
+
+#[test]
 fn robust_binary_scripts_report_sandwich_and_not_ordinary_lr_inference() {
   let f = Fixture::new();
   for (family, slope_se, ame_se) in [
@@ -80,6 +126,7 @@ fn robust_binary_scripts_report_sandwich_and_not_ordinary_lr_inference() {
     let fit = &rows[1]["data"];
     assert_eq!(fit["estimator"], family);
     assert_eq!(fit["covariance"], "robust_sandwich_n_over_n_minus_1");
+    assert_eq!(fit["cluster"], Value::Null);
     assert_eq!(fit["reference_distribution"], "asymptotic_standard_normal");
     assert_eq!(fit["likelihood_ratio_reference_distribution"], Value::Null);
     assert_eq!(fit["likelihood_ratio_p_value"], Value::Null);
@@ -220,7 +267,11 @@ fn unsupported_covariance_and_separation_stop_scripts_before_file_side_effects()
   let f = Fixture::new();
   for (name, fit) in [
     ("robust_invalid", "logit missing x1, robust"),
-    ("cluster", "logit y x1, cluster(source_row)"),
+    ("cluster", "logit y x1, cluster(missing)"),
+    (
+      "one_group",
+      "sql \"\"\"SELECT *, 1 AS cluster_id FROM active\"\"\" into one_group\nlogit y x1, cluster(cluster_id)",
+    ),
     (
       "separated",
       "sql \"\"\"SELECT source_row,x1,CASE WHEN x1 > 0 THEN 1 ELSE 0 END AS y FROM active\"\"\" into separated\nlogit y x1",

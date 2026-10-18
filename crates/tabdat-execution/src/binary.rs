@@ -2,18 +2,6 @@ use crate::*;
 
 use tabdat_stats::BinaryModel;
 
-fn logit_error(message: impl Into<String>) -> RuntimeError {
-  RuntimeError::LogitFailed {
-    message: message.into(),
-  }
-}
-
-fn probit_error(message: impl Into<String>) -> RuntimeError {
-  RuntimeError::ProbitFailed {
-    message: message.into(),
-  }
-}
-
 /// Family-specific failed-fit error shape; logit messages stay byte-identical
 /// to the pre-probit slice.
 fn binary_error(model: BinaryModel) -> fn(String) -> RuntimeError {
@@ -40,6 +28,26 @@ fn exact_binary_outcome(cell: &CellValue) -> bool {
     }
     _ => false,
   }
+}
+
+fn binary_cluster_key(cell: &CellValue) -> Result<Option<String>, &'static str> {
+  Ok(match cell {
+    CellValue::Null => None,
+    CellValue::Float(value) if !value.is_finite() => None,
+    CellValue::Float(value) => Some(if *value == 0.0 {
+      "0".to_owned()
+    } else {
+      value.to_string()
+    }),
+    CellValue::Text(value) => Some(value.clone()),
+    CellValue::SignedInteger(value) => Some(value.to_string()),
+    CellValue::UnsignedInteger(value) => Some(value.to_string()),
+    // Never round cluster identity through f64: adjacent wide DECIMAL IDs
+    // can otherwise collapse into a single group. Scale is fixed per column.
+    CellValue::Decimal { value, scale, .. } => Some(format!("{value}e-{scale}")),
+    CellValue::Boolean(value) => Some(value.to_string()),
+    CellValue::Bytes(_) => return Err("cluster variable must be numeric, text or boolean"),
+  })
 }
 
 impl Session {
@@ -82,17 +90,10 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     // Match the supported linear/IV policy: a failed new fit clears stale inference.
     self.estimation = None;
-    if cluster_variable.is_some() {
-      return Err(match model {
-        BinaryModel::Logit => {
-          logit_error("cluster logit covariance is not implemented; use an unclustered fit")
-        }
-        BinaryModel::Probit => {
-          probit_error("cluster probit covariance is not implemented; use an unclustered fit")
-        }
-      });
-    }
     let error = binary_error(model);
+    if robust && cluster_variable.is_some() {
+      return Err(error("cannot combine robust and cluster".to_owned()));
+    }
     let command_name = binary_family(model);
     let dataset = self
       .active_dataset
@@ -113,18 +114,31 @@ impl Session {
         return Err(error(format!("numeric variable required: {name}")));
       }
     }
-    let query = format!(
-      "SELECT {} FROM {ACTIVE_TABLE}",
-      variables
+    let mut select_columns: Vec<String> = variables
+      .iter()
+      .map(|name| quote_identifier(name))
+      .collect();
+    if let Some(name) = cluster_variable {
+      let column = dataset
+        .columns
         .iter()
-        .map(|name| quote_identifier(name))
-        .collect::<Vec<_>>()
-        .join(", ")
-    );
+        .find(|column| column.name == name)
+        .ok_or_else(|| error(format!("unknown cluster variable: {name}")))?;
+      if !is_numeric_data_type(&column.data_type)
+        && !matches!(column.data_type.as_str(), "VARCHAR" | "BOOLEAN")
+      {
+        return Err(error(
+          "cluster variable must be numeric, text or boolean".to_owned(),
+        ));
+      }
+      select_columns.push(quote_identifier(name));
+    }
+    let query = format!("SELECT {} FROM {ACTIVE_TABLE}", select_columns.join(", "));
     let mut total_rows = 0;
     let mut retained = Vec::new();
     let mut response = Vec::new();
     let mut design = Vec::new();
+    let mut cluster_groups = Vec::new();
     self
       .backend
       .as_ref()
@@ -155,6 +169,19 @@ impl Session {
               _ => return Ok(()),
             }
           }
+          let cluster_group = if cluster_variable.is_some() {
+            let cell = row
+              .cell(variables.len())
+              .map_err(|_| error("could not read cluster cell".to_owned()))?;
+            let Some(group) =
+              binary_cluster_key(cell).map_err(|message| error(message.to_owned()))?
+            else {
+              return Ok(());
+            };
+            Some(group)
+          } else {
+            None
+          };
           if !outcome_is_binary {
             return Err(error(
               "outcome must be exactly 0 or 1 on the complete finite estimation sample".to_owned(),
@@ -165,6 +192,9 @@ impl Session {
           // not itself round to bit-exact one at every scale.
           response.push(if values[0] == 0.0 { 0.0 } else { 1.0 });
           design.push(values[1..].to_vec());
+          if let Some(group) = cluster_group {
+            cluster_groups.push(group);
+          }
           Ok(())
         },
         error,
@@ -173,8 +203,14 @@ impl Session {
       return Err(error("no complete finite observations".to_owned()));
     }
     let dropped = total_rows - retained.len();
-    let sample = tabdat_stats::EstimationSample::new(retained, total_rows, dropped, None, None)
-      .map_err(|e| error(e.to_string()))?;
+    let sample = tabdat_stats::EstimationSample::new(
+      retained,
+      total_rows,
+      dropped,
+      None,
+      cluster_variable.is_some().then_some(cluster_groups),
+    )
+    .map_err(|e| error(e.to_string()))?;
     let problem = tabdat_stats::EstimationProblem::new(
       outcome.to_owned(),
       predictors.to_vec(),
@@ -184,7 +220,9 @@ impl Session {
     .map_err(|e| error(e.to_string()))?
     .with_intercept(include_intercept)
     .with_sample(sample);
-    let result = if robust {
+    let result = if let Some(variable) = cluster_variable {
+      tabdat_stats::fit_binary_clustered(&problem, model, variable)
+    } else if robust {
       tabdat_stats::fit_binary_robust(&problem, model)
     } else {
       match model {

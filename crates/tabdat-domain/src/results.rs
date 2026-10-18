@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-pub use tabdat_stats::LogitEstimate;
+pub use tabdat_stats::{BinaryCluster, LogitEstimate};
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
