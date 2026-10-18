@@ -8,9 +8,10 @@ layout/jitter conventions below. It adds a separately validated continuous
 average partial derivative with conditional-design delta-method uncertainty for
 each binary family. That effect is an extension, **not** a claimed published table result.
 
-It does not complete the entire illustration: remaining Table14.1/author outputs
-and reusable reporting remain required work. Native named-fit/joined-table
-commands are not supplied by this example.
+The native Table14.1 summary workflow below also validates its overall and
+outcome-specific numerical summaries. This does not complete the entire
+illustration: remaining author outputs and reusable reporting remain required
+work. Native named-fit/joined-table commands are not supplied by this example.
 No author data or code is redistributed here.
 
 ## Source, sample and design
@@ -261,6 +262,55 @@ remain distinct measures. Classical/robust predictions agree exactly within
 each family; the six native results reproduce the numerical comparison under
 the documented float64/converged-information conventions, not exact historical
 storage or reusable report formatting.
+
+## Native Table14.1 summaries
+
+`summary.td` prepares the same 630-person cohort and reports `charter`, `pcharter`,
+`ppier` and `lnrelp` in three native summary blocks: **overall**, **pier (mode2,
+N178)**, then **charter (mode4, N452)**. Each reports N, mean, sample SD using
+**n−1**, min and max. The conditional summaries do not filter or reorder the
+prepared relation. `fishing_summary_sample.csv` exports all six preparation
+columns in original source-ID order so actual membership/design can be checked,
+not merely N. No estimator is fitted or reporting engine changed.
+
+From the repository root, with `work/Nldata.csv` checksum-verified as above:
+
+```sh
+repo="$PWD"
+summary_work=$(mktemp -d)
+cp "$work/Nldata.csv" "$summary_work/Nldata.csv"
+(cd "$summary_work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/summary.td" > summary.jsonl)
+Rscript examples/mma14p1binary/reference_summary.R "$summary_work/Nldata.csv" \
+  "$summary_work/R_summary_sample.csv" > "$summary_work/R_summary.csv"
+python3 examples/mma14p1binary/check_summary.py \
+  "$summary_work/R_summary.csv" "$summary_work/R_summary_sample.csv" \
+  "$summary_work/summary.jsonl" "$summary_work/fishing_summary_sample.csv"
+printf 'Summary and verification outputs: %s\n' "$summary_work"
+```
+
+Use a fresh output directory: the sample export is never replaced. `--text` and
+no-argument terminal `run ".../summary.td"` also work. Their sample exports were
+checked byte-identical to JSON execution. Native terminal output was inspected:
+three four-variable blocks, including constant-outcome SD0 in the two groups.
+The script order supplies the cohort meanings; this is not a joined table or
+new grouped-summary formatting command.
+
+Independent base R4.6.1 `mean`, `sd`, `min` and `max` match **all 60 summary
+quantities** and **630 source/outcome/design records**. Moderate-value tolerances
+remain absolute 1e-10 and prepared-record tolerances 1e-12. Source data were freshly
+checksum-verified and conversion compared byte-for-byte; no source data are
+committed. These are float64 calculations, not exact Stata8 float32 storage or
+printed-format parity. The checker rejects population-SD substitution, swapped
+cohort blocks, wrong counts and permuted source identities. Native CLI tests
+exercise actual-script success, surfaces and export order, plus missing columns,
+invalid negative prices, duplicate IDs and export collision. The reference and
+checker enforce the exact textbook cohort; the native script's `isid` is a key
+guard, not a substitute for those full sample/reference checks.
+
+Remaining work includes other author exploratory/fitted-value summaries and
+native reusable named-fit/joined reporting. Table14.1 numerical validation does
+not complete §14.2 or the binary milestone.
 
 ## Native Figure14.1 SVG
 
