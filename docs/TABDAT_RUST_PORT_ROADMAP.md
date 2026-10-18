@@ -152,14 +152,16 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Choose the next required binary-family outcome from the coverage ledger and
-   scope it against its exact illustration before implementation — currently the
-   remaining author outputs for §14.2, followed by the Fisher/factor/interaction
-   and discrete-change foundations exact illustrations need. Bounded native
-   OLS/logit/probit named-report comparison is delivered, not fit restoration or
-   reporting for every future estimator. One-way clustered covariance is external method evidence,
-   not a newly validated textbook illustration. Do not treat the binary family
-   as one oversized PR or these classical logit/probit slices as completion.
+1. Resolve the next exact required nonlinear-family illustration in the coverage
+   ledger — MMA-COUNT's Poisson sample/design/reference is the next family
+   candidate, before implementing syntax or an isolated estimator. The defined
+   §14.2 native published-analysis workflow is now validated, including all
+   source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
+   complete the binary family. Needed Fisher/factor/interaction/discrete-change
+   foundations, maximum score and other exact binary illustrations remain
+   required. Native OLS/logit/probit named reports are not fit restoration or
+   reporting for every future estimator. One-way clustered covariance remains
+   external method evidence, not a newly validated textbook illustration.
 
 The classical/robust-MLE portion of the [§14.2 binary
 slice](../examples/mma14p1binary/README.md) is delivered: the logit column
@@ -207,10 +209,20 @@ opening and broader graphics remain uninstalled. Table14.1's overall/pier/charte
 summaries now run through native conditional summarize: all 60 quantities and
 630 sample/design records independently match base R, with sample n−1 SD and
 unchanged prepared source order. This is three ordered summary blocks, not a
-joined-table command. Other author exploratory/fitted-value summaries and
-reporting beyond the bounded named-report subset remain unfinished. This advances
-one textbook subset, not the full illustration or binary milestone; advancing
-from these classical slices did not complete IV or the binary family.
+joined-table command. A composed `analysis.td` now includes the remaining source,
+full prepared-cohort and fitted-value summaries: independent base R validates all
+465 quantities in eight blocks/93 rows, plus every field/ID of the 1,182 source
+and 630 prepared records, using unchanged tolerances. The same run also passes
+all six-model/table/prediction and SVG geometry checks. JSON/text/piped CSV/SVG
+bytes match the leaf workflows. Source/program/output hashes are verified; the
+example audits each author block against the native representation. This
+validates the defined §14.2 published tables/figure and all descriptive blocks,
+not every auxiliary Stata fit-log field/layout, historical float32/RNG/WMF/ASCII
+parity or fit restoration. Individual OLS ANOVA/F/interval displays are not added
+to the comparison table; native test/lincom remain separate. Earlier successful
+script outputs remain on later failure, not whole-script rollback. Reporting for
+future estimator families remains required. This completes that bounded native
+analytical contract, not the binary milestone, IV illustration or full book.
 
 Keep GMM/Hansen J, robust/cluster AR, endogenous-subvector confidence sets and
 any further endogeneity inference required by exact illustrations explicit as
