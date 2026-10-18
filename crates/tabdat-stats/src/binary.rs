@@ -6,7 +6,7 @@ use crate::distributions::{chi_square_tail, normal_cdf, normal_pdf, normal_quant
 use crate::matrix::{qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r};
 use crate::{EstimationProblem, EstimationSample, StatsError};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 const TOLERANCE: f64 = 1e-10;
 const NORMAL_95: f64 = 1.959963984540054;
@@ -68,12 +68,28 @@ impl Default for ProbitOptions {
   }
 }
 
+/// One-way ML score-sandwich metadata. Inference is normal, not Student t;
+/// the G/(G-1) correction alone does not ensure reliable few-cluster inference.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BinaryCluster {
+  pub variable: String,
+  pub group_count: usize,
+}
+
+#[derive(Clone, Copy)]
+enum BinaryCovariance<'a> {
+  ModelBased,
+  Robust,
+  Cluster(&'a str),
+}
+
 /// Unweighted independent-Bernoulli binary maximum likelihood result (logit
 /// or probit). Covariance convention is family-specific: inverse Fisher
 /// information for `Logit`, inverse observed information evaluated at the
 /// converged coefficients for `Probit`, both without an N-K correction.
 /// With `robust`, the covariance is instead the score sandwich with N/(N-1)
-/// scaling (the ML convention, not linear HC1). Coefficient/AME inference is
+/// scaling, or G/(G-1) when `cluster` is present (not linear HC1).
+/// Coefficient/AME inference is
 /// asymptotic normal, never Student t; ordinary LR inference is suppressed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryMleResult {
@@ -85,9 +101,11 @@ pub struct BinaryMleResult {
   pub event_count: usize,
   pub coefficients: Vec<LogitEstimate>,
   pub covariance: Vec<Vec<f64>>,
-  /// Unclustered score sandwich using the converged observed-information bread.
+  /// Score sandwich using the converged observed-information bread.
   #[serde(default)]
   pub robust: bool,
+  #[serde(default)]
+  pub cluster: Option<BinaryCluster>,
   pub log_likelihood: f64,
   pub null_log_likelihood: f64,
   pub likelihood_ratio: f64,
@@ -114,6 +132,8 @@ pub type BinaryLogitResult = BinaryMleResult;
 pub struct LogitMarginalEffects {
   #[serde(default)]
   pub robust: bool,
+  #[serde(default)]
+  pub cluster: Option<BinaryCluster>,
   pub observation_count: usize,
   pub effects: Vec<LogitEstimate>,
 }
@@ -317,14 +337,24 @@ pub fn fit_binary_logit_with_options(
   problem: &EstimationProblem,
   options: &LogitOptions,
 ) -> Result<BinaryMleResult, StatsError> {
-  fit_binary_mle(problem, BinaryModel::Logit, options.max_iterations, false)
+  fit_binary_mle(
+    problem,
+    BinaryModel::Logit,
+    options.max_iterations,
+    BinaryCovariance::ModelBased,
+  )
 }
 
 pub fn fit_binary_probit_with_options(
   problem: &EstimationProblem,
   options: &ProbitOptions,
 ) -> Result<BinaryMleResult, StatsError> {
-  fit_binary_mle(problem, BinaryModel::Probit, options.max_iterations, false)
+  fit_binary_mle(
+    problem,
+    BinaryModel::Probit,
+    options.max_iterations,
+    BinaryCovariance::ModelBased,
+  )
 }
 
 /// Fit either binary family with unclustered score-sandwich covariance,
@@ -334,7 +364,37 @@ pub fn fit_binary_robust(
   problem: &EstimationProblem,
   model: BinaryModel,
 ) -> Result<BinaryMleResult, StatsError> {
-  fit_binary_mle(problem, model, LogitOptions::default().max_iterations, true)
+  fit_binary_mle(
+    problem,
+    model,
+    LogitOptions::default().max_iterations,
+    BinaryCovariance::Robust,
+  )
+}
+
+/// Fit with one-way clustered individual scores and G/(G-1) correction.
+/// The sample must contain a group identifier for every retained row and at
+/// least two groups. Coefficient/conditional-X AME inference is asymptotic
+/// normal, assuming independent clusters; ordinary LR inference is suppressed.
+pub fn fit_binary_clustered(
+  problem: &EstimationProblem,
+  model: BinaryModel,
+  cluster_variable: &str,
+) -> Result<BinaryMleResult, StatsError> {
+  fit_binary_mle(
+    problem,
+    model,
+    LogitOptions::default().max_iterations,
+    BinaryCovariance::Cluster(cluster_variable),
+  )
+}
+
+fn add_score_outer(matrix: &mut [Vec<f64>], score: &[f64]) {
+  for (i, row) in matrix.iter_mut().enumerate() {
+    for (j, entry) in row.iter_mut().enumerate() {
+      *entry += score[i] * score[j];
+    }
+  }
 }
 
 /// Scaled Newton/QR with deterministic backtracking for both binary families.
@@ -348,23 +408,51 @@ fn fit_binary_mle(
   problem: &EstimationProblem,
   model: BinaryModel,
   max_iterations: usize,
-  robust: bool,
+  covariance_type: BinaryCovariance<'_>,
 ) -> Result<BinaryMleResult, StatsError> {
   problem.validate()?;
   if max_iterations == 0 {
     return Err(invalid(model, "max_iterations must be positive"));
   }
-  if problem.weights.is_some()
-    || problem
-      .sample
-      .as_ref()
-      .is_some_and(|s| s.weights.is_some() || s.cluster_groups.is_some())
-  {
-    return Err(invalid(
-      model,
-      "weights and clustered designs are not implemented",
-    ));
+  if problem.weights.is_some() || problem.sample.as_ref().is_some_and(|s| s.weights.is_some()) {
+    return Err(invalid(model, "weights are not implemented"));
   }
+  let groups = problem
+    .sample
+    .as_ref()
+    .and_then(|sample| sample.cluster_groups.as_ref());
+  let cluster = match covariance_type {
+    BinaryCovariance::Cluster(variable) => {
+      if variable.trim().is_empty() {
+        return Err(invalid(model, "cluster variable must be named"));
+      }
+      let groups = groups.ok_or_else(|| invalid(model, "cluster groups are required"))?;
+      if groups.len() != problem.observation_count() {
+        return Err(invalid(
+          model,
+          "cluster groups must align with the estimation sample",
+        ));
+      }
+      let group_count = groups.iter().collect::<BTreeSet<_>>().len();
+      if group_count < 2 {
+        return Err(invalid(
+          model,
+          "cluster covariance requires at least two retained groups",
+        ));
+      }
+      Some(BinaryCluster {
+        variable: variable.to_owned(),
+        group_count,
+      })
+    }
+    _ => {
+      if groups.is_some() {
+        return Err(invalid(model, "cluster groups require a clustered fit"));
+      }
+      None
+    }
+  };
+  let robust = !matches!(covariance_type, BinaryCovariance::ModelBased);
   if problem.response.iter().any(|v| *v != 0.0 && *v != 1.0) {
     return Err(invalid(
       model,
@@ -481,18 +569,30 @@ fn fit_binary_mle(
         // unit-column-norm coordinates as the Newton core, then transform
         // back once below; forming an unscaled meat can overflow needlessly.
         let mut sandwich = vec![vec![0.0; k]; k];
-        for (row, residual) in x.iter().zip(&current.residuals) {
+        let mut grouped = BTreeMap::<&str, Vec<f64>>::new();
+        for (index, (row, residual)) in x.iter().zip(&current.residuals).enumerate() {
           let influence: Vec<f64> = scaled_covariance
             .iter()
             .map(|bread_row| bread_row.iter().zip(row).map(|(a, b)| a * b).sum::<f64>() * residual)
             .collect();
-          for i in 0..k {
-            for j in 0..k {
-              sandwich[i][j] += influence[i] * influence[j];
+          if cluster.is_some() {
+            let group = grouped
+              .entry(groups.unwrap()[index].as_str())
+              .or_insert_with(|| vec![0.0; k]);
+            for (entry, value) in group.iter_mut().zip(&influence) {
+              *entry += value;
             }
+          } else {
+            add_score_outer(&mut sandwich, &influence);
           }
         }
-        let correction = n as f64 / (n - 1) as f64;
+        // Aggregate within cluster before the outer product: individual
+        // outer products would discard the within-cluster cross terms.
+        for score in grouped.values() {
+          add_score_outer(&mut sandwich, score);
+        }
+        let units = cluster.as_ref().map_or(n, |cluster| cluster.group_count);
+        let correction = units as f64 / (units - 1) as f64;
         for row in &mut sandwich {
           for entry in row {
             *entry *= correction;
@@ -556,6 +656,7 @@ fn fit_binary_mle(
         coefficients,
         covariance,
         robust,
+        cluster,
         log_likelihood: current.log_likelihood,
         null_log_likelihood,
         likelihood_ratio,
@@ -727,6 +828,7 @@ pub fn binary_average_marginal_effects(
   }
   Ok(LogitMarginalEffects {
     robust: result.robust,
+    cluster: result.cluster.clone(),
     observation_count: n,
     effects,
   })
