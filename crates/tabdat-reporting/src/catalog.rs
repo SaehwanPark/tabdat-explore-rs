@@ -2116,7 +2116,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 81);
+    assert_eq!(catalog.commands.len(), 82);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2159,7 +2159,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 81);
+    assert_eq!(effects.commands.len(), 82);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());

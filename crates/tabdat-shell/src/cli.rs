@@ -42,7 +42,8 @@ options:
                         no-option summarize if, duplicates/isid, assert/datasignature,
                         sort/gsort,
                         regress/logit/probit/predict/lincom/test/ttest,
-                        estat vif/ar/overid/endogenous/margins, save/export and SVG scatter;
+                        estat vif/ar/overid/endogenous/margins, estimates store/table/drop,
+                        save/export and SVG scatter;
                         scripts stream the same successful leaf results)
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects

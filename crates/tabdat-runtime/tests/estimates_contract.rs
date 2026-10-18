@@ -151,7 +151,7 @@ fn binary_snapshots_keep_normal_inference_and_clustered_ols_keeps_g_minus_one() 
 fn different_designs_align_by_first_seen_exact_names_and_do_not_fill_missing_coefficients() {
   let fixture = Fixture::new();
   let mut session = fixture.load();
-  run(&mut session, "regress y x, noconstant");
+  run(&mut session, "regress y x if x > 0, noconstant");
   run(&mut session, "estimates store x_only");
   run(&mut session, "regress x z");
   run(&mut session, "estimates store other_outcome");
@@ -161,6 +161,11 @@ fn different_designs_align_by_first_seen_exact_names_and_do_not_fill_missing_coe
   assert_eq!(result.models[1].outcome, "y");
   assert_eq!(result.models[1].coefficients.len(), 1);
   assert_eq!(result.models[1].coefficients[0].name, "x");
+  assert_eq!(result.models[0].observation_count, 10);
+  assert_eq!(result.models[1].observation_count, 6);
+  assert_eq!(result.models[1].sample.total_observations, 10);
+  assert_eq!(result.models[1].sample.dropped_observations, 4);
+  assert_eq!(result.models[1].sample.retained_indices, [3, 4, 5, 6, 7, 9]);
 }
 
 #[test]

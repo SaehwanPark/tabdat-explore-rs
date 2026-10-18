@@ -10,8 +10,9 @@ each binary family. That effect is an extension, **not** a claimed published tab
 
 The native Table14.1 summary workflow below also validates its overall and
 outcome-specific numerical summaries. This does not complete the entire
-illustration: remaining author outputs and reusable reporting remain required
-work. Native named-fit/joined-table commands are not supplied by this example.
+illustration: remaining author outputs and broader reporting remain required
+work. The bounded native named-report comparison below does not restore fit
+caches or provide general estimates/persistence/formatting parity.
 No author data or code is redistributed here.
 
 ## Source, sample and design
@@ -263,6 +264,63 @@ each family; the six native results reproduce the numerical comparison under
 the documented float64/converged-information conventions, not exact historical
 storage or reusable report formatting.
 
+## Native named-report Table14.2 comparison
+
+`stored_comparison.td` runs the same six fits and prediction exports, adding
+`estimates store` after each fit and a native `estimates table` in the authors'
+column order: blogit, bprobit, bOLS, bloghet, bprobhet, bOLShet. This is an
+application-generated comparison, unlike the optional development checker's
+joined display above. Report capture and comparison do not refit or change the
+active model: the last robust OLS fit and all prediction values remain intact.
+
+With `work/Nldata.csv` checksum-verified as above, use a fresh output directory:
+
+```sh
+repo="$PWD"
+stored_work=$(mktemp -d)
+cp "$work/Nldata.csv" "$stored_work/Nldata.csv"
+(cd "$stored_work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/stored_comparison.td" > stored.jsonl)
+Rscript examples/mma14p1binary/reference_comparison.R "$stored_work/Nldata.csv" \
+  "$stored_work/R_predictions.csv" > "$stored_work/R_comparison.csv"
+python3 examples/mma14p1binary/check_stored_comparison.py \
+  "$stored_work/R_comparison.csv" "$stored_work/R_predictions.csv" \
+  "$stored_work/stored.jsonl" "$stored_work/fishing_comparison_predictions.csv"
+printf 'Native comparison and reference outputs: %s\n' "$stored_work"
+```
+
+Run with `--text` instead for the native coefficient/statistic table, or use a
+no-argument terminal `run ".../stored_comparison.td"`, again from a fresh output
+directory. Native text and piped table bytes match; all JSON/text/piped prediction
+exports match byte-for-byte, including the previous non-stored workflow. The
+actual native six-column text table was inspected: requested order, labelled
+normal z versus OLS t(628), selected covariance, N630, descriptive likelihoods
+and OLS R² versus binary McFadden pseudo-R². Values display six decimals; this is
+not the author's exact three-decimal layout or Stata8 storage convention.
+
+The independent base-R4.6.1 reference/checker validates **all 94 quantities in the
+stored table**, including selected covariance, SE/statistic/tails, root MSE,
+residual df and likelihood, as well as all **630 source/design/prediction
+records** from the six fits. Exact sample/reference/covariance metadata and
+requested order are also checked. Fresh checksum-verified conversion and R
+references reproduce previous evidence byte-for-byte; statistical/design/tail
+tolerances are unchanged. Corruption probes reject fabricated tiny-tail zero,
+binary Student-t metadata, wrong sample positions/covariance/column order and
+mislabelled OLS likelihood.
+
+These are immutable session-local **reporting snapshots**, not restorable model
+caches. Stored reports survive data reloads/edits, refits and failed fits; active
+prediction/margins still use the ordinary current model. JSON retains selected
+covariance and fit-time sample positions/groups, not a current-data identity or
+staleness guarantee. Names are case-sensitive ASCII identifiers of 1–32 bytes;
+at most 32 reports, 1–8 explicit unique models per table, and 64 coefficients per
+report/union. Name collisions require an explicit drop; a failed multi-drop is
+atomic. WLS/GLS/IV, restore, disk persistence, implicit all/latest and formatting
+options are uninstalled. Missing terms are NA/null, not zero. No cross-model or
+robust LR inference is supplied. See `help estimates` and the
+[structured contract](../../docs/reference/command-results.md#named-fit-reports-and-comparison).
+No R/Python is required by the application, and no author data are committed.
+
 ## Native Table14.1 summaries
 
 `summary.td` prepares the same 630-person cohort and reports `charter`, `pcharter`,
@@ -309,7 +367,7 @@ checker enforce the exact textbook cohort; the native script's `isid` is a key
 guard, not a substitute for those full sample/reference checks.
 
 Remaining work includes other author exploratory/fitted-value summaries and
-native reusable named-fit/joined reporting. Table14.1 numerical validation does
+reporting beyond the bounded named-report comparison above. Table14.1 numerical validation does
 not complete §14.2 or the binary milestone.
 
 ## Native Figure14.1 SVG
