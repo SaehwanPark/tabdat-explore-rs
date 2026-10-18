@@ -1,14 +1,15 @@
 # Fishing-mode binary illustration: Cameron–Trivedi (2005), §14.2
 
-This bounded example validates the **classical and unclustered robust logit
-and probit coefficient columns of Table 14.2** (p. 465), under the explicit
+This bounded example validates the **classical and unclustered robust numerical
+logit, probit and OLS comparison in Table 14.2** (p. 465), under the explicit
 converged-information conventions below, and probability data underlying
 Figure 14.1 (p. 466). It adds a separately validated continuous average partial
 derivative with conditional-design delta-method uncertainty for each family. That effect
 is an extension, **not** a claimed published table result.
 
-It does not complete the entire illustration: the full cross-model comparison,
-remaining author outputs and the actual figure remain required work.
+It does not complete the entire illustration: remaining author outputs and the
+actual figure remain required work. Native reusable named-fit/joined-table
+commands are not supplied by this example.
 No author data or code is redistributed here.
 
 ## Source, sample and design
@@ -208,6 +209,57 @@ point, not a lagged Hessian; sandwich bread enters twice. Float64 preparation
 also does not emulate the author's float32 storage. These convention differences
 are explicit; no reference tolerance was widened to hide them. Robust support
 advances this subset, not all author output or the whole binary family.
+
+## Six-model numerical comparison and OLS fitted values
+
+`comparison.td` prepares the cohort once, fits classical logit/probit/OLS then
+robust logit/probit/OLS, and exports all six fits' predictions in one source-ID
+ordered CSV. The production app reports six native JSON/text fit results;
+neither R nor Python is required to fit, interpret those results or export.
+There is no hidden refit or dependency on a named-fit table command.
+
+From the repository root with `work` containing the checksum-verified
+`Nldata.csv` prepared above (fresh comparison export filename):
+
+```sh
+repo="$PWD"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/comparison.td" > comparison.jsonl)
+Rscript examples/mma14p1binary/reference_comparison.R "$work/Nldata.csv" \
+  "$work/R_comparison_predictions.csv" > "$work/R_comparison.csv"
+python3 examples/mma14p1binary/check_comparison.py \
+  "$work/R_comparison.csv" "$work/R_comparison_predictions.csv" \
+  "$work/comparison.jsonl" "$work/fishing_comparison_predictions.csv"
+```
+
+The optional development-only checker validates **94** six-model quantities
+(coefficients, full selected covariance, SEs, z/t statistics and tails,
+likelihoods and appropriate goodness-of-fit fields) and all **630** original
+source/outcome/design/prediction records. It then prints a joined native-value
+comparison as a validation convenience, **not a production estimate-table
+feature**. Base R4.6.1 `lm`/`logLik`/`vcov` and explicit HC1 matrix algebra
+independently validate OLS; binary references retain the analytic fixed-point
+convention above. Moderate values and predictions use 1e-10 absolute, prepared
+design 1e-12, and test tails 1e-10 relative plus `f64::MIN_POSITIVE`.
+
+| OLS quantity | Independent R reference |
+| --- | ---: |
+| Intercept / slope | 0.784154230742988 / -0.242913654440961 |
+| Classical SE, intercept / slope | 0.0134701118551607 / 0.0104328468939993 |
+| Robust HC1 SE, intercept / slope | 0.0119566488459203 / 0.00862919092660423 |
+| R² / Gaussian working-model log likelihood | 0.463304487997616 / -195.167320651517 |
+| Min / max linear fitted value | -0.202734122 / 1.307384388 |
+
+OLS is a linear probability model here, not Bernoulli ML: its `xb` fitted
+values are intentionally **not clipped to [0,1]** or relabeled probabilities.
+Classical covariance uses RSS/(N-K); robust HC1 uses N/(N-K), unlike binary ML's
+N/(N-1). OLS coefficient tests use t(628), not binary normal z. Its reported
+Gaussian working-density log likelihood uses ML variance RSS/N and does not
+supply a cross-family or robust LR test. OLS R² and binary McFadden pseudo-R²
+remain distinct measures. Classical/robust predictions agree exactly within
+each family; the six native results reproduce the numerical comparison under
+the documented float64/converged-information conventions, not exact historical
+storage or reusable report formatting. Figure14.1 rendering remains missing.
 
 ## Interpretation, numerical limits and remaining work
 

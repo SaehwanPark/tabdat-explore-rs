@@ -63,6 +63,88 @@ fn close(v: &Value, expected: f64) {
   assert!((actual - expected).abs() < 1e-10, "{actual} != {expected}");
 }
 
+#[test]
+fn six_model_example_runs_as_native_json_text_and_preserves_existing_export() {
+  let f = Fixture::new();
+  let mut source = String::from("source_row,mode,pcharter,ppier\n");
+  for i in 1..=40 {
+    let x = ((i * 7) % 17) as f64 / 5.0 - 1.6;
+    let x2 = ((i * 11) % 19) as f64 / 7.0 - 9.0 / 7.0;
+    let mode = if (((i * 13) % 37) as f64) < 18.0 + 4.0 * x - 3.0 * x2 {
+      4
+    } else {
+      2
+    };
+    writeln!(source, "{i},{mode},{},1", x.exp()).unwrap();
+  }
+  source.push_str("41,1,1,1\n");
+  fs::write(f.0.join("Nldata.csv"), &source).unwrap();
+  fs::write(
+    f.0.join("comparison.td"),
+    include_str!("../examples/mma14p1binary/comparison.td"),
+  )
+  .unwrap();
+  let rows = envelopes(&f.run(&["--json", "-f", "comparison.td"]));
+  let fits: Vec<_> = rows
+    .iter()
+    .filter(|row| {
+      matches!(
+        row["result_type"].as_str(),
+        Some("BinaryLogitResult" | "BinaryProbitResult" | "RegressionResult")
+      )
+    })
+    .map(|row| &row["data"])
+    .collect();
+  assert_eq!(fits.len(), 6);
+  for (i, family) in ["logit", "probit", "ols", "logit", "probit", "ols"]
+    .iter()
+    .enumerate()
+  {
+    assert_eq!(fits[i]["estimator"], *family);
+    assert_eq!(fits[i]["observation_count"], 40);
+    if i >= 3 {
+      for j in 0..2 {
+        assert_eq!(
+          fits[i]["coefficients"][j]["value"],
+          fits[i - 3]["coefficients"][j]["value"]
+        );
+      }
+      assert_eq!(fits[i]["log_likelihood"], fits[i - 3]["log_likelihood"]);
+    }
+  }
+  let export = f.0.join("fishing_comparison_predictions.csv");
+  let csv = fs::read_to_string(&export).unwrap();
+  assert_eq!(csv.lines().count(), 41);
+  for (index, line) in csv.lines().skip(1).enumerate() {
+    assert_eq!(
+      line.split(',').next().unwrap().parse::<usize>().unwrap(),
+      index + 1
+    );
+  }
+  fs::remove_file(&export).unwrap();
+  let text = f.run(&["--text", "-f", "comparison.td"]);
+  assert!(text.status.success());
+  let text = String::from_utf8(text.stdout).unwrap();
+  for label in [
+    "Binary logit maximum likelihood",
+    "Binary probit maximum likelihood",
+    "Regression:",
+    "Gaussian working-model log likelihood",
+  ] {
+    assert_eq!(text.matches(label).count(), 2);
+  }
+  let original_export = fs::read(&export).unwrap();
+  let collision = f.run(&["--json", "-f", "comparison.td"]);
+  assert!(!collision.status.success());
+  assert_eq!(fs::read(&export).unwrap(), original_export);
+  assert_eq!(fs::read_to_string(f.0.join("Nldata.csv")).unwrap(), source);
+  assert!(
+    !String::from_utf8(collision.stdout)
+      .unwrap()
+      .contains("\"result_type\":\"ExportResult\"")
+  );
+}
+
 fn check_wald(fit: &Value, statistic: f64, p_value: f64) {
   let wald = &fit["omnibus_wald"];
   assert_eq!(

@@ -154,7 +154,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
-   full OLS/binary comparison for §14.2, followed by the
+   Figure14.1 rendering and remaining Table14.1 outputs for §14.2, followed by the
    Fisher/factor/interaction and discrete-change foundations exact illustrations
    need. One-way clustered covariance is delivered as external method evidence,
    not a newly validated textbook illustration. Do not treat the binary family
@@ -184,8 +184,14 @@ independent-review convergence defect; absolute normalized full-step and score
 bounds fail rather than publish an unconverged fit. One-way clustered fits now
 use G/(G-1) cluster-score covariance and normal (not G-1 t) inference, with
 independent external Bangladesh method evidence in the coverage ledger. That
-is not survey inference or a small-cluster reliability guarantee. Full model
-comparison and the actual Figure 14.1 graphic remain unfinished. This advances
+is not survey inference or a small-cluster reliability guarantee. The native
+six-fit script now supplies the numerical classical/robust logit/probit/OLS
+comparison for Table14.2, with 94 quantities and every source/design/prediction
+record independently checked in R. OLS Gaussian working likelihood and unbounded
+linear fitted values are explicitly distinguished from Bernoulli probabilities.
+A joined comparison printed by the development-only checker is not native
+named-fit storage/table support. Remaining Table14.1/author outputs and the
+actual Figure14.1 graphic remain unfinished. This advances
 one textbook subset, not the full illustration or binary milestone; advancing
 from these classical slices did not complete IV or the binary family.
 
