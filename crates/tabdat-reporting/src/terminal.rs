@@ -87,6 +87,104 @@ fn optional_number(value: Option<f64>) -> String {
     .unwrap_or_else(|| "NA".to_owned())
 }
 
+fn poisson_covariance_note(robust: bool) -> &'static str {
+  if robust {
+    "independent-row score sandwich, N/(N-1), not OLS HC1"
+  } else {
+    "model-based inverse Poisson Fisher information, no N-K scaling"
+  }
+}
+
+fn poisson_estimates(estimates: &[tabdat_domain::PoissonEstimate]) -> String {
+  let mut output = String::from(
+    "Variable\tEstimate\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+  );
+  for c in estimates {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+      c.name.escape_debug(),
+      c.value,
+      c.standard_error,
+      optional_number(c.statistic),
+      optional_number(c.p_value),
+      optional_number(c.confidence_lower),
+      optional_number(c.confidence_upper)
+    )
+    .unwrap();
+  }
+  output.push_str(
+    "NA = unavailable or undefined; zero SE does not imply an exact confidence interval.\n",
+  );
+  output
+}
+
+fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
+  let mut output = format!(
+    "Poisson log-link regression ({})\nOutcome: {}; N = {}; count total (float64) = {}; zeros = {}\n",
+    poisson_covariance_note(r.robust),
+    r.outcome.escape_debug(),
+    r.observation_count,
+    r.count_sum,
+    r.zero_count
+  );
+  writeln!(
+    output,
+    "Candidate rows = {}; excluded missing/nonfinite = {}",
+    r.sample
+      .as_ref()
+      .map_or(r.observation_count, |s| s.total_observations),
+    r.sample.as_ref().map_or(0, |s| s.dropped_observations)
+  )
+  .unwrap();
+  writeln!(output,"Converged in {} information evaluations; max absolute unit-column-norm score = {}; full Newton step = {}",
+    r.iterations,r.max_abs_scaled_score,r.max_abs_scaled_newton_step).unwrap();
+  writeln!(
+    output,
+    "Log likelihood = {}; null log likelihood = {}; null model: {}",
+    r.log_likelihood,
+    r.null_log_likelihood,
+    if r.include_intercept {
+      "intercept-only estimated mean"
+    } else {
+      "unit mean (all coefficients zero), not a fitted intercept"
+    }
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "{}({}) = {}; p-value = {}",
+    if r.likelihood_ratio_p_value.is_some() {
+      "LR chi2"
+    } else {
+      "descriptive LR difference"
+    },
+    r.likelihood_ratio_df,
+    r.likelihood_ratio,
+    optional_number(r.likelihood_ratio_p_value)
+  )
+  .unwrap();
+  output.push_str(&binary_wald_note(r.omnibus_wald.as_ref()));
+  writeln!(
+    output,
+    "\nMcFadden pseudo R2 = {}; residual deviance = {}",
+    r.mcfadden_r_squared, r.residual_deviance
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "Pearson chi-square = {}; residual df (N-K) = {}; Pearson dispersion = {}",
+    r.pearson_chi_square, r.df_residual, r.pearson_dispersion
+  )
+  .unwrap();
+  output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference; model-based Poisson assumes variance=mean. Robust corrects variance misspecification under independent rows, NOT repeated-person/panel dependence.\n");
+  if r.robust {
+    output.push_str("LR p-value unavailable under robust QMLE inference.\n");
+  }
+  output.push_str(&poisson_estimates(&r.coefficients));
+  output
+}
+
 fn table(columns: &[String], rows: &[Vec<CellValue>]) -> String {
   let mut output = columns
     .iter()
@@ -890,6 +988,18 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "model-based covariance"
       ),
       logit_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      }
+    ),
+    ExecutionResult::Poisson(result) => poisson_report(result),
+    ExecutionResult::PoissonMarginalEffects(result) => format!(
+      "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
+      result.observation_count,
+      poisson_covariance_note(result.robust),
+      poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
       } else {

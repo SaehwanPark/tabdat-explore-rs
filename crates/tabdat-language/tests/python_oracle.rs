@@ -55,6 +55,26 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
+    // MIG-0017: native Poisson enables intercept-only fitting. Keep all three
+    // historical records intact and check the bounded acceptance/diagnostic delta.
+    if input == "poisson y" {
+      let Ok(tabdat_domain::Command::Poisson { command }) = result else {
+        panic!("intercept-only Poisson")
+      };
+      assert_eq!(command.outcome, "y");
+      assert!(command.predictors.is_empty());
+      assert!(command.include_intercept);
+      assert!(!command.robust);
+      assert!(command.cluster_variable.is_none());
+      continue;
+    }
+    if matches!(input, "poisson" | "poisson y x if y > 0") {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "poisson expects syntax: poisson <y> [<xvars>]"
+      );
+      continue;
+    }
     // MIG-0013: the installed AR extension adds only `ar` to these diagnostic
     // lists. Preserve the historical corpus and assert the exact new wording.
     if matches!(

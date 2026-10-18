@@ -385,7 +385,37 @@ fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
 }
 
 #[test]
-fn predict_discovery_uses_parser_spelling_without_promising_execution() {
+fn poisson_discovery_describes_bounded_native_execution_not_panel_robustness() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "poisson"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "poisson y [x1 x2] [, robust noconstant]"
+  );
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "poisson"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = envelope["data"]["text"].as_str().unwrap();
+  for phrase in [
+    "N/(N-1)",
+    "not Student t",
+    "clustered/panel inference",
+    "predict mean_visits, n",
+    "Legacy `cluster(var)`",
+  ] {
+    assert!(text.contains(phrase), "{phrase}");
+  }
+}
+
+#[test]
+fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "PREDICT"])
     .output()
@@ -397,14 +427,15 @@ fn predict_discovery_uses_parser_spelling_without_promising_execution() {
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | residuals | pr]"
+    "predict newvar [, xb | residuals | pr | n]"
   );
   assert_eq!(
     envelope["data"]["options"],
     serde_json::json!([
       {"name": "xb", "required": false},
       {"name": "residuals", "required": false},
-      {"name": "pr", "required": false}
+      {"name": "pr", "required": false},
+      {"name": "n", "required": false}
     ])
   );
   let output = tabdat_bin()
@@ -416,16 +447,17 @@ fn predict_discovery_uses_parser_spelling_without_promising_execution() {
   let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
   assert_eq!(envelope["data"]["text"], topic);
-  assert!(topic.contains("Linear fits support xb/residuals; logit supports pr/xb only"));
-  assert!(topic.contains("probit prediction"));
-  assert!(topic.contains("forms do not execute"));
+  assert!(topic.contains("Probit: pr (Gaussian probability)"));
+  assert!(topic.contains("Poisson: n (conditional mean exp(xb))"));
   assert!(topic.contains("Bare predict remains xb"));
+  assert!(topic.contains("Not installed: binary/Poisson residuals"));
   assert!(topic.contains("`probabilities` is not an accepted option spelling"));
   for source in [
     "predict fitted",
     "predict fitted, xb",
     "predict residual, residuals",
     "predict probability, pr",
+    "predict count_mean, n",
     "predict spillover, spatial_lag",
     "predict posterior, posterior_predictive std interval level(90)",
     "predict posterior, posterior_predictive saving(draws.parquet)",

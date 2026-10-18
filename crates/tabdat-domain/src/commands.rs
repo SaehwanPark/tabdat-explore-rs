@@ -226,7 +226,7 @@ pub enum Command {
   Logit { command: LogitCommand },
   /// Fit a probit regression model (execution is deferred).
   Probit { command: ProbitCommand },
-  /// Fit a Poisson regression model (execution is deferred).
+  /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
   /// Fit a negative binomial regression model (execution is deferred).
   Nbreg { command: NbregCommand },
@@ -560,19 +560,15 @@ pub struct ProbitCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `poisson` form retained for a later statistical runtime
-/// slice.
+/// Bounded unweighted log-link Poisson fit; cluster syntax is retained but
+/// execution rejects it until a separate clustered-inference slice.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoissonCommand {
-  /// The dependent variable.
   pub outcome: String,
-  /// Ordered predictor variables.
   pub predictors: Vec<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Independent-row score sandwich, corrected by N/(N-1).
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
-  /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
 
@@ -918,6 +914,8 @@ pub enum PredictKind {
   Residuals,
   /// Predicted probabilities for binary choice models.
   Pr,
+  /// Conditional mean exp(xb), requested by `n` after Poisson.
+  MeanCount,
   /// Predicted spatial lag for spatial models.
   SpatialLag,
   /// Posterior predictive draws for Bayesian models.

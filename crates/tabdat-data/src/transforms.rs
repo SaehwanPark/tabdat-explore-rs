@@ -4,6 +4,7 @@ use crate::*;
 enum PredictionLink {
   Linear,
   FiniteLinear,
+  Exponential,
   Logistic,
   /// Binary probit inverse link through the registered, engine-validated
   /// Gaussian UDF, so a probability column is bit-identical to the fit's
@@ -570,6 +571,24 @@ impl DuckDbBackend {
     self.add_prediction_column(dataset, prediction, link)
   }
 
+  /// Mean-count and finite-xb predictions share the established atomic stage.
+  pub fn add_poisson_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+    mean_count: bool,
+  ) -> Result<DatasetInfo, DataError> {
+    if prediction.residuals {
+      return Err(DataError);
+    }
+    let link = if mean_count {
+      PredictionLink::Exponential
+    } else {
+      PredictionLink::FiniteLinear
+    };
+    self.add_prediction_column(dataset, prediction, link)
+  }
+
   fn add_prediction_column(
     &mut self,
     dataset: &DatasetInfo,
@@ -618,6 +637,12 @@ impl DuckDbBackend {
       PredictionLink::FiniteLinear => {
         format!("CASE WHEN isfinite(({expression_sql})) THEN ({expression_sql}) ELSE NULL END")
       }
+      // Guard exp before evaluation: overflowing means are NULL, not an
+      // overflowing SQL expression that aborts publication. Underflow is zero.
+      PredictionLink::Exponential => format!(
+        "CASE WHEN isfinite(({expression_sql})) AND ({expression_sql}) <= {} THEN exp(({expression_sql})) ELSE NULL END",
+        finite_float_sql_literal(f64::MAX.ln())?
+      ),
       PredictionLink::Logistic => format!(
         "CASE WHEN NOT isfinite(({expression_sql})) THEN NULL WHEN ({expression_sql}) >= 0 THEN 1.0 / (1.0 + exp(-({expression_sql}))) ELSE exp(({expression_sql})) / (1.0 + exp(({expression_sql}))) END"
       ),

@@ -10,7 +10,7 @@ The product is not feature complete. A compiled command type is not evidence of 
 | --- | --- |
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
-| `tabdat-stats` | Pure Rust linear/binary-logit/probit estimation, covariance/inference and hypothesis utilities |
+| `tabdat-stats` | Pure Rust linear/binary-logit/probit/bounded-Poisson estimation, covariance/inference and hypothesis utilities |
 | `tabdat-io` | Local path/format and script I/O validation; complete staged SVG publication without replacing destinations |
 | `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and one registered scalar UDF (`tabdat_gauss_phi`, delegating to `tabdat-stats`' validated normal CDF); it depends on `tabdat-stats` only for that validated function, with no reverse edge |
 | `tabdat-execution` | Session coordination, data/statistical dispatch, script execution and generated SVG artifact coordination |

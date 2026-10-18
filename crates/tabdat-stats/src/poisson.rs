@@ -429,6 +429,9 @@ pub fn fit_poisson_with_options(
   ))
 }
 
+/// Pass the unmodified fitting problem alongside its result. Metadata and
+/// dimensions are checked, not a data fingerprint; the application retains this
+/// owned pair rather than reconstructing a design from current mutable data.
 pub fn poisson_average_marginal_effects(
   problem: &EstimationProblem,
   result: &PoissonResult,

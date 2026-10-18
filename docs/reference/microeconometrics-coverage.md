@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Poisson/NB/zero-inflated parser forms only | Poisson QMLE/NB, exposure/offset, hurdle/zero-inflated/mixture and other illustrated count models |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson, means/xb, deviance/Pearson diagnostics and retained-X continuous delta effects; validated Table20.5 Poisson portion | NB, exposure/offset, clustered/panel inference, count probabilities, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Panel/xtreg parser only | Unit/time declaration, gap/duplicate policy, FE/RE/between/differences and diagnostics |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -65,7 +65,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
-| MMA-COUNT | pp. 671–674, 692, RAND; `mma20p1count.asc` / `randdata.dta` | Planned | Identify Poisson/NB and richer count specifications, offsets and effects |
+| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson coefficient and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflow/source audit/R reference](../../examples/mma20p1count/README.md), 1,095 quantities/all source/design/mean/index records; NB, original-ID clustering, probabilities/Tables20.3–20.6 and richer counts remain required |
 | MMA-PANEL | pp. 708–715, PSID; `MOM.dat` | Planned | Verify unit/time keys, transformations, model comparisons and covariance |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
@@ -310,6 +310,40 @@ Missing seed rows (including simulation/Bayesian, measurement error and imputati
 are **un-inventoried required work**, not exclusions. Several locators may contain
 multiple analyses: split them into separately verifiable rows as they are inspected.
 Do not label the whole book covered until that inventory is complete.
+
+## MMA-COUNT: defined Poisson portion, not whole-illustration completion
+
+[PR #280](https://github.com/SaehwanPark/tabdat-explore-rs/pull/280) implements
+[`poisson.td`](../../examples/mma20p1count/poisson.td), the Poisson coefficients
+and first/second statistic columns of Table20.5 under the November2006 author
+program/output, not NB or the complete table. The author executable uses all five
+years despite a stale year2 comment: 20,190 original person-years minus four
+missing-education rows give 20,186 complete ASCII records. Original DTA row
+positions excluded are 9746/10153/10400/10859; prepared positions are not original
+or person IDs. Source checksums/converter/optional DTA audit are recorded in the
+[example](../../examples/mma20p1count/README.md). All 18 variables/order and exact
+counts match DTA after exclusion; predictor differences <5e-6 are ASCII export
+quantization, not a tolerance for fitting different inputs.
+
+The exact prepared float64 design is MDU on the 17 ordered source predictors
+and intercept, unweighted/no offset. N=20,186; count sum=57,746; zeros=6,308;
+maximum=77. Independent R4.6.1 Poisson/Fisher/score/delta reference validates
+1,095 coefficient/full-covariance/normal-CI/tail/LR/Wald/diagnostic/effect
+quantities and every field/position/mean/xb of every record, with the documented
+1e-10 ordinary, 1e-7 accumulated-total, 1e-12 design and relative-tail tolerances.
+Model-based inverse information has no N-K scaling; robust is N/(N-1), not HC1 or
+Pearson scaling. Robust LR p/reference are unavailable; selected-V Wald and
+coefficient inference are asymptotic chi-square/normal. Retained-X continuous
+column derivatives and descriptive deviance/Pearson dispersion are native
+validated extensions, not extra claimed book outputs or formal panel tests.
+
+The actual script has runtime/CLI schema, sample, failure/retention, prediction,
+output-collision and JSON/text/piped regression coverage. Repeated person-years
+require clustered inference for dependence: these two reproduced columns are
+**not panel-robust**. The ASCII omits original person IDs. Original-ID clustering,
+NB, offsets/exposure, probabilities/Table20.6, complete Tables20.3–20.6 and other
+count illustrations remain required. `estimates store` remains OLS/logit/probit
+only; no count fit restoration/persistence or general count test/lincom is claimed.
 
 ## Additional IV method evidence (not a textbook replication)
 

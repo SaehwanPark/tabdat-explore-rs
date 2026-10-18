@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-pub use tabdat_stats::{BinaryCluster, BinaryOmnibusWald, LogitEstimate};
+pub use tabdat_stats::{
+  BinaryCluster, BinaryOmnibusWald, LogitEstimate, PoissonEstimate, PoissonMarginalEffects,
+  PoissonOmnibusWald, PoissonResult,
+};
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
@@ -771,6 +774,10 @@ pub enum ExecutionResult {
   Probit(Box<tabdat_stats::BinaryMleResult>),
   /// Probit conditional-on-retained-X average partial effects and delta inference.
   ProbitMarginalEffects(Box<tabdat_stats::LogitMarginalEffects>),
+  /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
+  Poisson(Box<PoissonResult>),
+  /// Continuous retained-X derivatives with selected-covariance delta inference.
+  PoissonMarginalEffects(Box<PoissonMarginalEffects>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.

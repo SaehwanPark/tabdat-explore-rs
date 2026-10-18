@@ -319,7 +319,11 @@ fn model_fixture() -> Fixture {
 fn packaged_predict_examples_execute_through_inspection_and_export() {
   let fixture = model_fixture();
   let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
+  // model.csv supplies x/y; the count block has its own executable CLI fixture.
   let examples: Vec<_> = topic
+    .split("Count example:")
+    .next()
+    .unwrap()
     .lines()
     .filter_map(|line| line.strip_circumfix("- `", '`'))
     .collect();
