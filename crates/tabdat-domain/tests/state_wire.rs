@@ -48,6 +48,50 @@ fn domain_exchange_is_versioned_and_lossless() {
 }
 
 #[test]
+fn old_states_default_missing_report_registry_and_unknown_estimator_without_guessing() {
+  let empty = serde_json::to_value(ExecutionState::default()).unwrap();
+  assert!(empty.get("stored_estimates").is_none());
+  let decoded: ExecutionState = serde_json::from_value(empty).unwrap();
+  assert!(decoded.stored_estimates.is_empty());
+  let problem = tabdat_stats::EstimationProblem::new(
+    "y",
+    vec!["x".into()],
+    vec![1.0, 3.0, 2.0, 5.0],
+    vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]],
+  )
+  .unwrap();
+  let state = LinearRegressionState {
+    estimator: Some("ols".into()),
+    outcome: "y".into(),
+    predictors: vec!["x".into()],
+    predictor_design: problem.design_matrix.clone(),
+    include_intercept: true,
+    result: tabdat_stats::fit_least_squares(&problem).unwrap(),
+  };
+  let mut old = serde_json::to_value(state).unwrap();
+  old.as_object_mut().unwrap().remove("estimator");
+  let decoded: LinearRegressionState = serde_json::from_value(old.clone()).unwrap();
+  assert_eq!(decoded.estimator, None);
+  assert_eq!(serde_json::to_value(decoded).unwrap(), old);
+  for (request, effect) in [
+    (EstimatesCommand::Store("a".into()), CommandEffect::Control),
+    (
+      EstimatesCommand::Table(vec!["a".into()]),
+      CommandEffect::Read,
+    ),
+    (
+      EstimatesCommand::Drop(vec!["a".into()]),
+      CommandEffect::Control,
+    ),
+  ] {
+    let command = Command::Estimates { command: request };
+    assert_eq!(command.name(), "estimates");
+    assert!(command.requirements().is_empty());
+    assert_eq!(command.effects(), &[effect]);
+  }
+}
+
+#[test]
 fn state_has_one_optional_model_and_panel_contract() {
   let mut state = ExecutionState::default();
   assert!(state.estimation.is_none());

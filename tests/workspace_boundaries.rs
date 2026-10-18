@@ -133,8 +133,19 @@ fn mcp_execute_returns_the_same_owned_count_as_the_coordinator() {
 fn reporting_effects_preserve_all_pinned_python_entries() {
   let oracle: serde_json::Value =
     serde_json::from_str(include_str!("fixtures/python-command-effects-v1.json")).unwrap();
-  let actual =
+  let mut actual =
     serde_json::to_value(tabdat_reporting::catalog::command_effect_catalog_result()).unwrap();
+  let entries = actual["commands"].as_array_mut().unwrap();
+  let extension: Vec<_> = entries
+    .iter()
+    .filter(|entry| entry["name"] == "estimates")
+    .collect();
+  assert_eq!(
+    extension,
+    vec![&serde_json::json!({"name":"estimates","effects":["read","control"]})]
+  );
+  // MIG-0016 adds one native reporting command, not a change to pinned entries.
+  entries.retain(|entry| entry["name"] != "estimates");
   assert_eq!(actual, oracle["data"]);
 }
 

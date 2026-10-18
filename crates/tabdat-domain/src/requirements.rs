@@ -10,6 +10,7 @@ impl Command {
     match self {
       Self::Help { .. }
       | Self::Status
+      | Self::Estimates { .. }
       | Self::Exit
       | Self::Describe
       | Self::Doctor

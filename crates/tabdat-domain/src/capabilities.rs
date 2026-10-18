@@ -89,6 +89,7 @@ impl Command {
       Command::Bar { .. } => "bar",
       Command::BayesPlot { .. } => "bayesplot",
       Command::Estat { .. } => "estat",
+      Command::Estimates { .. } => "estimates",
       Command::Ttest { .. } => "ttest",
       Command::By { .. } => "by",
       Command::Collapse { .. } => "collapse",
@@ -132,6 +133,10 @@ impl Command {
     match self {
       Command::Help { .. } => &[CommandEffect::Control],
       Command::Status => &[CommandEffect::Read],
+      Command::Estimates { command } => match command {
+        crate::EstimatesCommand::Table(_) => &[CommandEffect::Read],
+        _ => &[CommandEffect::Control],
+      },
       Command::Exit => &[CommandEffect::Control],
       Command::Describe => &[CommandEffect::Read],
       Command::Doctor => &[CommandEffect::Read],

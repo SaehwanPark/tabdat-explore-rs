@@ -332,6 +332,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
   match normalized_name.as_str() {
     "help" => parse_help(body),
     "status" => parse_status_command(body),
+    "estimates" => parse_estimates_command(body),
     "describe" => {
       if body.is_empty() {
         Ok(Command::Describe)
@@ -473,6 +474,30 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     }
     other => Err(ParseError::new(format!("unknown command: {other}"))),
   }
+}
+
+fn parse_estimates_command(body: &str) -> Result<Command, ParseError> {
+  let tokens: Vec<_> = body
+    .split(is_command_whitespace)
+    .filter(|s| !s.is_empty())
+    .collect();
+  let syntax = || {
+    ParseError::new(
+      "estimates expects store NAME, table NAME [NAME ...], or drop NAME [NAME ...]; options/restore are not installed",
+    )
+  };
+  let Some(action) = tokens.first() else {
+    return Err(syntax());
+  };
+  let names: Vec<String> = tokens[1..].iter().map(|s| (*s).to_owned()).collect();
+  let command = match action.to_ascii_lowercase().as_str() {
+    "store" if names.len() == 1 => EstimatesCommand::Store(names[0].clone()),
+    "table" => EstimatesCommand::Table(names),
+    "drop" => EstimatesCommand::Drop(names),
+    _ => return Err(syntax()),
+  };
+  command.validate().map_err(ParseError::new)?;
+  Ok(Command::Estimates { command })
 }
 
 fn parse_status_command(body: &str) -> Result<Command, ParseError> {

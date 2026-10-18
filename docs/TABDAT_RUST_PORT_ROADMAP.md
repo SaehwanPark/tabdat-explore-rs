@@ -154,9 +154,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
-   native reusable fit-comparison/reporting and remaining author outputs for
-   §14.2, followed by the Fisher/factor/interaction and discrete-change foundations
-   exact illustrations need. One-way clustered covariance is delivered as external method evidence,
+   remaining author outputs for §14.2, followed by the Fisher/factor/interaction
+   and discrete-change foundations exact illustrations need. Bounded native
+   OLS/logit/probit named-report comparison is delivered, not fit restoration or
+   reporting for every future estimator. One-way clustered covariance is external method evidence,
    not a newly validated textbook illustration. Do not treat the binary family
    as one oversized PR or these classical logit/probit slices as completion.
 
@@ -189,8 +190,14 @@ six-fit script now supplies the numerical classical/robust logit/probit/OLS
 comparison for Table14.2, with 94 quantities and every source/design/prediction
 record independently checked in R. OLS Gaussian working likelihood and unbounded
 linear fitted values are explicitly distinguished from Bernoulli probabilities.
-A joined comparison printed by the development-only checker is not native
-named-fit storage/table support. A native SVG scatter/three-line overlay now
+The original development-only checker's joined display remains only a validation
+convenience. A separate native named-report workflow now stores the selected
+OLS/logit/probit coefficients, covariance and fit-time sample provenance, and
+renders the six requested columns without refitting. All 94 table quantities
+match independent R; normal binary versus t-based OLS inference and distinct
+likelihood/R² conventions remain explicit. Reports survive edits/reloads/refits
+but cannot restore fit caches or establish current-data staleness/identity.
+A native SVG scatter/three-line overlay now
 renders Figure14.1's 630 outcomes and 1,890 independently checked R prediction
 vertices, including actual geometry at 1e-8 pixel absolute tolerance. The visible
 OLS range stays unbounded; layout/fonts and deterministic y-only display jitter
@@ -201,7 +208,7 @@ summaries now run through native conditional summarize: all 60 quantities and
 630 sample/design records independently match base R, with sample n−1 SD and
 unchanged prepared source order. This is three ordered summary blocks, not a
 joined-table command. Other author exploratory/fitted-value summaries and
-reusable reporting foundations remain unfinished. This advances
+reporting beyond the bounded named-report subset remain unfinished. This advances
 one textbook subset, not the full illustration or binary milestone; advancing
 from these classical slices did not complete IV or the binary family.
 

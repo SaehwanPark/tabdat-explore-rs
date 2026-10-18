@@ -59,7 +59,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — Table14.1 summaries, six-model numerical comparison, binary AME/all-row predictions and native Figure14.1 SVG data/geometry validated | Exact contract below; other author outputs and reusable reporting remain; no native stored-fit table claim |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — Table14.1 summaries, native six-model named-report comparison, binary AME/all-row predictions and Figure14.1 SVG data/geometry validated | Exact contract below; other author outputs and broader reporting remain; no fit-restore or full-illustration claim |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
@@ -180,8 +180,25 @@ provenance and redistribution terms before adding fixtures.
   invalid data/keys and file-collision preservation. This uses three ordered
   summary blocks, not a joined table, and introduces no engine/schema change,
   production R/Python dependency or source-data redistribution.
+- **Native Table14.2 comparison:** [PR #278](https://github.com/SaehwanPark/tabdat-explore-rs/pull/278)
+  adds `stored_comparison.td` and immutable named-report store/table/drop commands.
+  The native requested six-column table independently matches all 94 R4.6.1
+  quantities, selected covariance/normal-versus-t/likelihood/sample metadata and
+  all 630 source/design/prediction records. Fresh checksum-verified conversion
+  and regenerated R references are byte-identical; unchanged absolute/relative
+  tolerances. Actual native text table inspected; text/piped table and all
+  JSON/text/piped prediction bytes match, including the previous sequential-fit
+  workflow. Corruption probes reject zeroed tiny tails, binary t metadata,
+  wrong covariance/sample positions/order and mislabelled OLS likelihood.
+  Native runtime/CLI/serde tests cover owned snapshots, reload/refit/failure,
+  alignment/missing terms, registry limits/atomicity and zero-variance nulls.
+  Clustered OLS t(G−1) is distinguished from residual df and binary normal z.
+  This is report-only storage with selected covariance and fit-time sample
+  positions, not restore, persistence, current-data identity/staleness claims,
+  arbitrary post-estimation or WLS/GLS/IV report support. Other estimator families
+  will need their own explicit reporting contracts as delivered.
 - **Still required:** other author exploratory/fitted-value summary outputs,
-  native reusable reporting foundations, plus other exact binary illustrations and needed
+  broader reporting, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
   This is neither complete binary-family nor full-book validation.

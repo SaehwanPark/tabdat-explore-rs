@@ -135,6 +135,8 @@ pub enum RuntimeError {
   ExportParentFailed { path: PathBuf },
   /// DuckDB could not write the active relation to the export destination.
   ExportFailed { path: PathBuf },
+  /// A named report request failed without changing registry or active state.
+  EstimatesFailed { message: String },
   /// The bounded scatter request or selected numeric data could not be rendered.
   ScatterFailed { message: String },
   /// A complete SVG could not be published without replacing a destination.
@@ -615,6 +617,7 @@ impl fmt::Display for RuntimeError {
         path.display()
       ),
       Self::ExportFailed { path } => write!(formatter, "export failed: {}", path.display()),
+      Self::EstimatesFailed { message } => write!(formatter, "estimates: {message}"),
       Self::ScatterFailed { message } => write!(formatter, "scatter: {message}"),
       Self::PlotWriteFailed { path, message } => write!(
         formatter,

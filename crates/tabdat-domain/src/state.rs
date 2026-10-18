@@ -117,6 +117,9 @@ pub enum EstimationFamily {
 /// Owned post-estimation cache for the executable linear OLS/2SLS paths.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinearRegressionState {
+  /// Commanded estimator provenance; old snapshots must not be guessed as OLS.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub estimator: Option<String>,
   pub outcome: String,
   pub predictors: Vec<String>,
   pub predictor_design: Vec<Vec<f64>>,
@@ -209,6 +212,9 @@ pub struct ExecutionState {
   pub last_operation: Option<String>,
   pub last_materialization_reason: Option<MaterializationReason>,
   pub estimation: Option<EstimationState>,
+  /// Reporting snapshots only; independent of the active estimator and data.
+  #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+  pub stored_estimates: BTreeMap<String, crate::EstimateSnapshot>,
 }
 
 impl EstimationState {

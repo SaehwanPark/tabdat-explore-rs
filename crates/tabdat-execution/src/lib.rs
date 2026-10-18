@@ -13,6 +13,7 @@ use tabdat_language::script::{
   parse_control_flow_directive, parse_script_directive, read_script,
 };
 mod binary;
+mod estimates;
 mod row_conversion;
 use row_conversion::*;
 mod inspection;
@@ -35,6 +36,7 @@ pub struct Session {
   named_tables: HashMap<String, DatasetInfo>,
   label_metadata: LabelMetadata,
   estimation: Option<EstimationState>,
+  stored_estimates: BTreeMap<String, EstimateSnapshot>,
 }
 
 impl Session {
@@ -47,6 +49,7 @@ impl Session {
       named_tables: HashMap::new(),
       label_metadata: LabelMetadata::default(),
       estimation: None,
+      stored_estimates: BTreeMap::new(),
     }
   }
   /// Execute one command supported by this bounded runtime slice.
@@ -61,6 +64,7 @@ impl Session {
         has_header,
       } => self.execute_use(source, execution_mode, lazy_engine, delimiter, has_header),
       Command::Status => Ok(self.execute_status()),
+      Command::Estimates { command } => self.execute_estimates(&command),
       Command::Describe => self.execute_describe(),
       Command::Count => self.execute_count(),
       Command::CountQuery { condition } => self.execute_count_query(condition),
@@ -155,6 +159,7 @@ impl Session {
         .collect(),
       labels: self.label_metadata.clone(),
       estimation: self.estimation.clone(),
+      stored_estimates: self.stored_estimates.clone(),
       ..ExecutionState::default()
     }
   }

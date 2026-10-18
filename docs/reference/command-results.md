@@ -6,6 +6,7 @@ source and fixtures below are relative to the repository root; use in-session
 `help <command>` for syntax. This is not full-command JSON or parser-catalog support.
 
 - [Session status](#session-status)
+- [Named fit reports and comparison](#named-fit-reports-and-comparison)
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
@@ -35,6 +36,7 @@ Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
 supports use, describe, count, codebook, summarize, missing, tabulate,
 generate/replace, save/export, bounded SVG scatter artifact metadata,
+`estimates store/table/drop` reporting snapshots,
 head/tail, `estat vif/ar/overid/endogenous` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
@@ -59,6 +61,69 @@ prediction eligibility. `linear_model` remains linear-only and is null after log
 probit;
 its existing fields are unchanged. Status is not an automatic refit/stale flag and
 does not invent covariance, operation or materialization tracking. See `help status`.
+
+## Named fit reports and comparison
+
+`estimates store NAME` snapshots a successful current unweighted OLS, logit or
+probit fit into a session-local report registry. `estimates table NAME [NAME ...]`
+returns the explicitly requested columns in that order; `estimates drop NAME
+[NAME ...]` removes reports only. Names are case-sensitive ASCII identifiers of
+1–32 bytes. At most 32 stored reports, 64 coefficients per report, 1–8 unique
+explicit names per table and a 64-name coefficient union. There is no implicit
+all/latest, silent overwrite, wildcard, restore, persistence or formatting option.
+For intentional reuse, explicitly drop a name first. Missing/duplicate names and
+multi-drop failures validate before any registry mutation. WLS/GLS/IV, missing
+estimator provenance and ambiguous duplicate coefficient names fail explicitly.
+
+CLI-v1 adds three result types, with the existing envelope version/shapes unchanged:
+
+- `EstimateStoreResult`: `name`, `estimator`, `stored_count`.
+- `EstimateDropResult`: requested `names` and remaining `stored_count`.
+- `EstimateTableResult`: `parameter_names` (first-seen union) and `models` (ordered
+  immutable `EstimateSnapshot` records). Each model contains `name`, `estimator`,
+  `outcome`, `predictors`, `include_intercept`, selected `covariance` label,
+  nullable `cluster_variable`/`cluster_count`, `covariance_parameter_names`, full
+  `covariance_matrix`, and `coefficients` with name/value/SE/statistic/p-value.
+  It also contains `observation_count`, nullable binary `event_count`, full
+  `sample` (fit-time retained candidate indices, total/dropped counts, weights
+  and cluster groups), `reference_distribution`, nullable
+  `inference_degrees_of_freedom`, `log_likelihood`/`log_likelihood_convention`,
+  OLS `r_squared`/`root_mse`/`df_residual`, and binary `mcfadden_r_squared`.
+  Inapplicable/undefined/nonfinite optional quantities are null, not zero.
+
+Coefficients and covariance are copied from the selected fit, never refitted or
+reinferred. Binary reference is `asymptotic_standard_normal` with null inference
+DF; OLS is `student_t` with residual DF except clustered OLS uses G−1.
+`df_residual` is separately retained and must not be substituted for G−1.
+Covariance labels match the original fit results: linear nonrobust/robust/cluster,
+binary model-based information or N/(N−1)/G/(G−1) sandwich. OLS likelihood convention
+is `gaussian_working_model_ml_variance_rss_over_n`, binary is `bernoulli`.
+Zero/nonfinite OLS variance has null likelihood/convention. OLS R² and binary
+McFadden pseudo-R² are distinct; no cross-family or robust LR test is implied.
+
+Terminal output aligns exact coefficient names, displaying coefficient/statistic
+rows, model/sample counts and conventions, with six-decimal tab-separated values.
+Missing terms are NA, not invented zero coefficients; JSON keeps full precision,
+SEs/p-values/covariance/sample provenance. Different outcomes/samples are allowed
+and disclosed; equal N is not proof of identical rows. Fit-time sample positions
+are not current-data identities, fingerprints or automatic staleness guarantees.
+Review sample/group/name metadata before sharing reports.
+
+Store/table/drop do not change active estimation, predictions, AME, data, labels
+or row order and require no backend reads/initialization. Reports survive data
+reloads/edits, successful/failed refits and active-model invalidation, but do not
+restore model caches. Failed refits still clear active estimation under existing
+semantics. Domain `ExecutionState.stored_estimates` defaults empty and is omitted
+when empty; retained linear state adds optional `estimator` provenance. Old states
+remain readable with unknown estimator provenance, never guessed to be OLS.
+This adds no status staleness flag or saved-dataset registry metadata.
+
+The [native Table14.2 workflow and independent R reference](../../examples/mma14p1binary/README.md)
+validate six columns/all 94 comparison quantities and all 630 prediction/sample
+records; tests cover alignment, immutable ownership, samples, inference DF,
+missing/zero-variance terms, limits, failure atomicity and script/terminal/JSON.
+This bounded reporting subset is not full Stata estimates parity, stored-model
+prediction, disk persistence or whole-illustration completion.
 
 ## Binary logit/probit and continuous marginal effects
 

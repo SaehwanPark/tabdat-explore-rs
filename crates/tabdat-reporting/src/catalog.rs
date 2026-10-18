@@ -28,6 +28,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "elasticnet",
   "encode",
   "estat",
+  "estimates",
   "exit",
   "export",
   "generate",
@@ -210,6 +211,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "estat".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read, CommandEffect::Control],
+      name: "estimates".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Control],
@@ -896,6 +901,16 @@ fn get_command_schema(
         },
       ],
       syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid | estat endogenous | estat margins".to_string(),
+    }),
+    "estimates" => Ok(CommandSchemaResult {
+      arguments: vec![
+        ArgumentDescriptor { name: "action".into(), required: true },
+        ArgumentDescriptor { name: "names".into(), required: true },
+      ],
+      help_topic,
+      name: "estimates".into(),
+      options: vec![],
+      syntax: "estimates store NAME | estimates table NAME [NAME ...] | estimates drop NAME [NAME ...]".into(),
     }),
     "exit" => Ok(CommandSchemaResult {
       arguments: vec![],
@@ -2101,7 +2116,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 81);
+    assert_eq!(catalog.commands.len(), 82);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2144,7 +2159,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 81);
+    assert_eq!(effects.commands.len(), 82);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());

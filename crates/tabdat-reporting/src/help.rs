@@ -28,6 +28,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "encode",
   "estat",
   "estat_report",
+  "estimates",
   "exit",
   "export",
   "generate",
@@ -118,6 +119,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "encode" => Some(include_str!("help/topics/encode.md")),
     "estat" => Some(include_str!("help/topics/estat.md")),
     "estat_report" => Some(include_str!("help/topics/estat_report.md")),
+    "estimates" => Some(include_str!("help/topics/estimates.md")),
     "exit" => Some(include_str!("help/topics/exit.md")),
     "export" => Some(include_str!("help/topics/export.md")),
     "generate" => Some(include_str!("help/topics/generate.md")),
@@ -183,7 +185,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 82);
+    assert_eq!(available_help_topics().len(), 83);
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");

@@ -23,7 +23,9 @@ fn cli_json_lists_commands() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 81);
+  assert_eq!(commands.len(), 82);
+  let estimates = commands.iter().find(|c| c["name"] == "estimates").unwrap();
+  assert_eq!(estimates["help_topic"], "estimates");
 
   // Check alphabetical order
   let names: Vec<&str> = commands
@@ -86,7 +88,9 @@ fn cli_json_lists_command_effects() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 81);
+  assert_eq!(commands.len(), 82);
+  let estimates = commands.iter().find(|c| c["name"] == "estimates").unwrap();
+  assert_eq!(estimates["effects"], serde_json::json!(["read", "control"]));
 
   let summarize_entry = commands.iter().find(|c| c["name"] == "summarize").unwrap();
   assert_eq!(summarize_entry["effects"], serde_json::json!(["read"]));
