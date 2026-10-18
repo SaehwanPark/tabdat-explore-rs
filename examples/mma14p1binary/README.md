@@ -1,13 +1,15 @@
 # Fishing-mode binary illustration: Cameron–Trivedi (2005), §14.2
 
-This bounded example reproduces the **classical logit and probit columns of
-Table 14.2** (p. 465) and the logit probability data underlying Figure 14.1
-(p. 466). It adds a separately validated continuous average partial derivative
-with conditional-design delta-method uncertainty for each family. That effect
+This bounded example validates the **classical and unclustered robust logit
+and probit coefficient columns of Table 14.2** (p. 465), under the explicit
+converged-information conventions below, and probability data underlying
+Figure 14.1 (p. 466). It adds a separately validated continuous average partial
+derivative with conditional-design delta-method uncertainty for each family. That effect
 is an extension, **not** a claimed published table result.
 
-It does not complete the entire illustration: robust logit/probit columns,
-the cross-model comparison and the actual figure remain required work.
+It does not complete the entire illustration: the full cross-model comparison,
+remaining author outputs (including robust omnibus Wald tests) and the actual
+figure remain required work.
 No author data or code is redistributed here.
 
 ## Source, sample and design
@@ -131,12 +133,75 @@ synthetic references in `crates/tabdat-stats` and `crates/tabdat-runtime` use
 preservation and malformed/incomplete/empty-input failure without publishing over
 an existing destination.
 
+## Unclustered robust covariance and reproducible reference
+
+`robust_logit.td` and `robust_probit.td` repeat the exact preparation above with
+`, robust`. They preserve the same coefficients, sample and predictions. The
+covariance is `N/(N-1) * B * sum(s_i s_i') * B`, where `s_i` is the individual
+score and `B` is inverse observed information at the converged fit (equal to
+inverse Fisher for logit). The [Stata ML correction](https://www.stata.com/manuals/u20.pdf)
+(§20.22.2) is **not** OLS HC1's N/(N-K). Independent observations are assumed;
+this is not cluster/survey inference, a causal estimand, or protection against a
+wrong conditional-mean interpretation.
+
+Coefficient and retained-X delta-AME inference remain asymptotic normal. JSON
+labels both fit and margins `robust_sandwich_n_over_n_minus_1`. The LR statistic,
+restriction count and pseudo-R² remain descriptive; **LR p-value and reference
+are null**. No robust omnibus Wald test is supplied.
+
+With `work` set to a directory containing the checksum-verified `Nldata.csv`
+acquired above, run from the repository root (fresh robust output filenames):
+
+```sh
+repo="$PWD"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/robust_logit.td" > robust_logit.jsonl)
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/robust_probit.td" > robust_probit.jsonl)
+Rscript crates/tabdat-stats/tests/fixtures/binary_robust_reference.R \
+  "$work/Nldata.csv" > "$work/robust_reference.csv"
+python3 examples/mma14p1binary/check_robust_reference.py \
+  "$work/robust_reference.csv" "$work/robust_logit.jsonl" "$work/robust_probit.jsonl"
+Rscript examples/mma14p1binary/reference_logit.R "$work/Nldata.csv" \
+  "$work/R_robust_logit.csv" "$work/fishing_robust_logit_predictions.csv"
+Rscript examples/mma14p1binary/reference_probit.R "$work/Nldata.csv" \
+  "$work/R_robust_probit.csv" "$work/fishing_robust_probit_predictions.csv"
+```
+
+The R 4.6.1 script independently computes the scores, converged information,
+sandwich and full delta gradients; it also generates the committed synthetic
+CSV reference when run without a data argument. The standard-library Python
+checker is development-only and compares all **44** coefficient/covariance/AME
+quantities; R's existing prediction checkers verify all 630 source-row IDs,
+outcomes, designs, probabilities and indices. Neither tool is needed at runtime.
+Tolerances remain 1e-10 absolute for moderate outputs and 1e-10 relative plus
+`f64::MIN_POSITIVE` for test probabilities. Native synthetic tests additionally
+cover both families with/without intercept, one/two predictors, intercept-only
+models, predictor units, invalid outcomes and unsupported cluster/weight designs.
+
+| Robust quantity | Independent R fixed-point reference |
+| --- | ---: |
+| Logit intercept / slope SE | 0.147347754734682 / 0.130755606121941 |
+| Logit continuous AME SE | 0.00570499760609184 |
+| Probit intercept / slope SE | 0.0794501824989468 / 0.0692948032742171 |
+| Probit continuous AME SE | 0.00568139267322038 |
+
+Rounded Table 14.2 coefficient/z entries agree. This is **not** an exact replay
+of Stata 8's stored information: its reported probit robust SEs are
+0.0794429/0.0692881, versus the converged-information values above. As for the
+classical probit reference, the target is the independently validated fixed
+point, not a lagged Hessian; sandwich bread enters twice. Float64 preparation
+also does not emulate the author's float32 storage. These convention differences
+are explicit; no reference tolerance was widened to hide them. Robust support
+advances this subset, not all author output or the whole binary family.
+
 ## Interpretation, numerical limits and remaining work
 
-Both families are unweighted independent-Bernoulli maximum likelihood, normal
-coefficient/AME inference and asymptotic chi-square LR inference, **without
-N-K covariance scaling**. The logit reports inverse-Fisher covariance; the
-probit reports the inverse of the per-observation observed information at the
+Both default fits are unweighted independent-Bernoulli maximum likelihood,
+normal coefficient/AME inference and asymptotic chi-square LR inference,
+**without N-K covariance scaling**. The robust variants follow the sandwich
+and suppressed-LR-inference contract above. The default logit reports inverse-Fisher
+covariance; the default probit reports inverse per-observation observed information at the
 converged fit, computed from the converged QR. With an intercept the LR null
 estimates a constant probability; without it the zero-coefficient null is
 probability 0.5.
@@ -169,7 +234,7 @@ explicit error, including extreme finite designs without adequate absolute
 numerical resolution. Identified models with saturated outlier probabilities
 are not rejected merely because probabilities round to zero/one.
 
-Robust/cluster/weighted/survey forms, categorical/factor/interactions and
+Cluster/weighted/survey forms, categorical/factor/interactions and
 discrete changes with uncertainty, prediction intervals, general `lincom`/`test`
 after either family and rendered graphics are not delivered by this slice. They
 remain required where specified by the roadmap/illustrations; neither this

@@ -1,12 +1,23 @@
 # probit
 
 Installed syntax:
-`probit y x1 x2 [, noconstant]`
+`probit y x1 x2 [, robust noconstant]`
 
 Fit an unweighted independent-Bernoulli binary probit model. Reports model-based
 inverse observed-information (OIM) covariance from Newton steps, coefficient
 standard errors, normal z tests/95% intervals, log likelihood, LR chi-square and
-McFadden pseudo-R². No N-K covariance scaling or Student-t inference is used.
+McFadden pseudo-R². No N-K covariance scaling or Student-t inference is used
+for the default model-based fit.
+
+With `, robust`, the same MLE uses an unclustered score-sandwich covariance
+with N/(N-1) scaling (the ML convention, **not** linear HC1's N/(N-K)). Its
+bread is inverse observed information at the converged fit, not Fisher
+information or a penultimate-iterate Hessian. Coefficient and retained-design
+`estat margins` inference use this covariance with normal 95% intervals.
+Observations must be independent; this is not cluster/survey inference or
+protection against a wrong conditional-mean interpretation. Ordinary LR p-values
+are suppressed: the likelihood difference/pseudo-R² are descriptive, and no
+robust omnibus Wald test is supplied.
 
 Workflow (after loading numeric data):
 - `probit insured age bmi`
@@ -40,10 +51,11 @@ Convergence and supported limits:
   designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Robust/cluster forms still parse but explicitly fail. Weighted/survey probit,
+- Cluster forms still parse but explicitly fail. Weighted/survey probit,
   prediction intervals and general `lincom`/`test` after probit are not
-  installed. Normal coefficient inference and the overall LR test are reported
-  directly by `probit`; do not substitute linear t/F inference.
+  installed. Normal coefficient inference and (for model-based fits only) the
+  overall LR test are reported directly by `probit`; do not substitute linear
+  t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryProbitResult`; `estat margins` returns
   `ProbitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.

@@ -62,23 +62,33 @@ does not invent covariance, operation or materialization tracking. See `help sta
 
 ## Binary logit/probit and continuous marginal effects
 
-`logit y x1 ... [, noconstant]` uses an unweighted independent-Bernoulli model.
+`logit y x1 ... [, robust noconstant]` fits an unweighted Bernoulli logit model.
 Outcome/predictor columns must be numeric. SQL NULL/nonfinite model values are
 excluded together; the retained outcome must contain both exact 0/1 classes.
 Other finite outcome values are errors, not silently recoded. Parameter order is
 intercept first (if included), then declared predictor columns; names are unique.
 A new fit attempt clears prior estimation state even if validation/estimation fails,
-without changing data/labels. Parsed robust/cluster forms explicitly fail.
+without changing data/labels. Parsed cluster forms explicitly fail.
 
 CLI-v1 `BinaryLogitResult` includes `estimator: "logit"`, outcome/predictors,
 intercept/N/event counts, `sample` with exact retained indices, `coefficients`,
 `covariance_matrix`, log/null likelihoods, LR statistic/df/p/reference and McFadden
-pseudo-R². Covariance is `model_based_fisher_information`, with **no N-K scaling**.
+pseudo-R². Default covariance is `model_based_fisher_information`, with **no N-K scaling**.
 Each coefficient has `name`, `value`, `standard_error`, normal `statistic`/`p_value`
 and `confidence_lower`/`confidence_upper`; `confidence_level` is fixed at 95.
 `reference_distribution` is `asymptotic_standard_normal`, not Student t. The LR
 reference is asymptotic chi-square: estimated constant-probability null with an
 intercept, otherwise probability 0.5; intercept-only fits have df 0 and null LR p.
+
+With `, robust`, `covariance` is `robust_sandwich_n_over_n_minus_1`: the
+unclustered sandwich of individual scores with converged observed-information
+bread and **N/(N-1)** scaling, not OLS HC1's N/(N-K). Logit's observed and Fisher
+information coincide. Coefficients, sample, likelihoods and predictions are
+unchanged; normal coefficient and conditional-X delta-AME inference use the
+selected covariance. `likelihood_ratio_p_value` and
+`likelihood_ratio_reference_distribution` are **null** for robust fits: LR/df
+and pseudo-R² remain descriptive, not robust omnibus inference. No robust
+omnibus Wald test, cluster/survey inference or weight support is implied.
 
 Only successful finite, numerically identified fits produce results. `converged`,
 `iterations` (information evaluations), `convergence_coordinate_system:
@@ -114,11 +124,14 @@ rescan/refit the model. These are not automatic discrete changes or interaction
 chain rules. `lincom`/`test` after logit are explicitly unsupported rather than
 silently using linear Student-t/F inference.
 
-`probit y x1 ... [, noconstant]` shares the whole contract above with these
+`probit y x1 ... [, robust noconstant]` shares the whole contract above with these
 family deltas. The engine fits Newton steps against the per-observation observed
-information with a per-iteration Fisher fallback, and the reported covariance is
+information with a per-iteration Fisher fallback, and the default covariance is
 `model_based_observed_information` (inverse observed information at the
-converged fit from the converged QR), not the logit's Fisher matrix. CLI-v1
+converged fit from the converged QR), not the logit's Fisher matrix. Robust
+fits use that observed-information inverse as sandwich bread, not Fisher or
+penultimate-iterate information; their covariance label and null LR-inference
+fields follow the robust contract above. CLI-v1
 returns `BinaryProbitResult` (`estimator: "probit"`, same field layout, same
 convergence fields) and `ProbitMarginalEffectsResult` after `estat margins`
 (`estimator: "probit"`; margins average `beta_j*phi(beta_0 + beta'x)` over the

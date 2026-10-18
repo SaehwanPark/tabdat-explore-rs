@@ -119,6 +119,58 @@ fn independent_r_references_cover_robust_covariance_and_full_normal_delta_infere
 }
 
 #[test]
+fn robust_intercept_only_and_predictor_units_have_explicit_covariance_semantics() {
+  for model in [BinaryModel::Logit, BinaryModel::Probit] {
+    let p = EstimationProblem::new(
+      "y",
+      vec![],
+      vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+      vec![vec![]; 10],
+    )
+    .unwrap();
+    let fit = fit_binary_robust(&p, model).unwrap();
+    let expected_variance = match model {
+      BinaryModel::Logit => 1.0 / (9.0 * 0.3 * 0.7),
+      BinaryModel::Probit => {
+        let density = tabdat_stats::normal_pdf(tabdat_stats::normal_quantile(0.3));
+        0.3 * 0.7 / (9.0 * density * density)
+      }
+    };
+    assert!((fit.covariance[0][0] - expected_variance).abs() < 1e-10);
+    assert_eq!(fit.likelihood_ratio_df, 0);
+    assert!(fit.likelihood_ratio_p_value.is_none());
+    let ame = binary_average_marginal_effects(&p, &fit).unwrap();
+    assert!(ame.robust && ame.effects.is_empty());
+
+    let p = problem(true, true);
+    let fit = fit_binary_robust(&p, model).unwrap();
+    let ame = binary_average_marginal_effects(&p, &fit).unwrap();
+    let mut scaled = p.clone();
+    for row in &mut scaled.design_matrix {
+      row[0] *= 1e5;
+      row[1] *= 0.03;
+    }
+    let other = fit_binary_robust(&scaled, model).unwrap();
+    let other_ame = binary_average_marginal_effects(&scaled, &other).unwrap();
+    let factors = [1.0, 1e5, 0.03];
+    for (i, factor) in factors.iter().enumerate() {
+      assert!((fit.coefficients[i].value - other.coefficients[i].value * factor).abs() < 1e-10);
+      for (j, factor_j) in factors.iter().enumerate() {
+        assert!((fit.covariance[i][j] - other.covariance[i][j] * factor * factor_j).abs() < 1e-10);
+      }
+    }
+    for i in 0..2 {
+      assert!((ame.effects[i].value - other_ame.effects[i].value * factors[i + 1]).abs() < 1e-10);
+      assert!(
+        (ame.effects[i].standard_error - other_ame.effects[i].standard_error * factors[i + 1])
+          .abs()
+          < 1e-10
+      );
+    }
+  }
+}
+
+#[test]
 fn robust_fits_keep_identification_domain_and_cluster_weight_guards() {
   for model in [BinaryModel::Logit, BinaryModel::Probit] {
     let mut p = problem(true, false);
