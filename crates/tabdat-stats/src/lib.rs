@@ -18,6 +18,7 @@ mod iv_endogenous;
 mod iv_overid;
 pub mod least_squares;
 pub mod matrix;
+mod nb2;
 mod poisson;
 pub mod post_estimation;
 pub mod problem;
@@ -55,6 +56,10 @@ pub use least_squares::{
 pub use matrix::{
   covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
   sample_covariance, sample_variance, scale, student_t_pvalue, student_t_quantile, transpose,
+};
+pub use nb2::{
+  MAX_NB2_COUNT, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Options, Nb2Result, fit_nb2,
+  fit_nb2_with_options, nb2_average_marginal_effects,
 };
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonOptions,

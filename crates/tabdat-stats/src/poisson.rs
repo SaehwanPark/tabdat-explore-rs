@@ -142,7 +142,7 @@ fn saturated_log_probability(y: f64) -> f64 {
 
 // y*log(y/mu)+mu-y, with a convergent atanh series near y=mu. Neither a
 // rounded ratio of one nor subtraction of O(y) terms may erase deviance.
-fn deviance_part(y: f64, mu: f64, eta: f64) -> f64 {
+pub(crate) fn deviance_part(y: f64, mu: f64, eta: f64) -> f64 {
   if y == 0.0 {
     return mu;
   }

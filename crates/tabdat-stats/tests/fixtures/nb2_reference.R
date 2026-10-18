@@ -24,8 +24,8 @@ evaluate <- function(par,X,y) {
 polish <- function(par,X,y) {
   for (iteration in 1:50) {
     e <- evaluate(par,X,y); step <- solve(e$information,e$score)
-    if (max(abs(step)) < 1e-14) return(list(par=par,e=e))
-    par <- par+step
+    if (max(abs(step)) < 1e-14) return(list(par=unname(par),e=e))
+    par <- unname(par+step)
   }
   stop('reference did not converge')
 }
@@ -40,7 +40,7 @@ reference <- function(case,y,predictors,intercept=TRUE,predictions_path=NULL) {
   initial <- MASS::glm.nb(formula,data=frame,control=glm.control(epsilon=1e-13,maxit=100))
   stopifnot(initial$converged)
   fitted <- polish(c(unname(coef(initial)),lnalpha=-log(initial$theta)),X,y)
-  par <- fitted$par; e <- fitted$e; alpha <- exp(par[p]); r <- 1/alpha
+  par <- unname(fitted$par); e <- fitted$e; alpha <- exp(par[p]); r <- 1/alpha
   B <- solve(e$information)
   # Restricted NB null reestimates nuisance dispersion; it is not a Poisson null.
   if (intercept) {
