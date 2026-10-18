@@ -8,8 +8,7 @@ derivative with conditional-design delta-method uncertainty for each family. Tha
 is an extension, **not** a claimed published table result.
 
 It does not complete the entire illustration: the full cross-model comparison,
-remaining author outputs (including robust omnibus Wald tests) and the actual
-figure remain required work.
+remaining author outputs and the actual figure remain required work.
 No author data or code is redistributed here.
 
 ## Source, sample and design
@@ -147,7 +146,13 @@ wrong conditional-mean interpretation.
 Coefficient and retained-X delta-AME inference remain asymptotic normal. JSON
 labels both fit and margins `robust_sandwich_n_over_n_minus_1`. The LR statistic,
 restriction count and pseudo-R² remain descriptive; **LR p-value and reference
-are null**. No robust omnibus Wald test is supplied.
+are null**. The fit-level omnibus Wald statistic tests the log-price slope
+against zero using selected covariance, W = b_s' V_ss^-1 b_s, with asymptotic
+chi-square(1) inference. This is not robust LR or a conditional-mean
+specification test. Without an intercept it tests every declared coefficient;
+multiple-column designs use the full slope covariance, not a sum of z-squares.
+Rank-limited/singular restriction covariance gives explicit unavailable test
+metadata without discarding the fit, never a pseudoinverse/reduced-q test.
 
 With `work` set to a directory containing the checksum-verified `Nldata.csv`
 acquired above, run from the repository root (fresh robust output filenames):
@@ -171,8 +176,8 @@ Rscript examples/mma14p1binary/reference_probit.R "$work/Nldata.csv" \
 The R 4.6.1 script independently computes the scores, converged information,
 sandwich and full delta gradients; it also generates the committed synthetic
 CSV reference when run without a data argument. The standard-library Python
-checker is development-only and compares all **44** coefficient/covariance/AME
-quantities; R's existing prediction checkers verify all 630 source-row IDs,
+checker is development-only and compares all **50** coefficient/covariance/AME
+and omnibus-Wald quantities; R's existing prediction checkers verify all 630 source-row IDs,
 outcomes, designs, probabilities and indices. Neither tool is needed at runtime.
 Tolerances remain 1e-10 absolute for moderate outputs and 1e-10 relative plus
 `f64::MIN_POSITIVE` for test probabilities. Native synthetic tests additionally
@@ -185,6 +190,15 @@ models, predictor units, invalid outcomes and unsupported cluster/weight designs
 | Logit continuous AME SE | 0.00570499760609184 |
 | Probit intercept / slope SE | 0.0794501824989468 / 0.0692948032742171 |
 | Probit continuous AME SE | 0.00568139267322038 |
+| Logit omnibus Wald chi-square(1) / p | 194.280378518603 / 3.69887865746942e-44 |
+| Probit omnibus Wald chi-square(1) / p | 232.020896467226 / 2.16086165111978e-52 |
+
+The author output reports robust Wald statistics 194.28 (logit) and 232.07
+(probit). Logit's rounded statistic agrees. Probit's converged-information
+232.020896467226 intentionally does not equal the old Stata value; the same
+information/covariance difference described below propagates to W and its tail.
+Independent R validates that convention rather than widening tolerances or
+claiming exact historical Wald replication.
 
 Rounded Table 14.2 coefficient/z entries agree. This is **not** an exact replay
 of Stata 8's stored information: its reported probit robust SEs are

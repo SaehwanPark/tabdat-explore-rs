@@ -4,11 +4,29 @@ use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow};
 
 fn binary_inference_note(robust: bool, clustered: bool) -> &'static str {
   if clustered {
-    "Independent clusters; asymptotic standard-normal coefficient inference, not G-1 Student t. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+    "Independent clusters; asymptotic standard-normal coefficient inference, not G-1 Student t. LR p-value unavailable under robust inference."
   } else if robust {
-    "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+    "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference."
   } else {
     "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
+  }
+}
+
+fn binary_wald_note(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> String {
+  let Some(test) = test else {
+    return String::new();
+  };
+  if let (Some(statistic), Some(p_value)) = (test.statistic, test.p_value) {
+    format!(
+      "\nOmnibus Wald chi2({}) = {statistic}; p-value = {p_value}\nH0: all non-intercept coefficients = 0; selected covariance, asymptotic chi-square (not F).",
+      test.degrees_of_freedom
+    )
+  } else {
+    format!(
+      "\nOmnibus Wald unavailable: {}; requested df = {}. H0: all non-intercept coefficients = 0. No reduced-rank test supplied.",
+      test.unavailable_reason.as_deref().unwrap_or("unavailable"),
+      test.degrees_of_freedom
+    )
   }
 }
 
@@ -756,7 +774,11 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         "LR chi2"
       },
-      inference_note = binary_inference_note(result.robust, result.cluster.is_some()),
+      inference_note = format_args!(
+        "{}{}",
+        binary_inference_note(result.robust, result.cluster.is_some()),
+        binary_wald_note(result.omnibus_wald.as_ref())
+      ),
     ),
     ExecutionResult::LogitMarginalEffects(result) => format!(
       "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
@@ -807,7 +829,11 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         "LR chi2"
       },
-      inference_note = binary_inference_note(result.robust, result.cluster.is_some()),
+      inference_note = format_args!(
+        "{}{}",
+        binary_inference_note(result.robust, result.cluster.is_some()),
+        binary_wald_note(result.omnibus_wald.as_ref())
+      ),
     ),
     ExecutionResult::ProbitMarginalEffects(result) => format!(
       "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",

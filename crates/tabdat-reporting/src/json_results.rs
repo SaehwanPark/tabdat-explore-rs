@@ -14,6 +14,19 @@ use crate::catalog::ResultEnvelope;
 pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, and run (supported script leaves only)";
 pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, and estat vif/ar/overid/endogenous/margins";
 
+fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
+  test.map_or(Value::Null, |test| {
+    json!({
+      "null_hypothesis": "all_non_intercept_coefficients_zero",
+      "statistic": test.statistic,
+      "degrees_of_freedom": test.degrees_of_freedom,
+      "p_value": test.p_value,
+      "reference_distribution": test.statistic.map(|_| "asymptotic_chi_square"),
+      "unavailable_reason": test.unavailable_reason,
+    })
+  })
+}
+
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
 /// ByResult retains native grouped AVG semantics; it is not a finite-sample
@@ -304,6 +317,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
         "estimator": "logit", "cluster": result.cluster,
+        "omnibus_wald": binary_wald_json(result.omnibus_wald.as_ref()),
         "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
@@ -337,6 +351,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
         "estimator": "probit", "cluster": result.cluster,
+        "omnibus_wald": binary_wald_json(result.omnibus_wald.as_ref()),
         "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,

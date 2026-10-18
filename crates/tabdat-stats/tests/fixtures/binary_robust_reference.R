@@ -70,6 +70,11 @@ reference <- function(d, family, intercept, two, groups=NULL) {
       emit(family,intercept,two,q,j-as.integer(intercept),1,v)
     }
   }
+  # Joint zero restriction on slopes only, including all columns without an intercept.
+  W <- drop(crossprod(b[slopes], solve(V[slopes,slopes,drop=FALSE], b[slopes])))
+  emit(family,intercept,two,"wald_statistic",1,1,W)
+  emit(family,intercept,two,"wald_df",1,1,length(slopes))
+  emit(family,intercept,two,"wald_p",1,1,pchisq(W,length(slopes),lower.tail=FALSE))
   invisible(list(probability=c$p,index=drop(X%*%b)))
 }
 if(clustered && length(args)>0L) {

@@ -154,7 +154,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
-   robust omnibus Wald inference for the §14.2 coefficient columns, then the
+   full OLS/binary comparison for §14.2, followed by the
    Fisher/factor/interaction and discrete-change foundations exact illustrations
    need. One-way clustered covariance is delivered as external method evidence,
    not a newly validated textbook illustration. Do not treat the binary family
@@ -171,17 +171,21 @@ all 630 source-row identities and numeric outputs for both families, including
 tiny test tails. Unclustered robust fits now use N/(N-1) score-sandwich
 covariance with converged observed-information bread, independently validated
 for both families and propagated to conditional-X AME uncertainty. Their LR
-p/reference are unavailable, not falsely advertised as robust LR inference;
-a robust omnibus Wald test remains missing. Probit deliberately retains the
+p/reference are unavailable, not falsely advertised as robust LR inference.
+Robust/clustered omnibus Wald inference now tests all non-intercept coefficients
+using selected covariance and asymptotic chi-square(q); singular/rank-limited
+restrictions are explicitly unavailable, without dropping the fit or silently
+reducing q. Independent R validates the exact §14.2 robust tests under the
+converged-information convention, not exact historical Stata8 Wald equality.
+Probit deliberately retains the
 fixed-point convention rather than old Stata8 information lag.
 Combined outlier/separating-direction tests cover the
 independent-review convergence defect; absolute normalized full-step and score
 bounds fail rather than publish an unconverged fit. One-way clustered fits now
 use G/(G-1) cluster-score covariance and normal (not G-1 t) inference, with
 independent external Bangladesh method evidence in the coverage ledger. That
-is not survey inference or a small-cluster reliability guarantee. Robust
-omnibus tests, full model comparison and the actual Figure 14.1 graphic remain
-unfinished. This advances
+is not survey inference or a small-cluster reliability guarantee. Full model
+comparison and the actual Figure 14.1 graphic remain unfinished. This advances
 one textbook subset, not the full illustration or binary milestone; advancing
 from these classical slices did not complete IV or the binary family.
 

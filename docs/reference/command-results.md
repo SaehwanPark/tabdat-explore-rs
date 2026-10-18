@@ -88,8 +88,8 @@ information coincide. Coefficients, sample, likelihoods and predictions are
 unchanged; normal coefficient and conditional-X delta-AME inference use the
 selected covariance. `likelihood_ratio_p_value` and
 `likelihood_ratio_reference_distribution` are **null** for robust fits: LR/df
-and pseudo-R² remain descriptive, not robust omnibus inference. No robust
-omnibus Wald test, survey inference or weight support is implied.
+and pseudo-R² remain descriptive, not robust LR inference. Survey inference
+and weights remain unsupported.
 
 With `, cluster(group)`, `covariance` is `cluster_sandwich_g_over_g_minus_1`:
 sum individual scores within group before outer products and apply G/(G-1),
@@ -106,6 +106,25 @@ is exact; floating -0/+0 share a group. Keys are opaque within their typed sourc
 column, not a new cross-type equality or prediction requirement. Group edits do
 not redefine retained margins, and current-data prediction needs only predictors.
 No multiway, random-effects, survey or small-cluster t inference is implied.
+
+Robust/clustered fits also include additive `omnibus_wald` metadata testing
+`all_non_intercept_coefficients_zero`: W = b_s' V_ss^-1 b_s using the selected
+covariance, `degrees_of_freedom` q equal to the number of declared predictor
+columns, and `reference_distribution: "asymptotic_chi_square"` (not F).
+Without an intercept every coefficient is tested. Classical fits return
+`omnibus_wald: null` and retain their existing LR inference. This is not a
+conditional-mean specification test or a general binary `test`/`lincom` API.
+
+If no slopes exist (stats API), q >= G for a clustered fit, or the slope
+correlation covariance is numerically singular, the fitted model remains usable
+but Wald `statistic`, `p_value` and `reference_distribution` are null.
+`unavailable_reason` is respectively `no_non_intercept_coefficients`,
+`insufficient_cluster_rank` or `singular_slope_covariance`; nonrepresentable
+W/tail inference gives `nonfinite_wald_inference`. Requested q is retained;
+no pseudoinverse, reduced-q test or small-cluster F reference is substituted.
+Rank decisions use the slope correlation matrix and the existing inverse's
+1e-12 pivot threshold, not raw predictor units. This guard does not guarantee
+reliable inference for nearly singular covariance or few/imbalanced clusters.
 
 Only successful finite, numerically identified fits produce results. `converged`,
 `iterations` (information evaluations), `convergence_coordinate_system:
