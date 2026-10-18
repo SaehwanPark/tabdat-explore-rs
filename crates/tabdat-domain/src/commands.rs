@@ -171,7 +171,7 @@ pub enum Command {
   Test { command: TestCommand },
   /// Compute a histogram of a variable (visualization execution is deferred).
   Histogram { command: HistogramCommand },
-  /// Compute a scatter plot of two variables (visualization execution is deferred).
+  /// Save a bounded SVG scatter with optional numeric line overlays.
   Scatter { command: ScatterCommand },
   /// Compute a bar chart of a categorical variable (visualization execution is deferred).
   Bar { command: BarCommand },

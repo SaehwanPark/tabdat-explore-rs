@@ -1,6 +1,7 @@
 # ADR 0011: Static SVG rendering without a Vega JavaScript runtime
 
-- Status: Accepted for isolated feasibility evaluation; **not production adoption**
+- Status: Accepted feasibility evaluation; bounded pure-SVG follow-through below;
+  **raster/font adoption remains unapproved**
 - Date: 2026-10-11
 - Scope: Phase 1 static SVG/PNG plotting gate
 
@@ -54,6 +55,26 @@ The bounded native SVG report supplies the new acceptance evidence.
   remaining platform/distribution checks.
 - Passing this bounded plotting gate does not complete Phase 1 or select the
   primary statistics, ingestion, or linear-algebra backend.
+
+## SVG-only production follow-through (2026-10-18)
+
+The bounded `scatter ..., saving("file.svg") noopen` workflow now follows the
+selected pure SVG route for the exact MMA Figure14.1 analysis; see
+[capability limits](../../SPEC.md) and [example/evidence](../../examples/mma14p1binary/README.md).
+It reuses first-party XML/geometry patterns, not the spike crate or its resvg
+adapter. There are no new third-party packages, font loading/bundling, raster
+APIs or arbitrary SVG input. Reporting's pure owned-data builder is called by
+execution, with complete staged no-clobber publication in I/O. The explicit
+boundary is documented in [architecture](../../ARCHITECTURE.md).
+
+The new contract adds bounded line overlays and deterministic y-only display
+jitter. It uses per-mark finite selection (nonfinite coordinates omitted), not
+the original spike's blanket nonfinite rejection; source datasets/fit state stay
+unchanged. Native layout, padding and viewer-resolved sans-serif fonts are not
+Vega/Stata pixel parity. Actual data/geometry/reference, failure/state/file and
+named-host visual evidence establish this SVG-only subset, not resvg/PNG,
+font distribution, broad chart UX or release/platform approval. All raster/font
+safety, licensing and distribution gates above remain in force.
 
 ## Evidence
 

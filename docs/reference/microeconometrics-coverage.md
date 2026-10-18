@@ -59,7 +59,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — six-model classical/robust logit/probit/OLS numerical comparison, binary AME and all-row predictions validated | Exact contract below; remaining Table14.1/author outputs and actual graphic remain; no native stored-fit table claim |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — six-model numerical comparison, binary AME/all-row predictions and native Figure14.1 SVG data/geometry validated | Exact contract below; remaining Table14.1/author outputs and reusable reporting remain; no native stored-fit table claim |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
@@ -79,7 +79,9 @@ provenance and redistribution terms before adding fixtures.
   and [output](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.txt).
   Validate the classical/robust logit and probit coefficient columns of Table
   14.2 under the documented converged-information conventions and numeric
-  probabilities underlying Figure 14.1, not the whole table/graphic/author output.
+  probabilities underlying Figure 14.1, now also rendered as native SVG under
+  explicit native layout/display-jitter conventions; not whole-author-output or
+  historical Stata pixel/RNG parity.
 - **Data/preparation/sample:** external `Nldata.asc`, 1,182 people, 16 numeric
   fields per person; token-based CRLF/unterminated-last-line conversion preserves
   original 1-based source IDs. Select mode 2 (pier) or 4 (charter): N630,
@@ -150,7 +152,22 @@ provenance and redistribution terms before adding fixtures.
   reports the six ordered fits and selected covariance; the optional checker's
   joined comparison is not native named-fit storage/table support. No R/Python
   production dependency is introduced, and no cross-family LR test is implied.
-- **Still required:** remaining Table14.1/author outputs and Figure14.1 rendering,
+- **Figure14.1:** [PR #276](https://github.com/SaehwanPark/tabdat-explore-rs/pull/276)
+  adds native `figure.td` (reusing `comparison.td`) and `check_figure.py`.
+  Fresh checksum-verified conversion and R4.6.1 references regenerate identically;
+  all 94 fit quantities/630 exported records remain checked. The actual SVG
+  matches all 630 raw outcomes and 1,890 R prediction vertices, stable x/row
+  ordering and screen geometry (1e-8 pixel absolute; unchanged statistical/design
+  tolerances). The unbounded OLS range is visible, not clipped. Native SVG was
+  visually inspected in Chrome on macOS27.0.1 arm64; no broad platform/font or
+  pixel-parity claim. Display jitter is deterministic y-only ±0.03 outcome units,
+  not the author's Stata jitter(3)/RNG convention. JSON and piped-terminal runs
+  produce identical SVG/prediction bytes. Corruption probes reject clipped
+  geometry, permuted row identities and fabricated un-jittered metadata.
+  Data/model/labels/order and no-clobber publication invariants have native tests;
+  SVG contains raw float64 metadata and is not anonymized. No author dataset or
+  generated graphic is redistributed in the repository.
+- **Still required:** remaining Table14.1/author outputs,
   native reusable reporting foundations, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.

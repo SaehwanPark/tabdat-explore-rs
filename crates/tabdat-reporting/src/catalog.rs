@@ -1602,8 +1602,14 @@ fn get_command_schema(
       ],
       help_topic,
       name: "scatter".to_string(),
-      options: vec![],
-      syntax: "scatter yvar xvar".to_string(),
+      options: vec![
+        OptionDescriptor { name: "saving".to_string(), required: true },
+        OptionDescriptor { name: "noopen".to_string(), required: true },
+        OptionDescriptor { name: "lines".to_string(), required: false },
+        OptionDescriptor { name: "jitter".to_string(), required: false },
+        OptionDescriptor { name: "title".to_string(), required: false },
+      ],
+      syntax: "scatter yvar xvar, saving(\"file.svg\") noopen [lines(varlist) jitter(number) title(\"text\")]".to_string(),
     }),
     "select" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

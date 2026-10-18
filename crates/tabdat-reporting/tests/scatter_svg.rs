@@ -124,14 +124,27 @@ fn ties_are_sorted_by_original_row_index_and_jitter_retains_raw_outcomes() {
 }
 
 #[test]
+fn signed_zero_x_values_are_numeric_ties_without_losing_raw_coordinates() {
+  let mut data = fixture();
+  data.rows[0].x = Some(0.0);
+  data.rows[1].x = Some(-0.0);
+  let rendered = render_scatter_svg(&data).unwrap();
+  let line = marks(&rendered.svg, "line-series")[0];
+  assert_eq!(attr(line, "data-row-indices"), "0,1,2");
+  assert_eq!(attr(line, "data-x-values"), "0e0,-0e0,1e0");
+}
+
+#[test]
 fn labels_are_escaped_without_adding_markup_or_external_resources() {
   let mut data = fixture();
   data.title = Some("<script> & \"quoted\" 'title'".into());
   data.y_variable = "a\" onload=\"bad".into();
+  data.x_variable = "x\t\n\r".into();
   data.line_labels[0] = "Δ <model>".into();
   let svg = render_scatter_svg(&data).unwrap().svg;
   assert!(svg.contains("&lt;script&gt; &amp; &quot;quoted&quot; &apos;title&apos;"));
   assert!(svg.contains("a&quot; onload=&quot;bad"));
+  assert!(svg.contains("data-x-variable=\"x&#x9;&#xA;&#xD;\""));
   assert!(svg.contains("Δ &lt;model&gt;"));
   assert!(!svg.contains("<script"));
   assert!(!svg.contains(" onload=\""));

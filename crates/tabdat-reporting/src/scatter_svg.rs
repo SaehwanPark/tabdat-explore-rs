@@ -51,6 +51,11 @@ fn xml(value: &str) -> Result<String, String> {
       return Err("label contains an invalid XML character".into());
     }
     match c {
+      // Character references preserve metadata identities through XML's
+      // attribute whitespace normalization (literal tabs/newlines do not).
+      '\t' => escaped.push_str("&#x9;"),
+      '\n' => escaped.push_str("&#xA;"),
+      '\r' => escaped.push_str("&#xD;"),
       '&' => escaped.push_str("&amp;"),
       '<' => escaped.push_str("&lt;"),
       '>' => escaped.push_str("&gt;"),
@@ -195,7 +200,14 @@ pub fn render_scatter_svg(data: &ScatterSvgData) -> Result<RenderedScatterSvg, S
       .enumerate()
       .filter_map(|(i, r)| Some((i, finite(r.x)?, finite(r.lines[j]))))
       .collect();
-    rows.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+    // Signed zeros are numeric ties, not distinct total_cmp categories.
+    rows.sort_by(|a, b| {
+      if a.1 == b.1 {
+        a.0.cmp(&b.0)
+      } else {
+        a.1.total_cmp(&b.1)
+      }
+    });
     if !rows
       .windows(2)
       .any(|r| r[0].2.is_some() && r[1].2.is_some())
