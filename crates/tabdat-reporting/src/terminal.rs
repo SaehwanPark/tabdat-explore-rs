@@ -2,6 +2,34 @@ use std::fmt::Write;
 
 use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow};
 
+fn binary_inference_note(robust: bool, clustered: bool) -> &'static str {
+  if clustered {
+    "Independent clusters; asymptotic standard-normal coefficient inference, not G-1 Student t. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+  } else if robust {
+    "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+  } else {
+    "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
+  }
+}
+
+fn binary_covariance_note(
+  robust: bool,
+  cluster: Option<&tabdat_domain::BinaryCluster>,
+  model_based: &str,
+) -> String {
+  if let Some(cluster) = cluster {
+    format!(
+      "one-way clustered score sandwich on {}; G = {}; G/(G-1) correction; independent clusters, normal approximation may be unreliable with few clusters",
+      cluster.variable.escape_debug(),
+      cluster.group_count
+    )
+  } else if robust {
+    "robust score sandwich, N/(N-1) correction".to_owned()
+  } else {
+    model_based.to_owned()
+  }
+}
+
 fn cell(value: &CellValue) -> String {
   match value {
     CellValue::Null => "NA".to_owned(),
@@ -696,11 +724,11 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Logit(result) => format!(
       "Binary logit maximum likelihood ({})\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; {lr_label}({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\n{inference_note}\n{}",
-      if result.robust {
-        "robust score sandwich, N/(N-1) correction"
-      } else {
+      binary_covariance_note(
+        result.robust,
+        result.cluster.as_ref(),
         "model-based inverse Fisher information"
-      },
+      ),
       result.outcome.escape_debug(),
       result.observation_count,
       result.event_count,
@@ -728,20 +756,16 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         "LR chi2"
       },
-      inference_note = if result.robust {
-        "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
-      } else {
-        "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
-      },
+      inference_note = binary_inference_note(result.robust, result.cluster.is_some()),
     ),
     ExecutionResult::LogitMarginalEffects(result) => format!(
       "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
-      if result.robust {
-        "robust score sandwich, N/(N-1) correction"
-      } else {
+      binary_covariance_note(
+        result.robust,
+        result.cluster.as_ref(),
         "model-based covariance"
-      },
+      ),
       logit_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
@@ -751,11 +775,11 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Probit(result) => format!(
       "Binary probit maximum likelihood ({})\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; {lr_label}({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\n{inference_note}\n{}",
-      if result.robust {
-        "robust score sandwich, N/(N-1) correction"
-      } else {
+      binary_covariance_note(
+        result.robust,
+        result.cluster.as_ref(),
         "model-based inverse observed information"
-      },
+      ),
       result.outcome.escape_debug(),
       result.observation_count,
       result.event_count,
@@ -783,20 +807,16 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         "LR chi2"
       },
-      inference_note = if result.robust {
-        "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
-      } else {
-        "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
-      },
+      inference_note = binary_inference_note(result.robust, result.cluster.is_some()),
     ),
     ExecutionResult::ProbitMarginalEffects(result) => format!(
       "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
-      if result.robust {
-        "robust score sandwich, N/(N-1) correction"
-      } else {
+      binary_covariance_note(
+        result.robust,
+        result.cluster.as_ref(),
         "model-based covariance"
-      },
+      ),
       logit_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"

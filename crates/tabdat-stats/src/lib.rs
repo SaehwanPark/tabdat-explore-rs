@@ -26,10 +26,10 @@ pub mod traits;
 pub mod ttest;
 
 pub use binary::{
-  BinaryLogitResult, BinaryMleResult, BinaryModel, LogitEstimate, LogitMarginalEffects,
-  LogitOptions, ProbitOptions, binary_average_marginal_effects, fit_binary_logit,
-  fit_binary_logit_with_options, fit_binary_probit, fit_binary_probit_with_options,
-  fit_binary_robust, logit_average_marginal_effects,
+  BinaryCluster, BinaryLogitResult, BinaryMleResult, BinaryModel, LogitEstimate,
+  LogitMarginalEffects, LogitOptions, ProbitOptions, binary_average_marginal_effects,
+  fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options, fit_binary_probit,
+  fit_binary_probit_with_options, fit_binary_robust, logit_average_marginal_effects,
 };
 pub use diagnostics::variance_inflation_factors;
 pub use distributions::{normal_cdf, normal_pdf, normal_quantile};

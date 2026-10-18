@@ -1,6 +1,6 @@
 use tabdat_stats::{
   BinaryModel, EstimationProblem, EstimationSample, binary_average_marginal_effects,
-  fit_binary_logit, fit_binary_probit, fit_binary_robust,
+  fit_binary_clustered, fit_binary_logit, fit_binary_probit, fit_binary_robust,
 };
 
 fn problem(intercept: bool, two: bool) -> EstimationProblem {
@@ -32,87 +32,113 @@ fn problem(intercept: bool, two: bool) -> EstimationProblem {
 #[test]
 fn independent_r_references_cover_robust_covariance_and_full_normal_delta_inference() {
   // R 4.6.1, fixtures/binary_robust_reference.R. Same sample/design as the
-  // classical reference; N/(N-1), not HC1's N/(N-K). 1e-10 absolute for
+  // classical reference; N/(N-1) unclustered or G/(G-1) clustered, not HC1.
+  // 1e-10 absolute for
   // moderate outputs and 1e-10 relative for two-sided test probabilities.
-  for model in [BinaryModel::Logit, BinaryModel::Probit] {
-    for intercept in [true, false] {
-      for two in [true, false] {
-        let p = problem(intercept, two);
-        let fit = fit_binary_robust(&p, model).unwrap();
-        let classical = match model {
-          BinaryModel::Logit => fit_binary_logit(&p),
-          BinaryModel::Probit => fit_binary_probit(&p),
-        }
-        .unwrap();
-        assert!(fit.robust);
-        assert!(!classical.robust);
-        assert_eq!(fit.sample, classical.sample);
-        assert_eq!(fit.fitted_probabilities, classical.fitted_probabilities);
-        assert_eq!(fit.log_likelihood, classical.log_likelihood);
-        assert_eq!(fit.likelihood_ratio, classical.likelihood_ratio);
-        assert!(fit.likelihood_ratio_p_value.is_none());
-        assert!(classical.likelihood_ratio_p_value.is_some());
-        let ame = binary_average_marginal_effects(&p, &fit).unwrap();
-        assert!(ame.robust);
-        let classical_ame = binary_average_marginal_effects(&p, &classical).unwrap();
-        for (a, b) in ame.effects.iter().zip(classical_ame.effects) {
-          assert_eq!(a.value, b.value);
-        }
-        let family = if model == BinaryModel::Logit {
-          "logit"
-        } else {
-          "probit"
-        };
-        let mut checked = 0;
-        for row in include_str!("fixtures/binary_robust_reference.csv")
-          .lines()
-          .skip(1)
-        {
-          let fields: Vec<_> = row.split(',').collect();
-          if fields[0] != family
-            || (fields[1] == "TRUE") != intercept
-            || (fields[2] == "TRUE") != two
-          {
-            continue;
+  for (clustered, references) in [
+    (false, include_str!("fixtures/binary_robust_reference.csv")),
+    (true, include_str!("fixtures/binary_cluster_reference.csv")),
+  ] {
+    for model in [BinaryModel::Logit, BinaryModel::Probit] {
+      for intercept in [true, false] {
+        for two in [true, false] {
+          let mut p = problem(intercept, two);
+          let classical = match model {
+            BinaryModel::Logit => fit_binary_logit(&p),
+            BinaryModel::Probit => fit_binary_probit(&p),
           }
-          let i: usize = fields[4].parse().unwrap();
-          let j: usize = fields[5].parse().unwrap();
-          let expected: f64 = fields[6].parse().unwrap();
-          let c = &fit.coefficients[i];
-          let actual = match fields[3] {
-            "coefficient" => c.value,
-            "se" => c.standard_error,
-            "z" => c.statistic,
-            "p" => c.p_value,
-            "lower" => c.confidence_lower,
-            "upper" => c.confidence_upper,
-            "covariance" => fit.covariance[i][j],
-            q => {
-              let a = &ame.effects[i];
-              match q {
-                "ame" => a.value,
-                "ame_se" => a.standard_error,
-                "ame_z" => a.statistic,
-                "ame_p" => a.p_value,
-                "ame_lower" => a.confidence_lower,
-                "ame_upper" => a.confidence_upper,
-                _ => panic!("unknown reference quantity: {q}"),
-              }
-            }
-          };
-          let tolerance = if fields[3] == "p" || fields[3] == "ame_p" {
-            expected.abs() * 1e-10 + f64::MIN_POSITIVE
+          .unwrap();
+          let classical_problem = p.clone();
+          if clustered {
+            p.sample.as_mut().unwrap().cluster_groups =
+              Some((1..=40).map(|i| ((i * 7) % 9).to_string()).collect());
+          }
+          let fit = if clustered {
+            fit_binary_clustered(&p, model, "group")
           } else {
-            1e-10
-          };
-          assert!(
-            (actual - expected).abs() < tolerance,
-            "{row}: actual {actual:.17}"
+            fit_binary_robust(&p, model)
+          }
+          .unwrap();
+          assert_eq!(
+            fit
+              .cluster
+              .as_ref()
+              .map(|c| (c.variable.as_str(), c.group_count)),
+            clustered.then_some(("group", 9))
           );
-          checked += 1;
+          assert!(fit.robust);
+          assert!(!classical.robust);
+          assert_eq!(fit.sample, p.sample);
+          assert_eq!(
+            fit.sample.as_ref().unwrap().retained_indices,
+            classical.sample.as_ref().unwrap().retained_indices
+          );
+          assert_eq!(fit.fitted_probabilities, classical.fitted_probabilities);
+          assert_eq!(fit.log_likelihood, classical.log_likelihood);
+          assert_eq!(fit.likelihood_ratio, classical.likelihood_ratio);
+          assert!(fit.likelihood_ratio_p_value.is_none());
+          assert!(classical.likelihood_ratio_p_value.is_some());
+          let ame = binary_average_marginal_effects(&p, &fit).unwrap();
+          assert!(ame.robust);
+          assert_eq!(ame.cluster, fit.cluster);
+          let classical_ame =
+            binary_average_marginal_effects(&classical_problem, &classical).unwrap();
+          for (a, b) in ame.effects.iter().zip(classical_ame.effects) {
+            assert_eq!(a.value, b.value);
+          }
+          let family = if model == BinaryModel::Logit {
+            "logit"
+          } else {
+            "probit"
+          };
+          let mut checked = 0;
+          for row in references.lines().skip(1) {
+            let fields: Vec<_> = row.split(',').collect();
+            if fields[0] != family
+              || (fields[1] == "TRUE") != intercept
+              || (fields[2] == "TRUE") != two
+            {
+              continue;
+            }
+            let i: usize = fields[4].parse().unwrap();
+            let j: usize = fields[5].parse().unwrap();
+            let expected: f64 = fields[6].parse().unwrap();
+            let c = &fit.coefficients[i];
+            let actual = match fields[3] {
+              "coefficient" => c.value,
+              "se" => c.standard_error,
+              "z" => c.statistic,
+              "p" => c.p_value,
+              "lower" => c.confidence_lower,
+              "upper" => c.confidence_upper,
+              "covariance" => fit.covariance[i][j],
+              q => {
+                let a = &ame.effects[i];
+                match q {
+                  "ame" => a.value,
+                  "ame_se" => a.standard_error,
+                  "ame_z" => a.statistic,
+                  "ame_p" => a.p_value,
+                  "ame_lower" => a.confidence_lower,
+                  "ame_upper" => a.confidence_upper,
+                  _ => panic!("unknown reference quantity: {q}"),
+                }
+              }
+            };
+            let tolerance = if fields[3] == "p" || fields[3] == "ame_p" {
+              expected.abs() * 1e-10 + f64::MIN_POSITIVE
+            } else {
+              1e-10
+            };
+            assert!(
+              (actual - expected).abs() < tolerance,
+              "{row}: actual {actual:.17}"
+            );
+            checked += 1;
+          }
+          let k = p.parameter_count();
+          assert_eq!(checked, 6 * k + k * k + 6 * p.predictor_names.len());
         }
-        let k = p.parameter_count();
-        assert_eq!(checked, 6 * k + k * k + 6 * p.predictor_names.len());
       }
     }
   }
@@ -166,6 +192,46 @@ fn robust_intercept_only_and_predictor_units_have_explicit_covariance_semantics(
           .abs()
           < 1e-10
       );
+    }
+  }
+}
+
+#[test]
+fn cluster_group_guards_singletons_and_relabeling_have_explicit_semantics() {
+  for model in [BinaryModel::Logit, BinaryModel::Probit] {
+    let mut p = problem(true, true);
+    assert!(fit_binary_clustered(&p, model, "group").is_err());
+    p.sample.as_mut().unwrap().cluster_groups = Some(vec!["one".into(); 40]);
+    assert!(fit_binary_clustered(&p, model, "group").is_err());
+    p.sample.as_mut().unwrap().cluster_groups = Some(vec!["one".into(); 39]);
+    assert!(fit_binary_clustered(&p, model, "group").is_err());
+    p.sample.as_mut().unwrap().cluster_groups = None;
+    let individual = fit_binary_robust(&p, model).unwrap();
+    p.sample.as_mut().unwrap().cluster_groups = Some((0..40).map(|i| i.to_string()).collect());
+    let singleton = fit_binary_clustered(&p, model, "group").unwrap();
+    for (a, b) in individual
+      .covariance
+      .iter()
+      .flatten()
+      .zip(singleton.covariance.iter().flatten())
+    {
+      assert!((a - b).abs() < 1e-12);
+    }
+    assert!(fit_binary_clustered(&p, model, "").is_err());
+    p.sample.as_mut().unwrap().cluster_groups =
+      Some((1..=40).map(|i| ((i * 7) % 9).to_string()).collect());
+    let grouped = fit_binary_clustered(&p, model, "group").unwrap();
+    for name in p.sample.as_mut().unwrap().cluster_groups.as_mut().unwrap() {
+      *name = format!("cluster-{}", 8 - name.parse::<usize>().unwrap());
+    }
+    let renamed = fit_binary_clustered(&p, model, "renamed").unwrap();
+    for (a, b) in grouped
+      .covariance
+      .iter()
+      .flatten()
+      .zip(renamed.covariance.iter().flatten())
+    {
+      assert!((a - b).abs() < 1e-12);
     }
   }
 }

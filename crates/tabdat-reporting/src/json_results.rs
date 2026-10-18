@@ -303,7 +303,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Logit(result) => (
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
-        "estimator": "logit", "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" },
+        "estimator": "logit", "cluster": result.cluster,
+        "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
         "event_count": result.event_count, "coefficients": result.coefficients,
@@ -325,7 +326,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "estimator": "logit", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
-        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" }, "confidence_level": 95.0,
+        "cluster": result.cluster,
+        "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" }, "confidence_level": 95.0,
         "reference_distribution": "asymptotic_standard_normal",
         "observation_count": result.observation_count, "effects": result.effects,
       }),
@@ -334,7 +336,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Probit(result) => (
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
-        "estimator": "probit", "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" },
+        "estimator": "probit", "cluster": result.cluster,
+        "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
         "event_count": result.event_count, "coefficients": result.coefficients,
@@ -356,7 +359,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "estimator": "probit", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
-        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" }, "confidence_level": 95.0,
+        "cluster": result.cluster,
+        "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" }, "confidence_level": 95.0,
         "reference_distribution": "asymptotic_standard_normal",
         "observation_count": result.observation_count, "effects": result.effects,
       }),

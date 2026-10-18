@@ -1,7 +1,7 @@
 # probit
 
 Installed syntax:
-`probit y x1 x2 [, robust noconstant]`
+`probit y x1 x2 [, robust cluster(group) noconstant]`
 
 Fit an unweighted independent-Bernoulli binary probit model. Reports model-based
 inverse observed-information (OIM) covariance from Newton steps, coefficient
@@ -18,6 +18,17 @@ Observations must be independent; this is not cluster/survey inference or
 protection against a wrong conditional-mean interpretation. Ordinary LR p-values
 are suppressed: the likelihood difference/pseudo-R² are descriptive, and no
 robust omnibus Wald test is supplied.
+
+With `, cluster(group)`, scores are summed within each group before forming
+the sandwich, with G/(G-1) correction and the same converged observed-information
+bread. Coefficient and retained-X delta-AME inference remain asymptotic normal,
+**not** G-1 Student t. Clusters must be independent; few/imbalanced clusters can
+make this approximation unreliable. At least two retained groups are required,
+which is only a computability guard. Cluster IDs may be numeric, text or boolean;
+NULL/nonfinite IDs are excluded jointly with model missingness before validating
+the outcome. Wide integers/Decimals keep exact identity; floating -0 and +0 are
+one group. `robust` and `cluster` cannot be combined. This is neither a
+random-effects model nor survey/design-based inference.
 
 Workflow (after loading numeric data):
 - `probit insured age bmi`
@@ -51,7 +62,7 @@ Convergence and supported limits:
   designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Cluster forms still parse but explicitly fail. Weighted/survey probit,
+- Only one-way clustering is supported. Weighted/survey probit,
   prediction intervals and general `lincom`/`test` after probit are not
   installed. Normal coefficient inference and (for model-based fits only) the
   overall LR test are reported directly by `probit`; do not substitute linear
@@ -62,4 +73,6 @@ Convergence and supported limits:
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
 §14.2 fishing-mode binary illustration, independent R validation).
-See `help estat`, `help predict`, and `docs/reference/command-results.md`.
+Clustered method example: `examples/contraception_cluster/README.md` (external,
+not textbook coverage). See `help estat`, `help predict`, and
+`docs/reference/command-results.md`.

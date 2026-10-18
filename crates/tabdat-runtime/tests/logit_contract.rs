@@ -234,7 +234,7 @@ fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
   let f = Fixture::new(false);
   for command in [
     "logit missing x1, robust",
-    "logit y x1, cluster(source_row)",
+    "logit y x1, cluster(missing)",
     "logit missing x1",
     "logit y x1 x1",
   ] {

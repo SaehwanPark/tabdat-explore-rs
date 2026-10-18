@@ -29,7 +29,7 @@ not by implementing every estimator mentioned in a chapter.
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Context-only seed, no resampling/estimation workflow | Actual RNG contract, IID/cluster bootstrap, simulation/Bayesian estimation and diagnostics |
-| 14: Binary outcomes | Model-based/unclustered robust logit and probit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical/robust subset under converged-information conventions | Cluster binary inference, robust omnibus tests, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical/robust subset under converged-information conventions | Robust omnibus tests, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
@@ -128,7 +128,7 @@ provenance and redistribution terms before adding fixtures.
   author Stata8 values 0.0794429/0.0692881; see the example for that explicit
   convention difference. Ordinary LR p/reference fields are null for robust
   fits; no robust omnibus Wald test is supplied.
-- **Still required:** cluster inference, robust omnibus tests, full OLS comparison and
+- **Still required:** robust omnibus tests, full OLS comparison and
   Figure 14.1 rendering, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
@@ -255,6 +255,25 @@ requires conditional normality. Robust/cluster/subset endogeneity tests are not
 installed; any such inference required by the roadmap or exact illustrations
 remains unfinished, not excluded. **This is method evidence only: no Cameron–Trivedi illustration
 row changes status or becomes validated because this external example works.**
+
+## Additional clustered binary method evidence (not a textbook replication)
+
+The [Bangladesh contraception example](../../examples/contraception_cluster/README.md)
+uses the external `mlmRev::Contraception` CSV: N=1,934 women, 759 events, 60
+districts; pooled unweighted logit/probit on an intercept and provided centered
+age, clustered by district. Source checksum, preparation, scripts and independent
+R4.6.1 numerical/prediction evidence are recorded there. All 1,934 person/group/
+outcome/design/prediction records and 44 covariance/coefficient/delta-AME
+quantities match; eight synthetic clustered family/design references validate
+full covariance/normal inference. Singleton/relabeling, missing clusters,
+wide-ID preservation, retained state and CLI failures have native coverage.
+[PR #273](https://github.com/SaehwanPark/tabdat-explore-rs/pull/273) adds this
+G/(G-1) cluster-score sandwich with converged observed-information bread.
+Inference is asymptotic normal with independent clusters, not G-1 t or a
+small-cluster coverage guarantee. LR p/reference are unavailable. This does
+not fit a random-effects model, supply survey/design-based inference, or
+validate any book illustration; the chapter-24 linear/Poisson requirements
+and remaining binary work stay explicit.
 
 ## How to turn a seed into an implementation contract
 

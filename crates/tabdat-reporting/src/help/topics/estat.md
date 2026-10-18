@@ -30,8 +30,8 @@ Notes:
 
 ## Binary continuous average partial effects
 
-After a successful model-based or unclustered robust binary fit (`logit y x1 ...`
-or `probit y x1 ...`, optionally `, robust`), `estat margins` reports, for each
+After a successful model-based, robust or one-way clustered binary fit (`logit`
+or `probit`, optionally `, robust` or `, cluster(group)`), `estat margins` reports, for each
 predictor column excluding the intercept, the family-specific average derivative:
 
 - logit: `beta_j*mean(p*(1-p))`
@@ -42,8 +42,11 @@ rows. Current-data edits do not rescan, refit or change the estimand.
 
 Uncertainty is the full delta method using the fit's selected covariance:
 model-based (logit: inverse Fisher information; probit: inverse observed
-information), or unclustered score sandwich with N/(N-1) correction after
-`, robust`. It includes intercept/slopes' covariance, **conditional on observed
+information), unclustered score sandwich with N/(N-1) correction after
+`, robust`, or one-way cluster sandwich with G/(G-1) correction after
+`, cluster(group)`. Cluster inference is asymptotic normal, not G-1 t, and
+requires independent clusters; few-cluster reliability is not guaranteed.
+It includes intercept/slopes' covariance, **conditional on observed
 X**. It is not uncertainty in the covariate distribution. Output includes normal
 z/two-sided p and fixed 95% intervals; CLI-v1 returns
 `LogitMarginalEffectsResult` or `ProbitMarginalEffectsResult` by fitted family.
@@ -51,7 +54,7 @@ z/two-sided p and fixed 95% intervals; CLI-v1 returns
 These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
-cluster/weighted effects, level option, categorical/discrete-change or
+multiway-cluster/weighted effects, level option, categorical/discrete-change or
 other model-family margins are installed. The retained fit decides which family
 runs; with no binary fit the margins call fails with the established prior-logit
 message. Restore/fit a successful logit or probit after a failed new estimation
