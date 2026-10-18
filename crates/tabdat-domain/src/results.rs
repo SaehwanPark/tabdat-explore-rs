@@ -422,6 +422,32 @@ pub struct ExportResult {
   pub dataset: DatasetInfo,
 }
 
+/// Candidate-row selection for one scatter or overlaid line series.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlotSeriesSummary {
+  pub variable: String,
+  pub point_count: usize,
+  /// Rows without a complete finite x/series pair, not an estimation exclusion.
+  pub omitted_rows: usize,
+}
+
+/// Metadata returned only after a complete generated SVG is published.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlotArtifactResult {
+  pub path: PathBuf,
+  pub format: String,
+  pub width: u32,
+  pub height: u32,
+  pub candidate_rows: usize,
+  pub x_variable: String,
+  pub scatter: PlotSeriesSummary,
+  pub lines: Vec<PlotSeriesSummary>,
+  pub jitter_y: f64,
+  pub jitter_convention: String,
+  /// Numeric coordinates are float64, not lossless wide-integer/decimal IDs.
+  pub coordinate_precision: String,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -706,6 +732,8 @@ pub enum ExecutionResult {
   Save(SaveResult),
   /// Writes the active relation to a CSV file without changing state.
   Export(ExportResult),
+  /// Publishes a generated SVG without changing data, labels or estimation state.
+  Plot(PlotArtifactResult),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.

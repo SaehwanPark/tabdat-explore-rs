@@ -1298,6 +1298,7 @@ dependencies = [
  "tabdat-domain",
  "tabdat-io",
  "tabdat-language",
+ "tabdat-reporting",
  "tabdat-stats",
 ]
 

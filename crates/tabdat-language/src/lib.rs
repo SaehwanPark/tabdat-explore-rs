@@ -6621,7 +6621,12 @@ fn parse_scatter_command(body: &str) -> Result<Command, ParseError> {
 
   let mut unsupported = options
     .iter()
-    .filter(|option| !matches!(option.name.as_str(), "saving" | "noopen"))
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "saving" | "noopen" | "lines" | "jitter" | "title"
+      )
+    })
     .map(|option| option.name.as_str())
     .collect::<Vec<_>>();
   unsupported.sort_unstable();
@@ -6662,6 +6667,62 @@ fn parse_scatter_command(body: &str) -> Result<Command, ParseError> {
 
   let saving = parse_saving_option()?;
   let open_artifact = !options.iter().any(|option| option.name == "noopen");
+  for name in ["lines", "jitter", "title"] {
+    if options.iter().filter(|option| option.name == name).count() > 1 {
+      return Err(ParseError::new(format!(
+        "scatter option {name} may only be supplied once"
+      )));
+    }
+  }
+  let value = |name: &str| {
+    options
+      .iter()
+      .find(|option| option.name == name)
+      .map(|option| &option.value)
+  };
+  let line_variables = match value("lines") {
+    None => Vec::new(),
+    Some(UseOptionValue::Identifiers(variables))
+      if !variables.is_empty()
+        && variables.len() <= 3
+        && variables
+          .iter()
+          .collect::<std::collections::BTreeSet<_>>()
+          .len()
+          == variables.len() =>
+    {
+      variables.clone()
+    }
+    _ => {
+      return Err(ParseError::new(
+        "scatter option lines expects one to three unique variables",
+      ));
+    }
+  };
+  let jitter_y = match value("jitter") {
+    None => None,
+    Some(UseOptionValue::Number(text))
+      if text
+        .parse::<f64>()
+        .is_ok_and(|number| number.is_finite() && number >= 0.0) =>
+    {
+      Some(text.clone())
+    }
+    _ => {
+      return Err(ParseError::new(
+        "scatter option jitter expects a finite nonnegative number",
+      ));
+    }
+  };
+  let title = match value("title") {
+    None => None,
+    Some(UseOptionValue::String(text)) if !text.is_empty() => Some(text.clone()),
+    _ => {
+      return Err(ParseError::new(
+        "scatter option title expects nonempty text",
+      ));
+    }
+  };
 
   let mut args = parts.arguments.into_iter();
   let y_variable = args.next().unwrap().text;
@@ -6671,6 +6732,9 @@ fn parse_scatter_command(body: &str) -> Result<Command, ParseError> {
     command: ScatterCommand {
       y_variable,
       x_variable,
+      line_variables,
+      jitter_y,
+      title,
       saving,
       open_artifact,
     },
@@ -8341,6 +8405,19 @@ fn parse_use_parenthesized_value(
   name: &str,
   tokens: Vec<UseToken>,
 ) -> Result<UseOptionValue, ParseError> {
+  if name == "title" {
+    if tokens.len() != 1
+      || !matches!(
+        tokens[0].kind,
+        UseTokenKind::String | UseTokenKind::Identifier { .. }
+      )
+    {
+      return Err(ParseError::new(
+        "option title expects a single text value; quote text containing spaces",
+      ));
+    }
+    return Ok(UseOptionValue::String(tokens[0].text.clone()));
+  }
   if name == "delimiter" {
     if tokens.len() != 1
       || !matches!(
@@ -8397,6 +8474,7 @@ fn parse_use_parenthesized_value(
       | "tune"
       | "chains"
       | "thin"
+      | "jitter"
   ) {
     let numeric_text: String = tokens.iter().map(|token| token.text.as_str()).collect();
     if numeric_text.parse::<f64>().is_ok() {
@@ -16763,6 +16841,9 @@ mod tests {
         command: ScatterCommand {
           y_variable: "y".into(),
           x_variable: "x".into(),
+          line_variables: Vec::new(),
+          jitter_y: None,
+          title: None,
           saving: None,
           open_artifact: true,
         },
@@ -16774,6 +16855,9 @@ mod tests {
         command: ScatterCommand {
           y_variable: "price".into(),
           x_variable: "weight".into(),
+          line_variables: Vec::new(),
+          jitter_y: None,
+          title: None,
           saving: Some("plot.png".into()),
           open_artifact: true,
         },
@@ -16785,6 +16869,9 @@ mod tests {
         command: ScatterCommand {
           y_variable: "price".into(),
           x_variable: "weight".into(),
+          line_variables: Vec::new(),
+          jitter_y: None,
+          title: None,
           saving: Some("my plot.png".into()),
           open_artifact: true,
         },
@@ -16796,6 +16883,9 @@ mod tests {
         command: ScatterCommand {
           y_variable: "price".into(),
           x_variable: "weight".into(),
+          line_variables: Vec::new(),
+          jitter_y: None,
+          title: None,
           saving: None,
           open_artifact: false,
         },
@@ -16807,6 +16897,9 @@ mod tests {
         command: ScatterCommand {
           y_variable: "price".into(),
           x_variable: "weight".into(),
+          line_variables: Vec::new(),
+          jitter_y: None,
+          title: None,
           saving: Some("out.png".into()),
           open_artifact: false,
         },
@@ -16821,6 +16914,9 @@ mod tests {
             command: ScatterCommand {
               y_variable: "price".into(),
               x_variable: "weight".into(),
+              line_variables: Vec::new(),
+              jitter_y: None,
+              title: None,
               saving: None,
               open_artifact: false,
             },

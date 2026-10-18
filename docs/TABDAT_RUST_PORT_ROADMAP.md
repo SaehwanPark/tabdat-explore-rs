@@ -154,7 +154,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
-   Figure14.1 rendering and remaining Table14.1 outputs for §14.2, followed by the
+   remaining Table14.1/author outputs for §14.2, followed by the
    Fisher/factor/interaction and discrete-change foundations exact illustrations
    need. One-way clustered covariance is delivered as external method evidence,
    not a newly validated textbook illustration. Do not treat the binary family
@@ -190,8 +190,14 @@ comparison for Table14.2, with 94 quantities and every source/design/prediction
 record independently checked in R. OLS Gaussian working likelihood and unbounded
 linear fitted values are explicitly distinguished from Bernoulli probabilities.
 A joined comparison printed by the development-only checker is not native
-named-fit storage/table support. Remaining Table14.1/author outputs and the
-actual Figure14.1 graphic remain unfinished. This advances
+named-fit storage/table support. A native SVG scatter/three-line overlay now
+renders Figure14.1's 630 outcomes and 1,890 independently checked R prediction
+vertices, including actual geometry at 1e-8 pixel absolute tolerance. The visible
+OLS range stays unbounded; layout/fonts and deterministic y-only display jitter
+are intentionally not historical Stata RNG/pixel parity. The shared command
+preserves data/fit/labels/order and publishes without replacement; PNG, automatic
+opening and broader graphics remain uninstalled. Remaining Table14.1/author
+outputs and reusable reporting foundations remain unfinished. This advances
 one textbook subset, not the full illustration or binary milestone; advancing
 from these classical slices did not complete IV or the binary family.
 

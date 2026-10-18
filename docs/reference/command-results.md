@@ -34,7 +34,7 @@ source and fixtures below are relative to the repository root; use in-session
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
 for versioned line-delimited envelopes. Successful execution output currently
 supports use, describe, count, codebook, summarize, missing, tabulate,
-generate/replace, save/export,
+generate/replace, save/export, bounded SVG scatter artifact metadata,
 head/tail, `estat vif/ar/overid/endogenous` and the bounded
 regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
@@ -179,8 +179,9 @@ probit wording. With no binary fit, `estat margins` keeps the established
 prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Robust/cluster/weighted binary inference, factors/interactions/discrete
-changes and actual graphics remain unfinished required work where applicable.
+Weighted/survey/multiway binary inference and factors/interactions/discrete
+changes remain required work where applicable. The bounded Figure14.1 SVG
+workflow below does not complete broader illustration graphics.
 
 ## Summaries and percentiles
 
@@ -552,6 +553,69 @@ failure stops later commands but does not roll back files already written by
 the completed command. Roundtrips and these failure boundaries are tested;
 no general filesystem rollback or platform guarantee is claimed. See `help save`,
 `help export` and MIG-0008.
+
+## SVG scatter artifacts
+
+`scatter y x, saving("figure.svg") noopen [lines(p1 p2 p3) jitter(number) title("text")]`
+returns additive `PlotArtifactResult`, not a dataset mutation or fitted model.
+The CLI-v1 envelope shape/version and all existing results are unchanged. Batch,
+script and typed execution share publication; readable text reports the same
+counts and conventions. A result is returned only after complete no-clobber
+publication. Example data payload for eight candidate rows and one line:
+
+```json
+{
+  "path": "figure.svg",
+  "format": "svg",
+  "width": 900,
+  "height": 660,
+  "candidate_rows": 8,
+  "x_variable": "x",
+  "scatter": {"variable": "y", "point_count": 6, "omitted_rows": 2},
+  "lines": [{"variable": "fitted", "point_count": 7, "omitted_rows": 1}],
+  "jitter_y": 0.03,
+  "jitter_convention": "deterministic_row_index_pattern_outcome_units",
+  "coordinate_precision": "float64"
+}
+```
+
+These are current-data display samples, not estimation exclusions. Each series
+independently selects finite x/its own y; `point_count` means scatter marks or
+finite line vertices, not stroke-segment count. Line vertices sort by ascending
+x then original candidate-row index; finite x with missing/nonfinite line y
+breaks the path. Missing/nonfinite x is omitted because it has no sortable
+location. A scatter needs one finite pair and every requested line needs at
+least one adjacent finite pair; a requested series is not silently discarded.
+There are at most three unique line columns and 10,000 candidate rows.
+
+Numeric coordinates are float64 conversions, not lossless wide integer/decimal
+identities. The fixed 900x660 layout uses all displayed values with nominal 5%
+padding (constant ranges expand; unrepresentable ranges fail), rounded tick text
+and viewer-resolved fonts. Line values, including OLS fits, are not clipped to
+[0,1]. Variable labels supply axis/legend labels; labels/title have 1–80 XML-valid
+characters, without general long-label/font-metric layout guarantees.
+
+`jitter_y` is a finite nonnegative y-only outcome-unit amplitude, default zero.
+For original candidate row i (zero-based, before exclusions/sorting), the display
+offset is amplitude * ((73*i mod 251)/125 - 1). This stateless ordinal pattern
+is not RNG, Stata percentage jitter, seed state, uncertainty or anonymization.
+The SVG embeds raw float64 x/y and display y for scatter marks, plus sorted raw
+line vertices/original row indices and coordinate domains. It therefore contains
+underlying data even when jittered; review before sharing. No arbitrary SVG,
+external asset/script/font, browser opening or raster API is accepted.
+
+Schema/data/render failures leave data, labels, row order and retained model
+unchanged and create no artifact. Rendering finishes before filesystem effects;
+parents may then be created. A fully written/closed sibling stage is published
+by atomic no-clobber hard link, requiring a local hard-link-capable filesystem.
+Existing files, directories and symlinks are never replaced. Owned-stage cleanup
+is best effort on filesystem/crash failure; this is not crash durability or
+atomic publication for the separate CSV/Parquet commands above. Unsupported
+extensions/opening/default paths and `replace` are rejected with actionable
+errors. Native state/file/concurrency tests and the exact
+[Figure14.1 reference/geometry workflow](../../examples/mma14p1binary/README.md)
+cover this subset; PNG/other plot families and broad platform/font parity remain
+uninstalled/unverified.
 
 ## VIF
 

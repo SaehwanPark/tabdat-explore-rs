@@ -135,6 +135,10 @@ pub enum RuntimeError {
   ExportParentFailed { path: PathBuf },
   /// DuckDB could not write the active relation to the export destination.
   ExportFailed { path: PathBuf },
+  /// The bounded scatter request or selected numeric data could not be rendered.
+  ScatterFailed { message: String },
+  /// A complete SVG could not be published without replacing a destination.
+  PlotWriteFailed { path: PathBuf, message: String },
   /// DuckDB could not produce the requested preview.
   PreviewFailed { command: &'static str },
   /// The count predicate names variables absent from the active schema.
@@ -611,6 +615,12 @@ impl fmt::Display for RuntimeError {
         path.display()
       ),
       Self::ExportFailed { path } => write!(formatter, "export failed: {}", path.display()),
+      Self::ScatterFailed { message } => write!(formatter, "scatter: {message}"),
+      Self::PlotWriteFailed { path, message } => write!(
+        formatter,
+        "scatter could not publish {}: {message}",
+        path.display()
+      ),
       Self::PreviewFailed { command } => write!(formatter, "{command} failed"),
       Self::CountUnknownVariable { variables } => write!(
         formatter,

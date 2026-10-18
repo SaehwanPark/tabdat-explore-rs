@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, predict, lincom, test, ttest, and estat vif/ar/overid/endogenous/margins";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, scatter (SVG saving/noopen), and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, predict, lincom, test, ttest, scatter (SVG saving/noopen), and estat vif/ar/overid/endogenous/margins";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -79,6 +79,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Select { .. }
     | Command::Save { .. }
     | Command::Export { .. }
+    | Command::Scatter { .. }
     | Command::Describe
     | Command::Count
     | Command::Codebook { .. }
@@ -200,6 +201,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       persistence_result_data(&result.path, &result.dataset),
       "ExportResult",
     ),
+    ExecutionResult::Plot(result) => (json!(result), "PlotArtifactResult"),
     ExecutionResult::Generate(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "GenerateResult",

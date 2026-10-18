@@ -2,7 +2,9 @@
 //! Local filesystem and script-path effects, returning owned contracts.
 
 mod output;
+mod plot;
 pub use output::{OutputFormat, prepare_output_path};
+pub use plot::{publish_svg, validate_svg_path};
 
 use std::path::{Path, PathBuf};
 use tabdat_domain::{RuntimeError, ScriptError};

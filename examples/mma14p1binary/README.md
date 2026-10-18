@@ -2,13 +2,14 @@
 
 This bounded example validates the **classical and unclustered robust numerical
 logit, probit and OLS comparison in Table 14.2** (p. 465), under the explicit
-converged-information conventions below, and fitted-value data underlying
-Figure 14.1 (p. 466). It adds a separately validated continuous average partial
-derivative with conditional-design delta-method uncertainty for each binary family. That effect
-is an extension, **not** a claimed published table result.
+converged-information conventions below, and a **native SVG rendering of the
+outcomes/fitted values in Figure 14.1** (p. 466), under the explicit native
+layout/jitter conventions below. It adds a separately validated continuous
+average partial derivative with conditional-design delta-method uncertainty for
+each binary family. That effect is an extension, **not** a claimed published table result.
 
-It does not complete the entire illustration: remaining author outputs and the
-actual figure remain required work. Native reusable named-fit/joined-table
+It does not complete the entire illustration: remaining Table14.1/author outputs
+and reusable reporting remain required work. Native named-fit/joined-table
 commands are not supplied by this example.
 No author data or code is redistributed here.
 
@@ -259,7 +260,67 @@ supply a cross-family or robust LR test. OLS R² and binary McFadden pseudo-R²
 remain distinct measures. Classical/robust predictions agree exactly within
 each family; the six native results reproduce the numerical comparison under
 the documented float64/converged-information conventions, not exact historical
-storage or reusable report formatting. Figure14.1 rendering remains missing.
+storage or reusable report formatting.
+
+## Native Figure14.1 SVG
+
+`figure.td` runs `comparison.td`, labels its existing prediction columns and saves
+`fishing_binary_comparison.svg`: all 630 outcomes and classical logit/probit/OLS
+curves, sorted internally by x with original-row ties. The application requires
+no R/Python, external assets, bundled fonts or plotting runtime. The command
+preserves the prepared data, labels, row order and last robust OLS fit.
+
+Use a **fresh output directory**, even if you already ran `comparison.td`:
+`figure.td` also exports its prediction CSV and neither file is replaced. With
+`work` containing the checksum-verified `Nldata.csv` above:
+
+```sh
+repo="$PWD"
+figure_work=$(mktemp -d)
+cp "$work/Nldata.csv" "$figure_work/Nldata.csv"
+(cd "$figure_work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/figure.td" > figure.jsonl)
+Rscript examples/mma14p1binary/reference_comparison.R "$figure_work/Nldata.csv" \
+  "$figure_work/R_predictions.csv" > "$figure_work/R_comparison.csv"
+python3 examples/mma14p1binary/check_comparison.py \
+  "$figure_work/R_comparison.csv" "$figure_work/R_predictions.csv" \
+  "$figure_work/figure.jsonl" "$figure_work/fishing_comparison_predictions.csv"
+python3 examples/mma14p1binary/check_figure.py \
+  "$figure_work/R_predictions.csv" "$figure_work/fishing_binary_comparison.svg" \
+  "$figure_work/figure.jsonl"
+printf 'SVG and verification outputs: %s\n' "$figure_work"
+```
+
+Open the SVG yourself in an SVG-capable browser/viewer. `--text` or a no-argument
+terminal `run ".../figure.td"` works from a fresh output directory too. JSON and
+piped-terminal replays produce byte-identical SVG/prediction exports. The
+optional independent checker validates all 630 outcomes and **1,890 R prediction
+vertices**, source order/stable x ties, metadata and actual SVG coordinates at
+**1e-8 pixel absolute tolerance**. The existing 94 fit-quantity and full-record
+checks remain unchanged. Deliberately clipped geometry, permuted row identities
+and fabricated un-jittered metadata are rejected. The actual full SVG was
+visually inspected in Chrome on macOS27.0.1 arm64: readable axes/legend, two
+outcome bands, distinguishable color/dash curves and both unbounded OLS ends.
+This is named-host evidence, not cross-platform/font or pixel-equality approval.
+
+The authors' code sorts the dataset and uses Stata `jitter(3)`, WMF export and
+historical float32 preparation. Native plotting instead sorts line vertices
+internally without changing data order, uses float64 coordinates, fixed layout,
+viewer-resolved sans-serif fonts, rounded ticks and distinct colors/dashes.
+`jitter(0.03)` applies a deterministic y-only ordinal display pattern in outcome
+units, **not Stata's percentage/RNG convention or seed behavior**. Raw 0/1
+outcomes and predicted values are unchanged, and the OLS line's range
+[-0.202734122, 1.307384388] is not clipped or mislabeled a Bernoulli probability.
+The title/axis wording explicitly distinguishes probabilities from OLS fits.
+This reproduces the illustration's data/curves, not its exact layout or pixels.
+
+SVG embeds raw float64 coordinates and candidate-row indices: display jitter is
+**not anonymization**, so review artifacts before sharing them. The command is
+bounded to 10,000 candidate rows/80-character labels, explicit `.svg` saving and
+`noopen`, and requires a local hard-link-capable filesystem for complete
+no-clobber publication. PNG, automatic opening/default paths, replacement and
+other plot families remain uninstalled; see `help scatter`. No generated
+source-data graphic is redistributed here.
 
 ## Interpretation, numerical limits and remaining work
 
@@ -305,7 +366,8 @@ not a new fishing-mode illustration claim.
 
 Weighted/survey forms, categorical/factor/interactions and
 discrete changes with uncertainty, prediction intervals, general `lincom`/`test`
-after either binary family and rendered graphics are not delivered by this slice. They
+after either binary family and graphics beyond the bounded SVG scatter/line
+workflow are not delivered by this slice. They
 remain required where specified by the roadmap/illustrations; neither this
 example nor passing synthetic tests establish binary-family or full-book
 completion.
