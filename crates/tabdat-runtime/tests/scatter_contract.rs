@@ -11,6 +11,9 @@ fn parsed_scatter_remains_explicitly_deferred_at_runtime() {
       command: ScatterCommand {
         y_variable: "price".to_string(),
         x_variable: "weight".to_string(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: None,
         open_artifact: true,
       },
@@ -36,6 +39,9 @@ fn parsed_scatter_with_options_remains_explicitly_deferred_at_runtime() {
       command: ScatterCommand {
         y_variable: "price".to_string(),
         x_variable: "weight".to_string(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: Some("out.png".to_string()),
         open_artifact: false,
       },

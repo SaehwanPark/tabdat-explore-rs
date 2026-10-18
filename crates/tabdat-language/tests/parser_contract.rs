@@ -2692,6 +2692,9 @@ fn scatter_parses_supported_options_and_targets() {
       command: ScatterCommand {
         y_variable: "y".into(),
         x_variable: "x".into(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: None,
         open_artifact: true,
       },
@@ -2703,6 +2706,9 @@ fn scatter_parses_supported_options_and_targets() {
       command: ScatterCommand {
         y_variable: "price".into(),
         x_variable: "weight".into(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: Some("plot.png".into()),
         open_artifact: true,
       },
@@ -2714,6 +2720,9 @@ fn scatter_parses_supported_options_and_targets() {
       command: ScatterCommand {
         y_variable: "price".into(),
         x_variable: "weight".into(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: None,
         open_artifact: false,
       },
@@ -2725,6 +2734,9 @@ fn scatter_parses_supported_options_and_targets() {
       command: ScatterCommand {
         y_variable: "price".into(),
         x_variable: "weight".into(),
+        line_variables: Vec::new(),
+        jitter_y: None,
+        title: None,
         saving: Some("out.png".into()),
         open_artifact: false,
       },
@@ -2739,6 +2751,9 @@ fn scatter_parses_supported_options_and_targets() {
           command: ScatterCommand {
             y_variable: "price".into(),
             x_variable: "weight".into(),
+            line_variables: Vec::new(),
+            jitter_y: None,
+            title: None,
             saving: None,
             open_artifact: false,
           },

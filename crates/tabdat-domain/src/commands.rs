@@ -1167,6 +1167,14 @@ pub struct ScatterCommand {
   pub y_variable: String,
   /// The x-axis variable to plot.
   pub x_variable: String,
+  /// Up to three columns to connect in stable x/row order, without changing data.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub line_variables: Vec<String>,
+  /// Optional finite nonnegative y-display amplitude, retained as a numeric literal.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub jitter_y: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub title: Option<String>,
   /// Optional file path to save the generated plot.
   pub saving: Option<String>,
   /// Whether to open the generated artifact in the browser/viewer (default true).
