@@ -59,7 +59,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — six-model numerical comparison, binary AME/all-row predictions and native Figure14.1 SVG data/geometry validated | Exact contract below; remaining Table14.1/author outputs and reusable reporting remain; no native stored-fit table claim |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — Table14.1 summaries, six-model numerical comparison, binary AME/all-row predictions and native Figure14.1 SVG data/geometry validated | Exact contract below; other author outputs and reusable reporting remain; no native stored-fit table claim |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
@@ -167,7 +167,20 @@ provenance and redistribution terms before adding fixtures.
   Data/model/labels/order and no-clobber publication invariants have native tests;
   SVG contains raw float64 metadata and is not anonymized. No author dataset or
   generated graphic is redistributed in the repository.
-- **Still required:** remaining Table14.1/author outputs,
+- **Table14.1 summaries:** [PR #277](https://github.com/SaehwanPark/tabdat-explore-rs/pull/277)
+  adds `summary.td`, using existing conditional `summarize` for charter, pcharter,
+  ppier and lnrelp overall, pier (N178) and charter (N452). All 60 quantities
+  (N/mean/sample n−1 SD/min/max) match independent base R4.6.1, with every one of
+  the 630 source/outcome/design records checked in original source-ID order.
+  Fresh checksum-verified conversion is byte-identical; unchanged absolute
+  1e-10 summary/1e-12 prepared-record tolerances. JSON/text/piped-terminal exports
+  are byte-identical and native terminal blocks were inspected. Checker probes
+  reject population SD, swapped cohorts, wrong counts and permuted IDs; native
+  actual-script tests cover small samples, constant-outcome SD0, ordering,
+  invalid data/keys and file-collision preservation. This uses three ordered
+  summary blocks, not a joined table, and introduces no engine/schema change,
+  production R/Python dependency or source-data redistribution.
+- **Still required:** other author exploratory/fitted-value summary outputs,
   native reusable reporting foundations, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
