@@ -695,7 +695,12 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.path.to_string_lossy().escape_debug()
     ),
     ExecutionResult::Logit(result) => format!(
-      "Binary logit maximum likelihood (model-based inverse Fisher information)\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nIndependent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction.\n{}",
+      "Binary logit maximum likelihood ({})\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; {lr_label}({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\n{inference_note}\n{}",
+      if result.robust {
+        "robust score sandwich, N/(N-1) correction"
+      } else {
+        "model-based inverse Fisher information"
+      },
       result.outcome.escape_debug(),
       result.observation_count,
       result.event_count,
@@ -717,11 +722,26 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         .map(logit_number)
         .unwrap_or_else(|| "NA".to_owned()),
       inference_number(result.mcfadden_r_squared),
-      logit_estimates(&result.coefficients)
+      logit_estimates(&result.coefficients),
+      lr_label = if result.robust {
+        "descriptive LR difference"
+      } else {
+        "LR chi2"
+      },
+      inference_note = if result.robust {
+        "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+      } else {
+        "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
+      },
     ),
     ExecutionResult::LogitMarginalEffects(result) => format!(
-      "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; model-based covariance, asymptotic normal 95% intervals.\n{}{}",
+      "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
+      if result.robust {
+        "robust score sandwich, N/(N-1) correction"
+      } else {
+        "model-based covariance"
+      },
       logit_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
@@ -730,7 +750,12 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       }
     ),
     ExecutionResult::Probit(result) => format!(
-      "Binary probit maximum likelihood (model-based inverse observed information)\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nIndependent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction.\n{}",
+      "Binary probit maximum likelihood ({})\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; {lr_label}({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\n{inference_note}\n{}",
+      if result.robust {
+        "robust score sandwich, N/(N-1) correction"
+      } else {
+        "model-based inverse observed information"
+      },
       result.outcome.escape_debug(),
       result.observation_count,
       result.event_count,
@@ -752,11 +777,26 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         .map(logit_number)
         .unwrap_or_else(|| "NA".to_owned()),
       inference_number(result.mcfadden_r_squared),
-      logit_estimates(&result.coefficients)
+      logit_estimates(&result.coefficients),
+      lr_label = if result.robust {
+        "descriptive LR difference"
+      } else {
+        "LR chi2"
+      },
+      inference_note = if result.robust {
+        "Independent observations; asymptotic standard-normal coefficient inference. LR p-value unavailable under robust inference; no robust omnibus test is supplied."
+      } else {
+        "Independent Bernoulli model; asymptotic standard-normal coefficient inference, no N-K correction."
+      },
     ),
     ExecutionResult::ProbitMarginalEffects(result) => format!(
-      "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; model-based covariance, asymptotic normal 95% intervals.\n{}{}",
+      "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
+      if result.robust {
+        "robust score sandwich, N/(N-1) correction"
+      } else {
+        "model-based covariance"
+      },
       logit_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
