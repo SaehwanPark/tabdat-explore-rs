@@ -413,14 +413,14 @@ fn add_score_outer(matrix: &mut [Vec<f64>], score: &[f64]) {
   }
 }
 
-fn omnibus_wald(
-  coefficients: &[LogitEstimate],
+pub(crate) fn omnibus_wald(
+  values: &[f64],
   covariance: &[Vec<f64>],
   include_intercept: bool,
-  cluster: Option<&BinaryCluster>,
+  cluster_group_count: Option<usize>,
 ) -> BinaryOmnibusWald {
   let start = usize::from(include_intercept);
-  let q = coefficients.len() - start;
+  let q = values.len() - start;
   let unavailable = |reason: &str| BinaryOmnibusWald {
     statistic: None,
     degrees_of_freedom: q,
@@ -432,18 +432,22 @@ fn omnibus_wald(
   }
   // Cluster score sums add to zero at the MLE, bounding meat rank by G-1.
   // Roundoff must not manufacture an invertible q>=G restriction covariance.
-  if cluster.is_some_and(|cluster| q >= cluster.group_count) {
+  if cluster_group_count.is_some_and(|groups| q >= groups) {
     return unavailable("insufficient_cluster_rank");
   }
-  let slopes = &coefficients[start..];
+  let slopes = &values[start..];
+  let errors: Vec<f64> = (start..values.len())
+    .map(|i| covariance[i][i].sqrt())
+    .collect();
+  if errors.iter().any(|s| !s.is_finite() || *s <= 0.0) {
+    return unavailable("singular_slope_covariance");
+  }
   // Inverting the slope correlation matrix avoids a rank decision that depends
   // on the measurement units of any predictor (not just their common scale).
   let correlation: Vec<Vec<f64>> = (0..q)
     .map(|i| {
       (0..q)
-        .map(|j| {
-          covariance[start + i][start + j] / slopes[i].standard_error / slopes[j].standard_error
-        })
+        .map(|j| covariance[start + i][start + j] / errors[i] / errors[j])
         .collect()
     })
     .collect();
@@ -457,7 +461,7 @@ fn omnibus_wald(
       slopes
         .iter()
         .enumerate()
-        .map(|(j, b)| a.statistic * inverse[i][j] * b.statistic)
+        .map(|(j, b)| (a / errors[i]) * inverse[i][j] * (b / errors[j]))
         .sum::<f64>()
     })
     .sum();
@@ -475,16 +479,7 @@ fn omnibus_wald(
 
 #[test]
 fn omnibus_wald_does_not_invert_a_rank_deficient_slope_covariance() {
-  let coefficients = vec![
-    inference(BinaryModel::Logit, "x1".into(), 1.0, 1.0).unwrap(),
-    inference(BinaryModel::Logit, "x2".into(), 2.0, 2.0).unwrap(),
-  ];
-  let wald = omnibus_wald(
-    &coefficients,
-    &[vec![1.0, 2.0], vec![2.0, 4.0]],
-    false,
-    None,
-  );
+  let wald = omnibus_wald(&[1.0, 2.0], &[vec![1.0, 2.0], vec![2.0, 4.0]], false, None);
   assert_eq!(wald.degrees_of_freedom, 2);
   assert!(wald.statistic.is_none() && wald.p_value.is_none());
   assert_eq!(
@@ -744,10 +739,10 @@ fn fit_binary_mle(
       }
       let omnibus_wald = robust.then(|| {
         omnibus_wald(
-          &coefficients,
+          &coefficients.iter().map(|c| c.value).collect::<Vec<_>>(),
           &covariance,
           problem.include_intercept,
-          cluster.as_ref(),
+          cluster.as_ref().map(|c| c.group_count),
         )
       });
       return Ok(BinaryMleResult {
