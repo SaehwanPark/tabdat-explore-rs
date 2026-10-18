@@ -3,7 +3,9 @@
 //! information, and marginal-effect conventions.
 
 use crate::distributions::{chi_square_tail, normal_cdf, normal_pdf, normal_quantile};
-use crate::matrix::{qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r};
+use crate::matrix::{
+  invert, qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r,
+};
 use crate::{EstimationProblem, EstimationSample, StatsError};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -76,6 +78,17 @@ pub struct BinaryCluster {
   pub group_count: usize,
 }
 
+/// Joint zero test of all predictor-column coefficients, excluding an intercept.
+/// Unavailable tests retain the requested df; no pseudoinverse or reduced-rank
+/// reference is substituted. This does not invalidate the fitted model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryOmnibusWald {
+  pub statistic: Option<f64>,
+  pub degrees_of_freedom: usize,
+  pub p_value: Option<f64>,
+  pub unavailable_reason: Option<String>,
+}
+
 #[derive(Clone, Copy)]
 enum BinaryCovariance<'a> {
   ModelBased,
@@ -106,6 +119,9 @@ pub struct BinaryMleResult {
   pub robust: bool,
   #[serde(default)]
   pub cluster: Option<BinaryCluster>,
+  /// Present for robust/clustered fits only; inference is asymptotic chi-square.
+  #[serde(default)]
+  pub omnibus_wald: Option<BinaryOmnibusWald>,
   pub log_likelihood: f64,
   pub null_log_likelihood: f64,
   pub likelihood_ratio: f64,
@@ -397,6 +413,86 @@ fn add_score_outer(matrix: &mut [Vec<f64>], score: &[f64]) {
   }
 }
 
+fn omnibus_wald(
+  coefficients: &[LogitEstimate],
+  covariance: &[Vec<f64>],
+  include_intercept: bool,
+  cluster: Option<&BinaryCluster>,
+) -> BinaryOmnibusWald {
+  let start = usize::from(include_intercept);
+  let q = coefficients.len() - start;
+  let unavailable = |reason: &str| BinaryOmnibusWald {
+    statistic: None,
+    degrees_of_freedom: q,
+    p_value: None,
+    unavailable_reason: Some(reason.to_owned()),
+  };
+  if q == 0 {
+    return unavailable("no_non_intercept_coefficients");
+  }
+  // Cluster score sums add to zero at the MLE, bounding meat rank by G-1.
+  // Roundoff must not manufacture an invertible q>=G restriction covariance.
+  if cluster.is_some_and(|cluster| q >= cluster.group_count) {
+    return unavailable("insufficient_cluster_rank");
+  }
+  let slopes = &coefficients[start..];
+  // Inverting the slope correlation matrix avoids a rank decision that depends
+  // on the measurement units of any predictor (not just their common scale).
+  let correlation: Vec<Vec<f64>> = (0..q)
+    .map(|i| {
+      (0..q)
+        .map(|j| {
+          covariance[start + i][start + j] / slopes[i].standard_error / slopes[j].standard_error
+        })
+        .collect()
+    })
+    .collect();
+  let Ok(inverse) = invert(&correlation) else {
+    return unavailable("singular_slope_covariance");
+  };
+  let statistic: f64 = slopes
+    .iter()
+    .enumerate()
+    .map(|(i, a)| {
+      slopes
+        .iter()
+        .enumerate()
+        .map(|(j, b)| a.statistic * inverse[i][j] * b.statistic)
+        .sum::<f64>()
+    })
+    .sum();
+  let p_value = chi_square_tail(statistic, q);
+  if !statistic.is_finite() || statistic < 0.0 || !p_value.is_finite() {
+    return unavailable("nonfinite_wald_inference");
+  }
+  BinaryOmnibusWald {
+    statistic: Some(statistic),
+    degrees_of_freedom: q,
+    p_value: Some(p_value),
+    unavailable_reason: None,
+  }
+}
+
+#[test]
+fn omnibus_wald_does_not_invert_a_rank_deficient_slope_covariance() {
+  let coefficients = vec![
+    inference(BinaryModel::Logit, "x1".into(), 1.0, 1.0).unwrap(),
+    inference(BinaryModel::Logit, "x2".into(), 2.0, 2.0).unwrap(),
+  ];
+  let wald = omnibus_wald(
+    &coefficients,
+    &[vec![1.0, 2.0], vec![2.0, 4.0]],
+    false,
+    None,
+  );
+  assert_eq!(wald.degrees_of_freedom, 2);
+  assert!(wald.statistic.is_none() && wald.p_value.is_none());
+  assert_eq!(
+    wald.unavailable_reason.as_deref(),
+    Some("singular_slope_covariance")
+  );
+}
+
 /// Scaled Newton/QR with deterministic backtracking for both binary families.
 /// A small likelihood change or score alone does not establish convergence
 /// under separation: the *full* Newton step must also be small. Singular
@@ -619,7 +715,7 @@ fn fit_binary_mle(
           "covariance cannot be represented in original predictor units",
         ));
       }
-      let coefficients = (0..k)
+      let coefficients: Vec<LogitEstimate> = (0..k)
         .map(|j| {
           inference(
             model,
@@ -646,6 +742,14 @@ fn fit_binary_mle(
           "likelihood-ratio chi-square inference is unavailable",
         ));
       }
+      let omnibus_wald = robust.then(|| {
+        omnibus_wald(
+          &coefficients,
+          &covariance,
+          problem.include_intercept,
+          cluster.as_ref(),
+        )
+      });
       return Ok(BinaryMleResult {
         model,
         outcome: problem.outcome.clone(),
@@ -657,6 +761,7 @@ fn fit_binary_mle(
         covariance,
         robust,
         cluster,
+        omnibus_wald,
         log_likelihood: current.log_likelihood,
         null_log_likelihood,
         likelihood_ratio,

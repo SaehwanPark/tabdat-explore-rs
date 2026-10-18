@@ -68,6 +68,14 @@ fn independent_r_references_cover_robust_covariance_and_full_normal_delta_infere
           );
           assert!(fit.robust);
           assert!(!classical.robust);
+          assert!(classical.omnibus_wald.is_none());
+          let wald = fit.omnibus_wald.as_ref().unwrap();
+          assert!(wald.unavailable_reason.is_none());
+          assert_eq!(wald.degrees_of_freedom, p.predictor_names.len());
+          if !two {
+            let z = fit.coefficients[usize::from(intercept)].statistic;
+            assert!((wald.statistic.unwrap() - z * z).abs() < 1e-12);
+          }
           assert_eq!(fit.sample, p.sample);
           assert_eq!(
             fit.sample.as_ref().unwrap().retained_indices,
@@ -112,6 +120,9 @@ fn independent_r_references_cover_robust_covariance_and_full_normal_delta_infere
               "lower" => c.confidence_lower,
               "upper" => c.confidence_upper,
               "covariance" => fit.covariance[i][j],
+              "wald_statistic" => wald.statistic.unwrap(),
+              "wald_df" => wald.degrees_of_freedom as f64,
+              "wald_p" => wald.p_value.unwrap(),
               q => {
                 let a = &ame.effects[i];
                 match q {
@@ -125,7 +136,7 @@ fn independent_r_references_cover_robust_covariance_and_full_normal_delta_infere
                 }
               }
             };
-            let tolerance = if fields[3] == "p" || fields[3] == "ame_p" {
+            let tolerance = if matches!(fields[3], "p" | "ame_p" | "wald_p") {
               expected.abs() * 1e-10 + f64::MIN_POSITIVE
             } else {
               1e-10
@@ -137,7 +148,7 @@ fn independent_r_references_cover_robust_covariance_and_full_normal_delta_infere
             checked += 1;
           }
           let k = p.parameter_count();
-          assert_eq!(checked, 6 * k + k * k + 6 * p.predictor_names.len());
+          assert_eq!(checked, 6 * k + k * k + 6 * p.predictor_names.len() + 3);
         }
       }
     }
@@ -163,6 +174,13 @@ fn robust_intercept_only_and_predictor_units_have_explicit_covariance_semantics(
       }
     };
     assert!((fit.covariance[0][0] - expected_variance).abs() < 1e-10);
+    let wald = fit.omnibus_wald.as_ref().unwrap();
+    assert_eq!(wald.degrees_of_freedom, 0);
+    assert!(wald.statistic.is_none() && wald.p_value.is_none());
+    assert_eq!(
+      wald.unavailable_reason.as_deref(),
+      Some("no_non_intercept_coefficients")
+    );
     assert_eq!(fit.likelihood_ratio_df, 0);
     assert!(fit.likelihood_ratio_p_value.is_none());
     let ame = binary_average_marginal_effects(&p, &fit).unwrap();
@@ -178,6 +196,12 @@ fn robust_intercept_only_and_predictor_units_have_explicit_covariance_semantics(
     }
     let other = fit_binary_robust(&scaled, model).unwrap();
     let other_ame = binary_average_marginal_effects(&scaled, &other).unwrap();
+    assert!(
+      (fit.omnibus_wald.as_ref().unwrap().statistic.unwrap()
+        - other.omnibus_wald.as_ref().unwrap().statistic.unwrap())
+      .abs()
+        < 1e-10
+    );
     let factors = [1.0, 1e5, 0.03];
     for (i, factor) in factors.iter().enumerate() {
       assert!((fit.coefficients[i].value - other.coefficients[i].value * factor).abs() < 1e-10);
@@ -218,6 +242,17 @@ fn cluster_group_guards_singletons_and_relabeling_have_explicit_semantics() {
       assert!((a - b).abs() < 1e-12);
     }
     assert!(fit_binary_clustered(&p, model, "").is_err());
+    p.sample.as_mut().unwrap().cluster_groups =
+      Some((0..40).map(|i| (i % 2).to_string()).collect());
+    let rank_limited = fit_binary_clustered(&p, model, "two_groups").unwrap();
+    let wald = rank_limited.omnibus_wald.as_ref().unwrap();
+    assert_eq!(wald.degrees_of_freedom, 2);
+    assert!(wald.statistic.is_none() && wald.p_value.is_none());
+    assert_eq!(
+      wald.unavailable_reason.as_deref(),
+      Some("insufficient_cluster_rank")
+    );
+    binary_average_marginal_effects(&p, &rank_limited).unwrap();
     p.sample.as_mut().unwrap().cluster_groups =
       Some((1..=40).map(|i| ((i * 7) % 9).to_string()).collect());
     let grouped = fit_binary_clustered(&p, model, "group").unwrap();
