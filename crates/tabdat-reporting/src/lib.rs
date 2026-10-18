@@ -4,4 +4,5 @@
 pub mod catalog;
 pub mod help;
 pub mod json_results;
+pub mod scatter_svg;
 pub mod terminal;
