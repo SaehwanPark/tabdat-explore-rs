@@ -2,9 +2,9 @@
 
 This bounded example validates the **classical and unclustered robust numerical
 logit, probit and OLS comparison in Table 14.2** (p. 465), under the explicit
-converged-information conventions below, and probability data underlying
+converged-information conventions below, and fitted-value data underlying
 Figure 14.1 (p. 466). It adds a separately validated continuous average partial
-derivative with conditional-design delta-method uncertainty for each family. That effect
+derivative with conditional-design delta-method uncertainty for each binary family. That effect
 is an extension, **not** a claimed published table result.
 
 It does not complete the entire illustration: remaining author outputs and the
@@ -263,7 +263,7 @@ storage or reusable report formatting. Figure14.1 rendering remains missing.
 
 ## Interpretation, numerical limits and remaining work
 
-Both default fits are unweighted independent-Bernoulli maximum likelihood,
+Both default binary fits are unweighted independent-Bernoulli maximum likelihood,
 normal coefficient/AME inference and asymptotic chi-square LR inference,
 **without N-K covariance scaling**. The robust variants follow the sandwich
 and suppressed-LR-inference contract above. The default logit reports inverse-Fisher
@@ -305,7 +305,7 @@ not a new fishing-mode illustration claim.
 
 Weighted/survey forms, categorical/factor/interactions and
 discrete changes with uncertainty, prediction intervals, general `lincom`/`test`
-after either family and rendered graphics are not delivered by this slice. They
+after either binary family and rendered graphics are not delivered by this slice. They
 remain required where specified by the roadmap/illustrations; neither this
 example nor passing synthetic tests establish binary-family or full-book
 completion.
