@@ -17,6 +17,7 @@ mod row_conversion;
 use row_conversion::*;
 mod inspection;
 mod labels;
+mod plotting;
 mod scripts;
 mod statistics;
 mod transforms;
@@ -115,6 +116,7 @@ impl Session {
       Command::Select { variables } => self.execute_select(variables),
       Command::Save { path, replace } => self.execute_save(path, replace),
       Command::Export { path, replace } => self.execute_export(path, replace),
+      Command::Scatter { command } => self.execute_scatter(&command),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       Command::Run { path } => self.execute_run(path),

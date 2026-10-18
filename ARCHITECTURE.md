@@ -11,10 +11,10 @@ The product is not feature complete. A compiled command type is not evidence of 
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
 | `tabdat-stats` | Pure Rust linear/binary-logit/probit estimation, covariance/inference and hypothesis utilities |
-| `tabdat-io` | Local path/format and script I/O validation |
+| `tabdat-io` | Local path/format and script I/O validation; complete staged SVG publication without replacing destinations |
 | `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and one registered scalar UDF (`tabdat_gauss_phi`, delegating to `tabdat-stats`' validated normal CDF); it depends on `tabdat-stats` only for that validated function, with no reverse edge |
-| `tabdat-execution` | Session coordination, data/statistical dispatch and script execution |
-| `tabdat-reporting` | Help/catalog, bounded structured reporting and core terminal result rendering |
+| `tabdat-execution` | Session coordination, data/statistical dispatch, script execution and generated SVG artifact coordination |
+| `tabdat-reporting` | Help/catalog, bounded structured reporting, core terminal result rendering and pure owned-data scatter/line SVG generation |
 | `tabdat-shell` | Batch CLI, persistent session I/O; terminal editing through Rustyline's safe facade, plain piped input |
 | `tabdat-mcp` | Transport-independent typed tools; **no MCP server** |
 | `tabdat-runtime` | Compatibility re-exports and integration entry points |
@@ -60,9 +60,18 @@ Batch CLI / line session / future MCP transport
          terminal / supported JSON
 ```
 
-Future MCP, visualization, ReadStat, libgretl and other native integrations may
-reuse the same boundaries but are **not** installed production capabilities.
-Phase 1 prototypes demonstrate feasibility, not platform/release certification.
+For SVG scatter artifacts, execution additionally calls reporting's pure,
+backend-independent SVG builder, then publishes the completed string through I/O.
+This narrow execution → reporting edge does not call terminal/JSON rendering,
+introduce backend dependencies into reporting, or mutate data/model state. The
+shared execution path owns publication, so batch, scripts and typed callers do
+not acquire competing artifact semantics. There is no renderer framework or
+raster/font dependency.
+
+Future MCP transport, PNG/other visualization families, ReadStat, libgretl and
+other native integrations may reuse the same boundaries but are **not** installed
+production capabilities. Phase 1 prototypes demonstrate feasibility, not
+platform/release certification.
 
 ## Architecture decisions: keep them proportional
 

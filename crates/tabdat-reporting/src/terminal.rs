@@ -446,6 +446,33 @@ fn render_summary_rows(rows: &[SummaryRow]) -> String {
   output
 }
 
+fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
+  let mut output = format!(
+    "SVG scatter saved to {} ({} x {})\nCandidate rows = {}; scatter {} versus {}: finite points = {}; omitted missing/nonfinite = {}\n",
+    result.path.to_string_lossy().escape_debug(),
+    result.width,
+    result.height,
+    result.candidate_rows,
+    result.scatter.variable.escape_debug(),
+    result.x_variable.escape_debug(),
+    result.scatter.point_count,
+    result.scatter.omitted_rows,
+  );
+  for line in &result.lines {
+    writeln!(
+      output,
+      "Overlaid line {}: finite vertices = {}; omitted missing/nonfinite = {}",
+      line.variable.escape_debug(),
+      line.point_count,
+      line.omitted_rows
+    )
+    .unwrap();
+  }
+  output.push_str("Line order: ascending x, then original candidate-row index; missing line values break paths.\nCoordinates: float64 conversions, not lossless wide-integer/decimal identities; no [0,1] clipping.\n");
+  writeln!(output,"Display-only y jitter amplitude = {} outcome units; deterministic row-index pattern, not RNG state.",result.jitter_y).unwrap();
+  output
+}
+
 /// Render owned execution results without recomputing data or statistics.
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
@@ -740,6 +767,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.dataset.columns.len(),
       result.path.to_string_lossy().escape_debug()
     ),
+    ExecutionResult::Plot(result) => plot_artifact(result),
     ExecutionResult::Export(result) => format!(
       "Exported {} rows, {} columns to {}\n",
       result.dataset.row_count,

@@ -79,6 +79,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Select { .. }
     | Command::Save { .. }
     | Command::Export { .. }
+    | Command::Scatter { .. }
     | Command::Describe
     | Command::Count
     | Command::Codebook { .. }
@@ -200,6 +201,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       persistence_result_data(&result.path, &result.dataset),
       "ExportResult",
     ),
+    ExecutionResult::Plot(result) => (json!(result), "PlotArtifactResult"),
     ExecutionResult::Generate(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "GenerateResult",

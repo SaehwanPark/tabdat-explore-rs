@@ -10,3 +10,4 @@ tabdat-language = { path = "../tabdat-language", version = "0.1.0" }
 tabdat-data = { path = "../tabdat-data", version = "0.1.0" }
 tabdat-io = { path = "../tabdat-io", version = "0.1.0" }
 tabdat-stats = { path = "../tabdat-stats", version = "0.1.0" }
+tabdat-reporting = { path = "../tabdat-reporting", version = "0.1.0" }
