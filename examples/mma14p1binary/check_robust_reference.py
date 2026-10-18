@@ -67,7 +67,13 @@ def check(reference_path, native_paths, cluster_predictions=None):
       family, quantity = row["family"], row["quantity"]
       assert row["intercept"] == "TRUE" and row["two"] == "FALSE"
       i, j = int(row["i"]), int(row["j"])
-      if quantity == "covariance":
+      if quantity.startswith("wald_"):
+        wald = results[family, "fit"]["omnibus_wald"]
+        assert wald["null_hypothesis"] == "all_non_intercept_coefficients_zero"
+        assert wald["reference_distribution"] == "asymptotic_chi_square"
+        assert wald["unavailable_reason"] is None
+        actual = wald[{"wald_statistic": "statistic", "wald_df": "degrees_of_freedom", "wald_p": "p_value"}[quantity]]
+      elif quantity == "covariance":
         actual = results[family, "fit"]["covariance_matrix"][i][j]
       elif quantity.startswith("ame"):
         field = "value" if quantity == "ame" else fields[quantity[4:]]
@@ -75,11 +81,11 @@ def check(reference_path, native_paths, cluster_predictions=None):
       else:
         actual = results[family, "fit"]["coefficients"][i][fields[quantity]]
       expected = float(row["value"])
-      tolerance = abs(expected)*1e-10 + sys.float_info.min if quantity in ("p", "ame_p") else 1e-10
+      tolerance = abs(expected)*1e-10 + sys.float_info.min if quantity in ("p", "ame_p", "wald_p") else 1e-10
       assert math.isfinite(actual) and abs(actual-expected) < tolerance, (row, actual)
       count += 1
-  assert count == 44, count
-  print(f"Matched {count} coefficient/covariance/delta-AME quantities against independent R.")
+  assert count == 50, count
+  print(f"Matched {count} coefficient/covariance/delta-AME/omnibus-Wald quantities against independent R.")
 
 
 if __name__ == "__main__":

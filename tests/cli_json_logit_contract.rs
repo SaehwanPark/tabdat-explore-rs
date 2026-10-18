@@ -63,6 +63,49 @@ fn close(v: &Value, expected: f64) {
   assert!((actual - expected).abs() < 1e-10, "{actual} != {expected}");
 }
 
+fn check_wald(fit: &Value, statistic: f64, p_value: f64) {
+  let wald = &fit["omnibus_wald"];
+  assert_eq!(
+    wald["null_hypothesis"],
+    "all_non_intercept_coefficients_zero"
+  );
+  assert_eq!(wald["degrees_of_freedom"], 2);
+  assert_eq!(wald["reference_distribution"], "asymptotic_chi_square");
+  assert_eq!(wald["unavailable_reason"], Value::Null);
+  close(&wald["statistic"], statistic);
+  close(&wald["p_value"], p_value);
+}
+
+#[test]
+fn rank_limited_cluster_wald_is_unavailable_without_losing_fit_or_workflow() {
+  let f = Fixture::new();
+  for family in ["logit", "probit"] {
+    let fit = format!("{family} y x1 x2, cluster(group_id)");
+    let commands = [
+      "use data.csv",
+      r#"sql """SELECT *, source_row%2 AS group_id FROM active""" into grouped"#,
+      &fit,
+      "estat margins",
+      "predict p, pr",
+    ];
+    let rows = envelopes(&f.batch("--json", &commands));
+    assert_eq!(rows.len(), 5);
+    let wald = &rows[2]["data"]["omnibus_wald"];
+    assert_eq!(wald["degrees_of_freedom"], 2);
+    assert_eq!(wald["unavailable_reason"], "insufficient_cluster_rank");
+    for field in ["statistic", "p_value", "reference_distribution"] {
+      assert_eq!(wald[field], Value::Null);
+    }
+    assert_eq!(rows[4]["result_type"], "PredictionResult");
+    let output = f.batch("--text", &commands);
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(text.contains("Omnibus Wald unavailable: insufficient_cluster_rank"));
+    assert!(text.contains("No reduced-rank test supplied"));
+    assert!(!text.contains("Omnibus Wald chi2"));
+  }
+}
+
 #[test]
 fn clustered_binary_json_and_text_expose_ml_correction_and_normal_inference() {
   let f = Fixture::new();
@@ -89,6 +132,12 @@ fn clustered_binary_json_and_text_expose_ml_correction_and_normal_inference() {
     assert_eq!(fit["likelihood_ratio_p_value"], Value::Null);
     assert_eq!(fit["likelihood_ratio_reference_distribution"], Value::Null);
     close(&fit["coefficients"][1]["standard_error"], slope_se);
+    let (statistic, p) = if family == "logit" {
+      (6.73106138056111, 0.034543679258001)
+    } else {
+      (6.98905005597341, 0.0303631666666249)
+    };
+    check_wald(fit, statistic, p);
     let ame = &rows[3]["data"];
     assert_eq!(ame["covariance"], "cluster_sandwich_g_over_g_minus_1");
     assert_eq!(ame["cluster"], fit["cluster"]);
@@ -101,6 +150,9 @@ fn clustered_binary_json_and_text_expose_ml_correction_and_normal_inference() {
       "G/(G-1) correction",
       "not G-1 Student t",
       "unreliable with few clusters",
+      "Omnibus Wald chi2(2)",
+      "all non-intercept coefficients = 0",
+      "asymptotic chi-square (not F)",
     ] {
       assert!(text.contains(expected), "{text}");
     }
@@ -132,6 +184,12 @@ fn robust_binary_scripts_report_sandwich_and_not_ordinary_lr_inference() {
     assert_eq!(fit["likelihood_ratio_p_value"], Value::Null);
     assert!(fit["likelihood_ratio"].as_f64().unwrap() > 0.0);
     close(&fit["coefficients"][1]["standard_error"], slope_se);
+    let (statistic, p) = if family == "logit" {
+      (5.41850405863088, 0.066586592912871)
+    } else {
+      (5.82999770861549, 0.0542040931341475)
+    };
+    check_wald(fit, statistic, p);
     let ame = &rows[2]["data"];
     assert_eq!(ame["covariance"], "robust_sandwich_n_over_n_minus_1");
     close(&ame["effects"][0]["standard_error"], ame_se);
@@ -142,6 +200,7 @@ fn robust_binary_scripts_report_sandwich_and_not_ordinary_lr_inference() {
     let text = String::from_utf8(text.stdout).unwrap();
     assert!(text.contains("robust score sandwich, N/(N-1) correction"));
     assert!(text.contains("LR p-value unavailable under robust inference"));
+    assert!(text.contains("Omnibus Wald chi2(2)"));
     assert!(!text.contains("LR chi2"));
     assert!(!text.contains("model-based covariance"));
   }
@@ -171,6 +230,7 @@ fn script_json_exposes_explicit_logit_inference_predictions_and_retained_margins
   assert!(rows.iter().all(|r| r["schema_version"] == 1));
   let fit = &rows[1]["data"];
   assert_eq!(fit["covariance"], "model_based_fisher_information");
+  assert_eq!(fit["omnibus_wald"], Value::Null);
   assert_eq!(fit["reference_distribution"], "asymptotic_standard_normal");
   assert_eq!(
     fit["likelihood_ratio_reference_distribution"],

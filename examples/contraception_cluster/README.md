@@ -34,8 +34,10 @@ not reproduce the random-effects models shown in the source package's examples.
   coverage with few/imbalanced clusters. At least two retained clusters is
   only a computability guard. This is not survey/design-based inference.
 - Ordinary LR p/reference are unavailable; likelihood differences and pseudo-R²
-  remain descriptive. Robust omnibus tests, multiway clustering, weights and
-  random-effects estimation are not supplied by this workflow.
+  remain descriptive. The omnibus Wald test of all non-intercept coefficients
+  uses the selected clustered covariance and asymptotic chi-square(q), not F;
+  rank-limited/singular restrictions are unavailable, without reduced-q tests.
+  Multiway clustering, weights and random-effects estimation are not supplied.
 
 ## Acquire, run and independently validate
 
@@ -71,8 +73,8 @@ rows and does not require a district/outcome column. `estat margins` keeps its
 original fit sample, groups and covariance even after current-data edits.
 
 R **4.6.1** `glm`, independently reevaluated scores/observed information and
-matrix algebra validate all **44** coefficient/covariance/normal-inference/delta
-quantities. All **1,934** person/district/outcome/design/probability/index records
+matrix algebra validate all **50** coefficient/covariance/normal-inference/delta
+and omnibus-Wald quantities. All **1,934** person/district/outcome/design/probability/index records
 and retained group identities are checked, not just counts. Absolute tolerance
 is 1e-10 for moderate values/predictions and 1e-12 for the prepared age design;
 test tails use 1e-10 relative plus the smallest positive normal f64. No tolerance

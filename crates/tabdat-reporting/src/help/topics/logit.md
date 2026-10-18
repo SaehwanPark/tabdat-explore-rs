@@ -15,7 +15,8 @@ retained-design `estat margins` inference use this covariance with normal
 95% intervals. Observations must be independent; this is not cluster/survey
 inference or protection against a wrong conditional-mean interpretation.
 Ordinary LR p-values are suppressed: the likelihood difference/pseudo-R² are
-descriptive, and no robust omnibus Wald test is supplied.
+descriptive. An omnibus Wald test uses the selected covariance to jointly test
+all non-intercept coefficients = 0, with asymptotic chi-square(q), not F.
 
 With `, cluster(group)`, scores are summed within each group before forming
 the sandwich, with G/(G-1) correction and the same converged-information bread.
@@ -27,6 +28,13 @@ NULL/nonfinite IDs are excluded jointly with model missingness before validating
 the outcome. Wide integers/Decimals keep exact identity; floating -0 and +0 are
 one group. `robust` and `cluster` cannot be combined. This is neither a
 random-effects model nor survey/design-based inference.
+
+The omnibus Wald test also uses clustered covariance after `cluster(group)`.
+Without an intercept it tests every coefficient. Rank-limited/singular slope
+covariance makes this test unavailable without discarding the fit; no
+pseudoinverse or reduced-q test is substituted. This is not a specification
+test or small-cluster reliability guarantee. General binary `test` remains
+unsupported.
 
 Workflow (after loading numeric data):
 - `logit insured age bmi`

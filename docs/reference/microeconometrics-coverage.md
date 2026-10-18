@@ -26,10 +26,10 @@ not by implementing every estimator mentioned in a chapter.
 | --- | --- | --- |
 | 4: Linear, IV and quantile models | Bounded OLS/WLS/diagonal GLS, HC1/one-way cluster | IV/2SLS and diagnostics, quantile estimation; factor/interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares and bounded binary logit/probit MLE/QR | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
-| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
+| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Context-only seed, no resampling/estimation workflow | Actual RNG contract, IID/cluster bootstrap, simulation/Bayesian estimation and diagnostics |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical/robust subset under converged-information conventions | Robust omnibus tests, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical/robust subset under converged-information conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
@@ -122,13 +122,23 @@ provenance and redistribution terms before adding fixtures.
   630-person cohort; both existing R prediction references check all source
   identities and predictions. Eight synthetic family/design variants cover
   full covariance/normal inference; runtime/CLI tests cover retained samples,
-  edits, state and unsupported clustering. Existing absolute/relative 1e-10
+  edits, state and invalid cluster/weight inputs. Existing absolute/relative 1e-10
   tolerances are unchanged. Probit robust intercept/slope SEs are
   0.0794501824989468/0.0692948032742171 at converged information, not the
   author Stata8 values 0.0794429/0.0692881; see the example for that explicit
   convention difference. Ordinary LR p/reference fields are null for robust
-  fits; no robust omnibus Wald test is supplied.
-- **Still required:** robust omnibus tests, full OLS comparison and
+  fits. [PR #274](https://github.com/SaehwanPark/tabdat-explore-rs/pull/274)
+  adds the selected-covariance omnibus Wald test of all non-intercept
+  coefficients with asymptotic chi-square(q). The exact fishing tests match
+  independent R: logit W=194.280378518603, p=3.69887865746942e-44; probit
+  W=232.020896467226, p=2.16086165111978e-52. Author output rounds to
+  194.28/232.07: probit's difference is the documented information convention,
+  not an unexplained tolerance exception. The runnable checker now covers 50
+  coefficient/covariance/effect/Wald quantities; full person/design/prediction
+  checks remain. Sixteen synthetic robust/clustered family/design variants
+  validate W/df/tails; singular/rank-limited restrictions produce explicit
+  unavailable tests, not pseudoinverses/reduced-q inference or discarded fits.
+- **Still required:** full OLS comparison and
   Figure 14.1 rendering, plus other exact binary illustrations and needed
   factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
@@ -263,8 +273,8 @@ uses the external `mlmRev::Contraception` CSV: N=1,934 women, 759 events, 60
 districts; pooled unweighted logit/probit on an intercept and provided centered
 age, clustered by district. Source checksum, preparation, scripts and independent
 R4.6.1 numerical/prediction evidence are recorded there. All 1,934 person/group/
-outcome/design/prediction records and 44 covariance/coefficient/delta-AME
-quantities match; eight synthetic clustered family/design references validate
+outcome/design/prediction records and 50 covariance/coefficient/delta-AME/Wald
+quantities match (the omnibus extension is in PR #274); eight synthetic clustered family/design references validate
 full covariance/normal inference. Singleton/relabeling, missing clusters,
 wide-ID preservation, retained state and CLI failures have native coverage.
 [PR #273](https://github.com/SaehwanPark/tabdat-explore-rs/pull/273) adds this
