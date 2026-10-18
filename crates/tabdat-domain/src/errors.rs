@@ -445,6 +445,12 @@ pub enum RuntimeError {
   ProbitFailed { message: String },
   /// Only explicit pr/xb probit predictions without auxiliary interval options are supported.
   PredictBinaryUnsupported,
+  /// Invalid/unsupported Poisson request or failed finite numerical fit.
+  PoissonFailed { message: String },
+  /// Only n/xb without auxiliary options are installed for Poisson.
+  PredictPoissonUnsupported,
+  /// The mean-count flag is specific to an installed Poisson fit.
+  PredictMeanCountRequiresPoisson,
   /// The requested IV estimator is not executed by this runtime slice.
   IvRegressUnsupportedEstimator { estimator: String },
   /// One or more IV variables are absent from the active dataset.
@@ -1073,6 +1079,13 @@ impl fmt::Display for RuntimeError {
       Self::ProbitFailed { message } => write!(formatter, "probit: {message}"),
       Self::PredictBinaryUnsupported => formatter.write_str(
         "probit prediction supports only pr or xb, without interval, std or saving options",
+      ),
+      Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
+      Self::PredictPoissonUnsupported => formatter.write_str(
+        "poisson prediction supports only n (mean) or xb, without interval, std or saving options",
+      ),
+      Self::PredictMeanCountRequiresPoisson => formatter.write_str(
+        "predict n requires a prior successful Poisson fit; use pr for binary probabilities or xb for an index",
       ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,

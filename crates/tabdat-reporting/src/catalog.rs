@@ -1312,7 +1312,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "poisson y x1 x2".to_string(),
+      syntax: "poisson y [x1 x2] [, robust noconstant]".to_string(),
     }),
     "postlasso" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -1367,8 +1367,12 @@ fn get_command_schema(
           name: "pr".to_string(),
           required: false,
         },
+        OptionDescriptor {
+          name: "n".to_string(),
+          required: false,
+        },
       ],
-      syntax: "predict newvar [, xb | residuals | pr]".to_string(),
+      syntax: "predict newvar [, xb | residuals | pr | n]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![

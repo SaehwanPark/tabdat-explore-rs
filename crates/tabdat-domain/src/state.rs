@@ -145,6 +145,13 @@ pub struct BinaryLogitState {
 /// encoded by `EstimationState::Probit` and the fitted `result.model`.
 pub type BinaryProbitState = BinaryLogitState;
 
+/// Owned Poisson design/fit, independent of subsequent current-data edits.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PoissonFitState {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub result: tabdat_stats::PoissonResult,
+}
+
 /// Common normalized non-linear fit state. Backend-specific scoring caches stay
 /// behind the adapter, and this record alone does not promise prediction support.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -176,7 +183,9 @@ pub enum EstimationState {
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),
+  /// Legacy normalized placeholder, retained for old serialized state reads.
   Poisson(ModelState),
+  PoissonFit(Box<PoissonFitState>),
   NegativeBinomial(ModelState),
   ZeroInflatedPoisson(ModelState),
   ZeroInflatedNegativeBinomial(ModelState),
@@ -237,7 +246,7 @@ impl EstimationState {
       Self::Tobit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
-      Self::Poisson(..) => EstimationFamily::Poisson,
+      Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,
       Self::NegativeBinomial(..) => EstimationFamily::NegativeBinomial,
       Self::ZeroInflatedPoisson(..) => EstimationFamily::ZeroInflatedPoisson,
       Self::ZeroInflatedNegativeBinomial(..) => EstimationFamily::ZeroInflatedNegativeBinomial,

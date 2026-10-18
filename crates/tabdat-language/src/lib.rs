@@ -2591,7 +2591,11 @@ fn parse_binary_or_count_response_command(
   command_name: &str,
   body: &str,
 ) -> Result<Command, ParseError> {
-  let syntax = format!("{command_name} expects syntax: {command_name} <y> <xvars>");
+  let syntax = if command_name == "poisson" {
+    "poisson expects syntax: poisson <y> [<xvars>]".to_owned()
+  } else {
+    format!("{command_name} expects syntax: {command_name} <y> <xvars>")
+  };
   let (argument_body, option_body) = match first_unquoted_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
     None => (body, None),
@@ -2607,7 +2611,7 @@ fn parse_binary_or_count_response_command(
     || parts.has_options
     || parts.has_assignment
     || parts.missing_condition_expression
-    || parts.arguments.len() < 2
+    || parts.arguments.len() < if command_name == "poisson" { 1 } else { 2 }
   {
     return Err(ParseError::new(syntax));
   }
@@ -4604,6 +4608,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         "xb"
           | "residuals"
           | "pr"
+          | "n"
           | "spatial_lag"
           | "posterior_predictive"
           | "interval"
@@ -4626,7 +4631,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   for option in &options {
     if matches!(
       option.name.as_str(),
-      "xb" | "residuals" | "pr" | "spatial_lag" | "posterior_predictive" | "interval" | "std"
+      "xb" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive" | "interval" | "std"
     ) && option.value != UseOptionValue::Flag
     {
       return Err(ParseError::new(format!(
@@ -4640,22 +4645,26 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   for opt in &options {
     if matches!(
       opt.name.as_str(),
-      "xb" | "residuals" | "pr" | "spatial_lag" | "posterior_predictive"
+      "xb" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive"
     ) && !kinds_present.contains(&opt.name.as_str())
     {
       kinds_present.push(opt.name.as_str());
     }
   }
   if kinds_present.len() > 1 {
-    return Err(ParseError::new(
-      "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined",
-    ));
+    return Err(ParseError::new(if kinds_present.contains(&"n") {
+      "predict option n cannot be combined with another prediction kind"
+    } else {
+      "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+    }));
   }
 
   let kind = if options.iter().any(|opt| opt.name == "residuals") {
     PredictKind::Residuals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
+  } else if options.iter().any(|opt| opt.name == "n") {
+    PredictKind::MeanCount
   } else if options.iter().any(|opt| opt.name == "spatial_lag") {
     PredictKind::SpatialLag
   } else if options.iter().any(|opt| opt.name == "posterior_predictive") {
@@ -11710,11 +11719,10 @@ mod tests {
   #[test]
   fn rejects_invalid_poisson_and_nbreg_syntax_with_exact_diagnostics() {
     let cases = [
-      ("poisson", "poisson expects syntax: poisson <y> <xvars>"),
-      ("poisson y", "poisson expects syntax: poisson <y> <xvars>"),
+      ("poisson", "poisson expects syntax: poisson <y> [<xvars>]"),
       (
         "poisson y x if y > 0",
-        "poisson expects syntax: poisson <y> <xvars>",
+        "poisson expects syntax: poisson <y> [<xvars>]",
       ),
       (
         "poisson y x, robust cluster(group)",

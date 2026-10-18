@@ -152,9 +152,14 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Resolve the next exact required nonlinear-family illustration in the coverage
-   ledger — MMA-COUNT's Poisson sample/design/reference is the next family
-   candidate, before implementing syntax or an isolated estimator. The defined
+1. Advance the next bounded MMA-COUNT requirement from its now-resolved
+   source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
+   validates model-based/independent-row robust coefficients, full inference,
+   diagnostics, continuous effects and all 20,186 means/indices against R
+   (1,095 quantities). This is not a complete count family or panel analysis:
+   NB parameterization, offsets/exposure, clustered inference with original IDs,
+   count probabilities and the remaining table/illustration outputs stay required.
+   Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
    complete the binary family. Needed Fisher/factor/interaction/discrete-change

@@ -92,6 +92,38 @@ fn old_states_default_missing_report_registry_and_unknown_estimator_without_gues
 }
 
 #[test]
+fn legacy_poisson_placeholder_and_owned_executable_fit_have_distinct_roundtrippable_tags() {
+  let problem = tabdat_stats::EstimationProblem::new(
+    "y",
+    vec![],
+    vec![0., 1., 2., 4., 0., 3.],
+    vec![vec![]; 6],
+  )
+  .unwrap();
+  let linear = tabdat_stats::fit_least_squares(&problem).unwrap();
+  let legacy = EstimationState::Poisson(ModelState {
+    model: tabdat_stats::PostEstimationModel::from_least_squares(&linear),
+    sample: tabdat_stats::EstimationSample::new((0..6).collect(), 6, 0, None, None).unwrap(),
+    outcome: "y".into(),
+    predictors: vec![],
+  });
+  let owned = EstimationState::PoissonFit(Box::new(PoissonFitState {
+    result: tabdat_stats::fit_poisson(&problem, false).unwrap(),
+    problem,
+  }));
+  for (state, tag) in [(legacy, "poisson"), (owned, "poisson_fit")] {
+    assert_eq!(state.family(), EstimationFamily::Poisson);
+    assert!(state.linear().is_none());
+    let wire = serde_json::to_value(&state).unwrap();
+    assert_eq!(wire["family"], tag);
+    assert_eq!(
+      serde_json::from_value::<EstimationState>(wire).unwrap(),
+      state
+    );
+  }
+}
+
+#[test]
 fn state_has_one_optional_model_and_panel_contract() {
   let mut state = ExecutionState::default();
   assert!(state.estimation.is_none());

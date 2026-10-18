@@ -6,7 +6,7 @@ How to invoke:
 `estat ar, ci [level(95)]`
 `estat overid`
 `estat endogenous`
-`estat margins` (after logit or probit)
+`estat margins` (after logit, probit or Poisson)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -26,7 +26,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous` and binary `margins` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous` and binary/count continuous `margins` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Binary continuous average partial effects
 
@@ -55,10 +55,30 @@ These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
 multiway-cluster/weighted effects, level option, categorical/discrete-change or
-other model-family margins are installed. The retained fit decides which family
-runs; with no binary fit the margins call fails with the established prior-logit
-message. Restore/fit a successful logit or probit after a failed new estimation
-attempt; see `help logit`, `help probit` and `help predict`.
+other than the bounded Poisson margins below are installed. The retained fit
+selects the family; with no supported fit the call keeps the established
+prior-logit error wording. Refit successfully after a failed new runtime
+estimation attempt; see `help logit`, `help probit`, `help poisson` and `help predict`.
+
+## Poisson continuous average partial effects
+
+After model-based or independent-row robust `poisson`, `estat margins` reports
+`beta_j*mean(mu)` for each predictor column, excluding the intercept. The average
+uses the **owned retained estimation design**, not current rows; edits do not
+rescan/refit or change this estimand. Intercept-only fits have no predictor effects.
+
+The full gradient is `beta_j*mean(mu*X) + e_j*mean(mu)`, including intercept/slopes'
+covariance. The delta variance uses selected inverse Poisson information or the
+independent-row N/(N-1) score sandwich. It does not use Pearson dispersion, OLS
+HC1, Student t or panel/cluster covariance. Output has normal z/two-sided p and
+fixed 95% intervals (`PoissonMarginalEffectsResult`); zero variance gives
+unavailable z/p/CI rather than an exact interval.
+
+These are **continuous column derivatives conditional on observed X**, not
+binary-variable discrete changes, log/interaction chain rules or uncertainty in
+the covariate distribution. For a generated log-income predictor the derivative
+is per log-income unit, not per currency unit. There are no weighted, clustered,
+factor/discrete-change or user-level-option count margins in this slice.
 
 ## Sargan overidentification test
 

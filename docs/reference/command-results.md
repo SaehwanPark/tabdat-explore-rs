@@ -240,13 +240,83 @@ retained design). `predict ... , pr` computes probabilities with the same
 registered `tabdat_gauss_phi` Gaussian function the fit used, keeping SQL
 probabilities bit-identical to engine probabilities under the same index; `, xb`
 appends the finite linear index, and unsupported predict forms fail with the
-probit wording. With no binary fit, `estat margins` keeps the established
+probit wording. With no supported binary/Poisson fit, `estat margins` keeps the established
 prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
 Weighted/survey/multiway binary inference and factors/interactions/discrete
 changes remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
+
+## Bounded Poisson ML / independent-row robust QMLE
+
+`poisson y [xvars] [, robust noconstant]` executes unweighted log-link regression.
+The joint complete-finite estimation sample preserves fit-time positions;
+missing/nonfinite model cells are excluded before outcome-domain rejection.
+Loaded outcome values must be exact nonnegative integers <=2^53-1, with DECIMAL
+and wide integer identity checked before conversion. This is not lexical recovery
+of digits a loader already rounded to DOUBLE. N>K/full rank and bounded numerical
+convergence are required. Weights/cluster requests are not installed.
+
+CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
+
+- `outcome`, ordered `predictors`, `include_intercept`, `observation_count`,
+  `zero_count`, float64 `count_sum`, and the exact optional `sample` record.
+- Ordered `coefficients` and `covariance_parameter_names`, plus the full
+  `covariance_matrix`. Each coefficient has `name`, `value`, `standard_error`,
+  nullable `statistic`, `p_value`, `confidence_lower` and `confidence_upper`.
+  The reference is `asymptotic_standard_normal`, `confidence_level: 95.0`.
+  Zero robust variance retains the fit with unavailable z/p/CI, not point intervals.
+- `covariance` is `model_based_poisson_information` (inverse Fisher, no N-K
+  scaling) or `robust_sandwich_n_over_n_minus_1` (independent-row score sandwich,
+  not OLS HC1, Pearson-dispersion scaling or panel/cluster inference).
+- `log_likelihood` uses `log_likelihood_convention: "poisson_count_pmf"`.
+  `null_log_likelihood` and `null_model` distinguish
+  `intercept_only_estimated_mean` from `unit_mean_all_coefficients_zero` without
+  an intercept. The latter does not silently estimate a null intercept.
+- `likelihood_ratio`, `likelihood_ratio_df`, nullable `likelihood_ratio_p_value`
+  and nullable `likelihood_ratio_reference_distribution`. Only a model-based
+  positive-DF LR has chi-square reference/tail; robust LR remains descriptive.
+  `omnibus_wald` is null for model-based fits; robust uses the guarded selected-V
+  zero-slope chi-square object described for binary fits, with explicit
+  unavailable reasons/no reduced-rank pseudoinverse. Intercept-only has no slope test.
+- `mcfadden_r_squared`, `residual_deviance`, `pearson_chi_square`, `df_residual`
+  and `pearson_dispersion` (Pearson/(N-K));
+  `dispersion_inference: "descriptive_not_a_panel_or_specification_test"`.
+  Residual DF is diagnostic, not a Student-t coefficient reference. These
+  diagnostics do not rescale covariance or supply formal specification p-values.
+- `converged: true`, `iterations`, `convergence_coordinate_system: "unit_column_norm"`,
+  `convergence_absolute_tolerance: 1e-10`, `max_abs_scaled_score` and
+  `max_abs_scaled_newton_step`. Both absolute score and FULL Newton step must
+  meet that tolerance, at most 100 information evaluations. Rank, boundary,
+  iteration and nonrepresentable quantities fail rather than publish a fit;
+  some extreme finite inputs may be rejected. This is not an analytic existence test.
+
+`PoissonMarginalEffectsResult` reports `estimator: "poisson"`,
+`effect: "average_continuous_predictor_column_derivative"`,
+`sample: "retained_estimation_design"`,
+`uncertainty: "conditional_on_observed_design_delta_method"`, selected `covariance`,
+normal reference, fixed confidence level, retained N and `effects` in predictor
+order with the same nullable inference fields. The continuous effect is
+βj*mean(μ), full gradient βj*mean(μX)+ej*mean(μ), conditional on retained X. This
+is not a discrete change, original-variable chain rule or random-X uncertainty.
+
+`predict newvar, n` appends exp(xb) on current predictor rows; explicit/bare xb
+remains the index. No outcome is needed. Nonfinite/unrepresentable indices and
+overflowing means become NULL, finite negative exponential underflow is zero.
+Means are not probabilities and are not clipped at one. Prediction publication
+preserves labels/order/fit and fails atomically on invalid schema/existing targets.
+`PredictionResult` is still metadata-only. Other families reject `n`; Poisson
+rejects `pr`, residuals and auxiliary prediction options.
+
+Domain command snapshots add `PredictKind::MeanCount` (`mean_count` on wire).
+Owned executable state is `EstimationState::PoissonFit` (`family: "poisson_fit"`);
+the legacy `Poisson(ModelState)`/`family: "poisson"` placeholder remains readable,
+not an installed usable fit. A failed new runtime fit clears stale estimation,
+not data/labels/order. No fit restoration/persistence is added. `estimates store`
+continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
+and MIG-0017; offsets/exposure, NB, clustered/weighted/survey inference, PMF/CDF UI,
+factors/discrete changes and general count test/lincom remain required work.
 
 ## Summaries and percentiles
 
