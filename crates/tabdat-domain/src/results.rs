@@ -681,6 +681,9 @@ pub struct PredictionResult {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
 pub enum ExecutionResult {
+  EstimateStore(crate::EstimateStoreResult),
+  EstimateTable(crate::EstimateTableResult),
+  EstimateDrop(crate::EstimateDropResult),
   /// A successfully loaded dataset.
   Load(LoadResult),
   /// The metadata for the currently active dataset.

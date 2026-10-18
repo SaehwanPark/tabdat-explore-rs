@@ -62,10 +62,13 @@ pub struct EstimateSnapshot {
   pub predictors: Vec<String>,
   pub include_intercept: bool,
   pub covariance: String,
+  pub cluster_variable: Option<String>,
+  pub cluster_count: Option<usize>,
   pub covariance_parameter_names: Vec<String>,
   pub covariance_matrix: Vec<Vec<f64>>,
   pub coefficients: Vec<tabdat_stats::CoefficientEstimate>,
   pub observation_count: usize,
+  pub event_count: Option<usize>,
   /// Candidate positions at fit time; not current-data identities/fingerprints.
   pub sample: tabdat_stats::EstimationSample,
   pub reference_distribution: String,
@@ -74,6 +77,9 @@ pub struct EstimateSnapshot {
   pub log_likelihood_convention: Option<String>,
   pub r_squared: Option<f64>,
   pub mcfadden_r_squared: Option<f64>,
+  pub root_mse: Option<f64>,
+  /// Linear residual df can differ from clustered coefficient-inference df.
+  pub df_residual: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

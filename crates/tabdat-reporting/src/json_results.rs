@@ -80,6 +80,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Save { .. }
     | Command::Export { .. }
     | Command::Scatter { .. }
+    | Command::Estimates { .. }
     | Command::Describe
     | Command::Count
     | Command::Codebook { .. }
@@ -202,6 +203,9 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       "ExportResult",
     ),
     ExecutionResult::Plot(result) => (json!(result), "PlotArtifactResult"),
+    ExecutionResult::EstimateStore(result) => (json!(result), "EstimateStoreResult"),
+    ExecutionResult::EstimateTable(result) => (json!(result), "EstimateTableResult"),
+    ExecutionResult::EstimateDrop(result) => (json!(result), "EstimateDropResult"),
     ExecutionResult::Generate(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "GenerateResult",

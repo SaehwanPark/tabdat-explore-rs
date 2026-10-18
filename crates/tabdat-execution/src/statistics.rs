@@ -283,6 +283,14 @@ impl Session {
       })?;
 
     self.estimation = Some(EstimationState::Linear(Box::new(LinearRegressionState {
+      estimator: Some(
+        match command.estimator {
+          RegressEstimator::Ols => "ols",
+          RegressEstimator::Wls => "wls",
+          RegressEstimator::Gls => "gls",
+        }
+        .into(),
+      ),
       outcome: command.outcome.clone(),
       predictors: command.predictors.clone(),
       predictor_design: problem.design_matrix,
@@ -540,6 +548,7 @@ impl Session {
     self.estimation = Some(EstimationState::InstrumentalVariables(Box::new(
       InstrumentalVariablesState {
         linear: LinearRegressionState {
+          estimator: Some("2sls".into()),
           outcome: command.outcome.clone(),
           predictors: predictor_names.clone(),
           predictor_design,

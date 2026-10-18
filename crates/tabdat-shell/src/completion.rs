@@ -17,6 +17,7 @@ const CORE_COMMANDS: &[&str] = &[
   "duplicates",
   "encode",
   "estat",
+  "estimates",
   "exit",
   "export",
   "generate",

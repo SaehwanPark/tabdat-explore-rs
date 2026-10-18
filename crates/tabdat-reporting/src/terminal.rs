@@ -477,6 +477,18 @@ fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
+    ExecutionResult::EstimateStore(result) => format!(
+      "Stored fit report {} ({}) — {} reports; active fit unchanged.\n",
+      result.name.escape_debug(),
+      result.estimator.escape_debug(),
+      result.stored_count
+    ),
+    ExecutionResult::EstimateDrop(result) => format!(
+      "Dropped fit reports {}; {} remain; active fit unchanged.\n",
+      result.names.join(", ").escape_debug(),
+      result.stored_count
+    ),
+    ExecutionResult::EstimateTable(result) => crate::estimate_table::render_estimate_table(result),
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,

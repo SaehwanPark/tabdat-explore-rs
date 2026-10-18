@@ -179,6 +179,8 @@ pub enum Command {
   BayesPlot { command: BayesPlotCommand },
   /// Run a bounded post-estimation diagnostic (execution is deferred).
   Estat { command: EstatCommand },
+  /// Store, compare or drop immutable named fit reports, without restoring fits.
+  Estimates { command: crate::EstimatesCommand },
   /// Run a one-sample, paired, or independent two-sample t-test.
   Ttest { command: TtestCommand },
   /// Run a bounded grouped read-only child command.
