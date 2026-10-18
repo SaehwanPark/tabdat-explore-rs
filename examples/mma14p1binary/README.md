@@ -8,10 +8,11 @@ layout/jitter conventions below. It adds a separately validated continuous
 average partial derivative with conditional-design delta-method uncertainty for
 each binary family. That effect is an extension, **not** a claimed published table result.
 
-The native Table14.1 summary workflow below also validates its overall and
-outcome-specific numerical summaries. This does not complete the entire
-illustration: remaining author outputs and broader reporting remain required
-work. The bounded native named-report comparison below does not restore fit
+`analysis.td` now composes the **published Tables14.1–14.2/Figure14.1 and all
+source/cohort/fitted-value summary blocks** into one validated native workflow.
+The output audit below defines that coverage; it is not a literal Stata log or
+historical storage/format/RNG replication. Later binary-family methods remain
+required work. The bounded native named-report comparison does not restore fit
 caches or provide general estimates/persistence/formatting parity.
 No author data or code is redistributed here.
 
@@ -51,7 +52,96 @@ after successful conversion. The converter does not impute or filter people.
   Stata's float32 import/generated-variable storage. Author **reported rounded**
   results agree; independent R validates the float64 calculation at higher precision.
 
-## Run and independently check
+## Complete published-analysis workflow
+
+Run `analysis.td` in a **fresh directory and session**. Its nested
+`stored_comparison.td` resolves relative to the example script, while `Nldata.csv`
+and all output paths resolve relative to the working directory. No R/Python is
+needed to execute the native analysis. The optional development checks below use
+base R4.6.1 and standard-library Python, with the existing unchanged tolerances.
+
+```sh
+(
+set -eu
+cargo build --locked --bin tabdat-explore-rs
+repo="$PWD"
+work=$(mktemp -d)
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/Nldata.asc -o "$work/Nldata.asc"
+printf '%s  %s\n' \
+  1fb6f7d5abaf790d4df2c6a13a499ca42c0db4f950d941ba92565c30b4ab6c22 \
+  "$work/Nldata.asc" | shasum -a 256 -c -
+awk -f examples/mma14p1binary/nldata_to_csv.awk "$work/Nldata.asc" \
+  > "$work/Nldata.csv.tmp" && mv "$work/Nldata.csv.tmp" "$work/Nldata.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/analysis.td" > native.jsonl)
+
+# Optional independent development validation, not a production requirement.
+Rscript examples/mma14p1binary/reference_comparison.R "$work/Nldata.csv" \
+  "$work/R_predictions.csv" > "$work/R_comparison.csv"
+Rscript examples/mma14p1binary/reference_analysis.R "$work/Nldata.csv" \
+  "$work/R_predictions.csv" "$work/R_source_sample.csv" \
+  "$work/R_prepared_sample.csv" > "$work/R_analysis_summary.csv"
+python3 examples/mma14p1binary/check_analysis.py "$work/R_analysis_summary.csv" \
+  "$work/R_source_sample.csv" "$work/R_prepared_sample.csv" "$work/native.jsonl" \
+  "$work/fishing_source_sample.csv" "$work/fishing_prepared_sample.csv"
+python3 examples/mma14p1binary/check_stored_comparison.py "$work/R_comparison.csv" \
+  "$work/R_predictions.csv" "$work/native.jsonl" "$work/fishing_comparison_predictions.csv"
+python3 examples/mma14p1binary/check_figure.py "$work/R_predictions.csv" \
+  "$work/fishing_binary_comparison.svg" "$work/native.jsonl"
+printf 'Outputs: %s\n' "$work"
+)
+```
+
+Replace `--json` with `--text` for native terminal reports. A piped terminal can
+run `run "/absolute/path/to/analysis.td"` followed by `exit`; JSON/text/piped runs
+produce byte-identical three CSVs and SVG. Fresh conversion/R references and
+prediction/SVG bytes also match the separately validated leaf workflows.
+
+### Author-output audit and native conventions
+
+| Author program/output block | Native execution and independently checked evidence |
+| --- | --- |
+| 1,182-person source summary after `income/1000` | 17 ordered variables; all 85 N/mean/sample n−1 SD/min/max quantities; `fishing_source_sample.csv` checks all 1,182 IDs and 18 fields including ID |
+| Mode2/4 preparation, full overall/pier/charter summaries | `charter=1(mode==4)`, `pratio=100*ln(pcharter/ppier)`, `lnrelp=ln(pcharter/ppier)`; 20 variables × 3 cohorts × 5 = 300 quantities; `fishing_prepared_sample.csv` checks all 630 IDs and 21 fields |
+| Cross-tool prepared-data output | Native headered CSV preserves all prepared fields, including charter/lnrelp and source identity; not the author's headerless two-column ASCII or directly runnable LIMDEP input (MMA-MAXSCORE remains separate) |
+| Table14.1 | Explicit overall/pier/charter four-variable summary blocks; all 60 quantities |
+| Six fits and Table14.2 | Existing native ordered classical/robust logit/probit/OLS fits and immutable six-column report; all 94 R quantities and covariance/reference/sample metadata, plus all 630 prediction records |
+| Four-variable fitted-value summary | Charter/logit probability/probit probability/OLS fitted value; all 20 quantities; OLS min/max remain −0.202734122 / 1.307384388, not clipped |
+| Figure14.1 | Same native SVG bytes as `figure.td`; all 630 outcomes, 1,890 R prediction vertices and actual geometry checked |
+| Run control, labels, intermediate sorts, quiet refits, Stata log/graph formatting | Native structured/text reports and explicit numeric mode cohorts replace the log/value-label display; source order is preserved, line sorting is private, previously computed classical predictions are reused, SVG replaces WMF, deterministic y-only jitter replaces Stata RNG jitter |
+
+The new reference checks **465 quantities in eight ordered summary blocks
+(93 rows)**, all source/prepared records and all generated transformations at
+float64 precision. Summary tolerance is absolute `1e-10`, prepared values
+`1e-12`; the existing selected-covariance/tail/prediction and `1e-8` pixel
+geometry checks are unchanged. Constants have SD0, not missing, and SD uses n−1.
+The source's income maximum yields float64 `ydiv1000=12.499998`, rather than
+forcing the rounded author display `12.5`. Corruption probes reject population
+SD, swapped cohorts, clipped OLS summaries, incorrect income/pratio scaling,
+permuted source IDs and changed source prices.
+
+This validates the defined published-analysis outcomes and all descriptive
+blocks, **not every auxiliary field/layout in a Stata fit log**. Individual OLS
+ANOVA/F/interval displays are not added to the comparison table; `test`/`lincom`
+remain separate native commands. Binary normal z versus OLS t(628), robust ML
+N/(N−1) versus OLS HC1, Gaussian RSS/N working likelihood and probit's converged
+information differences remain as documented below. No restored fit is implied.
+The final active fit is robust OLS (the last stored fit), not the author's quiet
+classical refit; all three plotted predictions are classical.
+
+The script reloads the same source inside its existing six-fit leaf workflow;
+its final active data are the prediction dataset. The full prepared fields are
+available in `fishing_prepared_sample.csv`. Outputs refuse replacement, and
+stored names refuse overwrite. A failure stops subsequent commands and reports
+the **originating script/line**, including `stored_comparison.td` for a nested
+failure. Earlier completed exports remain: **the script is not a transaction**.
+Recover in another fresh directory/session or deliberately manage only your own
+outputs/stored reports. Never delete the source or overwrite existing files as
+an automatic recovery step. Actual-example CLI regressions cover the four
+publication collision stages, schema/price/key failures and unchanged source
+bytes, as well as all three execution surfaces.
+
+## Individual binary-fit and AME recipes
 
 From the repository root, with `curl`, POSIX `awk` and the built Rust binary:
 

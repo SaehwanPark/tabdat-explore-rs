@@ -46,7 +46,7 @@ estimator checklist. Reproducible random draws from Appendix B are an enabling
 requirement for simulation methods. Existing linear reference tests establish
 bounded numerical behavior, **not a validated textbook replication**.
 
-## Seed empirical illustrations — none validated yet
+## Seed empirical illustrations — inventory incomplete
 
 These are starting points from the authors' [dataset index][data], not a complete
 inventory or exact replication specifications. Page ranges are locators from that
@@ -59,7 +59,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
 | MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
-| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | In progress — Table14.1 summaries, native six-model named-report comparison, binary AME/all-row predictions and Figure14.1 SVG data/geometry validated | Exact contract below; other author outputs and broader reporting remain; no fit-restore or full-illustration claim |
+| MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | Validated native published-analysis contract — composed source/cohort/fitted summaries, native tables and SVG; separate binary AME extension | Exact output audit/conventions below; not literal Stata log/storage/RNG/format parity or fit restoration; binary family remains incomplete |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
@@ -72,16 +72,20 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
 
-### MMA-BINARY classical/robust six-model subset contract and evidence
+### MMA-BINARY native published-analysis contract and evidence
 
 - **Identity:** Cameron–Trivedi (2005), §14.2 pp. 464–466; authors'
   [`mma14p1binary.do`](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.do)
   and [output](https://cameron.econ.ucdavis.edu/mmabook/mma14p1binary.txt).
-  Validate the classical/robust logit and probit coefficient columns of Table
-  14.2 under the documented converged-information conventions and numeric
-  probabilities underlying Figure 14.1, now also rendered as native SVG under
-  explicit native layout/display-jitter conventions; not whole-author-output or
-  historical Stata pixel/RNG parity.
+  The composed `analysis.td` validates published Tables14.1–14.2/Figure14.1,
+  all source/cohort/fitted descriptive blocks and usable prepared-data output.
+  This is the defined native analytical contract, not every auxiliary Stata
+  fit-log field or literal log replication. Converged information, float64
+  preparation, CSV/SVG, source order and native layout/display jitter are
+  explicit conventions; see the example's author-output audit. Individual OLS
+  ANOVA/F/interval displays are not added to the comparison table (`test`/`lincom`
+  remain separate native commands). No historical Stata storage/pixel/RNG,
+  headerless LIMDEP input or general estimates-restoration parity is claimed.
 - **Data/preparation/sample:** external `Nldata.asc`, 1,182 people, 16 numeric
   fields per person; token-based CRLF/unterminated-last-line conversion preserves
   original 1-based source IDs. Select mode 2 (pier) or 4 (charter): N630,
@@ -197,9 +201,31 @@ provenance and redistribution terms before adding fixtures.
   positions, not restore, persistence, current-data identity/staleness claims,
   arbitrary post-estimation or WLS/GLS/IV report support. Other estimator families
   will need their own explicit reporting contracts as delivered.
-- **Still required:** other author exploratory/fitted-value summary outputs,
-  broader reporting, plus other exact binary illustrations and needed
-  factor/interactions/discrete-change foundations. Maximum score is a separate
+- **Composed preparation/descriptive workflow:** [PR #279](https://github.com/SaehwanPark/tabdat-explore-rs/pull/279)
+  adds `analysis.td`, reusing the existing six-model stored comparison and native
+  figure commands, plus independent base-R `reference_analysis.R` and standard-
+  library `check_analysis.py`. Eight ordered blocks cover 17 source variables,
+  20 prepared variables overall/pier/charter, the explicit four-variable
+  Table14.1 blocks and four fitted-value summaries. All **465 quantities**
+  (93 rows × N/mean/sample n−1 SD/min/max) match R4.6.1 at unchanged absolute
+  1e-10; every field/ID of 1,182 source and 630 prepared records matches at
+  1e-12. Added income/1000 and 100*ln(pcharter/ppier) transformations are checked
+  explicitly. Source/program/output hashes were freshly verified; conversion,
+  R references and leaf predictions/SVG regenerate byte-identically. All 94
+  stored-table quantities/630 prediction records and 630+1,890 SVG vertices/
+  geometry pass on the same composed native output. JSON/text/piped exports
+  and SVG bytes match. Native terminal summaries/table inspected. Seven
+  corruption probes reject population SD, swapped cohorts, clipped OLS summary,
+  income/pratio scaling errors, permuted IDs and changed source prices.
+  Actual-script CLI tests cover composition, original order/transforms/sample SD,
+  nested paths, all three surfaces, source preservation and four output-collision
+  stages. Failures report the originating script/line and stop subsequent work;
+  earlier successful exports remain, not whole-script rollback. No engine,
+  inference, structured-result schema, dependency or source-data redistribution
+  change. The example README audits every author program block against native
+  execution and documents remaining format/display differences.
+- **Still required:** reporting for future estimator families, other exact binary
+  illustrations and needed factor/interactions/discrete-change foundations. Maximum score is a separate
   required locator, not silently absorbed into logit or removed from the inventory.
   This is neither complete binary-family nor full-book validation.
 
