@@ -103,11 +103,12 @@ fn six_model_example_runs_as_native_json_text_and_preserves_existing_export() {
     assert_eq!(fits[i]["estimator"], *family);
     assert_eq!(fits[i]["observation_count"], 40);
     if i >= 3 {
-      for j in 0..2 {
-        assert_eq!(
-          fits[i]["coefficients"][j]["value"],
-          fits[i - 3]["coefficients"][j]["value"]
-        );
+      let current = fits[i]["coefficients"].as_array().unwrap();
+      let previous = fits[i - 3]["coefficients"].as_array().unwrap();
+      assert_eq!(current.len(), 2);
+      assert_eq!(previous.len(), 2);
+      for (current, previous) in current.iter().zip(previous) {
+        assert_eq!(current["value"], previous["value"]);
       }
       assert_eq!(fits[i]["log_likelihood"], fits[i - 3]["log_likelihood"]);
     }
