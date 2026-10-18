@@ -29,7 +29,7 @@ not by implementing every estimator mentioned in a chapter.
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Context-only seed, no resampling/estimation workflow | Actual RNG contract, IID/cluster bootstrap, simulation/Bayesian estimation and diagnostics |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; exact §14.2 classical/robust subset under converged-information conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, remaining illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
@@ -225,8 +225,9 @@ provenance and redistribution terms before adding fixtures.
   change. The example README audits every author program block against native
   execution and documents remaining format/display differences.
 - **Still required:** reporting for future estimator families, other exact binary
-  illustrations and needed factor/interactions/discrete-change foundations. Maximum score is a separate
-  required locator, not silently absorbed into logit or removed from the inventory.
+  illustrations and needed factor/interactions/discrete-change foundations.
+  Maximum score is a separate required locator, not silently absorbed into logit
+  or removed from the inventory.
   This is neither complete binary-family nor full-book validation.
 
 ### MMA-IV weak-instrument replication contract and evidence

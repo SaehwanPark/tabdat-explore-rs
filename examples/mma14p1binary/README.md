@@ -456,9 +456,11 @@ invalid negative prices, duplicate IDs and export collision. The reference and
 checker enforce the exact textbook cohort; the native script's `isid` is a key
 guard, not a substitute for those full sample/reference checks.
 
-Remaining work includes other author exploratory/fitted-value summaries and
-reporting beyond the bounded named-report comparison above. Table14.1 numerical validation does
-not complete §14.2 or the binary milestone.
+This standalone Table14.1 leaf is now included in `analysis.td` above, alongside
+the independently checked source/full-cohort/fitted-value blocks and native
+Table14.2/Figure14.1. That composed published-analysis contract is validated;
+reporting for later estimator families and the broader binary milestone remain
+required, not implied by this leaf's numerical validation.
 
 ## Native Figure14.1 SVG
 
