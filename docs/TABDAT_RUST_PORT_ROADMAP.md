@@ -155,10 +155,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
    robust omnibus Wald inference for the §14.2 coefficient columns, then the
-   factor/interaction and discrete-change foundations exact illustrations need.
-   One-way clustered covariance is delivered as external method evidence, not
-   a newly validated textbook illustration. Do not treat the binary family as one oversized PR or these classical
-   logit/probit slices as completion.
+   Fisher/factor/interaction and discrete-change foundations exact illustrations
+   need. One-way clustered covariance is delivered as external method evidence,
+   not a newly validated textbook illustration. Do not treat the binary family
+   as one oversized PR or these classical logit/probit slices as completion.
 
 The classical/robust-MLE portion of the [§14.2 binary
 slice](../examples/mma14p1binary/README.md) is delivered: the logit column

@@ -504,8 +504,13 @@ fn clustered_binary_inference_owns_groups_and_retained_delta_design() {
     };
     close(ame.effects[0].standard_error, ame_se);
     assert_eq!(ame.cluster, fit.cluster);
+    let retained = s.state().estimation;
+    execute(&mut s, "drop cluster_id");
+    execute(&mut s, "predict without_group, pr");
+    assert_eq!(s.state().estimation, retained);
+    assert_eq!(execute(&mut s, "estat margins"), effects);
+    execute(&mut s, "generate cluster_id = 99");
     execute(&mut s, "replace x1 = x1 + 10");
-    execute(&mut s, "replace cluster_id = 99");
     assert_eq!(execute(&mut s, "estat margins"), effects);
     let cache = s.state().estimation;
     execute(&mut s, "predict p, pr");
