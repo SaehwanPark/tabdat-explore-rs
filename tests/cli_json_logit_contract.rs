@@ -64,6 +64,43 @@ fn close(v: &Value, expected: f64) {
 }
 
 #[test]
+fn robust_binary_scripts_report_sandwich_and_not_ordinary_lr_inference() {
+  let f = Fixture::new();
+  for (family, slope_se, ame_se) in [
+    ("logit", 0.352146491357748, 0.0644521764962715),
+    ("probit", 0.219950093215389, 0.0684286804542189),
+  ] {
+    let script = format!(
+      "use data.csv\n{family} y x1 x2, robust\nestat margins\npredict p, pr\nreplace x1 = x1 + 10\nestat margins\nexport {family}_robust.csv\n"
+    );
+    fs::write(f.0.join("robust.td"), script).unwrap();
+    let rows = envelopes(&f.run(&["--json", "-f", "robust.td"]));
+    assert_eq!(rows.len(), 7);
+    assert!(f.0.join(format!("{family}_robust.csv")).exists());
+    let fit = &rows[1]["data"];
+    assert_eq!(fit["estimator"], family);
+    assert_eq!(fit["covariance"], "robust_sandwich_n_over_n_minus_1");
+    assert_eq!(fit["reference_distribution"], "asymptotic_standard_normal");
+    assert_eq!(fit["likelihood_ratio_reference_distribution"], Value::Null);
+    assert_eq!(fit["likelihood_ratio_p_value"], Value::Null);
+    assert!(fit["likelihood_ratio"].as_f64().unwrap() > 0.0);
+    close(&fit["coefficients"][1]["standard_error"], slope_se);
+    let ame = &rows[2]["data"];
+    assert_eq!(ame["covariance"], "robust_sandwich_n_over_n_minus_1");
+    close(&ame["effects"][0]["standard_error"], ame_se);
+    assert_eq!(ame, &rows[5]["data"]);
+    let fit_command = format!("{family} y x1 x2, robust");
+    let text = f.batch("--text", &["use data.csv", &fit_command, "estat margins"]);
+    assert!(text.status.success());
+    let text = String::from_utf8(text.stdout).unwrap();
+    assert!(text.contains("robust score sandwich, N/(N-1) correction"));
+    assert!(text.contains("LR p-value unavailable under robust inference"));
+    assert!(!text.contains("LR chi2"));
+    assert!(!text.contains("model-based covariance"));
+  }
+}
+
+#[test]
 fn script_json_exposes_explicit_logit_inference_predictions_and_retained_margins() {
   let f = Fixture::new();
   fs::write(f.0.join("analysis.td"),"use data.csv\nlogit y x1 x2\nstatUS\nestat margins\npredict p, pr\nreplace x1 = x1 + 10\nestat margins\nexport output.csv\n").unwrap();
@@ -182,7 +219,7 @@ fn readable_and_piped_sessions_distinguish_z_inference_from_linear_t_and_discret
 fn unsupported_covariance_and_separation_stop_scripts_before_file_side_effects() {
   let f = Fixture::new();
   for (name, fit) in [
-    ("robust", "logit y x1, robust"),
+    ("robust_invalid", "logit missing x1, robust"),
     ("cluster", "logit y x1, cluster(source_row)"),
     (
       "separated",

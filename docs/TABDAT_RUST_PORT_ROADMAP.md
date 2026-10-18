@@ -154,12 +154,13 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Choose the next required binary-family outcome from the coverage ledger and
    scope it against its exact illustration before implementation — currently the
-   robust/cluster covariance columns for binary fits, then the
+   cluster covariance workflow for binary fits (unclustered robust covariance
+   is delivered under the converged-information convention), then the
    Fisher/factor/interaction and discrete-change foundations the illustrations
    need. Do not treat the binary family as one oversized PR or these classical
    logit/probit slices as completion.
 
-The classical-MLE portion of the [§14.2 binary
+The classical/robust-MLE portion of the [§14.2 binary
 slice](../examples/mma14p1binary/README.md) is delivered: the logit column
 supplies model-based MLE/normal coefficient and LR inference, current-data
 probabilities/xb, and retained-X continuous AME with conditional-design delta
@@ -167,10 +168,17 @@ uncertainty; the probit column (`probit.td` / `reference_probit.R`) delivers the
 same workflow on Newton steps against the per-observation observed information,
 with the R reference polished to the analytic score fixed point. R4.6.1 validates
 all 630 source-row identities and numeric outputs for both families, including
-tiny test tails. Combined outlier/separating-direction tests cover the
+tiny test tails. Unclustered robust fits now use N/(N-1) score-sandwich
+covariance with converged observed-information bread, independently validated
+for both families and propagated to conditional-X AME uncertainty. Their LR
+p/reference are unavailable, not falsely advertised as robust LR inference;
+a robust omnibus Wald test remains missing. Probit deliberately retains the
+fixed-point convention rather than old Stata8 information lag.
+Combined outlier/separating-direction tests cover the
 independent-review convergence defect; absolute normalized full-step and score
-bounds fail rather than publish an unconverged fit. Robust columns, full model
-comparison and the actual Figure 14.1 graphic remain unfinished. This advances
+bounds fail rather than publish an unconverged fit. Cluster inference, robust
+omnibus tests, full model comparison and the actual Figure 14.1 graphic remain
+unfinished. This advances
 one textbook subset, not the full illustration or binary milestone; advancing
 from these classical slices did not complete IV or the binary family.
 

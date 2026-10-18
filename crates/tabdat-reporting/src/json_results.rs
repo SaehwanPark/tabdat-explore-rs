@@ -303,7 +303,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Logit(result) => (
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
-        "estimator": "logit", "covariance": "model_based_fisher_information",
+        "estimator": "logit", "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
         "event_count": result.event_count, "coefficients": result.coefficients,
@@ -311,7 +311,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "null_log_likelihood": result.null_log_likelihood, "likelihood_ratio": result.likelihood_ratio,
         "likelihood_ratio_df": result.likelihood_ratio_df,
         "likelihood_ratio_p_value": result.likelihood_ratio_p_value,
-        "likelihood_ratio_reference_distribution": "asymptotic_chi_square",
+        "likelihood_ratio_reference_distribution": if result.robust { None } else { Some("asymptotic_chi_square") },
         "mcfadden_r_squared": result.mcfadden_r_squared, "sample": result.sample,
         "converged": true, "iterations": result.iterations,
         "convergence_coordinate_system": "unit_column_norm",
@@ -325,7 +325,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "estimator": "logit", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
-        "covariance": "model_based_fisher_information", "confidence_level": 95.0,
+        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" }, "confidence_level": 95.0,
         "reference_distribution": "asymptotic_standard_normal",
         "observation_count": result.observation_count, "effects": result.effects,
       }),
@@ -334,7 +334,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Probit(result) => (
       json!({
         "outcome": result.outcome, "predictors": result.predictor_names,
-        "estimator": "probit", "covariance": "model_based_observed_information",
+        "estimator": "probit", "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
         "event_count": result.event_count, "coefficients": result.coefficients,
@@ -342,7 +342,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "null_log_likelihood": result.null_log_likelihood, "likelihood_ratio": result.likelihood_ratio,
         "likelihood_ratio_df": result.likelihood_ratio_df,
         "likelihood_ratio_p_value": result.likelihood_ratio_p_value,
-        "likelihood_ratio_reference_distribution": "asymptotic_chi_square",
+        "likelihood_ratio_reference_distribution": if result.robust { None } else { Some("asymptotic_chi_square") },
         "mcfadden_r_squared": result.mcfadden_r_squared, "sample": result.sample,
         "converged": true, "iterations": result.iterations,
         "convergence_coordinate_system": "unit_column_norm",
@@ -356,7 +356,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       json!({
         "estimator": "probit", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
-        "covariance": "model_based_observed_information", "confidence_level": 95.0,
+        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" }, "confidence_level": 95.0,
         "reference_distribution": "asymptotic_standard_normal",
         "observation_count": result.observation_count, "effects": result.effects,
       }),

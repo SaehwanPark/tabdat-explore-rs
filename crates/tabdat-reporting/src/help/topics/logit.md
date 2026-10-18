@@ -1,12 +1,21 @@
 # logit
 
 Installed syntax:
-`logit y x1 x2 [, noconstant]`
+`logit y x1 x2 [, robust noconstant]`
 
 Fit an unweighted independent-Bernoulli binary logit model. Reports model-based
 inverse-Fisher covariance, coefficient standard errors, normal z tests/95%
 intervals, log likelihood, LR chi-square and McFadden pseudo-R². No N-K covariance
-scaling or Student-t inference is used.
+scaling or Student-t inference is used for the default model-based fit.
+
+With `, robust`, the same MLE uses an unclustered score-sandwich covariance
+with N/(N-1) scaling (the ML convention, **not** linear HC1's N/(N-K)). Its
+bread is inverse Fisher information at the converged fit. Coefficient and
+retained-design `estat margins` inference use this covariance with normal
+95% intervals. Observations must be independent; this is not cluster/survey
+inference or protection against a wrong conditional-mean interpretation.
+Ordinary LR p-values are suppressed: the likelihood difference/pseudo-R² are
+descriptive, and no robust omnibus Wald test is supplied.
 
 Workflow (after loading numeric data):
 - `logit insured age bmi`
@@ -38,15 +47,15 @@ Convergence and supported limits:
   classifier; extreme finite designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Robust/cluster forms still parse but explicitly fail. Weighted/survey logit,
+- Cluster forms still parse but explicitly fail. Weighted/survey logit,
   prediction intervals and general `lincom`/`test` after logit are not
   installed (the probit counterpart is `help probit`). Normal coefficient
-  inference and the overall LR test are reported directly by `logit`; do not
-  substitute linear t/F inference.
+  inference and (for model-based fits only) the overall LR test are reported
+  directly by `logit`; do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryLogitResult`; `estat margins` returns
   `LogitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
-§14.2 classical-logit subset, independent R sample/inference/effect validation).
+§14.2 classical/robust-logit subset, independent R sample/inference/effect validation).
 See `help estat`, `help predict`, and `docs/reference/command-results.md`.

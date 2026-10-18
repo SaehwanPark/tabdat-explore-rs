@@ -286,7 +286,7 @@ fn unrepresentable_current_indices_produce_null_without_losing_rows_or_fit() {
 fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
   let f = Fixture::new(false);
   for command in [
-    "probit y x1, robust",
+    "probit missing x1, robust",
     "probit y x1, cluster(source_row)",
     "probit missing x1",
     "probit y x1 x1",
@@ -309,12 +309,8 @@ fn failed_new_attempts_clear_stale_fits_without_mutating_data() {
   }
   let mut s = f.load();
   assert_eq!(
-    fail(&mut s, "probit y x1, robust").to_string(),
-    "probit: robust/cluster probit covariance is not implemented; use an unweighted model-based fit"
-  );
-  assert_eq!(
     fail(&mut s, "probit y x1, cluster(source_row)").to_string(),
-    "probit: robust/cluster probit covariance is not implemented; use an unweighted model-based fit"
+    "probit: cluster probit covariance is not implemented; use an unclustered fit"
   );
   for value in ["2", "0"] {
     let mut s = f.load();
@@ -458,6 +454,71 @@ fn prior_margins_wording_stays_logit_and_other_families_do_not_supply_margins() 
     fail(&mut s, "predict unused, pr"),
     RuntimeError::UnsupportedCommand { name: "predict" }
   ));
+}
+
+#[test]
+fn robust_binary_fits_preserve_sample_data_predictions_and_retained_delta_estimand() {
+  let f = Fixture::new(true);
+  for (family, covariance12, ame_se) in [
+    ("logit", 0.0254652771050161, 0.0644521764962715),
+    ("probit", 0.0143048319483742, 0.0684286804542189),
+  ] {
+    let mut s = f.load();
+    execute(&mut s, "label variable x1 \"first predictor\"");
+    let dataset = s.state().active_dataset;
+    let labels = s.state().labels;
+    let before = preview(&mut s);
+    execute(&mut s, &format!("{family} y x1 x2"));
+    let classical = s.state().estimation;
+    let result = execute(&mut s, &format!("{family} y x1 x2, robust"));
+    let (ExecutionResult::Logit(fit) | ExecutionResult::Probit(fit)) = result else {
+      panic!("expected binary fit")
+    };
+    assert!(fit.robust);
+    let sample = fit.sample.as_ref().unwrap();
+    assert_eq!(sample.retained_indices, (1..=40).collect::<Vec<_>>());
+    assert_eq!(sample.total_observations, 44);
+    assert_eq!(sample.dropped_observations, 4);
+    let (EstimationState::Logit(old) | EstimationState::Probit(old)) = classical.unwrap() else {
+      panic!("expected prior binary fit")
+    };
+    assert_eq!(fit.fitted_probabilities, old.result.fitted_probabilities);
+    for (a, b) in fit.coefficients.iter().zip(&old.result.coefficients) {
+      assert_eq!(a.value, b.value);
+    }
+    close(fit.covariance[1][2], covariance12);
+    assert!(fit.likelihood_ratio_p_value.is_none());
+    assert_eq!(s.state().active_dataset, dataset);
+    assert_eq!(s.state().labels, labels);
+    for (a, b) in preview(&mut s).iter().zip(&before) {
+      same_cells(a, b);
+    }
+    let effects = execute(&mut s, "estat margins");
+    let ame = match &effects {
+      ExecutionResult::LogitMarginalEffects(ame) => ame,
+      ExecutionResult::ProbitMarginalEffects(ame) => ame.as_ref(),
+      _ => panic!("expected binary effects"),
+    };
+    assert!(ame.robust);
+    close(ame.effects[0].standard_error, ame_se);
+    execute(&mut s, "predict p, pr");
+    let state = s.state().estimation;
+    assert_eq!(s.state().labels, labels);
+    execute(&mut s, "replace x1 = x1 + 10");
+    execute(&mut s, "replace y = 0");
+    assert_eq!(execute(&mut s, "estat margins"), effects);
+    assert_eq!(s.state().estimation, state);
+    let changed = preview(&mut s);
+    assert!(
+      fail(&mut s, &format!("{family} y x1 x2, robust"))
+        .to_string()
+        .contains("both outcome classes")
+    );
+    assert!(s.state().estimation.is_none());
+    for (a, b) in preview(&mut s).iter().zip(&changed) {
+      same_cells(a, b);
+    }
+  }
 }
 
 fn same_cells(a: &[CellValue], b: &[CellValue]) {

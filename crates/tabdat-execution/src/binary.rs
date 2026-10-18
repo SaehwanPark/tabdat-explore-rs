@@ -82,14 +82,14 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     // Match the supported linear/IV policy: a failed new fit clears stale inference.
     self.estimation = None;
-    if robust || cluster_variable.is_some() {
+    if cluster_variable.is_some() {
       return Err(match model {
-        BinaryModel::Logit => logit_error(
-          "robust/cluster logit covariance is not implemented; use an unweighted model-based fit",
-        ),
-        BinaryModel::Probit => probit_error(
-          "robust/cluster probit covariance is not implemented; use an unweighted model-based fit",
-        ),
+        BinaryModel::Logit => {
+          logit_error("cluster logit covariance is not implemented; use an unclustered fit")
+        }
+        BinaryModel::Probit => {
+          probit_error("cluster probit covariance is not implemented; use an unclustered fit")
+        }
       });
     }
     let error = binary_error(model);
@@ -184,9 +184,13 @@ impl Session {
     .map_err(|e| error(e.to_string()))?
     .with_intercept(include_intercept)
     .with_sample(sample);
-    let result = match model {
-      BinaryModel::Logit => tabdat_stats::fit_binary_logit(&problem),
-      BinaryModel::Probit => tabdat_stats::fit_binary_probit(&problem),
+    let result = if robust {
+      tabdat_stats::fit_binary_robust(&problem, model)
+    } else {
+      match model {
+        BinaryModel::Logit => tabdat_stats::fit_binary_logit(&problem),
+        BinaryModel::Probit => tabdat_stats::fit_binary_probit(&problem),
+      }
     }
     .map_err(|e| error(e.to_string()))?;
     self.estimation = Some(match model {

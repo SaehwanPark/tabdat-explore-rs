@@ -72,7 +72,9 @@ impl Default for ProbitOptions {
 /// or probit). Covariance convention is family-specific: inverse Fisher
 /// information for `Logit`, inverse observed information evaluated at the
 /// converged coefficients for `Probit`, both without an N-K correction.
-/// Coefficient/AME inference is asymptotic normal, never Student t.
+/// With `robust`, the covariance is instead the score sandwich with N/(N-1)
+/// scaling (the ML convention, not linear HC1). Coefficient/AME inference is
+/// asymptotic normal, never Student t; ordinary LR inference is suppressed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryMleResult {
   pub model: BinaryModel,
@@ -83,11 +85,14 @@ pub struct BinaryMleResult {
   pub event_count: usize,
   pub coefficients: Vec<LogitEstimate>,
   pub covariance: Vec<Vec<f64>>,
+  /// Unclustered score sandwich using the converged observed-information bread.
+  #[serde(default)]
+  pub robust: bool,
   pub log_likelihood: f64,
   pub null_log_likelihood: f64,
   pub likelihood_ratio: f64,
   pub likelihood_ratio_df: usize,
-  /// None for an intercept-only model (zero restrictions).
+  /// None for robust fits or an intercept-only model (zero restrictions).
   pub likelihood_ratio_p_value: Option<f64>,
   pub mcfadden_r_squared: f64,
   /// Information evaluations, including the final convergence check.
@@ -107,6 +112,8 @@ pub type BinaryLogitResult = BinaryMleResult;
 /// These are not discrete changes or chain-rule effects of original variables.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LogitMarginalEffects {
+  #[serde(default)]
+  pub robust: bool,
   pub observation_count: usize,
   pub effects: Vec<LogitEstimate>,
 }
@@ -310,14 +317,24 @@ pub fn fit_binary_logit_with_options(
   problem: &EstimationProblem,
   options: &LogitOptions,
 ) -> Result<BinaryMleResult, StatsError> {
-  fit_binary_mle(problem, BinaryModel::Logit, options.max_iterations)
+  fit_binary_mle(problem, BinaryModel::Logit, options.max_iterations, false)
 }
 
 pub fn fit_binary_probit_with_options(
   problem: &EstimationProblem,
   options: &ProbitOptions,
 ) -> Result<BinaryMleResult, StatsError> {
-  fit_binary_mle(problem, BinaryModel::Probit, options.max_iterations)
+  fit_binary_mle(problem, BinaryModel::Probit, options.max_iterations, false)
+}
+
+/// Fit either binary family with unclustered score-sandwich covariance,
+/// corrected by N/(N-1). Fitting and convergence are unchanged from the
+/// model-based MLE. Ordinary LR p-values are unavailable under this inference.
+pub fn fit_binary_robust(
+  problem: &EstimationProblem,
+  model: BinaryModel,
+) -> Result<BinaryMleResult, StatsError> {
+  fit_binary_mle(problem, model, LogitOptions::default().max_iterations, true)
 }
 
 /// Scaled Newton/QR with deterministic backtracking for both binary families.
@@ -331,6 +348,7 @@ fn fit_binary_mle(
   problem: &EstimationProblem,
   model: BinaryModel,
   max_iterations: usize,
+  robust: bool,
 ) -> Result<BinaryMleResult, StatsError> {
   problem.validate()?;
   if max_iterations == 0 {
@@ -458,6 +476,32 @@ fn fit_binary_mle(
           xtx_inverse_from_r(&qr.r)?
         }
       };
+      let scaled_covariance = if robust {
+        // Sum outer products of bread * individual score. Work in the same
+        // unit-column-norm coordinates as the Newton core, then transform
+        // back once below; forming an unscaled meat can overflow needlessly.
+        let mut sandwich = vec![vec![0.0; k]; k];
+        for (row, residual) in x.iter().zip(&current.residuals) {
+          let influence: Vec<f64> = scaled_covariance
+            .iter()
+            .map(|bread_row| bread_row.iter().zip(row).map(|(a, b)| a * b).sum::<f64>() * residual)
+            .collect();
+          for i in 0..k {
+            for j in 0..k {
+              sandwich[i][j] += influence[i] * influence[j];
+            }
+          }
+        }
+        let correction = n as f64 / (n - 1) as f64;
+        for row in &mut sandwich {
+          for entry in row {
+            *entry *= correction;
+          }
+        }
+        sandwich
+      } else {
+        scaled_covariance
+      };
       let covariance: Vec<Vec<f64>> = scaled_covariance
         .iter()
         .enumerate()
@@ -494,7 +538,8 @@ fn fit_binary_mle(
       }
       let likelihood_ratio = likelihood_ratio.max(0.0);
       let df = problem.predictor_names.len();
-      let likelihood_ratio_p_value = (df > 0).then(|| chi_square_tail(likelihood_ratio, df));
+      let likelihood_ratio_p_value =
+        (df > 0 && !robust).then(|| chi_square_tail(likelihood_ratio, df));
       if likelihood_ratio_p_value.is_some_and(|p| !p.is_finite()) {
         return Err(failed(
           model,
@@ -510,6 +555,7 @@ fn fit_binary_mle(
         event_count: events,
         coefficients,
         covariance,
+        robust,
         log_likelihood: current.log_likelihood,
         null_log_likelihood,
         likelihood_ratio,
@@ -680,6 +726,7 @@ pub fn binary_average_marginal_effects(
     )?);
   }
   Ok(LogitMarginalEffects {
+    robust: result.robust,
     observation_count: n,
     effects,
   })

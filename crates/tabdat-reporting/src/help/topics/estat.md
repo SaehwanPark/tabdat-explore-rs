@@ -30,9 +30,9 @@ Notes:
 
 ## Binary continuous average partial effects
 
-After a successful model-based binary fit (`logit y x1 ...` or
-`probit y x1 ...`), `estat margins` reports, for each declared predictor column
-excluding the intercept, the family-specific average derivative:
+After a successful model-based or unclustered robust binary fit (`logit y x1 ...`
+or `probit y x1 ...`, optionally `, robust`), `estat margins` reports, for each
+predictor column excluding the intercept, the family-specific average derivative:
 
 - logit: `beta_j*mean(p*(1-p))`
 - probit: `beta_j*mean(phi(beta_0 + beta'x))`
@@ -40,9 +40,10 @@ excluding the intercept, the family-specific average derivative:
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
 
-Uncertainty is the full delta method using the fitted family's model-based
-covariance (logit: inverse Fisher information; probit: inverse observed
-information), including intercept/slopes' covariance, **conditional on observed
+Uncertainty is the full delta method using the fit's selected covariance:
+model-based (logit: inverse Fisher information; probit: inverse observed
+information), or unclustered score sandwich with N/(N-1) correction after
+`, robust`. It includes intercept/slopes' covariance, **conditional on observed
 X**. It is not uncertainty in the covariate distribution. Output includes normal
 z/two-sided p and fixed 95% intervals; CLI-v1 returns
 `LogitMarginalEffectsResult` or `ProbitMarginalEffectsResult` by fitted family.
@@ -50,7 +51,7 @@ z/two-sided p and fixed 95% intervals; CLI-v1 returns
 These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
-robust/cluster/weighted effects, level option, categorical/discrete-change or
+cluster/weighted effects, level option, categorical/discrete-change or
 other model-family margins are installed. The retained fit decides which family
 runs; with no binary fit the margins call fails with the established prior-logit
 message. Restore/fit a successful logit or probit after a failed new estimation
