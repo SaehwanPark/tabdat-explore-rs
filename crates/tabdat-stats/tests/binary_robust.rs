@@ -32,7 +32,8 @@ fn problem(intercept: bool, two: bool) -> EstimationProblem {
 #[test]
 fn independent_r_references_cover_robust_covariance_and_full_normal_delta_inference() {
   // R 4.6.1, fixtures/binary_robust_reference.R. Same sample/design as the
-  // classical reference; N/(N-1), not HC1's N/(N-K). 1e-10 absolute for
+  // classical reference; N/(N-1) unclustered or G/(G-1) clustered, not HC1.
+  // 1e-10 absolute for
   // moderate outputs and 1e-10 relative for two-sided test probabilities.
   for (clustered, references) in [
     (false, include_str!("fixtures/binary_robust_reference.csv")),

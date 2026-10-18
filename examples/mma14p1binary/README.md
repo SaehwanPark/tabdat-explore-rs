@@ -234,7 +234,10 @@ explicit error, including extreme finite designs without adequate absolute
 numerical resolution. Identified models with saturated outlier probabilities
 are not rejected merely because probabilities round to zero/one.
 
-Cluster/weighted/survey forms, categorical/factor/interactions and
+One-way clustered fits have separate [external method evidence](../contraception_cluster/README.md),
+not a new fishing-mode illustration claim.
+
+Weighted/survey forms, categorical/factor/interactions and
 discrete changes with uncertainty, prediction intervals, general `lincom`/`test`
 after either family and rendered graphics are not delivered by this slice. They
 remain required where specified by the roadmap/illustrations; neither this

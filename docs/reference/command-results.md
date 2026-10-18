@@ -62,13 +62,14 @@ does not invent covariance, operation or materialization tracking. See `help sta
 
 ## Binary logit/probit and continuous marginal effects
 
-`logit y x1 ... [, robust noconstant]` fits an unweighted Bernoulli logit model.
+`logit y x1 ... [, robust cluster(group) noconstant]` fits an unweighted
+Bernoulli logit model.
 Outcome/predictor columns must be numeric. SQL NULL/nonfinite model values are
 excluded together; the retained outcome must contain both exact 0/1 classes.
 Other finite outcome values are errors, not silently recoded. Parameter order is
 intercept first (if included), then declared predictor columns; names are unique.
 A new fit attempt clears prior estimation state even if validation/estimation fails,
-without changing data/labels. Parsed cluster forms explicitly fail.
+without changing data/labels. `robust` and `cluster` are mutually exclusive.
 
 CLI-v1 `BinaryLogitResult` includes `estimator: "logit"`, outcome/predictors,
 intercept/N/event counts, `sample` with exact retained indices, `coefficients`,
@@ -88,7 +89,23 @@ unchanged; normal coefficient and conditional-X delta-AME inference use the
 selected covariance. `likelihood_ratio_p_value` and
 `likelihood_ratio_reference_distribution` are **null** for robust fits: LR/df
 and pseudo-R² remain descriptive, not robust omnibus inference. No robust
-omnibus Wald test, cluster/survey inference or weight support is implied.
+omnibus Wald test, survey inference or weight support is implied.
+
+With `, cluster(group)`, `covariance` is `cluster_sandwich_g_over_g_minus_1`:
+sum individual scores within group before outer products and apply G/(G-1),
+without the linear-regression (N-1)/(N-K) factor. The same converged-information
+bread and normal coefficient/conditional-X delta-AME inference apply, not G-1
+Student t. Clusters must be independent; few/imbalanced clusters can give poor
+coverage. At least two retained groups are required, not an adequacy guarantee.
+Fit/margins JSON includes additive `cluster: {variable, group_count}` metadata;
+`cluster` is null for classical/unclustered fits. LR p/reference remain null for
+clustered fits. The retained sample also owns its aligned `cluster_groups` keys.
+Numeric, text and boolean IDs are supported, with NULL/nonfinite cluster IDs
+jointly excluded before outcome-domain validation. Wide integer/Decimal identity
+is exact; floating -0/+0 share a group. Keys are opaque within their typed source
+column, not a new cross-type equality or prediction requirement. Group edits do
+not redefine retained margins, and current-data prediction needs only predictors.
+No multiway, random-effects, survey or small-cluster t inference is implied.
 
 Only successful finite, numerically identified fits produce results. `converged`,
 `iterations` (information evaluations), `convergence_coordinate_system:
@@ -124,7 +141,7 @@ rescan/refit the model. These are not automatic discrete changes or interaction
 chain rules. `lincom`/`test` after logit are explicitly unsupported rather than
 silently using linear Student-t/F inference.
 
-`probit y x1 ... [, robust noconstant]` shares the whole contract above with these
+`probit y x1 ... [, robust cluster(group) noconstant]` shares the contract with these
 family deltas. The engine fits Newton steps against the per-observation observed
 information with a per-iteration Fisher fallback, and the default covariance is
 `model_based_observed_information` (inverse observed information at the

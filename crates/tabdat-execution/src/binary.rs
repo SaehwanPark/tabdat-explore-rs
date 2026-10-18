@@ -50,6 +50,36 @@ fn binary_cluster_key(cell: &CellValue) -> Result<Option<String>, &'static str> 
   })
 }
 
+#[test]
+fn cluster_identity_is_exact_and_only_finite_values_are_retained() {
+  assert_eq!(
+    binary_cluster_key(&CellValue::Float(-0.0)),
+    binary_cluster_key(&CellValue::Float(0.0))
+  );
+  assert_eq!(binary_cluster_key(&CellValue::Float(f64::NAN)), Ok(None));
+  assert_eq!(
+    binary_cluster_key(&CellValue::Float(f64::INFINITY)),
+    Ok(None)
+  );
+  assert_eq!(binary_cluster_key(&CellValue::Null), Ok(None));
+  assert_eq!(
+    binary_cluster_key(&CellValue::Text(String::new())),
+    Ok(Some(String::new()))
+  );
+  assert!(binary_cluster_key(&CellValue::Bytes(vec![1])).is_err());
+  let a = CellValue::Decimal {
+    width: 38,
+    scale: 0,
+    value: 9_007_199_254_740_992,
+  };
+  let b = CellValue::Decimal {
+    width: 38,
+    scale: 0,
+    value: 9_007_199_254_740_993,
+  };
+  assert_ne!(binary_cluster_key(&a), binary_cluster_key(&b));
+}
+
 impl Session {
   pub(crate) fn execute_logit(
     &mut self,

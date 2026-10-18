@@ -83,7 +83,7 @@ enum BinaryCovariance<'a> {
   Cluster(&'a str),
 }
 
-/// Unweighted independent-Bernoulli binary maximum likelihood result (logit
+/// Unweighted pooled-Bernoulli binary maximum likelihood result (logit
 /// or probit). Covariance convention is family-specific: inverse Fisher
 /// information for `Logit`, inverse observed information evaluated at the
 /// converged coefficients for `Probit`, both without an N-K correction.

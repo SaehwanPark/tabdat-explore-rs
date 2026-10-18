@@ -1,7 +1,7 @@
 # logit
 
 Installed syntax:
-`logit y x1 x2 [, robust noconstant]`
+`logit y x1 x2 [, robust cluster(group) noconstant]`
 
 Fit an unweighted independent-Bernoulli binary logit model. Reports model-based
 inverse-Fisher covariance, coefficient standard errors, normal z tests/95%
@@ -16,6 +16,17 @@ retained-design `estat margins` inference use this covariance with normal
 inference or protection against a wrong conditional-mean interpretation.
 Ordinary LR p-values are suppressed: the likelihood difference/pseudo-R² are
 descriptive, and no robust omnibus Wald test is supplied.
+
+With `, cluster(group)`, scores are summed within each group before forming
+the sandwich, with G/(G-1) correction and the same converged-information bread.
+Coefficient and retained-X delta-AME inference remain asymptotic normal, **not**
+G-1 Student t. Clusters must be independent; few/imbalanced clusters can make
+this approximation unreliable. At least two retained groups are required,
+which is only a computability guard. Cluster IDs may be numeric, text or boolean;
+NULL/nonfinite IDs are excluded jointly with model missingness before validating
+the outcome. Wide integers/Decimals keep exact identity; floating -0 and +0 are
+one group. `robust` and `cluster` cannot be combined. This is neither a
+random-effects model nor survey/design-based inference.
 
 Workflow (after loading numeric data):
 - `logit insured age bmi`
@@ -47,7 +58,7 @@ Convergence and supported limits:
   classifier; extreme finite designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Cluster forms still parse but explicitly fail. Weighted/survey logit,
+- Only one-way clustering is supported. Weighted/survey logit,
   prediction intervals and general `lincom`/`test` after logit are not
   installed (the probit counterpart is `help probit`). Normal coefficient
   inference and (for model-based fits only) the overall LR test are reported
@@ -58,4 +69,6 @@ Convergence and supported limits:
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
 §14.2 classical/robust-logit subset, independent R sample/inference/effect validation).
-See `help estat`, `help predict`, and `docs/reference/command-results.md`.
+Clustered method example: `examples/contraception_cluster/README.md` (external,
+not textbook coverage). See `help estat`, `help predict`, and
+`docs/reference/command-results.md`.

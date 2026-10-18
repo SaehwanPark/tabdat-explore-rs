@@ -45,6 +45,7 @@ def check(reference_path, native_paths, cluster_predictions=None):
           assert data["reference_distribution"] == "asymptotic_standard_normal"
           if group_count:
             assert data["cluster"] == {"variable": "district", "group_count": group_count}
+            assert data["sample"]["cluster_groups"] == [str(int(row["district"])) for row in reference_rows]
           assert data["likelihood_ratio_p_value"] is None
           assert data["likelihood_ratio_reference_distribution"] is None
           assert data["sample"]["retained_indices"] == list(range(n))

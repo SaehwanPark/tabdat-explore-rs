@@ -1,6 +1,8 @@
 # Development-only R 4.6.1 reference. No production R dependency.
 # Rscript .../binary_robust_reference.R > .../binary_robust_reference.csv
 # Optional Nldata.csv argument emits the exact MMA 14.2 fishing references.
+# --cluster emits synthetic G=9 references; --cluster Contraception.csv [R.csv]
+# emits the specified external district-clustered reference and predictions.
 # ML sandwich correction N/(N-1): Stata User's Guide 20.22.2 (not OLS HC1).
 options(digits=17)
 args <- commandArgs(trailingOnly=TRUE)
