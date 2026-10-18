@@ -527,6 +527,29 @@ pub struct RegressionResult {
   pub least_squares: tabdat_stats::LeastSquaresResult,
 }
 
+impl RegressionResult {
+  /// Gaussian working-density log likelihood using ML variance RSS/N, not the
+  /// residual-df variance used for coefficient covariance. This is descriptive,
+  /// not a Bernoulli likelihood or robust/cross-family LR test. Weighted and IV
+  /// conventions are deliberately not reported; zero/nonfinite variance is null.
+  pub fn gaussian_working_log_likelihood(&self) -> Option<f64> {
+    if self.estimator != "ols"
+      || self
+        .least_squares
+        .sample
+        .as_ref()
+        .is_some_and(|sample| sample.weights.is_some())
+    {
+      return None;
+    }
+    self
+      .least_squares
+      .fit_statistics
+      .log_likelihood
+      .filter(|value| value.is_finite())
+  }
+}
+
 /// The owned result of estimating one affine combination of regression coefficients.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LincomResult {

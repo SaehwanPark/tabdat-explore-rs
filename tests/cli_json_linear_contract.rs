@@ -56,6 +56,83 @@ fn close(actual: &Value, expected: &Value) {
 }
 
 #[test]
+fn ols_working_likelihood_and_selected_covariance_have_explicit_reporting_contracts() {
+  let f = Fixture::new();
+  // Base R 4.6.1 lm/logLik/vcov; robust covariance is HC1 with N/(N-K).
+  for (fit, covariance) in [
+    (
+      "regress y x",
+      [
+        [0.338605442176871, -0.09234693877551027],
+        [-0.09234693877551027, 0.0369387755102041],
+      ],
+    ),
+    (
+      "regress y x, robust",
+      [
+        [0.11748299319727887, -0.022979591836734696],
+        [-0.022979591836734696, 0.016824489795918364],
+      ],
+    ),
+  ] {
+    let output = f.run(&["--json", "-c", "use data.csv", "-c", fit]);
+    assert!(output.status.success());
+    let rows = lines(&output.stdout);
+    let data = &rows[1]["data"];
+    assert!((data["log_likelihood"].as_f64().unwrap() + 5.988358159193272).abs() < 1e-10);
+    assert_eq!(
+      data["log_likelihood_convention"],
+      "gaussian_working_model_ml_variance_rss_over_n"
+    );
+    assert_eq!(
+      data["covariance_parameter_names"],
+      json!(["intercept", "x"])
+    );
+    for (i, row) in covariance.iter().enumerate() {
+      for (j, expected) in row.iter().enumerate() {
+        assert!((data["covariance_matrix"][i][j].as_f64().unwrap() - expected).abs() < 1e-10);
+      }
+    }
+    let text = f.run(&["--text", "-c", "use data.csv", "-c", fit]);
+    assert!(text.status.success());
+    let text = String::from_utf8(text.stdout).unwrap();
+    assert!(text.contains("ML variance RSS/N"));
+    assert!(text.contains("not Bernoulli likelihood or robust/cross-family LR inference"));
+  }
+  for fit in [
+    "regress y x, wls(w)",
+    "regress y x, gls(w)",
+    "ivregress 2sls y, endog(x) iv(z)",
+  ] {
+    let output = f.run(&[
+      "--json",
+      "-c",
+      "use data.csv",
+      "-c",
+      "generate w = 1",
+      "-c",
+      "generate z = x",
+      "-c",
+      fit,
+    ]);
+    assert!(
+      output.status.success(),
+      "{}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+    let rows = lines(&output.stdout);
+    assert_eq!(rows[3]["data"]["log_likelihood"], Value::Null);
+    assert_eq!(rows[3]["data"]["log_likelihood_convention"], Value::Null);
+  }
+  fs::write(f.0.join("zero.csv"), "x,y\n0,0\n1,0\n2,0\n").unwrap();
+  let output = f.run(&["--json", "-c", "use zero.csv", "-c", "regress y x"]);
+  assert!(output.status.success());
+  let rows = lines(&output.stdout);
+  assert_eq!(rows[1]["data"]["log_likelihood"], Value::Null);
+  assert_eq!(rows[1]["data"]["log_likelihood_convention"], Value::Null);
+}
+
+#[test]
 fn json_linear_workflow_matches_independent_reference_without_full_model_arrays() {
   let fixture = Fixture::new();
   // statsmodels/SciPy provenance and regeneration tool are recorded in the shared fixture.

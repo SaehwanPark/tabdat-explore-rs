@@ -189,6 +189,12 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
     optional_inference(result.root_mse)
   )
   .unwrap();
+  if let Some(log_likelihood) = result.gaussian_working_log_likelihood() {
+    writeln!(output,
+      "Gaussian working-model log likelihood = {} (ML variance RSS/N; not Bernoulli likelihood or robust/cross-family LR inference)",
+      inference_number(log_likelihood)
+    ).unwrap();
+  }
   output.push_str("Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
   for coefficient in &result.coefficients {
     writeln!(
