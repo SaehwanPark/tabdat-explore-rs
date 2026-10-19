@@ -2,7 +2,7 @@
 
 use crate::binary::{BinaryOmnibusWald, omnibus_wald};
 use crate::distributions::chi_square_tail;
-use crate::matrix::{invert, qr_decompose_with_response};
+use crate::matrix::{add_compensated, invert, qr_decompose_with_response};
 use crate::poisson::deviance_part;
 use crate::{EstimationProblem, EstimationSample, PoissonEstimate, StatsError, fit_poisson};
 use serde::{Deserialize, Serialize};
@@ -114,13 +114,6 @@ fn normal_inference(name: String, value: f64, variance: f64) -> Result<Nb2Estima
     confidence_lower: available.then_some(lower),
     confidence_upper: available.then_some(upper),
   })
-}
-
-fn add_compensated(sum: &mut f64, correction: &mut f64, value: f64) {
-  let adjusted = value - *correction;
-  let next = *sum + adjusted;
-  *correction = (next - *sum) - adjusted;
-  *sum = next;
 }
 
 // Gamma(y+r)/(Gamma(r)*y!) and its dispersion derivatives by integer recurrence.

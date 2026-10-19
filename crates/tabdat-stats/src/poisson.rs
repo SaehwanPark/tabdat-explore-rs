@@ -1,11 +1,13 @@
-//! Unweighted log-link Poisson ML / independent-row robust QMLE.
+//! Unweighted log-link Poisson ML / independent-row or one-way clustered QMLE.
 
-use crate::binary::{BinaryOmnibusWald, omnibus_wald};
+use crate::binary::{BinaryCluster, BinaryOmnibusWald, omnibus_wald};
 use crate::distributions::chi_square_tail;
-use crate::matrix::{qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r};
+use crate::matrix::{
+  add_compensated, qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r,
+};
 use crate::{EstimationProblem, EstimationSample, StatsError};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_POISSON_COUNT: f64 = 9_007_199_254_740_991.0;
 const TOLERANCE: f64 = 1e-10;
@@ -13,6 +15,15 @@ const NORMAL_95: f64 = 1.959963984540054;
 
 /// Shared coefficient-only chi-square report contract; no family-specific refit.
 pub type PoissonOmnibusWald = BinaryOmnibusWald;
+/// Shared one-way score-sandwich metadata; normal, not G-1 Student-t inference.
+pub type PoissonCluster = BinaryCluster;
+
+#[derive(Clone, Copy)]
+enum PoissonCovariance<'a> {
+  ModelBased,
+  Robust,
+  Cluster(&'a str),
+}
 
 /// Fixed 95% normal inference. Zero-variance or unrepresentable inference is
 /// unavailable, not a zero p-value or a spurious exact confidence interval.
@@ -39,15 +50,18 @@ impl Default for PoissonOptions {
   }
 }
 
-/// Model-based inverse information, or score sandwich with N/(N-1), never
-/// OLS HC1. LR inference assumes the independent Poisson distribution; robust
-/// fits retain descriptive likelihoods but suppress the LR reference/tail.
+/// Model-based inverse information, row-score sandwich with N/(N-1), or
+/// group-score sandwich with G/(G-1), never OLS HC1. LR inference assumes the
+/// independent Poisson distribution; robust/clustered fits retain descriptive
+/// likelihoods but suppress the LR reference/tail.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonResult {
   pub outcome: String,
   pub predictor_names: Vec<String>,
   pub include_intercept: bool,
   pub robust: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster: Option<PoissonCluster>,
   pub observation_count: usize,
   pub zero_count: usize,
   pub count_sum: f64,
@@ -76,6 +90,8 @@ pub struct PoissonResult {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonMarginalEffects {
   pub robust: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster: Option<PoissonCluster>,
   pub observation_count: usize,
   pub effects: Vec<PoissonEstimate>,
 }
@@ -207,6 +223,50 @@ fn maximum_absolute(values: &[f64]) -> f64 {
   values.iter().map(|v| v.abs()).fold(0.0, f64::max)
 }
 
+fn clustered_covariance(
+  bread: &[Vec<f64>],
+  x: &[Vec<f64>],
+  residuals: &[f64],
+  groups: &[String],
+) -> Vec<Vec<f64>> {
+  let k = bread.len();
+  let mut grouped: BTreeMap<&str, Vec<(f64, f64)>> = BTreeMap::new();
+  for ((row, residual), group) in x.iter().zip(residuals).zip(groups) {
+    let score = grouped
+      .entry(group.as_str())
+      .or_insert_with(|| vec![(0.0, 0.0); k]);
+    for ((sum, correction), value) in score.iter_mut().zip(row) {
+      add_compensated(sum, correction, value * residual);
+    }
+  }
+  let correction = grouped.len() as f64 / (grouped.len() - 1) as f64;
+  let mut result = vec![vec![0.0; k]; k];
+  let mut errors = vec![vec![0.0; k]; k];
+  // Group the scores BEFORE the outer product, retaining within-group cross
+  // terms. Compensate both long group sums and the covariance accumulation.
+  for score in grouped.values() {
+    let influence: Vec<f64> = bread
+      .iter()
+      .map(|row| row.iter().zip(score).map(|(b, (s, _))| b * s).sum())
+      .collect();
+    for i in 0..k {
+      for j in 0..k {
+        add_compensated(
+          &mut result[i][j],
+          &mut errors[i][j],
+          influence[i] * influence[j],
+        );
+      }
+    }
+  }
+  for row in &mut result {
+    for value in row {
+      *value *= correction;
+    }
+  }
+  result
+}
+
 pub fn fit_poisson(problem: &EstimationProblem, robust: bool) -> Result<PoissonResult, StatsError> {
   fit_poisson_with_options(problem, robust, &PoissonOptions::default())
 }
@@ -219,18 +279,76 @@ pub fn fit_poisson_with_options(
   robust: bool,
   options: &PoissonOptions,
 ) -> Result<PoissonResult, StatsError> {
+  fit_poisson_covariance(
+    problem,
+    if robust {
+      PoissonCovariance::Robust
+    } else {
+      PoissonCovariance::ModelBased
+    },
+    options,
+  )
+}
+
+/// One-way group-score sandwich, G/(G-1), with normal inference and no LR tail.
+/// The explicitly attached groups must align with the retained estimation rows.
+pub fn fit_poisson_clustered(
+  problem: &EstimationProblem,
+  variable: &str,
+) -> Result<PoissonResult, StatsError> {
+  fit_poisson_covariance(
+    problem,
+    PoissonCovariance::Cluster(variable),
+    &PoissonOptions::default(),
+  )
+}
+
+fn fit_poisson_covariance(
+  problem: &EstimationProblem,
+  covariance_type: PoissonCovariance<'_>,
+  options: &PoissonOptions,
+) -> Result<PoissonResult, StatsError> {
   problem.validate()?;
+  let robust = !matches!(covariance_type, PoissonCovariance::ModelBased);
   if options.max_iterations == 0 {
     return Err(invalid("max_iterations must be positive"));
   }
-  if problem.weights.is_some()
-    || problem
-      .sample
-      .as_ref()
-      .is_some_and(|s| s.weights.is_some() || s.cluster_groups.is_some())
-  {
-    return Err(invalid("weights/cluster groups are not implemented"));
+  if problem.weights.is_some() || problem.sample.as_ref().is_some_and(|s| s.weights.is_some()) {
+    return Err(invalid("weights are not implemented"));
   }
+  let groups = problem
+    .sample
+    .as_ref()
+    .and_then(|s| s.cluster_groups.as_ref());
+  let cluster = match covariance_type {
+    PoissonCovariance::Cluster(variable) => {
+      if variable.trim().is_empty() {
+        return Err(invalid("cluster variable must be named"));
+      }
+      let groups = groups.ok_or_else(|| invalid("cluster groups are required"))?;
+      if groups.len() != problem.observation_count() {
+        return Err(invalid(
+          "cluster groups must align with the estimation sample",
+        ));
+      }
+      let group_count = groups.iter().collect::<BTreeSet<_>>().len();
+      if group_count < 2 {
+        return Err(invalid(
+          "cluster covariance requires at least two retained groups",
+        ));
+      }
+      Some(PoissonCluster {
+        variable: variable.to_owned(),
+        group_count,
+      })
+    }
+    _ => {
+      if groups.is_some() {
+        return Err(invalid("cluster groups require a clustered fit"));
+      }
+      None
+    }
+  };
   if problem
     .response
     .iter()
@@ -313,7 +431,9 @@ pub fn fit_poisson_with_options(
     let (score_norm, step_norm) = (maximum_absolute(&score), maximum_absolute(&step));
     if score_norm <= TOLERANCE && step_norm <= TOLERANCE {
       let bread = xtx_inverse_from_r(&qr.r)?;
-      let scaled_covariance = if robust {
+      let scaled_covariance = if cluster.is_some() {
+        clustered_covariance(&bread, &x, &current.residuals, groups.unwrap())
+      } else if robust {
         let mut sandwich = vec![vec![0.0; k]; k];
         for (row, r) in x.iter().zip(&current.residuals) {
           let influence: Vec<f64> = bread
@@ -355,8 +475,14 @@ pub fn fit_poisson_with_options(
         .map(|j| inference(names[j].clone(), beta[j] / scales[j], covariance[j][j]))
         .collect::<Result<_, _>>()?;
       let values: Vec<f64> = coefficients.iter().map(|c| c.value).collect();
-      let wald =
-        robust.then(|| omnibus_wald(&values, &covariance, problem.include_intercept, None));
+      let wald = robust.then(|| {
+        omnibus_wald(
+          &values,
+          &covariance,
+          problem.include_intercept,
+          cluster.as_ref().map(|c| c.group_count),
+        )
+      });
       let lr = 2.0 * (current.log_likelihood - null_log_likelihood);
       if !lr.is_finite() || lr < -1e-10 * (1.0 + null_log_likelihood.abs()) {
         return Err(failed("likelihood is below the nested null model"));
@@ -381,6 +507,7 @@ pub fn fit_poisson_with_options(
         predictor_names: problem.predictor_names.clone(),
         include_intercept: problem.include_intercept,
         robust,
+        cluster,
         observation_count: n,
         zero_count: problem.response.iter().filter(|&&y| y == 0.0).count(),
         count_sum,
@@ -494,6 +621,7 @@ pub fn poisson_average_marginal_effects(
   }
   Ok(PoissonMarginalEffects {
     robust: result.robust,
+    cluster: result.cluster.clone(),
     observation_count: n,
     effects,
   })
