@@ -410,7 +410,7 @@ fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
     "predict mean_visits, n",
     "G/(G-1)",
     "independence ACROSS groups",
-    "NB2\nclustering is not installed",
+    "One-way NB2 clustering is separately installed",
   ] {
     assert!(text.contains(phrase), "{phrase}");
   }

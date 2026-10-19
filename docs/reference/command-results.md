@@ -256,7 +256,8 @@ missing/nonfinite model cells are excluded before outcome-domain rejection.
 Loaded outcome values must be exact nonnegative integers <=2^53-1, with DECIMAL
 and wide integer identity checked before conversion. This is not lexical recovery
 of digits a loader already rounded to DOUBLE. N>K/full rank and bounded numerical
-convergence are required. Weights/cluster requests are not installed.
+convergence are required. Weights are not installed; one-way cluster selection
+and inference are specified below.
 
 CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
 
@@ -317,7 +318,7 @@ not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
-NB2/multiway clustering, weighted/survey inference, PMF/CDF UI, factors/discrete
+Multiway clustering, weighted/survey inference, PMF/CDF UI, factors/discrete
 changes and general count test/lincom remain required work.
 
 ### Poisson one-way clustered inference
@@ -350,7 +351,7 @@ audits DTA identities against every ASCII model row;551 independent R quantities
 all20,186 source/original-row/person/year/design/prediction records and5,908 groups
 are validated. This is not a printed Table20.5 column, household/site/multiway
 correction, survey or FE/RE/panel-family implementation. See MIG-0019. NB2
-clustering remains unsupported.
+uses its distinct full-joint clustered law below.
 
 ## Bounded jointly estimated NB2
 
@@ -413,10 +414,49 @@ to installed count fits. Executable owned state uses
 not a usable/restorable fit. Failed new fits clear stale estimation only.
 
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018.
-NB2 original-ID clustering/panel inference, weights/offsets/exposure, richer count
+FE/RE/panel-family inference, weights/offsets/exposure, richer count
 specifications, count PMF/CDF UI, formal alpha=0/specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
+
+### NB2 one-way full-joint clustered inference
+
+`nbreg ..., cluster(var)` uses the same exact joint model/ID exclusions and
+numeric/text/boolean identity rules as clustered Poisson, including G>=2 and
+mutually exclusive robust/cluster options. Counts0..100000, lnalpha strictly
+(-12,12), N>K+1, full mean rank and final positive undamped JOINT observed
+information/absolute convergence remain unchanged. For the Poisson starting fit
+only, detach group metadata while retaining the exact same rows/design; retain
+original groups in owned NB2 state. Point/null/diagnostic results are unchanged.
+
+With the FULL joint beta/lnalpha observed information inverse B and joint scores
+s_i, let S_g=sum_i_in_g s_i. V=G/(G-1)*B[sum_g S_g*S_g']B, including cross
+parameters AND within-group cross-observation terms. No conditional MASS/Fisher
+bread, ignored dispersion, row-score substitution, HC1/centering/Pearson scaling.
+Normal95 beta/log-alpha intervals and transformed alpha intervals use selected
+joint V. No normal alpha=0 test or G-1 t/few-cluster guarantee. Descriptive NB null
+still refits dispersion; LR p/reference unavailable. Wald tests beta slopes ONLY,
+not lnalpha, retains q and guards q>=G/rank without pseudoinverse/reduced q.
+Residual DF remains N-K-1, not G-1.
+
+CLI-v1 keeps NbregResult/NbregMarginalEffectsResult and adds ONLY on clustered
+results `covariance: "cluster_joint_score_sandwich_g_over_g_minus_1"` and the
+same four-field `cluster` metadata as Poisson. Full covariance parameter order
+remains beta then lnalpha; effects use its beta block, not conditional covariance.
+Noncluster shapes stay unchanged. Raw fit/effect cluster metadata defaults to and
+omits None for old owned reads, not restoration. Retained-X margins keep original
+groups/V across edits/drop IDs; current means/xb need mean predictors only. New
+fit failures clear stale inference only; bad predictions/options preserve state.
+
+[Native original-person NB2 extension](../../examples/mma20p1count/README.md)
+validates527 synthetic/597 empirical quantities/all20,186 source/original-row/
+person/year/design/mean/xb records/G5908, with numerical grouped-log-PMF score
+and joint curvature checks. Not a printed Table20.5 cluster column, complete
+RAND household/site/randomization correction, causal or full count/panel/book
+workflow. No author data redistribution/production R/Python/native DTA dependency.
+See MIG-0020. Remaining multiway/survey/few-cluster, offsets/exposure/weights,
+probabilities/formal tests/general restrictions/named reports and richer count
+requirements are not removed.
 
 ## Summaries and percentiles
 

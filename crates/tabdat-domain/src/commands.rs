@@ -572,8 +572,8 @@ pub struct PoissonCommand {
   pub include_intercept: bool,
 }
 
-/// Bounded log-link NB2, variance mu+alpha*mu^2. Legacy cluster syntax is
-/// retained but execution rejects it until clustered count inference is installed.
+/// Bounded log-link NB2, variance mu+alpha*mu^2, with full joint observed
+/// information and model-based, row-robust or one-way group-score covariance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NbregCommand {
   pub outcome: String,

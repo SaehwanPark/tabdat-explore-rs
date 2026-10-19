@@ -321,13 +321,19 @@ fn packaged_nbreg_examples_execute_and_discovery_exposes_bounds_and_joint_covari
     .unwrap();
   success(&out);
   let r: Value = serde_json::from_slice(&out.stdout).unwrap();
-  assert_eq!(r["data"]["syntax"], "nbreg y [x1 x2] [, robust noconstant]");
+  assert_eq!(
+    r["data"]["syntax"],
+    "nbreg y [x1 x2] [, robust cluster(var) noconstant]"
+  );
   for phrase in [
     "NB2",
     "0..100000",
     "(-12,12)",
     "JOINT observed information",
     "N/(N-1)",
+    "G/(G-1)",
+    "FULL joint beta/lnalpha",
+    "Independence ACROSS groups",
     "NOT panel-robust",
   ] {
     assert!(topic.contains(phrase), "{phrase}");

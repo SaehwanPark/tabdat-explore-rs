@@ -260,7 +260,7 @@ fn failed_new_fits_clear_stale_inference_but_preserve_every_data_and_label_field
     ("replace y = 0", "nbreg y x z"),
     ("replace y = 1", "nbreg y"),
     ("replace z = x", "nbreg y x z"),
-    ("replace y = y", "nbreg y x z, cluster(id)"),
+    ("replace id = 1", "nbreg y x z, cluster(id)"),
     ("replace y = y", "nbreg y missing"),
   ] {
     let mut s = f.load();

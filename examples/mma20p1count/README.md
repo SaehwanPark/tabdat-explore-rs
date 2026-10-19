@@ -10,6 +10,8 @@ chapter, or Poisson/NB graduate-method requirement. The separate
 coefficient/model-based/independent-row robust statistic portion of the same table.
 The [original-person Poisson extension below](#poisson-with-original-person-clustered-inference)
 adds independently validated clustered covariance, not a printed Table20.5 column.
+The [NB2 person extension](#nb2-with-original-person-clustered-joint-inference)
+separately validates full joint beta/lnalpha grouped-score inference.
 
 `poisson.td` loads the prepared source, validates export-position uniqueness,
 summarizes counts, fits both covariance modes, reports diagnostics and continuous
@@ -174,7 +176,7 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   book columns. Current edits do not change the retained effects. A failed new
   runtime fit clears stale inference without changing data/labels/order.
 
-Still required: offsets/exposure, NB2 clustering, household/site/multiway/survey
+Still required: offsets/exposure, household/site/multiway/survey
 inference, weights, count-PMF/CDF UI and Table20.6, formal NB
 boundary/specification tests, factors/discrete changes, general count test/lincom,
 reusable named count reports and remaining Tables20.3–20.6/workflows. Existing
@@ -272,12 +274,12 @@ historical lagged/stopped estimates into the independently converged result.
   preserve state. JSON adds `NbregResult`/`NbregMarginalEffectsResult`; other
   schemas remain unchanged. Fresh JSON/text/piped runs publish identical CSVs.
 
-No original IDs occur in the ASCII: independent-row robust NB2 is **not
-panel-robust**, and cluster requests are explicitly rejected. Offsets/exposure,
-NB2 original-ID clustering, weights/survey, count probabilities/Table20.6, formal
-alpha/specification tests, named count reports and other required count analyses
-remain open. The Poisson extension below does not install NB2 clustering. Neither
-addition completes the count family or book.
+No original IDs occur in the ASCII: the two `nb2.td` fits are unclustered;
+independent-row robust NB2 is **not panel-robust**. The separate person extension
+below attaches audited DTA identities and uses full joint grouped scores.
+Offsets/exposure, household/site/multiway/survey, weights, probabilities/Table20.6,
+formal alpha/specification tests, named reports and other required count analyses
+remain open. These portions do not complete the count family or book.
 
 ## Poisson with original-person clustered inference
 
@@ -348,8 +350,73 @@ need only mean predictors, not outcomes/IDs. JSON adds optional cluster metadata
 ONLY for clustered results; old noncluster shapes/owned-state reads are preserved.
 JSON/text/piped native runs publish identical ordered CSVs without replacing targets.
 
-NB2 clustering, household/site/multiway/survey/few-cluster methods, offsets/exposure,
+Household/site/multiway/survey/few-cluster methods, offsets/exposure,
 count probabilities/Table20.6, formal tests, general restrictions/named count
 reports and remaining required count/book analyses remain open. This is not
 whole count-family/panel/chapter/book/goal completion. No author data/program
 is redistributed.
+
+## NB2 with original-person clustered joint inference
+
+`nb2_clustered.td` uses the SAME audited original-person CSV, source order,
+20,186 rows/5,908 people and Table20.5 mean design as above. It is a native
+extension, NOT a person-cluster column printed in Table20.5. Do not fabricate
+IDs from prepared positions. Person independence is an assumption, not proof
+of RAND household/site/randomization-design adequacy or causal identification.
+
+Use a fresh output directory containing the audited `mma20p1count_person.csv`
+and checksum-verified ASC/DTA from the preparation above:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma20p1count/nb2_clustered.td" > nb2_person_native.jsonl
+Rscript "$repo/crates/tabdat-stats/tests/fixtures/nb2_cluster_reference.R" \
+  mma20p1count.asc randdata.dta R_nb2_person_predictions.csv > R_nb2_person_reference.csv
+python3 "$repo/examples/mma20p1count/check_nb2_cluster_reference.py" \
+  R_nb2_person_reference.csv R_nb2_person_predictions.csv nb2_person_native.jsonl nb2_person_predictions.csv
+```
+
+The independent R4.6.1/MASS7.3.65/foreign0.8.91 reference reads checksum-pinned
+ASC/DTA directly, not the converted CSV. MASS provides starting values ONLY;
+joint beta/lnalpha score polishing and observed information include cross terms.
+Normalized numerical score differentiation corroborates the full curvature;
+EVERY grouped score is additionally checked by differentiating the grouped
+`dnbinom` log-PMF. This is not `vcov(glm.nb)`/conditional Fisher covariance or
+`vcovCL` with a held-fixed dispersion. No R package is called by TabDat.
+
+For full joint inverse observed information B and Sg=sum_i_in_g joint_score_i,
+V=G/(G-1)*B[sum_g Sg*Sg']B. Group full joint scores BEFORE outer products,
+retaining cross-parameter and within-person cross-observation terms. No row-score
+substitution, centering, HC1 or Pearson scaling. Normal95 beta/logalpha intervals
+and transformed alpha CIs use selected joint V; no normal alpha=0/G-1 t/few-cluster
+guarantee. Wald tests beta slopes ONLY with G-1 rank guards; LR reference is
+unavailable, while descriptive restricted NB likelihood refits dispersion.
+Mean fitting/null/convergence/domain and N-K-1 diagnostic DF remain unchanged.
+
+**527 synthetic/597 empirical quantities and every source/original/prepared/
+person/year/design/mean/xb field of all20,186 records match.** Singleton grouping
+matches141 shared existing row-robust quantities exactly. References regenerate
+byte-identically with unchanged ordinary1e-10/totals1e-7/design1e-12/relative-tail
+contracts; no variance clipping hides reference failure. R LC SE is
+0.023680432374019001, log-alpha SE0.025259893808035162; Wald(17)
+1034.4344578749151,p3.8645239892533305e-209. JSON/text/piped prediction CSVs
+are identical, preserve every source identity/order and never replace targets.
+Twenty deliberate corruption probes reject cross-covariance removal/row-robust
+substitution/wrong correction or DF/null dispersion/fake alpha tests/symmetric
+intervals/tiny tails/IDs/year/order/design/clipped means. Full previous
+Poisson/NB2/person-Poisson reference regressions remain passing.
+
+Exact joint count/ID missingness, numeric/text/boolean/wide integer/DECIMAL keys,
+G>=2 and strict NB2 bounds follow `help nbreg`. The Poisson starting fit receives
+the same rows/design with group metadata detached only for initialization;
+original groups remain in owned NB2 state. Retained-X margins keep original
+full joint V/groups across edits/drop IDs. Current n/xb needs mean predictors
+only. Failed new runtime fits clear stale inference only; unsupported prediction/
+postestimation and output collisions preserve state/targets. Cluster metadata is
+conditional, preserving noncluster JSON/old owned reads, not fit restoration.
+
+This does not remove required weights/offsets/exposure, appropriate household/
+site/multiway/survey/few-cluster methods, FE/RE/panels, count probabilities/formal
+boundary/specification tests, general restrictions/named reports, native DTA,
+richer counts or remaining book analyses. No source data/program is redistributed;
+R/Python remain development-only reference/conversion tools.
