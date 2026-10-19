@@ -1,3 +1,4 @@
+use serde_json::json;
 use tabdat_stats::{
   EstimationProblem, EstimationSample, fit_nb2, fit_nb2_clustered, nb2_average_marginal_effects,
 };
@@ -29,6 +30,88 @@ fn close(actual: f64, expected: f64) {
     actual.is_finite() && (actual - expected).abs() <= 1e-10,
     "{actual} != {expected}"
   );
+}
+#[test]
+fn full_joint_group_covariance_dispersion_wald_effects_and_predictions_match_independent_r() {
+  let references: Vec<Vec<_>> = include_str!("fixtures/nb2_cluster_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|l| l.split(',').collect())
+    .collect();
+  assert_eq!(references.len(), 527);
+  for case in ["multiple", "noconstant", "intercept", "singleton"] {
+    let p = problem(case);
+    let fit = fit_nb2_clustered(&p, "person").unwrap();
+    let effects = nb2_average_marginal_effects(&p, &fit).unwrap();
+    let j = serde_json::to_value(&fit).unwrap();
+    let e = serde_json::to_value(&effects).unwrap();
+    for row in references.iter().filter(|r| r[0] == case) {
+      let q = row[1];
+      let i: usize = row[2].parse().unwrap();
+      let k: usize = row[3].parse().unwrap();
+      let actual = if let Some(field) = q.strip_prefix("coefficient_") {
+        j["coefficients"][i][field].clone()
+      } else if let Some(field) = q.strip_prefix("effect_") {
+        e["effects"][i][field].clone()
+      } else if j["dispersion"].get(q).is_some() {
+        j["dispersion"][q].clone()
+      } else {
+        match q {
+          "covariance" => j["covariance"][i][k].clone(),
+          "mean" => j["fitted_means"][i].clone(),
+          "xb" => {
+            let offset = usize::from(p.include_intercept);
+            json!(
+              p.design_matrix[i]
+                .iter()
+                .zip(&fit.coefficients[offset..])
+                .map(|(x, b)| x * b.value)
+                .sum::<f64>()
+                + if offset == 1 {
+                  fit.coefficients[0].value
+                } else {
+                  0.
+                }
+            )
+          }
+          "wald_statistic" => j["omnibus_wald"]["statistic"].clone(),
+          "wald_p_value" => j["omnibus_wald"]["p_value"].clone(),
+          "cluster_group_count" => j["cluster"]["group_count"].clone(),
+          "cluster_correction" => {
+            let g = fit.cluster.as_ref().unwrap().group_count as f64;
+            json!(g / (g - 1.))
+          }
+          _ => j[q].clone(),
+        }
+      };
+      if row[4] == "NA" {
+        assert!(actual.is_null(), "{case}/{q}: {actual}");
+        continue;
+      }
+      let expected: f64 = row[4].parse().unwrap();
+      let actual = actual.as_f64().unwrap();
+      let tolerance = if q.ends_with("p_value") {
+        expected.abs() * 1e-10 + f64::MIN_POSITIVE
+      } else if matches!(
+        q,
+        "log_likelihood"
+          | "null_log_likelihood"
+          | "likelihood_ratio"
+          | "residual_deviance"
+          | "pearson_chi_square"
+      ) {
+        1e-7
+      } else {
+        1e-10
+      };
+      assert!(
+        actual.is_finite() && (actual - expected).abs() <= tolerance,
+        "{case}/{q}: {actual} != {expected}, tolerance {tolerance}"
+      );
+    }
+    assert!(j["dispersion"].get("p_value").is_none());
+    assert_eq!(effects.cluster, fit.cluster);
+  }
 }
 #[test]
 fn clustered_nb2_preserves_point_null_and_convergence_and_singletons_equal_full_joint_row_robust() {

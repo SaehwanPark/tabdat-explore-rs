@@ -69,9 +69,9 @@ uses the **owned retained estimation design**, not current rows; edits do not
 rescan/refit or change this estimand. Intercept-only fits have no predictor effects.
 
 The full gradient is `beta_j*mean(mu*X) + e_j*mean(mu)`, including intercept/slopes'
-covariance. The delta variance uses selected inverse Poisson information or the
-independent-row N/(N-1) score sandwich. It does not use Pearson dispersion, OLS
-HC1, Student t or panel/cluster covariance. Output has normal z/two-sided p and
+covariance. The delta variance uses selected inverse Poisson information,
+independent-row N/(N-1) or one-way group-score G/(G-1) sandwich. It does not use
+Pearson dispersion, OLS HC1 or Student t; clustering assumes independent groups. Output has normal z/two-sided p and
 fixed 95% intervals (`PoissonMarginalEffectsResult`); zero variance gives
 unavailable z/p/CI rather than an exact interval.
 
@@ -83,7 +83,7 @@ uses the retained group-score G/(G-1) covariance and carries original variable/G
 metadata through margins, with normal inference and independence across clusters.
 It does not require current cluster IDs, resample X, or guarantee few-cluster
 coverage. There are no weighted, factor/discrete-change or user-level-option
-count margins; NB2 clustering remains unsupported.
+count margins. NB2 one-way clustering uses full joint scores as described below.
 
 ## NB2 continuous average partial effects
 
@@ -91,13 +91,16 @@ After `nbreg`, `estat margins` uses the owned retained X to report
 `beta_j*mean(mu)` with gradient `[beta_j*mean(mu*X)+e_j*mean(mu), 0]` in joint
 beta/lnalpha order. The zero direct lnalpha derivative does **not** justify
 substituting conditional/Fisher covariance: the beta block comes from the FULL
-joint inverse observed information or independent-row N/(N-1) score sandwich.
+joint inverse observed information, independent-row N/(N-1) or one-way grouped
+FULL joint-score G/(G-1) sandwich. Group variable/G metadata is retained; no
+conditional/Fisher or row-score substitution, G-1 t or few-cluster guarantee.
 
 Output is conditional-X delta normal95 (`NbregMarginalEffectsResult`), not
 Student t, random-X uncertainty, discrete changes or original-variable chain
 rules. Current data edits do not change the retained effect. Intercept-only
-models have no predictor effects. There are no weighted/clustered/discrete-change
-or user-level-option NB2 margins; see `help nbreg` for numerical bounds.
+models have no predictor effects. Original groups/V survive edits/drop ID;
+current predictions need mean predictors only. There are no weighted/multiway/
+discrete-change or user-level-option NB2 margins; see `help nbreg` for bounds.
 
 ## Sargan overidentification test
 

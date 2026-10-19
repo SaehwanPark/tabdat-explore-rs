@@ -111,7 +111,7 @@ reference <- function(case,y,predictors,groups,intercept=TRUE,
   stopifnot(outer_relative_discrepancy<100*.Machine$double.eps)
   V <- correction*B %*% meat %*% B
   stopifnot(all(is.finite(V)),max(abs(V-t(V)))<1e-10,
-    all(diag(V)>=-1e-12))
+    all(diag(V)>=0))
   if (G==n) {
     row_robust_law <- n/(n-1)*B %*% crossprod(e$scores) %*% B
     stopifnot(max(abs(V-row_robust_law))<1e-12)
@@ -173,7 +173,8 @@ reference <- function(case,y,predictors,groups,intercept=TRUE,
   for (name in names(fields)) emit(case,name,value=fields[[name]])
 
   normal <- function(prefix,i,value,variance) {
-    value <- unname(value); se <- sqrt(max(0,variance))
+    stopifnot(is.finite(variance),variance>=0)
+    value <- unname(value); se <- sqrt(variance)
     f <- c(value=value,standard_error=se,
       statistic=if(se>0)value/se else NA_real_,
       p_value=if(se>0)2*pnorm(-abs(value/se)) else NA_real_,

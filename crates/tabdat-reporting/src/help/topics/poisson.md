@@ -72,8 +72,9 @@ interval prediction, few-cluster bootstrap or named Poisson `estimates store`.
 Clustered covariance is not FE/RE/random-effects or the full panel family.
 
 NB2 is separately installed by `nbreg`; see `help nbreg` for its distinct
-variance, joint dispersion covariance and narrower numerical domain. NB2
-clustering is not installed by this Poisson extension.
+variance, full joint dispersion covariance and narrower numerical domain.
+One-way NB2 clustering is separately installed with full joint group scores;
+Poisson Fisher covariance must not be substituted for NB2 observed information.
 
 See `help predict`, `help estat`, `examples/mma20p1count/README.md`, and the
 structured result contracts in `docs/reference/command-results.md`.
