@@ -141,7 +141,8 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   sample, N>K and full-rank design. DECIMAL/wide integers are checked before
   conversion; this does not recover decimal digits already rounded by a loader
   into DOUBLE. Invalid finite counts on complete rows fail; a missing/nonfinite
-  model cell excludes the row. No weights or cluster groups.
+  model cell excludes the row. These two unclustered `poisson.td` fits use no
+  weights or cluster groups; see the separate original-person extension below.
 - Unit-column-norm Newton/Fisher QR, deterministic bounded backtracking, at most
   100 outer Newton iterations, up to50 backtracking candidates per iteration.
   The reported count excludes candidates. Both absolute scaled score and **full** Newton
