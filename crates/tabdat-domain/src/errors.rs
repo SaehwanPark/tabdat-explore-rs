@@ -439,6 +439,10 @@ pub enum RuntimeError {
   EstatMarginsRequiresPriorLogit,
   /// A retained-design delta calculation failed.
   EstatMarginsFailed { message: String },
+  /// Count frequency reports require an owned fitted Poisson or NB2 model.
+  EstatCountProbRequiresPriorCount,
+  /// A bounded count distribution report failed without changing state.
+  EstatCountProbFailed { message: String },
   /// Only explicit pr/xb predictions without auxiliary interval options are supported.
   PredictLogitUnsupported,
   /// Invalid/unsupported binary probit specification or a failed finite-MLE fit.
@@ -1077,6 +1081,8 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("estat margins requires a prior logit fit")
       }
       Self::EstatMarginsFailed { message } => write!(formatter, "estat margins: {message}"),
+      Self::EstatCountProbRequiresPriorCount => formatter.write_str("estat countprob requires a prior Poisson or NB2 fit"),
+      Self::EstatCountProbFailed { message } => write!(formatter, "estat countprob: {message}"),
       Self::PredictLogitUnsupported => formatter.write_str(
         "logit prediction supports only pr or xb, without interval, std or saving options",
       ),

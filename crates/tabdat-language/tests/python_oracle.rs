@@ -92,8 +92,8 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
-    // MIG-0013: the installed AR extension adds only `ar` to these diagnostic
-    // lists. Preserve the historical corpus and assert the exact new wording.
+    // Installed AR and descriptive count-frequency extensions add only their
+    // names to these lists; keep the historical corpus and exact delta visible.
     if matches!(
       input,
       "estat"
@@ -109,7 +109,9 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
         .as_str()
         .unwrap()
         .replace("vif|firststage", "vif|ar|firststage")
-        .replace("vif, firststage", "vif, ar, firststage");
+        .replace("vif, firststage", "vif, ar, firststage")
+        .replace("margins|gof", "margins|countprob|gof")
+        .replace("margins, gof", "margins, countprob, gof");
       assert_eq!(result.unwrap_err().message(), expected);
       continue;
     }
