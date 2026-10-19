@@ -87,12 +87,21 @@ fn optional_number(value: Option<f64>) -> String {
     .unwrap_or_else(|| "NA".to_owned())
 }
 
-fn poisson_covariance_note(robust: bool) -> &'static str {
-  if robust {
+fn poisson_covariance_note(
+  robust: bool,
+  cluster: Option<&tabdat_domain::PoissonCluster>,
+) -> &'static str {
+  if cluster.is_some() {
+    "one-way cluster score sandwich, G/(G-1), not OLS HC1"
+  } else if robust {
     "independent-row score sandwich, N/(N-1), not OLS HC1"
   } else {
     "model-based inverse Poisson Fisher information, no N-K scaling"
   }
+}
+
+fn poisson_cluster_note(cluster: Option<&tabdat_domain::PoissonCluster>) -> String {
+  cluster.map_or_else(String::new, |c| format!("Cluster variable: \"{}\"; retained independent clusters G = {}; finite-sample multiplier = {}\nAllows within-cluster dependence, assumes independence ACROSS clusters. Normal inference, NOT G-1 Student t or a few-cluster correction.\n",c.variable.escape_debug(),c.group_count,c.group_count as f64/(c.group_count-1) as f64))
 }
 
 fn poisson_estimates(estimates: &[tabdat_domain::PoissonEstimate]) -> String {
@@ -122,7 +131,7 @@ fn poisson_estimates(estimates: &[tabdat_domain::PoissonEstimate]) -> String {
 fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
   let mut output = format!(
     "Poisson log-link regression ({})\nOutcome: {}; N = {}; count total (float64) = {}; zeros = {}\n",
-    poisson_covariance_note(r.robust),
+    poisson_covariance_note(r.robust, r.cluster.as_ref()),
     r.outcome.escape_debug(),
     r.observation_count,
     r.count_sum,
@@ -137,7 +146,7 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
     r.sample.as_ref().map_or(0, |s| s.dropped_observations)
   )
   .unwrap();
-  writeln!(output,"Converged in {} information evaluations; max absolute unit-column-norm score = {}; full Newton step = {}",
+  writeln!(output,"Converged in {} outer Newton iterations; max absolute unit-column-norm score = {}; full Newton step = {}",
     r.iterations,r.max_abs_scaled_score,r.max_abs_scaled_newton_step).unwrap();
   writeln!(
     output,
@@ -177,9 +186,15 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
     r.pearson_chi_square, r.df_residual, r.pearson_dispersion
   )
   .unwrap();
-  output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference; model-based Poisson assumes variance=mean. Robust corrects variance misspecification under independent rows, NOT repeated-person/panel dependence.\n");
-  if r.robust {
-    output.push_str("LR p-value unavailable under robust QMLE inference.\n");
+  if r.cluster.is_some() {
+    output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference using selected cluster covariance; no Pearson-dispersion rescaling.\n");
+    output.push_str(&poisson_cluster_note(r.cluster.as_ref()));
+    output.push_str("LR p-value unavailable under clustered QMLE inference.\n");
+  } else {
+    output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference; model-based Poisson assumes variance=mean. Robust corrects variance misspecification under independent rows, NOT repeated-person/panel dependence.\n");
+    if r.robust {
+      output.push_str("LR p-value unavailable under robust QMLE inference.\n");
+    }
   }
   output.push_str(&poisson_estimates(&r.coefficients));
   output
@@ -1087,9 +1102,10 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Poisson(result) => poisson_report(result),
     ExecutionResult::PoissonMarginalEffects(result) => format!(
-      "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
+      "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}{}",
       result.observation_count,
-      poisson_covariance_note(result.robust),
+      poisson_covariance_note(result.robust, result.cluster.as_ref()),
+      poisson_cluster_note(result.cluster.as_ref()),
       poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"

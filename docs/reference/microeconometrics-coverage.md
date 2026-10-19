@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions | Exposure/offset, clustered/panel inference, count probabilities, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions and audited original-person clustered Poisson extension | Exposure/offset, NB2/household/site/multiway/panel inference, count probabilities, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Panel/xtreg parser only | Unit/time declaration, gap/duplicate policy, FE/RE/between/differences and diagnostics |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -65,7 +65,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
-| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; original-ID clustering, probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
+| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson extension551 quantities/5,908 original people; NB2 clustering, probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
 | MMA-PANEL | pp. 708–715, PSID; `MOM.dat` | Planned | Verify unit/time keys, transformations, model comparisons and covariance |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
@@ -341,7 +341,8 @@ validated extensions, not extra claimed book outputs or formal panel tests.
 The actual script has runtime/CLI schema, sample, failure/retention, prediction,
 output-collision and JSON/text/piped regression coverage. Repeated person-years
 require clustered inference for dependence: these two reproduced columns are
-**not panel-robust**. The ASCII omits original person IDs. Original-ID clustering,
+**not panel-robust**. The ASCII omits original person IDs; the native Poisson
+person extension below recovers audited DTA IDs separately. NB2 clustering,
 offsets/exposure, probabilities/Table20.6, formal NB boundary/specification tests,
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` remains OLS/logit/probit
@@ -365,9 +366,31 @@ fits fail; there is no clipped-alpha or implicit Poisson fallback. Original
 DTA/ASCII NB2 coefficient differences <=4.38e-8 are source quantization; native
 validation uses exact ASCII. Historical stopping/rounded output is not the
 float64 score fixed point (HLTHP approximately0.4256563 vs converged0.42565748).
-General count restrictions, formal alpha=0/specification tests, original-ID
-clustering, probabilities and remaining illustration outputs stay required;
+General count restrictions, formal alpha=0/specification tests, NB2 clustering,
+probabilities and remaining illustration outputs stay required;
 this addition does not complete the book's count workflow or panel inference.
+
+[PR #282](https://github.com/SaehwanPark/tabdat-explore-rs/pull/282) adds the
+[native original-person Poisson extension](../../examples/mma20p1count/poisson_clustered.td),
+not a cluster column printed in Table20.5. Development-only `prepare_person.R`
+compares every outcome/predictor/order against original DTA (exact counts,
+predictor differences<5e-6 ASCII quantization) before attaching original row,
+zper/person ID and study year. Four education-missing exclusions are unchanged;
+G5908, group sizes1:265/2:246/3:3743/4:70/5:1584, unique person-year keys and all
+five years are verified. No prepared positions are substituted for person IDs.
+
+R4.6.1/sandwich3.1.1 `vcovCL(type='HC0',cadjust=TRUE)` matches467 synthetic and
+551 empirical quantities plus every source/ID/design/mean/index field of all20,186
+records. Group scores are summed BEFORE outer products, correctionG/(G-1), normal95
+not G-1 t; LR reference unavailable and slope Wald guarded by G-1 rank. Converged
+R weights are synchronized by fixed-point warm start, not a relaxed tolerance.
+Source preparation refuses replacement and detects positional/source/key errors;
+JSON/text/piped CSVs agree. Retained-X effects keep original covariance/groups,
+current predictions need mean predictors only. This assumes independent PERSON
+clusters; household/site/cross-person dependence, few-cluster methods, survey,
+FE/RE/panel models, NB2 clustering and remaining count outputs stay required as
+applicable. It is not full RAND design-based or causal inference, native DTA IO,
+whole count-family or book completion.
 
 ## Additional IV method evidence (not a textbook replication)
 

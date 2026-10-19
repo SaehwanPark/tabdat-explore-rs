@@ -385,7 +385,7 @@ fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
 }
 
 #[test]
-fn poisson_discovery_describes_bounded_native_execution_not_panel_robustness() {
+fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "poisson"])
     .output()
@@ -394,7 +394,7 @@ fn poisson_discovery_describes_bounded_native_execution_not_panel_robustness() {
   let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   assert_eq!(
     envelope["data"]["syntax"],
-    "poisson y [x1 x2] [, robust noconstant]"
+    "poisson y [x1 x2] [, robust cluster(var) noconstant]"
   );
   let output = tabdat_bin()
     .args(["--json", "--help-topic", "poisson"])
@@ -408,7 +408,9 @@ fn poisson_discovery_describes_bounded_native_execution_not_panel_robustness() {
     "not Student t",
     "clustered/panel inference",
     "predict mean_visits, n",
-    "Legacy `cluster(var)`",
+    "G/(G-1)",
+    "independence ACROSS groups",
+    "NB2\nclustering is not installed",
   ] {
     assert!(text.contains(phrase), "{phrase}");
   }

@@ -1312,7 +1312,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "poisson y [x1 x2] [, robust noconstant]".to_string(),
+      syntax: "poisson y [x1 x2] [, robust cluster(var) noconstant]".to_string(),
     }),
     "postlasso" => Ok(CommandSchemaResult {
       arguments: vec![

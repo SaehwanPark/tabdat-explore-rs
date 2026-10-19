@@ -35,6 +35,9 @@ Data and model notes:
 - xb requires the original predictor names. Renaming/dropping a required column
   does not rewrite the model: restore it or deliberately refit. Retained-X
   `estat margins` remains separate from these current-row predictions.
+- A clustered Poisson prediction still needs mean predictors only, not the
+  outcome or current cluster ID. Original groups/covariance remain retained for
+  `estat margins`; clustered fitting does not add prediction intervals.
 - Linear fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
   nonfinite or unrepresentable indices yield NULL. Stable binary links avoid
   exponential overflow. Poisson/NB2 overflowing means yield NULL; finite negative

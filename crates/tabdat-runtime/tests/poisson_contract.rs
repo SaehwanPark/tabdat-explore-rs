@@ -263,7 +263,7 @@ fn new_fit_failures_clear_stale_inference_but_preserve_data_and_labels() {
     ("replace y = 0", "poisson y x z"),
     ("replace z = x", "poisson y x z"),
     ("replace y = 9007199254740992", "poisson y x z"),
-    ("replace y = y", "poisson y x z, cluster(id)"),
+    ("replace id = 1", "poisson y x z, cluster(id)"),
     ("replace y = y", "poisson y missing"),
   ] {
     let mut s = f.load();

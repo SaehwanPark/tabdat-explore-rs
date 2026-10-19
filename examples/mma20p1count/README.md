@@ -8,6 +8,8 @@ The book/author display calls these t-ratios; native inference is asymptotic
 chapter, or Poisson/NB graduate-method requirement. The separate
 [NB2 extension below](#nb2-joint-mean-and-dispersion-workflow) validates the NB
 coefficient/model-based/independent-row robust statistic portion of the same table.
+The [original-person Poisson extension below](#poisson-with-original-person-clustered-inference)
+adds independently validated clustered covariance, not a printed Table20.5 column.
 
 `poisson.td` loads the prepared source, validates export-position uniqueness,
 summarizes counts, fits both covariance modes, reports diagnostics and continuous
@@ -141,7 +143,8 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   into DOUBLE. Invalid finite counts on complete rows fail; a missing/nonfinite
   model cell excludes the row. No weights or cluster groups.
 - Unit-column-norm Newton/Fisher QR, deterministic bounded backtracking, at most
-  100 information evaluations. Both absolute scaled score and **full** Newton
+  100 outer Newton iterations, up to50 backtracking candidates per iteration.
+  The reported count excludes candidates. Both absolute scaled score and **full** Newton
   step must be ≤1e-10. Numerical/domain admission does not guarantee a fit: strict
   convergence/rank/finite-representability bounds can reject extreme finite
   inputs. This is not an analytic existence/boundary classifier.
@@ -170,8 +173,8 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   book columns. Current edits do not change the retained effects. A failed new
   runtime fit clears stale inference without changing data/labels/order.
 
-Still required: offsets/exposure, clustered Poisson/NB2 (original IDs must be
-recovered from DTA), survey/weights, count-PMF/CDF UI and Table20.6, formal NB
+Still required: offsets/exposure, NB2 clustering, household/site/multiway/survey
+inference, weights, count-PMF/CDF UI and Table20.6, formal NB
 boundary/specification tests, factors/discrete changes, general count test/lincom,
 reusable named count reports and remaining Tables20.3–20.6/workflows. Existing
 `estimates store` intentionally remains OLS/logit/probit-only. No restoration or
@@ -270,6 +273,82 @@ historical lagged/stopped estimates into the independently converged result.
 
 No original IDs occur in the ASCII: independent-row robust NB2 is **not
 panel-robust**, and cluster requests are explicitly rejected. Offsets/exposure,
-original-ID clustering, weights/survey, count probabilities/Table20.6, formal
+NB2 original-ID clustering, weights/survey, count probabilities/Table20.6, formal
 alpha/specification tests, named count reports and other required count analyses
-remain open. This NB2 addition does not complete the count family or book.
+remain open. The Poisson extension below does not install NB2 clustering. Neither
+addition completes the count family or book.
+
+## Poisson with original-person clustered inference
+
+`poisson_clustered.td` extends the **same Table20.5 Poisson conditional-mean
+design** to one-way original-person covariance. This is a native analysis extension,
+not a person-cluster column printed in the book/author log. It does not fit FE/RE,
+resolve RAND household/site/randomization dependence, correct a misspecified mean
+or establish causal insurance effects. Independence ACROSS chosen people is required.
+
+The ASCII has no IDs. `prepare_person.R` independently checks all20,186 ASCII
+outcomes/predictor rows against the original20,190-row DTA, excluding only the four
+education-missing original positions listed above. Counts/order agree exactly;
+<5e-6 predictor export differences are source quantization, not model tolerances.
+Only AFTER that audit it adds `original_row`, actual `zper` as `person_id`, and
+actual `year` as `study_year`; `prepared_row` remains a prepared export position,
+NEVER a substitute person ID. Person IDs are finite exact integers; person-year
+keys are unique. All five years have5638/5574/5545/1715/1714 records. G=5908,
+with1/2/3/4/5 records per person for265/246/3743/70/1584 people respectively.
+
+In a fresh output directory containing the checksum-verified ASC/DTA above:
+
+```sh
+Rscript "$repo/examples/mma20p1count/prepare_person.R" \
+  mma20p1count.asc randdata.dta mma20p1count_person.csv
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma20p1count/poisson_clustered.td" > person_native.jsonl
+Rscript "$repo/crates/tabdat-stats/tests/fixtures/poisson_cluster_reference.R" \
+  mma20p1count.asc randdata.dta R_person_predictions.csv > R_person_reference.csv
+python3 "$repo/examples/mma20p1count/check_poisson_cluster_reference.py" \
+  R_person_reference.csv R_person_predictions.csv person_native.jsonl poisson_person_predictions.csv
+```
+
+Development R uses `foreign0.8.91`/`sandwich3.1.1` under R4.6.1. Preparation
+stages a complete CSV and hard-links without replacing files/directories/symlinks;
+failed audits leave no output. The independent reference reads ASC/DTA itself,
+not the converted CSV. **551 quantities and every original/prepared/person/year/
+source/design/mean/index field of all20,186 rows** match;467 synthetic multiple,
+no-constant, intercept-only and singleton quantities are also validated. References
+regenerate byte-identically; prior ordinary/total/design/relative-tail tolerances
+are unchanged. These R programs are development data/reference tools, never
+invoked by TabDat; ordinary user CSV cluster fits need no R. Native DTA access
+remains an unimplemented required foundation, not a newly installed backend.
+
+The reference warm-starts `glm` at its fixed point before `vcovCL(type='HC0',
+cadjust=TRUE)`: ordinary likelihood convergence can leave stored QR/working
+weights at the previous IRLS point (initial covariance difference2.95e-8).
+Synchronized weights differ from means by1.95e-12; trusted vcovCL and an explicit
+converged-information/group-score covariance agree within1.12e-14. No native
+tolerance was widened to match lagged reference weights.
+
+Covariance is B[sum_g S_g S_g']B*G/(G-1), S_g=sum_i_in_g X_i*(y_i-mu_i),
+with converged Poisson inverse information B. Sum BEFORE outer products; no
+row-score substitution, HC1, Pearson scaling or centering. Inference is normal95,
+not G-1 t; LR p/reference unavailable; beta-slope Wald guards q>=G with no reduced
+q/pseudoinverse. LC SE is0.022682392509641616,p0.059567525116940544; Wald(17)
+827.0703031869317,p7.73648862864e-165. Point coefficients/means and descriptive
+diagnostics remain those of the same Poisson mean model. Few clusters can still
+give unreliable inference despite G/(G-1).
+
+`cluster(var)` accepts numeric/text/boolean keys, excludes SQL NULL/nonfinite
+numeric keys jointly BEFORE rejecting finite invalid counts, and preserves wide
+integer/DECIMAL identities before f64 rounding. Loaded empty text is a group;
+CSV loader NULL conventions still apply. G>=2/N>K/full rank and existing strict
+Poisson numerical bounds remain. Failed new runtime fits clear only stale
+inference; bad prediction/options preserve state. Retained-X effects carry
+original groups/selected covariance despite edits/drop ID, while current n/xb
+need only mean predictors, not outcomes/IDs. JSON adds optional cluster metadata
+ONLY for clustered results; old noncluster shapes/owned-state reads are preserved.
+JSON/text/piped native runs publish identical ordered CSVs without replacing targets.
+
+NB2 clustering, household/site/multiway/survey/few-cluster methods, offsets/exposure,
+count probabilities/Table20.6, formal tests, general restrictions/named count
+reports and remaining required count/book analyses remain open. This is not
+whole count-family/panel/chapter/book/goal completion. No author data/program
+is redistributed.

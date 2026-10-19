@@ -18,6 +18,7 @@ impl Session {
       &command.outcome,
       &command.predictors,
       command.include_intercept,
+      None,
     )?;
     let result =
       tabdat_stats::fit_nb2(&problem, command.robust).map_err(|e| family.error(e.to_string()))?;
