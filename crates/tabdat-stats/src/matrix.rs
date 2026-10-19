@@ -500,6 +500,17 @@ pub fn lgamma(z: f64) -> f64 {
 }
 
 fn beta_continued_fraction(a: f64, b: f64, x: f64) -> f64 {
+  beta_continued_fraction_bounded(a, b, x, 200).0
+}
+
+// Retain the legacy beta/F value path while allowing new probability callers
+// to reject exhausted iterations instead of silently accepting a partial sum.
+pub(crate) fn beta_continued_fraction_bounded(
+  a: f64,
+  b: f64,
+  x: f64,
+  iterations: usize,
+) -> (f64, bool) {
   let qab = a + b;
   let qap = a + 1.0;
   let qam = a - 1.0;
@@ -511,7 +522,7 @@ fn beta_continued_fraction(a: f64, b: f64, x: f64) -> f64 {
   d = 1.0 / d;
   let mut h = d;
 
-  for m in 1..200 {
+  for m in 1..iterations {
     let m_f = m as f64;
     let m2 = 2.0 * m_f;
 
@@ -543,10 +554,10 @@ fn beta_continued_fraction(a: f64, b: f64, x: f64) -> f64 {
     h *= del_h;
 
     if (del_h - 1.0).abs() < 1e-15 {
-      break;
+      return (h, true);
     }
   }
-  h
+  (h, false)
 }
 
 /// Regularized incomplete beta function I_x(a, b).

@@ -177,6 +177,41 @@ impl Session {
     )
   }
 
+  pub(crate) fn execute_count_probability_table(
+    &self,
+    tail_from: usize,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    use tabdat_stats::CountProbabilityLaw;
+    let (distribution, problem, means) = match &self.estimation {
+      Some(EstimationState::PoissonFit(state)) => (
+        CountProbabilityLaw::Poisson,
+        &state.problem,
+        &state.result.fitted_means,
+      ),
+      Some(EstimationState::NegativeBinomialFit(state)) => (
+        CountProbabilityLaw::Nb2 {
+          alpha: state.result.dispersion.alpha,
+        },
+        &state.problem,
+        &state.result.fitted_means,
+      ),
+      _ => return Err(RuntimeError::EstatCountProbRequiresPriorCount),
+    };
+    let table =
+      tabdat_stats::count_probability_table(distribution, &problem.response, means, tail_from)
+        .map_err(|error| RuntimeError::EstatCountProbFailed {
+          message: error.to_string(),
+        })?;
+    Ok(ExecutionResult::CountProbabilities(Box::new(
+      CountProbabilityResult {
+        outcome: problem.outcome.clone(),
+        distribution,
+        sample: problem.sample.clone(),
+        table,
+      },
+    )))
+  }
+
   pub(crate) fn execute_count_prediction(
     &mut self,
     command: &PredictCommand,

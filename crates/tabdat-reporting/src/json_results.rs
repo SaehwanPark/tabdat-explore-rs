@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -120,7 +120,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::AndersonRubinConfidenceSet { .. }
             | EstatSubcommand::Overid
             | EstatSubcommand::Endogenous
-            | EstatSubcommand::Margins,
+            | EstatSubcommand::Margins
+            | EstatSubcommand::CountProbabilities { .. },
           ..
         },
     }
@@ -448,6 +449,22 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "cluster_sandwich_g_over_g_minus_1",
       );
       (data, "PoissonMarginalEffectsResult")
+    }
+    ExecutionResult::CountProbabilities(result) => {
+      let mut data = serde_json::to_value(&result.table).expect("finite count probability table");
+      data["estimator"] = json!(match result.distribution {
+        tabdat_domain::CountProbabilityLaw::Poisson => "poisson",
+        tabdat_domain::CountProbabilityLaw::Nb2 { .. } => "nb2",
+      });
+      data["outcome"] = json!(result.outcome);
+      data["distribution"] = json!(result.distribution);
+      data["sample"] = json!(result.sample);
+      data["sample_role"] = json!("retained_estimation_sample");
+      data["probability_role"] = json!("mean_of_individual_plugin_conditional_probabilities");
+      data["covariance_role"] = json!("does_not_establish_distribution");
+      data["uncertainty"] = json!("not_computed");
+      data["goodness_of_fit_test"] = json!("not_performed");
+      (data, "CountProbabilityResult")
     }
     ExecutionResult::Nbreg(result) => {
       let mut data = json!({

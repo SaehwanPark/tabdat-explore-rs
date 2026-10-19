@@ -885,6 +885,7 @@ fn get_command_schema(
       help_topic,
       name: "estat".to_string(),
       options: vec![
+        OptionDescriptor { name: "max".to_string(), required: false },
         OptionDescriptor { name: "ci".to_string(), required: false },
         OptionDescriptor { name: "level".to_string(), required: false },
         OptionDescriptor {
@@ -900,7 +901,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid | estat endogenous | estat margins".to_string(),
+      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid | estat endogenous | estat margins | estat countprob [, max(10)]".to_string(),
     }),
     "estimates" => Ok(CommandSchemaResult {
       arguments: vec![

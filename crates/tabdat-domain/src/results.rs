@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::{
-  BinaryCluster, BinaryOmnibusWald, LogitEstimate, Nb2Cluster, Nb2Dispersion, Nb2Estimate,
-  Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate, PoissonMarginalEffects,
-  PoissonOmnibusWald, PoissonResult,
+  BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, LogitEstimate, Nb2Cluster, Nb2Dispersion,
+  Nb2Estimate, Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate,
+  PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
@@ -681,6 +681,15 @@ pub struct PredictionResult {
   pub dataset: DatasetInfo,
 }
 
+/// Distributional plug-in frequencies on the original retained count sample.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CountProbabilityResult {
+  pub outcome: String,
+  pub distribution: tabdat_stats::CountProbabilityLaw,
+  pub sample: Option<tabdat_stats::EstimationSample>,
+  pub table: tabdat_stats::CountProbabilityTable,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -783,6 +792,8 @@ pub enum ExecutionResult {
   Nbreg(Box<Nb2Result>),
   /// Retained-X continuous effects using the full joint selected covariance.
   NbregMarginalEffects(Box<Nb2MarginalEffects>),
+  /// Descriptive observed/fitted count probabilities; no test or uncertainty.
+  CountProbabilities(Box<CountProbabilityResult>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.

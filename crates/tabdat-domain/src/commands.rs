@@ -1266,6 +1266,10 @@ pub enum EstatSubcommand {
   Residuals,
   Ovtest,
   Margins,
+  /// Descriptive observed/fitted retained-count bins, ending in >= tail_from.
+  CountProbabilities {
+    tail_from: usize,
+  },
   Gof,
   Did,
   Drdid,

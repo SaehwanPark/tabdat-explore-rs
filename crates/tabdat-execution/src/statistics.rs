@@ -941,6 +941,9 @@ impl Session {
     &self,
     command: &EstatCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if let EstatSubcommand::CountProbabilities { tail_from } = command.subcommand {
+      return self.execute_count_probability_table(tail_from);
+    }
     if matches!(
       &command.subcommand,
       EstatSubcommand::AndersonRubin { .. } | EstatSubcommand::AndersonRubinConfidenceSet { .. }

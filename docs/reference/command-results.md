@@ -318,7 +318,7 @@ not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
-Multiway clustering, weighted/survey inference, PMF/CDF UI, factors/discrete
+multiway clustering, weighted/survey inference, current-row PMF/CDF predictions, factors/discrete
 changes and general count test/lincom remain required work.
 
 ### Poisson one-way clustered inference
@@ -415,7 +415,7 @@ not a usable/restorable fit. Failed new fits clear stale estimation only.
 
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018.
 FE/RE/panel-family inference, weights/offsets/exposure, richer count
-specifications, count PMF/CDF UI, formal alpha=0/specification tests, discrete
+specifications, current-row count PMF/CDF predictions, formal alpha=0/specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
 
@@ -455,8 +455,62 @@ and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
 See MIG-0020. Remaining multiway/survey/few-cluster, offsets/exposure/weights,
-probabilities/formal tests/general restrictions/named reports and richer count
+current-row probabilities/formal tests/general restrictions/named reports and richer count
 requirements are not removed.
+
+## Retained count probability-frequency reports
+
+`estat countprob [, max(10)]` is read-only after an owned Poisson/NB2 fit,
+including model-based, independent-row robust or one-way clustered covariance.
+`max(m)` is a decimal integer1..100, default10. It reports exact counts0..m-1
+and an inclusive >=m tail, not exactly m. Uses ORIGINAL retained outcomes/fitted
+means/NB2 alpha and sample, not current rows, displayed rounded parameters or a
+refit. Edits/drop y/X/IDs do not change it; failures preserve data/model state.
+With no usable count fit, including legacy placeholders, runtime reports
+`EstatCountProbRequiresPriorCount`; invalid direct cutoff/numerical inputs report
+`EstatCountProbFailed`. CLI batch execution errors retain the established
+`ExecutionError` envelope and meaningful message; parser errors retain exit2.
+
+CLI-v1 adds **CountProbabilityResult** with:
+
+- `estimator: "poisson"|"nb2"`, `outcome`, `observation_count`, `tail_from`;
+- `distribution: {family: "poisson"}` or `{family: "nb2", alpha: ...}`;
+- exact original `sample`, `sample_role: "retained_estimation_sample"`;
+- ordered `bins`: `lower_bound`, inclusive `upper_bound` (null ONLY for final
+  tail), `observed_count`, `observed_fraction`, `fitted_fraction`, `expected_count`;
+- `probability_role: "mean_of_individual_plugin_conditional_probabilities"`,
+  `covariance_role: "does_not_establish_distribution"`,
+  `uncertainty: "not_computed"`, `goodness_of_fit_test: "not_performed"`.
+
+Fitted fraction is mean_i Pr(Y_i in bin | X_i, fitted parameters), NOT the
+probability at mean(mu). Expected count is the sum of individual probabilities.
+Full conditional Poisson/NB2 laws are assumptions; robust/cluster QMLE covariance
+does not validate them or adjust these probabilities. No binomial SEs, intervals,
+p-values, formal Pearson goodness-of-fit test or guarantees of calibrated
+probabilities follow. Terminal labels the same descriptive distinction.
+
+Log PMFs preserve higher-count mass when p0 underflows. Small tails use direct
+gamma/beta calculations, with complements ONLY in well-conditioned branches;
+integer log-factorials/products avoid general log-gamma approximation and
+large-argument cancellation. Bounded convergence and finite[0,1]/partition
+checks fail explicitly, with no clipping/renormalization. New numerics reuse
+bounded beta CF machinery without changing legacy beta/F value paths.
+
+[Native author-program analysis](../../examples/mma20p1count/count_probabilities.td)
+and [reference/checker](../../examples/mma20p1count/README.md) validate2090
+independent R scalar probabilities/37 selected stress cases,95 empirical
+aggregate/model quantities and every source/design/mean/index field of20186
+records; a separate native scalar-helper probe matches all444092 individual
+PMF/tail values. The probe is development evidence, NOT an installed rowwise
+probability export. Actual JSON/text/piped exports agree and20 corruption probes
+reject wrong laws/averaging/tails/samples/frequencies/probabilities/claims.
+
+The printed Table20.6 NB2 row differs materially from the authors' November2006
+program/reference (zero share30.9% vs31.82679994%); it remains UNRESOLVED, not
+forced into a tolerance or declared literal whole-table replication. No book/data/
+program redistribution. Current-row PMF/CDF `predict`, uncertainty/formal tests,
+named count reports and other required count/core/book scope remain open.
+See MIG-0021.
 
 ## Summaries and percentiles
 

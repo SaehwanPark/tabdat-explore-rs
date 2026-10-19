@@ -66,6 +66,11 @@ Inference and interpretation:
   not discrete changes. Current predictions need mean predictors only, not the
   outcome or cluster ID; retained margins keep original groups despite data edits.
 
+`estat countprob [, max(10)]` compares observed and fitted count frequencies on
+retained y/means (exact0..9 plus >=10 by default). It assumes the full Poisson
+law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
+formal goodness-of-fit test is supplied; see `help estat`.
+
 Not installed for Poisson: weights/survey, multiway clustering, exposure/offset,
 count probability prediction, factors/discrete changes, general count test/lincom,
 interval prediction, few-cluster bootstrap or named Poisson `estimates store`.

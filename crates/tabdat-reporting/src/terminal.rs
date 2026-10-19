@@ -1096,6 +1096,32 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::CountProbabilities(result) => {
+      let law = match result.distribution {
+        tabdat_domain::CountProbabilityLaw::Poisson => "Poisson".to_owned(),
+        tabdat_domain::CountProbabilityLaw::Nb2 { alpha } => format!("NB2 (alpha = {alpha})"),
+      };
+      let mut text = format!(
+        "Observed/fitted count frequencies: {law}\nOutcome: {}; retained estimation N = {}\nCount\tObserved N\tObserved fraction\tFitted fraction\tExpected N\n",
+        result.outcome.escape_debug(),
+        result.table.observation_count
+      );
+      for bin in &result.table.bins {
+        let label = if bin.upper_bound.is_some() {
+          bin.lower_bound.to_string()
+        } else {
+          format!(">={}", bin.lower_bound)
+        };
+        writeln!(
+          text,
+          "{label}\t{}\t{}\t{}\t{}",
+          bin.observed_count, bin.observed_fraction, bin.fitted_fraction, bin.expected_count
+        )
+        .unwrap();
+      }
+      text.push_str("Fitted fractions average individual conditional probabilities over the ORIGINAL retained sample, not the probability at an average mean.\nDescriptive distributional assumption: Poisson/NB2 probabilities are NOT guaranteed by robust/cluster QMLE covariance. No uncertainty or formal goodness-of-fit test is computed.\n");
+      text
+    }
     ExecutionResult::Nbreg(result) => nb2_report(result),
     ExecutionResult::NbregMarginalEffects(result) => format!(
       "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}{}",
