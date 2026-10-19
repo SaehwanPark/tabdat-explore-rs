@@ -250,7 +250,7 @@ workflow below does not complete broader illustration graphics.
 
 ## Bounded Poisson ML / independent-row robust QMLE
 
-`poisson y [xvars] [, robust noconstant]` executes unweighted log-link regression.
+`poisson y [xvars] [, robust cluster(var) noconstant]` executes unweighted log-link regression.
 The joint complete-finite estimation sample preserves fit-time positions;
 missing/nonfinite model cells are excluded before outcome-domain rejection.
 Loaded outcome values must be exact nonnegative integers <=2^53-1, with DECIMAL
@@ -288,7 +288,8 @@ CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
 - `converged: true`, `iterations`, `convergence_coordinate_system: "unit_column_norm"`,
   `convergence_absolute_tolerance: 1e-10`, `max_abs_scaled_score` and
   `max_abs_scaled_newton_step`. Both absolute score and FULL Newton step must
-  meet that tolerance, at most 100 information evaluations. Rank, boundary,
+  meet that tolerance, at most100 outer Newton iterations (up to50 likelihood
+  backtracking candidates each; reported iterations exclude candidates). Rank, boundary,
   iteration and nonrepresentable quantities fail rather than publish a fit;
   some extreme finite inputs may be rejected. This is not an analytic existence test.
 
@@ -316,8 +317,40 @@ not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
-clustered/weighted/survey inference, PMF/CDF UI, factors/discrete changes and
-general count test/lincom remain required work.
+NB2/multiway clustering, weighted/survey inference, PMF/CDF UI, factors/discrete
+changes and general count test/lincom remain required work.
+
+### Poisson one-way clustered inference
+
+`cluster(var)` and `robust` are mutually exclusive. Joint finite model/cluster
+selection precedes finite invalid-count rejection. Cluster type may be numeric,
+text or boolean; SQL NULL/nonfinite numeric IDs are excluded, while actual loaded
+empty text is a group. Wide integer/DECIMAL IDs retain identity before f64 conversion.
+At least two retained groups are required. Point/design/convergence/diagnostics
+and prediction behavior are unchanged; only selected covariance/inference changes.
+
+Use converged Poisson information inverse B and S_g=sum_i_in_g X_i*(y_i-mu_i):
+V=G/(G-1)*B[sum_g S_g*S_g']B. Aggregate BEFORE outer products; no HC1/Pearson
+rescaling or score centering. Coefficients/delta effects stay asymptotic normal95,
+not G-1 t; LR p/reference are unavailable. Zero-slope Wald retains requested q;
+q>=G gives `insufficient_cluster_rank`, with no pseudoinverse/reduced q. This
+correction alone does not ensure reliable few-cluster inference.
+
+CLI-v1 retains PoissonResult/PoissonMarginalEffectsResult and adds **only on
+clustered results** `covariance: "cluster_sandwich_g_over_g_minus_1"` and
+`cluster: {variable, group_count, finite_sample_multiplier: G/(G-1),
+independence_assumption: "across_clusters"}`. Noncluster result shapes/labels are
+unchanged. Stats/owned fit/effect records add default/omitted-None cluster metadata;
+old owned state remains readable, not restorable. Retained-X margins keep groups
+and V across edits/drop ID; current means/xb need mean predictors only, not IDs.
+Failed new runtime fits clear stale inference only; bad predictions preserve state.
+
+[Native original-person RAND extension](../../examples/mma20p1count/README.md)
+audits DTA identities against every ASCII model row;551 independent R quantities/
+all20,186 source/original-row/person/year/design/prediction records and5,908 groups
+are validated. This is not a printed Table20.5 column, household/site/multiway
+correction, survey or FE/RE/panel-family implementation. See MIG-0019. NB2
+clustering remains unsupported.
 
 ## Bounded jointly estimated NB2
 
@@ -380,7 +413,7 @@ to installed count fits. Executable owned state uses
 not a usable/restorable fit. Failed new fits clear stale estimation only.
 
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018.
-Original-ID clustering/panel inference, weights/offsets/exposure, richer count
+NB2 original-ID clustering/panel inference, weights/offsets/exposure, richer count
 specifications, count PMF/CDF UI, formal alpha=0/specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.

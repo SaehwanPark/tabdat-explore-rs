@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, LogitEstimate, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects,
-  Nb2Result, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
+  Nb2Result, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
+  PoissonResult,
 };
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};

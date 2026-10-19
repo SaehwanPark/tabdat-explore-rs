@@ -560,8 +560,8 @@ pub struct ProbitCommand {
   pub include_intercept: bool,
 }
 
-/// Bounded unweighted log-link Poisson fit; cluster syntax is retained but
-/// execution rejects it until a separate clustered-inference slice.
+/// Bounded unweighted log-link Poisson with model-based, independent-row
+/// robust or one-way clustered score covariance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoissonCommand {
   pub outcome: String,

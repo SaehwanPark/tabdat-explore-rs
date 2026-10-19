@@ -27,6 +27,15 @@ fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   })
 }
 
+fn add_poisson_cluster_metadata(data: &mut Value, cluster: Option<&tabdat_domain::PoissonCluster>) {
+  if let Some(c) = cluster {
+    data["covariance"] = json!("cluster_sandwich_g_over_g_minus_1");
+    data["cluster"] = json!({"variable": c.variable, "group_count": c.group_count,
+      "finite_sample_multiplier": c.group_count as f64/(c.group_count-1) as f64,
+      "independence_assumption": "across_clusters"});
+  }
+}
+
 /// Whether this command can execute in the JSON batch CLI. `run` streams
 /// supported script leaves without a container envelope; `exit` has no result.
 /// ByResult retains native grouped AVG semantics; it is not a finite-sample
@@ -389,8 +398,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       }),
       "ProbitMarginalEffectsResult",
     ),
-    ExecutionResult::Poisson(result) => (
-      json!({
+    ExecutionResult::Poisson(result) => {
+      let mut data = json!({
         "estimator": "poisson", "outcome": result.outcome, "predictors": result.predictor_names,
         "include_intercept": result.include_intercept, "observation_count": result.observation_count,
         "zero_count": result.zero_count, "count_sum": result.count_sum,
@@ -413,19 +422,21 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "convergence_coordinate_system": "unit_column_norm", "convergence_absolute_tolerance": 1e-10,
         "max_abs_scaled_score": result.max_abs_scaled_score,
         "max_abs_scaled_newton_step": result.max_abs_scaled_newton_step,
-      }),
-      "PoissonResult",
-    ),
-    ExecutionResult::PoissonMarginalEffects(result) => (
-      json!({
+      });
+      add_poisson_cluster_metadata(&mut data, result.cluster.as_ref());
+      (data, "PoissonResult")
+    }
+    ExecutionResult::PoissonMarginalEffects(result) => {
+      let mut data = json!({
         "estimator": "poisson", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
         "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_poisson_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "observation_count": result.observation_count, "effects": result.effects,
-      }),
-      "PoissonMarginalEffectsResult",
-    ),
+      });
+      add_poisson_cluster_metadata(&mut data, result.cluster.as_ref());
+      (data, "PoissonMarginalEffectsResult")
+    }
     ExecutionResult::Nbreg(result) => {
       let mut data = json!({
         "estimator": "nb2", "outcome": result.outcome, "predictors": result.predictor_names,

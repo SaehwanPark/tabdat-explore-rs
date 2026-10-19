@@ -8,19 +8,22 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
     let family = CountFamily::Poisson;
-    if command.cluster_variable.is_some() {
-      return Err(
-        family.error("clustered Poisson is not implemented; robust assumes independent rows"),
-      );
+    if command.robust && command.cluster_variable.is_some() {
+      return Err(family.error("cannot combine robust and cluster"));
     }
     let problem = self.count_problem(
       family,
       &command.outcome,
       &command.predictors,
       command.include_intercept,
+      command.cluster_variable.as_deref(),
     )?;
-    let result = tabdat_stats::fit_poisson(&problem, command.robust)
-      .map_err(|e| family.error(e.to_string()))?;
+    let result = if let Some(variable) = command.cluster_variable.as_deref() {
+      tabdat_stats::fit_poisson_clustered(&problem, variable)
+    } else {
+      tabdat_stats::fit_poisson(&problem, command.robust)
+    }
+    .map_err(|e| family.error(e.to_string()))?;
     self.estimation = Some(EstimationState::PoissonFit(Box::new(PoissonFitState {
       problem,
       result: result.clone(),

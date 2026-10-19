@@ -3,6 +3,13 @@
 
 use crate::error::StatsError;
 
+pub(crate) fn add_compensated(sum: &mut f64, correction: &mut f64, value: f64) {
+  let adjusted = value - *correction;
+  let next = *sum + adjusted;
+  *correction = (next - *sum) - adjusted;
+  *sum = next;
+}
+
 /// Compute the arithmetic mean of a slice of floats.
 pub fn mean(values: &[f64]) -> Result<f64, StatsError> {
   if values.is_empty() {

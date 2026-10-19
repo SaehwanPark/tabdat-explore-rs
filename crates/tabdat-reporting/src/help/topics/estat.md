@@ -78,8 +78,12 @@ unavailable z/p/CI rather than an exact interval.
 These are **continuous column derivatives conditional on observed X**, not
 binary-variable discrete changes, log/interaction chain rules or uncertainty in
 the covariate distribution. For a generated log-income predictor the derivative
-is per log-income unit, not per currency unit. There are no weighted, clustered,
-factor/discrete-change or user-level-option count margins in this slice.
+is per log-income unit, not per currency unit. One-way Poisson `cluster(var)`
+uses the retained group-score G/(G-1) covariance and carries original variable/G
+metadata through margins, with normal inference and independence across clusters.
+It does not require current cluster IDs, resample X, or guarantee few-cluster
+coverage. There are no weighted, factor/discrete-change or user-level-option
+count margins; NB2 clustering remains unsupported.
 
 ## NB2 continuous average partial effects
 

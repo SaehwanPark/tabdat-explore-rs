@@ -67,6 +67,7 @@ impl Session {
     outcome: &str,
     predictors: &[String],
     include_intercept: bool,
+    cluster_variable: Option<&str>,
   ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -87,13 +88,26 @@ impl Session {
         return Err(family.error(format!("numeric variable required: {name}")));
       }
     }
-    let columns: Vec<String> = variables
+    let mut columns: Vec<String> = variables
       .iter()
       .map(|name| quote_identifier(name))
       .collect();
+    if let Some(name) = cluster_variable {
+      let column = dataset
+        .columns
+        .iter()
+        .find(|c| c.name == name)
+        .ok_or_else(|| family.error(format!("unknown cluster variable: {name}")))?;
+      if !is_numeric_data_type(&column.data_type)
+        && !matches!(column.data_type.as_str(), "VARCHAR" | "BOOLEAN")
+      {
+        return Err(family.error("cluster variable must be numeric, text or boolean"));
+      }
+      columns.push(quote_identifier(name));
+    }
     let query = format!("SELECT {} FROM {ACTIVE_TABLE}", columns.join(", "));
-    let (mut total, mut retained, mut response, mut design) =
-      (0, Vec::new(), Vec::new(), Vec::new());
+    let (mut total, mut retained, mut response, mut design, mut cluster_groups) =
+      (0, Vec::new(), Vec::new(), Vec::new(), Vec::new());
     self
       .backend
       .as_ref()
@@ -120,12 +134,25 @@ impl Session {
               _ => return Ok(()),
             }
           }
-          // Invalid finite counts next to missing/nonfinite predictors are not
-          // estimation rows; exclusion precedes count-domain rejection.
+          let group = if cluster_variable.is_some() {
+            let cell = row
+              .cell(variables.len())
+              .map_err(|_| family.error("could not read cluster cell"))?;
+            let Some(group) = cluster_key(cell).map_err(|message| family.error(message))? else {
+              return Ok(());
+            };
+            Some(group)
+          } else {
+            None
+          };
+          // Joint model/cluster exclusions precede finite count-domain rejection.
           let count = count.ok_or_else(|| family.count_error())?;
           retained.push(index);
           response.push(count);
           design.push(values[1..].to_vec());
+          if let Some(group) = group {
+            cluster_groups.push(group);
+          }
           Ok(())
         },
         |message| family.error(message),
@@ -134,8 +161,14 @@ impl Session {
       return Err(family.error("no complete finite observations"));
     }
     let dropped = total - retained.len();
-    let sample = tabdat_stats::EstimationSample::new(retained, total, dropped, None, None)
-      .map_err(|e| family.error(e.to_string()))?;
+    let sample = tabdat_stats::EstimationSample::new(
+      retained,
+      total,
+      dropped,
+      None,
+      cluster_variable.is_some().then_some(cluster_groups),
+    )
+    .map_err(|e| family.error(e.to_string()))?;
     Ok(
       tabdat_stats::EstimationProblem::new(outcome, predictors.to_vec(), response, design)
         .map_err(|e| family.error(e.to_string()))?
