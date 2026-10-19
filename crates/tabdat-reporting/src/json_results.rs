@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -93,6 +93,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Logit { .. }
     | Command::Probit { .. }
     | Command::Poisson { .. }
+    | Command::Nbreg { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
     | Command::Test { .. }
@@ -424,6 +425,57 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "PoissonMarginalEffectsResult",
+    ),
+    ExecutionResult::Nbreg(result) => {
+      let mut data = json!({
+        "estimator": "nb2", "outcome": result.outcome, "predictors": result.predictor_names,
+        "include_intercept": result.include_intercept, "observation_count": result.observation_count,
+        "zero_count": result.zero_count, "count_sum": result.count_sum,
+        "mean_parameter_count": result.coefficients.len(), "parameter_count": result.coefficients.len()+1,
+        "coefficients": result.coefficients, "covariance_matrix": result.covariance,
+        "covariance_parameter_names": result.coefficients.iter().map(|c| c.name.as_str()).chain(std::iter::once("lnalpha")).collect::<Vec<_>>(),
+        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_joint_observed_information" },
+        "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
+        "variance_function": "mu_plus_alpha_mu_squared", "dispersion_parameterization": "alpha_exp_lnalpha_size_inverse_alpha",
+        "dispersion": result.dispersion, "dispersion_boundary_test": "not_implemented_no_normal_alpha_zero_test",
+        "sample": result.sample,
+      });
+      let diagnostics = json!({
+        "log_likelihood": result.log_likelihood, "log_likelihood_convention": "nb2_count_pmf",
+        "null_log_likelihood": result.null_log_likelihood, "null_alpha": result.null_alpha,
+        "null_model": if result.include_intercept { "intercept_only_mean_and_dispersion_reestimated" } else { "unit_mean_dispersion_reestimated" },
+        "likelihood_ratio": result.likelihood_ratio, "likelihood_ratio_df": result.likelihood_ratio_df,
+        "likelihood_ratio_p_value": result.likelihood_ratio_p_value,
+        "likelihood_ratio_reference_distribution": result.likelihood_ratio_p_value.map(|_| "asymptotic_chi_square"),
+        "omnibus_wald": binary_wald_json(result.omnibus_wald.as_ref()),
+        "mcfadden_r_squared": result.mcfadden_r_squared, "residual_deviance": result.residual_deviance,
+        "pearson_chi_square": result.pearson_chi_square, "df_residual": result.df_residual,
+        "pearson_dispersion": result.pearson_dispersion,
+        "dispersion_inference": "descriptive_not_a_panel_or_specification_test",
+        "converged": true, "iterations": result.iterations,
+        "iterations_role": "full_model_information_evaluations",
+        "convergence_coordinate_system": "unit_mean_design_column_norm_and_log_alpha_sqrt_n",
+        "convergence_absolute_tolerance": 1e-10,
+        "max_abs_scaled_score": result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step": result.max_abs_scaled_newton_step,
+        "supported_maximum_count": 100000, "supported_log_alpha_open_bounds": [-12.0,12.0],
+      });
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(diagnostics.as_object().unwrap().clone());
+      (data, "NbregResult")
+    }
+    ExecutionResult::NbregMarginalEffects(result) => (
+      json!({
+        "estimator": "nb2", "effect": "average_continuous_predictor_column_derivative",
+        "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
+        "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_joint_observed_information" },
+        "covariance_role": "beta_block_of_full_joint_beta_lnalpha_covariance",
+        "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
+        "observation_count": result.observation_count, "effects": result.effects,
+      }),
+      "NbregMarginalEffectsResult",
     ),
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
     ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),

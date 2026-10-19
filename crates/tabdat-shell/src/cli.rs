@@ -41,7 +41,7 @@ options:
                         keep/drop/select variable lists, bounded keep/drop if,
                         no-option summarize if, duplicates/isid, assert/datasignature,
                         sort/gsort,
-                        regress/logit/probit/poisson/predict/lincom/test/ttest,
+                        regress/logit/probit/poisson/nbreg/predict/lincom/test/ttest,
                         estat vif/ar/overid/endogenous/margins, estimates store/table/drop,
                         save/export and SVG scatter;
                         scripts stream the same successful leaf results)

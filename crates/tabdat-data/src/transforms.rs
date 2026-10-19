@@ -571,8 +571,18 @@ impl DuckDbBackend {
     self.add_prediction_column(dataset, prediction, link)
   }
 
-  /// Mean-count and finite-xb predictions share the established atomic stage.
+  /// Existing Poisson adapter, retained for callers of the installed API.
   pub fn add_poisson_prediction_column(
+    &mut self,
+    dataset: &DatasetInfo,
+    prediction: &LinearPrediction<'_>,
+    mean_count: bool,
+  ) -> Result<DatasetInfo, DataError> {
+    self.add_count_prediction_column(dataset, prediction, mean_count)
+  }
+
+  /// Poisson/NB2 means and finite indices share the same atomic stage.
+  pub fn add_count_prediction_column(
     &mut self,
     dataset: &DatasetInfo,
     prediction: &LinearPrediction<'_>,

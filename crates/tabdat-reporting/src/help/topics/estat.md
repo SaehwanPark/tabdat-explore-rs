@@ -6,7 +6,7 @@ How to invoke:
 `estat ar, ci [level(95)]`
 `estat overid`
 `estat endogenous`
-`estat margins` (after logit, probit or Poisson)
+`estat margins` (after logit, probit, Poisson or NB2)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -54,8 +54,9 @@ z/two-sided p and fixed 95% intervals; CLI-v1 returns
 These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
-multiway-cluster/weighted effects, level option, categorical/discrete-change or
-other than the bounded Poisson margins below are installed. The retained fit
+multiway-cluster/weighted effects, level option or categorical/discrete changes
+are installed. Additional model-family margins are limited to the Poisson/NB2
+continuous effects below. The retained fit
 selects the family; with no supported fit the call keeps the established
 prior-logit error wording. Refit successfully after a failed new runtime
 estimation attempt; see `help logit`, `help probit`, `help poisson` and `help predict`.
@@ -79,6 +80,20 @@ binary-variable discrete changes, log/interaction chain rules or uncertainty in
 the covariate distribution. For a generated log-income predictor the derivative
 is per log-income unit, not per currency unit. There are no weighted, clustered,
 factor/discrete-change or user-level-option count margins in this slice.
+
+## NB2 continuous average partial effects
+
+After `nbreg`, `estat margins` uses the owned retained X to report
+`beta_j*mean(mu)` with gradient `[beta_j*mean(mu*X)+e_j*mean(mu), 0]` in joint
+beta/lnalpha order. The zero direct lnalpha derivative does **not** justify
+substituting conditional/Fisher covariance: the beta block comes from the FULL
+joint inverse observed information or independent-row N/(N-1) score sandwich.
+
+Output is conditional-X delta normal95 (`NbregMarginalEffectsResult`), not
+Student t, random-X uncertainty, discrete changes or original-variable chain
+rules. Current data edits do not change the retained effect. Intercept-only
+models have no predictor effects. There are no weighted/clustered/discrete-change
+or user-level-option NB2 margins; see `help nbreg` for numerical bounds.
 
 ## Sargan overidentification test
 

@@ -994,6 +994,7 @@ impl Session {
       return match &self.estimation {
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
         Some(EstimationState::PoissonFit(state)) => self.execute_poisson_margins(state),
+        Some(EstimationState::NegativeBinomialFit(state)) => self.execute_nbreg_margins(state),
         // Preserves the pinned logit margins contract, including its
         // prior-logit wording when no installed GLM fit precedes the call.
         _ => self.execute_logit_margins(),
@@ -1066,8 +1067,11 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::Probit(_))) {
       return self.execute_probit_prediction(command);
     }
-    if matches!(self.estimation, Some(EstimationState::PoissonFit(_))) {
-      return self.execute_poisson_prediction(command);
+    if matches!(
+      self.estimation,
+      Some(EstimationState::PoissonFit(_) | EstimationState::NegativeBinomialFit(_))
+    ) {
+      return self.execute_count_prediction(command);
     }
     if command.kind == PredictKind::MeanCount {
       return Err(RuntimeError::PredictMeanCountRequiresPoisson);

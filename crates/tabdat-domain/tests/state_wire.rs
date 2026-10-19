@@ -124,6 +124,41 @@ fn legacy_poisson_placeholder_and_owned_executable_fit_have_distinct_roundtrippa
 }
 
 #[test]
+fn legacy_negative_binomial_and_owned_nb2_fit_remain_distinct_on_wire() {
+  let problem = tabdat_stats::EstimationProblem::new(
+    "y",
+    vec![],
+    vec![0., 0., 0., 1., 3., 10.],
+    vec![vec![]; 6],
+  )
+  .unwrap();
+  let linear = tabdat_stats::fit_least_squares(&problem).unwrap();
+  let legacy = EstimationState::NegativeBinomial(ModelState {
+    model: tabdat_stats::PostEstimationModel::from_least_squares(&linear),
+    sample: tabdat_stats::EstimationSample::new((0..6).collect(), 6, 0, None, None).unwrap(),
+    outcome: "y".into(),
+    predictors: vec![],
+  });
+  let owned = EstimationState::NegativeBinomialFit(Box::new(NegativeBinomialFitState {
+    result: tabdat_stats::fit_nb2(&problem, false).unwrap(),
+    problem,
+  }));
+  for (state, tag) in [
+    (legacy, "negative_binomial"),
+    (owned, "negative_binomial_fit"),
+  ] {
+    assert_eq!(state.family(), EstimationFamily::NegativeBinomial);
+    assert!(state.linear().is_none());
+    let wire = serde_json::to_value(&state).unwrap();
+    assert_eq!(wire["family"], tag);
+    assert_eq!(
+      serde_json::from_value::<EstimationState>(wire).unwrap(),
+      state
+    );
+  }
+}
+
+#[test]
 fn state_has_one_optional_model_and_panel_contract() {
   let mut state = ExecutionState::default();
   assert!(state.estimation.is_none());

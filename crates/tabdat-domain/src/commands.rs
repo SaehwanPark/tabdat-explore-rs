@@ -228,7 +228,7 @@ pub enum Command {
   Probit { command: ProbitCommand },
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
-  /// Fit a negative binomial regression model (execution is deferred).
+  /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
   Nbreg { command: NbregCommand },
   /// Fit a zero-inflated Poisson regression model (execution is deferred).
   Zip { command: ZipCommand },
@@ -572,19 +572,15 @@ pub struct PoissonCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `nbreg` form retained for a later statistical runtime
-/// slice.
+/// Bounded log-link NB2, variance mu+alpha*mu^2. Legacy cluster syntax is
+/// retained but execution rejects it until clustered count inference is installed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NbregCommand {
-  /// The dependent variable.
   pub outcome: String,
-  /// Ordered predictor variables.
   pub predictors: Vec<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Full joint observed-information score sandwich with N/(N-1).
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
-  /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
 }
 
@@ -914,7 +910,7 @@ pub enum PredictKind {
   Residuals,
   /// Predicted probabilities for binary choice models.
   Pr,
-  /// Conditional mean exp(xb), requested by `n` after Poisson.
+  /// Conditional mean exp(xb), requested by `n` after Poisson or NB2.
   MeanCount,
   /// Predicted spatial lag for spatial models.
   SpatialLag,

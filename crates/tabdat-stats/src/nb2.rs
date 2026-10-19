@@ -803,6 +803,19 @@ mod tests {
   }
 
   #[test]
+  fn nonrepresentable_means_variances_and_dispersion_bounds_fail() {
+    for parameters in [
+      [710.0, 0.0],
+      [709.0, 0.0],
+      [-1000.0, 0.0],
+      [0.0, -12.0],
+      [0.0, 12.0],
+    ] {
+      assert!(evaluate(&[vec![1.0]], &[1.0], &parameters, 1.0).is_err());
+    }
+  }
+
+  #[test]
   fn observed_information_requires_positive_definite_curvature() {
     assert!(positive_inverse(&[vec![1.0, 2.0], vec![2.0, 1.0]]).is_none());
     assert!(positive_inverse(&[vec![1.0, 1.0], vec![1.0, 1.0]]).is_none());

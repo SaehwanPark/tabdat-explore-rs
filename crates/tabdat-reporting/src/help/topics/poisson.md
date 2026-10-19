@@ -46,11 +46,14 @@ Inference and interpretation:
   Bare predict remains xb. `estat margins` reports retained-X continuous column
   derivatives with full conditional-X delta normal inference, not discrete changes.
 
-Not installed: weights/survey, cluster inference, exposure/offset, NB or count
-probability prediction, factors/discrete changes, general count test/lincom,
+Not installed for Poisson: weights/survey, cluster inference, exposure/offset,
+count probability prediction, factors/discrete changes, general count test/lincom,
 interval prediction or named Poisson `estimates store`. Legacy `cluster(var)`
 syntax parses but execution rejects it explicitly. Do not substitute robust for
 clustering of repeated person-years.
+
+NB2 is separately installed by `nbreg`; see `help nbreg` for its distinct
+variance, joint dispersion covariance and narrower numerical domain.
 
 See `help predict`, `help estat`, `examples/mma20p1count/README.md`, and the
 structured result contracts in `docs/reference/command-results.md`.

@@ -8,11 +8,12 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
 - Logit: pr (probability) or xb (log odds).
 - Probit: pr (Gaussian probability) or xb (latent index).
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
+- NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
 
 **Bare predict remains xb for every installed family.** Request probabilities
 with `, pr` or count means with `, n` explicitly. Count means are not probabilities
 or integer draws; do not clip at one. `pr` is not Poisson prediction and `n` is
-not supported after linear/binary fits. Prediction kinds cannot be combined.
+not supported after linear/binary fits. NB2 also supports n/xb, not pr. Prediction kinds cannot be combined.
 
 Example (after loading numeric x/y):
 - `regress y x`
@@ -34,9 +35,9 @@ Data and model notes:
 - xb requires the original predictor names. Renaming/dropping a required column
   does not rewrite the model: restore it or deliberately refit. Retained-X
   `estat margins` remains separate from these current-row predictions.
-- Linear fits retain native SQL NULL/NaN/infinity arithmetic. Binary/Poisson
+- Linear fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
   nonfinite or unrepresentable indices yield NULL. Stable binary links avoid
-  exponential overflow. Poisson overflowing means yield NULL; finite negative
+  exponential overflow. Poisson/NB2 overflowing means yield NULL; finite negative
   exponential underflow is zero. Neither changes row order or the fit.
 - `newvar` must not exist. Choose a fresh name or deliberately drop an output;
   there is no replacement. A prediction failure leaves data/labels/model intact.
@@ -45,7 +46,7 @@ Data and model notes:
 - Terminal/--text confirms dataset dimensions. CLI-v1 `PredictionResult` contains
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
-Not installed: binary/Poisson residuals, spatial_lag, posterior_predictive,
+Not installed: binary/Poisson residuals, NB2 residuals, spatial_lag, posterior_predictive,
 std/interval/level()/saving() prediction, or arbitrary count PMF/CDF requests.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.

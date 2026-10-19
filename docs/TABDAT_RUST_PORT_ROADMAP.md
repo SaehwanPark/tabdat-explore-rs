@@ -154,11 +154,13 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 1. Advance the next bounded MMA-COUNT requirement from its now-resolved
    source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
-   validates model-based/independent-row robust coefficients, full inference,
-   diagnostics, continuous effects and all 20,186 means/indices against R
-   (1,095 quantities). This is not a complete count family or panel analysis:
-   NB parameterization, offsets/exposure, clustered inference with original IDs,
-   count probabilities and the remaining table/illustration outputs stay required.
+   and separate NB2 script validate model-based/independent-row robust coefficients,
+   full inference/diagnostics/continuous effects and all 20,186 means/indices
+   against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
+   mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
+   not conditional GLM/Fisher covariance. Neither completes the count family or
+   panel analysis: offsets/exposure, original-ID clustering, count probabilities,
+   formal NB boundary/specification tests and remaining table outputs stay required.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
