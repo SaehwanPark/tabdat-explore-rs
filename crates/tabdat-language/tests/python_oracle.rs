@@ -75,6 +75,23 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
+    // MIG-0018: NB2 now supports intercept-only fits without rewriting the oracle.
+    if input == "nbreg y" {
+      let Ok(tabdat_domain::Command::Nbreg { command }) = result else {
+        panic!("intercept-only NB2")
+      };
+      assert_eq!(command.outcome, "y");
+      assert!(command.predictors.is_empty() && command.include_intercept);
+      assert!(!command.robust && command.cluster_variable.is_none());
+      continue;
+    }
+    if matches!(input, "nbreg" | "nbreg y x if y > 0") {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "nbreg expects syntax: nbreg <y> [<xvars>]"
+      );
+      continue;
+    }
     // MIG-0013: the installed AR extension adds only `ar` to these diagnostic
     // lists. Preserve the historical corpus and assert the exact new wording.
     if matches!(

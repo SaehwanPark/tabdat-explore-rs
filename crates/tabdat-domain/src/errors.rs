@@ -449,8 +449,12 @@ pub enum RuntimeError {
   PoissonFailed { message: String },
   /// Only n/xb without auxiliary options are installed for Poisson.
   PredictPoissonUnsupported,
-  /// The mean-count flag is specific to an installed Poisson fit.
+  /// Existing error identity retained; n now accepts either installed count fit.
   PredictMeanCountRequiresPoisson,
+  /// Invalid/unsupported NB2 request or failed joint numerical fit.
+  NbregFailed { message: String },
+  /// Only n/xb without auxiliary options are installed for NB2.
+  PredictNbregUnsupported,
   /// The requested IV estimator is not executed by this runtime slice.
   IvRegressUnsupportedEstimator { estimator: String },
   /// One or more IV variables are absent from the active dataset.
@@ -1085,7 +1089,11 @@ impl fmt::Display for RuntimeError {
         "poisson prediction supports only n (mean) or xb, without interval, std or saving options",
       ),
       Self::PredictMeanCountRequiresPoisson => formatter.write_str(
-        "predict n requires a prior successful Poisson fit; use pr for binary probabilities or xb for an index",
+        "predict n requires a prior successful count fit (Poisson or NB2); use pr for binary probabilities or xb for an index",
+      ),
+      Self::NbregFailed { message } => write!(formatter, "nbreg: {message}"),
+      Self::PredictNbregUnsupported => formatter.write_str(
+        "nbreg NB2 prediction supports only n (mean) or xb, without interval, std or saving options",
       ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,

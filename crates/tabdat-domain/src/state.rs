@@ -152,6 +152,13 @@ pub struct PoissonFitState {
   pub result: tabdat_stats::PoissonResult,
 }
 
+/// Owned NB2 mean design and joint coefficient/log-dispersion fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NegativeBinomialFitState {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub result: tabdat_stats::Nb2Result,
+}
+
 /// Common normalized non-linear fit state. Backend-specific scoring caches stay
 /// behind the adapter, and this record alone does not promise prediction support.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -186,7 +193,9 @@ pub enum EstimationState {
   /// Legacy normalized placeholder, retained for old serialized state reads.
   Poisson(ModelState),
   PoissonFit(Box<PoissonFitState>),
+  /// Legacy normalized placeholder, not an installed fit.
   NegativeBinomial(ModelState),
+  NegativeBinomialFit(Box<NegativeBinomialFitState>),
   ZeroInflatedPoisson(ModelState),
   ZeroInflatedNegativeBinomial(ModelState),
   Survival(ModelState),
@@ -247,7 +256,9 @@ impl EstimationState {
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
       Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,
-      Self::NegativeBinomial(..) => EstimationFamily::NegativeBinomial,
+      Self::NegativeBinomial(..) | Self::NegativeBinomialFit(..) => {
+        EstimationFamily::NegativeBinomial
+      }
       Self::ZeroInflatedPoisson(..) => EstimationFamily::ZeroInflatedPoisson,
       Self::ZeroInflatedNegativeBinomial(..) => EstimationFamily::ZeroInflatedNegativeBinomial,
       Self::Survival(..) => EstimationFamily::Survival,

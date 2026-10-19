@@ -185,6 +185,85 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
   output
 }
 
+fn nb2_covariance_note(robust: bool) -> &'static str {
+  if robust {
+    "independent-row full joint score sandwich, N/(N-1), not OLS HC1"
+  } else {
+    "model-based inverse JOINT observed information (beta and lnalpha)"
+  }
+}
+fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
+  let mut output = format!(
+    "Negative binomial NB2 log-link regression ({})\nOutcome: {}; N = {}; count total (float64) = {}; zeros = {}\nVariance = mu + alpha*mu^2; size = 1/alpha, alpha = exp(lnalpha)\n",
+    nb2_covariance_note(r.robust),
+    r.outcome.escape_debug(),
+    r.observation_count,
+    r.count_sum,
+    r.zero_count
+  );
+  writeln!(
+    output,
+    "Candidate rows = {}; excluded missing/nonfinite = {}",
+    r.sample
+      .as_ref()
+      .map_or(r.observation_count, |s| s.total_observations),
+    r.sample.as_ref().map_or(0, |s| s.dropped_observations)
+  )
+  .unwrap();
+  writeln!(output,"Converged in {} full-model outer iterations; max absolute scaled score = {}; full UNDAMPED Newton step = {}",r.iterations,r.max_abs_scaled_score,r.max_abs_scaled_newton_step).unwrap();
+  writeln!(
+    output,
+    "Log likelihood = {}; NB null log likelihood = {}; null alpha = {}",
+    r.log_likelihood, r.null_log_likelihood, r.null_alpha
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "Null: {}, with nuisance dispersion reestimated",
+    if r.include_intercept {
+      "intercept-only estimated mean"
+    } else {
+      "unit mean (all beta zero), not a fitted intercept"
+    }
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "{}({}) = {}; p-value = {}",
+    if r.likelihood_ratio_p_value.is_some() {
+      "LR chi2"
+    } else {
+      "descriptive LR difference"
+    },
+    r.likelihood_ratio_df,
+    r.likelihood_ratio,
+    optional_number(r.likelihood_ratio_p_value)
+  )
+  .unwrap();
+  output.push_str(&binary_wald_note(r.omnibus_wald.as_ref()));
+  writeln!(
+    output,
+    "\nMcFadden pseudo R2 = {}; NB deviance at fitted alpha = {}",
+    r.mcfadden_r_squared, r.residual_deviance
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "Pearson chi-square = {}; residual df (N-mean parameters-1) = {}; Pearson dispersion = {}",
+    r.pearson_chi_square, r.df_residual, r.pearson_dispersion
+  )
+  .unwrap();
+  output.push_str("Normal 95% coefficient inference; dispersion diagnostics are descriptive, not panel/specification tests.\nRobust assumes independent rows, NOT repeated-person/panel dependence; it does not rescale V by Pearson dispersion.\n");
+  if r.robust {
+    output.push_str("LR p-value unavailable under robust inference.\n");
+  }
+  output.push_str(&poisson_estimates(&r.coefficients));
+  let d = &r.dispersion;
+  writeln!(output,"Dispersion\tEstimate\tStd. error\tCI lower (95%)\tCI upper (95%)\nlnalpha\t{}\t{}\t{}\t{}\nalpha\t{}\t{}\t{}\t{}",d.log_alpha,d.log_alpha_standard_error,optional_number(d.log_alpha_confidence_lower),optional_number(d.log_alpha_confidence_upper),d.alpha,d.alpha_standard_error,optional_number(d.alpha_confidence_lower),optional_number(d.alpha_confidence_upper)).unwrap();
+  output.push_str("Alpha SE is delta-method; alpha CI exponentiates the log-alpha interval. No normal alpha=0 test or boundary LR test is supplied.\nNumerical bounds: exact loaded counts 0..100000, lnalpha strictly (-12,12); Poisson-limit/boundary or nonconverged fits fail, not clip alpha.\n");
+  output
+}
+
 fn table(columns: &[String], rows: &[Vec<CellValue>]) -> String {
   let mut output = columns
     .iter()
@@ -988,6 +1067,18 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "model-based covariance"
       ),
       logit_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      }
+    ),
+    ExecutionResult::Nbreg(result) => nb2_report(result),
+    ExecutionResult::NbregMarginalEffects(result) => format!(
+      "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}",
+      result.observation_count,
+      nb2_covariance_note(result.robust),
+      poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
       } else {

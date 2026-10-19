@@ -240,7 +240,7 @@ retained design). `predict ... , pr` computes probabilities with the same
 registered `tabdat_gauss_phi` Gaussian function the fit used, keeping SQL
 probabilities bit-identical to engine probabilities under the same index; `, xb`
 appends the finite linear index, and unsupported predict forms fail with the
-probit wording. With no supported binary/Poisson fit, `estat margins` keeps the established
+probit wording. With no supported binary/Poisson/NB2 fit, `estat margins` keeps the established
 prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
@@ -306,7 +306,7 @@ remains the index. No outcome is needed. Nonfinite/unrepresentable indices and
 overflowing means become NULL, finite negative exponential underflow is zero.
 Means are not probabilities and are not clipped at one. Prediction publication
 preserves labels/order/fit and fails atomically on invalid schema/existing targets.
-`PredictionResult` is still metadata-only. Other families reject `n`; Poisson
+`PredictionResult` is still metadata-only. Noncount families reject `n`; Poisson
 rejects `pr`, residuals and auxiliary prediction options.
 
 Domain command snapshots add `PredictKind::MeanCount` (`mean_count` on wire).
@@ -315,8 +315,75 @@ the legacy `Poisson(ModelState)`/`family: "poisson"` placeholder remains readabl
 not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
-and MIG-0017; offsets/exposure, NB, clustered/weighted/survey inference, PMF/CDF UI,
-factors/discrete changes and general count test/lincom remain required work.
+and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
+clustered/weighted/survey inference, PMF/CDF UI, factors/discrete changes and
+general count test/lincom remain required work.
+
+## Bounded jointly estimated NB2
+
+`nbreg y [xvars] [, robust noconstant]` executes unweighted log-link NB2:
+mean mu=exp(X beta), variance mu+alpha*mu², alpha=exp(lnalpha), size=1/alpha.
+It shares Poisson's exact loaded-integer/joint complete-finite sample semantics,
+but bounds counts to **0..100000** to cap integer gamma-ratio/derivative cache
+work. It requires N>K+1 (K mean parameters plus dispersion), full rank and
+lnalpha strictly **(-12,12)**. These are supported numerical limits, not clipping
+or an existence classifier. Boundary/Poisson-limit or nonrepresentable variance
+fails rather than substituting Poisson. `lnalpha` is a reserved parameter name.
+
+CLI-v1 adds **NbregResult**, `estimator: "nb2"`. Common outcome/predictor/sample,
+count, coefficient/normal95, likelihood/LR/Wald and descriptive diagnostic fields
+follow the Poisson contracts above, with these explicit NB2 differences:
+
+- `mean_parameter_count` K and `parameter_count` K+1; `coefficients` contains
+  beta only. `covariance_matrix` is FULL joint (K+1)², ordered by
+  `covariance_parameter_names` (intercept/slopes, then `lnalpha`). Covariance is
+  `model_based_joint_observed_information` or
+  `robust_sandwich_n_over_n_minus_1`. Both use the converged joint observed
+  information including beta/lnalpha cross terms, not conditional GLM/Fisher V.
+- `variance_function: "mu_plus_alpha_mu_squared"`,
+  `dispersion_parameterization: "alpha_exp_lnalpha_size_inverse_alpha"`.
+  `dispersion` contains `alpha`, `log_alpha`, both `*_standard_error`, and
+  nullable `alpha_confidence_lower/upper`, `log_alpha_confidence_lower/upper`.
+  Alpha SE uses alpha*SE(lnalpha); its CI exponentiates the log-alpha interval.
+  Zero variance does not invent a point interval. No dispersion z/p is supplied;
+  `dispersion_boundary_test: "not_implemented_no_normal_alpha_zero_test"`.
+- `log_likelihood_convention: "nb2_count_pmf"`; `null_model` is
+  `intercept_only_mean_and_dispersion_reestimated` or
+  `unit_mean_dispersion_reestimated`. `null_alpha` records the restricted NB
+  nuisance estimate, not full alpha or a Poisson null. Positive-DF model-based
+  LR is chi-square; robust LR remains descriptive with null p/reference.
+  Robust selected-V Wald tests beta slopes only, never lnalpha.
+- Residual NB deviance is evaluated at fitted alpha. Pearson uses NB2 variance;
+  `df_residual`=N-K-1 and `pearson_dispersion`=Pearson/(N-K-1), descriptive only,
+  not a Student-t reference, formal test or covariance multiplier.
+- `iterations_role: "full_model_outer_iterations"`; full and restricted fits
+  each have at most100 outer Newton iterations, excluding candidate evaluations
+  (at most20 damping attempts/50 backtracking trials each per iteration).
+  Reported iterations exclude restricted-fit work. Final UNDAMPED information
+  must be positive definite and both
+  absolute score and full Newton step <=1e-10 in
+  `convergence_coordinate_system: "unit_mean_design_column_norm_and_log_alpha_sqrt_n"`.
+  `supported_maximum_count: 100000`, `supported_log_alpha_open_bounds: [-12,12]`.
+
+**NbregMarginalEffectsResult** uses `estimator: "nb2"` and the same retained-X
+continuous derivative/conditional-design normal95 fields as Poisson.
+`covariance_role: "beta_block_of_full_joint_beta_lnalpha_covariance"` is explicit:
+the joint gradient is `[beta_j*mean(mu*X)+e_j*mean(mu),0]`, not a reason to
+replace joint V with fixed-alpha conditional covariance.
+
+Current-row `predict ..., n`/xb uses the common atomic exponential/finite-index
+path, no outcome required; means are not probabilities. Bare predict stays xb.
+Noncount fits reject n; NB2 rejects pr/residual/auxiliary forms. The existing
+`PredictMeanCountRequiresPoisson` error identity is retained with wording extended
+to installed count fits. Executable owned state uses
+`negative_binomial_fit`; the old `negative_binomial` placeholder remains readable,
+not a usable/restorable fit. Failed new fits clear stale estimation only.
+
+See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018.
+Original-ID clustering/panel inference, weights/offsets/exposure, richer count
+specifications, count PMF/CDF UI, formal alpha=0/specification tests, discrete
+changes/general restrictions/named reports and full illustration outputs remain
+required as applicable. Independent-row robust is not panel-robust.
 
 ## Summaries and percentiles
 

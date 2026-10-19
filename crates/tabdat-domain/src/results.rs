@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::{
-  BinaryCluster, BinaryOmnibusWald, LogitEstimate, PoissonEstimate, PoissonMarginalEffects,
-  PoissonOmnibusWald, PoissonResult,
+  BinaryCluster, BinaryOmnibusWald, LogitEstimate, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects,
+  Nb2Result, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
@@ -778,6 +778,10 @@ pub enum ExecutionResult {
   Poisson(Box<PoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
   PoissonMarginalEffects(Box<PoissonMarginalEffects>),
+  /// NB2 ML/independent-row robust fit with joint log-dispersion covariance.
+  Nbreg(Box<Nb2Result>),
+  /// Retained-X continuous effects using the full joint selected covariance.
+  NbregMarginalEffects(Box<Nb2MarginalEffects>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.

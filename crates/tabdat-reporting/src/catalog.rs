@@ -1248,7 +1248,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "nbreg y x1 x2".to_string(),
+      syntax: "nbreg y [x1 x2] [, robust noconstant]".to_string(),
     }),
     "nl" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

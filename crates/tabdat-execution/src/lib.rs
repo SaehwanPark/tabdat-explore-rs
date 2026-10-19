@@ -16,8 +16,10 @@ mod binary;
 mod estimates;
 mod row_conversion;
 use row_conversion::*;
+mod count;
 mod inspection;
 mod labels;
+mod nb2;
 mod plotting;
 mod poisson;
 mod scripts;
@@ -137,6 +139,7 @@ impl Session {
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
+      Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

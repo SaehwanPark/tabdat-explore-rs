@@ -1,4 +1,4 @@
-# Optional development-only DTA/ASCII sample audit; foreign is not a runtime dependency.
+# Optional development-only DTA/ASCII audit; foreign/MASS are not runtime dependencies.
 # Rscript audit_source.R mma20p1count.asc randdata.dta
 options(digits=17)
 args <- commandArgs(trailingOnly=TRUE)
@@ -26,4 +26,10 @@ cat("All five years; 20190 original rows; four education-missing rows excluded.\
 cat("Every count and retained export position matches; predictors differ <5e-6 from ASCII quantization, NOT an estimator tolerance.\n")
 cat("ASCII logLik",as.numeric(logLik(a)),"original DTA logLik",as.numeric(logLik(b)),
   "max coefficient difference",max(abs(coef(a)-coef(b))),"\n")
+nb <- function(data) MASS::glm.nb(MDU~.,data=data,control=glm.control(epsilon=1e-13,maxit=100))
+na <- nb(d); nb_original <- nb(original)
+stopifnot(na$converged,nb_original$converged)
+cat("NB2 ASCII logLik",as.numeric(logLik(na)),"original DTA logLik",as.numeric(logLik(nb_original)),
+  "max coefficient difference",max(abs(coef(na)-coef(nb_original))),
+  "alpha difference",abs(1/na$theta-1/nb_original$theta),"\n")
 cat("prepared_row is not zper, a year, or an original DTA row ID. Original IDs are not in the ASCII.\n")

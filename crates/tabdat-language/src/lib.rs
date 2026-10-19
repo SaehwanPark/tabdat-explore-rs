@@ -2591,8 +2591,8 @@ fn parse_binary_or_count_response_command(
   command_name: &str,
   body: &str,
 ) -> Result<Command, ParseError> {
-  let syntax = if command_name == "poisson" {
-    "poisson expects syntax: poisson <y> [<xvars>]".to_owned()
+  let syntax = if matches!(command_name, "poisson" | "nbreg") {
+    format!("{command_name} expects syntax: {command_name} <y> [<xvars>]")
   } else {
     format!("{command_name} expects syntax: {command_name} <y> <xvars>")
   };
@@ -2611,7 +2611,12 @@ fn parse_binary_or_count_response_command(
     || parts.has_options
     || parts.has_assignment
     || parts.missing_condition_expression
-    || parts.arguments.len() < if command_name == "poisson" { 1 } else { 2 }
+    || parts.arguments.len()
+      < if matches!(command_name, "poisson" | "nbreg") {
+        1
+      } else {
+        2
+      }
   {
     return Err(ParseError::new(syntax));
   }
@@ -11764,11 +11769,10 @@ mod tests {
       ("poisson=", "poisson assignment requires a target before ="),
       ("poisson==", "unsupported token in command: =="),
       ("poisson:y x", "unsupported token in command: :"),
-      ("nbreg", "nbreg expects syntax: nbreg <y> <xvars>"),
-      ("nbreg y", "nbreg expects syntax: nbreg <y> <xvars>"),
+      ("nbreg", "nbreg expects syntax: nbreg <y> [<xvars>]"),
       (
         "nbreg y x if y > 0",
-        "nbreg expects syntax: nbreg <y> <xvars>",
+        "nbreg expects syntax: nbreg <y> [<xvars>]",
       ),
       (
         "nbreg y x, robust cluster(group)",

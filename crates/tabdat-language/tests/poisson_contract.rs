@@ -40,5 +40,9 @@ fn count_native_extensions_are_explicit_without_changing_bare_predict_default() 
     parse_command("poisson y x, cluster(id)").unwrap(),
     Command::Poisson { .. }
   ));
-  assert!(parse_command("nbreg y").is_err());
+  // NB2's separately installed intercept-only extension (MIG-0018).
+  let Command::Nbreg { command } = parse_command("nbreg y").unwrap() else {
+    panic!("NB2")
+  };
+  assert!(command.predictors.is_empty() && command.include_intercept);
 }

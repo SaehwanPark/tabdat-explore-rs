@@ -30,6 +30,7 @@ const CORE_COMMANDS: &[&str] = &[
   "label",
   "lincom",
   "missing",
+  "nbreg",
   "poisson",
   "predict",
   "quit",
