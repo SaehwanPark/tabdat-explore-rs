@@ -117,6 +117,18 @@ fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
     return Err(failed("NB2 survival continued fraction did not converge"));
   }
   let probability = (log_factor + fraction.ln() - a.ln()).exp();
+  if complement && probability > 0.5 {
+    // The beta convergence switch alone does not prevent a near-one CDF when
+    // r is small. Sum its finite NB prefix excluding p0's unit term, retaining
+    // log(CDF) accurately, then use expm1 rather than subtracting rounded CDF.
+    let (mut sum, mut correction) = (0.0, 0.0);
+    let mut term = r * x;
+    for k in 1..m {
+      add_compensated(&mut sum, &mut correction, term);
+      term *= (r + k as f64) / (k + 1) as f64 * x;
+    }
+    return Ok(-(r * log_y + sum.ln_1p()).exp_m1());
+  }
   Ok(if complement {
     1.0 - probability
   } else {

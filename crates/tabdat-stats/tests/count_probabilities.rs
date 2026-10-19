@@ -8,10 +8,10 @@ fn all_independent_r_scalar_probabilities_match_with_relative_tail_accuracy() {
     .skip(1)
     .map(|line| line.split(',').collect())
     .collect();
-  assert_eq!(rows.len(), 1787);
+  assert_eq!(rows.len(), 2090);
   assert_eq!(
     rows.iter().map(|row| row[0]).collect::<BTreeSet<_>>().len(),
-    34
+    37
   );
   let mut results = BTreeMap::new();
   for row in rows {

@@ -453,7 +453,7 @@ current-row PMF/CDF prediction or rowwise probability-export command.
 
 R4.6.1/MASS7.3.65 independent original-ASC fits use converged Poisson and joint
 NB2 score polishing, then `dpois/ppois/dnbinom/pnbinom`, not a native recurrence.
-**1787 scalar probabilities/34 stress cases and95 empirical aggregate/model
+**2090 scalar probabilities/37 stress cases and95 empirical aggregate/model
 quantities**, plus every source/design/mean/xb field of all20186 records, match.
 A separate native stats-helper probe additionally matches **444092 individual
 PMF/survival probabilities** with relative1e-10 plus minimum-normal floor; this

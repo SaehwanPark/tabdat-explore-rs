@@ -170,7 +170,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    observed bread and grouped joint scores; normal95/transformed dispersion CIs,
    not conditional/Fisher substitution, G-1 t, few-cluster guarantee or alpha=0 test.
    Retained `estat countprob` now supplies descriptive observed/mean-fitted bins,
-   validated against1787 R scalar/95 empirical quantities and444092 individual
+   validated against2090 R scalar/95 empirical quantities and444092 individual
    native-helper probabilities. It assumes full laws, not QMLE calibration or a
    formal test. The materially different printed Table20.6 NB2 row remains
    unresolved; native/November2006 author-program evidence does not complete it.

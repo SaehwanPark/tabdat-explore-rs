@@ -497,8 +497,8 @@ checks fail explicitly, with no clipping/renormalization. New numerics reuse
 bounded beta CF machinery without changing legacy beta/F value paths.
 
 [Native author-program analysis](../../examples/mma20p1count/count_probabilities.td)
-and [reference/checker](../../examples/mma20p1count/README.md) validate1787
-independent R scalar probabilities/34 selected stress cases,95 empirical
+and [reference/checker](../../examples/mma20p1count/README.md) validate2090
+independent R scalar probabilities/37 selected stress cases,95 empirical
 aggregate/model quantities and every source/design/mean/index field of20186
 records; a separate native scalar-helper probe matches all444092 individual
 PMF/tail values. The probe is development evidence, NOT an installed rowwise

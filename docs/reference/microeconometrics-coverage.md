@@ -426,7 +426,7 @@ row-robust/cluster covariance choices do not establish the full Poisson/NB2 law
 or alter these plug-in probabilities on the same sample. No uncertainty/formal
 Pearson goodness-of-fit test follows; current-row probability prediction stays open.
 
-R4.6.1/MASS7.3.65 independently validate1787 scalar PMF/survival values across34
+R4.6.1/MASS7.3.65 independently validate2090 scalar PMF/survival values across37
 stress cases,95 aggregate/model quantities and every source/design/mean/xb field
 of all20186 records. A separate native stats-helper probe matches444092 individual
 probabilities with relative-tail tolerance; it is development evidence, not an

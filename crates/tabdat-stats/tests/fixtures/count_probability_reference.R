@@ -10,6 +10,7 @@ args <- commandArgs(trailingOnly = TRUE)
 scalar_cases <- function() {
   alpha_low <- exp(-11.9)
   alpha_high <- exp(11.9)
+  alpha_extreme <- exp(11.99)
   data.frame(
     case = c(
       "poisson_tiny_1e300_cut1", "poisson_tiny_1e300_cut10",
@@ -29,25 +30,27 @@ scalar_cases <- function() {
       "nb2_large_750_alpha_high_cut100", "nb2_large_1000_alpha_high_cut100",
       "nb2_large_1e6_alpha_high_cut100", "nb2_large_750_alpha_0_01_cut100",
       "nb2_large_1000_alpha_0_69_cut100", "nb2_large_1e6_alpha_3_cut100",
-      "nb2_large_1e6_alpha_0_0125_cut100"
+      "nb2_large_1e6_alpha_0_0125_cut100", "nb2_small_0_001_alpha_extreme_cut100",
+      "nb2_large_750_alpha_extreme_cut100", "nb2_small_0_001_alpha_high_cut100"
     ),
-    family = c(rep("poisson", 13L), rep("nb2", 21L)),
+    family = c(rep("poisson", 13L), rep("nb2", 24L)),
     mu = c(
       1e-300, 1e-300, 1e-300, 1e-8, 1e-8, 1e-8,
       0.306, 1, 3, 23.5, 750, 1000, 1e6,
       1e-300, 1e-300, 1e-8, 0.306, 3, 23.5, 3, 0.306, 3,
-      750, 1000, 1e6, 0.306, 3, 750, 1000, 1e6, 750, 1000, 1e6, 1e6
+      750, 1000, 1e6, 0.306, 3, 750, 1000, 1e6, 750, 1000, 1e6, 1e6,
+      1e-3, 750, 1e-3
     ),
     alpha = c(
       rep(NA_real_, 13L), 0.69, 0.69, 0.01, 0.01, 0.69,
       1.1822516830333165, 3, alpha_low, alpha_low, alpha_low, alpha_low,
       alpha_low, alpha_high, alpha_high, alpha_high, alpha_high, alpha_high,
-      0.01, 0.69, 3, 0.0125
+      0.01, 0.69, 3, 0.0125, alpha_extreme, alpha_extreme, alpha_high
     ),
     tail_from = c(
       1, 10, 100, 1, 10, 100, 10, 10, 10, 10, 100, 100, 100,
       1, 10, 10, 10, 10, 10, 100, 10, 10, 100, 100, 100,
-      10, 10, 100, 100, 100, 100, 100, 100, 100
+      10, 10, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100
     ),
     stringsAsFactors = FALSE
   )
@@ -78,7 +81,7 @@ validate_probabilities <- function(probabilities, context) {
 
 write_scalar_fixture <- function() {
   cases <- scalar_cases()
-  stopifnot(nrow(cases) == 34L, !anyDuplicated(cases$case),
+  stopifnot(nrow(cases) == 37L, !anyDuplicated(cases$case),
     all(is.finite(cases$mu)), all(cases$mu > 0),
     all(cases$tail_from %in% c(1, 10, 100)),
     all(cases$family == "poisson" | (is.finite(cases$alpha) & cases$alpha > 0)),
@@ -97,7 +100,7 @@ write_scalar_fixture <- function() {
   })
   result <- do.call(rbind, rows)
   high_mean_nb2 <- probability_bins("nb2", 1e6, 0.0125, 100L)
-  stopifnot(nrow(result) == 1787L, high_mean_nb2[1L] == 0,
+  stopifnot(nrow(result) == 2090L, high_mean_nb2[1L] == 0,
     high_mean_nb2[100L] > 0,
     probability_bins("poisson", 1e-300, NA_real_, 1L)[2L] > 0,
     probability_bins("poisson", 1e-8, NA_real_, 10L)[11L] > 0,
@@ -105,7 +108,7 @@ write_scalar_fixture <- function() {
     probability_bins("nb2", 1e-8, 0.01, 10L)[11L] > 0)
   write.csv(result, stdout(), row.names = FALSE, quote = FALSE, na = "NA")
   worst_partition <- which.max(partition_errors)
-  cat("Scalar cases: 34; records: 1787; cutoffs: 1, 10, 100; maximum ",
+  cat("Scalar cases: 37; records: 2090; cutoffs: 1, 10, 100; maximum ",
     "partition residual=", format(partition_errors[worst_partition], digits = 17),
     " for ", cases$case[worst_partition], ".\n", sep = "", file = stderr())
 }
