@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions and audited original-person clustered Poisson/NB2 extensions | Exposure/offset, household/site/multiway/survey/panel inference, count probabilities, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Exposure/offset, household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Panel/xtreg parser only | Unit/time declaration, gap/duplicate policy, FE/RE/between/differences and diagnostics |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -65,7 +65,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
-| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
+| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; current-row PMF/CDF/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
 | MMA-PANEL | pp. 708–715, PSID; `MOM.dat` | Planned | Verify unit/time keys, transformations, model comparisons and covariance |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
@@ -343,7 +343,8 @@ output-collision and JSON/text/piped regression coverage. Repeated person-years
 require clustered inference for dependence: these two reproduced columns are
 **not panel-robust**. The ASCII omits original person IDs; the native Poisson
 extensions below recover audited DTA IDs separately. Household/site/multiway,
-offsets/exposure, probabilities/Table20.6, formal NB boundary/specification tests,
+offsets/exposure, current-row probabilities/unresolved printed Table20.6 NB2 row,
+formal NB boundary/specification tests,
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` remains OLS/logit/probit
 only; no count fit restoration/persistence or general count test/lincom is claimed.
@@ -367,7 +368,7 @@ DTA/ASCII NB2 coefficient differences <=4.38e-8 are source quantization; native
 validation uses exact ASCII. Historical stopping/rounded output is not the
 float64 score fixed point (HLTHP approximately0.4256563 vs converged0.42565748).
 General count restrictions, formal alpha=0/specification tests, multiway/survey,
-probabilities and remaining illustration outputs stay required;
+current-row probability predictions and remaining illustration outputs stay required;
 this addition does not complete the book's count workflow or panel inference.
 
 [PR #282](https://github.com/SaehwanPark/tabdat-explore-rs/pull/282) adds the
@@ -415,6 +416,35 @@ tails/IDs/order/design/clipped means; prior complete Poisson/NB2/person-Poisson
 empirical regressions remain passing. Person independence remains an assumption;
 no household/site/multiway/survey/few-cluster guarantee, FE/RE, native DTA,
 formal specification test or whole count/panel/book completion follows.
+
+[PR #284](https://github.com/SaehwanPark/tabdat-explore-rs/pull/284) adds the
+[native observed/fitted count-frequency analysis](../../examples/mma20p1count/count_probabilities.td):
+`estat countprob [, max(10)]` uses original retained y/fitted means/NB2 alpha,
+exact0..9 plus >=10 by default. Each fitted fraction averages individual
+conditional probabilities, NOT the probability at an average mean. Model-based/
+row-robust/cluster covariance choices do not establish the full Poisson/NB2 law
+or alter these plug-in probabilities on the same sample. No uncertainty/formal
+Pearson goodness-of-fit test follows; current-row probability prediction stays open.
+
+R4.6.1/MASS7.3.65 independently validate1787 scalar PMF/survival values across34
+stress cases,95 aggregate/model quantities and every source/design/mean/xb field
+of all20186 records. A separate native stats-helper probe matches444092 individual
+probabilities with relative-tail tolerance; it is development evidence, not an
+installed rowwise probability export. Log PMFs, direct small gamma/beta tails,
+well-conditioned complements and compensated integer log-factorials avoid
+underflow/cancellation without normalization/clipping or legacy inference changes.
+JSON/text/piped actual scripts agree;20 corruption probes reject wrong laws,
+averaging/tails/samples/counts/means/probabilities/formal-test claims.
+
+**Printed Table20.6 remains partial/unresolved**, not literally reproduced:
+the printed NB2 percentages0..2 are30.9/19.6/13.6 versus independent native/
+November2006 author-program31.82679994/19.07192866/12.75571956. The authors'
+program explicitly acknowledges the unknown discrepancy. At zero the difference
+is0.9268 percentage points, not float64 stopping/rounding. No parameter/tolerance
+tuning is used to erase it. Exact source/sample/design/law are validated against
+the author-program specification; the printed row is not silently excluded or
+marked complete. Remaining table/illustration/formal-test/core requirements stand.
+No author data/program/book redistribution or production R/Python dependency.
 
 ## Additional IV method evidence (not a textbook replication)
 

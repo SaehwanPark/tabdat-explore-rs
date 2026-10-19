@@ -75,6 +75,11 @@ Inference and interpretation:
   groups/V survive data edits/drop ID; current predictions need mean predictors
   only, not outcome/cluster ID. Bad predictions/options preserve data/model state.
 
+`estat countprob [, max(10)]` compares observed and mean fitted NB2 probabilities
+using retained y/means/alpha (exact0..9 plus >=10 by default). Full conditional NB2
+law is an assumption, not guaranteed by robust/cluster covariance. This is a
+descriptive report without uncertainty/formal goodness-of-fit test; see `help estat`.
+
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
 offsets/exposure, NB1, PMF/CDF prediction UI, factors/discrete changes, general
 count test/lincom, interval prediction, formal alpha=0/specification tests or

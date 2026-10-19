@@ -1,4 +1,47 @@
+use std::collections::{BTreeMap, BTreeSet};
 use tabdat_stats::{CountProbabilityLaw as Law, count_bin_probabilities, count_probability_table};
+
+#[test]
+fn all_independent_r_scalar_probabilities_match_with_relative_tail_accuracy() {
+  let rows: Vec<Vec<_>> = include_str!("fixtures/count_probability_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|line| line.split(',').collect())
+    .collect();
+  assert_eq!(rows.len(), 1787);
+  assert_eq!(
+    rows.iter().map(|row| row[0]).collect::<BTreeSet<_>>().len(),
+    34
+  );
+  let mut results = BTreeMap::new();
+  for row in rows {
+    let mean: f64 = row[2].parse().unwrap();
+    let cutoff: usize = row[4].parse().unwrap();
+    let index: usize = row[5].parse().unwrap();
+    let expected: f64 = row[6].parse().unwrap();
+    let actual = results.entry(row[0]).or_insert_with(|| {
+      let law = match row[1] {
+        "poisson" => {
+          assert_eq!(row[3], "NA");
+          Law::Poisson
+        }
+        "nb2" => Law::Nb2 {
+          alpha: row[3].parse().unwrap(),
+        },
+        other => panic!("unknown reference law {other}"),
+      };
+      count_bin_probabilities(law, mean, cutoff).unwrap()
+    });
+    assert_eq!(actual.len(), cutoff + 1);
+    let tolerance = expected.abs() * 1e-10 + f64::MIN_POSITIVE;
+    assert!(
+      actual[index].is_finite() && (actual[index] - expected).abs() <= tolerance,
+      "{}/{index}: {} != {expected}, tolerance {tolerance}",
+      row[0],
+      actual[index]
+    );
+  }
+}
 
 fn close(a: f64, b: f64) {
   assert!(

@@ -177,7 +177,7 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   runtime fit clears stale inference without changing data/labels/order.
 
 Still required: offsets/exposure, household/site/multiway/survey
-inference, weights, count-PMF/CDF UI and Table20.6, formal NB
+inference, weights, current-row PMF/CDF predictions/unresolved printed Table20.6 NB2 row, formal NB
 boundary/specification tests, factors/discrete changes, general count test/lincom,
 reusable named count reports and remaining Tables20.3–20.6/workflows. Existing
 `estimates store` intentionally remains OLS/logit/probit-only. No restoration or
@@ -277,7 +277,7 @@ historical lagged/stopped estimates into the independently converged result.
 No original IDs occur in the ASCII: the two `nb2.td` fits are unclustered;
 independent-row robust NB2 is **not panel-robust**. The separate person extension
 below attaches audited DTA identities and uses full joint grouped scores.
-Offsets/exposure, household/site/multiway/survey, weights, probabilities/Table20.6,
+Offsets/exposure, household/site/multiway/survey, weights, current-row probabilities/unresolved printed Table20.6 NB2 row,
 formal alpha/specification tests, named reports and other required count analyses
 remain open. These portions do not complete the count family or book.
 
@@ -351,7 +351,7 @@ ONLY for clustered results; old noncluster shapes/owned-state reads are preserve
 JSON/text/piped native runs publish identical ordered CSVs without replacing targets.
 
 Household/site/multiway/survey/few-cluster methods, offsets/exposure,
-count probabilities/Table20.6, formal tests, general restrictions/named count
+current-row count probabilities/unresolved printed Table20.6 NB2 row, formal tests, general restrictions/named count
 reports and remaining required count/book analyses remain open. This is not
 whole count-family/panel/chapter/book/goal completion. No author data/program
 is redistributed.
@@ -416,7 +416,78 @@ postestimation and output collisions preserve state/targets. Cluster metadata is
 conditional, preserving noncluster JSON/old owned reads, not fit restoration.
 
 This does not remove required weights/offsets/exposure, appropriate household/
-site/multiway/survey/few-cluster methods, FE/RE/panels, count probabilities/formal
+site/multiway/survey/few-cluster methods, FE/RE/panels, current-row count probabilities/formal
 boundary/specification tests, general restrictions/named reports, native DTA,
 richer counts or remaining book analyses. No source data/program is redistributed;
 R/Python remain development-only reference/conversion tools.
+
+## Retained observed/fitted probability-frequency analysis
+
+`count_probabilities.td` loads the same audited ASCII design, guards prepared-row
+keys, fits Poisson and NB2, calls `estat countprob, max(10)` after each, predicts
+means/xb and exports them without replacing targets. The report gives observed
+counts/fractions, fitted fractions and expected counts for exact0..9 and **>=10**.
+`max(m)` admits integer1..100; the tail is inclusive, not exactly m.
+
+Use a fresh directory with `mma20p1count.csv` and checksum-verified ASC prepared
+as above. No new production dependency or native DTA loader is needed:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma20p1count/count_probabilities.td" > count_probability_native.jsonl
+Rscript "$repo/crates/tabdat-stats/tests/fixtures/count_probability_reference.R" \
+  mma20p1count.asc R_count_probability_predictions.csv > R_count_probability_reference.csv
+python3 "$repo/examples/mma20p1count/check_count_probability_reference.py" \
+  R_count_probability_reference.csv R_count_probability_predictions.csv \
+  count_probability_native.jsonl count_probability_predictions.csv
+```
+
+The fitted fraction is mean_i Pr(Y_i in bin|X_i,fitted parameters), **not** the
+probability at the average mean. Uses ORIGINAL retained y/means/NB2 alpha/sample;
+current data edits/drop y/X/IDs do not change it. Covariance selection on the same
+sample does not change probabilities or prove the full Poisson/NB2 law. Robust/
+cluster QMLE need not give correctly calibrated distributional probabilities.
+This is a descriptive comparison with **no SE/interval/p-value/formal goodness-of-fit
+test**, not a robust distribution correction or random draw. There is no installed
+current-row PMF/CDF prediction or rowwise probability-export command.
+
+R4.6.1/MASS7.3.65 independent original-ASC fits use converged Poisson and joint
+NB2 score polishing, then `dpois/ppois/dnbinom/pnbinom`, not a native recurrence.
+**1787 scalar probabilities/34 stress cases and95 empirical aggregate/model
+quantities**, plus every source/design/mean/xb field of all20186 records, match.
+A separate native stats-helper probe additionally matches **444092 individual
+PMF/survival probabilities** with relative1e-10 plus minimum-normal floor; this
+is development evidence, not an installed export UI. The normal checker above
+compares aggregates and all source/mean records; an optional fifth CSV from that
+probe enables the individual-probability comparison. Aggregate tolerances1e-10,
+LL1e-7/design1e-12 are unchanged. Existing twice-generated scalar/empirical
+reference outputs are byte-identical.
+
+Scalar cases include means1e-300/1e-8, .306/3/23.5,750/1000/1e6; cutoffs1/10/100;
+NB2 alpha near both allowed limits and representative interior values. Log PMFs
+preserve higher-count mass even when p0 underflows; direct small gamma/beta tails
+and well-conditioned complements preserve representable tails. Compensated
+integer log-factorials/products avoid general log-gamma/cancellation errors,
+without changing legacy inference paths. No clipping/renormalization hides a
+failure. The independent R near-Poisson stress partition residual reaches1.77e-13;
+this is recorded oracle floating-point error, not a widened native comparison.
+Actual JSON/text/piped exported means/xb are byte-identical; source unchanged,
+stderr empty.20 corruption probes reject wrong laws/alpha/averaging-at-mean,
+cutoffs/tails/samples/counts/means/probabilities and manufactured tests/uncertainty.
+
+### Printed Table20.6 discrepancy remains unresolved
+
+The [2005 book Table20.6, printed p674](https://openeclass.panteion.gr/modules/document/file.php/PMS152/Textbooks/Cameron%20A.C.%2C%20Trivedi%20P.K.%20Microeconometrics%20Methods%20and%20Applications.pdf)
+NB2 row starts30.9%,19.6%,13.6%. The authors' November2006 program instead gives
+approximately31.8268%,19.07193%,12.75572%, and explicitly acknowledges the
+unknown discrepancy. Independent native/reference zero shares are Poisson
+10.6764074201% and NB2 **31.8267999426%**; the latter differs from the printed
+30.9% by **0.9267999426 percentage points**, not a stopping/rounding tolerance.
+No parameters, samples or tolerances are tuned to manufacture printed agreement.
+This workflow validates the specified native/author-program design/laws, **not
+literal whole Table20.6 reproduction**; the printed NB2 row remains visible
+unresolved required coverage. Source book/program/data are not redistributed.
+
+Offsets/exposure/weights, appropriate survey/multiway/panel methods, current-row
+probability prediction, uncertainty/formal specification tests, named reports,
+richer counts and other remaining illustration/core/book work remain required.

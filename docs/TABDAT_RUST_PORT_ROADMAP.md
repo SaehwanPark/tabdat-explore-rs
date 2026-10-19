@@ -159,7 +159,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: offsets/exposure, household/site/multiway/survey inference, count probabilities,
+   panel analysis: offsets/exposure, household/site/multiway/survey inference, current-row count probability prediction,
    formal NB boundary/specification tests and remaining table outputs stay required.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)
@@ -169,6 +169,15 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    quantities/all source/ID/design/mean/index records using FULL joint beta/lnalpha
    observed bread and grouped joint scores; normal95/transformed dispersion CIs,
    not conditional/Fisher substitution, G-1 t, few-cluster guarantee or alpha=0 test.
+   Retained `estat countprob` now supplies descriptive observed/mean-fitted bins,
+   validated against1787 R scalar/95 empirical quantities and444092 individual
+   native-helper probabilities. It assumes full laws, not QMLE calibration or a
+   formal test. The materially different printed Table20.6 NB2 row remains
+   unresolved; native/November2006 author-program evidence does not complete it.
+   A separately bounded numerical correction should replace the inaccurate
+   shared log-gamma Lanczos coefficient with independent inference regressions;
+   new integer-shape count probabilities avoid that approximation, legacy paths
+   are unchanged in this slice.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not

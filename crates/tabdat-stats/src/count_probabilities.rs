@@ -1,7 +1,6 @@
 //! Descriptive observed/fitted count frequencies on an explicitly supplied sample.
 
-use crate::distributions::chi_square_tail;
-use crate::matrix::{add_compensated, beta_continued_fraction_bounded, lgamma};
+use crate::matrix::{add_compensated, beta_continued_fraction_bounded};
 use crate::{MAX_NB2_COUNT, MAX_POISSON_COUNT, StatsError};
 use serde::{Deserialize, Serialize};
 
@@ -61,14 +60,29 @@ fn softplus(x: f64) -> f64 {
   }
 }
 
-// P(Y>=m) = P(Gamma(shape=m, rate=1)<=mu). Direct lower gamma series
-// preserves a small Poisson tail that subtraction from a near-one CDF loses.
-fn poisson_tail(mean: f64, m: usize) -> Result<f64, StatsError> {
+// All shapes here are integers <=100: sum exact factorial terms rather than
+// propagating a general log-gamma approximation into a small survival tail.
+fn log_factorial(n: usize) -> f64 {
+  let (mut sum, mut correction) = (0.0, 0.0);
+  for j in 1..=n {
+    add_compensated(&mut sum, &mut correction, (j as f64).ln());
+  }
+  sum
+}
+
+// P(Y>=m) = P(Gamma(shape=m, rate=1)<=mu). Evaluate small tails directly.
+// Complement the finite PMF sum only when mean>=m+1, where that CDF is safely
+// away from one; this never manufactures a tiny tail by cancellation.
+fn poisson_tail(mean: f64, m: usize, prefix: &[f64]) -> Result<f64, StatsError> {
   let a = m as f64;
   if mean >= a + 1.0 {
-    return Ok(1.0 - chi_square_tail(2.0 * mean, 2 * m));
+    let (mut sum, mut correction) = (0.0, 0.0);
+    for p in prefix {
+      add_compensated(&mut sum, &mut correction, *p);
+    }
+    return Ok(1.0 - sum);
   }
-  let prefactor = (a * mean.ln() - mean - lgamma(a)).exp();
+  let prefactor = (a * mean.ln() - mean - log_factorial(m - 1)).exp();
   let (mut term, mut sum) = (1.0 / a, 1.0 / a);
   for j in 1..=10000 {
     term *= mean / (a + j as f64);
@@ -90,7 +104,7 @@ fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
   for j in 0..m {
     add_compensated(&mut product, &mut correction, (r + j as f64).ln());
   }
-  let log_beta = lgamma(m as f64) - product;
+  let log_beta = log_factorial(m - 1) - product;
   let log_factor = m as f64 * log_x + r * log_y - log_beta;
   let x = log_x.exp();
   let (a, b, coordinate, complement) = if x < (m as f64 + 1.0) / (m as f64 + r + 2.0) {
@@ -114,7 +128,8 @@ fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
 ///
 /// Requires a finite positive mean, cutoff 1..100 and the installed NB2 alpha
 /// domain. Log PMFs preserve higher-count mass even if p0 underflows. Survival
-/// uses direct gamma/beta tails, not 1-sum(PMF); no clipping or normalization.
+/// evaluates small gamma/beta tails directly, complementing only well-conditioned
+/// probabilities; no clipping or normalization.
 pub fn count_bin_probabilities(
   law: CountProbabilityLaw,
   mean: f64,
@@ -142,10 +157,11 @@ pub fn count_bin_probabilities(
       log_p += (k as f64 / r).ln_1p() - denom;
     }
   }
-  probabilities.push(match law {
-    CountProbabilityLaw::Poisson => poisson_tail(mean, tail_from)?,
+  let tail = match law {
+    CountProbabilityLaw::Poisson => poisson_tail(mean, tail_from, &probabilities)?,
     CountProbabilityLaw::Nb2 { alpha } => nb2_tail(mean, 1.0 / alpha, tail_from)?,
-  });
+  };
+  probabilities.push(tail);
   if probabilities
     .iter()
     .any(|p| !p.is_finite() || !(0.0..=1.0).contains(p))
@@ -218,4 +234,17 @@ pub fn count_probability_table(
       })
       .collect(),
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn bounded_beta_fraction_distinguishes_exhaustion_from_convergence() {
+    let (_, converged) = beta_continued_fraction_bounded(10.0, 0.3, 0.5, 1);
+    assert!(!converged);
+    let (value, converged) = beta_continued_fraction_bounded(10.0, 0.3, 0.5, 10000);
+    assert!(converged && value.is_finite() && value > 0.0);
+  }
 }

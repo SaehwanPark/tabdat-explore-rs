@@ -7,6 +7,7 @@ How to invoke:
 `estat overid`
 `estat endogenous`
 `estat margins` (after logit, probit, Poisson or NB2)
+`estat countprob [, max(10)]` (after Poisson or NB2)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -26,7 +27,38 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous` and binary/count continuous `margins` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous`, binary/count continuous `margins`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+
+## Observed versus fitted count frequencies
+
+After a successful `poisson` or `nbreg`, run `estat countprob` to compare observed
+count frequencies with the fitted distribution. Default `max(10)` reports exact
+counts0..9 and a final **>=10** bin. Set `max(m)` to a decimal integer1..100;
+the last bin is >=m, not exactly m. Invalid options leave data and fit unchanged.
+
+For each bin, output shows observed N/fraction, fitted fraction and expected N.
+The fitted fraction is the **average of individual conditional probabilities**
+over the ORIGINAL retained estimation sample, not the probability evaluated at an
+average mean. It uses retained y/means and NB2 alpha, even after current rows,
+outcomes, predictors or cluster IDs change/drop. It does not refit or mutate data.
+CLI-v1 returns `CountProbabilityResult` with inclusive bounds (`upper_bound: null`
+for the tail), distribution parameters and original sample provenance.
+
+Example: `poisson visits age income, robust` then `estat countprob, max(10)`;
+repeat after `nbreg visits age income`. The model-based/row-robust/cluster
+covariance choice does not alter the plug-in probabilities on the same sample.
+**Correct conditional Poisson/NB2 distributional assumptions are required**:
+robust/cluster QMLE covariance does NOT establish them. This is a descriptive
+comparison, with NO formal goodness-of-fit test, p-value, SE or interval.
+
+PMFs are evaluated in log coordinates; small tails use direct incomplete
+gamma/beta calculations, with complements only in well-conditioned branches.
+Representable small probabilities are not lost by subtracting a near-one sum;
+probabilities are never clipped/renormalized. Numerical nonconvergence is
+an error. There is no current-row PMF/CDF `predict` or probability export command.
+See `examples/mma20p1count/count_probabilities.td`; the printed Table20.6 NB2 row
+differs materially from the authors'2006 program and remains unresolved, not
+forced into a tolerance or claimed as a literal replication.
 
 ## Binary continuous average partial effects
 
