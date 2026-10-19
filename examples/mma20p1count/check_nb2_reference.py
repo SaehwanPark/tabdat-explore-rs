@@ -63,7 +63,7 @@ def check(reference, predictions, native, native_predictions):
     assert fit["log_likelihood_convention"] == "nb2_count_pmf"
     assert fit["dispersion_inference"] == "descriptive_not_a_panel_or_specification_test"
     assert fit["converged"] is True and 1 <= fit["iterations"] <= 100
-    assert fit["iterations_role"] == "full_model_information_evaluations"
+    assert fit["iterations_role"] == "full_model_outer_iterations"
     assert fit["convergence_coordinate_system"] == "unit_mean_design_column_norm_and_log_alpha_sqrt_n"
     assert fit["convergence_absolute_tolerance"] == 1e-10
     assert 0 <= fit["max_abs_scaled_score"] <= 1e-10 and 0 <= fit["max_abs_scaled_newton_step"] <= 1e-10

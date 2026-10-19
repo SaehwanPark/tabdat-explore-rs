@@ -19,6 +19,8 @@ pub type Nb2Estimate = PoissonEstimate;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Nb2Options {
+  /// Outer Newton iterations per full/restricted fit; each can evaluate
+  /// multiple damped/backtracked candidates.
   pub max_iterations: usize,
 }
 impl Default for Nb2Options {
@@ -69,6 +71,7 @@ pub struct Nb2Result {
   pub pearson_chi_square: f64,
   pub df_residual: usize,
   pub pearson_dispersion: f64,
+  /// Full-model outer iterations, excluding candidate and restricted-fit work.
   pub iterations: usize,
   pub max_abs_scaled_score: f64,
   pub max_abs_scaled_newton_step: f64,

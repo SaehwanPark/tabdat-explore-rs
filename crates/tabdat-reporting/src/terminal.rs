@@ -210,7 +210,7 @@ fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
     r.sample.as_ref().map_or(0, |s| s.dropped_observations)
   )
   .unwrap();
-  writeln!(output,"Converged in {} full-model information evaluations; max absolute scaled score = {}; full UNDAMPED Newton step = {}",r.iterations,r.max_abs_scaled_score,r.max_abs_scaled_newton_step).unwrap();
+  writeln!(output,"Converged in {} full-model outer iterations; max absolute scaled score = {}; full UNDAMPED Newton step = {}",r.iterations,r.max_abs_scaled_score,r.max_abs_scaled_newton_step).unwrap();
   writeln!(
     output,
     "Log likelihood = {}; NB null log likelihood = {}; null alpha = {}",

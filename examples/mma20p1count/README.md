@@ -242,8 +242,10 @@ historical lagged/stopped estimates into the independently converged result.
   full-rank design, distinct names including reserved `lnalpha`. Missing/nonfinite
   model cells are excluded before rejecting invalid finite counts, as for Poisson.
 - lnalpha strictly**(-12,12)**; unit-norm mean columns and lnalpha*sqrt(N)
-  coordinates. At most100 information evaluations per full/restricted fit,
-  bounded backtracking/intermediate diagonal damping. Final UNDAMPED joint
+  coordinates. At most100 outer Newton iterations per full/restricted fit,
+  each with at most20 damping attempts/50 backtracking trials per attempt.
+  Reported iterations count full-model outer steps, not candidate evaluations
+  or restricted-fit work. Final UNDAMPED joint
   information must be positive definite and both absolute scaled score/full step
   <=1e-10. Poisson-limit/boundary/nonrepresentable fits fail, not clip alpha or
   silently fall back to Poisson. These are numerical limits, not an existence test.

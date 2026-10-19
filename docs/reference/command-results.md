@@ -315,8 +315,9 @@ the legacy `Poisson(ModelState)`/`family: "poisson"` placeholder remains readabl
 not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
-and MIG-0017; offsets/exposure, NB, clustered/weighted/survey inference, PMF/CDF UI,
-factors/discrete changes and general count test/lincom remain required work.
+and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
+clustered/weighted/survey inference, PMF/CDF UI, factors/discrete changes and
+general count test/lincom remain required work.
 
 ## Bounded jointly estimated NB2
 
@@ -355,9 +356,11 @@ follow the Poisson contracts above, with these explicit NB2 differences:
 - Residual NB deviance is evaluated at fitted alpha. Pearson uses NB2 variance;
   `df_residual`=N-K-1 and `pearson_dispersion`=Pearson/(N-K-1), descriptive only,
   not a Student-t reference, formal test or covariance multiplier.
-- `iterations_role: "full_model_information_evaluations"`; full and restricted
-  fits each have at most100 evaluations, bounded backtracking/intermediate
-  damping. Final UNDAMPED information must be positive definite and both
+- `iterations_role: "full_model_outer_iterations"`; full and restricted fits
+  each have at most100 outer Newton iterations, excluding candidate evaluations
+  (at most20 damping attempts/50 backtracking trials each per iteration).
+  Reported iterations exclude restricted-fit work. Final UNDAMPED information
+  must be positive definite and both
   absolute score and full Newton step <=1e-10 in
   `convergence_coordinate_system: "unit_mean_design_column_norm_and_log_alpha_sqrt_n"`.
   `supported_maximum_count: 100000`, `supported_log_alpha_open_bounds: [-12,12]`.

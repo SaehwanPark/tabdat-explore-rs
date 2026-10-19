@@ -453,7 +453,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "pearson_dispersion": result.pearson_dispersion,
         "dispersion_inference": "descriptive_not_a_panel_or_specification_test",
         "converged": true, "iterations": result.iterations,
-        "iterations_role": "full_model_information_evaluations",
+        "iterations_role": "full_model_outer_iterations",
         "convergence_coordinate_system": "unit_mean_design_column_norm_and_log_alpha_sqrt_n",
         "convergence_absolute_tolerance": 1e-10,
         "max_abs_scaled_score": result.max_abs_scaled_score,

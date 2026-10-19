@@ -131,6 +131,7 @@ fn actual_nb2_script_reports_joint_dispersion_and_inference_and_preserves_all_so
         "robust_sandwich_n_over_n_minus_1"
       }
     );
+    assert_eq!(fit["iterations_role"], "full_model_outer_iterations");
     assert_eq!(fit["reference_distribution"], "asymptotic_standard_normal");
     assert_eq!(fit["confidence_level"], 95.0);
     assert_eq!(fit["variance_function"], "mu_plus_alpha_mu_squared");

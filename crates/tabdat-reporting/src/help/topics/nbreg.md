@@ -29,8 +29,10 @@ Sample and numerical contract:
   not a silently substituted Poisson or clipped-alpha fit.
 - Joint Newton with bounded backtracking/intermediate damping; final UNDAMPED
   observed information must be positive definite. Both absolute scaled score and
-  full undamped step <=1e-10, at most100 information evaluations per full/null fit.
-  Mean columns have unit norms; lnalpha coordinate is scaled by sqrt(N).
+  full undamped step <=1e-10, at most100 outer Newton iterations per full/null
+  fit. Each can evaluate additional candidates (up to20 damping attempts,
+  50 backtracking trials each); the reported iteration count excludes candidates
+  and restricted-fit work. Mean columns have unit norms; lnalpha scales by sqrt(N).
   Numerical admission is not an analytic existence guarantee.
 - Parameter names are distinct, including intercept and reserved `lnalpha`.
   Failed new runtime fits clear stale inference, not data/labels/order.
