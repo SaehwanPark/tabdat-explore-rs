@@ -27,9 +27,13 @@ fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   })
 }
 
-fn add_poisson_cluster_metadata(data: &mut Value, cluster: Option<&tabdat_domain::PoissonCluster>) {
+fn add_count_cluster_metadata(
+  data: &mut Value,
+  cluster: Option<&tabdat_domain::BinaryCluster>,
+  covariance: &str,
+) {
   if let Some(c) = cluster {
-    data["covariance"] = json!("cluster_sandwich_g_over_g_minus_1");
+    data["covariance"] = json!(covariance);
     data["cluster"] = json!({"variable": c.variable, "group_count": c.group_count,
       "finite_sample_multiplier": c.group_count as f64/(c.group_count-1) as f64,
       "independence_assumption": "across_clusters"});
@@ -423,7 +427,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "max_abs_scaled_score": result.max_abs_scaled_score,
         "max_abs_scaled_newton_step": result.max_abs_scaled_newton_step,
       });
-      add_poisson_cluster_metadata(&mut data, result.cluster.as_ref());
+      add_count_cluster_metadata(
+        &mut data,
+        result.cluster.as_ref(),
+        "cluster_sandwich_g_over_g_minus_1",
+      );
       (data, "PoissonResult")
     }
     ExecutionResult::PoissonMarginalEffects(result) => {
@@ -434,7 +442,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "observation_count": result.observation_count, "effects": result.effects,
       });
-      add_poisson_cluster_metadata(&mut data, result.cluster.as_ref());
+      add_count_cluster_metadata(
+        &mut data,
+        result.cluster.as_ref(),
+        "cluster_sandwich_g_over_g_minus_1",
+      );
       (data, "PoissonMarginalEffectsResult")
     }
     ExecutionResult::Nbreg(result) => {
@@ -475,19 +487,29 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .as_object_mut()
         .unwrap()
         .extend(diagnostics.as_object().unwrap().clone());
+      add_count_cluster_metadata(
+        &mut data,
+        result.cluster.as_ref(),
+        "cluster_joint_score_sandwich_g_over_g_minus_1",
+      );
       (data, "NbregResult")
     }
-    ExecutionResult::NbregMarginalEffects(result) => (
-      json!({
+    ExecutionResult::NbregMarginalEffects(result) => {
+      let mut data = json!({
         "estimator": "nb2", "effect": "average_continuous_predictor_column_derivative",
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
         "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_joint_observed_information" },
         "covariance_role": "beta_block_of_full_joint_beta_lnalpha_covariance",
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "observation_count": result.observation_count, "effects": result.effects,
-      }),
-      "NbregMarginalEffectsResult",
-    ),
+      });
+      add_count_cluster_metadata(
+        &mut data,
+        result.cluster.as_ref(),
+        "cluster_joint_score_sandwich_g_over_g_minus_1",
+      );
+      (data, "NbregMarginalEffectsResult")
+    }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
     ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),
     ExecutionResult::Prediction(result) => (

@@ -100,7 +100,7 @@ fn poisson_covariance_note(
   }
 }
 
-fn poisson_cluster_note(cluster: Option<&tabdat_domain::PoissonCluster>) -> String {
+fn count_cluster_note(cluster: Option<&tabdat_domain::BinaryCluster>) -> String {
   cluster.map_or_else(String::new, |c| format!("Cluster variable: \"{}\"; retained independent clusters G = {}; finite-sample multiplier = {}\nAllows within-cluster dependence, assumes independence ACROSS clusters. Normal inference, NOT G-1 Student t or a few-cluster correction.\n",c.variable.escape_debug(),c.group_count,c.group_count as f64/(c.group_count-1) as f64))
 }
 
@@ -188,7 +188,7 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
   .unwrap();
   if r.cluster.is_some() {
     output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference using selected cluster covariance; no Pearson-dispersion rescaling.\n");
-    output.push_str(&poisson_cluster_note(r.cluster.as_ref()));
+    output.push_str(&count_cluster_note(r.cluster.as_ref()));
     output.push_str("LR p-value unavailable under clustered QMLE inference.\n");
   } else {
     output.push_str("Dispersion is descriptive, not a panel/specification test. Conditional mean = exp(xb), not an event probability.\nNormal 95% coefficient inference; model-based Poisson assumes variance=mean. Robust corrects variance misspecification under independent rows, NOT repeated-person/panel dependence.\n");
@@ -200,8 +200,10 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
   output
 }
 
-fn nb2_covariance_note(robust: bool) -> &'static str {
-  if robust {
+fn nb2_covariance_note(robust: bool, cluster: Option<&tabdat_domain::Nb2Cluster>) -> &'static str {
+  if cluster.is_some() {
+    "one-way FULL joint score sandwich, G/(G-1), inverse JOINT observed information bread"
+  } else if robust {
     "independent-row full joint score sandwich, N/(N-1), not OLS HC1"
   } else {
     "model-based inverse JOINT observed information (beta and lnalpha)"
@@ -210,7 +212,7 @@ fn nb2_covariance_note(robust: bool) -> &'static str {
 fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
   let mut output = format!(
     "Negative binomial NB2 log-link regression ({})\nOutcome: {}; N = {}; count total (float64) = {}; zeros = {}\nVariance = mu + alpha*mu^2; size = 1/alpha, alpha = exp(lnalpha)\n",
-    nb2_covariance_note(r.robust),
+    nb2_covariance_note(r.robust, r.cluster.as_ref()),
     r.outcome.escape_debug(),
     r.observation_count,
     r.count_sum,
@@ -268,9 +270,15 @@ fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
     r.pearson_chi_square, r.df_residual, r.pearson_dispersion
   )
   .unwrap();
-  output.push_str("Normal 95% coefficient inference; dispersion diagnostics are descriptive, not panel/specification tests.\nRobust assumes independent rows, NOT repeated-person/panel dependence; it does not rescale V by Pearson dispersion.\n");
-  if r.robust {
-    output.push_str("LR p-value unavailable under robust inference.\n");
+  output.push_str("Normal 95% coefficient inference; dispersion diagnostics are descriptive, not panel/specification tests.\n");
+  if r.cluster.is_some() {
+    output.push_str(&count_cluster_note(r.cluster.as_ref()));
+    output.push_str("Group FULL joint beta/lnalpha scores before outer products; selected V includes cross curvature, not conditional/Fisher or Pearson rescaling.\nLR p-value unavailable under clustered inference.\n");
+  } else {
+    output.push_str("Robust assumes independent rows, NOT repeated-person/panel dependence; it does not rescale V by Pearson dispersion.\n");
+    if r.robust {
+      output.push_str("LR p-value unavailable under robust inference.\n");
+    }
   }
   output.push_str(&poisson_estimates(&r.coefficients));
   let d = &r.dispersion;
@@ -1090,9 +1098,10 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Nbreg(result) => nb2_report(result),
     ExecutionResult::NbregMarginalEffects(result) => format!(
-      "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}",
+      "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}{}",
       result.observation_count,
-      nb2_covariance_note(result.robust),
+      nb2_covariance_note(result.robust, result.cluster.as_ref()),
+      count_cluster_note(result.cluster.as_ref()),
       poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"
@@ -1105,7 +1114,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}{}",
       result.observation_count,
       poisson_covariance_note(result.robust, result.cluster.as_ref()),
-      poisson_cluster_note(result.cluster.as_ref()),
+      count_cluster_note(result.cluster.as_ref()),
       poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"

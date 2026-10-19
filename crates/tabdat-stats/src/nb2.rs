@@ -1,12 +1,12 @@
 //! Bounded unweighted NB2 ML with jointly estimated log dispersion.
 
-use crate::binary::{BinaryOmnibusWald, omnibus_wald};
+use crate::binary::{BinaryCluster, BinaryOmnibusWald, omnibus_wald};
 use crate::distributions::chi_square_tail;
 use crate::matrix::{add_compensated, invert, qr_decompose_with_response};
 use crate::poisson::deviance_part;
 use crate::{EstimationProblem, EstimationSample, PoissonEstimate, StatsError, fit_poisson};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Bounds the per-iteration integer gamma-ratio recurrence, not data truncation.
 pub const MAX_NB2_COUNT: f64 = 100_000.0;
@@ -16,6 +16,15 @@ const LOG_ALPHA_BOUND: f64 = 12.0;
 
 /// Fixed normal coefficient/effect fields shared with the installed count fit.
 pub type Nb2Estimate = PoissonEstimate;
+/// Shared one-way group metadata; asymptotic normal, not G-1 t inference.
+pub type Nb2Cluster = BinaryCluster;
+
+#[derive(Clone, Copy)]
+enum Nb2Covariance<'a> {
+  ModelBased,
+  Robust,
+  Cluster(&'a str),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Nb2Options {
@@ -53,6 +62,8 @@ pub struct Nb2Result {
   pub predictor_names: Vec<String>,
   pub include_intercept: bool,
   pub robust: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster: Option<Nb2Cluster>,
   pub observation_count: usize,
   pub zero_count: usize,
   pub count_sum: f64,
@@ -82,6 +93,8 @@ pub struct Nb2Result {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nb2MarginalEffects {
   pub robust: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster: Option<Nb2Cluster>,
   pub observation_count: usize,
   pub effects: Vec<Nb2Estimate>,
 }
@@ -362,12 +375,58 @@ struct CoreFit {
   score_norm: f64,
   step_norm: f64,
 }
+fn joint_score_sandwich(
+  bread: &[Vec<f64>],
+  scores: &[Vec<f64>],
+  groups: Option<&[String]>,
+) -> Vec<Vec<f64>> {
+  let p = bread.len();
+  let grouped;
+  let (scores, multiplier) = if let Some(groups) = groups {
+    let mut sums: BTreeMap<&str, Vec<(f64, f64)>> = BTreeMap::new();
+    for (score, group) in scores.iter().zip(groups) {
+      let sum = sums
+        .entry(group.as_str())
+        .or_insert_with(|| vec![(0.0, 0.0); p]);
+      for ((sum, correction), value) in sum.iter_mut().zip(score) {
+        add_compensated(sum, correction, *value);
+      }
+    }
+    let g = sums.len();
+    // Aggregate the FULL beta/lnalpha score before outer products. Dropping
+    // cross parameters or within-person cross terms changes the estimator's V.
+    grouped = sums
+      .into_values()
+      .map(|row| row.into_iter().map(|(s, _)| s).collect())
+      .collect::<Vec<Vec<f64>>>();
+    (grouped.as_slice(), g as f64 / (g - 1) as f64)
+  } else {
+    (scores, scores.len() as f64 / (scores.len() - 1) as f64)
+  };
+  let mut v = vec![vec![0.0; p]; p];
+  let mut corrections = vec![vec![0.0; p]; p];
+  for score in scores {
+    let influence = times(bread, score);
+    for (i, row) in v.iter_mut().enumerate() {
+      for (j, cell) in row.iter_mut().enumerate() {
+        add_compensated(cell, &mut corrections[i][j], influence[i] * influence[j]);
+      }
+    }
+  }
+  for row in &mut v {
+    for value in row {
+      *value *= multiplier;
+    }
+  }
+  v
+}
 fn optimize(
   x: &[Vec<f64>],
   y: &[f64],
   beta: &[f64],
   initial_means: &[f64],
   robust: bool,
+  groups: Option<&[String]>,
   options: &Nb2Options,
 ) -> Result<CoreFit, StatsError> {
   let k = beta.len();
@@ -408,22 +467,7 @@ fn optimize(
       && maximum_absolute(step) <= TOLERANCE
     {
       let covariance = if robust {
-        let mut v = vec![vec![0.0; k + 1]; k + 1];
-        let mut corrections = vec![vec![0.0; k + 1]; k + 1];
-        for score in &current.scores {
-          let influence = times(bread, score);
-          for (i, row) in v.iter_mut().enumerate() {
-            for (j, cell) in row.iter_mut().enumerate() {
-              add_compensated(cell, &mut corrections[i][j], influence[i] * influence[j]);
-            }
-          }
-        }
-        for row in &mut v {
-          for value in row {
-            *value *= n as f64 / (n - 1) as f64;
-          }
-        }
-        v
+        joint_score_sandwich(bread, &current.scores, groups)
       } else {
         bread.clone()
       };
@@ -518,18 +562,76 @@ pub fn fit_nb2_with_options(
   robust: bool,
   options: &Nb2Options,
 ) -> Result<Nb2Result, StatsError> {
+  fit_nb2_covariance(
+    problem,
+    if robust {
+      Nb2Covariance::Robust
+    } else {
+      Nb2Covariance::ModelBased
+    },
+    options,
+  )
+}
+
+/// Full joint beta/lnalpha group-score sandwich with G/(G-1), normal inference
+/// and no LR reference. Explicit groups must align with retained sample rows.
+pub fn fit_nb2_clustered(
+  problem: &EstimationProblem,
+  variable: &str,
+) -> Result<Nb2Result, StatsError> {
+  fit_nb2_covariance(
+    problem,
+    Nb2Covariance::Cluster(variable),
+    &Nb2Options::default(),
+  )
+}
+
+fn fit_nb2_covariance(
+  problem: &EstimationProblem,
+  covariance_type: Nb2Covariance<'_>,
+  options: &Nb2Options,
+) -> Result<Nb2Result, StatsError> {
   problem.validate()?;
+  let robust = !matches!(covariance_type, Nb2Covariance::ModelBased);
   if options.max_iterations == 0 {
     return Err(invalid("max_iterations must be positive"));
   }
-  if problem.weights.is_some()
-    || problem
-      .sample
-      .as_ref()
-      .is_some_and(|s| s.weights.is_some() || s.cluster_groups.is_some())
-  {
-    return Err(invalid("weights/cluster groups are not implemented"));
+  if problem.weights.is_some() || problem.sample.as_ref().is_some_and(|s| s.weights.is_some()) {
+    return Err(invalid("weights are not implemented"));
   }
+  let groups = problem
+    .sample
+    .as_ref()
+    .and_then(|s| s.cluster_groups.as_deref());
+  let cluster = match covariance_type {
+    Nb2Covariance::Cluster(variable) => {
+      if variable.trim().is_empty() {
+        return Err(invalid("cluster variable must be named"));
+      }
+      let groups = groups.ok_or_else(|| invalid("cluster groups are required"))?;
+      if groups.len() != problem.observation_count() {
+        return Err(invalid(
+          "cluster groups must align with the estimation sample",
+        ));
+      }
+      let group_count = groups.iter().collect::<BTreeSet<_>>().len();
+      if group_count < 2 {
+        return Err(invalid(
+          "cluster covariance requires at least two retained groups",
+        ));
+      }
+      Some(Nb2Cluster {
+        variable: variable.to_owned(),
+        group_count,
+      })
+    }
+    _ => {
+      if groups.is_some() {
+        return Err(invalid("cluster groups require a clustered fit"));
+      }
+      None
+    }
+  };
   if problem
     .response
     .iter()
@@ -562,8 +664,16 @@ pub fn fit_nb2_with_options(
         .collect()
     })
     .collect();
-  let poisson =
-    fit_poisson(problem, false).map_err(|_| failed("Poisson starting fit unavailable"))?;
+  // Starting coefficients use the SAME sample/design, without asking the
+  // noncluster Poisson API to interpret NB2's attached group metadata.
+  let poisson = if groups.is_some() {
+    let mut starting = problem.clone();
+    starting.sample.as_mut().unwrap().cluster_groups = None;
+    fit_poisson(&starting, false)
+  } else {
+    fit_poisson(problem, false)
+  }
+  .map_err(|_| failed("Poisson starting fit unavailable"))?;
   let beta: Vec<f64> = poisson.coefficients.iter().map(|c| c.value).collect();
   let fit = optimize(
     &x,
@@ -571,6 +681,7 @@ pub fn fit_nb2_with_options(
     &beta,
     &poisson.fitted_means,
     robust,
+    groups,
     options,
   )?;
   let null = if k == 1 && problem.include_intercept {
@@ -588,6 +699,7 @@ pub fn fit_nb2_with_options(
       &null_beta,
       &null_means,
       false,
+      None,
       options,
     )?
   };
@@ -637,7 +749,7 @@ pub fn fit_nb2_with_options(
       &fit.values[..k],
       &beta_covariance,
       problem.include_intercept,
-      None,
+      cluster.as_ref().map(|c| c.group_count),
     )
   });
   Ok(Nb2Result {
@@ -645,6 +757,7 @@ pub fn fit_nb2_with_options(
     predictor_names: problem.predictor_names.clone(),
     include_intercept: problem.include_intercept,
     robust,
+    cluster,
     observation_count: n,
     zero_count: problem.response.iter().filter(|&&y| y == 0.0).count(),
     count_sum,
@@ -748,6 +861,7 @@ pub fn nb2_average_marginal_effects(
   }
   Ok(Nb2MarginalEffects {
     robust: result.robust,
+    cluster: result.cluster.clone(),
     observation_count: n,
     effects,
   })
@@ -756,6 +870,27 @@ pub fn nb2_average_marginal_effects(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn grouped_full_joint_scores_keep_within_group_and_cross_parameter_terms() {
+    let bread = vec![vec![2., 0.5], vec![0.5, 1.]];
+    let scores = vec![vec![1., 2.], vec![3., -1.], vec![-2., 4.], vec![0., -2.]];
+    let groups = vec!["a".into(), "a".into(), "b".into(), "b".into()];
+    let v = joint_score_sandwich(&bread, &scores, Some(&groups));
+    assert_eq!(v, vec![vec![162.5, 45.], vec![45., 20.]]);
+    assert_ne!(v, joint_score_sandwich(&bread, &scores, None));
+    let scores = vec![vec![1., 2.], vec![-1., -2.], vec![3., -4.], vec![-3., 4.]];
+    let zero = joint_score_sandwich(&bread, &scores, Some(&groups));
+    assert_eq!(zero, vec![vec![0.; 2]; 2]);
+    let b = normal_inference("beta".into(), 1., zero[0][0]).unwrap();
+    assert_eq!(b.standard_error, 0.);
+    assert!(
+      b.statistic.is_none()
+        && b.p_value.is_none()
+        && b.confidence_lower.is_none()
+        && b.confidence_upper.is_none()
+    );
+  }
 
   #[test]
   fn bounded_count_pmf_scores_and_observed_curvature_match_independent_r() {

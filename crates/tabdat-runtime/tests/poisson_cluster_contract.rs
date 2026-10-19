@@ -189,7 +189,7 @@ fn wide_exact_cluster_ids_and_numeric_text_boolean_partitions_are_preserved() {
   }
 }
 #[test]
-fn failed_new_cluster_requests_clear_only_stale_fit_and_nb2_remains_unsupported() {
+fn failed_new_cluster_requests_clear_only_stale_fit() {
   let f = Fixture::new(false);
   for (prepare, request) in [
     ("replace person = 0", "poisson y x z, cluster(person)"),
@@ -204,7 +204,7 @@ fn failed_new_cluster_requests_clear_only_stale_fit_and_nb2_remains_unsupported(
       r#"sql """SELECT id,y,x,z,CAST('bad' AS BLOB) AS person FROM active""" into bad_groups"#,
       "poisson y x z, cluster(person)",
     ),
-    ("replace person = person", "nbreg y x z, cluster(person)"),
+    ("replace person = 0", "nbreg y x z, cluster(person)"),
   ] {
     let mut s = f.load();
     run(&mut s, "label variable x \"predictor\"");
