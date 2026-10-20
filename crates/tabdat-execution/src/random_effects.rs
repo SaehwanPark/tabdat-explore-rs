@@ -17,14 +17,14 @@ impl Session {
     command: &XtRegCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
-    if command.robust || command.cluster_variable.is_some() {
-      return Err(fit_error(
-        "RE-GLS currently supports model-based covariance only",
-      ));
-    }
     let input = self.prepare_panel_problem(command)?;
-    let result = tabdat_stats::fit_random_effects(&input.problem, &input.entity)
-      .map_err(|error| fit_error(error.to_string()))?;
+    let fit = if command.robust || command.cluster_variable.is_some() {
+      tabdat_stats::fit_random_effects_clustered
+    } else {
+      tabdat_stats::fit_random_effects
+    };
+    let result =
+      fit(&input.problem, &input.entity).map_err(|error| fit_error(error.to_string()))?;
     let state = RandomEffectsState {
       time_variable: input.time,
       entity_data_type: input.entity_data_type,

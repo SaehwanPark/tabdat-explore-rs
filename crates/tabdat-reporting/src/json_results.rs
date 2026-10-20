@@ -659,12 +659,21 @@ fn ttest_result_data(result: &TtestResult) -> Value {
 fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Value {
   let r = &state.result;
   let fit = &r.gls;
-  json!({
+  let clustered = matches!(
+    fit.covariance.covariance_type,
+    tabdat_domain::CovarianceType::Cluster(_)
+  );
+  let covariance = if clustered {
+    format!("cluster({})", r.entity_variable)
+  } else {
+    "nonrobust".into()
+  };
+  let mut data = json!({
     "estimator":"balanced_swamy_arora_random_effects_gls", "outcome":r.outcome,"predictors":r.predictor_names,
     "entity_variable":r.entity_variable,"time_variable":state.time_variable,"entity_data_type":state.entity_data_type,
     "observation_count":fit.fit_statistics.observation_count,"group_count":r.group_count,"group_size":r.group_size,
-    "df_residual":fit.fit_statistics.degrees_of_freedom,"reference_distribution":"normal","covariance":"nonrobust",
-    "covariance_convention":"quasi_demeaned_rss_over_n_minus_k",
+    "df_residual":fit.fit_statistics.degrees_of_freedom,"reference_distribution":"normal","covariance":covariance,
+    "covariance_convention": if clustered { "unit_grouped_quasi_demeaned_scores" } else { "quasi_demeaned_rss_over_n_minus_k" },
     "covariance_matrix":fit.covariance.matrix,"covariance_parameter_names":fit.parameter_names,
     "sigma_e_squared":r.sigma_e_squared,"sigma_u_squared":r.sigma_u_squared,"raw_sigma_u_squared":r.raw_sigma_u_squared,
     "variance_component_method":"balanced_swamy_arora", "theta":r.theta,"rho":r.rho,
@@ -674,7 +683,19 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     "coefficients":fit.coefficients.iter().zip(&r.confidence_intervals).map(|(c,ci)|json!({"name":c.name,"value":c.value,"standard_error":c.standard_error,
       "statistic":c.statistic,"p_value":c.p_value,"ci_lower":ci[0],
       "ci_upper":ci[1],"ci_level":95})).collect::<Vec<_>>()
-  })
+  });
+  if clustered {
+    let n = fit.fit_statistics.observation_count;
+    let g = r.group_count;
+    let k = fit.parameter_names.len();
+    data["cluster"] = json!({"variable":r.entity_variable,"group_count":g,
+      "finite_sample_multiplier":g as f64/(g-1) as f64*(n-1) as f64/(n-k) as f64,
+      "correction_convention":"plm_arellano_sss_transformed_gls","independence_assumption":"across_units"});
+  }
+  if let Some(reason) = &r.wald_unavailable_reason {
+    data["wald_unavailable_reason"] = json!(reason);
+  }
+  data
 }
 
 fn fixed_effects_result_data(state: &tabdat_domain::FixedEffectsState) -> Value {

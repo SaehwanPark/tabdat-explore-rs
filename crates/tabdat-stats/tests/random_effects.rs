@@ -1,16 +1,34 @@
-use tabdat_stats::{EstimationProblem, EstimationSample, StatsError, fit_random_effects};
+use tabdat_stats::{
+  EstimationProblem, EstimationSample, StatsError, fit_random_effects, fit_random_effects_clustered,
+};
 
 fn problem(case: &str) -> EstimationProblem {
   let mut rows = Vec::new();
   for id in 1..=6 {
     let size = if case == "unbalanced" { id } else { 4 };
     for t in 0..size {
-      let x = 0.3 * f64::from(id) + 0.2 * f64::from(t) + 0.07 * f64::from((id * t + 2) % 5);
-      let z = 0.13 * f64::from(t * t) + 0.03 * f64::from((id + 2 * t) % 4);
+      let mut x = 0.3 * f64::from(id) + 0.2 * f64::from(t) + 0.07 * f64::from((id * t + 2) % 5);
+      let mut z = 0.13 * f64::from(t * t) + 0.03 * f64::from((id + 2 * t) % 4);
       let mut y =
         1.0 + 0.4 * f64::from(id) + 0.7 * x - 0.3 * z + 0.11 * f64::from((id * t + 3) % 7);
-      if case == "zero_component" {
+      if case == "zero_component" || case == "cluster_zero_component" {
         y = 1.0 + 0.7 * x - 0.3 * z + 0.5 * (-1.0_f64).powi(t) * (1.0 + 0.02 * f64::from(id));
+      }
+      if case == "cluster_zero_component" {
+        y += 0.01 * f64::from((id + 1) % 3);
+      }
+      if case == "singular_cluster" {
+        let group = if id <= 2 { 1 } else { id };
+        x = f64::from(t) + 0.2 * f64::from(group);
+        z = f64::from(t * t) + 0.05 * f64::from(group * group);
+        let sign = if id == 1 {
+          1.0
+        } else if id == 2 {
+          -1.0
+        } else {
+          0.0
+        };
+        y = 1.0 + 0.7 * x - 0.3 * z + sign * (0.01 + f64::from(t) - 1.5);
       }
       if case == "shifted" {
         y += 100.0;
@@ -103,4 +121,82 @@ fn unsupported_samples_weights_rank_and_degenerate_variances_fail_explicitly() {
   p = problem("balanced");
   p.sample.as_mut().unwrap().cluster_groups = None;
   assert!(fit_random_effects(&p, "person").is_err());
+}
+
+#[test]
+fn unit_cluster_re_matches_plm_group_scores_and_preserves_point_fit() {
+  let reference: Vec<_> = include_str!("fixtures/random_effects_cluster_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|r| r.split(',').collect::<Vec<_>>())
+    .collect();
+  let mut checked = 0;
+  for case in [
+    "balanced",
+    "interleaved",
+    "shifted",
+    "cluster_zero_component",
+    "singular_cluster",
+  ] {
+    let p = problem(case);
+    let fit = fit_random_effects_clustered(&p, "person").unwrap();
+    let classical = fit_random_effects(&p, "person").unwrap();
+    assert_eq!(fit.theta, classical.theta);
+    assert_eq!(fit.sigma_e_squared, classical.sigma_e_squared);
+    assert_eq!(fit.sigma_u_squared, classical.sigma_u_squared);
+    assert_eq!(fit.gls.sample, classical.gls.sample);
+    assert_eq!(fit.gls.fitted_values, classical.gls.fitted_values);
+    assert_eq!(fit.gls.residuals, classical.gls.residuals);
+    assert_eq!(
+      fit
+        .gls
+        .coefficients
+        .iter()
+        .map(|c| c.value)
+        .collect::<Vec<_>>(),
+      classical
+        .gls
+        .coefficients
+        .iter()
+        .map(|c| c.value)
+        .collect::<Vec<_>>()
+    );
+    if case == "singular_cluster" {
+      assert_eq!(fit.wald_statistic, None);
+      assert_eq!(fit.wald_p_value, None);
+      assert_eq!(
+        fit.wald_unavailable_reason.as_deref(),
+        Some("singular_slope_covariance")
+      );
+      assert!(
+        fit
+          .gls
+          .coefficients
+          .iter()
+          .all(|c| c.standard_error.unwrap() > 0.0)
+      );
+    } else {
+      assert!(fit.wald_statistic.is_some());
+      assert_eq!(fit.wald_unavailable_reason, None);
+    }
+    let value = serde_json::to_value(fit).unwrap();
+    for row in reference.iter().filter(|r| r[0] == case) {
+      let actual = value
+        .pointer(row[1])
+        .and_then(|v| v.as_f64())
+        .unwrap_or_else(|| panic!("{row:?}"));
+      let expected: f64 = row[2].parse().unwrap();
+      let tolerance = if row[1].ends_with("p_value") {
+        expected.abs() * 1e-8
+      } else {
+        1e-9
+      };
+      assert!(
+        actual.is_finite() && (actual - expected).abs() <= tolerance,
+        "{row:?}: actual={actual:.17e}, tolerance={tolerance:.3e}"
+      );
+      checked += 1;
+    }
+  }
+  assert_eq!(checked, 438);
 }

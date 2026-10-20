@@ -137,7 +137,7 @@ fn prediction_and_restriction_failures_are_atomic_and_new_fit_failures_clear_onl
   let before = s.state();
   assert!(parse_command("xtreg y x, re id(id)").is_err());
   assert_eq!(s.state(), before);
-  for options in ["robust", "cluster(id)"] {
+  for options in ["cluster(year)", "cluster(unknown)"] {
     fit(&mut s);
     let mut expected = s.state();
     expected.estimation = None;
@@ -202,4 +202,43 @@ fn raw_key_errors_and_unbalanced_retained_samples_stop_without_mutating_data() {
   );
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}
+
+#[test]
+fn robust_alias_equals_unit_clustering_with_unchanged_sample_and_predictions() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  let classical = fit(&mut s);
+  let ExecutionResult::RandomEffects(cluster) =
+    run(&mut s, "xtreg y x, re id(id) time(year) cluster(id)")
+  else {
+    panic!("wrong result")
+  };
+  run(&mut s, "predict cluster_xb, xb");
+  let ExecutionResult::RandomEffects(robust) =
+    run(&mut s, "xtreg y x, re id(id) time(year) robust")
+  else {
+    panic!("wrong result")
+  };
+  assert_eq!(cluster, robust);
+  assert_eq!(cluster.result.theta, classical.result.theta);
+  assert_eq!(cluster.result.gls.sample, classical.result.gls.sample);
+  assert_eq!(
+    cluster.result.gls.coefficients[1].value,
+    classical.result.gls.coefficients[1].value
+  );
+  assert_ne!(
+    cluster.result.gls.covariance.matrix,
+    classical.result.gls.covariance.matrix
+  );
+  run(&mut s, "predict robust_xb, xb");
+  for row in rows(&mut s, "SELECT cluster_xb,robust_xb FROM active") {
+    assert_eq!(row[0], row[1]);
+  }
+  let before = s.state();
+  assert!(
+    s.execute(parse_command("predict bad, xbu").unwrap())
+      .is_err()
+  );
+  assert_eq!(s.state(), before);
 }

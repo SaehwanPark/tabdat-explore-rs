@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-  CoefficientEstimate, EstimationProblem, LeastSquaresResult, PostEstimationModel, StatsError,
-  fit_fixed_effects, fit_least_squares, normal_cdf,
+  CoefficientEstimate, CovarianceType, EstimationProblem, LeastSquaresOptions, LeastSquaresResult,
+  StatsError, fit_fixed_effects, fit_least_squares, fit_least_squares_with_options, normal_cdf,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -23,17 +23,38 @@ pub struct RandomEffectsResult {
   pub theta: f64,
   pub rho: f64,
   pub confidence_intervals: Vec<[f64; 2]>,
-  pub wald_statistic: f64,
-  pub wald_p_value: f64,
+  pub wald_statistic: Option<f64>,
+  pub wald_p_value: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub wald_unavailable_reason: Option<String>,
 }
 
 /// Joint finite cases must already be selected and sample-aligned unit keys
 /// supplied. Equal retained group sizes T>=2 are required. The within and between
-/// preliminary regressions must both identify all slopes. No weights or robust
-/// covariance are installed. Coefficients use asymptotic normal inference.
+/// preliminary regressions must both identify all slopes. No weights are installed.
+/// Coefficients use asymptotic normal inference.
 pub fn fit_random_effects(
   problem: &EstimationProblem,
   entity_variable: &str,
+) -> Result<RandomEffectsResult, StatsError> {
+  fit_random_effects_impl(problem, entity_variable, false)
+}
+
+/// Unit-score sandwich of the quasi-demeaned design/residuals, with correction
+/// G/(G-1)*(N-1)/(N-K). Components and coefficients are unchanged. Inference is
+/// asymptotic normal/chi-square, not G-1 t/F. Singular slope Wald tests are
+/// explicitly unavailable while positive marginal coefficient SEs are retained.
+pub fn fit_random_effects_clustered(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+) -> Result<RandomEffectsResult, StatsError> {
+  fit_random_effects_impl(problem, entity_variable, true)
+}
+
+fn fit_random_effects_impl(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  clustered: bool,
 ) -> Result<RandomEffectsResult, StatsError> {
   let within = fit_fixed_effects(problem, entity_variable, false)?;
   let g = within.effects.len();
@@ -118,7 +139,13 @@ pub fn fit_random_effects(
     }
     transformed.design_matrix[i].insert(0, 1.0 - theta);
   }
-  let mut gls = fit_least_squares(&transformed)?;
+  let covariance_type = if clustered {
+    CovarianceType::Cluster(entity_variable.into())
+  } else {
+    CovarianceType::NonRobust
+  };
+  let mut gls =
+    fit_least_squares_with_options(&transformed, &LeastSquaresOptions { covariance_type })?;
   if !gls
     .fit_statistics
     .residual_sum_of_squares
@@ -167,16 +194,16 @@ pub fn fit_random_effects(
       "RE coefficient intervals overflowed".into(),
     ));
   }
-  let restrictions: Vec<_> = (1..=p)
-    .map(|j| (0..=p).map(|i| f64::from(i == j)).collect())
-    .collect();
-  let wald = PostEstimationModel::from_least_squares(&gls)
-    .test_linear_hypothesis(&restrictions, &vec![0.0; p])?;
-  let wald_statistic = wald.chi2_statistic;
-  let wald_p_value = crate::distributions::chi_square_tail(wald_statistic, p);
-  if !wald_statistic.is_finite() || !wald_p_value.is_finite() {
+  let values: Vec<_> = gls.coefficients.iter().map(|c| c.value).collect();
+  let wald = crate::binary::omnibus_wald(
+    &values,
+    &gls.covariance.matrix,
+    true,
+    clustered.then_some(g),
+  );
+  if !clustered && wald.unavailable_reason.is_some() {
     return Err(StatsError::InvalidEstimation(
-      "RE slope Wald calculation is nonfinite".into(),
+      "RE slope Wald calculation is singular or nonfinite".into(),
     ));
   }
   // Uncentered no-intercept OLS summaries would describe the transformed
@@ -199,7 +226,8 @@ pub fn fit_random_effects(
     theta,
     rho: sigma_u_squared / (sigma_e_squared + sigma_u_squared),
     confidence_intervals,
-    wald_statistic,
-    wald_p_value,
+    wald_statistic: wald.statistic,
+    wald_p_value: wald.p_value,
+    wald_unavailable_reason: wald.unavailable_reason,
   })
 }
