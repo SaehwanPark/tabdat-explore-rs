@@ -4,7 +4,7 @@ Installed bounded syntax:
 `xtreg y xvars, fe|re id(unit) time(year)`
 Both FE and RE accept `robust` or `cluster(unit)`; robust clusters on the declared unit.
 
-Fit an unweighted one-way within fixed-effects linear model, absorbing a separate
+`fe` fits an unweighted one-way within fixed-effects linear model, absorbing a separate
 intercept for each unit. At least one numeric slope predictor is required. Unlike
 `regress ..., robust`, **robust here means unit clustering**, not independent-row
 HC1. `cluster()` must name the same variable as `id()`.
