@@ -69,6 +69,14 @@ For any **supported** operation:
 Correctness is measured at the **supported behavior boundary**, not by achieving
 Python equivalence on every incidental lexical input or error string.
 
+The shared positive-domain log-gamma coefficient is corrected; affected t/F,
+chi-square and normal/probit paths retain their sample, covariance and DF
+conventions but may produce more accurate last digits than older builds.
+[Independent base-R numerical regressions](crates/tabdat-stats/tests/gamma_inference_contract.rs)
+cover 153 log-gamma/t/F/normal values, including small DF and tiny tails; existing
+chi-square and estimator reference tests remain applicable. This is an accuracy
+fix, not a new estimator, arbitrary-domain gamma guarantee or textbook replication.
+
 ## Compatibility policy
 
 | Class | Examples | Default treatment |
