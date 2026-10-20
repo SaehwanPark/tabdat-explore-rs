@@ -274,3 +274,18 @@ refusal. Bad keys, no usable pairs and rank-deficient designs fail before export
 No data/program/log is redistributed. This validates the classical Between
 coefficient/inference portion and an HC1 extension, not bootstrap, Figure21.2,
 all Stata panel fit statistics, general `xtreg ..., be`, or whole-table coverage.
+
+## RE-GLS portion under development
+
+The next slice implements bounded one-way balanced Swamy–Arora RE-GLS through
+explicit `xtreg ..., re id(id) time(year)`. Audit raw keys before joint-finite
+model selection; require equal retained unit counts T>=2, G>p+1 and full-rank
+within/between designs. Estimate sigma_e² from within RSS/(N-G-p), sigma_u² as
+max(0, between RSS/(G-p-1)-sigma_e²/T), and theta=1-sqrt(sigma_e²/(sigma_e²+T*sigma_u²)).
+Quasi-demean all design columns including the intercept. Model-based covariance
+uses transformed RSS/(N-p-1), matching R/plm; normal coefficient intervals and
+joint zero-slope Wald inference are explicit. Current-row population xb and
+residual predictions retain fitted coefficients. Independent R/plm/source and
+small key/sample/boundary/failure cases will validate the contract. Unbalanced
+variance estimation, conditional unit effects, RE-ML and Hausman remain outside
+this slice; robust/unit-cluster support will be stated only if validated.
