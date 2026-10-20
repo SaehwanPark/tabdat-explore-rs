@@ -15,6 +15,14 @@ fn problem(case: &str) -> EstimationProblem {
       rows.push((id, t, y, x, z));
     }
   }
+  if case == "null_boundary" {
+    for id in 1..=8 {
+      let mean = rows.iter().filter(|r| r.0 == id).map(|r| r.3).sum::<f64>() / 4.0;
+      for row in rows.iter_mut().filter(|r| r.0 == id) {
+        row.2 = 0.7 * (row.3 - mean) + [-0.002, 0.002, 0.002, -0.002][row.1 as usize];
+      }
+    }
+  }
   if case == "interleaved" {
     rows.sort_by_key(|r| (-r.1, -r.0));
   }
@@ -46,11 +54,23 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
     .map(|s| s.split(',').collect::<Vec<_>>())
     .collect();
   let mut checked = 0;
-  for case in ["balanced", "interleaved", "shifted"] {
+  for case in ["balanced", "interleaved", "shifted", "null_boundary"] {
     let p = problem(case);
     let fit = fit_random_effects_ml_interior(&p, "id").unwrap();
     assert_eq!(fit.regression.sample, p.sample);
     assert!(fit.profile_score.abs() < 1e-9);
+    let public = tabdat_stats::fit_random_effects_ml(&p, "id").unwrap();
+    assert_eq!(public.gls, fit.regression);
+    let ml = public.ml.unwrap();
+    assert_eq!(
+      ml.likelihood_ratio_p_value.is_none(),
+      case == "null_boundary"
+    );
+    assert_eq!(
+      ml.likelihood_ratio_unavailable_reason.is_some(),
+      case == "null_boundary"
+    );
+    assert_eq!(ml.joint_parameter_names.len(), 5);
     let value = serde_json::to_value(fit).unwrap();
     for row in reference.iter().filter(|r| r[0] == case) {
       let actual = value
@@ -70,7 +90,7 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       checked += 1;
     }
   }
-  assert_eq!(checked, 336);
+  assert_eq!(checked, 447);
 }
 
 #[test]
@@ -84,4 +104,17 @@ fn unsupported_or_degenerate_interior_requests_fail_without_a_result() {
   p = problem("balanced");
   p.sample.as_mut().unwrap().cluster_groups = None;
   assert!(fit_random_effects_ml_interior(&p, "id").is_err());
+}
+
+#[test]
+fn zero_unit_variance_optimum_is_explicitly_unsupported() {
+  let mut p = problem("balanced");
+  for i in 0..p.response.len() {
+    p.response[i] = 0.7 * p.design_matrix[i][0] + [-0.2, 0.2, 0.2, -0.2][i % 4];
+  }
+  let error = tabdat_stats::fit_random_effects_ml(&p, "id").unwrap_err();
+  assert!(
+    error.to_string().contains("zero-unit-variance optimum"),
+    "{error}"
+  );
 }

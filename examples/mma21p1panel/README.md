@@ -1,4 +1,4 @@
-# MMA chapter 21: pooled, between, first-difference within-FE and RE-GLS hours/wages analyses
+# MMA chapter 21: pooled, between, first-difference within-FE, RE-GLS and interior RE-ML hours/wages analyses
 
 **Partial empirical coverage.** Cameron–Trivedi (2005), §21.3 pp.709–714,
 Table21.2 p.710: POLS/first-difference, Between/RE-GLS classical and Within slope/conditional-prediction
@@ -15,7 +15,7 @@ slope, compute its 95% interval, summarize predictions/residuals and export usab
 data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
 FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
 not `ols`. Between compares classical and HC1 named reports on person means. Persistent
-`panel`/`xtdata`, RE-ML and whole-table coverage remain absent.
+`panel`/`xtdata` and whole-table coverage remain absent. Interior ML is documented below.
 
 ## Data and exact samples
 
@@ -402,48 +402,65 @@ from that retained fit, as well as source/export/error contracts.
 Unbalanced RE, unit effects, RE-ML, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
 
-## RE-ML portion under development
+## Interior RE-ML coefficient/likelihood workflow
 
-Target the Table21.2 RE-MLE classical coefficient/inference portion on the same
-balanced lnhr~1+lnwg design and all5,320 MOM rows. Use the Gaussian one-way
-marginal likelihood, not REML or an OLS working likelihood. Joint observed
-information for coefficients and variance components must be checked against
-an independent reference; conditional GLS covariance is not an unexplained
-substitute. Define an explicit bounded optimization/stationarity policy and
-zero-unit-variance boundary behavior before exposing execution. The runnable
-slice must include likelihood/null comparison, normal coefficient uncertainty,
-population predictions, source/sample audits and failure/state cases. Existing
-GLS and cluster behavior must remain unchanged. Robust ML, conditional effects,
-Hausman and bootstrap stay separate required work.
+`random_effects_ml.td` executes `xtreg lnhr lnwg, mle id(id) time(year)` on
+all5,320 MOM rows/532 people/T10, reports normal coefficient uncertainty and
+joint slope Wald, marginal likelihood and a re-estimated intercept-only null/LR,
+then summarizes and exports population xb/residuals. This is Gaussian marginal
+ML, not REML. Assumptions include exogenous unit effects, independent people and
+the specified Gaussian error-components distribution; a fit does not establish
+identification. Do not use level-versus-FD likelihoods as an LR comparison.
 
-Current WIP milestone ([draft PR293](https://github.com/SaehwanPark/tabdat-explore-rs/pull/293)):
-the **interior-only statistics kernel** passes336 independent R/nlme/joint-Hessian
-comparisons, including a re-estimated intercept-only null and slope LR.
-Analytic joint information is independently checked with base-R `optimHess`.
-The bounded profile search scans eta in[0,24] at0.5 spacing, polishes detected
-score crossings, and rejects an unresolved upper tail or a zero-component full
-optimum. It does not prove global optimality for arbitrary designs. Ordinary
-slope LR p-values are withheld when the restricted null has boundary unit
-variance. Runtime execution, full boundary support, output/prediction plumbing
-and final workflow/reference verification remain **unfinished**.
+Covariance is the beta block of the inverse joint observed information for beta,
+log(sigma_e²), log(sigma_e²+T*sigma_u²). R4.6.1/nlme3.1.169 validates point fits
+and marginal likelihoods; independent matrix information is numerically checked
+with base-R `optimHess`. The exact-stationary float64 fit has slope0.1195474024,
+SE0.0137485749, LL−266.9114970638, null LL−304.9798136110 and slope LR76.1366330945.
+The nlme default conditional coefficient SE (about0.0136506997) is a different
+convention and is not substituted. Under float32 ingestion, point estimates and
+likelihood reproduce author precision, but several printed Stata8 SEs differ
+slightly from exact stationary joint information. That historical discrepancy
+remains unresolved; this does not validate the published uncertainty column or
+whole Table21.2. Tolerances are not widened to match it.
 
-A manual original-source probe additionally checks native point estimates,
-coefficient SE, both likelihoods/LR and variances on all5,320 original rows,
-with source row/person/year audit and absolute1e-9 checks. Reproduce after the
-source hash check documented above:
+The supported fit is **balanced and interior-only**: retained T>=2, G>p+1,
+full within rank, no weights/time-invariant predictors/robust ML. The profile
+scans eta in[0,24] at0.5 spacing, polishes detected positive-to-negative score
+crossings, and compares their likelihoods with the zero-component boundary.
+This is not proof of a global maximum for arbitrary designs. Unresolved upper
+tails, selected zero-component full optima, nonstationarity and nonpositive
+joint information fail explicitly, clearing stale model state without altering
+data. The intercept-only null can be on the boundary; its ordinary slope LR
+p-value is then withheld with a reason. There is no variance-component LR test.
+
+Reproduce after preparing MOM.csv and checking the source hash as above:
 
 ```sh
-Rscript "$root/examples/mma21p1panel/random_effects_ml_probe.R" "$work/MOM.dat"
-# Optional second argument float32 audits historical source storage separately.
-(cd "$root" && TABDAT_REML_SOURCE="$work/MOM.dat" cargo test --locked -p tabdat-stats --test random_effects_ml_original_source -- --ignored --nocapture)
+cd "$work"
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_ml.td" > random_effects_ml.jsonl
+Rscript "$root/examples/mma21p1panel/random_effects_ml_probe.R" "$work/MOM.dat" float64 "$work/re_ml_reference"
+python3 "$root/examples/mma21p1panel/check_random_effects_ml_reference.py" "$work" "$work/re_ml_reference" "$work/MOM.dat"
+# Optional separate historical-storage audit:
+Rscript "$root/examples/mma21p1panel/random_effects_ml_probe.R" "$work/MOM.dat" float32
 ```
 
-The stationary float64 native/R fit has slope0.1195474024,
-full joint observed-information SE0.0137485749, LL−266.9114970638,
-null LL−304.9798136110 and slope LR76.1366330945. The R/nlme default
-conditional coefficient SE differs (about0.0136506997); it is not the native
-joint-information convention. Under float32 ingestion, point estimates and
-likelihood reproduce the author precision, but several printed Stata8 SEs differ
-slightly from exact stationary joint information; that discrepancy remains
-unresolved and is not hidden with widened tolerances. This WIP is not a
-validated published uncertainty column or an installed ML workflow.
+The full-source audit compares **46 scalar quantities** and **58,520 exported
+cells/all5,320 source/design/prediction rows**, including complete joint and
+coefficient covariance, intervals, normal tails, both likelihoods and LR, with
+absolute1e-9/nonzero-tail relative1e-8 and exact source identity. Text/JSON exports
+are byte-identical. **447 synthetic comparisons** cover two slopes/full covariance,
+shifts/interleaving and the boundary-null reference policy. The latter also
+exercises a negative score at eta=0 with a higher interior optimum; an independently
+initialized nlme fit checks that interior solution. Runtime/CLI tests cover joint
+sample mapping, current-data predictions, unavailable-mode errors and data/state
+preservation, including zero-component fit failure. No production R/Python is used.
+
+Still required: full ML boundary inference, unbalanced RE, robust ML, conditional
+unit effects, general restrictions/named reports, Hausman/panel diagnostics,
+bootstrap and the remaining table/figure analyses. A manual core-only original
+probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
+
+```sh
+(cd "$root" && TABDAT_REML_SOURCE="$work/MOM.dat" cargo test --locked -p tabdat-stats --test random_effects_ml_original_source -- --ignored --nocapture)
+```

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-/// Work-in-progress interior Gaussian ML kernel. No runtime command is installed.
+/// Interior balanced Gaussian marginal ML fit.
 /// Joint parameter order is intercept/slopes, log(sigma_e²), log(sigma_e²+T*sigma_u²).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsMlInterior {
@@ -114,7 +114,7 @@ fn profile(
   })
 }
 
-/// Interior-only development kernel: equal retained counts T>=2 and full within
+/// Interior-only ML kernel: equal retained counts T>=2 and full within
 /// rank, with G>K. Search eta=log(1+T*sigma_u²/sigma_e²) on [0,24], bracket
 /// positive-to-negative profile-score crossings on a 0.5 grid and polish by
 /// bisection. Compare every detected local maximum with the zero-component
@@ -125,6 +125,9 @@ pub fn fit_random_effects_ml_interior(
   entity: &str,
 ) -> Result<RandomEffectsMlInterior, StatsError> {
   let within = fit_fixed_effects(problem, entity, false)?;
+  if problem.predictor_names.contains(&problem.intercept_name) {
+    return Err(failed("RE-ML predictor conflicts with intercept name"));
+  }
   let g = within.effects.len();
   let t = within.minimum_group_size;
   let p = problem.predictor_names.len();
@@ -185,7 +188,7 @@ pub fn fit_random_effects_ml_interior(
   }
   if best_eta == 0.0 {
     return Err(failed(
-      "zero-unit-variance ML boundary is not yet installed",
+      "RE-ML requires an interior positive unit variance; the zero-unit-variance optimum is unsupported",
     ));
   }
   let mut r = profile(problem, &means, &ym, g, best_eta)?;
@@ -299,6 +302,11 @@ pub fn fit_random_effects_ml_interior(
     .map(|row| row[..k].to_vec())
     .collect();
   let se = r.fit.covariance.standard_errors();
+  if se.iter().any(|v| !v.is_finite() || *v <= 0.0) {
+    return Err(failed(
+      "ML coefficient variances must be finite and positive",
+    ));
+  }
   r.fit.coefficients = r
     .fit
     .coefficients
@@ -317,7 +325,7 @@ pub fn fit_random_effects_ml_interior(
   r.fit.fit_statistics.r_squared = None;
   r.fit.fit_statistics.adjusted_r_squared = None;
   r.fit.fit_statistics.f_statistic = None;
-  r.fit.diagnostics.method = "balanced_gaussian_random_effects_ml_interior_wip".into();
+  r.fit.diagnostics.method = "balanced_gaussian_random_effects_ml".into();
   Ok(RandomEffectsMlInterior {
     regression: r.fit,
     joint_covariance: covariance,
@@ -333,5 +341,97 @@ pub fn fit_random_effects_ml_interior(
     profile_score: r.score,
     group_count: g,
     group_size: t,
+  })
+}
+
+/// ML-specific inference; joint parameter order is explicit to prevent treating
+/// log variances as variances or using conditional GLS uncertainty for beta.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RandomEffectsMlInference {
+  pub joint_parameter_names: Vec<String>,
+  pub joint_covariance: Vec<Vec<f64>>,
+  pub eta: f64,
+  pub profile_score: f64,
+  pub log_likelihood: f64,
+  pub null_log_likelihood: f64,
+  pub null_sigma_e_squared: f64,
+  pub null_sigma_u_squared: f64,
+  pub likelihood_ratio: f64,
+  pub likelihood_ratio_df: usize,
+  pub likelihood_ratio_p_value: Option<f64>,
+  pub likelihood_ratio_unavailable_reason: Option<String>,
+}
+
+/// Balanced, unweighted Gaussian marginal ML with strictly positive unit variance.
+/// Full joint observed information supplies beta covariance; no N/(N-K) scale.
+/// Population predictions reuse the retained intercept/slopes through the RE state.
+pub fn fit_random_effects_ml(
+  problem: &EstimationProblem,
+  entity: &str,
+) -> Result<crate::RandomEffectsResult, StatsError> {
+  let r = fit_random_effects_ml_interior(problem, entity)?;
+  let critical = crate::normal_quantile(0.975);
+  let confidence_intervals: Vec<_> = r
+    .regression
+    .coefficients
+    .iter()
+    .map(|c| {
+      let se = c.standard_error.unwrap();
+      [c.value - critical * se, c.value + critical * se]
+    })
+    .collect();
+  if confidence_intervals
+    .iter()
+    .flatten()
+    .any(|v| !v.is_finite())
+  {
+    return Err(failed("RE-ML coefficient intervals overflowed"));
+  }
+  let beta: Vec<_> = r.regression.coefficients.iter().map(|c| c.value).collect();
+  let wald = crate::binary::omnibus_wald(&beta, &r.regression.covariance.matrix, true, None);
+  if wald.unavailable_reason.is_some() {
+    return Err(failed(
+      "RE-ML slope Wald calculation is singular or nonfinite",
+    ));
+  }
+  let mut joint_parameter_names = r.regression.parameter_names.clone();
+  joint_parameter_names.extend([
+    "log_sigma_e_squared".into(),
+    "log_sigma_e_squared_plus_t_sigma_u_squared".into(),
+  ]);
+  let ml = RandomEffectsMlInference {
+    joint_parameter_names,
+    joint_covariance: r.joint_covariance,
+    eta: r.eta,
+    profile_score: r.profile_score,
+    log_likelihood: r.log_likelihood,
+    null_log_likelihood: r.null_log_likelihood,
+    null_sigma_e_squared: r.null_sigma_e_squared,
+    null_sigma_u_squared: r.null_sigma_u_squared,
+    likelihood_ratio: r.likelihood_ratio,
+    likelihood_ratio_df: problem.predictor_names.len(),
+    likelihood_ratio_p_value: r.likelihood_ratio_p_value,
+    likelihood_ratio_unavailable_reason: r.likelihood_ratio_p_value.is_none().then(|| {
+      "restricted null unit variance is on the boundary; ordinary chi-square reference withheld"
+        .into()
+    }),
+  };
+  Ok(crate::RandomEffectsResult {
+    entity_variable: entity.into(),
+    outcome: problem.outcome.clone(),
+    predictor_names: problem.predictor_names.clone(),
+    gls: r.regression,
+    group_count: r.group_count,
+    group_size: r.group_size,
+    sigma_e_squared: r.sigma_e_squared,
+    sigma_u_squared: r.sigma_u_squared,
+    raw_sigma_u_squared: r.sigma_u_squared,
+    theta: 1.0 - (-0.5 * r.eta).exp(),
+    rho: r.sigma_u_squared / (r.sigma_e_squared + r.sigma_u_squared),
+    confidence_intervals,
+    wald_statistic: wald.statistic,
+    wald_p_value: wald.p_value,
+    wald_unavailable_reason: wald.unavailable_reason,
+    ml: Some(ml),
   })
 }

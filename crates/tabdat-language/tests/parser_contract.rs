@@ -561,15 +561,21 @@ fn xtreg_parses_bounded_panel_estimator_forms() {
 #[test]
 fn xtreg_preserves_bounded_parser_diagnostics() {
   let cases = [
-    ("xtreg", "xtreg expects syntax: xtreg <y> <xvars>, fe|re"),
+    (
+      "xtreg",
+      "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle",
+    ),
     (
       "xtreg wage",
-      "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
+      "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle",
     ),
-    ("xtreg wage exper", "xtreg requires exactly one of fe or re"),
+    (
+      "xtreg wage exper",
+      "xtreg requires exactly one of fe, re or mle",
+    ),
     (
       "xtreg wage exper, fe re",
-      "xtreg requires exactly one of fe or re",
+      "xtreg requires exactly one of fe, re or mle",
     ),
     (
       "xtreg wage exper, fe=true",
@@ -589,7 +595,7 @@ fn xtreg_preserves_bounded_parser_diagnostics() {
     ),
     (
       "xtreg wage if year > 2020, fe",
-      "xtreg expects syntax: xtreg <y> <xvars>, fe|re",
+      "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle",
     ),
     ("xtreg wage exper, FE", "xtreg unsupported option: FE"),
   ];

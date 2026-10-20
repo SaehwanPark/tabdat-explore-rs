@@ -1,7 +1,7 @@
 # xtreg
 
 Installed bounded syntax:
-`xtreg y xvars, fe|re id(unit) time(year)`
+`xtreg y xvars, fe|re|mle id(unit) time(year)`
 Both FE and RE accept `robust` or `cluster(unit)`; robust clusters on the declared unit.
 
 `fe` fits an unweighted one-way within fixed-effects linear model, absorbing a separate
@@ -102,7 +102,7 @@ Balanced random-effects GLS:
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
   Unbalanced variance estimation, unit effects/conditional
-  predictions, RE-ML, named RE reports and Hausman remain uninstalled.
+  predictions, named RE reports and Hausman remain uninstalled.
 
 RE unit-cluster inference:
 - `xtreg y xvars, re id(unit) time(year) cluster(unit)` or `robust` uses the same
@@ -118,3 +118,37 @@ RE unit-cluster inference:
 - Cluster IDs must be the declared unit; other variables are unsupported.
   This assumes independent units, does not remove endogeneity of unit effects,
   and is not household/survey/multiway inference or the author's bootstrap.
+
+Balanced Gaussian marginal ML (interior unit variance):
+- `xtreg y xvars, mle id(unit) time(year)` uses the same raw-key audit,
+  joint-finite sample and population `xb`/`residuals` prediction rules. Requires
+  equal retained counts T>=2, G>p+1, full within rank, at least one slope and
+  no weights. Time-invariant predictors, robust/cluster ML, general restrictions
+  and named RE reports are unsupported. `mle` is exclusive of `fe`/`re`.
+- Gaussian marginal likelihood integrates the random intercept; this is ML,
+  not REML. Unit effects must be exogenous to X and units independent, with the
+  specified Gaussian error-components covariance. Inference uses the beta block
+  of the inverse **joint observed information** for beta, log(sigma_e²) and
+  log(sigma_e²+T*sigma_u²), without a residual-DF correction. It differs from
+  conditional GLS covariance. Coefficients use normal z/p/95% intervals and a
+  chi-square(p) slope Wald test; transformed residual DF is descriptive only.
+- The bounded profile searches eta=log(1+T*sigma_u²/sigma_e²) in [0,24], on a
+  0.5 grid, polishes positive-to-negative score crossings by bisection and selects
+  the highest detected likelihood including eta=0. It does not guarantee the
+  global maximum for arbitrary designs. An unresolved upper tail, nonstationary
+  interior fit, nonpositive joint information, degenerate variance or selected
+  zero-unit-variance optimum fails explicitly, clearing stale fit and preserving
+  data. Boundary ML inference is not implemented; there is no automatic GLS fallback.
+- The intercept-only null re-estimates both variance components on the identical
+  sample, allowing zero unit variance. Slope LR=2*(full LL minus null LL) uses
+  chi-square(p) only for an interior null; a boundary-null reference is withheld
+  with a reason. This tests slopes, not the presence of random effects or
+  exogeneity. Do not compare level and differenced likelihoods as an LR test.
+- CLI-v1 retains `RandomEffectsResult` with estimator
+  `balanced_gaussian_random_effects_ml`, covariance convention
+  `joint_observed_information`, top-level marginal `log_likelihood` and `ml`
+  metadata containing the null/LR, profile score/eta, and full joint covariance
+  with explicit parameter order. Existing GLS/cluster JSON fields are preserved.
+  The internal `gls` fit stores the quasi-demeaned regression even for ML;
+  transformed root MSE/RSS are not the ML variance estimate or population residuals.
+  `raw_sigma_u_squared` equals the positive fitted variance for this interior fit.

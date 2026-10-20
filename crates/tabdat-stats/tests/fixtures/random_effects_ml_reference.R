@@ -5,12 +5,13 @@ library(nlme)
 args <- commandArgs(trailingOnly=TRUE); stopifnot(length(args)==1)
 rows <- list()
 emit <- function(case,path,value) rows[[length(rows)+1L]] <<- data.frame(case,path,value=unname(value))
-for(case in c('balanced','interleaved','shifted')) {
+for(case in c('balanced','interleaved','shifted','null_boundary')) {
   d <- expand.grid(time=0:3,id=1:8)
   d$x <- .3*d$id+.2*d$time+.07*((d$id*d$time+2)%%5)
   d$z <- .13*d$time^2+.03*((d$id+2*d$time)%%4)
   d$y <- 1+.7*d$x-.3*d$z+.3*((d$id^2+1)%%5)+.11*((d$id*d$time+3)%%7)
   if(case=='shifted') d$y <- d$y+100
+  if(case=='null_boundary') d$y <- .7*(d$x-ave(d$x,d$id))+.002*c(-1,1,1,-1)
   if(case=='interleaved') d <- d[order(-d$time,-d$id),]
   X <- model.matrix(~x+z,d); y <- d$y; G <- 8; T <- 4; N <- nrow(d); K <- ncol(X)
   Xm <- apply(X,2,function(x)ave(x,d$id)); ym <- ave(y,d$id)
@@ -22,8 +23,13 @@ for(case in c('balanced','interleaved','shifted')) {
     sw <- sum(ew^2); sb <- sum(eb^2); a <- (sw+q*sb)/N; v <- a/q
     list(beta=beta,a=a,v=v,ew=ew,eb=eb,ll=-.5*(N*(log(2*pi)+1+log(a))+G*eta),score=.5*(q*sb/a-G))
   }
-  stopifnot(profile(0)$score>0,profile(24)$score<0)
-  eta <- uniroot(function(e)profile(e)$score,c(0,24),tol=1e-13)$root
+  grid <- seq(0,24,.5)
+  scores <- sapply(grid,function(e)profile(e)$score)
+  crossings <- which(head(scores,-1)>0 & tail(scores,-1)<=0)
+  roots <- sapply(crossings,function(i)uniroot(function(e)profile(e)$score,grid[c(i,i+1)],tol=1e-13)$root)
+  candidates <- c(0,roots)
+  eta <- candidates[which.max(sapply(candidates,function(e)profile(e)$ll))]
+  stopifnot(eta>0)
   r <- profile(eta)
   H <- matrix(0,K+2,K+2); H[1:K,1:K] <- A/r$a+B/r$v
   H[1:K,K+1] <- crossprod(Xw,r$ew)/r$a; H[K+1,1:K] <- H[1:K,K+1]
@@ -41,21 +47,27 @@ for(case in c('balanced','interleaved','shifted')) {
   numeric <- optimHess(par,nll,gradient,control=list(ndeps=rep(1e-5,K+2)))
   stopifnot(max(abs(numeric-H)/pmax(1,abs(H)))<1e-6)
   V <- solve(H)
-  trusted <- lme(y~x+z,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
+  trusted <- lme(y~x+z,random=list(id=pdDiag(value=log(sqrt((r$v-r$a)/T/r$a)),form=~1)),data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
   stopifnot(max(abs(fixef(trusted)-r$beta))<1e-6,abs(as.numeric(logLik(trusted))-r$ll)<1e-8)
   grand <- mean(y)
   nullsw <- sum((y-ym)^2); nullsb <- sum((ym-grand)^2)
   nulla <- nullsw/(N-G); nullv <- nullsb/G
-  stopifnot(nullv>nulla)
-  nullll <- -.5*((N-G)*(log(2*pi)+1+log(nulla))+G*(log(2*pi)+1+log(nullv)))
-  trustednull <- lme(y~1,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
+  boundary <- nullv<=nulla
+  if(boundary) {
+    nulla <- (nullsw+nullsb)/N; nullv <- nulla
+    nullll <- -.5*N*(log(2*pi)+1+log(nulla))
+    trustednull <- lm(y~1,data=d)
+  } else {
+    nullll <- -.5*((N-G)*(log(2*pi)+1+log(nulla))+G*(log(2*pi)+1+log(nullv)))
+    trustednull <- lme(y~1,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
+  }
   stopifnot(abs(as.numeric(logLik(trustednull))-nullll)<1e-8)
   lr <- 2*(r$ll-nullll)
   emit(case,'/null_log_likelihood',nullll)
   emit(case,'/null_sigma_e_squared',nulla)
   emit(case,'/null_sigma_u_squared',(nullv-nulla)/T)
   emit(case,'/likelihood_ratio',lr)
-  emit(case,'/likelihood_ratio_p_value',pchisq(lr,K-1,lower.tail=FALSE))
+  if(!boundary) emit(case,'/likelihood_ratio_p_value',pchisq(lr,K-1,lower.tail=FALSE))
   for(i in 1:K) {
     se <- sqrt(V[i,i]); z <- r$beta[i]/se
     fields <- c(value=r$beta[i],standard_error=se,statistic=z,p_value=2*pnorm(-abs(z)))

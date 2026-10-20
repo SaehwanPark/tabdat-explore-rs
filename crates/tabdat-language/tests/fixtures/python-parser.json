@@ -5263,7 +5263,7 @@
     },
     {
       "input": "xtreg",
-      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re"
+      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle"
     },
     {
       "input": "xtreg wage exper tenure, fe",
@@ -5313,11 +5313,11 @@
     },
     {
       "input": "xtreg y x",
-      "error": "xtreg requires exactly one of fe or re"
+      "error": "xtreg requires exactly one of fe, re or mle"
     },
     {
       "input": "xtreg y x, cluster(firm)",
-      "error": "xtreg requires exactly one of fe or re"
+      "error": "xtreg requires exactly one of fe, re or mle"
     },
     {
       "input": "xtreg y x, fe cluster(firm year)",
@@ -5329,7 +5329,7 @@
     },
     {
       "input": "xtreg y x, fe re",
-      "error": "xtreg requires exactly one of fe or re"
+      "error": "xtreg requires exactly one of fe, re or mle"
     },
     {
       "input": "xtreg y x, fe=true",
@@ -5337,11 +5337,11 @@
     },
     {
       "input": "xtreg y x, robust",
-      "error": "xtreg requires exactly one of fe or re"
+      "error": "xtreg requires exactly one of fe, re or mle"
     },
     {
       "input": "xtreg y, fe",
-      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re"
+      "error": "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle"
     },
     {
       "input": "zinb",

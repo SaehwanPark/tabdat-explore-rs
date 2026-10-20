@@ -5069,7 +5069,7 @@ fn parse_ivregress_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "xtreg expects syntax: xtreg <y> <xvars>, fe|re";
+  let syntax = "xtreg expects syntax: xtreg <y> <xvars>, fe|re|mle";
   let (argument_body, option_body) = match first_unquoted_comma(body) {
     Some(index) => (&body[..index], Some(&body[index + 1..])),
     None => (body, None),
@@ -5093,7 +5093,7 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     .filter(|option| {
       !matches!(
         option.name.as_str(),
-        "fe" | "re" | "robust" | "cluster" | "id" | "time"
+        "fe" | "re" | "mle" | "robust" | "cluster" | "id" | "time"
       )
     })
     .map(|option| option.name.as_str())
@@ -5108,7 +5108,7 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
   }
 
   for option in &options {
-    if matches!(option.name.as_str(), "fe" | "re" | "robust")
+    if matches!(option.name.as_str(), "fe" | "re" | "mle" | "robust")
       && option.value != UseOptionValue::Flag
     {
       return Err(ParseError::new(format!(
@@ -5146,13 +5146,22 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
 
   let has_fe = options.iter().any(|option| option.name == "fe");
   let has_re = options.iter().any(|option| option.name == "re");
-  if has_fe == has_re {
-    return Err(ParseError::new("xtreg requires exactly one of fe or re"));
+  let has_mle = options.iter().any(|option| option.name == "mle");
+  if usize::from(has_fe) + usize::from(has_re) + usize::from(has_mle) != 1 {
+    return Err(ParseError::new(
+      "xtreg requires exactly one of fe, re or mle",
+    ));
   }
 
   let robust = options.iter().any(|option| option.name == "robust");
   if robust && cluster_variable.is_some() {
     return Err(ParseError::new("xtreg cannot combine robust and cluster"));
+  }
+
+  if has_mle && (robust || cluster_variable.is_some()) {
+    return Err(ParseError::new(
+      "xtreg mle supports model-based covariance only",
+    ));
   }
 
   Ok(Command::XtReg {
@@ -5164,6 +5173,8 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
         .collect(),
       estimator: if has_fe {
         XtRegEstimator::FixedEffects
+      } else if has_mle {
+        XtRegEstimator::RandomEffectsMl
       } else {
         XtRegEstimator::RandomEffects
       },

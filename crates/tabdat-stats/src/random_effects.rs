@@ -27,6 +27,8 @@ pub struct RandomEffectsResult {
   pub wald_p_value: Option<f64>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub wald_unavailable_reason: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub ml: Option<crate::RandomEffectsMlInference>,
 }
 
 /// Joint finite cases must already be selected and sample-aligned unit keys
@@ -214,6 +216,7 @@ fn fit_random_effects_impl(
   gls.fit_statistics.f_statistic = None;
   gls.diagnostics.method = "balanced_swamy_arora_random_effects_gls".into();
   Ok(RandomEffectsResult {
+    ml: None,
     entity_variable: entity_variable.into(),
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),

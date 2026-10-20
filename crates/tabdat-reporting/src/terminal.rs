@@ -382,14 +382,22 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     fit.covariance.covariance_type,
     tabdat_domain::CovarianceType::Cluster(_)
   );
-  let covariance = if clustered {
+  let covariance = if r.ml.is_some() {
+    "Joint observed-information covariance; normal inference"
+  } else if clustered {
     "Unit-cluster covariance: grouped transformed scores; normal inference"
   } else {
     "Model-based covariance: transformed RSS/(N-K); normal inference"
   };
   let mut output = format!(
-    "Balanced one-way random-effects GLS: {}\nSwamy-Arora; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    "Balanced one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    if r.ml.is_some() { "ML" } else { "GLS" },
     r.outcome.escape_debug(),
+    if r.ml.is_some() {
+      "Gaussian marginal maximum likelihood (interior unit variance)"
+    } else {
+      "Swamy-Arora"
+    },
     r.entity_variable.escape_debug(),
     state.time_variable.escape_debug(),
     fit.fit_statistics.observation_count,
@@ -404,6 +412,20 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     optional_inference(r.wald_statistic),
     optional_inference(r.wald_p_value)
   );
+  if let Some(ml) = &r.ml {
+    writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
+      inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
+      ml.likelihood_ratio_df, inference_number(ml.likelihood_ratio), optional_inference(ml.likelihood_ratio_p_value)).unwrap();
+    if let Some(reason) = &ml.likelihood_ratio_unavailable_reason {
+      writeln!(
+        output,
+        "Slope LR reference unavailable: {}",
+        reason.escape_debug()
+      )
+      .unwrap();
+    }
+    output.push_str("Profile eta search [0,24], grid 0.5 and polished stationary maxima; no global-optimality guarantee for arbitrary designs.\n");
+  }
   if clustered {
     let n = fit.fit_statistics.observation_count;
     let g = r.group_count;
@@ -443,7 +465,10 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     )
     .unwrap();
   }
-  output.push_str("Assumes exogenous unit effects and independent units. Predictions are population xb/residuals. No panel likelihood or within/between/overall R-squared.\n");
+  output.push_str("Assumes exogenous unit effects and independent units. Predictions are population xb/residuals. No within/between/overall R-squared.\n");
+  if r.ml.is_none() {
+    output.push_str("No panel likelihood.\n");
+  }
   output
 }
 

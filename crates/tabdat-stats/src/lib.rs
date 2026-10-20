@@ -81,7 +81,10 @@ pub use post_estimation::{
 };
 pub use problem::EstimationProblem;
 pub use random_effects::{RandomEffectsResult, fit_random_effects, fit_random_effects_clustered};
-pub use random_effects_ml::{RandomEffectsMlInterior, fit_random_effects_ml_interior};
+pub use random_effects_ml::{
+  RandomEffectsMlInference, RandomEffectsMlInterior, fit_random_effects_ml,
+  fit_random_effects_ml_interior,
+};
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
 pub use traits::Estimator;

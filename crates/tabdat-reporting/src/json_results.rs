@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -669,7 +669,7 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     "nonrobust".into()
   };
   let mut data = json!({
-    "estimator":"balanced_swamy_arora_random_effects_gls", "outcome":r.outcome,"predictors":r.predictor_names,
+    "estimator":fit.diagnostics.method, "outcome":r.outcome,"predictors":r.predictor_names,
     "entity_variable":r.entity_variable,"time_variable":state.time_variable,"entity_data_type":state.entity_data_type,
     "observation_count":fit.fit_statistics.observation_count,"group_count":r.group_count,"group_size":r.group_size,
     "df_residual":fit.fit_statistics.degrees_of_freedom,"reference_distribution":"normal","covariance":covariance,
@@ -684,6 +684,12 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
       "statistic":c.statistic,"p_value":c.p_value,"ci_lower":ci[0],
       "ci_upper":ci[1],"ci_level":95})).collect::<Vec<_>>()
   });
+  if let Some(ml) = &r.ml {
+    data["variance_component_method"] = json!("balanced_gaussian_marginal_ml");
+    data["covariance_convention"] = json!("joint_observed_information");
+    data["ml"] = json!(ml);
+    data["log_likelihood"] = json!(ml.log_likelihood);
+  }
   if clustered {
     let n = fit.fit_statistics.observation_count;
     let g = r.group_count;
