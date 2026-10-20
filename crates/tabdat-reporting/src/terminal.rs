@@ -382,7 +382,10 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     fit.covariance.covariance_type,
     tabdat_domain::CovarianceType::Cluster(_)
   );
-  let covariance = if r.ml.is_some() {
+  let boundary = r.ml.as_ref().is_some_and(|ml| ml.unit_variance_boundary());
+  let covariance = if boundary {
+    "Constrained observed-information covariance (unit variance fixed at zero); normal coefficient inference"
+  } else if r.ml.is_some() {
     "Joint observed-information covariance; normal inference"
   } else if clustered {
     "Unit-cluster covariance: grouped transformed scores; normal inference"
@@ -393,7 +396,9 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     "Balanced one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
     if r.ml.is_some() { "ML" } else { "GLS" },
     r.outcome.escape_debug(),
-    if r.ml.is_some() {
+    if boundary {
+      "Gaussian marginal maximum likelihood (zero unit variance boundary)"
+    } else if r.ml.is_some() {
       "Gaussian marginal maximum likelihood (interior unit variance)"
     } else {
       "Swamy-Arora"
@@ -423,6 +428,9 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
         reason.escape_debug()
       )
       .unwrap();
+    }
+    if boundary {
+      output.push_str("Boundary selected: theta = rho = 0; information parameters are beta and log(sigma_e squared). No regular unit-variance SE or test.\n");
     }
     output.push_str("Profile eta search [0,24], grid 0.5 and polished stationary maxima; no global-optimality guarantee for arbitrary designs.\n");
   }

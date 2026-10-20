@@ -119,7 +119,7 @@ RE unit-cluster inference:
   This assumes independent units, does not remove endogeneity of unit effects,
   and is not household/survey/multiway inference or the author's bootstrap.
 
-Balanced Gaussian marginal ML (interior unit variance):
+Balanced Gaussian marginal ML:
 - `xtreg y xvars, mle id(unit) time(year)` uses the same raw-key audit,
   joint-finite sample and population `xb`/`residuals` prediction rules. Requires
   equal retained counts T>=2, G>p+1, full within rank, at least one slope and
@@ -127,7 +127,7 @@ Balanced Gaussian marginal ML (interior unit variance):
   and named RE reports are unsupported. `mle` is exclusive of `fe`/`re`.
 - Gaussian marginal likelihood integrates the random intercept; this is ML,
   not REML. Unit effects must be exogenous to X and units independent, with the
-  specified Gaussian error-components covariance. Inference uses the beta block
+  specified Gaussian error-components covariance. Interior inference uses the beta block
   of the inverse **joint observed information** for beta, log(sigma_e²) and
   log(sigma_e²+T*sigma_u²), without a residual-DF correction. It differs from
   conditional GLS covariance. Coefficients use normal z/p/95% intervals and a
@@ -136,12 +136,12 @@ Balanced Gaussian marginal ML (interior unit variance):
   0.5 grid, polishes positive-to-negative score crossings by bisection and selects
   the highest detected likelihood including eta=0. It does not guarantee the
   global maximum for arbitrary designs. An unresolved upper tail, nonstationary
-  interior fit, nonpositive joint information, degenerate variance or selected
-  zero-unit-variance optimum fails explicitly, clearing stale fit and preserving
-  data. Boundary ML inference is not implemented; there is no automatic GLS fallback.
+  interior fit, nonpositive joint information or degenerate variance fails
+  explicitly, clearing stale fit and preserving data. A selected zero-unit-variance
+  optimum uses constrained information as below; there is no automatic GLS fallback.
 - The intercept-only null re-estimates both variance components on the identical
   sample, allowing zero unit variance. Slope LR=2*(full LL minus null LL) uses
-  chi-square(p) only for an interior null; a boundary-null reference is withheld
+  chi-square(p) only when both fitted unit variances are interior; a boundary reference is withheld
   with a reason. This tests slopes, not the presence of random effects or
   exogeneity. Do not compare level and differenced likelihoods as an LR test.
 - CLI-v1 retains `RandomEffectsResult` with estimator
@@ -152,3 +152,21 @@ Balanced Gaussian marginal ML (interior unit variance):
   The internal `gls` fit stores the quasi-demeaned regression even for ML;
   transformed root MSE/RSS are not the ML variance estimate or population residuals.
   `raw_sigma_u_squared` equals the positive fitted variance for this interior fit.
+
+Zero-unit-variance ML:
+- When eta=0 wins the detected profile comparison, require its inward score to
+  be nonpositive within the stated numerical tolerance (1e-9 per observation).
+  Then sigma_u²=theta=rho=0; coefficients equal pooled Gaussian ML. Inference
+  uses RSS/N, **not** the OLS RSS/(N-K) correction or OLS Student-t reference.
+- Restrict log(sigma_e²+T*sigma_u²)=log(sigma_e²) before inverting observed
+  information. Its active parameters are beta and log(sigma_e²); the full
+  two-variance inverse is not used. Normal coefficient intervals/slope Wald are
+  asymptotic Gaussian-model inference, with no finite-sample/post-selection or
+  few-unit guarantee. No regular SE, interval or test of sigma_u² is provided.
+- `ml.unit_variance_boundary` is explicit in CLI-v1 JSON; true selects
+  `constrained_observed_information` and K+1 joint parameter names/covariance.
+  Interior fits retain K+2 names and `joint_observed_information`. The covariance
+  label stays `observed_information`. Any full/null boundary withholds ordinary
+  slope LR p-values and supplies a reason. Population predictions and data/state
+  semantics stay the same. The strict Rust `fit_random_effects_ml_interior`
+  entry point still rejects zero unit variance; the ordinary ML workflow accepts it.

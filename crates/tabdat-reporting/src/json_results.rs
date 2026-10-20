@@ -688,8 +688,13 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
   });
   if let Some(ml) = &r.ml {
     data["variance_component_method"] = json!("balanced_gaussian_marginal_ml");
-    data["covariance_convention"] = json!("joint_observed_information");
+    data["covariance_convention"] = json!(if ml.unit_variance_boundary() {
+      "constrained_observed_information"
+    } else {
+      "joint_observed_information"
+    });
     data["ml"] = json!(ml);
+    data["ml"]["unit_variance_boundary"] = json!(ml.unit_variance_boundary());
     data["log_likelihood"] = json!(ml.log_likelihood);
   }
   if clustered {
