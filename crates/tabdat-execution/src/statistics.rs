@@ -584,6 +584,9 @@ impl Session {
     &self,
     command: &LincomCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
+      return Err(RuntimeError::LincomFailed { message: "RE-GLS reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
+    }
     if matches!(self.estimation, Some(EstimationState::Logit(_))) {
       return Err(RuntimeError::LincomFailed {
         message:
@@ -627,6 +630,9 @@ impl Session {
     &self,
     command: &TestCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
+      return Err(RuntimeError::TestFailed { message: "RE-GLS reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
+    }
     if matches!(self.estimation, Some(EstimationState::Logit(_))) {
       return Err(RuntimeError::TestFailed {
         message: "test after logit is not implemented; logit reports normal coefficient tests and an overall likelihood-ratio test".into(),
@@ -1059,6 +1065,9 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
+      return self.execute_random_effects_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::FixedEffects(_))) {
       return self.execute_fixed_effects_prediction(command);
     }

@@ -24,6 +24,7 @@ mod nb2;
 mod poisson;
 pub mod post_estimation;
 pub mod problem;
+mod random_effects;
 pub mod result;
 pub mod sample;
 pub mod traits;
@@ -78,6 +79,7 @@ pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
 };
 pub use problem::EstimationProblem;
+pub use random_effects::{RandomEffectsResult, fit_random_effects};
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
 pub use traits::Estimator;

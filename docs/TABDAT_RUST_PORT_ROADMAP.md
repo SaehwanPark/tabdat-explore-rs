@@ -76,7 +76,7 @@ single PR or a demand to expose every option immediately.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
 | **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE and Between portions are also validated; RE, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between and classical balanced RE-GLS portions are also validated; robust/unbalanced RE, RE-ML, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Explicit quantile, estimation sample, solver/convergence policy, inference and predictions; independently validate coefficients and uncertainty. |
 | **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Current context-only `seed` is not sufficient. |
 
@@ -152,8 +152,8 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance the next bounded MMA-PANEL RE workflow on the audited
-   chapter21 `MOM.dat` design; resolve exact variance-component/design/inference
+1. Advance the next bounded MMA-PANEL robust/cluster RE workflow on the audited
+   chapter21 `MOM.dat` design; resolve covariance correction/design/inference
    and appropriate comparison semantics before implementation. The
    [Table21.2 POLS/FD/Between and Within portions](../examples/mma21p1panel/README.md)
    now provide composed SQL/OLS plus native explicit-key `xtreg ..., fe`.
@@ -163,7 +163,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    and diagnostics. Between validates60 R scalars/4,256 exported cells on532
    equal-person joint-case means, classical/HC1 inference and seven separate
    author printed facts. Author float32 facts are separately reproduced, never a
-   reason to round native float64. RE, nuisance-intercept inference,
+   reason to round native float64. robust/unbalanced RE, RE-ML, nuisance-intercept inference,
+   Native balanced Swamy–Arora RE-GLS now validates30 R/plm quantities/58,520
+   source/prediction cells and352 synthetic comparisons with model-based
+   transformed-RSS covariance and normal95/Wald inference.
    Hausman/panel diagnostics, bootstrap and remaining table/figure outputs stay
    required; persistent panel declaration and whole-table/family coverage are
    not claimed.

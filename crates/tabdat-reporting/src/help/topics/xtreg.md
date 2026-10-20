@@ -1,7 +1,8 @@
 # xtreg
 
 Installed bounded syntax:
-`xtreg y xvars, fe id(unit) time(year) [robust | cluster(unit)]`
+`xtreg y xvars, fe|re id(unit) time(year)`
+FE additionally accepts `robust` or `cluster(unit)`; RE is model-based only.
 
 Fit an unweighted one-way within fixed-effects linear model, absorbing a separate
 intercept for each unit. At least one numeric slope predictor is required. Unlike
@@ -18,7 +19,7 @@ Example, after loading numeric y/x with person/year keys:
 - `summarize fitted unit_deviation error`
 - `export within_predictions.csv`
 
-Keys and sample:
+Within FE keys and sample:
 - Both explicit key options are required for execution. There is no retained
   panel declaration: parser-accepted `panel`/`xtdata` do not install one.
 - All raw unit/time keys must be nonmissing/finite, with unique unit-time pairs,
@@ -65,10 +66,39 @@ Current-data prediction (retained slopes and unit centers, never refitted):
   deliberately refit; choose a fresh target. A failed new runtime FE fit clears
   stale estimation without modifying data; syntax errors preserve the old fit.
 
-Not installed: random/between/two-way effects, weights, factors/interactions,
+Not installed: general between/two-way effects, weights, factors/interactions,
 if filters, arbitrary cluster variables, FE named report snapshots, persistent
 panel state, bootstrap, panel-specific diagnostics or prediction intervals.
 Legacy bare `xtreg ..., fe` remains parseable but needs explicit keys to execute;
-`re` remains parser-only/unsupported. See examples/mma21p1panel/README.md for the
+`re` without explicit keys remains unsupported. See examples/mma21p1panel/README.md for the
 independently audited Table21.2 Within slope/conditional-prediction portion, not
 whole-table/chapter coverage.
+
+Balanced random-effects GLS:
+- `xtreg y xvars, re id(unit) time(year)` audits the same raw keys, then selects
+  joint-finite y/X cases. Retained unit counts must be equal T>=2; G>p+1 and
+  both within and between designs must identify every slope. Missing cases may
+  remove an entire unit; any remaining imbalance fails. Interleaving and gaps
+  are allowed; equal counts do not imply a common calendar or constructed lags.
+- Swamy-Arora uses sigma_e²=within RSS/(N-G-p), raw sigma_u²=between
+  RSS/(G-p-1)-sigma_e²/T, truncates negative sigma_u² to zero, and reports the
+  raw value. Zero/nonfinite sigma_e² or degenerate transformations fail.
+- Quasi-demean y, X and the intercept with theta=1-sqrt(sigma_e²/(sigma_e²+T*sigma_u²)).
+  Model-based covariance uses transformed RSS/(N-p-1) times inverse transformed
+  crossproduct, matching balanced R/plm. It does not substitute sigma_e² as the
+  final scale. Report normal z/p/95% intervals and the joint zero-slope
+  chi-square(p) Wald test. General test/lincom restrictions are not installed.
+- Assumptions include exogeneity of unit effects relative to regressors,
+  independent units and the specified within-unit error-components covariance;
+  covariance is not robust or a few-unit guarantee. No causal identification
+  follows from fitting RE. No panel likelihood or within/between/overall R² is
+  supplied. `RandomEffectsResult` is distinct from OLS and FE JSON results.
+- `predict fitted, xb` (or bare predict) uses retained intercept/slopes on current
+  X, without requiring unit/time columns. `residuals` gives current y minus
+  population xb, including the unit component; it is not a conditional residual.
+  Missing/nonfinite required cells or arithmetic yield NULL. Existing targets,
+  missing/non-numeric required columns or unsupported modes fail atomically.
+- Failed explicit-key RE fit attempts clear the old fit while preserving data;
+  parser errors and legacy bare RE unsupported errors preserve the old fit.
+  Robust/cluster RE, unbalanced variance estimation, unit effects/conditional
+  predictions, RE-ML, named RE reports and Hausman remain uninstalled.

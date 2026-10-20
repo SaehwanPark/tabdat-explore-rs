@@ -586,3 +586,92 @@ fn between_script_rejects_bad_keys_or_unusable_samples_before_export() {
     assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), bad);
   }
 }
+
+#[test]
+fn random_effects_script_reports_normal_gls_and_preserves_order_and_exports() {
+  let (_, source) = panel_fixture();
+  let source: Vec<_> = source.into_iter().filter(|r| r.id != 2).collect();
+  let mut csv = String::from("source_row,lnhr,lnwg,kids,ageh,agesq,disab,id,year\n");
+  for row in &source {
+    csv.push_str(&format!(
+      "{},{},{},0,30,900,0,{},{}\n",
+      row.source,
+      row.y.unwrap_or(7.8),
+      row.x,
+      row.id,
+      row.year
+    ));
+  }
+  let json_dir = TestDir::new();
+  let text_dir = TestDir::new();
+  for dir in [&json_dir, &text_dir] {
+    fs::write(dir.path().join("MOM.csv"), &csv).unwrap();
+  }
+  let out = run(&json_dir, "random_effects.td", true);
+  assert!(out.status.success(), "{out:?}");
+  let events: Vec<Value> = String::from_utf8(out.stdout)
+    .unwrap()
+    .lines()
+    .map(|s| serde_json::from_str(s).unwrap())
+    .collect();
+  let fits: Vec<_> = events
+    .iter()
+    .filter(|e| e["result_type"] == "RandomEffectsResult")
+    .map(|e| &e["data"])
+    .collect();
+  assert_eq!(fits.len(), 1);
+  let fit = fits[0];
+  assert_eq!(fit["observation_count"], 20);
+  assert_eq!(fit["group_count"], 5);
+  assert_eq!(fit["group_size"], 4);
+  assert_eq!(fit["df_residual"], 18);
+  assert_eq!(fit["reference_distribution"], "normal");
+  assert_eq!(fit["wald_df"], 1);
+  assert_eq!(fit["wald_reference"], "chi_square");
+  assert_eq!(
+    fit["sample"],
+    serde_json::json!({"total_observations":20,"dropped_observations":0})
+  );
+  assert_eq!(fit["coefficients"][0]["ci_level"], 95);
+  assert!(fit.get("log_likelihood").is_none());
+  assert!(fit.get("r_squared").is_none());
+  let out = run(&text_dir, "random_effects.td", false);
+  assert!(out.status.success(), "{out:?}");
+  let text = String::from_utf8(out.stdout).unwrap();
+  assert!(text.contains("Balanced one-way random-effects GLS"));
+  assert!(text.contains("normal inference"));
+  let filename = "panel_re_gls_predictions.csv";
+  let exported = fs::read_to_string(json_dir.path().join(filename)).unwrap();
+  assert_eq!(
+    exported,
+    fs::read_to_string(text_dir.path().join(filename)).unwrap()
+  );
+  let data = numeric_csv(&exported);
+  assert_eq!(data.len(), 20);
+  let intercept = fit["coefficients"][0]["value"].as_f64().unwrap();
+  let slope = fit["coefficients"][1]["value"].as_f64().unwrap();
+  for (row, original) in data.iter().zip(&source) {
+    assert_eq!(row["source_row"], Some(original.source as f64));
+    assert_eq!(row["id"], Some(f64::from(original.id)));
+    assert_eq!(row["year"], Some(f64::from(original.year)));
+    let fitted = intercept + slope * original.x;
+    assert!((row["re_xb"].unwrap() - fitted).abs() < 1e-12);
+    assert!((row["re_residual"].unwrap() - (original.y.unwrap_or(7.8) - fitted)).abs() < 1e-12);
+  }
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join("MOM.csv")).unwrap(),
+    csv
+  );
+  let out = run(&json_dir, "random_effects.td", true);
+  assert!(!out.status.success());
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join(filename)).unwrap(),
+    exported
+  );
+  // The original incomplete/gapped fixture has unequal joint-case unit counts.
+  let bad_dir = TestDir::new();
+  fs::write(bad_dir.path().join("MOM.csv"), panel_fixture().0).unwrap();
+  let out = run(&bad_dir, "random_effects.td", true);
+  assert!(!out.status.success());
+  assert!(!bad_dir.path().join(filename).exists());
+}
