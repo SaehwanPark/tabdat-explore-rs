@@ -394,7 +394,14 @@ fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
   let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   assert_eq!(
     envelope["data"]["syntax"],
-    "poisson y [x1 x2] [, robust cluster(var) noconstant]"
+    "poisson y [x1 x2] [, offset(var) robust cluster(var) noconstant]"
+  );
+  assert!(
+    envelope["data"]["options"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .any(|option| option["name"] == "offset" && option["required"] == false)
   );
   let output = tabdat_bin()
     .args(["--json", "--help-topic", "poisson"])
@@ -411,6 +418,9 @@ fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
     "G/(G-1)",
     "independence ACROSS groups",
     "One-way NB2 clustering is separately installed",
+    "offset(log_time)",
+    "BOTH xb and n include it (xb=X beta+offset)",
+    "Retained margins hold original",
   ] {
     assert!(text.contains(phrase), "{phrase}");
   }
