@@ -580,6 +580,8 @@ pub struct PoissonCommand {
 pub struct NbregCommand {
   pub outcome: String,
   pub predictors: Vec<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   /// Full joint observed-information score sandwich with N/(N-1).
   pub robust: bool,
   pub cluster_variable: Option<String>,

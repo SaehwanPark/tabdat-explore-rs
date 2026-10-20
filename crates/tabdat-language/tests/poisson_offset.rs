@@ -2,7 +2,7 @@ use tabdat_domain::Command;
 use tabdat_language::parse_command;
 
 #[test]
-fn poisson_offset_is_one_named_variable_and_only_supported_for_poisson() {
+fn poisson_offset_is_one_named_variable_and_not_supported_for_binary_models() {
   for options in [
     "offset(`log time`)",
     "robust offset(`log time`)",
@@ -19,7 +19,6 @@ fn poisson_offset_is_one_named_variable_and_only_supported_for_poisson() {
     "poisson y x, offset()",
     "poisson y x, offset(a b)",
     "poisson y x, offset(a) offset(b)",
-    "nbreg y x, offset(a)",
     "logit y x, offset(a)",
     "poisson y x, exposure(a)",
   ] {

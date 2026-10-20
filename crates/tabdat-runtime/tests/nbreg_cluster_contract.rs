@@ -224,6 +224,7 @@ fn failed_new_group_fits_clear_stale_inference_only_and_bad_manual_options_fail(
     command: NbregCommand {
       outcome: "y".into(),
       predictors: vec!["x".into(), "z".into()],
+      offset_variable: None,
       robust: true,
       cluster_variable: Some("person".into()),
       include_intercept: true,
