@@ -13,6 +13,7 @@ pub mod diagnostics;
 mod distributions;
 pub mod error;
 pub mod estimates;
+mod fixed_effects;
 pub mod iv;
 mod iv_confidence;
 mod iv_endogenous;
@@ -44,6 +45,7 @@ pub use error::StatsError;
 pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
 };
+pub use fixed_effects::{FixedEffect, FixedEffectsResult, fit_fixed_effects};
 pub use iv::{
   AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
   anderson_rubin_test, fit_two_stage_least_squares,
