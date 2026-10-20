@@ -39,6 +39,7 @@ pub use scalars::{python_float_hex, validate_sql_query};
 mod inspection;
 mod labels;
 mod loading;
+mod prediction_values;
 mod relations;
 mod transforms;
 

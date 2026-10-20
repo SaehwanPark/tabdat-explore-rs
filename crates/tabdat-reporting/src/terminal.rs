@@ -375,6 +375,90 @@ fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
   output
 }
 
+fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
+  let result = &state.result;
+  let fit = &result.within;
+  let stats = &fit.fit_statistics;
+  let g = result.effects.len();
+  let p = fit.parameter_names.len();
+  let n = stats.observation_count;
+  let clustered = matches!(
+    fit.covariance.covariance_type,
+    tabdat_domain::CovarianceType::Cluster(_)
+  );
+  let inference_df = if clustered {
+    g.saturating_sub(1)
+  } else {
+    stats.degrees_of_freedom
+  };
+  let covariance = if clustered {
+    format!("cluster({})", result.entity_variable.escape_debug())
+  } else {
+    "nonrobust".into()
+  };
+  let mut output = format!(
+    "Within fixed-effects regression: {} ~ {}\nEntity = {}; time = {}; N = {n}; groups = {g}; slopes = {p}\nAbsorbed unit intercepts = {g}; residual DF (N-G-p) = {}\nCovariance = {covariance}; slope Student-t / test F denominator DF = {inference_df}\n",
+    result.outcome.escape_debug(),
+    fit
+      .parameter_names
+      .iter()
+      .map(|name| name.escape_debug().to_string())
+      .collect::<Vec<_>>()
+      .join(" "),
+    result.entity_variable.escape_debug(),
+    state.time_variable.escape_debug(),
+    stats.degrees_of_freedom
+  );
+  if clustered {
+    writeln!(
+      output,
+      "Unit-cluster multiplier G/(G-1)*(N-1)/(N-p) = {} (plm Arellano sss; independent units)",
+      inference_number(g as f64 / g.saturating_sub(1) as f64 * (n - 1) as f64 / (n - p) as f64)
+    )
+    .unwrap();
+  }
+  if let Some(sample) = &fit.sample {
+    writeln!(
+      output,
+      "Candidate rows = {}; excluded = {}",
+      sample.total_observations, sample.dropped_observations
+    )
+    .unwrap();
+  }
+  writeln!(
+    output,
+    "Group size min = {}; max = {}; singleton groups = {}",
+    result.minimum_group_size, result.maximum_group_size, result.singleton_groups
+  )
+  .unwrap();
+  writeln!(
+    output,
+    "Within R-squared = {}; conditional level R-squared = {}; root MSE = {}",
+    optional_inference(stats.r_squared),
+    optional_inference(result.conditional_r_squared),
+    optional_inference(stats.root_mse)
+  )
+  .unwrap();
+  writeln!(output,"Common intercept (normalization point only) = {}; unit deviations have observation-weighted mean zero",inference_number(result.common_intercept)).unwrap();
+  output.push_str("Slope\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
+  for c in &fit.coefficients {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}",
+      c.name.escape_debug(),
+      inference_number(c.value),
+      optional_inference(c.standard_error),
+      optional_inference(c.statistic),
+      optional_inference(c.p_value)
+    )
+    .unwrap();
+  }
+  output.push_str(
+    "No nuisance-intercept inference or panel likelihood. NA = unavailable or undefined.\n",
+  );
+  output
+}
+
 fn regression(result: &tabdat_domain::RegressionResult) -> String {
   let mut output = format!(
     "Regression: {} on {}\nEstimator: {}; covariance: {}; intercept: {}\nN = {}; residual df = {}\n",
@@ -1181,6 +1265,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       }
     ),
     ExecutionResult::Regression(result) => regression(result),
+    ExecutionResult::FixedEffects(result) => fixed_effects(result),
     ExecutionResult::Ttest(result) => ttest(result),
     ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),
     ExecutionResult::Lincom(result) => format!(

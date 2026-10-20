@@ -134,6 +134,14 @@ pub struct InstrumentalVariablesState {
   pub problem: tabdat_stats::InstrumentalVariablesProblem,
 }
 
+/// Owned within-FE fit and explicit key provenance, independent of current data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FixedEffectsState {
+  pub time_variable: String,
+  pub entity_data_type: String,
+  pub result: tabdat_stats::FixedEffectsResult,
+}
+
 /// Owned binary logit design and maximum likelihood fit, independent of current data.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryLogitState {
@@ -201,6 +209,7 @@ pub enum EstimationState {
   Survival(ModelState),
   InstrumentalVariables(Box<InstrumentalVariablesState>),
   PanelLinear(ModelState),
+  FixedEffects(Box<FixedEffectsState>),
   PanelLogit(ModelState),
   Did(ModelState),
   DrDid(ModelState),
@@ -263,7 +272,7 @@ impl EstimationState {
       Self::ZeroInflatedNegativeBinomial(..) => EstimationFamily::ZeroInflatedNegativeBinomial,
       Self::Survival(..) => EstimationFamily::Survival,
       Self::InstrumentalVariables(..) => EstimationFamily::InstrumentalVariables,
-      Self::PanelLinear(..) => EstimationFamily::PanelLinear,
+      Self::PanelLinear(..) | Self::FixedEffects(..) => EstimationFamily::PanelLinear,
       Self::PanelLogit(..) => EstimationFamily::PanelLogit,
       Self::Did(..) => EstimationFamily::Did,
       Self::DrDid(..) => EstimationFamily::DrDid,

@@ -139,6 +139,17 @@ fn centering_shifts_rank_and_df_failure_contracts() {
     );
   }
   let mut p = problem("balanced");
+  p.sample.as_mut().unwrap().total_observations += 1;
+  assert!(fit_fixed_effects(&p, "person", false).is_err());
+  let mut p = problem("balanced");
+  p.sample.as_mut().unwrap().retained_indices[0] = usize::MAX;
+  assert!(fit_fixed_effects(&p, "person", false).is_err());
+  let mut p = problem("balanced");
+  for (i, y) in p.response.iter_mut().enumerate() {
+    *y = if i % 2 == 0 { 1e308 } else { -1e308 };
+  }
+  assert!(fit_fixed_effects(&p, "person", false).is_err());
+  let mut p = problem("balanced");
   p.weights = Some(vec![1.0; p.response.len()]);
   assert!(matches!(
     fit_fixed_effects(&p, "person", false),

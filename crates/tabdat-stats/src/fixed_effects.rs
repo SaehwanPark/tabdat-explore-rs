@@ -24,6 +24,7 @@ pub struct FixedEffect {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FixedEffectsResult {
   pub entity_variable: String,
+  pub outcome: String,
   /// Within-projected slope fit: fitted_values are demeaned X beta, not levels.
   /// parameter_count counts slopes; residual DF additionally absorbs G intercepts.
   pub within: LeastSquaresResult,
@@ -82,6 +83,17 @@ pub fn fit_fixed_effects(
   if keys.len() != n {
     return Err(StatsError::DimensionMismatch(
       "unit identifiers must align with the estimation sample".into(),
+    ));
+  }
+  let sample = problem.sample.as_ref().unwrap();
+  if n.checked_add(sample.dropped_observations) != Some(sample.total_observations)
+    || sample
+      .retained_indices
+      .iter()
+      .any(|&index| index >= sample.total_observations)
+  {
+    return Err(StatsError::DimensionMismatch(
+      "invalid candidate-row sample mapping".into(),
     ));
   }
   let mut lookup = BTreeMap::new();
@@ -166,6 +178,19 @@ pub fn fit_fixed_effects(
   }
   let rss = within.fit_statistics.residual_sum_of_squares.unwrap();
   let within_tss = within.fit_statistics.total_sum_of_squares.unwrap();
+  if !rss.is_finite()
+    || !within_tss.is_finite()
+    || within
+      .covariance
+      .matrix
+      .iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+  {
+    return Err(StatsError::NonFiniteValue(
+      "within covariance or sums of squares overflowed".into(),
+    ));
+  }
   within.fit_statistics.degrees_of_freedom = df;
   within.fit_statistics.root_mse = Some((rss / df as f64).sqrt());
   // Different packages adjust within R² against different TSS degrees of freedom.
@@ -228,6 +253,7 @@ pub fn fit_fixed_effects(
   let singleton_groups = members.iter().filter(|rows| rows.len() == 1).count();
   Ok(FixedEffectsResult {
     entity_variable: entity_variable.into(),
+    outcome: problem.outcome.clone(),
     within,
     effects,
     fitted_values,

@@ -4637,6 +4637,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       !matches!(
         opt.name.as_str(),
         "xb"
+          | "xbu"
+          | "u"
           | "residuals"
           | "pr"
           | "n"
@@ -4662,7 +4664,16 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   for option in &options {
     if matches!(
       option.name.as_str(),
-      "xb" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive" | "interval" | "std"
+      "xb"
+        | "xbu"
+        | "u"
+        | "residuals"
+        | "pr"
+        | "n"
+        | "spatial_lag"
+        | "posterior_predictive"
+        | "interval"
+        | "std"
     ) && option.value != UseOptionValue::Flag
     {
       return Err(ParseError::new(format!(
@@ -4676,21 +4687,29 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   for opt in &options {
     if matches!(
       opt.name.as_str(),
-      "xb" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive"
+      "xb" | "xbu" | "u" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive"
     ) && !kinds_present.contains(&opt.name.as_str())
     {
       kinds_present.push(opt.name.as_str());
     }
   }
   if kinds_present.len() > 1 {
-    return Err(ParseError::new(if kinds_present.contains(&"n") {
-      "predict option n cannot be combined with another prediction kind"
-    } else {
-      "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
-    }));
+    return Err(ParseError::new(
+      if kinds_present.contains(&"xbu") || kinds_present.contains(&"u") {
+        "predict cannot combine xbu or u with another prediction kind"
+      } else if kinds_present.contains(&"n") {
+        "predict option n cannot be combined with another prediction kind"
+      } else {
+        "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
+      },
+    ));
   }
 
-  let kind = if options.iter().any(|opt| opt.name == "residuals") {
+  let kind = if options.iter().any(|opt| opt.name == "xbu") {
+    PredictKind::FixedEffectsResponse
+  } else if options.iter().any(|opt| opt.name == "u") {
+    PredictKind::FixedEffect
+  } else if options.iter().any(|opt| opt.name == "residuals") {
     PredictKind::Residuals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
@@ -5071,7 +5090,12 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     .unwrap_or_default();
   let mut unsupported = options
     .iter()
-    .filter(|option| !matches!(option.name.as_str(), "fe" | "re" | "robust" | "cluster"))
+    .filter(|option| {
+      !matches!(
+        option.name.as_str(),
+        "fe" | "re" | "robust" | "cluster" | "id" | "time"
+      )
+    })
     .map(|option| option.name.as_str())
     .collect::<Vec<_>>();
   unsupported.sort_unstable();
@@ -5102,6 +5126,23 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("xtreg option cluster expects one variable"));
   }
   let cluster_variable = cluster_values.and_then(|mut values| values.pop());
+  let single_key = |name: &str| -> Result<Option<String>, ParseError> {
+    let values = parse_identifier_option("xtreg", &options, name)?;
+    if values.as_ref().is_some_and(|values| values.len() != 1) {
+      return Err(ParseError::new(format!(
+        "xtreg option {name} expects one variable"
+      )));
+    }
+    Ok(values.and_then(|mut values| values.pop()))
+  };
+  let id_variable = single_key("id")?;
+  let time_variable = single_key("time")?;
+  if id_variable.is_some() != time_variable.is_some() {
+    return Err(ParseError::new("xtreg requires id() and time() together"));
+  }
+  if id_variable.is_some() && id_variable == time_variable {
+    return Err(ParseError::new("xtreg id() and time() must be distinct"));
+  }
 
   let has_fe = options.iter().any(|option| option.name == "fe");
   let has_re = options.iter().any(|option| option.name == "re");
@@ -5128,6 +5169,8 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
       },
       robust,
       cluster_variable,
+      id_variable,
+      time_variable,
     },
   })
 }
