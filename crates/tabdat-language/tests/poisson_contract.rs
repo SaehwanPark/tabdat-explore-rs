@@ -28,12 +28,11 @@ fn count_native_extensions_are_explicit_without_changing_bare_predict_default() 
   ] {
     assert!(parse_command(text).is_err(), "{text}");
   }
-  assert!(
-    parse_command("poisson y x, offset(exposure)")
-      .unwrap_err()
-      .to_string()
-      .contains("unsupported option")
-  );
+  let Command::Poisson { command } = parse_command("poisson y x, offset(log_exposure)").unwrap()
+  else {
+    panic!("poisson")
+  };
+  assert_eq!(command.offset_variable.as_deref(), Some("log_exposure"));
   assert!(parse_command("poisson y x, exposure(time)").is_err());
   // The old count parser surface remains accepted; execution owns the explicit rejection.
   assert!(matches!(

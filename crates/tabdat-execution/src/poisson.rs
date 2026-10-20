@@ -19,14 +19,14 @@ impl Session {
       command.cluster_variable.as_deref(),
       command.offset_variable.as_deref(),
     )?;
-    let mut result = tabdat_stats::fit_poisson_with_offset(
+    let result = tabdat_stats::fit_poisson_with_offset(
       &problem,
       &offsets,
+      command.offset_variable.as_deref(),
       command.robust,
       command.cluster_variable.as_deref(),
     )
     .map_err(|e| family.error(e.to_string()))?;
-    result.offset_variable = command.offset_variable.clone();
     self.estimation = Some(EstimationState::PoissonFit(Box::new(PoissonFitState {
       problem,
       result: result.clone(),

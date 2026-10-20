@@ -299,14 +299,19 @@ pub fn fit_poisson_with_options(
 /// Fit with a fixed, finite additive log-mean offset aligned to retained rows.
 /// The offset is not a parameter; the nested null keeps it fixed. Clustered
 /// fits require attached groups; `robust` and `cluster_variable` are exclusive.
-/// Applications may attach the source name to `result.offset_variable` for
-/// current-data prediction; this numerical entry point accepts only values.
+/// The source name is retained for reporting/prediction. An unnamed offset
+/// must be identically zero, so a nonzero offset can never be mislabeled as
+/// an ordinary no-offset fit by downstream reporting.
 pub fn fit_poisson_with_offset(
   problem: &EstimationProblem,
   offsets: &[f64],
+  offset_variable: Option<&str>,
   robust: bool,
   cluster_variable: Option<&str>,
 ) -> Result<PoissonResult, StatsError> {
+  if offset_variable.is_none() && offsets.iter().any(|v| *v != 0.0) {
+    return Err(invalid("nonzero offsets require a source variable name"));
+  }
   if robust && cluster_variable.is_some() {
     return Err(invalid("cannot combine robust and cluster"));
   }
@@ -315,12 +320,14 @@ pub fn fit_poisson_with_offset(
     None if robust => PoissonCovariance::Robust,
     None => PoissonCovariance::ModelBased,
   };
-  fit_poisson_covariance(
+  let mut result = fit_poisson_covariance(
     problem,
     covariance_type,
     &PoissonOptions::default(),
     offsets,
-  )
+  )?;
+  result.offset_variable = offset_variable.map(str::to_owned);
+  Ok(result)
 }
 
 /// One-way group-score sandwich, G/(G-1), with normal inference and no LR tail.

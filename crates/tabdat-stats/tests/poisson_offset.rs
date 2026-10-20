@@ -55,11 +55,14 @@ fn fixed_offset_fits_and_inference_match_base_r() {
       let fit = fit_poisson_with_offset(
         &p,
         &offsets,
+        Some("log_time"),
         covariance == "robust",
         (covariance == "cluster").then_some("person"),
       )
       .unwrap();
+      assert_eq!(fit.offset_variable.as_deref(), Some("log_time"));
       let effects = poisson_average_marginal_effects(&p, &fit).unwrap();
+      assert_eq!(effects.offset_variable, fit.offset_variable);
       let j = serde_json::to_value(&fit).unwrap();
       let e = serde_json::to_value(&effects).unwrap();
       let case = format!("{design}_{covariance}");
@@ -124,12 +127,13 @@ fn zero_offsets_equivalence_fixed_shift_and_invalid_alignment() {
   let plain = fit_poisson(&p, true).unwrap();
   assert_eq!(
     plain,
-    fit_poisson_with_offset(&p, &[0.; 36], true, None).unwrap()
+    fit_poisson_with_offset(&p, &[0.; 36], None, true, None).unwrap()
   );
-  let with = fit_poisson_with_offset(&p, &offsets(), false, None).unwrap();
-  let shifted: Vec<_> = offsets().iter().map(|v| v + 100.).collect();
-  let other = fit_poisson_with_offset(&p, &shifted, false, None).unwrap();
-  assert!((other.coefficients[0].value - with.coefficients[0].value + 100.).abs() < 1e-10);
+  assert!(fit_poisson_with_offset(&p, &offsets(), None, false, None).is_err());
+  let with = fit_poisson_with_offset(&p, &offsets(), Some("log_time"), false, None).unwrap();
+  let shifted: Vec<_> = offsets().iter().map(|v| v + 1000.).collect();
+  let other = fit_poisson_with_offset(&p, &shifted, Some("shifted_log_time"), false, None).unwrap();
+  assert!((other.coefficients[0].value - with.coefficients[0].value + 1000.).abs() < 1e-10);
   for (a, b) in with.fitted_means.iter().zip(other.fitted_means) {
     assert!((a - b).abs() < 1e-10);
   }
@@ -139,7 +143,7 @@ fn zero_offsets_equivalence_fixed_shift_and_invalid_alignment() {
     vec![f64::NAN; 36],
     vec![f64::INFINITY; 36],
   ] {
-    assert!(fit_poisson_with_offset(&p, &offsets, false, None).is_err());
+    assert!(fit_poisson_with_offset(&p, &offsets, Some("log_time"), false, None).is_err());
   }
-  assert!(fit_poisson_with_offset(&p, &[0.; 36], true, Some("g")).is_err());
+  assert!(fit_poisson_with_offset(&p, &[0.; 36], None, true, Some("g")).is_err());
 }
