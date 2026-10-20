@@ -217,3 +217,17 @@ byte-identical. No author data/program/log is bundled by these references.
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
+
+## Between portion under development
+
+The next bounded slice reproduces Table21.2's Between classical coefficients
+and inference using one equally weighted joint-finite person-mean row per ID,
+with an intercept and wage slope. It will add an independent-person HC1
+comparison, retained named reports, mean-response predictions/residuals and an
+export that audits contributing row counts and year ranges. Raw person/year
+keys must pass the existing guards before model-case selection. The original
+balanced sample has 532 mean rows and residual/inference DF530. Modified input
+will use jointly finite outcome/wage pairs before centering, retain singleton
+people, exclude people with no usable pairs, and never weight means by T_i.
+Independent R lm/sandwich and small gapped/missing/error CLI cases will verify
+this contract. RE, bootstrap and Figure21.2 remain outside this slice.
