@@ -159,7 +159,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: NB2 offsets/exposure shorthand, household/site/multiway/survey inference, current-row count probability prediction,
+   panel analysis: NB2 offsets/remaining exposure workflows, household/site/multiway/survey inference, current-row count probability prediction,
    formal NB boundary/specification tests and remaining table outputs stay required.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)

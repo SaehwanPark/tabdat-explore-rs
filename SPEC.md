@@ -114,7 +114,7 @@ verification must be assessed against source/tests before declaring this milesto
 
 The graduate-core target adds model-design semantics (factors/interactions),
 diagnostics/graphics and reusable reporting alongside IV/2SLS, logit/probit with
-marginal effects, remaining count extensions (NB offsets/exposure shorthand beyond installed Poisson fixed offsets), linear panels, quantile
+marginal effects, remaining count extensions (NB offsets and exposure preparation beyond installed Poisson fixed offsets), linear panels, quantile
 regression and genuine seeded bootstrap. Required later coverage includes choice,
 selection/censoring, survival, GMM/dynamic and nonlinear panels, treatment effects,
 surveys, imputation, and the remaining semiparametric, simulation/Bayesian,

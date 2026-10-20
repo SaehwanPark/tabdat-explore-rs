@@ -340,7 +340,7 @@ not data/labels/order. No fit restoration/persistence is added. `estimates store
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
 [fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
-method evidence, not a textbook replication. Exposure shorthand, NB2 offsets,
+method evidence, not a textbook replication. Remaining exposure workflows/NB2 offsets,
 multiway clustering, weighted/survey inference, current-row PMF/CDF predictions, factors/discrete
 changes and general count test/lincom remain required work.
 
