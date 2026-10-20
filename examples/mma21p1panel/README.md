@@ -499,3 +499,23 @@ population prediction/export, explicit constrained JSON/text, identical text/JSO
 CSVs, and genuine degenerate fit failure clearing stale state while preserving data.
 This adds synthetic boundary-method evidence; it does not add a published
 Table21.2 row or resolve the historical Stata8 SE discrepancy.
+
+### Unbalanced Gaussian ML slice under development
+
+Target the same lnhr~1+lnwg analysis on an explicit sensitivity cohort: omit
+(id divisible by3, year1980 or1985) and (id divisible by7, year1981–1983),
+retaining original source-row identity/order. The audited source gives4,738 rows,
+532 people and retained counts5–10. This changes the published sample and is
+method/sensitivity evidence, not another author-table replication.
+
+Use per-unit quasi-demeaning and determinant terms for v_g=sigma_e²+T_g*sigma_u²,
+with a bounded scalar profile eta=log(1+T_min*sigma_u²/sigma_e²). Re-estimate the
+intercept-only null with the same unequal-count likelihood; its intercept is
+variance-weighted, not automatically the grand mean. Validate the full beta /
+log(sigma_e²) / log(sigma_u²) observed information against independent R/nlme and
+numerical Hessians, including singleton/interleaved/shifted and boundary cases.
+Preserve all balanced/strict-interior APIs and outputs. Report unequal counts and
+theta ranges explicitly, with a distinct unbalanced JSON result; keep the
+zero-unit boundary constrained and ordinary LR-reference withholding intact.
+Deliver load/guard/cohort/fit/report/predict/export plus raw-key/sample and
+failure-state evidence before merging.
