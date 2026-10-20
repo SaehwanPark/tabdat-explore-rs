@@ -1,0 +1,13 @@
+case,covariance,parameter,value,standard_error
+pooled,nonrobust,intercept,7.441516,0.0241265
+pooled,nonrobust,lnwg,0.0827436,0.0091251
+pooled,robust,intercept,7.441516,0.0548992
+pooled,robust,lnwg,0.0827436,0.0203042
+pooled,cluster(id),intercept,7.441516,0.079587
+pooled,cluster(id),lnwg,0.0827436,0.0292711
+fd,nonrobust,intercept,0.0008283,0.0042712
+fd,nonrobust,dlnwg,0.1089851,0.0213351
+fd,robust,intercept,0.0008283,0.0042856
+fd,robust,dlnwg,0.1089851,0.0688514
+fd,cluster(id),intercept,0.0008283,0.0016148
+fd,cluster(id),dlnwg,0.1089851,0.0837266

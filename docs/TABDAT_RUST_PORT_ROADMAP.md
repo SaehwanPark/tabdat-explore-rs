@@ -76,7 +76,7 @@ single PR or a demand to expose every option immediately.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
 | **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. Deliver FE, RE, between and first-difference workflows with appropriate cluster inference and panel/model-comparison diagnostics. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. FE, RE, between, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Explicit quantile, estimation sample, solver/convergence policy, inference and predictions; independently validate coefficients and uncertainty. |
 | **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Current context-only `seed` is not sufficient. |
 
@@ -152,7 +152,17 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance the next bounded MMA-COUNT requirement from its now-resolved
+1. Advance MMA-PANEL to a bounded within-FE workflow using the now-audited
+   chapter21 `MOM.dat` source/design. The [Table21.2 POLS/FD portions](../examples/mma21p1panel/README.md)
+   already compose native SQL/OLS, validate all5,320 source rows/4,788 annual
+   pairs, classical/HC1/person-cluster inference, tests/intervals and fitted/residual
+   exports against180 R scalars and111,188 cells. Author Stata8 float32 facts are
+   separately reproduced, not a reason to round native float64. Next resolve
+   within-FE absorbed-effect DF, covariance correction, fitted unit effects and
+   diagnostics/prediction semantics against an exact independent reference.
+   FE/between/RE/Hausman/bootstrap and remaining table/figure outputs remain
+   required; this is not whole-panel coverage or executed `xtreg` syntax.
+2. Advance the next bounded MMA-COUNT requirement from its now-resolved
    source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
    and separate NB2 script validate model-based/independent-row robust coefficients,
    full inference/diagnostics/continuous effects and all 20,186 means/indices
