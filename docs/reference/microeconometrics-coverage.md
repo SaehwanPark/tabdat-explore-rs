@@ -34,7 +34,7 @@ not by implementing every estimator mentioned in a chapter.
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
-| 21: Linear panels | Panel/xtreg parser only | Unit/time declaration, gap/duplicate policy, FE/RE/between/differences and diagnostics |
+| 21: Linear panels | Native SQL/OLS POLS and annual first-difference author-program portions, guarded keys/gaps and person-cluster inference; panel/xtreg command forms remain parser-only | General unit/time declaration and lag/lead semantics, FE/RE/between, panel-specific diagnostics/comparisons, bootstrap and remaining illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
 | 25: Treatment evaluation | Relevant parser forms only | Explicit estimands, adjustment/matching/weighting, balance/overlap and valid uncertainty |
@@ -66,11 +66,46 @@ provenance and redistribution terms before adding fixtures.
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; current-row PMF/CDF/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
-| MMA-PANEL | pp. 708–715, PSID; `MOM.dat` | Planned | Verify unit/time keys, transformations, model comparisons and covariance |
+| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — native POLS/FD author-program portions validated | [Guarded ingestion, exact annual pairs, full classical/HC1/person-cluster workflow and R evidence](../../examples/mma21p1panel/README.md); FE/between/RE, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
+
+### MMA-PANEL bounded POLS/first-difference contract and evidence
+
+The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
+resolve §21.3 pp.709–714, Table21.2 p.710 against the March2005 author program/log.
+Their header says Table21.1, but the POLS/FD section markers and final table block
+identify Table21.2. This is chapter21, not chapter24's clustered-sample examples.
+
+- **Data/design:** externally downloaded, checksum-pinned `MOM.dat`, not the
+  higher-precision chapter22 file: 5,320 rows, 532 men, all years1979–1988, numeric
+  IDs1–532. Strict token-preserving AWK ingestion adds original source-row IDs;
+  atomic staged publication refuses existing targets. Native `isid` and SQL
+  guards reject duplicate/missing/noninteger keys. POLS is `lnhr~1+lnwg`;
+  partitioned, year-ordered SQL LAG admits only consecutive annual pairs before
+  complete-finite fitting. FD is `dlnhr~1+dlnwg`, N4,788/G532, retaining the
+  author's estimated differenced intercept. No optional covariates/year dummies.
+- **Usable analysis:** both scripts fit classical/HC1/person-cluster covariances,
+  tests and slope95 intervals, immutable named comparisons, fitted/residual
+  summaries and exports through existing text/CLI-v1/script surfaces. Cluster
+  correction is G/(G−1)*(N−1)/(N−K), K2; inference uses G−1=531 t/F DF while fit
+  residual DF remains N−K. Classical/HC1 are independent-row comparison columns,
+  not panel-robust inference; Gaussian working likelihood is not a panel LR test.
+- **Independent evidence:** R4.6.1/sandwich3.1.1 validates180 scalar quantities,
+  full covariance/fit/test/interval/DF and all10,108 exported rows/111,188 cells.
+  Numeric tolerance1e-9 absolute, nonzero tails1e-8 relative; exact source/person/
+  year/pair identities. Separate R float32 ingestion/generated-difference audit
+  reproduces24 author coefficient/SE facts at original printed precision; native
+  float64 is not rounded to mimic Stata8 storage. The small synthetic CLI test
+  protects unsorted/interleaved/gapped/missing sample semantics, text/JSON export
+  equivalence, located early errors, unchanged inputs and refused outputs.
+- **Still partial:** composed SQL/OLS, not installed panel/xtreg/xtdata execution.
+  FD is not within-FE at T>2. FE/between/RE, Hausman, panel residual/comparison
+  diagnostics, bootstrap, lowess/Figures21.1–21.4, richer designs and remaining
+  table/illustration outputs stay required. Neither MMA-PANEL nor its family is
+  marked complete; raw source redistribution/platform guarantees are not claimed.
 
 ### MMA-BINARY native published-analysis contract and evidence
 
