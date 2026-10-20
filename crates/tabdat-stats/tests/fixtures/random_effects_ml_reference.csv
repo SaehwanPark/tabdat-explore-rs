@@ -1,4 +1,9 @@
 case,path,value
+balanced,/null_log_likelihood,-6.04400312200953
+balanced,/null_sigma_e_squared,0.03955646875
+balanced,/null_sigma_u_squared,0.205195506835937
+balanced,/likelihood_ratio,16.1484516031797
+balanced,/likelihood_ratio_p_value,0.000311464309797527
 balanced,/regression/coefficients/0/value,1.75926358482823
 balanced,/regression/coefficients/0/standard_error,0.204507920544
 balanced,/regression/coefficients/0/statistic,8.60242273330298
@@ -106,6 +111,11 @@ balanced,/eta,2.06446440923984
 balanced,/log_likelihood,2.03022267958032
 balanced,/group_count,8
 balanced,/group_size,4
+interleaved,/null_log_likelihood,-6.04400312200953
+interleaved,/null_sigma_e_squared,0.03955646875
+interleaved,/null_sigma_u_squared,0.205195506835937
+interleaved,/likelihood_ratio,16.1484516031797
+interleaved,/likelihood_ratio_p_value,0.000311464309797526
 interleaved,/regression/coefficients/0/value,1.75926358482823
 interleaved,/regression/coefficients/0/standard_error,0.204507920544
 interleaved,/regression/coefficients/0/statistic,8.60242273330301
@@ -213,6 +223,11 @@ interleaved,/eta,2.06446440923985
 interleaved,/log_likelihood,2.03022267958032
 interleaved,/group_count,8
 interleaved,/group_size,4
+shifted,/null_log_likelihood,-6.04400312200944
+shifted,/null_sigma_e_squared,0.0395564687499998
+shifted,/null_sigma_u_squared,0.205195506835936
+shifted,/likelihood_ratio,16.1484516031797
+shifted,/likelihood_ratio_p_value,0.000311464309797531
 shifted,/regression/coefficients/0/value,101.759263584828
 shifted,/regression/coefficients/0/standard_error,0.204507920543996
 shifted,/regression/coefficients/0/statistic,497.581038984438

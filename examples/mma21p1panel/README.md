@@ -415,3 +415,35 @@ slice must include likelihood/null comparison, normal coefficient uncertainty,
 population predictions, source/sample audits and failure/state cases. Existing
 GLS and cluster behavior must remain unchanged. Robust ML, conditional effects,
 Hausman and bootstrap stay separate required work.
+
+Current WIP milestone ([draft PR293](https://github.com/SaehwanPark/tabdat-explore-rs/pull/293)):
+the **interior-only statistics kernel** passes336 independent R/nlme/joint-Hessian
+comparisons, including a re-estimated intercept-only null and slope LR.
+Analytic joint information is independently checked with base-R `optimHess`.
+The bounded profile search scans eta in[0,24] at0.5 spacing, polishes detected
+score crossings, and rejects an unresolved upper tail or a zero-component full
+optimum. It does not prove global optimality for arbitrary designs. Ordinary
+slope LR p-values are withheld when the restricted null has boundary unit
+variance. Runtime execution, full boundary support, output/prediction plumbing
+and final workflow/reference verification remain **unfinished**.
+
+A manual original-source probe additionally checks native point estimates,
+coefficient SE, both likelihoods/LR and variances on all5,320 original rows,
+with source row/person/year audit and absolute1e-9 checks. Reproduce after the
+source hash check documented above:
+
+```sh
+Rscript "$root/examples/mma21p1panel/random_effects_ml_probe.R" "$work/MOM.dat"
+# Optional second argument float32 audits historical source storage separately.
+(cd "$root" && TABDAT_REML_SOURCE="$work/MOM.dat" cargo test --locked -p tabdat-stats --test random_effects_ml_original_source -- --ignored --nocapture)
+```
+
+The stationary float64 native/R fit has slope0.1195474024,
+full joint observed-information SE0.0137485749, LL−266.9114970638,
+null LL−304.9798136110 and slope LR76.1366330945. The R/nlme default
+conditional coefficient SE differs (about0.0136506997); it is not the native
+joint-information convention. Under float32 ingestion, point estimates and
+likelihood reproduce the author precision, but several printed Stata8 SEs differ
+slightly from exact stationary joint information; that discrepancy remains
+unresolved and is not hidden with widened tolerances. This WIP is not a
+validated published uncertainty column or an installed ML workflow.

@@ -70,7 +70,7 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       checked += 1;
     }
   }
-  assert_eq!(checked, 321);
+  assert_eq!(checked, 336);
 }
 
 #[test]

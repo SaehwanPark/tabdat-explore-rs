@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+// Indexed matrix expressions follow the observed-information formulas directly.
+#![allow(clippy::needless_range_loop)]
 
 use crate::{
   EstimationProblem, LeastSquaresResult, StatsError, fit_fixed_effects, fit_least_squares,
@@ -17,6 +19,12 @@ pub struct RandomEffectsMlInterior {
   pub sigma_u_squared: f64,
   pub eta: f64,
   pub log_likelihood: f64,
+  pub null_log_likelihood: f64,
+  pub null_sigma_e_squared: f64,
+  pub null_sigma_u_squared: f64,
+  pub likelihood_ratio: f64,
+  /// Ordinary slope LR reference is withheld if the null unit variance is on its boundary.
+  pub likelihood_ratio_p_value: Option<f64>,
   pub profile_score: f64,
   pub group_count: usize,
   pub group_size: usize,
@@ -185,6 +193,51 @@ pub fn fit_random_effects_ml_interior(
     return Err(failed("ML profile did not reach a stationary point"));
   }
   let n = problem.response.len();
+  let anchor = problem.response[0];
+  let grand_y = anchor + problem.response.iter().map(|y| y - anchor).sum::<f64>() / n as f64;
+  let null_sw = problem
+    .response
+    .iter()
+    .zip(&ym)
+    .map(|(y, m)| (y - m).powi(2))
+    .sum::<f64>();
+  let null_sb = within
+    .effects
+    .iter()
+    .map(|e| t as f64 * (e.response_mean - grand_y).powi(2))
+    .sum::<f64>();
+  let null_within_variance = null_sw / (n - g) as f64;
+  let null_mean_variance = null_sb / g as f64;
+  let null_boundary = null_mean_variance <= null_within_variance;
+  let (null_a, null_u, null_ll) = if null_boundary {
+    let a = (null_sw + null_sb) / n as f64;
+    (a, 0.0, -0.5 * n as f64 * ((2.0 * PI).ln() + 1.0 + a.ln()))
+  } else {
+    let a = null_within_variance;
+    let v = null_mean_variance;
+    (
+      a,
+      (v - a) / t as f64,
+      -0.5
+        * ((n - g) as f64 * ((2.0 * PI).ln() + 1.0 + a.ln())
+          + g as f64 * ((2.0 * PI).ln() + 1.0 + v.ln())),
+    )
+  };
+  let lr = 2.0 * (r.ll - null_ll);
+  if !null_ll.is_finite()
+    || !null_a.is_finite()
+    || null_a <= 0.0
+    || !null_u.is_finite()
+    || !lr.is_finite()
+    || lr < -1e-8
+  {
+    return Err(failed(
+      "ML restricted null is degenerate or exceeds the full likelihood",
+    ));
+  }
+  let likelihood_ratio = lr.max(0.0);
+  let likelihood_ratio_p_value =
+    (!null_boundary).then(|| crate::distributions::chi_square_tail(likelihood_ratio, p));
   let mut information = vec![vec![0.0; k + 2]; k + 2];
   for i in 0..n {
     let mut xw = vec![0.0];
@@ -272,6 +325,11 @@ pub fn fit_random_effects_ml_interior(
     sigma_u_squared: (r.v - r.a) / t as f64,
     eta: best_eta,
     log_likelihood: r.ll,
+    null_log_likelihood: null_ll,
+    null_sigma_e_squared: null_a,
+    null_sigma_u_squared: null_u,
+    likelihood_ratio,
+    likelihood_ratio_p_value,
     profile_score: r.score,
     group_count: g,
     group_size: t,

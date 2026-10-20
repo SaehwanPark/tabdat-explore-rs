@@ -43,6 +43,19 @@ for(case in c('balanced','interleaved','shifted')) {
   V <- solve(H)
   trusted <- lme(y~x+z,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
   stopifnot(max(abs(fixef(trusted)-r$beta))<1e-6,abs(as.numeric(logLik(trusted))-r$ll)<1e-8)
+  grand <- mean(y)
+  nullsw <- sum((y-ym)^2); nullsb <- sum((ym-grand)^2)
+  nulla <- nullsw/(N-G); nullv <- nullsb/G
+  stopifnot(nullv>nulla)
+  nullll <- -.5*((N-G)*(log(2*pi)+1+log(nulla))+G*(log(2*pi)+1+log(nullv)))
+  trustednull <- lme(y~1,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
+  stopifnot(abs(as.numeric(logLik(trustednull))-nullll)<1e-8)
+  lr <- 2*(r$ll-nullll)
+  emit(case,'/null_log_likelihood',nullll)
+  emit(case,'/null_sigma_e_squared',nulla)
+  emit(case,'/null_sigma_u_squared',(nullv-nulla)/T)
+  emit(case,'/likelihood_ratio',lr)
+  emit(case,'/likelihood_ratio_p_value',pchisq(lr,K-1,lower.tail=FALSE))
   for(i in 1:K) {
     se <- sqrt(V[i,i]); z <- r$beta[i]/se
     fields <- c(value=r$beta[i],standard_error=se,statistic=z,p_value=2*pnorm(-abs(z)))
