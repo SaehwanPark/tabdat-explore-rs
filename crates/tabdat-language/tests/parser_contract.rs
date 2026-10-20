@@ -509,6 +509,8 @@ fn xtreg_parses_bounded_panel_estimator_forms() {
         estimator: XtRegEstimator::FixedEffects,
         robust: false,
         cluster_variable: None,
+        id_variable: None,
+        time_variable: None,
       },
     }
   );
@@ -521,6 +523,8 @@ fn xtreg_parses_bounded_panel_estimator_forms() {
         estimator: XtRegEstimator::RandomEffects,
         robust: false,
         cluster_variable: None,
+        id_variable: None,
+        time_variable: None,
       },
     }
   );
@@ -533,6 +537,8 @@ fn xtreg_parses_bounded_panel_estimator_forms() {
         estimator: XtRegEstimator::RandomEffects,
         robust: true,
         cluster_variable: None,
+        id_variable: None,
+        time_variable: None,
       },
     }
   );
@@ -545,6 +551,8 @@ fn xtreg_parses_bounded_panel_estimator_forms() {
         estimator: XtRegEstimator::FixedEffects,
         robust: false,
         cluster_variable: Some("firm_id".to_owned()),
+        id_variable: None,
+        time_variable: None,
       },
     }
   );

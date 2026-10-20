@@ -1,10 +1,13 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | residuals | pr | n]`
+`predict newvar [, xb | xbu | u | residuals | pr | n]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Supported regress/2SLS: xb (default) or residuals (outcome minus xb).
+- Within FE: xb (normalized common intercept + current X beta), xbu (retained
+  unit intercept + current X beta), u (normalized unit deviation), or residuals
+  (current outcome minus xbu). **Use xbu for conditional fitted levels.**
 - Logit: pr (probability) or xb (log odds).
 - Probit: pr (Gaussian probability) or xb (latent index).
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
@@ -31,14 +34,21 @@ Count example:
 Data and model notes:
 - No refitting or estimation-sample filtering: excluded rows can receive
   predictions if their current predictors are available. Outcome values do not
-  matter except for linear residuals. Weight/cluster columns are not needed.
+  matter except for linear residuals. Weight/cluster columns are not needed,
+  except the fitted unit identifier for FE conditional predictions.
 - xb requires the original predictor names. Renaming/dropping a required column
   does not rewrite the model: restore it or deliberately refit. Retained-X
   `estat margins` remains separate from these current-row predictions.
 - A clustered Poisson/NB2 prediction still needs mean predictors only, not the
   outcome or current cluster ID. Original groups/covariance remain retained for
   `estat margins`; clustered fitting does not add prediction intervals.
-- Linear fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
+- Within-FE xbu/u/residuals require the original ID name and exact logical type,
+  but no current time column. Missing/nonfinite/unestimated IDs yield NULL, not
+  zero effects; u needs no current predictors/outcome. xb needs no ID. Effects
+  and centers come from the joint estimation sample and never change with current
+  rows. Unsupported options, missing columns or ID type mismatch fail atomically.
+  FE missing/nonfinite required values and overflowing calculations yield NULL.
+- OLS/2SLS fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
   nonfinite or unrepresentable indices yield NULL. Stable binary links avoid
   exponential overflow. Poisson/NB2 overflowing means yield NULL; finite negative
   exponential underflow is zero. Neither changes row order or the fit.

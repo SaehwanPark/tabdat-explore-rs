@@ -433,6 +433,10 @@ pub enum RuntimeError {
   RegressRequiresPositiveSigma,
   /// The regress estimation failed.
   RegressFailed { message: String },
+  /// Invalid one-way within specification, panel keys or numerical fit.
+  FixedEffectsFailed { message: String },
+  /// Unsupported/current-data prediction after within FE, without changing fit.
+  FixedEffectsPredictionFailed { message: String },
   /// Invalid/unsupported binary logit specification or a failed finite-MLE fit.
   LogitFailed { message: String },
   /// Continuous logit marginal effects require an owned preceding logit fit.
@@ -1076,6 +1080,8 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::FixedEffectsFailed { message } => write!(formatter, "xtreg fe failed: {message}"),
+      Self::FixedEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg fe failed: {message}"),
       Self::LogitFailed { message } => write!(formatter, "logit: {message}"),
       Self::EstatMarginsRequiresPriorLogit => {
         formatter.write_str("estat margins requires a prior logit fit")

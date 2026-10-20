@@ -14,6 +14,7 @@ use tabdat_language::script::{
 };
 mod binary;
 mod estimates;
+mod fixed_effects;
 mod row_conversion;
 use row_conversion::*;
 mod count;
@@ -136,6 +137,9 @@ impl Session {
         self.execute_regress_query(&command, &condition)
       }
       Command::IvRegress { command } => self.execute_ivregress(&command),
+      Command::XtReg { command } if command.estimator == XtRegEstimator::FixedEffects => {
+        self.execute_fixed_effects(&command)
+      }
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
@@ -150,6 +154,13 @@ impl Session {
   }
   fn linear_state(&self) -> Option<&LinearRegressionState> {
     self.estimation.as_ref().and_then(EstimationState::linear)
+  }
+  fn linear_inference_result(&self) -> Option<&tabdat_stats::LeastSquaresResult> {
+    if let Some(EstimationState::FixedEffects(state)) = &self.estimation {
+      Some(&state.result.within)
+    } else {
+      self.linear_state().map(|state| &state.result)
+    }
   }
   /// Read an owned domain snapshot without initializing a backend.
   /// Panel/operation/materialization tracking are not executed by this slice.

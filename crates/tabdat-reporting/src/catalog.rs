@@ -1368,6 +1368,8 @@ fn get_command_schema(
           name: "xb".to_string(),
           required: false,
         },
+        OptionDescriptor { name: "xbu".to_string(), required: false },
+        OptionDescriptor { name: "u".to_string(), required: false },
         OptionDescriptor {
           name: "residuals".to_string(),
           required: false,
@@ -1381,7 +1383,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "predict newvar [, xb | residuals | pr | n]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | n]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -1982,12 +1984,14 @@ fn get_command_schema(
         },
         ArgumentDescriptor {
           name: "indepvars".to_string(),
-          required: false,
+          required: true,
         },
       ],
       help_topic,
       name: "xtreg".to_string(),
       options: vec![
+        OptionDescriptor { name: "id".to_string(), required: false },
+        OptionDescriptor { name: "time".to_string(), required: false },
         OptionDescriptor {
           name: "fe".to_string(),
           required: false,
@@ -2005,7 +2009,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "xtreg y x [, fe re]".to_string(),
+      syntax: "xtreg y xvars, fe id(unit) time(year) [robust | cluster(unit)]".to_string(),
     }),
     "zinb" => Ok(CommandSchemaResult {
       arguments: vec![

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::{
-  BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, LogitEstimate, Nb2Cluster, Nb2Dispersion,
-  Nb2Estimate, Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate,
+  BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate, Nb2Cluster,
+  Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate,
   PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
 
@@ -776,6 +776,8 @@ pub enum ExecutionResult {
   Reshape(ReshapeResult),
   /// The result of executing a linear regression command.
   Regression(Box<RegressionResult>),
+  /// One-way within FE with unit centers and slope-only covariance/inference.
+  FixedEffects(Box<crate::FixedEffectsState>),
   /// Converged model-based binary logit maximum likelihood fit.
   Logit(Box<tabdat_stats::BinaryLogitResult>),
   /// Conditional-on-retained-X continuous average partial effects and delta inference.

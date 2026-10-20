@@ -159,6 +159,12 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
   for (name, syntax, arguments, options) in [
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
+      "xtreg",
+      "xtreg y xvars, fe id(unit) time(year) [robust | cluster(unit)]",
+      serde_json::json!([{"name":"depvar","required":true},{"name":"indepvars","required":true}]),
+      vec!["id", "time", "fe", "re", "robust", "cluster"],
+    ),
+    (
       "summarize",
       "summarize [varlist] [if expr] [, detail]",
       serde_json::json!([{"name": "variables", "required": false}]),
@@ -439,12 +445,14 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | residuals | pr | n]"
+    "predict newvar [, xb | xbu | u | residuals | pr | n]"
   );
   assert_eq!(
     envelope["data"]["options"],
     serde_json::json!([
       {"name": "xb", "required": false},
+      {"name": "xbu", "required": false},
+      {"name": "u", "required": false},
       {"name": "residuals", "required": false},
       {"name": "pr", "required": false},
       {"name": "n", "required": false}

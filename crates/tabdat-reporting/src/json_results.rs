@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -65,6 +65,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     Command::IvRegress { command } => {
       command.estimator == tabdat_domain::IvEstimator::TwoStageLeastSquares
     }
+    Command::XtReg { command } => command.estimator == tabdat_domain::XtRegEstimator::FixedEffects,
     Command::Status
     | Command::RegressQuery { .. }
     | Command::CountQuery { .. }
@@ -558,6 +559,9 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       (data, "NbregMarginalEffectsResult")
     }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
+    ExecutionResult::FixedEffects(result) => {
+      (fixed_effects_result_data(result), "FixedEffectsResult")
+    }
     ExecutionResult::Ttest(result) => (ttest_result_data(result), "TtestResult"),
     ExecutionResult::Prediction(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
@@ -647,6 +651,51 @@ fn ttest_result_data(result: &TtestResult) -> Value {
     "t_statistic": Number::from_f64(result.t_statistic), "degrees_of_freedom": Number::from_f64(result.degrees_of_freedom),
     "p_left": Number::from_f64(result.p_left), "p_two": Number::from_f64(result.p_two), "p_right": Number::from_f64(result.p_right),
   })
+}
+
+fn fixed_effects_result_data(state: &tabdat_domain::FixedEffectsState) -> Value {
+  let result = &state.result;
+  let fit = &result.within;
+  let stats = &fit.fit_statistics;
+  let n = stats.observation_count;
+  let g = result.effects.len();
+  let p = fit.parameter_names.len();
+  let clustered = matches!(
+    fit.covariance.covariance_type,
+    tabdat_domain::CovarianceType::Cluster(_)
+  );
+  let inference_df = if clustered {
+    g.saturating_sub(1)
+  } else {
+    stats.degrees_of_freedom
+  };
+  let covariance = if clustered {
+    format!("cluster({})", result.entity_variable)
+  } else {
+    "nonrobust".into()
+  };
+  let mut data = json!({
+    "estimator":"within_fixed_effects","outcome":result.outcome,"predictors":fit.parameter_names,
+    "entity_variable":result.entity_variable,"time_variable":state.time_variable,"entity_data_type":state.entity_data_type,
+    "observation_count":n,"group_count":g,"slope_count":p,"absorbed_intercepts":g,
+    "df_residual":stats.degrees_of_freedom,"inference_df":inference_df,"reference_distribution":"student_t",
+    "covariance":covariance,"covariance_matrix":fit.covariance.matrix,"covariance_parameter_names":fit.parameter_names,
+    "within_r_squared":stats.r_squared.and_then(Number::from_f64),"conditional_r_squared":result.conditional_r_squared.and_then(Number::from_f64),
+    "root_mse":stats.root_mse.and_then(Number::from_f64),"residual_sum_of_squares":stats.residual_sum_of_squares.and_then(Number::from_f64),
+    "within_total_sum_of_squares":stats.total_sum_of_squares.and_then(Number::from_f64),
+    "minimum_group_size":result.minimum_group_size,"maximum_group_size":result.maximum_group_size,"singleton_groups":result.singleton_groups,
+    "common_intercept":Number::from_f64(result.common_intercept),"common_intercept_inference":"normalization_point_only",
+    "unit_effect_normalization":"estimation_observation_weighted_zero_mean",
+    "sample":fit.sample.as_ref().map(|sample|json!({"total_observations":sample.total_observations,"dropped_observations":sample.dropped_observations})),
+    "coefficients":fit.coefficients.iter().map(|c|json!({"name":c.name,"value":Number::from_f64(c.value),
+      "standard_error":c.standard_error.and_then(Number::from_f64),"statistic":c.statistic.and_then(Number::from_f64),"p_value":c.p_value.and_then(Number::from_f64)})).collect::<Vec<_>>()
+  });
+  if clustered {
+    data["cluster"] = json!({"variable":result.entity_variable,"group_count":g,
+      "finite_sample_multiplier":Number::from_f64(g as f64/g.saturating_sub(1) as f64*(n-1) as f64/(n-p) as f64),
+      "correction_convention":"plm_arellano_sss_nested_unit_effects","independence_assumption":"across_units"});
+  }
+  data
 }
 
 fn regression_result_data(result: &RegressionResult) -> Value {

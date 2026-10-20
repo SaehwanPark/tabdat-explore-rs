@@ -295,3 +295,119 @@ fn invalid_panel_keys_stop_before_fits_or_exports_and_existing_exports_are_not_r
   assert_eq!(fs::read_to_string(target).unwrap(), "do not replace\n");
   assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), csv);
 }
+
+#[test]
+fn within_script_reports_absorbed_and_inference_df_and_exports_conditional_predictions() {
+  let (csv, source) = panel_fixture();
+  let json_dir = TestDir::new();
+  let text_dir = TestDir::new();
+  for dir in [&json_dir, &text_dir] {
+    fs::write(dir.path().join("MOM.csv"), &csv).unwrap();
+  }
+  let out = run(&json_dir, "within.td", true);
+  assert!(out.status.success(), "{out:?}");
+  assert!(out.stderr.is_empty());
+  let events: Vec<Value> = String::from_utf8(out.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert!(
+    events
+      .iter()
+      .all(|event| event["schema_version"] == 1 && event.get("error").is_none())
+  );
+  let fits: Vec<_> = events
+    .iter()
+    .filter(|e| e["result_type"] == "FixedEffectsResult")
+    .map(|e| &e["data"])
+    .collect();
+  assert_eq!(fits.len(), 2);
+  for (fit, covariance, inference_df) in [(fits[0], "nonrobust", 15), (fits[1], "cluster(id)", 5)] {
+    assert_eq!(fit["estimator"], "within_fixed_effects");
+    assert_eq!(fit["covariance"], covariance);
+    assert_eq!(fit["observation_count"], 22);
+    assert_eq!(fit["group_count"], 6);
+    assert_eq!(fit["slope_count"], 1);
+    assert_eq!(fit["absorbed_intercepts"], 6);
+    assert_eq!(fit["df_residual"], 15);
+    assert_eq!(fit["inference_df"], inference_df);
+    assert_eq!(
+      fit["sample"],
+      serde_json::json!({"total_observations":23,"dropped_observations":1})
+    );
+    assert_eq!(
+      fit["covariance_parameter_names"],
+      serde_json::json!(["lnwg"])
+    );
+    assert_eq!(fit["coefficients"].as_array().unwrap().len(), 1);
+    assert_eq!(
+      fit["common_intercept_inference"],
+      "normalization_point_only"
+    );
+    assert!(fit.get("log_likelihood").is_none());
+  }
+  for kind in ["TestResult", "LincomResult"] {
+    let inference: Vec<_> = events.iter().filter(|e| e["result_type"] == kind).collect();
+    assert_eq!(inference.len(), 2);
+    assert_eq!(inference[0]["data"]["df_residual"], 15);
+    assert_eq!(inference[1]["data"]["df_residual"], 5);
+  }
+  let out = run(&text_dir, "within.td", false);
+  assert!(out.status.success(), "{out:?}");
+  let text = String::from_utf8(out.stdout).unwrap();
+  assert!(text.contains("Within fixed-effects regression"));
+  assert!(text.contains("residual DF (N-G-p) = 15"));
+  assert!(text.contains("normalization point only"));
+  let filename = "panel_within_fe_predictions.csv";
+  let exported = fs::read_to_string(json_dir.path().join(filename)).unwrap();
+  assert_eq!(
+    exported,
+    fs::read_to_string(text_dir.path().join(filename)).unwrap()
+  );
+  let beta = fits[0]["coefficients"][0]["value"].as_f64().unwrap();
+  let c = fits[0]["common_intercept"].as_f64().unwrap();
+  assert_eq!(
+    fits[0]["coefficients"][0]["value"],
+    fits[1]["coefficients"][0]["value"]
+  );
+  let data = numeric_csv(&exported);
+  assert_eq!(data.len(), source.len());
+  for (position, row) in data.iter().enumerate() {
+    let original = &source[position];
+    assert_eq!(row["source_row"], Some(original.source as f64));
+    assert_eq!(row["id"], Some(f64::from(original.id)));
+    assert_eq!(row["year"], Some(f64::from(original.year)));
+    let group: Vec<_> = source
+      .iter()
+      .filter(|r| r.id == original.id && r.y.is_some())
+      .collect();
+    let xmean = group.iter().map(|r| r.x).sum::<f64>() / group.len() as f64;
+    let ymean = group.iter().map(|r| r.y.unwrap()).sum::<f64>() / group.len() as f64;
+    let alpha = ymean - xmean * beta;
+    let mu = alpha + original.x * beta;
+    for prefix in ["fe_classical", "fe_cluster"] {
+      assert!(
+        (row[format!("{prefix}_xb").as_str()].unwrap() - (c + original.x * beta)).abs() < 1e-12
+      );
+      assert!((row[format!("{prefix}_xbu").as_str()].unwrap() - mu).abs() < 1e-12);
+      assert!((row[format!("{prefix}_u").as_str()].unwrap() - (alpha - c)).abs() < 1e-12);
+      let residual = row[format!("{prefix}_residual").as_str()];
+      if let Some(y) = original.y {
+        assert!((residual.unwrap() - (y - mu)).abs() < 1e-12);
+      } else {
+        assert_eq!(residual, None);
+      }
+    }
+  }
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join("MOM.csv")).unwrap(),
+    csv
+  );
+  let out = run(&json_dir, "within.td", true);
+  assert!(!out.status.success());
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join(filename)).unwrap(),
+    exported
+  );
+}

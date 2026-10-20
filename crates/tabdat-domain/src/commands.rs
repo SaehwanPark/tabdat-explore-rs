@@ -910,8 +910,12 @@ pub struct BayesCommand {
 pub enum PredictKind {
   /// Linear prediction (fitted values $X\hat{\beta}$).
   Xb,
-  /// Residuals ($y - X\hat{\beta}$).
+  /// Residuals ($y - X\hat{\beta}$), including unit intercepts after within FE.
   Residuals,
+  /// Conditional FE response including the retained unit intercept (`xbu`).
+  FixedEffectsResponse,
+  /// Retained normalized unit deviation (`u`) after within FE.
+  FixedEffect,
   /// Predicted probabilities for binary choice models.
   Pr,
   /// Conditional mean exp(xb), requested by `n` after Poisson or NB2.
@@ -973,7 +977,7 @@ pub struct IvRegressCommand {
   pub estimator: IvEstimator,
 }
 
-/// The estimator forms accepted by the parser-only `xtreg` command.
+/// Estimator forms accepted by `xtreg`; random effects remain uninstalled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum XtRegEstimator {
@@ -983,8 +987,7 @@ pub enum XtRegEstimator {
   RandomEffects,
 }
 
-/// The parser-only `xtreg` form retained for a later panel/statistical runtime
-/// slice.
+/// One-way within FE uses explicit id/time options; bare/RE forms remain deferred.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtRegCommand {
   /// The dependent variable.
@@ -993,10 +996,14 @@ pub struct XtRegCommand {
   pub predictors: Vec<String>,
   /// The requested fixed- or random-effects estimator.
   pub estimator: XtRegEstimator,
-  /// Request robust covariance in the eventual runtime.
+  /// Request unit clustering for within FE (not independent-row HC1).
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
+  /// Within FE currently permits only clustering on its entity variable.
   pub cluster_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub time_variable: Option<String>,
 }
 
 /// The parser-only `xtabond` dynamic-panel estimator form retained for a later

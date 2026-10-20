@@ -1,18 +1,20 @@
-# MMA chapter 21: pooled and first-difference hours/wages analyses
+# MMA chapter 21: pooled, first-difference and within-FE hours/wages analyses
 
 **Partial empirical coverage.** Cameron–Trivedi (2005), §21.3 pp.709–714,
-Table21.2 p.710: POLS and first-difference portions of the March2005 author
+Table21.2 p.710: POLS/first-difference and Within slope/conditional-prediction
+portions of the March2005 author
 [`mma21p1panfeandre.do`](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do)
 and [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt).
 The header's “Table21.1” is inconsistent with the explicit Table21.2 labels in
 the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 
-These are **composed native SQL/OLS workflows**, not new `panel`, `xtdata` or
-`xtreg` execution. Each script loads, guards keys, fits three covariance choices,
-tests the wage slope, computes its 95% interval, compares immutable named reports,
-summarizes fitted/residual values and exports usable data. Existing CLI-v1 result
-types and inference metadata are unchanged; the fitted estimator reports `ols`.
+POLS/FD are **composed native SQL/OLS workflows**. `within.td` executes bounded
+native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage
+slope, compute its 95% interval, summarize predictions/residuals and export usable
+data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
+FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
+not `ols`. Persistent `panel`/`xtdata`, RE and whole-table coverage remain absent.
 
 ## Data and exact samples
 
@@ -38,7 +40,11 @@ an existing file. Output parent directories must exist. CSV inference can store
   Exactly4,788 annual pairs/532 people, ordered by id/year. The estimated FD
   constant is retained as in the author program; it is not the level intercept.
   Exports include current/previous source rows and years for sample audit.
-- Both scripts reject duplicate/missing person-year keys before fitting and check
+- **Within FE:** unweighted `lnhr ~ lnwg` with 532 absorbed person intercepts,
+  all5,320 rows, no year effects or additional covariates. Unit centers are
+  computed only after jointly finite outcome/predictor selection; singleton
+  units are retained and counted on modified input. FE is not FD at T>2.
+- All scripts reject duplicate/missing person-year keys before fitting and check
   nonempty numeric integer IDs1–532/years1979–1988 without altering source data.
   Unsorted/interleaved rows work; gaps are not bridged and no lag crosses people.
   Missing model values propagate through differences before finite-case fitting;
@@ -46,7 +52,7 @@ an existing file. Output parent directories must exist. CSV inference can store
   `RegressionResult.sample` distinguishes relation rows from dropped model cases.
   No panel declaration is retained and no general calendar/lag DSL is claimed.
 
-## Inference and interpretation
+## POLS/FD inference and interpretation
 
 K=2 includes the intercept. Classical covariance is `(RSS/(N-K)) (X'X)^-1`;
 HC1 is `N/(N-K)` times the independent-row score sandwich. Person clustering uses
@@ -78,6 +84,56 @@ working likelihood uses RSS/N, not a true panel likelihood; do not compare a
 level-response likelihood with a differenced-response likelihood as an LR test.
 Named reports are separate within each cohort, not restorable model caches.
 
+## Within FE: inference, retained effects and predictions
+
+`xtreg lnhr lnwg, fe id(id) time(year)` absorbs G person intercepts but reports
+only p=1 slope. Classical covariance uses RSS/(N-G-p), residual/inference
+**DF4787**. `cluster(id)` or its FE-specific alias `robust` uses grouped within
+scores, correction **G/(G-1)*(N-1)/(N-p)** (R plm Arellano `sss`, nested-unit
+convention), and slope/test t/F **DF531**. This is deliberately not OLS HC1 or an
+N-G-p cluster correction. Other cluster variables are unsupported. Finite-DF
+robust calibration and independence across people remain assumptions, not a
+few-cluster guarantee. General native FE allows numeric/text/boolean unit IDs,
+exact integer/decimal time keys and gapped/unbalanced/interleaved input; all raw
+keys are audited before model-case deletion. Use integer/DECIMAL types for wide
+IDs: DOUBLE cannot recover precision lost before fitting.
+
+| Native float64 Within result | Value |
+| --- | ---: |
+| Wage slope | 0.1676754886 |
+| Classical SE | 0.0188700064 |
+| Unit-cluster SE | 0.0849626112 |
+| Cluster p (DF531) | 0.0489542761 |
+| Common-intercept normalization point | 7.2198919797 |
+| Within R² | 0.0162265699 |
+
+The common intercept c=mean(y)-mean(X)beta is a **point normalization**, not an
+additional inferred coefficient. Retained normalized deviations u have
+estimation-observation-weighted mean zero; total unit intercepts are c+u. There
+is no nuisance-intercept SE/test, sigma-u/rho inference or likelihood. Conditional
+level-fit R² includes fitted unit effects and is **not** Stata overall/between
+R². `lincom`/`test` constrain retained slopes only; residual summaries are not
+Hausman, serial-correlation or specification tests. FE removes additive
+unit-constant effects, not all endogeneity; strict-exogeneity/identification
+assumptions still matter.
+
+Predictions use **current rows, retained coefficients and estimation-sample
+centers**, without refitting:
+
+- `xb` (also bare predict): c+current X beta, **not conditional fitted levels**.
+- `xbu`: retained total unit intercept+current X beta; use for fitted levels.
+- `u`: retained normalized unit deviation, independent of current y/X.
+- `residuals`: current y minus xbu.
+
+Conditional modes require the original ID name/type, but not time. Missing,
+nonfinite or unestimated IDs produce NULL, never a zero effect. An entirely
+excluded unit has no retained effect. Missing/nonfinite required values and
+unrepresentable calculations produce NULL. xb needs no ID. Changing current
+rows/order does not change the retained effects/covariance. Missing columns,
+ID type mismatch, unsupported modes/intervals or existing targets fail without
+publishing a column or changing fit/data. A failed runtime FE fit clears stale
+estimation; syntax errors preserve it. No named FE report snapshots are supplied.
+
 ## Reproduce
 
 From the repository root, using pinned Rust/Cargo1.99.1:
@@ -95,6 +151,9 @@ sh "$root/examples/mma21p1panel/prepare.sh" MOM.dat MOM.csv
 # Development-only reference; installed TabDat requires neither R nor Python.
 Rscript "$root/examples/mma21p1panel/reference.R" "$work/MOM.dat" "$work/reference"
 python3 "$root/examples/mma21p1panel/check_reference.py" "$work" "$work/reference" "$work/MOM.dat"
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/within.td" > within.jsonl
+Rscript "$root/examples/mma21p1panel/within_reference.R" "$work/MOM.dat" "$work/within_reference"
+python3 "$root/examples/mma21p1panel/check_within_reference.py" "$work" "$work/within_reference" "$work/MOM.dat"
 ```
 
 Use a **fresh** directory for reruns: exports intentionally refuse existing
@@ -133,7 +192,28 @@ stopping, input preservation, refused exports and converter failure cleanup.
 The synthetic fixture protects semantics but is not textbook evidence by itself.
 Verified on macOS arm64; no broader platform claim follows.
 
-**Still required:** within-FE, between, RE-GLS/RE-MLE, Hausman and panel-specific
+For FE, R4.6.1/plm2.6.7, explicit LSDV and independent grouped-score algebra
+validate **64 scalar quantities**, all **5,320 exported rows/90,440 cells** and
+**1,064 recovered unit-intercept comparisons** (532 units under both covariance
+choices). Every original field/key, common/conditional fit, normalized effect,
+residual, slope covariance/SE/tail/test/interval/DF and advertised fit statistic
+is checked. Separate float32 ingestion reproduces **six printed Within facts**
+(slope, classical SE, common-intercept point, sigma-e, within R² and slope F) at
+half a unit of original printed precision. Author bootstrap SEs are not the
+native analytic cluster oracle, and neither bootstrap nor nuisance-intercept
+inference is claimed. The same absolute1e-9/nonzero-tail relative1e-8 tolerances
+apply; native float64 is never rounded to mimic Stata8.
+
+Synthetic numerical fixtures add **843 R/plm/LSDV comparisons** across balanced,
+unbalanced/singleton and interleaved designs, including two slopes/full
+covariance, shifts and post-estimation. Runtime tests cover exact UBIGINT keys,
+joint-case centers, current-vs-retained semantics and failure atomicity. The
+actual within script also runs on the small gapped/incomplete CLI fixture, with
+absorbed/inference DF, all prediction modes, source order, identical text/JSON
+exports and refused overwrites checked. Full-source text/JSON exports were also
+byte-identical. No author data/program/log is bundled by these references.
+
+**Still required:** between, RE-GLS/RE-MLE, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.

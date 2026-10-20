@@ -1,16 +1,74 @@
 # xtreg
 
-How to invoke:
-`xtreg y x1 x2, fe|re [options]`
+Installed bounded syntax:
+`xtreg y xvars, fe id(unit) time(year) [robust | cluster(unit)]`
 
-What it does:
-Fit a fixed-effects or random-effects panel regression.
+Fit an unweighted one-way within fixed-effects linear model, absorbing a separate
+intercept for each unit. At least one numeric slope predictor is required. Unlike
+`regress ..., robust`, **robust here means unit clustering**, not independent-row
+HC1. `cluster()` must name the same variable as `id()`.
 
-What problem it answers:
-How do I analyze repeated observations on the same entity over time?
+Example, after loading numeric y/x with person/year keys:
+- `xtreg y x, fe id(person) time(year) cluster(person)`
+- `lincom x`
+- `test x = 0`
+- `predict fitted, xbu`
+- `predict unit_deviation, u`
+- `predict error, residuals`
+- `summarize fitted unit_deviation error`
+- `export within_predictions.csv`
 
-Examples:
-- `xtreg wage exper tenure, fe`
+Keys and sample:
+- Both explicit key options are required for execution. There is no retained
+  panel declaration: parser-accepted `panel`/`xtdata` do not install one.
+- All raw unit/time keys must be nonmissing/finite, with unique unit-time pairs,
+  even on rows subsequently excluded for missing model values. Time is numeric
+  integer; integer/decimal keys preserve exact wide identity. DOUBLE time must
+  lie within ±(2^53-1). Unit identifiers may be numeric, text or boolean, not BLOB.
+- Only then select jointly finite y/X rows and compute unit centers. Gaps,
+  unbalanced and interleaved input are allowed; no lags are constructed. Source
+  order and data are preserved. Singletons remain in N/G and conditional fits,
+  but add no within information. Insufficient within rank or nonpositive residual
+  DF causes a fit failure.
 
-Links:
-- `docs/microecometrics_topics.md`
+Inference and reporting:
+- N observations, G retained units and p slopes: classical variance uses
+  RSS/(N-G-p), Student-t/F DF N-G-p. Unit clustering uses grouped within scores,
+  multiplier G/(G-1)*(N-1)/(N-p) (plm Arellano sss/nested-unit convention), and
+  Student-t/F inference DF G-1. Clustered fits require at least two units;
+  few-cluster calibration and independence across units remain assumptions.
+- Covariance and `lincom`/`test` contain **slopes only**. The normalized common
+  intercept is a descriptive point: mean(y)-mean(X)beta on the estimation sample.
+  Unit deviations have estimation-observation-weighted mean zero. There is no
+  common/unit-intercept inference or implicit intercept constraint.
+- Report within R² and conditional level-fit R² (not Stata overall/between R²),
+  RSS/root MSE, sample/absorbed DF and group sizes. No panel likelihood, adjusted
+  within R², Hausman or serial-correlation test is supplied. Residual summaries
+  are descriptive. FE removes additive time-invariant unit effects, not all
+  endogeneity; identification/strict-exogeneity assumptions still matter.
+- CLI-v1 `FixedEffectsResult` exposes bounded fit/inference metadata, not stored
+  observation/effect vectors. Use prediction and export for usable values.
+
+Current-data prediction (retained slopes and unit centers, never refitted):
+- `xb` (also bare predict): common normalized intercept + current X beta; no ID
+  needed. This is not the conditional fitted level or an unseen-unit forecast.
+- `xbu`: retained total unit intercept + current X beta.
+- `u`: retained normalized unit deviation; no current y/X/time required.
+- `residuals`: current y minus xbu.
+- Conditional modes require the fitted ID name and exact logical type. Missing,
+  nonfinite or unestimated IDs yield NULL, **not zero effects**. Missing/nonfinite
+  required model cells or unrepresentable calculations also yield NULL. A unit
+  excluded entirely from estimation has no retained effect. Time is not required
+  for prediction. Changing current values/order does not change retained effects.
+- Missing required columns, ID type mismatch, unsupported modes/intervals and
+  existing targets fail without changing data/fit. Restore columns/types or
+  deliberately refit; choose a fresh target. A failed new runtime FE fit clears
+  stale estimation without modifying data; syntax errors preserve the old fit.
+
+Not installed: random/between/two-way effects, weights, factors/interactions,
+if filters, arbitrary cluster variables, FE named report snapshots, persistent
+panel state, bootstrap, panel-specific diagnostics or prediction intervals.
+Legacy bare `xtreg ..., fe` remains parseable but needs explicit keys to execute;
+`re` remains parser-only/unsupported. See examples/mma21p1panel/README.md for the
+independently audited Table21.2 Within slope/conditional-prediction portion, not
+whole-table/chapter coverage.
