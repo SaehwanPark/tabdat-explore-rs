@@ -307,7 +307,7 @@ fn ml_joint_sample_predictions_and_failure_state_preserve_data() {
 }
 
 #[test]
-fn ml_boundary_failure_clears_fit_and_preserves_the_dataset() {
+fn ml_boundary_success_replaces_fit_and_degenerate_failure_preserves_the_dataset() {
   let f = Fixture::new();
   let mut s = f.load();
   fit(&mut s);
@@ -316,13 +316,28 @@ fn ml_boundary_failure_clears_fit_and_preserves_the_dataset() {
     "sql \"\"\"SELECT * EXCLUDE(y), 0.7*x + CASE WHEN year IN (1979,1982) THEN -0.2 ELSE 0.2 END AS y FROM active\"\"\" into boundary_input",
   );
   let data = rows(&mut s, "SELECT * FROM active");
+  let ExecutionResult::RandomEffects(r) = run(&mut s, "xtreg y x, mle id(id) time(year)") else {
+    panic!()
+  };
+  assert!(r.result.ml.as_ref().unwrap().unit_variance_boundary());
+  assert_eq!(r.result.sigma_u_squared, 0.0);
+  assert_eq!(r.result.theta, 0.0);
+  assert_eq!(r.result.rho, 0.0);
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+  run(&mut s, "predict boundary_xb");
+  let b = &r.result.gls.coefficients;
+  for row in rows(&mut s, "SELECT x,boundary_xb FROM active") {
+    assert!(
+      (number(&row[1]).unwrap() - b[0].value - b[1].value * number(&row[0]).unwrap()).abs() < 1e-12
+    );
+  }
+  run(&mut s, "replace y = 0");
+  assert!(s.state().estimation.is_some());
+  let data = rows(&mut s, "SELECT * FROM active");
   let error = s
     .execute(parse_command("xtreg y x, mle id(id) time(year)").unwrap())
     .unwrap_err();
-  assert!(
-    error.to_string().contains("zero-unit-variance optimum"),
-    "{error}"
-  );
+  assert!(error.to_string().contains("degenerate"), "{error}");
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
 }

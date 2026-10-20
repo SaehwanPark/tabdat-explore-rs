@@ -107,12 +107,12 @@ fn unsupported_or_degenerate_interior_requests_fail_without_a_result() {
 }
 
 #[test]
-fn zero_unit_variance_optimum_is_explicitly_unsupported() {
+fn strict_interior_entry_preserves_zero_unit_variance_rejection() {
   let mut p = problem("balanced");
   for i in 0..p.response.len() {
     p.response[i] = 0.7 * p.design_matrix[i][0] + [-0.2, 0.2, 0.2, -0.2][i % 4];
   }
-  let error = tabdat_stats::fit_random_effects_ml(&p, "id").unwrap_err();
+  let error = fit_random_effects_ml_interior(&p, "id").unwrap_err();
   assert!(
     error.to_string().contains("zero-unit-variance optimum"),
     "{error}"

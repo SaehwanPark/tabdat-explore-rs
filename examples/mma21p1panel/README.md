@@ -219,7 +219,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** unbalanced RE-GLS, full ML boundary/robust inference, Hausman and panel-specific
+**Still required:** unbalanced RE-GLS, ML variance-component/robust inference, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
@@ -349,7 +349,7 @@ raw-key/unbalanced/sample failures, atomic errors and export/source preservation
 Full-source text/JSON exports are also byte-identical.
 
 Still required: unbalanced RE, unit effects/conditional
-predictions, full ML boundary/robust inference, Hausman and other panel diagnostics, bootstrap and remaining
+predictions, ML variance-component/robust inference, Hausman and other panel diagnostics, bootstrap and remaining
 table/figure outputs. This bounded classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
 
@@ -399,7 +399,7 @@ slope covariance. Runtime/CLI tests exercise alias equality, unchanged point fit
 sample/components/predictions, arbitrary-cluster errors/cleared stale fits,
 current prediction preservation, unavailable-Wald text/JSON and normal prediction
 from that retained fit, as well as source/export/error contracts.
-Unbalanced RE, unit effects, ML boundary/robust inference, general restrictions, Hausman, bootstrap and
+Unbalanced RE, unit effects, ML variance-component/robust inference, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
 
 ## Interior RE-ML coefficient/likelihood workflow
@@ -424,15 +424,16 @@ slightly from exact stationary joint information. That historical discrepancy
 remains unresolved; this does not validate the published uncertainty column or
 whole Table21.2. Tolerances are not widened to match it.
 
-The supported fit is **balanced and interior-only**: retained T>=2, G>p+1,
+The original-MOM fit is interior; the supported workflow is **balanced**: retained T>=2, G>p+1,
 full within rank, no weights/time-invariant predictors/robust ML. The profile
 scans eta in[0,24] at0.5 spacing, polishes detected positive-to-negative score
 crossings, and compares their likelihoods with the zero-component boundary.
 This is not proof of a global maximum for arbitrary designs. Unresolved upper
-tails, selected zero-component full optima, nonstationarity and nonpositive
+tails, nonstationarity and nonpositive
 joint information fail explicitly, clearing stale model state without altering
-data. The intercept-only null can be on the boundary; its ordinary slope LR
-p-value is then withheld with a reason. There is no variance-component LR test.
+data. Zero-unit-variance fits use the constrained inference below. If either the
+full or intercept-only null fit is on that boundary, the ordinary slope LR
+p-value is withheld with a reason. There is no variance-component LR test.
 
 Reproduce after preparing MOM.csv and checking the source hash as above:
 
@@ -456,7 +457,7 @@ initialized nlme fit checks that interior solution. Runtime/CLI tests cover join
 sample mapping, current-data predictions, unavailable-mode errors and data/state
 preservation, including zero-component fit failure. No production R/Python is used.
 
-Still required: full ML boundary inference, unbalanced RE, robust ML, conditional
+Still required: ML variance-component inference, unbalanced RE, robust ML, conditional
 unit effects, general restrictions/named reports, Hausman/panel diagnostics,
 bootstrap and the remaining table/figure analyses. A manual core-only original
 probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
@@ -464,3 +465,37 @@ probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
 ```sh
 (cd "$root" && TABDAT_REML_SOURCE="$work/MOM.dat" cargo test --locked -p tabdat-stats --test random_effects_ml_original_source -- --ignored --nocapture)
 ```
+
+### Zero-unit-variance ML extension
+
+The same `mle` workflow now accepts a selected eta=0/sigma_u²=0 profile maximum,
+checking the nonpositive inward score instead of demanding interior stationarity.
+The point fit equals pooled Gaussian ML, with sigma_e²=RSS/N, theta=rho=0.
+This is not an automatic OLS-report fallback: coefficient covariance uses the
+observed information constrained to beta/log(sigma_e²), with normal rather than
+Student-t inference and no RSS/(N-K) correction. There is no regular unit-variance
+SE/test or finite-sample/post-selection/few-unit guarantee. The existing bounded
+profile still does not prove global optimality for arbitrary designs.
+
+CLI-v1 marks `ml.unit_variance_boundary`, uses
+`constrained_observed_information` at the boundary, and gives the matching K+1
+joint parameter names/covariance. Interior fits retain the K+2 representation.
+Ordinary slope LR references are withheld if either full or null variance is on
+the boundary, with full/null/both reasons. The strict interior-only Rust entry
+point and public result-struct fields remain compatible; its boundary rejection
+is preserved. Metadata derives the flag from eta, without adding a required Rust
+construction field. GLS/cluster behavior remains unchanged.
+
+Three small balanced designs validate **372 base-R Gaussian lm ML quantities**:
+coefficients, normal uncertainty/intervals/Wald, complete constrained and beta
+covariance, every fitted/residual value, ML variance and both likelihoods/LR.
+Base-R `optimHess` independently checks constrained information; `nlme` checks
+interior null fits, and base-R intercept-only Gaussian ML checks a boundary null.
+Cases include shifted/interleaved input and full/null/both boundary combinations
+across this extension and the existing interior fixtures. Tolerances stay
+absolute1e-9/nonzero-tail relative1e-8; all447 interior comparisons remain intact.
+Runtime/CLI checks protect successful model replacement, unchanged raw data,
+population prediction/export, explicit constrained JSON/text, identical text/JSON
+CSVs, and genuine degenerate fit failure clearing stale state while preserving data.
+This adds synthetic boundary-method evidence; it does not add a published
+Table21.2 row or resolve the historical Stata8 SE discrepancy.

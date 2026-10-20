@@ -9,8 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-/// Interior balanced Gaussian marginal ML fit.
-/// Joint parameter order is intercept/slopes, log(sigma_e²), log(sigma_e²+T*sigma_u²).
+/// Numerical result of the strict interior-only public entry point.
+/// Interior order is intercept/slopes, log(sigma_e²), log(sigma_e²+T*sigma_u²).
+/// Internal boundary storage omits the final variance parameter; the strict
+/// public entry point never returns that constrained fit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsMlInterior {
   pub regression: LeastSquaresResult,
@@ -23,7 +25,7 @@ pub struct RandomEffectsMlInterior {
   pub null_sigma_e_squared: f64,
   pub null_sigma_u_squared: f64,
   pub likelihood_ratio: f64,
-  /// Ordinary slope LR reference is withheld if the null unit variance is on its boundary.
+  /// Ordinary slope LR reference is withheld if either fitted unit variance is on its boundary.
   pub likelihood_ratio_p_value: Option<f64>,
   pub profile_score: f64,
   pub group_count: usize,
@@ -114,15 +116,10 @@ fn profile(
   })
 }
 
-/// Interior-only ML kernel: equal retained counts T>=2 and full within
-/// rank, with G>K. Search eta=log(1+T*sigma_u²/sigma_e²) on [0,24], bracket
-/// positive-to-negative profile-score crossings on a 0.5 grid and polish by
-/// bisection. Compare every detected local maximum with the zero-component
-/// boundary. A boundary optimum or unresolved upper tail is an explicit error.
-/// This bounded search is not a proof of global optimality for arbitrary designs.
-pub fn fit_random_effects_ml_interior(
+fn fit_kernel(
   problem: &EstimationProblem,
   entity: &str,
+  allow_boundary: bool,
 ) -> Result<RandomEffectsMlInterior, StatsError> {
   let within = fit_fixed_effects(problem, entity, false)?;
   if problem.predictor_names.contains(&problem.intercept_name) {
@@ -186,13 +183,18 @@ pub fn fit_random_effects_ml_interior(
     }
     previous = current;
   }
-  if best_eta == 0.0 {
+  let unit_variance_boundary = best_eta == 0.0;
+  if unit_variance_boundary && !allow_boundary {
     return Err(failed(
       "RE-ML requires an interior positive unit variance; the zero-unit-variance optimum is unsupported",
     ));
   }
   let mut r = profile(problem, &means, &ym, g, best_eta)?;
-  if r.score.abs() > 1e-9 * problem.response.len() as f64 {
+  let score_tolerance = 1e-9 * problem.response.len() as f64;
+  if unit_variance_boundary && r.score > score_tolerance {
+    return Err(failed("ML boundary has a positive inward profile score"));
+  }
+  if !unit_variance_boundary && r.score.abs() > score_tolerance {
     return Err(failed("ML profile did not reach a stationary point"));
   }
   let n = problem.response.len();
@@ -239,8 +241,8 @@ pub fn fit_random_effects_ml_interior(
     ));
   }
   let likelihood_ratio = lr.max(0.0);
-  let likelihood_ratio_p_value =
-    (!null_boundary).then(|| crate::distributions::chi_square_tail(likelihood_ratio, p));
+  let likelihood_ratio_p_value = (!null_boundary && !unit_variance_boundary)
+    .then(|| crate::distributions::chi_square_tail(likelihood_ratio, p));
   let mut information = vec![vec![0.0; k + 2]; k + 2];
   for i in 0..n {
     let mut xw = vec![0.0];
@@ -266,7 +268,22 @@ pub fn fit_random_effects_ml_interior(
     information[k][j] = information[j][k];
     information[k + 1][j] = information[j][k + 1];
   }
-  let scales: Vec<_> = (0..k + 2).map(|j| information[j][j].sqrt()).collect();
+  if unit_variance_boundary {
+    // At u=0, log(v)=log(a). Restrict the Hessian with this equality before
+    // inversion; an unconstrained two-variance inverse is not boundary inference.
+    for j in 0..k {
+      information[j][k] += information[j][k + 1];
+      information[k][j] = information[j][k];
+    }
+    information[k][k] += information[k + 1][k + 1];
+    information.pop();
+    for row in &mut information {
+      row.pop();
+    }
+  }
+  let scales: Vec<_> = (0..information.len())
+    .map(|j| information[j][j].sqrt())
+    .collect();
   if scales.iter().any(|s| !s.is_finite() || *s <= 0.0) {
     return Err(failed("ML observed information has invalid diagonal"));
   }
@@ -344,6 +361,19 @@ pub fn fit_random_effects_ml_interior(
   })
 }
 
+/// Interior-only ML kernel: equal retained counts T>=2 and full within
+/// rank, with G>K. Search eta=log(1+T*sigma_u²/sigma_e²) on [0,24], bracket
+/// positive-to-negative profile-score crossings on a 0.5 grid and polish by
+/// bisection. Compare every detected local maximum with the zero-component
+/// boundary. A boundary optimum or unresolved upper tail is an explicit error.
+/// This bounded search is not a proof of global optimality for arbitrary designs.
+pub fn fit_random_effects_ml_interior(
+  problem: &EstimationProblem,
+  entity: &str,
+) -> Result<RandomEffectsMlInterior, StatsError> {
+  fit_kernel(problem, entity, false)
+}
+
 /// ML-specific inference; joint parameter order is explicit to prevent treating
 /// log variances as variances or using conditional GLS uncertainty for beta.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -362,14 +392,23 @@ pub struct RandomEffectsMlInference {
   pub likelihood_ratio_unavailable_reason: Option<String>,
 }
 
-/// Balanced, unweighted Gaussian marginal ML with strictly positive unit variance.
-/// Full joint observed information supplies beta covariance; no N/(N-K) scale.
+impl RandomEffectsMlInference {
+  /// Exact active-face flag derived from the profiled nonnegative log ratio.
+  pub fn unit_variance_boundary(&self) -> bool {
+    self.eta == 0.0
+  }
+}
+
+/// Balanced, unweighted Gaussian marginal ML, including the zero-unit boundary.
+/// Joint information is constrained to one log variance at the boundary.
+/// Coefficient covariance has no N/(N-K) scale or regular unit-variance inference.
 /// Population predictions reuse the retained intercept/slopes through the RE state.
 pub fn fit_random_effects_ml(
   problem: &EstimationProblem,
   entity: &str,
 ) -> Result<crate::RandomEffectsResult, StatsError> {
-  let r = fit_random_effects_ml_interior(problem, entity)?;
+  let r = fit_kernel(problem, entity, true)?;
+  let unit_variance_boundary = r.eta == 0.0;
   let critical = crate::normal_quantile(0.975);
   let confidence_intervals: Vec<_> = r
     .regression
@@ -395,10 +434,10 @@ pub fn fit_random_effects_ml(
     ));
   }
   let mut joint_parameter_names = r.regression.parameter_names.clone();
-  joint_parameter_names.extend([
-    "log_sigma_e_squared".into(),
-    "log_sigma_e_squared_plus_t_sigma_u_squared".into(),
-  ]);
+  joint_parameter_names.push("log_sigma_e_squared".into());
+  if !unit_variance_boundary {
+    joint_parameter_names.push("log_sigma_e_squared_plus_t_sigma_u_squared".into());
+  }
   let ml = RandomEffectsMlInference {
     joint_parameter_names,
     joint_covariance: r.joint_covariance,
@@ -412,8 +451,14 @@ pub fn fit_random_effects_ml(
     likelihood_ratio_df: problem.predictor_names.len(),
     likelihood_ratio_p_value: r.likelihood_ratio_p_value,
     likelihood_ratio_unavailable_reason: r.likelihood_ratio_p_value.is_none().then(|| {
-      "restricted null unit variance is on the boundary; ordinary chi-square reference withheld"
-        .into()
+      if unit_variance_boundary && r.null_sigma_u_squared == 0.0 {
+        "full-model and restricted-null unit variances are on the boundary; ordinary chi-square reference withheld".into()
+      } else if unit_variance_boundary {
+        "full-model unit variance is on the boundary; ordinary chi-square reference withheld".into()
+      } else {
+        "restricted null unit variance is on the boundary; ordinary chi-square reference withheld"
+          .into()
+      }
     }),
   };
   Ok(crate::RandomEffectsResult {

@@ -76,7 +76,7 @@ single PR or a demand to expose every option immediately.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
 | **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced RE-GLS and interior Gaussian RE-ML portions are also validated; unbalanced RE, ML boundary/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced RE-GLS and interior Gaussian RE-ML portions are also validated; unbalanced RE, ML variance-component/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Explicit quantile, estimation sample, solver/convergence policy, inference and predictions; independently validate coefficients and uncertainty. |
 | **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Current context-only `seed` is not sufficient. |
 
@@ -152,19 +152,20 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance a bounded remaining MMA-PANEL workflow: ML zero-unit-variance
-   boundary behavior/inference, then unbalanced RE or a justified panel
-   comparison. The [Table21.2 workflows](../examples/mma21p1panel/README.md)
-   now include composed POLS/FD/Between and native FE, balanced Swamy–Arora
-   model-based/unit-cluster GLS, and interior Gaussian ML with joint observed
-   information and a re-estimated null/slope LR. The interior ML slice audits
-   46 R/reference quantities/58,520 source/prediction cells and447 synthetic
-   comparisons. Its bounded profile and unsupported full boundary are explicit;
-   a boundary-null LR reference is withheld. A small unresolved difference from
-   old printed Stata8 SEs prevents claiming the published uncertainty column.
-   Unbalanced RE, ML boundary/robust inference, unit effects, Hausman/panel
-   diagnostics, bootstrap and remaining table/figure outputs stay required.
-   Persistent panel declaration and whole-table/family coverage are not claimed.
+1. Advance a bounded unbalanced-RE analysis or justified panel comparison on an
+   exact ledger-defined sample/design/reference. The
+   [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
+   POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
+   and Gaussian ML with joint/constrained observed information and null/slope LR.
+   Interior ML audits46 R quantities/58,520 cells and447 synthetic comparisons;
+   zero-unit-variance ML adds372 base-R Gaussian ML/constrained-information
+   comparisons with explicit boundary metadata. Either fitted boundary withholds
+   ordinary LR references. The bounded profile and lack of regular unit-variance
+   inference remain explicit. A small unresolved difference from old printed
+   Stata8 SEs prevents claiming the published uncertainty column. Unbalanced RE,
+   robust/variance-component ML inference, unit effects, Hausman/panel diagnostics,
+   bootstrap and remaining table/figure outputs stay required. No persistent
+   panel declaration or whole-table/family coverage is claimed.
 
 2. Advance the next bounded MMA-COUNT requirement from its now-resolved
    source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
