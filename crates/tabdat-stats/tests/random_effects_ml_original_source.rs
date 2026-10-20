@@ -9,7 +9,7 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
     .map(|s| s.parse().unwrap())
     .collect();
   assert_eq!(v.len(), 5320 * 8);
-  for (i, row) in v.chunks_exact(8).enumerate() {
+  for (i, row) in v.as_chunks::<8>().0.iter().enumerate() {
     assert!(row.iter().all(|v| v.is_finite()));
     assert_eq!(row[6], (i / 10 + 1) as f64);
     assert_eq!(row[7], (i % 10 + 1979) as f64);
@@ -17,8 +17,8 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
   let p = EstimationProblem::new(
     "lnhr",
     vec!["lnwg".into()],
-    v.chunks_exact(8).map(|r| r[0]).collect(),
-    v.chunks_exact(8).map(|r| vec![r[1]]).collect(),
+    v.as_chunks::<8>().0.iter().map(|r| r[0]).collect(),
+    v.as_chunks::<8>().0.iter().map(|r| vec![r[1]]).collect(),
   )
   .unwrap()
   .with_sample(
@@ -27,7 +27,13 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
       5320,
       0,
       None,
-      Some(v.chunks_exact(8).map(|r| r[6].to_string()).collect()),
+      Some(
+        v.as_chunks::<8>()
+          .0
+          .iter()
+          .map(|r| r[6].to_string())
+          .collect(),
+      ),
     )
     .unwrap(),
   );
@@ -42,7 +48,7 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
     (r.regression.coefficients[1].standard_error.unwrap() - 0.013748574924515727).abs() < 1e-9
   );
   assert!((r.regression.coefficients[0].value - 7.345479144924143).abs() < 1e-9);
-  assert!((r.null_log_likelihood - (-304.97981361104218)).abs() < 1e-9);
+  assert!((r.null_log_likelihood - (-304.979_813_611_042_2)).abs() < 1e-9);
   assert!((r.likelihood_ratio - 76.13663309450647).abs() < 1e-9);
   assert!((r.sigma_e_squared - 0.0542504082187426).abs() < 1e-9);
   assert!((r.sigma_u_squared - 0.026300722026628514).abs() < 1e-9);
