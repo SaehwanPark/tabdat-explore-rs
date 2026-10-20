@@ -15,6 +15,7 @@ use tabdat_language::script::{
 mod binary;
 mod estimates;
 mod fixed_effects;
+mod random_effects;
 mod row_conversion;
 use row_conversion::*;
 mod count;
@@ -139,6 +140,9 @@ impl Session {
       Command::IvRegress { command } => self.execute_ivregress(&command),
       Command::XtReg { command } if command.estimator == XtRegEstimator::FixedEffects => {
         self.execute_fixed_effects(&command)
+      }
+      Command::XtReg { command } if command.id_variable.is_some() => {
+        self.execute_random_effects(&command)
       }
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),

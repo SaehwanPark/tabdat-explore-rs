@@ -375,6 +375,55 @@ fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
   output
 }
 
+fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
+  let r = &state.result;
+  let fit = &r.gls;
+  let mut output = format!(
+    "Balanced one-way random-effects GLS: {}\nSwamy-Arora; entity = {}; time = {}; N = {}; groups = {}; T = {}\nModel-based covariance: transformed RSS/(N-K); normal inference\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    r.outcome.escape_debug(),
+    r.entity_variable.escape_debug(),
+    state.time_variable.escape_debug(),
+    fit.fit_statistics.observation_count,
+    r.group_count,
+    r.group_size,
+    inference_number(r.sigma_e_squared),
+    inference_number(r.sigma_u_squared),
+    inference_number(r.raw_sigma_u_squared),
+    inference_number(r.theta),
+    inference_number(r.rho),
+    r.predictor_names.len(),
+    inference_number(r.wald_statistic),
+    inference_number(r.wald_p_value)
+  );
+  if let Some(s) = &fit.sample {
+    writeln!(
+      output,
+      "Candidate rows = {}; excluded = {}",
+      s.total_observations, s.dropped_observations
+    )
+    .unwrap();
+  }
+  output.push_str(
+    "Parameter\tCoefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+  );
+  for (c, ci) in fit.coefficients.iter().zip(&r.confidence_intervals) {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+      c.name.escape_debug(),
+      inference_number(c.value),
+      optional_inference(c.standard_error),
+      optional_inference(c.statistic),
+      optional_inference(c.p_value),
+      inference_number(ci[0]),
+      inference_number(ci[1])
+    )
+    .unwrap();
+  }
+  output.push_str("Assumes exogenous unit effects and independent units. Predictions are population xb/residuals. No panel likelihood or within/between/overall R-squared.\n");
+  output
+}
+
 fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
   let result = &state.result;
   let fit = &result.within;
@@ -1266,6 +1315,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Regression(result) => regression(result),
     ExecutionResult::FixedEffects(result) => fixed_effects(result),
+    ExecutionResult::RandomEffects(result) => random_effects(result),
     ExecutionResult::Ttest(result) => ttest(result),
     ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),
     ExecutionResult::Lincom(result) => format!(

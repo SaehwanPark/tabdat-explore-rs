@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -65,7 +65,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     Command::IvRegress { command } => {
       command.estimator == tabdat_domain::IvEstimator::TwoStageLeastSquares
     }
-    Command::XtReg { command } => command.estimator == tabdat_domain::XtRegEstimator::FixedEffects,
+    Command::XtReg { .. } => true,
     Command::Status
     | Command::RegressQuery { .. }
     | Command::CountQuery { .. }
@@ -559,6 +559,9 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       (data, "NbregMarginalEffectsResult")
     }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
+    ExecutionResult::RandomEffects(result) => {
+      (random_effects_result_data(result), "RandomEffectsResult")
+    }
     ExecutionResult::FixedEffects(result) => {
       (fixed_effects_result_data(result), "FixedEffectsResult")
     }
@@ -650,6 +653,27 @@ fn ttest_result_data(result: &TtestResult) -> Value {
     "difference_stats": ttest_group_data(&result.difference_stats, difference_count),
     "t_statistic": Number::from_f64(result.t_statistic), "degrees_of_freedom": Number::from_f64(result.degrees_of_freedom),
     "p_left": Number::from_f64(result.p_left), "p_two": Number::from_f64(result.p_two), "p_right": Number::from_f64(result.p_right),
+  })
+}
+
+fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Value {
+  let r = &state.result;
+  let fit = &r.gls;
+  json!({
+    "estimator":"balanced_swamy_arora_random_effects_gls", "outcome":r.outcome,"predictors":r.predictor_names,
+    "entity_variable":r.entity_variable,"time_variable":state.time_variable,"entity_data_type":state.entity_data_type,
+    "observation_count":fit.fit_statistics.observation_count,"group_count":r.group_count,"group_size":r.group_size,
+    "df_residual":fit.fit_statistics.degrees_of_freedom,"reference_distribution":"normal","covariance":"nonrobust",
+    "covariance_convention":"quasi_demeaned_rss_over_n_minus_k",
+    "covariance_matrix":fit.covariance.matrix,"covariance_parameter_names":fit.parameter_names,
+    "sigma_e_squared":r.sigma_e_squared,"sigma_u_squared":r.sigma_u_squared,"raw_sigma_u_squared":r.raw_sigma_u_squared,
+    "variance_component_method":"balanced_swamy_arora", "theta":r.theta,"rho":r.rho,
+    "transformed_root_mse":fit.fit_statistics.root_mse,"transformed_rss":fit.fit_statistics.residual_sum_of_squares,
+    "wald_statistic":r.wald_statistic,"wald_p_value":r.wald_p_value,"wald_df":r.predictor_names.len(),"wald_reference":"chi_square",
+    "sample":fit.sample.as_ref().map(|s|json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations})),
+    "coefficients":fit.coefficients.iter().zip(&r.confidence_intervals).map(|(c,ci)|json!({"name":c.name,"value":c.value,"standard_error":c.standard_error,
+      "statistic":c.statistic,"p_value":c.p_value,"ci_lower":ci[0],
+      "ci_upper":ci[1],"ci_level":95})).collect::<Vec<_>>()
   })
 }
 

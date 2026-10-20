@@ -435,6 +435,10 @@ pub enum RuntimeError {
   RegressFailed { message: String },
   /// Invalid one-way within specification, panel keys or numerical fit.
   FixedEffectsFailed { message: String },
+  /// Invalid bounded random-effects specification, sample or numerical fit.
+  RandomEffectsFailed { message: String },
+  /// Unsupported/current-data random-effects prediction.
+  RandomEffectsPredictionFailed { message: String },
   /// Unsupported/current-data prediction after within FE, without changing fit.
   FixedEffectsPredictionFailed { message: String },
   /// Invalid/unsupported binary logit specification or a failed finite-MLE fit.
@@ -1080,6 +1084,8 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
+      Self::RandomEffectsFailed { message } => write!(formatter, "xtreg re failed: {message}"),
+      Self::RandomEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg re failed: {message}"),
       Self::FixedEffectsFailed { message } => write!(formatter, "xtreg fe failed: {message}"),
       Self::FixedEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg fe failed: {message}"),
       Self::LogitFailed { message } => write!(formatter, "logit: {message}"),

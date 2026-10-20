@@ -23,33 +23,51 @@ fn integer_time(cell: &CellValue) -> bool {
   }
 }
 
+fn panel_fit_error(command: &XtRegCommand, message: impl Into<String>) -> RuntimeError {
+  if command.estimator == XtRegEstimator::FixedEffects {
+    fit_error(message)
+  } else {
+    RuntimeError::RandomEffectsFailed {
+      message: message.into(),
+    }
+  }
+}
+
+pub(crate) struct PanelFitInput {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub entity: String,
+  pub time: String,
+  pub entity_data_type: String,
+}
+
 impl Session {
-  pub(crate) fn execute_fixed_effects(
+  pub(crate) fn prepare_panel_problem(
     &mut self,
     command: &XtRegCommand,
-  ) -> Result<ExecutionResult, RuntimeError> {
-    self.estimation = None;
+  ) -> Result<PanelFitInput, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "xtreg" })?
       .clone();
     let (Some(entity), Some(time)) = (&command.id_variable, &command.time_variable) else {
-      return Err(fit_error(
-        "within FE requires explicit id(variable) and time(variable)",
+      return Err(panel_fit_error(
+        command,
+        "panel fit requires explicit id(variable) and time(variable)",
       ));
     };
     if entity == time {
-      return Err(fit_error("id() and time() must be distinct"));
+      return Err(panel_fit_error(command, "id() and time() must be distinct"));
     }
     if command
       .cluster_variable
       .as_ref()
       .is_some_and(|name| name != entity)
     {
-      return Err(fit_error(format!(
-        "within FE supports only cluster({entity}); robust also clusters on {entity}"
-      )));
+      return Err(panel_fit_error(
+        command,
+        format!("panel fit supports only cluster({entity}); robust also clusters on {entity}"),
+      ));
     }
     let mut required = vec![entity.clone(), time.clone(), command.outcome.clone()];
     required.extend(command.predictors.iter().cloned());
@@ -64,10 +82,10 @@ impl Session {
       .cloned()
       .collect();
     if !missing.is_empty() {
-      return Err(fit_error(format!(
-        "unknown variables: {}",
-        missing.join(", ")
-      )));
+      return Err(panel_fit_error(
+        command,
+        format!("unknown variables: {}", missing.join(", ")),
+      ));
     }
     let nonnumeric: Vec<_> = required[1..]
       .iter()
@@ -75,10 +93,13 @@ impl Session {
       .cloned()
       .collect();
     if !nonnumeric.is_empty() {
-      return Err(fit_error(format!(
-        "numeric time/outcome/predictors required: {}",
-        nonnumeric.join(", ")
-      )));
+      return Err(panel_fit_error(
+        command,
+        format!(
+          "numeric time/outcome/predictors required: {}",
+          nonnumeric.join(", ")
+        ),
+      ));
     }
     // Audit all raw keys, even rows subsequently omitted for missing model values.
     self.execute_isid(vec![entity.clone(), time.clone()], false)?;
@@ -93,7 +114,7 @@ impl Session {
     let backend = self
       .backend
       .as_ref()
-      .ok_or_else(|| fit_error("data backend unavailable"))?;
+      .ok_or_else(|| panel_fit_error(command, "data backend unavailable"))?;
     let mut total = 0;
     let mut retained = Vec::new();
     let mut groups = Vec::new();
@@ -106,23 +127,24 @@ impl Session {
         total += 1;
         let entity_cell = row
           .cell(0)
-          .map_err(|_| fit_error("could not read entity key"))?;
+          .map_err(|_| panel_fit_error(command, "could not read entity key"))?;
         let key = cluster_key(entity_cell)
-          .map_err(fit_error)?
-          .ok_or_else(|| fit_error("entity keys must be nonmissing and finite"))?;
+          .map_err(|message| panel_fit_error(command, message))?
+          .ok_or_else(|| panel_fit_error(command, "entity keys must be nonmissing and finite"))?;
         if !integer_time(
           row
             .cell(1)
-            .map_err(|_| fit_error("could not read time key"))?,
+            .map_err(|_| panel_fit_error(command, "could not read time key"))?,
         ) {
-          return Err(fit_error(
+          return Err(panel_fit_error(
+            command,
             "time keys must be exact finite integers (DOUBLE within ±(2^53-1))",
           ));
         }
         let value = cell_to_f64(
           row
             .cell(2)
-            .map_err(|_| fit_error("could not read outcome"))?,
+            .map_err(|_| panel_fit_error(command, "could not read outcome"))?,
         )
         .filter(|v| v.is_finite());
         let mut predictors = Vec::with_capacity(command.predictors.len());
@@ -130,7 +152,7 @@ impl Session {
           let Some(value) = cell_to_f64(
             row
               .cell(i + 3)
-              .map_err(|_| fit_error("could not read predictor"))?,
+              .map_err(|_| panel_fit_error(command, "could not read predictor"))?,
           )
           .filter(|v| v.is_finite()) else {
             return Ok(());
@@ -145,24 +167,44 @@ impl Session {
         }
         Ok(())
       },
-      fit_error,
+      |message| panel_fit_error(command, message),
     )?;
     let sample =
       tabdat_stats::EstimationSample::new(retained, total, total - y.len(), None, Some(groups))
-        .map_err(|error| fit_error(error.to_string()))?;
+        .map_err(|error| panel_fit_error(command, error.to_string()))?;
     let problem =
       tabdat_stats::EstimationProblem::new(&command.outcome, command.predictors.clone(), y, x)
-        .map_err(|error| fit_error(error.to_string()))?
+        .map_err(|error| panel_fit_error(command, error.to_string()))?
         .with_sample(sample);
+    Ok(PanelFitInput {
+      problem,
+      entity: entity.clone(),
+      time: time.clone(),
+      entity_data_type: types[entity.as_str()].into(),
+    })
+  }
+
+  pub(crate) fn execute_fixed_effects(
+    &mut self,
+    command: &XtRegCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    self.estimation = None;
+    let input = self.prepare_panel_problem(command)?;
+    let PanelFitInput {
+      problem,
+      entity,
+      time,
+      entity_data_type,
+    } = input;
     let result = tabdat_stats::fit_fixed_effects(
       &problem,
-      entity,
+      &entity,
       command.robust || command.cluster_variable.is_some(),
     )
     .map_err(|error| fit_error(error.to_string()))?;
     let state = FixedEffectsState {
-      time_variable: time.clone(),
-      entity_data_type: types[entity.as_str()].into(),
+      time_variable: time,
+      entity_data_type,
       result,
     };
     self.estimation = Some(EstimationState::FixedEffects(Box::new(state.clone())));

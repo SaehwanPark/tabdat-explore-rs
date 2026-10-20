@@ -1,7 +1,7 @@
-# MMA chapter 21: pooled, between, first-difference and within-FE hours/wages analyses
+# MMA chapter 21: pooled, between, first-difference within-FE and RE-GLS hours/wages analyses
 
 **Partial empirical coverage.** Cameron–Trivedi (2005), §21.3 pp.709–714,
-Table21.2 p.710: POLS/first-difference, Between classical and Within slope/conditional-prediction
+Table21.2 p.710: POLS/first-difference, Between/RE-GLS classical and Within slope/conditional-prediction
 portions of the March2005 author
 [`mma21p1panfeandre.do`](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do)
 and [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt).
@@ -15,7 +15,7 @@ slope, compute its 95% interval, summarize predictions/residuals and export usab
 data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
 FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
 not `ols`. Between compares classical and HC1 named reports on person means. Persistent
-`panel`/`xtdata`, RE and whole-table coverage remain absent.
+`panel`/`xtdata`, RE-ML and whole-table coverage remain absent.
 
 ## Data and exact samples
 
@@ -219,7 +219,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** RE-GLS/RE-MLE, Hausman and panel-specific
+**Still required:** robust/unbalanced RE-GLS, RE-MLE, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
@@ -274,3 +274,81 @@ refusal. Bad keys, no usable pairs and rank-deficient designs fail before export
 No data/program/log is redistributed. This validates the classical Between
 coefficient/inference portion and an HC1 extension, not bootstrap, Figure21.2,
 all Stata panel fit statistics, general `xtreg ..., be`, or whole-table coverage.
+
+## RE-GLS: balanced Swamy–Arora workflow
+
+`random_effects.td` executes the classical coefficient/inference portion of
+Table21.2's RE-GLS column: guard original MOM keys, fit native
+`xtreg lnhr lnwg, re id(id) time(year)`, inspect normal coefficient intervals
+and joint zero-slope Wald inference, predict population xb/residuals, summarize
+and export `panel_re_gls_predictions.csv`. Source order and all original fields
+remain in the export. This is a separate `RandomEffectsResult`, not OLS or FE.
+There is no production R/Python dependency.
+
+The exact original design is lnhr~1+lnwg on all5,320 rows/532 people/T10.
+General bounded execution audits raw unit/time keys before jointly finite y/X
+selection. Remaining groups must have equal counts T>=2; G>p+1; both within and
+between preliminary designs must identify every slope. Entirely excluded units
+are omitted. Interleaved/gapped data are allowed; equal counts do not promise
+common years. Time-invariant predictors, weights, unbalanced variance estimation,
+robust/cluster covariance and alternative component estimators are not supplied.
+
+Variance and inference are explicit:
+
+- sigma_e² = within RSS/(N-G-p).
+- raw sigma_u² = between mean-row RSS/(G-p-1) − sigma_e²/T;
+  sigma_u²=max(0,raw sigma_u²). The raw estimate is reported, including negatives.
+- theta=1−sqrt(sigma_e²/(sigma_e²+T*sigma_u²)); quasi-demean outcome, slopes
+  **and intercept**. A zero unit component gives theta0/pooled OLS coefficients.
+- Model-based covariance = transformed RSS/(N-p-1) times inverse transformed
+  crossproduct, matching balanced R/plm and the author GLS output. The final
+  covariance scale is distinct from the preliminary sigma_e² estimate.
+- Coefficients use normal z/two-sided tails/95% intervals; the joint slope Wald
+  uses asymptotic chi-square(p). Residual DF5318 describes the transformed scale,
+  **not a Student-t reference**. Zero/nonfinite sigma_e², rank/DF failure,
+  numerically degenerate covariance/intervals or a lost transformed intercept
+  fail without a published fit. No within/between/overall R² or panel likelihood
+  is reported. General `test`/`lincom` and named RE reports are not installed.
+
+Native float64 wage slope0.1193322439 has SE0.0136312206 (normal inference);
+component SDs are about0.23278339/0.16124733 (idiosyncratic/unit), rho0.32424354.
+RE assumes unit effects exogenous to regressors and the specified error-component
+covariance with independent units; model-based SEs are not panel-robust or a
+few-unit guarantee. These assumptions require judgment, not inference from the
+successful fit. The analytic SE is not the author's panel bootstrap SE.
+
+`predict ..., xb` (also bare predict) evaluates the retained common intercept
+and slopes on **current X**, with no ID/time needed. `residuals` is current y
+minus population xb, including the unit component; it is not an idiosyncratic
+conditional residual. Missing/nonfinite required cells or arithmetic yield NULL.
+Data edits/reordering do not refit the model. Prediction/unsupported restriction
+failures preserve fit/data; failed explicit-key RE fit attempts clear stale
+estimation and preserve data. Legacy bare RE unsupported requests and parse
+errors preserve the previous fit. Exports refuse existing destinations.
+
+From the fresh reproduction directory above:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects.td" > random_effects.jsonl
+Rscript "$root/examples/mma21p1panel/random_effects_reference.R" "$work/MOM.dat" "$work/re_reference"
+python3 "$root/examples/mma21p1panel/check_random_effects_reference.py" "$work" "$work/re_reference" "$work/MOM.dat"
+```
+
+R4.6.1/plm2.6.7 plus explicit independent matrix algebra validate **30 scalar
+quantities** (full covariance, coefficient z/tails/intervals, component variances,
+transformation, fit scale and Wald) and **58,520 exported cells/5,320 rows**
+covering every original field/key and population prediction/residual. Absolute
+1e-9/nonzero-tail relative1e-8 tolerances and exact row/person/year identity
+remain unchanged. Separate float32 ingestion reproduces **eight author printed
+GLS facts** at half-unit printed precision. Synthetic R/plm/matrix fixtures add
+**352 numerical comparisons**, including two slopes/full covariance,
+interleaving, outcome shifts and negative raw unit variance truncation. Runtime
+and CLI tests check joint-case membership/balance, fully excluded units, current
+predictions after edits/dropped IDs, normal reporting, identical text/JSON exports,
+raw-key/unbalanced/sample failures, atomic errors and export/source preservation.
+Full-source text/JSON exports are also byte-identical.
+
+Still required: robust/cluster and unbalanced RE, unit effects/conditional
+predictions, RE-ML, Hausman and other panel diagnostics, bootstrap and remaining
+table/figure outputs. This bounded classical RE-GLS portion does not complete
+the column/table, panel family or textbook target.

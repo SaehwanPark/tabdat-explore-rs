@@ -778,6 +778,7 @@ pub enum ExecutionResult {
   Regression(Box<RegressionResult>),
   /// One-way within FE with unit centers and slope-only covariance/inference.
   FixedEffects(Box<crate::FixedEffectsState>),
+  RandomEffects(Box<crate::RandomEffectsState>),
   /// Converged model-based binary logit maximum likelihood fit.
   Logit(Box<tabdat_stats::BinaryLogitResult>),
   /// Conditional-on-retained-X continuous average partial effects and delta inference.
