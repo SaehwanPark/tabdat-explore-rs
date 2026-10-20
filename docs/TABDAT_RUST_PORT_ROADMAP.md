@@ -155,19 +155,19 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 1. Advance the next bounded MMA-PANEL robust/cluster RE workflow on the audited
    chapter21 `MOM.dat` design; resolve covariance correction/design/inference
    and appropriate comparison semantics before implementation. The
-   [Table21.2 POLS/FD/Between and Within portions](../examples/mma21p1panel/README.md)
-   now provide composed SQL/OLS plus native explicit-key `xtreg ..., fe`.
+   [Table21.2 POLS/FD/Between, Within and RE-GLS portions](../examples/mma21p1panel/README.md)
+   now provide composed SQL/OLS plus native explicit-key `xtreg ..., fe|re`.
    POLS/FD validate180 R scalars/111,188 exported cells; within FE validates64
    scalars/90,440 cells/1,064 recovered unit-intercept comparisons, classical
    N-G-p and unit-cluster G-1 inference, retained effects, current-row predictions
    and diagnostics. Between validates60 R scalars/4,256 exported cells on532
    equal-person joint-case means, classical/HC1 inference and seven separate
    author printed facts. Author float32 facts are separately reproduced, never a
-   reason to round native float64. robust/unbalanced RE, RE-ML, nuisance-intercept inference,
-   Native balanced Swamy–Arora RE-GLS now validates30 R/plm quantities/58,520
+   reason to round native float64. Native balanced Swamy–Arora RE-GLS now validates30 R/plm quantities/58,520
    source/prediction cells and352 synthetic comparisons with model-based
    transformed-RSS covariance and normal95/Wald inference.
-   Hausman/panel diagnostics, bootstrap and remaining table/figure outputs stay
+   Robust/unbalanced RE, RE-ML, nuisance-intercept inference, Hausman/panel
+   diagnostics, bootstrap and remaining table/figure outputs stay
    required; persistent panel declaration and whole-table/family coverage are
    not claimed.
 2. Advance the next bounded MMA-COUNT requirement from its now-resolved

@@ -310,7 +310,7 @@ Variance and inference are explicit:
   fail without a published fit. No within/between/overall R² or panel likelihood
   is reported. General `test`/`lincom` and named RE reports are not installed.
 
-Native float64 wage slope0.1193322191 has SE0.0136311969 (normal inference);
+Native float64 wage slope0.1193322439 has SE0.0136312206 (normal inference);
 component SDs are about0.23278339/0.16124733 (idiosyncratic/unit), rho0.32424354.
 RE assumes unit effects exogenous to regressors and the specified error-component
 covariance with independent units; model-based SEs are not panel-robust or a
