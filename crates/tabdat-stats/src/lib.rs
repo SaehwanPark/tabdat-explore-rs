@@ -25,6 +25,7 @@ mod poisson;
 pub mod post_estimation;
 pub mod problem;
 mod random_effects;
+mod random_effects_ml;
 pub mod result;
 pub mod sample;
 pub mod traits;
@@ -80,6 +81,7 @@ pub use post_estimation::{
 };
 pub use problem::EstimationProblem;
 pub use random_effects::{RandomEffectsResult, fit_random_effects, fit_random_effects_clustered};
+pub use random_effects_ml::{RandomEffectsMlInterior, fit_random_effects_ml_interior};
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
 pub use traits::Estimator;

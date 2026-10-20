@@ -343,7 +343,7 @@ fn evaluate(
 
 // Positive curvature is required for the FINAL undamped information, not just
 // positive covariance diagonal entries. Intermediate damping never changes V.
-fn positive_inverse(matrix: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+pub(crate) fn positive_inverse(matrix: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
   let n = matrix.len();
   let mut l = vec![vec![0.0; n]; n];
   for i in 0..n {
