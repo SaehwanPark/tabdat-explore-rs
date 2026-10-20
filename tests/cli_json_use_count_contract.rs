@@ -275,7 +275,7 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
     serde_json::json!({
       "schema_version": 1,
       "error": {
-        "message": "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only)",
+        "message": "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe with explicit id()/time()",
         "type": "JsonResultUnsupported"
       }
     })
