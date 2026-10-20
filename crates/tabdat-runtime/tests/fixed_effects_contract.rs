@@ -308,3 +308,35 @@ fn prediction_failures_preserve_fit_and_data_but_runtime_fit_failures_clear_only
     Some(EstimationState::FixedEffects(_))
   ));
 }
+
+#[test]
+fn missing_nonfinite_and_unestimated_current_units_have_null_not_zero_effects() {
+  let f = Fixture::new();
+  for key in ["NULL", "'NaN'::DOUBLE", "'Infinity'::DOUBLE", "99.0"] {
+    let mut s = f.load();
+    run(
+      &mut s,
+      "sql \"\"\"SELECT CAST(id AS DOUBLE) AS id,year,y,x FROM active\"\"\" into numeric_ids",
+    );
+    fit(&mut s, "");
+    let cached = s.state().estimation;
+    run(
+      &mut s,
+      &format!(
+        "sql \"\"\"SELECT CASE WHEN id=2 THEN {key} ELSE id END AS id,year,y,x FROM active\"\"\" into current_ids"
+      ),
+    );
+    run(&mut s, "drop x y year");
+    run(&mut s, "predict effect, u");
+    assert_eq!(s.state().estimation, cached);
+    let values = rows(&mut s, "SELECT effect FROM active");
+    assert_eq!(values.len(), 11);
+    for (i, row) in values.iter().enumerate() {
+      assert_eq!(
+        row[0] == CellValue::Null,
+        [0, 2, 4, 7, 9].contains(&i),
+        "{key}, row {i}"
+      );
+    }
+  }
+}

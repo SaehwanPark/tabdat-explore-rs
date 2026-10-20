@@ -94,6 +94,8 @@ mod tests {
       .unwrap();
     for (target, values) in [
       ("x", vec![Some(1.0); 3]),
+      // A case-insensitive DuckDB collision reaches staging, then must roll back.
+      ("X", vec![Some(1.0); 3]),
       ("bad", vec![Some(1.0)]),
       ("bad", vec![Some(f64::INFINITY); 3]),
       ("bad", vec![Some(f64::NAN); 3]),
@@ -109,6 +111,7 @@ mod tests {
           .unwrap(),
         original
       );
+      assert_eq!(backend.query_i64(&format!("SELECT COUNT(*) FROM duckdb_tables() WHERE table_name IN ('{PREDICTIONS_TABLE}', '{STAGING_TABLE}')")).unwrap(), 0);
     }
     for count in [2, 4] {
       let mut stale = dataset.clone();

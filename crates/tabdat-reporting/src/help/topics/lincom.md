@@ -7,7 +7,10 @@ What it does:
 Estimate an affine combination of coefficients from the last supported linear
 regression, with its covariance-based standard error, Student-t statistic,
 two-sided p-value, residual degrees of freedom and 95% confidence interval.
-Use the coefficient names shown by `regress`; the constant is named `intercept`.
+Use the displayed coefficient names; for regress/2SLS the constant is named
+`intercept`. After native within FE, only slopes are parameters: the normalized
+common intercept has no inference. Classical FE uses N-G-p DF, unit-cluster FE
+uses G-1 DF. See help xtreg; current-data changes do not refit these restrictions.
 
 Examples:
 - `lincom x`

@@ -56,10 +56,11 @@ works before loading without initializing DuckDB, and never clones model arrays.
 CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
 `active_table_name`, sorted `named_tables`, nullable `estimation_family` and nullable
 `linear_model`. The family is the retained cache's snake-case tag (currently
-`linear`, `instrumental_variables`, `logit` or `probit`), not a claim of current-data
-prediction eligibility. `linear_model` remains linear-only and is null after logit or
-probit;
-its existing fields are unchanged. Status is not an automatic refit/stale flag and
+`linear`, `instrumental_variables`, `logit`, `probit`, `poisson`,
+`negative_binomial` or `panel_linear` for native within FE), not a claim of
+current-data prediction eligibility. `linear_model` remains OLS/2SLS-only and is
+null after other families, including FE; its existing fields are unchanged.
+Within-FE sample/DF/normalization metadata is in the preceding `FixedEffectsResult`. Status is not an automatic refit/stale flag and
 does not invent covariance, operation or materialization tracking. See `help status`.
 
 ## Named fit reports and comparison
@@ -1012,6 +1013,56 @@ undefined R²; invalid/nonfinite input and general regression rank/zero-paramete
 still reject as before. Other auxiliary failures remain execution errors. This corrects
 the former valid-fit diagnostic failure, so subsequent script/batch commands can proceed
 (MIG-0011). JSON null does not distinguish unavailable/infinite cells. See `help estat`.
+
+## One-way within fixed-effects results
+
+Bounded unweighted `xtreg y xvars, fe id(unit) time(year) [robust | cluster(unit)]`
+adds CLI-v1 **FixedEffectsResult**, `estimator: "within_fixed_effects"`. RE remains
+unsupported. Explicit distinct keys are mandatory for execution; both absent
+remain parseable legacy syntax. All raw keys are audited (nonmissing/finite,
+unique pair, exact numeric integer time) before joint-finite y/X selection and
+unit centering. Source order is preserved; gaps/unbalanced units/singletons are
+allowed. Invalid rank/DF or runtime fit failures clear stale estimation without
+data mutation. No new production dependencies or persistent panel state.
+
+Fields:
+- `outcome`, ordered `predictors`, `entity_variable`, `time_variable`,
+  `entity_data_type`, `observation_count`, `group_count`, `slope_count`,
+  `absorbed_intercepts` (=G), `df_residual` (=N-G-p), `inference_df` and
+  `reference_distribution: "student_t"`.
+- `covariance`: `nonrobust` or `cluster(unit)`, selected slope-only
+  `covariance_matrix`, explicit `covariance_parameter_names`, ordered
+  `coefficients` (`name`, `value`, `standard_error`, `statistic`, `p_value`).
+  Classical variance uses RSS/(N-G-p), t/F DF N-G-p. Unit clustering uses grouped
+  within scores, multiplier G/(G-1)*(N-1)/(N-p), and t/F DF G-1. `robust` aliases
+  unit clustering here, unlike OLS HC1. Optional `cluster` has `variable`,
+  `group_count`, `finite_sample_multiplier`,
+  `correction_convention: "plm_arellano_sss_nested_unit_effects"` and
+  `independence_assumption: "across_units"`.
+- `within_r_squared`, `conditional_r_squared` (level fits including unit effects,
+  **not Stata overall/between R²**), `root_mse`, `residual_sum_of_squares`,
+  `within_total_sum_of_squares`; `minimum_group_size`, `maximum_group_size`,
+  `singleton_groups`. Undefined/nonfinite optional measures encode as null.
+- `common_intercept` is only mean(y)-mean(X)beta on the estimation sample,
+  `common_intercept_inference: "normalization_point_only"`,
+  `unit_effect_normalization: "estimation_observation_weighted_zero_mean"`.
+  No nuisance-intercept covariance/inference or implicit intercept restriction.
+- `sample` has `total_observations` and `dropped_observations`, not row vectors.
+  No adjusted within R², panel/Gaussian likelihood, unit vectors or named FE
+  snapshots are emitted. Existing non-FE result shapes remain unchanged.
+
+`LincomResult`/`TestResult` operate on retained slopes only, using the inference
+DF above even though fit residual DF remains N-G-p. Predictions append current-row
+DOUBLE columns atomically: `xb` (also bare predict) is common intercept+X beta;
+`xbu` is retained total unit intercept+X beta; `u` is retained normalized deviation;
+`residuals` is current y minus xbu. Conditional modes require matching ID name and
+exact logical type, not time; xb needs no ID, u needs no y/X. Missing/nonfinite/
+unestimated conditional IDs or required numeric cells yield NULL, never zero
+effects; overflowing calculations also yield NULL. Retained centers/effects do
+not change with current data. Missing columns, type mismatch, existing target
+or unsupported modes/intervals preserve fit/data and publish nothing. Existing
+`PredictionResult` metadata is unchanged; use export/head to access values.
+See [audited Table21.2 Within portion](../../examples/mma21p1panel/README.md).
 
 ## Linear inference fields and conventions
 

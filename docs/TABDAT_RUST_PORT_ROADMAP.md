@@ -152,16 +152,19 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance MMA-PANEL to a bounded within-FE workflow using the now-audited
-   chapter21 `MOM.dat` source/design. The [Table21.2 POLS/FD portions](../examples/mma21p1panel/README.md)
-   already compose native SQL/OLS, validate all5,320 source rows/4,788 annual
-   pairs, classical/HC1/person-cluster inference, tests/intervals and fitted/residual
-   exports against180 R scalars and111,188 cells. Author Stata8 float32 facts are
-   separately reproduced, not a reason to round native float64. Next resolve
-   within-FE absorbed-effect DF, covariance correction, fitted unit effects and
-   diagnostics/prediction semantics against an exact independent reference.
-   FE/between/RE/Hausman/bootstrap and remaining table/figure outputs remain
-   required; this is not whole-panel coverage or executed `xtreg` syntax.
+1. Advance the next bounded MMA-PANEL between/RE workflow on the audited
+   chapter21 `MOM.dat` design; resolve exact variance-component/design/inference
+   and appropriate comparison semantics before implementation. The
+   [Table21.2 POLS/FD and Within portions](../examples/mma21p1panel/README.md)
+   now provide composed SQL/OLS plus native explicit-key `xtreg ..., fe`.
+   POLS/FD validate180 R scalars/111,188 exported cells; within FE validates64
+   scalars/90,440 cells/1,064 recovered unit-intercept comparisons, classical
+   N-G-p and unit-cluster G-1 inference, retained effects, current-row predictions
+   and diagnostics. Author float32 facts are separately reproduced, never a
+   reason to round native float64. Between/RE, nuisance-intercept inference,
+   Hausman/panel diagnostics, bootstrap and remaining table/figure outputs stay
+   required; persistent panel declaration and whole-table/family coverage are
+   not claimed.
 2. Advance the next bounded MMA-COUNT requirement from its now-resolved
    source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
    and separate NB2 script validate model-based/independent-row robust coefficients,
