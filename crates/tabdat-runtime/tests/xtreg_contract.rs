@@ -2,7 +2,7 @@ use tabdat_language::parse_command;
 use tabdat_runtime::{RuntimeError, Session};
 
 #[test]
-fn parsed_random_effects_remains_explicitly_deferred_at_runtime() {
+fn legacy_bare_random_effects_remains_unsupported_without_explicit_keys() {
   let command = parse_command("xtreg wage exper, re").expect("xtreg parser contract");
   let mut session = Session::new();
 
