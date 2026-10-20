@@ -378,8 +378,17 @@ fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
 fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   let r = &state.result;
   let fit = &r.gls;
+  let clustered = matches!(
+    fit.covariance.covariance_type,
+    tabdat_domain::CovarianceType::Cluster(_)
+  );
+  let covariance = if clustered {
+    "Unit-cluster covariance: grouped transformed scores; normal inference"
+  } else {
+    "Model-based covariance: transformed RSS/(N-K); normal inference"
+  };
   let mut output = format!(
-    "Balanced one-way random-effects GLS: {}\nSwamy-Arora; entity = {}; time = {}; N = {}; groups = {}; T = {}\nModel-based covariance: transformed RSS/(N-K); normal inference\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    "Balanced one-way random-effects GLS: {}\nSwamy-Arora; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
     r.outcome.escape_debug(),
     r.entity_variable.escape_debug(),
     state.time_variable.escape_debug(),
@@ -392,9 +401,23 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     inference_number(r.theta),
     inference_number(r.rho),
     r.predictor_names.len(),
-    inference_number(r.wald_statistic),
-    inference_number(r.wald_p_value)
+    optional_inference(r.wald_statistic),
+    optional_inference(r.wald_p_value)
   );
+  if clustered {
+    let n = fit.fit_statistics.observation_count;
+    let g = r.group_count;
+    let k = fit.parameter_names.len();
+    writeln!(
+      output,
+      "Unit-cluster multiplier G/(G-1)*(N-1)/(N-K) = {} (plm Arellano sss; independent units)",
+      inference_number(g as f64 / (g - 1) as f64 * (n - 1) as f64 / (n - k) as f64)
+    )
+    .unwrap();
+  }
+  if let Some(reason) = &r.wald_unavailable_reason {
+    writeln!(output, "Slope Wald unavailable: {}", reason.escape_debug()).unwrap();
+  }
   if let Some(s) = &fit.sample {
     writeln!(
       output,

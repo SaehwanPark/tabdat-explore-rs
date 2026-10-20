@@ -219,7 +219,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** robust/unbalanced RE-GLS, RE-MLE, Hausman and panel-specific
+**Still required:** unbalanced RE-GLS, RE-MLE, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
@@ -291,7 +291,7 @@ selection. Remaining groups must have equal counts T>=2; G>p+1; both within and
 between preliminary designs must identify every slope. Entirely excluded units
 are omitted. Interleaved/gapped data are allowed; equal counts do not promise
 common years. Time-invariant predictors, weights, unbalanced variance estimation,
-robust/cluster covariance and alternative component estimators are not supplied.
+arbitrary cluster covariance and alternative component estimators are not supplied.
 
 Variance and inference are explicit:
 
@@ -348,7 +348,56 @@ predictions after edits/dropped IDs, normal reporting, identical text/JSON expor
 raw-key/unbalanced/sample failures, atomic errors and export/source preservation.
 Full-source text/JSON exports are also byte-identical.
 
-Still required: robust/cluster and unbalanced RE, unit effects/conditional
+Still required: unbalanced RE, unit effects/conditional
 predictions, RE-ML, Hausman and other panel diagnostics, bootstrap and remaining
 table/figure outputs. This bounded classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
+
+## Unit-cluster RE extension
+
+`random_effects_cluster.td` supplies both explicit `cluster(id)` and equivalent
+`robust` fits on the same balanced MOM design. Neither changes sample,
+components, theta, coefficients or population predictions. The clustered
+sandwich uses scores of the **quasi-demeaned** design/residuals and multiplier
+**G/(G-1)*(N-1)/(N-K)** with K=p+1 including the transformed intercept.
+This is R/plm Arellano `sss`, not FE's nested-effect N-p denominator, independent-row
+HC1 or a substitution of preliminary sigma_e². Score groups are summed in key
+order to make repeated fits/aliases reproducible; this also stabilizes the shared
+OLS/IV/FE cluster path without changing its formulas.
+
+Coefficient intervals/tails remain normal and the omnibus zero-slope Wald uses
+chi-square(p), not G-1 t/F. A singular slope covariance yields unavailable Wald
+statistic/p and an explicit reason, preserving requested p, positive marginal SEs
+and predictions; no pseudoinverse or reduced-rank test is invented. Zero/nonfinite
+marginal variances remain a fit failure. Component diagnostics and residual DF
+retain their meanings under the selected covariance.
+
+The original wage slope remains0.1193322439; cluster SE0.0514015848,
+normal p0.0202562407 and 95% interval[0.0185869889,0.2200774990]. The much
+larger SE than model-based0.0136312206 demonstrates the inferential consequence
+of allowing arbitrary within-person dependence. It assumes independent people
+and exogenous unit effects; it is not the author's bootstrap, household/site,
+survey/multiway inference or a few-cluster guarantee. It supplies no additional
+claimed Table21.2 bootstrap output or whole-column/table completion.
+
+From the fresh reproduction directory above:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_cluster.td" > random_effects_cluster.jsonl
+Rscript "$root/examples/mma21p1panel/random_effects_cluster_reference.R" "$work/MOM.dat" "$work/re_cluster_reference"
+python3 "$root/examples/mma21p1panel/check_random_effects_cluster_reference.py" "$work" "$work/re_cluster_reference" "$work/MOM.dat"
+```
+
+R4.6.1/plm2.6.7 and explicit grouped-score matrix algebra validate **31 scalar
+quantities per alias /62 across both fits**, with identical native alias results,
+and all **69,160 exported cells/5,320 source/design/prediction rows**. Absolute
+1e-9/nonzero-tail relative1e-8 tolerances and exact source identity stay unchanged.
+Text/JSON full-source exports are byte-identical. Synthetic fixtures add **438
+R/plm/group-score comparisons**, including two slopes/full covariance, shifts,
+interleaving, zero unit variance and estimable designs with singular clustered
+slope covariance. Runtime/CLI tests exercise alias equality, unchanged point fit,
+sample/components/predictions, arbitrary-cluster errors/cleared stale fits,
+current prediction preservation, unavailable-Wald text/JSON and normal prediction
+from that retained fit, as well as source/export/error contracts.
+Unbalanced RE, unit effects, RE-ML, general restrictions, Hausman, bootstrap and
+remaining table/figure outputs stay required.

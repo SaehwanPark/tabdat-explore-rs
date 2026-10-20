@@ -253,9 +253,9 @@ pub fn fit_least_squares_with_options(
         )));
       }
 
-      // Group observations by cluster ID
-      let mut cluster_map: std::collections::HashMap<&str, Vec<usize>> =
-        std::collections::HashMap::new();
+      // Sum grouped scores in key order so repeated fits and aliases are reproducible.
+      let mut cluster_map: std::collections::BTreeMap<&str, Vec<usize>> =
+        std::collections::BTreeMap::new();
       for (idx, cluster_id) in cluster_groups.iter().enumerate() {
         cluster_map
           .entry(cluster_id.as_str())

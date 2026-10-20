@@ -2,9 +2,9 @@
 
 Installed bounded syntax:
 `xtreg y xvars, fe|re id(unit) time(year)`
-FE additionally accepts `robust` or `cluster(unit)`; RE is model-based only.
+Both FE and RE accept `robust` or `cluster(unit)`; robust clusters on the declared unit.
 
-Fit an unweighted one-way within fixed-effects linear model, absorbing a separate
+`fe` fits an unweighted one-way within fixed-effects linear model, absorbing a separate
 intercept for each unit. At least one numeric slope predictor is required. Unlike
 `regress ..., robust`, **robust here means unit clustering**, not independent-row
 HC1. `cluster()` must name the same variable as `id()`.
@@ -89,8 +89,9 @@ Balanced random-effects GLS:
   final scale. Report normal z/p/95% intervals and the joint zero-slope
   chi-square(p) Wald test. General test/lincom restrictions are not installed.
 - Assumptions include exogeneity of unit effects relative to regressors,
-  independent units and the specified within-unit error-components covariance;
-  covariance is not robust or a few-unit guarantee. No causal identification
+  independent units. Model-based covariance relies on the specified within-unit
+  error-components covariance; unit-cluster covariance allows arbitrary within-unit
+  dependence but supplies no few-unit guarantee. No causal identification
   follows from fitting RE. No panel likelihood or within/between/overall R² is
   supplied. `RandomEffectsResult` is distinct from OLS and FE JSON results.
 - `predict fitted, xb` (or bare predict) uses retained intercept/slopes on current
@@ -100,5 +101,20 @@ Balanced random-effects GLS:
   missing/non-numeric required columns or unsupported modes fail atomically.
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
-  Robust/cluster RE, unbalanced variance estimation, unit effects/conditional
+  Unbalanced variance estimation, unit effects/conditional
   predictions, RE-ML, named RE reports and Hausman remain uninstalled.
+
+RE unit-cluster inference:
+- `xtreg y xvars, re id(unit) time(year) cluster(unit)` or `robust` uses the same
+  sample, Swamy-Arora components, theta, coefficients and population predictions.
+  It sandwiches grouped quasi-demeaned scores with multiplier
+  G/(G-1)*(N-1)/(N-K), K=p+1 including the transformed intercept (R/plm
+  Arellano `sss`). The reported residual DF N-K does not select t inference.
+- Coefficient/95% interval inference stays normal and the joint slope Wald
+  reference stays asymptotic chi-square(p). Singular slope covariance makes the
+  Wald statistic/p unavailable with a reason; requested p is not reduced and
+  valid marginal SEs/predictions remain usable. Zero/nonfinite marginal variances
+  remain numerical failures. No pseudoinverse or automatic covariance fallback.
+- Cluster IDs must be the declared unit; other variables are unsupported.
+  This assumes independent units, does not remove endogeneity of unit effects,
+  and is not household/survey/multiway inference or the author's bootstrap.

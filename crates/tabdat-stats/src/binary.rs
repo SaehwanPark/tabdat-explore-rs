@@ -430,7 +430,8 @@ pub(crate) fn omnibus_wald(
   if q == 0 {
     return unavailable("no_non_intercept_coefficients");
   }
-  // Cluster score sums add to zero at the MLE, bounding meat rank by G-1.
+  // Cluster score sums add to zero at the fitted estimating equations,
+  // bounding meat rank by G-1.
   // Roundoff must not manufacture an invertible q>=G restriction covariance.
   if cluster_group_count.is_some_and(|groups| q >= groups) {
     return unavailable("insufficient_cluster_rank");

@@ -79,7 +79,7 @@ pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
 };
 pub use problem::EstimationProblem;
-pub use random_effects::{RandomEffectsResult, fit_random_effects};
+pub use random_effects::{RandomEffectsResult, fit_random_effects, fit_random_effects_clustered};
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
 pub use traits::Estimator;
