@@ -10,7 +10,10 @@ fn gamma_and_inference_match_base_r() {
   // Log-gamma instead needs an absolute budget near its zeros and a relative
   // budget at large arguments, where subtraction loses absolute precision.
   let mut checked = 0;
-  for line in include_str!("fixtures/gamma_inference_reference.csv").lines().skip(1) {
+  for line in include_str!("fixtures/gamma_inference_reference.csv")
+    .lines()
+    .skip(1)
+  {
     let cells: Vec<_> = line.split(',').collect();
     let x: f64 = cells[1].parse().unwrap();
     let df1: f64 = cells[2].parse().unwrap();
@@ -26,6 +29,9 @@ fn gamma_and_inference_match_base_r() {
     };
     let tolerance = if cells[0] == "lgamma" {
       4e-14 * expected.abs().max(1.0)
+    } else if cells[0] == "t_quantile" {
+      // R qt(.5, .5) returns about 2.6e-16; symmetry gives exactly zero.
+      2e-12 * expected.abs().max(1.0)
     } else {
       2e-12 * expected.abs()
     };

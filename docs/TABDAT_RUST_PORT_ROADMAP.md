@@ -174,10 +174,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    native-helper probabilities. It assumes full laws, not QMLE calibration or a
    formal test. The materially different printed Table20.6 NB2 row remains
    unresolved; native/November2006 author-program evidence does not complete it.
-   A separately bounded numerical correction should replace the inaccurate
-   shared log-gamma Lanczos coefficient with independent inference regressions;
-   new integer-shape count probabilities avoid that approximation, legacy paths
-   are unchanged in this slice.
+   The shared log-gamma Lanczos coefficient is now corrected, with 153
+   independent base-R regressions for positive log-gamma, Student t tails/quantiles,
+   F tails and normal probabilities. This improves existing inference paths without
+   changing sample/covariance/DF conventions or adding textbook coverage;
+   integer-shape count probabilities remain on their separate numerical path.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
