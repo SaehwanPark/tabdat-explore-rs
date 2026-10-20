@@ -352,3 +352,16 @@ Still required: robust/cluster and unbalanced RE, unit effects/conditional
 predictions, RE-ML, Hausman and other panel diagnostics, bootstrap and remaining
 table/figure outputs. This bounded classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
+
+## Unit-cluster RE extension under development
+
+Extend the retained balanced Swamy–Arora fit with `cluster(id)` and its alias
+`robust`: group scores of the quasi-demeaned design/residuals, multiply the
+sandwich by G/(G-1)*(N-1)/(N-K), and keep asymptotic normal coefficient/95%
+interval and chi-square omnibus inference. Covariance changes must not change
+sample, components, theta, coefficients or population predictions. Rank-deficient
+slope Wald tests remain unavailable with a reason, without reducing the requested
+restriction count or discarding a fit with valid marginal SEs. Independent
+R/plm Arellano sss plus explicit group-score algebra and the full original-source
+workflow will validate the extension. This is not the author's bootstrap,
+unbalanced RE, household/survey/multiway inference or a few-cluster guarantee.
