@@ -34,7 +34,7 @@ not by implementing every estimator mentioned in a chapter.
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
-| 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, general between command/RE/two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
+| 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, RE/two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
 | 25: Treatment evaluation | Relevant parser forms only | Explicit estimands, adjustment/matching/weighting, balance/overlap and valid uncertainty |
@@ -160,7 +160,7 @@ independent R assertions; runtime/CLI tests protect sample/key/type/order/state
 and identical text/JSON exports. Tolerances remain1e-9 absolute/nonzero-tail
 1e-8 relative with exact source identities.
 
-**Still required:** persistent panel state, general between command/RE/two-way effects, richer
+**Still required:** persistent panel state, RE/two-way effects, richer
 design/weights, nuisance-intercept inference, Hausman and other panel-specific
 diagnostics/comparisons, bootstrap/RNG, lowess/Figures21.1–21.4 and remaining
 Table21.2/illustration outputs. No full Within column, table/chapter/panel-family
