@@ -401,3 +401,17 @@ current prediction preservation, unavailable-Wald text/JSON and normal predictio
 from that retained fit, as well as source/export/error contracts.
 Unbalanced RE, unit effects, RE-ML, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
+
+## RE-ML portion under development
+
+Target the Table21.2 RE-MLE classical coefficient/inference portion on the same
+balanced lnhr~1+lnwg design and all5,320 MOM rows. Use the Gaussian one-way
+marginal likelihood, not REML or an OLS working likelihood. Joint observed
+information for coefficients and variance components must be checked against
+an independent reference; conditional GLS covariance is not an unexplained
+substitute. Define an explicit bounded optimization/stationarity policy and
+zero-unit-variance boundary behavior before exposing execution. The runnable
+slice must include likelihood/null comparison, normal coefficient uncertainty,
+population predictions, source/sample audits and failure/state cases. Existing
+GLS and cluster behavior must remain unchanged. Robust ML, conditional effects,
+Hausman and bootstrap stay separate required work.
