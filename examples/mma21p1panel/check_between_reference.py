@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Development-only full native/R replay audit; Python stdlib only."""
 import csv
+from decimal import Decimal
 import hashlib
 import json
 import math
@@ -62,7 +63,7 @@ cells = 0
 for case, filename in (("between", "panel_between_predictions.csv"),):
   actual = records(native / filename)
   expected = records(reference / f"{case}_predictions.csv")
-  assert len(actual) == len(expected) == (532)
+  assert len(actual) == len(expected) == 532
   assert list(actual[0]) == list(expected[0]), (actual[0].keys(), expected[0].keys())
   for a, e in zip(actual, expected):
     for key in e:
@@ -75,7 +76,6 @@ for case, filename in (("between", "panel_between_predictions.csv"),):
 print(f"PASS: {len(scalars)} R scalars, {cells} exported cells across 532 person means")
 
 # Printed Stata8 facts use float32 ingestion, with half-unit printed precision.
-from decimal import Decimal
 facts = records(reference / "author_printed.csv")
 assert len(facts) == 7
 for fact in facts:
