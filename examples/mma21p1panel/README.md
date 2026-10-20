@@ -464,3 +464,18 @@ probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
 ```sh
 (cd "$root" && TABDAT_REML_SOURCE="$work/MOM.dat" cargo test --locked -p tabdat-stats --test random_effects_ml_original_source -- --ignored --nocapture)
 ```
+
+### Zero-unit-variance ML slice under development
+
+Extend the same Gaussian ML workflow when the selected profile maximum is
+eta=0 (sigma_u²=0). Require the inward profile score to satisfy the boundary
+optimality condition; compare all detected interior candidates as before.
+Validate coefficients, ML RSS/N scale, constrained observed-information
+covariance and likelihood against base-R Gaussian `lm`, including shifted and
+interleaved balanced designs. Retain normal coefficient inference without
+claiming regular variance-component uncertainty; expose the active boundary and
+constrained parameter order. Withhold ordinary slope LR reference if either fit
+is on the boundary. Preserve the existing strict interior-only statistics entry
+point, old interior/GLS results, raw-key/sample semantics and population exports.
+Check successful model replacement and data preservation, plus genuine
+numerical/input failures clearing stale fits without altering data.
