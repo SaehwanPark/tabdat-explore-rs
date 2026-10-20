@@ -73,9 +73,11 @@ identical exported data.
 
 ## Limits
 
-Exposure shorthand, NB2 offsets, weights/survey, multiway/few-cluster inference,
+Exposure shorthand, weights/survey, multiway/few-cluster inference,
 factor/discrete-change effects, general count tests/lincom and named count reports
-remain unimplemented. Supply a precomputed log exposure from input or explicit
+remain unimplemented. NB2 offsets have a separate
+[joint-inference workflow](../nb2-offset/README.md); they are not supplied by the
+Poisson script. Supply a precomputed log exposure from input or explicit
 SQL when appropriate; `generate` function calls are not installed. Extreme finite
 offset designs can fail the bounded representability/convergence policy. This
 method extension does not resolve the printed Table20.6 NB2 discrepancy or advance

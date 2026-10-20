@@ -323,7 +323,7 @@ fn packaged_nbreg_examples_execute_and_discovery_exposes_bounds_and_joint_covari
   let r: Value = serde_json::from_slice(&out.stdout).unwrap();
   assert_eq!(
     r["data"]["syntax"],
-    "nbreg y [x1 x2] [, robust cluster(var) noconstant]"
+    "nbreg y [x1 x2] [, offset(var) robust cluster(var) noconstant]"
   );
   for phrase in [
     "NB2",

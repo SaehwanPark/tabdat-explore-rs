@@ -2625,7 +2625,7 @@ fn parse_binary_or_count_response_command(
     .iter()
     .filter(|option| {
       !matches!(option.name.as_str(), "robust" | "cluster" | "noconstant")
-        && !(command_name == "poisson" && option.name == "offset")
+        && !(matches!(command_name, "poisson" | "nbreg") && option.name == "offset")
     })
     .map(|option| option.name.as_str())
     .collect::<Vec<_>>();
@@ -2696,17 +2696,17 @@ fn parse_binary_or_count_response_command(
     .filter(|option| option.name == "offset")
     .collect();
   if offset_matches.len() > 1 {
-    return Err(ParseError::new(
-      "poisson option offset may only be supplied once",
-    ));
+    return Err(ParseError::new(format!(
+      "{command_name} option offset may only be supplied once"
+    )));
   }
   let offset_variable = match offset_matches.first() {
     Some(option) => match &option.value {
       UseOptionValue::Identifiers(values) if values.len() == 1 => Some(values[0].clone()),
       _ => {
-        return Err(ParseError::new(
-          "poisson option offset expects one variable",
-        ));
+        return Err(ParseError::new(format!(
+          "{command_name} option offset expects one variable"
+        )));
       }
     },
     None => None,
@@ -2745,6 +2745,7 @@ fn parse_binary_or_count_response_command(
       command: NbregCommand {
         outcome,
         predictors,
+        offset_variable,
         robust,
         cluster_variable: cluster_values,
         include_intercept,
@@ -11725,6 +11726,7 @@ mod tests {
         command: NbregCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: true,
@@ -11737,6 +11739,7 @@ mod tests {
         command: NbregCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: true,
           cluster_variable: None,
           include_intercept: true,
@@ -11749,6 +11752,7 @@ mod tests {
         command: NbregCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: Some("group_id".to_owned()),
           include_intercept: true,
@@ -11761,6 +11765,7 @@ mod tests {
         command: NbregCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: false,
@@ -11773,6 +11778,7 @@ mod tests {
         command: NbregCommand {
           outcome: "y var".to_owned(),
           predictors: vec!["x var".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: Some("firm id".to_owned()),
           include_intercept: true,

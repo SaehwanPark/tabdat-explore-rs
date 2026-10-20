@@ -265,6 +265,7 @@ impl Session {
     let mut predictors = problem.predictor_names.clone();
     let offset_variable = match &self.estimation {
       Some(EstimationState::PoissonFit(state)) => state.result.offset_variable.as_ref(),
+      Some(EstimationState::NegativeBinomialFit(state)) => state.result.offset_variable.as_ref(),
       _ => None,
     };
     if let Some(name) = offset_variable {

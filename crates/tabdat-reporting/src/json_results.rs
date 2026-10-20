@@ -524,6 +524,16 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         result.cluster.as_ref(),
         "cluster_joint_score_sandwich_g_over_g_minus_1",
       );
+      if let Some(variable) = &result.offset_variable {
+        data["offset_variable"] = json!(variable);
+        data["offset_coefficient"] = json!(1.0);
+        data["linear_index"] = json!("x_beta_plus_offset");
+        data["null_model"] = json!(if result.include_intercept {
+          "intercept_and_dispersion_reestimated_with_same_fixed_offset"
+        } else {
+          "all_beta_zero_dispersion_reestimated_with_same_fixed_offset"
+        });
+      }
       (data, "NbregResult")
     }
     ExecutionResult::NbregMarginalEffects(result) => {
@@ -540,6 +550,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         result.cluster.as_ref(),
         "cluster_joint_score_sandwich_g_over_g_minus_1",
       );
+      if let Some(variable) = &result.offset_variable {
+        data["offset_variable"] = json!(variable);
+        data["offset_treatment"] =
+          json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
+      }
       (data, "NbregMarginalEffectsResult")
     }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
