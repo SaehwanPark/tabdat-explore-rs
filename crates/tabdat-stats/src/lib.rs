@@ -68,8 +68,8 @@ pub use nb2::{
 };
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
-  PoissonOptions, PoissonResult, fit_poisson, fit_poisson_clustered, fit_poisson_with_options,
-  poisson_average_marginal_effects,
+  PoissonOptions, PoissonResult, fit_poisson, fit_poisson_clustered, fit_poisson_with_offset,
+  fit_poisson_with_options, poisson_average_marginal_effects,
 };
 pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,

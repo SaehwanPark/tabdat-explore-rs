@@ -250,7 +250,7 @@ workflow below does not complete broader illustration graphics.
 
 ## Bounded Poisson ML / independent-row robust QMLE
 
-`poisson y [xvars] [, robust cluster(var) noconstant]` executes unweighted log-link regression.
+`poisson y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link regression.
 The joint complete-finite estimation sample preserves fit-time positions;
 missing/nonfinite model cells are excluded before outcome-domain rejection.
 Loaded outcome values must be exact nonnegative integers <=2^53-1, with DECIMAL
@@ -258,6 +258,15 @@ and wide integer identity checked before conversion. This is not lexical recover
 of digits a loader already rounded to DOUBLE. N>K/full rank and bounded numerical
 convergence are required. Weights are not installed; one-way cluster selection
 and inference are specified below.
+
+`offset(var)` adds a numeric fixed log-mean term: eta=X beta+offset and mu=exp(eta).
+Offset missing/nonfinite cells join the model/group exclusions BEFORE count-domain
+validation. It is not a parameter or weight and does not increase K or LR DF.
+The nested null retains the same offsets: with an intercept,
+mu0_i=exp(offset_i)*sum(y)/sum(exp(offset)); without it, mu0_i=exp(offset_i).
+A guarded log-sum-exp evaluates the intercept-only starting/null model. Extreme
+finite offset designs can still fail the existing representability/convergence
+policy. Exposure shorthand and NB2 offsets are not installed.
 
 CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
 
@@ -275,6 +284,10 @@ CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
   `null_log_likelihood` and `null_model` distinguish
   `intercept_only_estimated_mean` from `unit_mean_all_coefficients_zero` without
   an intercept. The latter does not silently estimate a null intercept.
+  Offset fits additionally report `offset_variable`, `offset_coefficient: 1.0`,
+  `linear_index: "x_beta_plus_offset"` and use `null_model` values
+  `intercept_only_with_same_fixed_offset` or
+  `all_coefficients_zero_with_same_fixed_offset`. No-offset shapes are unchanged.
 - `likelihood_ratio`, `likelihood_ratio_df`, nullable `likelihood_ratio_p_value`
   and nullable `likelihood_ratio_reference_distribution`. Only a model-based
   positive-DF LR has chi-square reference/tail; robust LR remains descriptive.
@@ -302,9 +315,17 @@ normal reference, fixed confidence level, retained N and `effects` in predictor
 order with the same nullable inference fields. The continuous effect is
 βj*mean(μ), full gradient βj*mean(μX)+ej*mean(μ), conditional on retained X. This
 is not a discrete change, original-variable chain rule or random-X uncertainty.
+Offset fits hold retained offset values fixed in both derivatives and delta
+uncertainty, including if the same variable is also a predictor: no chain rule
+through that offset is implied. Their effects additionally report `offset_variable`
+and `offset_treatment: "fixed_at_retained_values_in_derivatives_and_delta_uncertainty"`.
+Changing current offsets does not change retained effects/count-frequency reports.
 
 `predict newvar, n` appends exp(xb) on current predictor rows; explicit/bare xb
-remains the index. No outcome is needed. Nonfinite/unrepresentable indices and
+remains the index. For offset fits BOTH xb and n use the CURRENT named offset
+alongside current predictors; xb includes the offset, not just X beta. No outcome
+or cluster ID is needed. Missing/nonnumeric offset columns fail without publishing
+a target or clearing the retained fit. Nonfinite/unrepresentable indices and
 overflowing means become NULL, finite negative exponential underflow is zero.
 Means are not probabilities and are not clipped at one. Prediction publication
 preserves labels/order/fit and fails atomically on invalid schema/existing targets.
@@ -317,7 +338,9 @@ the legacy `Poisson(ModelState)`/`family: "poisson"` placeholder remains readabl
 not an installed usable fit. A failed new runtime fit clears stale estimation,
 not data/labels/order. No fit restoration/persistence is added. `estimates store`
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
-and MIG-0017; bounded NB2 has its distinct contract below. Offsets/exposure,
+and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
+[fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
+method evidence, not a textbook replication. Exposure shorthand, NB2 offsets,
 multiway clustering, weighted/survey inference, current-row PMF/CDF predictions, factors/discrete
 changes and general count test/lincom remain required work.
 

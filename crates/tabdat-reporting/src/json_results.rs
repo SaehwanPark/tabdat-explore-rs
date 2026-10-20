@@ -433,6 +433,16 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         result.cluster.as_ref(),
         "cluster_sandwich_g_over_g_minus_1",
       );
+      if let Some(variable) = &result.offset_variable {
+        data["offset_variable"] = json!(variable);
+        data["offset_coefficient"] = json!(1.0);
+        data["linear_index"] = json!("x_beta_plus_offset");
+        data["null_model"] = json!(if result.include_intercept {
+          "intercept_only_with_same_fixed_offset"
+        } else {
+          "all_coefficients_zero_with_same_fixed_offset"
+        });
+      }
       (data, "PoissonResult")
     }
     ExecutionResult::PoissonMarginalEffects(result) => {
@@ -448,6 +458,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         result.cluster.as_ref(),
         "cluster_sandwich_g_over_g_minus_1",
       );
+      if let Some(variable) = &result.offset_variable {
+        data["offset_variable"] = json!(variable);
+        data["offset_treatment"] =
+          json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
+      }
       (data, "PoissonMarginalEffectsResult")
     }
     ExecutionResult::CountProbabilities(result) => {
