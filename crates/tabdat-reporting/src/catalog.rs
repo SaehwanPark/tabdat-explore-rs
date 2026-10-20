@@ -1237,6 +1237,10 @@ fn get_command_schema(
       name: "nbreg".to_string(),
       options: vec![
         OptionDescriptor {
+          name: "offset".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
           name: "robust".to_string(),
           required: false,
         },
@@ -1249,7 +1253,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "nbreg y [x1 x2] [, robust cluster(var) noconstant]".to_string(),
+      syntax: "nbreg y [x1 x2] [, offset(var) robust cluster(var) noconstant]".to_string(),
     }),
     "nl" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

@@ -4,7 +4,9 @@ use crate::binary::{BinaryCluster, BinaryOmnibusWald, omnibus_wald};
 use crate::distributions::chi_square_tail;
 use crate::matrix::{add_compensated, invert, qr_decompose_with_response};
 use crate::poisson::deviance_part;
-use crate::{EstimationProblem, EstimationSample, PoissonEstimate, StatsError, fit_poisson};
+use crate::{
+  EstimationProblem, EstimationSample, PoissonEstimate, StatsError, fit_poisson_with_offset,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -61,6 +63,8 @@ pub struct Nb2Result {
   pub outcome: String,
   pub predictor_names: Vec<String>,
   pub include_intercept: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<Nb2Cluster>,
@@ -92,6 +96,8 @@ pub struct Nb2Result {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nb2MarginalEffects {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<Nb2Cluster>,
@@ -224,6 +230,7 @@ fn evaluate(
   y: &[f64],
   gamma: &[f64],
   dispersion_scale: f64,
+  offsets: &[f64],
 ) -> Result<Evaluation, StatsError> {
   let k = gamma.len() - 1;
   let a = gamma[k] / dispersion_scale;
@@ -249,8 +256,8 @@ fn evaluate(
   let mut score_correction = vec![0.0; k + 1];
   let mut information_correction = vec![vec![0.0; k + 1]; k + 1];
   let (mut ll_correction, mut deviance_correction, mut pearson_correction) = (0.0, 0.0, 0.0);
-  for (row, &y) in x.iter().zip(y) {
-    let eta: f64 = row.iter().zip(gamma).map(|(x, b)| x * b).sum();
+  for ((row, &y), &offset) in x.iter().zip(y).zip(offsets) {
+    let eta: f64 = row.iter().zip(gamma).map(|(x, b)| x * b).sum::<f64>() + offset;
     let mu = eta.exp();
     if !eta.is_finite() || !mu.is_finite() || mu <= 0.0 {
       return Err(failed("positive fitted mean is not representable"));
@@ -420,9 +427,12 @@ fn joint_score_sandwich(
   }
   v
 }
+// Keep fixed offsets separate from estimated design and covariance selection.
+#[allow(clippy::too_many_arguments)]
 fn optimize(
   x: &[Vec<f64>],
   y: &[f64],
+  offsets: &[f64],
   beta: &[f64],
   initial_means: &[f64],
   robust: bool,
@@ -458,7 +468,7 @@ fn optimize(
   let mut gamma: Vec<f64> = beta.iter().zip(&scales).map(|(b, s)| b * s).collect();
   gamma.push(start.ln() * scales[k]);
   for iteration in 1..=options.max_iterations {
-    let current = evaluate(&x, y, &gamma, scales[k])?;
+    let current = evaluate(&x, y, &gamma, scales[k], offsets)?;
     let inverse = positive_inverse(&current.information);
     let full_step = inverse.as_ref().map(|bread| times(bread, &current.score));
     let score_norm = maximum_absolute(&current.score);
@@ -532,7 +542,7 @@ fn optimize(
           .zip(&step)
           .map(|(b, d)| b + fraction * d)
           .collect();
-        if let Ok(next) = evaluate(&x, y, &candidate, scales[k]) {
+        if let Ok(next) = evaluate(&x, y, &candidate, scales[k], offsets) {
           let slack = 1e-12 * (1.0 + current.log_likelihood.abs());
           if next.log_likelihood >= current.log_likelihood + 1e-4 * fraction * directional - slack {
             accepted = Some(candidate);
@@ -570,6 +580,39 @@ pub fn fit_nb2_with_options(
       Nb2Covariance::ModelBased
     },
     options,
+    &vec![0.0; problem.observation_count()],
+    None,
+  )
+}
+
+/// Fixed finite log-mean offsets aligned with retained rows. The NB null
+/// retains them while reestimating dispersion and any intercept. Full joint
+/// observed information is used, not conditional/Fisher covariance. A nonzero
+/// offset requires its source name so downstream reports cannot mislabel it.
+pub fn fit_nb2_with_offset(
+  problem: &EstimationProblem,
+  offsets: &[f64],
+  offset_variable: Option<&str>,
+  robust: bool,
+  cluster_variable: Option<&str>,
+) -> Result<Nb2Result, StatsError> {
+  if offset_variable.is_none() && offsets.iter().any(|v| *v != 0.0) {
+    return Err(invalid("nonzero offsets require a source variable name"));
+  }
+  if robust && cluster_variable.is_some() {
+    return Err(invalid("cannot combine robust and cluster"));
+  }
+  let covariance = match cluster_variable {
+    Some(variable) => Nb2Covariance::Cluster(variable),
+    None if robust => Nb2Covariance::Robust,
+    None => Nb2Covariance::ModelBased,
+  };
+  fit_nb2_covariance(
+    problem,
+    covariance,
+    &Nb2Options::default(),
+    offsets,
+    offset_variable,
   )
 }
 
@@ -583,6 +626,8 @@ pub fn fit_nb2_clustered(
     problem,
     Nb2Covariance::Cluster(variable),
     &Nb2Options::default(),
+    &vec![0.0; problem.observation_count()],
+    None,
   )
 }
 
@@ -590,8 +635,15 @@ fn fit_nb2_covariance(
   problem: &EstimationProblem,
   covariance_type: Nb2Covariance<'_>,
   options: &Nb2Options,
+  offsets: &[f64],
+  offset_variable: Option<&str>,
 ) -> Result<Nb2Result, StatsError> {
   problem.validate()?;
+  if offsets.len() != problem.observation_count() || offsets.iter().any(|v| !v.is_finite()) {
+    return Err(invalid(
+      "offsets must be finite and align with the estimation sample",
+    ));
+  }
   let robust = !matches!(covariance_type, Nb2Covariance::ModelBased);
   if options.max_iterations == 0 {
     return Err(invalid("max_iterations must be positive"));
@@ -669,15 +721,16 @@ fn fit_nb2_covariance(
   let poisson = if groups.is_some() {
     let mut starting = problem.clone();
     starting.sample.as_mut().unwrap().cluster_groups = None;
-    fit_poisson(&starting, false)
+    fit_poisson_with_offset(&starting, offsets, offset_variable, false, None)
   } else {
-    fit_poisson(problem, false)
+    fit_poisson_with_offset(problem, offsets, offset_variable, false, None)
   }
   .map_err(|_| failed("Poisson starting fit unavailable"))?;
   let beta: Vec<f64> = poisson.coefficients.iter().map(|c| c.value).collect();
   let fit = optimize(
     &x,
     &problem.response,
+    offsets,
     &beta,
     &poisson.fitted_means,
     robust,
@@ -689,13 +742,36 @@ fn fit_nb2_covariance(
   } else {
     let mean = count_sum / n as f64;
     let (null_x, null_beta, null_means) = if problem.include_intercept {
-      (vec![vec![1.0]; n], vec![mean.ln()], vec![mean; n])
+      if offset_variable.is_some() {
+        // A Poisson restricted start only: the subsequent NB optimization
+        // jointly refits its intercept AND dispersion with the same offsets.
+        let restricted = EstimationProblem::new(
+          &problem.outcome,
+          vec![],
+          problem.response.clone(),
+          vec![vec![]; n],
+        )?;
+        let start = fit_poisson_with_offset(&restricted, offsets, offset_variable, false, None)
+          .map_err(|_| failed("restricted Poisson starting fit unavailable"))?;
+        (
+          vec![vec![1.0]; n],
+          vec![start.coefficients[0].value],
+          start.fitted_means,
+        )
+      } else {
+        (vec![vec![1.0]; n], vec![mean.ln()], vec![mean; n])
+      }
     } else {
-      (vec![vec![]; n], vec![], vec![1.0; n])
+      (
+        vec![vec![]; n],
+        vec![],
+        offsets.iter().map(|o| o.exp()).collect(),
+      )
     };
     optimize(
       &null_x,
       &problem.response,
+      offsets,
       &null_beta,
       &null_means,
       false,
@@ -756,6 +832,7 @@ fn fit_nb2_covariance(
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),
     include_intercept: problem.include_intercept,
+    offset_variable: offset_variable.map(str::to_owned),
     robust,
     cluster,
     observation_count: n,
@@ -860,6 +937,7 @@ pub fn nb2_average_marginal_effects(
     effects.push(normal_inference(name.clone(), b * mean_mu, variance)?);
   }
   Ok(Nb2MarginalEffects {
+    offset_variable: result.offset_variable.clone(),
     robust: result.robust,
     cluster: result.cluster.clone(),
     observation_count: n,
@@ -900,7 +978,7 @@ mod tests {
     {
       let v: Vec<f64> = line.split(',').map(|s| s.parse().unwrap()).collect();
       let (y, mu, a) = (v[0], v[1], v[2]);
-      let e = evaluate(&[vec![1.0]], &[y], &[mu.ln(), a], 1.0).unwrap();
+      let e = evaluate(&[vec![1.0]], &[y], &[mu.ln(), a], 1.0, &[0.0]).unwrap();
       let actual = [
         e.log_likelihood,
         e.score[0],
@@ -942,7 +1020,7 @@ mod tests {
       [0.0, -12.0],
       [0.0, 12.0],
     ] {
-      assert!(evaluate(&[vec![1.0]], &[1.0], &parameters, 1.0).is_err());
+      assert!(evaluate(&[vec![1.0]], &[1.0], &parameters, 1.0, &[0.0]).is_err());
     }
   }
 

@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | NB2 offsets/remaining exposure workflows (fixed Poisson offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Panel/xtreg parser only | Unit/time declaration, gap/duplicate policy, FE/RE/between/differences and diagnostics |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -343,7 +343,7 @@ output-collision and JSON/text/piped regression coverage. Repeated person-years
 require clustered inference for dependence: these two reproduced columns are
 **not panel-robust**. The ASCII omits original person IDs; the native Poisson
 extensions below recover audited DTA IDs separately. Household/site/multiway,
-NB2 offsets/remaining exposure workflows (Poisson fixed offsets are separately validated method evidence), current-row probabilities/unresolved printed Table20.6 NB2 row,
+Remaining exposure workflows (Poisson/NB2 fixed offsets are separately validated method evidence), current-row probabilities/unresolved printed Table20.6 NB2 row,
 formal NB boundary/specification tests,
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` remains OLS/logit/probit
@@ -446,7 +446,7 @@ the author-program specification; the printed row is not silently excluded or
 marked complete. Remaining table/illustration/formal-test/core requirements stand.
 No author data/program/book redistribution or production R/Python dependency.
 
-## Additional fixed Poisson offset evidence (not a textbook replication)
+## Additional fixed count offset evidence (not a textbook replication)
 
 The [synthetic offset workflow](../../examples/poisson-offset/README.md) delivers
 `poisson ..., offset(var)` with fixed coefficient one, joint finite sampling,
@@ -457,10 +457,18 @@ across three designs and three covariance choices, including all means/indices,
 full coefficient/covariance/normal inference, LR/Wald/diagnostics and continuous
 delta effects. Native tests pin retained indices, zero-offset/shift invariance,
 current-versus-retained behavior, atomic failures and JSON/text/script output.
-NB2 offsets remain unimplemented; exposure workflows may use equivalent explicit
-log-offset preparation rather than requiring an `exposure()` alias. This synthetic method
-extension neither changes the no-offset Table20.5 design nor validates any
-additional book illustration or resolves the printed Table20.6 discrepancy.
+The separate [NB2 offset workflow](../../examples/nb2-offset/README.md) validates
+1,076 R4.6.1/MASS7.3.65 quantities across three designs/three covariance choices:
+full beta/lnalpha observed information/grouped joint scores, all means/indices,
+coefficient/dispersion/normal inference, NB null alpha/likelihood refitted with
+the SAME offsets, LR/Wald/diagnostics and continuous delta effects. Base R numerical
+score/curvature checks distinguish this from conditional GLM/Fisher covariance.
+Native tests protect exact samples, offset/intercept shifts, provenance and
+current-versus-retained/state/file contracts through the actual JSON/text script.
+Exposure workflows may use equivalent explicit log-offset preparation rather than
+requiring an `exposure()` alias. Neither synthetic method extension changes the
+no-offset Table20.5 design, validates another book illustration or resolves the
+printed Table20.6 discrepancy.
 
 ## Additional IV method evidence (not a textbook replication)
 

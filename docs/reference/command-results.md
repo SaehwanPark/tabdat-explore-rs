@@ -266,7 +266,8 @@ The nested null retains the same offsets: with an intercept,
 mu0_i=exp(offset_i)*sum(y)/sum(exp(offset)); without it, mu0_i=exp(offset_i).
 A guarded log-sum-exp evaluates the intercept-only starting/null model. Extreme
 finite offset designs can still fail the existing representability/convergence
-policy. Exposure shorthand and NB2 offsets are not installed.
+policy. Exposure shorthand is not installed; NB2 fixed offsets have the distinct
+joint-dispersion null contract below.
 
 CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
 
@@ -340,7 +341,7 @@ not data/labels/order. No fit restoration/persistence is added. `estimates store
 continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
 [fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
-method evidence, not a textbook replication. Remaining exposure workflows/NB2 offsets,
+method evidence, not a textbook replication. Remaining exposure workflows,
 multiway clustering, weighted/survey inference, current-row PMF/CDF predictions, factors/discrete
 changes and general count test/lincom remain required work.
 
@@ -378,7 +379,7 @@ uses its distinct full-joint clustered law below.
 
 ## Bounded jointly estimated NB2
 
-`nbreg y [xvars] [, robust noconstant]` executes unweighted log-link NB2:
+`nbreg y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link NB2:
 mean mu=exp(X beta), variance mu+alpha*mu², alpha=exp(lnalpha), size=1/alpha.
 It shares Poisson's exact loaded-integer/joint complete-finite sample semantics,
 but bounds counts to **0..100000** to cap integer gamma-ratio/derivative cache
@@ -386,6 +387,15 @@ work. It requires N>K+1 (K mean parameters plus dispersion), full rank and
 lnalpha strictly **(-12,12)**. These are supported numerical limits, not clipping
 or an existence classifier. Boundary/Poisson-limit or nonrepresentable variance
 fails rather than substituting Poisson. `lnalpha` is a reserved parameter name.
+
+`offset(var)` adds a finite numeric fixed coefficient-one log-mean term, with
+joint model/offset/group exclusions before finite count validation. It does not
+increase K or LR DF. BOTH full and restricted NB likelihoods retain the same
+offsets. The restricted model reestimates intercept AND dispersion when an
+intercept exists; otherwise mu=exp(offset), with dispersion still reestimated.
+A same-offset Poisson fit supplies starting values only: it does not replace
+the restricted NB likelihood, its nuisance alpha or the full joint covariance.
+No-offset fitting entry points and structured shapes remain unchanged.
 
 CLI-v1 adds **NbregResult**, `estimator: "nb2"`. Common outcome/predictor/sample,
 count, coefficient/normal95, likelihood/LR/Wald and descriptive diagnostic fields
@@ -410,6 +420,10 @@ follow the Poisson contracts above, with these explicit NB2 differences:
   nuisance estimate, not full alpha or a Poisson null. Positive-DF model-based
   LR is chi-square; robust LR remains descriptive with null p/reference.
   Robust selected-V Wald tests beta slopes only, never lnalpha.
+  Offset fits additionally report `offset_variable`, `offset_coefficient: 1.0`,
+  `linear_index: "x_beta_plus_offset"`, with `null_model` values
+  `intercept_and_dispersion_reestimated_with_same_fixed_offset` or
+  `all_beta_zero_dispersion_reestimated_with_same_fixed_offset`.
 - Residual NB deviance is evaluated at fitted alpha. Pearson uses NB2 variance;
   `df_residual`=N-K-1 and `pearson_dispersion`=Pearson/(N-K-1), descriptive only,
   not a Student-t reference, formal test or covariance multiplier.
@@ -426,18 +440,27 @@ follow the Poisson contracts above, with these explicit NB2 differences:
 continuous derivative/conditional-design normal95 fields as Poisson.
 `covariance_role: "beta_block_of_full_joint_beta_lnalpha_covariance"` is explicit:
 the joint gradient is `[beta_j*mean(mu*X)+e_j*mean(mu),0]`, not a reason to
-replace joint V with fixed-alpha conditional covariance.
+replace joint V with fixed-alpha conditional covariance. Offset fits additionally
+report `offset_variable` and the same fixed-retained-offset `offset_treatment`
+string as Poisson effects. Offsets are fixed in derivatives/uncertainty, not a
+chain rule through the offset even if its variable is also a predictor.
 
 Current-row `predict ..., n`/xb uses the common atomic exponential/finite-index
-path, no outcome required; means are not probabilities. Bare predict stays xb.
+path, no outcome required; means are not probabilities. BOTH xb and n include
+the CURRENT named offset when specified (xb=X beta+offset); missing/nonnumeric
+offset columns fail without clearing the retained fit or publishing a target.
+Retained effects/count bins keep original fitted means/offsets/alpha despite
+current-data edits. Bare predict stays xb.
 Noncount fits reject n; NB2 rejects pr/residual/auxiliary forms. The existing
 `PredictMeanCountRequiresPoisson` error identity is retained with wording extended
 to installed count fits. Executable owned state uses
 `negative_binomial_fit`; the old `negative_binomial` placeholder remains readable,
 not a usable/restorable fit. Failed new fits clear stale estimation only.
 
-See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018.
-FE/RE/panel-family inference, weights/offsets/exposure, richer count
+See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
+[synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) validates
+full joint inference/nulls without claiming a new textbook illustration.
+FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
 specifications, current-row count PMF/CDF predictions, formal alpha=0/specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
@@ -477,7 +500,7 @@ person/year/design/mean/xb records/G5908, with numerical grouped-log-PMF score
 and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
-See MIG-0020. Remaining multiway/survey/few-cluster, offsets/exposure/weights,
+See MIG-0020. Remaining multiway/survey/few-cluster, exposure workflows/weights,
 current-row probabilities/formal tests/general restrictions/named reports and richer count
 requirements are not removed.
 

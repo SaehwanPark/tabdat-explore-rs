@@ -11,19 +11,21 @@ impl Session {
     if command.robust && command.cluster_variable.is_some() {
       return Err(family.error("cannot combine robust and cluster"));
     }
-    let (problem, _) = self.count_problem(
+    let (problem, offsets) = self.count_problem(
       family,
       &command.outcome,
       &command.predictors,
       command.include_intercept,
       command.cluster_variable.as_deref(),
-      None,
+      command.offset_variable.as_deref(),
     )?;
-    let result = if let Some(variable) = command.cluster_variable.as_deref() {
-      tabdat_stats::fit_nb2_clustered(&problem, variable)
-    } else {
-      tabdat_stats::fit_nb2(&problem, command.robust)
-    }
+    let result = tabdat_stats::fit_nb2_with_offset(
+      &problem,
+      &offsets,
+      command.offset_variable.as_deref(),
+      command.robust,
+      command.cluster_variable.as_deref(),
+    )
     .map_err(|e| family.error(e.to_string()))?;
     self.estimation = Some(EstimationState::NegativeBinomialFit(Box::new(
       NegativeBinomialFitState {

@@ -11,9 +11,10 @@ gives an intercept-only fit. `noconstant` requires predictors.
 `offset(log_time)` adds the named numeric variable with fixed coefficient one:
 mu=exp(X beta+log_time). It is not a weight or estimated parameter. Construct
 log exposure explicitly when needed (for positive time, via prepared input or
-an explicit SQL transformation; `generate` function calls are not installed). Nonfinite/missing offsets exclude rows jointly with model/group
-cells before finite count validation. `exposure()` shorthand and NB2 offsets are
-not installed. See `examples/poisson-offset/workflow.td` for a runnable example.
+an explicit SQL transformation; `generate` function calls are not installed).
+Nonfinite/missing offsets exclude rows jointly with model/group cells before finite
+count validation. `exposure()` shorthand is not installed; NB2 fixed offsets are
+separately installed by `nbreg`, with a joint dispersion-refitted null. See `examples/poisson-offset/workflow.td` for a runnable example.
 
 Example workflow:
 - `use visits.csv`

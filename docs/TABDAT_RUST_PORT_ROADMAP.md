@@ -159,7 +159,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: NB2 offsets/remaining exposure workflows, household/site/multiway/survey inference, current-row count probability prediction,
+   panel analysis: remaining exposure workflows, household/site/multiway/survey inference, current-row count probability prediction,
    formal NB boundary/specification tests and remaining table outputs stay required.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)
@@ -183,7 +183,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    [complete workflow](../examples/poisson-offset/README.md): joint finite sample,
    same-offset null, current offset predictions and retained conditional-offset
    effects/count bins, with 950 independent base-R quantities across three designs
-   and three covariance choices. This is method evidence, not new book coverage.
+   and three covariance choices. NB2 fixed offsets now have a separate
+   [synthetic workflow](../examples/nb2-offset/README.md) validating 1,076 R/MASS
+   quantities, full joint beta/lnalpha observed covariance/group scores, same-offset
+   dispersion-refitted nulls, current predictions and retained conditional-offset
+   effects/count bins. These are method evidence, not new book coverage.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not

@@ -64,7 +64,8 @@ pub use matrix::{
 };
 pub use nb2::{
   MAX_NB2_COUNT, Nb2Cluster, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Options, Nb2Result,
-  fit_nb2, fit_nb2_clustered, fit_nb2_with_options, nb2_average_marginal_effects,
+  fit_nb2, fit_nb2_clustered, fit_nb2_with_offset, fit_nb2_with_options,
+  nb2_average_marginal_effects,
 };
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
