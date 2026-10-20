@@ -57,3 +57,21 @@ fn malformed_fe_keys_and_conflicting_prediction_modes_are_rejected() {
     assert!(parse_command(text).is_err(), "accepted {text}");
   }
 }
+
+#[test]
+fn mle_is_a_distinct_model_based_estimator_with_explicit_keys() {
+  let Command::XtReg { command } = parse_command("xtreg y x, mle id(i) time(t)").unwrap() else {
+    panic!()
+  };
+  assert_eq!(command.estimator, XtRegEstimator::RandomEffectsMl);
+  for text in [
+    "xtreg y x, mle re id(i) time(t)",
+    "xtreg y x, mle fe id(i) time(t)",
+    "xtreg y x, mle robust id(i) time(t)",
+    "xtreg y x, mle cluster(i) id(i) time(t)",
+    "xtreg y x, mle(1) id(i) time(t)",
+    "xtreg y x, mle id(i)",
+  ] {
+    assert!(parse_command(text).is_err(), "{text}");
+  }
+}

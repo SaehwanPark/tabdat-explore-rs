@@ -2000,6 +2000,7 @@ fn get_command_schema(
           name: "re".to_string(),
           required: false,
         },
+        OptionDescriptor { name: "mle".to_string(), required: false },
         OptionDescriptor {
           name: "robust".to_string(),
           required: false,
@@ -2009,7 +2010,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "xtreg y xvars, fe|re id(unit) time(year) [robust | cluster(unit)]".to_string(),
+      syntax: "xtreg y xvars, fe|re|mle id(unit) time(year) [robust | cluster(unit), FE/GLS only]".to_string(),
     }),
     "zinb" => Ok(CommandSchemaResult {
       arguments: vec![

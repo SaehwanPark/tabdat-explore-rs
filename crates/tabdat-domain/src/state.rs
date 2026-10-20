@@ -142,7 +142,7 @@ pub struct FixedEffectsState {
   pub result: tabdat_stats::FixedEffectsResult,
 }
 
-/// Owned balanced one-way RE-GLS fit and explicit panel-key provenance.
+/// Owned balanced one-way RE fit and explicit panel-key provenance.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsState {
   pub time_variable: String,

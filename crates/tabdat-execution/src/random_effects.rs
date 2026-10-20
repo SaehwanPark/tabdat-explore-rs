@@ -18,7 +18,12 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
     let input = self.prepare_panel_problem(command)?;
-    let fit = if command.robust || command.cluster_variable.is_some() {
+    let fit = if command.estimator == XtRegEstimator::RandomEffectsMl {
+      if command.robust || command.cluster_variable.is_some() {
+        return Err(fit_error("RE-ML supports model-based covariance only"));
+      }
+      tabdat_stats::fit_random_effects_ml
+    } else if command.robust || command.cluster_variable.is_some() {
       tabdat_stats::fit_random_effects_clustered
     } else {
       tabdat_stats::fit_random_effects
@@ -44,7 +49,7 @@ impl Session {
       || !matches!(command.kind, PredictKind::Xb | PredictKind::Residuals)
     {
       return Err(prediction_error(
-        "RE-GLS supports population xb or residuals only; no conditional unit effects, intervals, std or saved draws",
+        "RE supports population xb or residuals only; no conditional unit effects, intervals, std or saved draws",
       ));
     }
     let Some(EstimationState::RandomEffects(model)) = &self.estimation else {

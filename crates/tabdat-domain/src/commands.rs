@@ -977,7 +977,7 @@ pub struct IvRegressCommand {
   pub estimator: IvEstimator,
 }
 
-/// Estimator forms accepted by `xtreg`; random effects remain uninstalled.
+/// Bounded one-way panel estimators accepted by `xtreg`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum XtRegEstimator {
@@ -985,9 +985,11 @@ pub enum XtRegEstimator {
   FixedEffects,
   /// Random-effects panel estimator.
   RandomEffects,
+  /// Balanced Gaussian marginal maximum likelihood, interior variance only.
+  RandomEffectsMl,
 }
 
-/// One-way within FE uses explicit id/time options; bare/RE forms remain deferred.
+/// Executable panel estimators require explicit id/time options.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtRegCommand {
   /// The dependent variable.

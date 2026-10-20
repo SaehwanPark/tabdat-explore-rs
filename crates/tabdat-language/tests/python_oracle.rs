@@ -122,6 +122,18 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
+    // MLE is an additive estimator; preserve historical capture and check the
+    // intentional discovery-only change in its two syntax diagnostics.
+    if let Some(expected) = case["error"].as_str()
+      && (expected == "xtreg requires exactly one of fe or re"
+        || expected == "xtreg expects syntax: xtreg <y> <xvars>, fe|re")
+    {
+      let current = expected
+        .replace("fe or re", "fe, re or mle")
+        .replace("fe|re", "fe|re|mle");
+      assert_eq!(result.unwrap_err().message(), current);
+      continue;
+    }
     let mismatch = if let Some(expected) = case["error"].as_str() {
       match result {
         Err(error) if error.message() == expected => None,

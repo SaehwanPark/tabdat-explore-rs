@@ -242,3 +242,87 @@ fn robust_alias_equals_unit_clustering_with_unchanged_sample_and_predictions() {
   );
   assert_eq!(s.state(), before);
 }
+
+#[test]
+fn ml_joint_sample_predictions_and_failure_state_preserve_data() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(
+    &mut s,
+    "sql \"\"\"SELECT * EXCLUDE(y), y + 0.3*((id*id+1)%5) AS y FROM active\"\"\" into ml_input",
+  );
+  let original = rows(&mut s, "SELECT * FROM active");
+  let ExecutionResult::RandomEffects(r) = run(&mut s, "xtreg y x, mle id(id) time(year)") else {
+    panic!()
+  };
+  let ml = r.result.ml.as_ref().unwrap();
+  assert!(ml.profile_score.abs() < 1e-9);
+  assert_eq!(ml.joint_parameter_names.len(), 4);
+  assert_eq!(r.result.group_count, 6);
+  assert_eq!(r.result.group_size, 3);
+  assert_eq!(
+    r.result.gls.sample.as_ref().unwrap().retained_indices,
+    (7..28).filter(|i| i % 7 != 0).collect::<Vec<_>>()
+  );
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), original);
+  run(&mut s, "predict ml_xb");
+  run(&mut s, "predict ml_residual, residuals");
+  let b = &r.result.gls.coefficients;
+  for row in rows(&mut s, "SELECT y,x,ml_xb,ml_residual FROM active") {
+    let xb = b[0].value + b[1].value * number(&row[1]).unwrap();
+    assert!((number(&row[2]).unwrap() - xb).abs() < 1e-12);
+    if let Some(y) = number(&row[0]) {
+      assert!((number(&row[3]).unwrap() - (y - xb)).abs() < 1e-12);
+    } else {
+      assert_eq!(row[3], CellValue::Null);
+    }
+  }
+  for text in [
+    "predict bad, xbu",
+    "predict bad, posterior_predictive std",
+    "lincom x",
+    "test x = 0",
+  ] {
+    let before = s.state();
+    let data = rows(&mut s, "SELECT * FROM active");
+    assert!(s.execute(parse_command(text).unwrap()).is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+  }
+  run(&mut s, "replace x = x + 1");
+  run(&mut s, "drop id year");
+  run(&mut s, "predict current");
+  for row in rows(&mut s, "SELECT ml_xb,current FROM active") {
+    assert!((number(&row[1]).unwrap() - number(&row[0]).unwrap() - b[1].value).abs() < 1e-12);
+  }
+  let mut expected = s.state();
+  expected.estimation = None;
+  let data = rows(&mut s, "SELECT * FROM active");
+  assert!(
+    s.execute(parse_command("xtreg y x, mle id(id) time(year)").unwrap())
+      .is_err()
+  );
+  assert_eq!(s.state(), expected);
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}
+
+#[test]
+fn ml_boundary_failure_clears_fit_and_preserves_the_dataset() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  fit(&mut s);
+  run(
+    &mut s,
+    "sql \"\"\"SELECT * EXCLUDE(y), 0.7*x + CASE WHEN year IN (1979,1982) THEN -0.2 ELSE 0.2 END AS y FROM active\"\"\" into boundary_input",
+  );
+  let data = rows(&mut s, "SELECT * FROM active");
+  let error = s
+    .execute(parse_command("xtreg y x, mle id(id) time(year)").unwrap())
+    .unwrap_err();
+  assert!(
+    error.to_string().contains("zero-unit-variance optimum"),
+    "{error}"
+  );
+  assert!(s.state().estimation.is_none());
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}

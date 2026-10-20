@@ -160,9 +160,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
       "xtreg",
-      "xtreg y xvars, fe|re id(unit) time(year) [robust | cluster(unit)]",
+      "xtreg y xvars, fe|re|mle id(unit) time(year) [robust | cluster(unit), FE/GLS only]",
       serde_json::json!([{"name":"depvar","required":true},{"name":"indepvars","required":true}]),
-      vec!["id", "time", "fe", "re", "robust", "cluster"],
+      vec!["id", "time", "fe", "re", "mle", "robust", "cluster"],
     ),
     (
       "summarize",

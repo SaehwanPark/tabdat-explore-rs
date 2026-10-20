@@ -7,7 +7,8 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Balanced one-way Swamy–Arora feasible GLS. The stored regression is on the
+/// Balanced one-way RE fit (Swamy–Arora GLS or interior Gaussian ML).
+/// The stored regression is on the
 /// quasi-demeaned response/design, including the transformed intercept column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsResult {
@@ -27,6 +28,8 @@ pub struct RandomEffectsResult {
   pub wald_p_value: Option<f64>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub wald_unavailable_reason: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub ml: Option<crate::RandomEffectsMlInference>,
 }
 
 /// Joint finite cases must already be selected and sample-aligned unit keys
@@ -214,6 +217,7 @@ fn fit_random_effects_impl(
   gls.fit_statistics.f_statistic = None;
   gls.diagnostics.method = "balanced_swamy_arora_random_effects_gls".into();
   Ok(RandomEffectsResult {
+    ml: None,
     entity_variable: entity_variable.into(),
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),
