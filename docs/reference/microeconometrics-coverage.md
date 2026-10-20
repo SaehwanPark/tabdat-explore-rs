@@ -34,7 +34,7 @@ not by implementing every estimator mentioned in a chapter.
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, current-row PMF/CDF predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
-| 21: Linear panels | Native SQL/OLS POLS and annual FD portions, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, between/RE/two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
+| 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, general between command/RE/two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
 | 25: Treatment evaluation | Relevant parser forms only | Explicit estimands, adjustment/matching/weighting, balance/overlap and valid uncertainty |
@@ -66,7 +66,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; current-row PMF/CDF/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
-| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept inference, between/RE, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required |
+| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between classical and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept inference, RE, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
@@ -106,6 +106,32 @@ identify Table21.2. This is chapter21, not chapter24's clustered-sample examples
   state or complete the table/family. Raw source redistribution/platform
   guarantees are not claimed.
 
+### MMA-PANEL bounded Between portion
+
+The [Between workflow](../../examples/mma21p1panel/README.md#between-mean-response-inference-and-reproduction)
+executes Table21.2's classical Between coefficient/inference portion using
+native SQL plus OLS, with a separately validated independent-person HC1
+comparison. It audits raw keys, jointly selects finite lnhr/lnwg pairs, computes
+one equally weighted mean row per person, and orders IDs. Original MOM.dat
+contributes ten rows per each of 532 people; inference DF is G-2=530. Modified
+input retains singleton people and drops people with no joint cases; no T_i
+weighting or separate-variable averaging. Named reports, tests/intervals,
+mean-response predictions/residuals and count/year/mean exports complete the
+bounded workflow. These are 532 mean observations, not 5,320 panel fit rows.
+
+R4.6.1/lm and sandwich3.1.1 independently validate **60 scalars** and every one
+of **4,256 exported cells/532 mean rows**, using absolute1e-9/nonzero-tail
+relative1e-8 tolerances and exact identities/counts/year bounds. Separate
+float32 ingestion reproduces seven author printed classical facts at half-unit
+printed precision. The source hash is pinned. Synthetic CLI cases protect
+joint membership, unequal counts/equal person weights, singleton/all-excluded
+units, inference DF, text/JSON identity, key/sample/rank failure and export
+preservation. HC1 is not the author's bootstrap; R²/working likelihood are for
+means, not within/overall panel statistics or cross-design LR inference.
+No general `xtreg ..., be`, RE, bootstrap, Figure21.2 or whole-table completion
+is claimed; correlation of wages with person effects remains an identification
+concern. Source and reproduction instructions remain beside the example.
+
 ### MMA-PANEL bounded native Within portion
 
 The same exact `MOM.dat` sample/design now runs `within.td`: 5,320 rows/532 men,
@@ -134,7 +160,7 @@ independent R assertions; runtime/CLI tests protect sample/key/type/order/state
 and identical text/JSON exports. Tolerances remain1e-9 absolute/nonzero-tail
 1e-8 relative with exact source identities.
 
-**Still required:** persistent panel state, between/RE/two-way effects, richer
+**Still required:** persistent panel state, general between command/RE/two-way effects, richer
 design/weights, nuisance-intercept inference, Hausman and other panel-specific
 diagnostics/comparisons, bootstrap/RNG, lowess/Figures21.1–21.4 and remaining
 Table21.2/illustration outputs. No full Within column, table/chapter/panel-family
