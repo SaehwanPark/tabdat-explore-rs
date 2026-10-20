@@ -2623,7 +2623,10 @@ fn parse_binary_or_count_response_command(
 
   let mut unsupported = options
     .iter()
-    .filter(|option| !matches!(option.name.as_str(), "robust" | "cluster" | "noconstant"))
+    .filter(|option| {
+      !matches!(option.name.as_str(), "robust" | "cluster" | "noconstant")
+        && !(command_name == "poisson" && option.name == "offset")
+    })
     .map(|option| option.name.as_str())
     .collect::<Vec<_>>();
   unsupported.sort_unstable();
@@ -2688,6 +2691,27 @@ fn parse_binary_or_count_response_command(
     .collect();
   let include_intercept = !options.iter().any(|option| option.name == "noconstant");
 
+  let offset_matches: Vec<_> = options
+    .iter()
+    .filter(|option| option.name == "offset")
+    .collect();
+  if offset_matches.len() > 1 {
+    return Err(ParseError::new(
+      "poisson option offset may only be supplied once",
+    ));
+  }
+  let offset_variable = match offset_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) if values.len() == 1 => Some(values[0].clone()),
+      _ => {
+        return Err(ParseError::new(
+          "poisson option offset expects one variable",
+        ));
+      }
+    },
+    None => None,
+  };
+
   match command_name {
     "logit" => Ok(Command::Logit {
       command: LogitCommand {
@@ -2711,6 +2735,7 @@ fn parse_binary_or_count_response_command(
       command: PoissonCommand {
         outcome,
         predictors,
+        offset_variable,
         robust,
         cluster_variable: cluster_values,
         include_intercept,
@@ -11634,6 +11659,7 @@ mod tests {
         command: PoissonCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned(), "x2".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: true,
@@ -11646,6 +11672,7 @@ mod tests {
         command: PoissonCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: true,
           cluster_variable: None,
           include_intercept: true,
@@ -11658,6 +11685,7 @@ mod tests {
         command: PoissonCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: Some("group_id".to_owned()),
           include_intercept: true,
@@ -11670,6 +11698,7 @@ mod tests {
         command: PoissonCommand {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: false,
@@ -11682,6 +11711,7 @@ mod tests {
         command: PoissonCommand {
           outcome: "y var".to_owned(),
           predictors: vec!["x var".to_owned()],
+          offset_variable: None,
           robust: false,
           cluster_variable: Some("firm id".to_owned()),
           include_intercept: true,

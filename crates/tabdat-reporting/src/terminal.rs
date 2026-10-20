@@ -153,7 +153,13 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
     "Log likelihood = {}; null log likelihood = {}; null model: {}",
     r.log_likelihood,
     r.null_log_likelihood,
-    if r.include_intercept {
+    if r.offset_variable.is_some() {
+      if r.include_intercept {
+        "intercept-only with same fixed offset"
+      } else {
+        "all coefficients zero with same fixed offset"
+      }
+    } else if r.include_intercept {
       "intercept-only estimated mean"
     } else {
       "unit mean (all coefficients zero), not a fitted intercept"
@@ -195,6 +201,9 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
     if r.robust {
       output.push_str("LR p-value unavailable under robust QMLE inference.\n");
     }
+  }
+  if let Some(variable) = &r.offset_variable {
+    writeln!(output, "Fixed offset: {} (coefficient 1, not estimated); xb = X beta + offset. Predictions use current offset values; effects hold retained offsets fixed.", variable.escape_debug()).unwrap();
   }
   output.push_str(&poisson_estimates(&r.coefficients));
   output
@@ -1137,10 +1146,17 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Poisson(result) => poisson_report(result),
     ExecutionResult::PoissonMarginalEffects(result) => format!(
-      "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}{}",
+      "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}{}{}",
       result.observation_count,
       poisson_covariance_note(result.robust, result.cluster.as_ref()),
       count_cluster_note(result.cluster.as_ref()),
+      result
+        .offset_variable
+        .as_ref()
+        .map_or_else(String::new, |v| format!(
+          "Fixed offset {} held at retained values in derivatives and uncertainty.\n",
+          v.escape_debug()
+        )),
       poisson_estimates(&result.effects),
       if result.effects.is_empty() {
         "No predictor effects in an intercept-only model.\n"

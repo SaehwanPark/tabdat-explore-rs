@@ -68,7 +68,8 @@ impl Session {
     predictors: &[String],
     include_intercept: bool,
     cluster_variable: Option<&str>,
-  ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
+    offset_variable: Option<&str>,
+  ) -> Result<(tabdat_stats::EstimationProblem, Vec<f64>), RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
@@ -77,6 +78,7 @@ impl Session {
       })?;
     let variables: Vec<&str> = std::iter::once(outcome)
       .chain(predictors.iter().map(String::as_str))
+      .chain(offset_variable)
       .collect();
     for name in &variables {
       let column = dataset
@@ -106,8 +108,14 @@ impl Session {
       columns.push(quote_identifier(name));
     }
     let query = format!("SELECT {} FROM {ACTIVE_TABLE}", columns.join(", "));
-    let (mut total, mut retained, mut response, mut design, mut cluster_groups) =
-      (0, Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let (mut total, mut retained, mut response, mut design, mut cluster_groups, mut offsets) = (
+      0,
+      Vec::new(),
+      Vec::new(),
+      Vec::new(),
+      Vec::new(),
+      Vec::new(),
+    );
     self
       .backend
       .as_ref()
@@ -149,7 +157,12 @@ impl Session {
           let count = count.ok_or_else(|| family.count_error())?;
           retained.push(index);
           response.push(count);
-          design.push(values[1..].to_vec());
+          design.push(values[1..1 + predictors.len()].to_vec());
+          offsets.push(if offset_variable.is_some() {
+            *values.last().unwrap()
+          } else {
+            0.0
+          });
           if let Some(group) = group {
             cluster_groups.push(group);
           }
@@ -169,12 +182,13 @@ impl Session {
       cluster_variable.is_some().then_some(cluster_groups),
     )
     .map_err(|e| family.error(e.to_string()))?;
-    Ok(
+    Ok((
       tabdat_stats::EstimationProblem::new(outcome, predictors.to_vec(), response, design)
         .map_err(|e| family.error(e.to_string()))?
         .with_intercept(include_intercept)
         .with_sample(sample),
-    )
+      offsets,
+    ))
   }
 
   pub(crate) fn execute_count_probability_table(
@@ -248,7 +262,14 @@ impl Session {
         variable: command.target_variable.clone(),
       });
     }
-    let predictors = &problem.predictor_names;
+    let mut predictors = problem.predictor_names.clone();
+    let offset_variable = match &self.estimation {
+      Some(EstimationState::PoissonFit(state)) => state.result.offset_variable.as_ref(),
+      _ => None,
+    };
+    if let Some(name) = offset_variable {
+      predictors.push(name.clone());
+    }
     let missing: Vec<_> = predictors
       .iter()
       .filter(|name| !dataset.columns.iter().any(|c| c.name == **name))
@@ -257,7 +278,7 @@ impl Session {
     if !missing.is_empty() {
       return Err(RuntimeError::PredictUnknownVariable { variables: missing });
     }
-    for name in predictors {
+    for name in &predictors {
       if dataset
         .columns
         .iter()
@@ -267,10 +288,13 @@ impl Session {
       }
     }
     let offset = usize::from(problem.include_intercept);
-    let coefficients: Vec<_> = estimates[offset..].iter().map(|c| c.value).collect();
+    let mut coefficients: Vec<_> = estimates[offset..].iter().map(|c| c.value).collect();
+    if offset_variable.is_some() {
+      coefficients.push(1.0);
+    }
     let prediction = LinearPrediction {
       target_variable: &command.target_variable,
-      predictor_names: predictors,
+      predictor_names: &predictors,
       predictor_coefficients: &coefficients,
       intercept: problem.include_intercept.then(|| estimates[0].value),
       outcome_variable: &problem.outcome,

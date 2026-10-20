@@ -226,6 +226,7 @@ fn failed_new_cluster_requests_clear_only_stale_fit() {
     command: PoissonCommand {
       outcome: "y".into(),
       predictors: vec!["x".into(), "z".into()],
+      offset_variable: None,
       robust: true,
       cluster_variable: Some("person".into()),
       include_intercept: true,

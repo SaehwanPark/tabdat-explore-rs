@@ -566,6 +566,8 @@ pub struct ProbitCommand {
 pub struct PoissonCommand {
   pub outcome: String,
   pub predictors: Vec<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   /// Independent-row score sandwich, corrected by N/(N-1).
   pub robust: bool,
   pub cluster_variable: Option<String>,

@@ -11,12 +11,13 @@ impl Session {
     if command.robust && command.cluster_variable.is_some() {
       return Err(family.error("cannot combine robust and cluster"));
     }
-    let problem = self.count_problem(
+    let (problem, _) = self.count_problem(
       family,
       &command.outcome,
       &command.predictors,
       command.include_intercept,
       command.cluster_variable.as_deref(),
+      None,
     )?;
     let result = if let Some(variable) = command.cluster_variable.as_deref() {
       tabdat_stats::fit_nb2_clustered(&problem, variable)

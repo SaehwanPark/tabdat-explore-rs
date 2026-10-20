@@ -59,6 +59,8 @@ pub struct PoissonResult {
   pub outcome: String,
   pub predictor_names: Vec<String>,
   pub include_intercept: bool,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<PoissonCluster>,
@@ -89,6 +91,8 @@ pub struct PoissonResult {
 /// Not discrete changes, original-variable chain rules or random-X uncertainty.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonMarginalEffects {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<PoissonCluster>,
@@ -190,6 +194,7 @@ fn evaluate(
   y: &[f64],
   beta: &[f64],
   saturated: &[f64],
+  offsets: &[f64],
 ) -> Result<Evaluation, StatsError> {
   let mut result = Evaluation {
     means: Vec::with_capacity(y.len()),
@@ -197,8 +202,8 @@ fn evaluate(
     log_likelihood: 0.0,
     deviance: 0.0,
   };
-  for ((row, &y), &sat) in x.iter().zip(y).zip(saturated) {
-    let eta: f64 = row.iter().zip(beta).map(|(a, b)| a * b).sum();
+  for (((row, &y), &sat), &offset) in x.iter().zip(y).zip(saturated).zip(offsets) {
+    let eta: f64 = row.iter().zip(beta).map(|(a, b)| a * b).sum::<f64>() + offset;
     let mu = eta.exp();
     if !eta.is_finite() || !mu.is_finite() || mu <= 0.0 {
       return Err(failed(
@@ -287,7 +292,42 @@ pub fn fit_poisson_with_options(
       PoissonCovariance::ModelBased
     },
     options,
+    &vec![0.0; problem.observation_count()],
   )
+}
+
+/// Fit with a fixed, finite additive log-mean offset aligned to retained rows.
+/// The offset is not a parameter; the nested null keeps it fixed. Clustered
+/// fits require attached groups; `robust` and `cluster_variable` are exclusive.
+/// The source name is retained for reporting/prediction. An unnamed offset
+/// must be identically zero, so a nonzero offset can never be mislabeled as
+/// an ordinary no-offset fit by downstream reporting.
+pub fn fit_poisson_with_offset(
+  problem: &EstimationProblem,
+  offsets: &[f64],
+  offset_variable: Option<&str>,
+  robust: bool,
+  cluster_variable: Option<&str>,
+) -> Result<PoissonResult, StatsError> {
+  if offset_variable.is_none() && offsets.iter().any(|v| *v != 0.0) {
+    return Err(invalid("nonzero offsets require a source variable name"));
+  }
+  if robust && cluster_variable.is_some() {
+    return Err(invalid("cannot combine robust and cluster"));
+  }
+  let covariance_type = match cluster_variable {
+    Some(variable) => PoissonCovariance::Cluster(variable),
+    None if robust => PoissonCovariance::Robust,
+    None => PoissonCovariance::ModelBased,
+  };
+  let mut result = fit_poisson_covariance(
+    problem,
+    covariance_type,
+    &PoissonOptions::default(),
+    offsets,
+  )?;
+  result.offset_variable = offset_variable.map(str::to_owned);
+  Ok(result)
 }
 
 /// One-way group-score sandwich, G/(G-1), with normal inference and no LR tail.
@@ -300,6 +340,7 @@ pub fn fit_poisson_clustered(
     problem,
     PoissonCovariance::Cluster(variable),
     &PoissonOptions::default(),
+    &vec![0.0; problem.observation_count()],
   )
 }
 
@@ -307,8 +348,14 @@ fn fit_poisson_covariance(
   problem: &EstimationProblem,
   covariance_type: PoissonCovariance<'_>,
   options: &PoissonOptions,
+  offsets: &[f64],
 ) -> Result<PoissonResult, StatsError> {
   problem.validate()?;
+  if offsets.len() != problem.observation_count() || offsets.iter().any(|v| !v.is_finite()) {
+    return Err(invalid(
+      "offsets must be finite and align with the estimation sample",
+    ));
+  }
   let robust = !matches!(covariance_type, PoissonCovariance::ModelBased);
   if options.max_iterations == 0 {
     return Err(invalid("max_iterations must be positive"));
@@ -398,11 +445,26 @@ fn fit_poisson_covariance(
     .collect();
   let mut beta = vec![0.0; k];
   if problem.include_intercept {
-    beta[0] = (count_sum / n as f64).ln() * scales[0];
+    let null_intercept = if offsets.iter().all(|v| *v == 0.0) {
+      // Preserve the installed no-offset starting point exactly.
+      (count_sum / n as f64).ln()
+    } else {
+      // log(sum(exp(offset))) avoids overflow in the intercept-only null MLE.
+      let maximum = offsets.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+      let log_exposure_sum = maximum
+        + offsets
+          .iter()
+          .map(|v| (v - maximum).exp())
+          .sum::<f64>()
+          .ln();
+      count_sum.ln() - log_exposure_sum
+    };
+    beta[0] = null_intercept * scales[0];
   }
-  let null_log_likelihood = evaluate(&x, &problem.response, &beta, &saturated)?.log_likelihood;
+  let null_log_likelihood =
+    evaluate(&x, &problem.response, &beta, &saturated, offsets)?.log_likelihood;
   for iteration in 1..=options.max_iterations {
-    let current = evaluate(&x, &problem.response, &beta, &saturated)?;
+    let current = evaluate(&x, &problem.response, &beta, &saturated, offsets)?;
     let weighted: Vec<Vec<f64>> = x
       .iter()
       .zip(&current.means)
@@ -506,6 +568,7 @@ fn fit_poisson_covariance(
         outcome: problem.outcome.clone(),
         predictor_names: problem.predictor_names.clone(),
         include_intercept: problem.include_intercept,
+        offset_variable: None,
         robust,
         cluster,
         observation_count: n,
@@ -540,7 +603,7 @@ fn fit_poisson_covariance(
         .zip(&step)
         .map(|(b, d)| b + fraction * d)
         .collect();
-      if let Ok(next) = evaluate(&x, &problem.response, &candidate, &saturated) {
+      if let Ok(next) = evaluate(&x, &problem.response, &candidate, &saturated, offsets) {
         let slack = 1e-12 * (1.0 + current.log_likelihood.abs());
         if next.log_likelihood >= current.log_likelihood + 1e-4 * fraction * directional - slack {
           accepted = Some(candidate);
@@ -620,6 +683,7 @@ pub fn poisson_average_marginal_effects(
     effects.push(inference(name.clone(), b * mean_mu, variance)?);
   }
   Ok(PoissonMarginalEffects {
+    offset_variable: result.offset_variable.clone(),
     robust: result.robust,
     cluster: result.cluster.clone(),
     observation_count: n,
