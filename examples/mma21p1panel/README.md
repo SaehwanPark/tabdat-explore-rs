@@ -219,7 +219,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** unbalanced RE-GLS, RE-MLE, Hausman and panel-specific
+**Still required:** unbalanced RE-GLS, full ML boundary/robust inference, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
@@ -349,7 +349,7 @@ raw-key/unbalanced/sample failures, atomic errors and export/source preservation
 Full-source text/JSON exports are also byte-identical.
 
 Still required: unbalanced RE, unit effects/conditional
-predictions, RE-ML, Hausman and other panel diagnostics, bootstrap and remaining
+predictions, full ML boundary/robust inference, Hausman and other panel diagnostics, bootstrap and remaining
 table/figure outputs. This bounded classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
 
@@ -399,7 +399,7 @@ slope covariance. Runtime/CLI tests exercise alias equality, unchanged point fit
 sample/components/predictions, arbitrary-cluster errors/cleared stale fits,
 current prediction preservation, unavailable-Wald text/JSON and normal prediction
 from that retained fit, as well as source/export/error contracts.
-Unbalanced RE, unit effects, RE-ML, general restrictions, Hausman, bootstrap and
+Unbalanced RE, unit effects, ML boundary/robust inference, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
 
 ## Interior RE-ML coefficient/likelihood workflow

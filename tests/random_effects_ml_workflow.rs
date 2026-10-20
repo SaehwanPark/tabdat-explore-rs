@@ -53,6 +53,7 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
     assert_eq!(fit["estimator"], "balanced_gaussian_random_effects_ml");
     assert_eq!(fit["covariance_convention"], "joint_observed_information");
     assert_eq!(fit["reference_distribution"], "normal");
+    assert_eq!(fit["covariance"], "observed_information");
     assert_eq!(fit["ml"]["likelihood_ratio_p_value"].is_null(), boundary);
     assert_eq!(
       fit["ml"]["likelihood_ratio_unavailable_reason"].is_string(),

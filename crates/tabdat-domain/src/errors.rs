@@ -1084,8 +1084,8 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("regress requires positive sigma values")
       }
       Self::RegressFailed { message } => write!(formatter, "regress failed: {message}"),
-      Self::RandomEffectsFailed { message } => write!(formatter, "xtreg re failed: {message}"),
-      Self::RandomEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg re failed: {message}"),
+      Self::RandomEffectsFailed { message } => write!(formatter, "xtreg random-effects failed: {message}"),
+      Self::RandomEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg random-effects failed: {message}"),
       Self::FixedEffectsFailed { message } => write!(formatter, "xtreg fe failed: {message}"),
       Self::FixedEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg fe failed: {message}"),
       Self::LogitFailed { message } => write!(formatter, "logit: {message}"),

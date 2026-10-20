@@ -585,7 +585,7 @@ impl Session {
     command: &LincomCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
-      return Err(RuntimeError::LincomFailed { message: "RE-GLS reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
+      return Err(RuntimeError::LincomFailed { message: "RE reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
     }
     if matches!(self.estimation, Some(EstimationState::Logit(_))) {
       return Err(RuntimeError::LincomFailed {
@@ -631,7 +631,7 @@ impl Session {
     command: &TestCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
-      return Err(RuntimeError::TestFailed { message: "RE-GLS reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
+      return Err(RuntimeError::TestFailed { message: "RE reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
     }
     if matches!(self.estimation, Some(EstimationState::Logit(_))) {
       return Err(RuntimeError::TestFailed {

@@ -146,7 +146,7 @@ Balanced Gaussian marginal ML (interior unit variance):
   exogeneity. Do not compare level and differenced likelihoods as an LR test.
 - CLI-v1 retains `RandomEffectsResult` with estimator
   `balanced_gaussian_random_effects_ml`, covariance convention
-  `joint_observed_information`, top-level marginal `log_likelihood` and `ml`
+  `joint_observed_information`, covariance label `observed_information`, top-level marginal `log_likelihood` and `ml`
   metadata containing the null/LR, profile score/eta, and full joint covariance
   with explicit parameter order. Existing GLS/cluster JSON fields are preserved.
   The internal `gls` fit stores the quasi-demeaned regression even for ML;

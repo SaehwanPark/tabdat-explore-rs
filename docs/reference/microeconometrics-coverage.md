@@ -128,7 +128,7 @@ joint membership, unequal counts/equal person weights, singleton/all-excluded
 units, inference DF, text/JSON identity, key/sample/rank failure and export
 preservation. HC1 is not the author's bootstrap; R²/working likelihood are for
 means, not within/overall panel statistics or cross-design LR inference.
-No general `xtreg ..., be`, RE, bootstrap, Figure21.2 or whole-table completion
+No general `xtreg ..., be`, unbalanced RE, bootstrap, Figure21.2 or whole-table completion
 is claimed; correlation of wages with person effects remains an identification
 concern. Source and reproduction instructions remain beside the example.
 
@@ -155,7 +155,7 @@ units, current predictions, state on error and text/JSON/export preservation.
 
 Still partial: requires equal retained counts T>=2 and full-rank within/between
 designs; unbalanced RE, time-invariant predictors, unit effects,
-RE-ML, Hausman, bootstrap and remaining table/figure outputs remain required.
+ML boundary/robust inference, Hausman, bootstrap and remaining table/figure outputs remain required.
 Model-based inference assumes exogenous unit effects and the specified
 error-components covariance with independent units. No panel likelihood,
 within/between/overall R², general restrictions or named RE reports are supplied.

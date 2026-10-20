@@ -7,7 +7,8 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Balanced one-way Swamy–Arora feasible GLS. The stored regression is on the
+/// Balanced one-way RE fit (Swamy–Arora GLS or interior Gaussian ML).
+/// The stored regression is on the
 /// quasi-demeaned response/design, including the transformed intercept column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsResult {

@@ -663,7 +663,9 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     fit.covariance.covariance_type,
     tabdat_domain::CovarianceType::Cluster(_)
   );
-  let covariance = if clustered {
+  let covariance = if r.ml.is_some() {
+    "observed_information".into()
+  } else if clustered {
     format!("cluster({})", r.entity_variable)
   } else {
     "nonrobust".into()
