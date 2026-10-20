@@ -411,3 +411,178 @@ fn within_script_reports_absorbed_and_inference_df_and_exports_conditional_predi
     exported
   );
 }
+
+#[test]
+fn between_script_uses_equal_weight_joint_case_means_and_exports_identically() {
+  let (_, mut source) = panel_fixture();
+  // One entirely excluded person, one singleton, and missing x in another
+  // person distinguish joint-case means from separate-column SQL AVG samples.
+  source.retain(|r| r.id != 6 || r.year == 1982);
+  let mut csv = String::from("source_row,lnhr,lnwg,kids,ageh,agesq,disab,id,year\n");
+  for row in &mut source {
+    if row.id == 5 {
+      row.y = None;
+    }
+    if row.id == 4 && row.year == 1980 {
+      row.x = f64::NAN;
+    }
+    csv.push_str(&format!(
+      "{},{},{},0,30,900,0,{},{}\n",
+      row.source,
+      row.y.map(|v| v.to_string()).unwrap_or_default(),
+      if row.x.is_finite() {
+        row.x.to_string()
+      } else {
+        String::new()
+      },
+      row.id,
+      row.year
+    ));
+  }
+  let json_dir = TestDir::new();
+  let text_dir = TestDir::new();
+  for dir in [&json_dir, &text_dir] {
+    fs::write(dir.path().join("MOM.csv"), &csv).unwrap();
+  }
+  let out = run(&json_dir, "between.td", true);
+  assert!(out.status.success(), "{out:?}");
+  let events: Vec<Value> = String::from_utf8(out.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let fits: Vec<_> = events
+    .iter()
+    .filter(|e| e["result_type"] == "RegressionResult")
+    .map(|e| &e["data"])
+    .collect();
+  assert_eq!(fits.len(), 2);
+  for (fit, covariance) in fits.iter().zip(["nonrobust", "robust"]) {
+    assert_eq!(fit["estimator"], "ols");
+    assert_eq!(fit["covariance"], covariance);
+    assert_eq!(fit["observation_count"], 5);
+    assert_eq!(fit["df_residual"], 3);
+    assert_eq!(
+      fit["sample"],
+      serde_json::json!({"total_observations":5,"dropped_observations":0})
+    );
+  }
+  assert_eq!(
+    fits[0]["coefficients"][1]["value"],
+    fits[1]["coefficients"][1]["value"]
+  );
+  for kind in ["TestResult", "LincomResult"] {
+    let inference: Vec<_> = events.iter().filter(|e| e["result_type"] == kind).collect();
+    assert_eq!(inference.len(), 2);
+    assert!(inference.iter().all(|e| e["data"]["df_residual"] == 3));
+  }
+  let out = run(&text_dir, "between.td", false);
+  assert!(out.status.success(), "{out:?}");
+  assert!(
+    String::from_utf8(out.stdout)
+      .unwrap()
+      .contains("between_hc1")
+  );
+  let filename = "panel_between_predictions.csv";
+  let exported = fs::read_to_string(json_dir.path().join(filename)).unwrap();
+  assert_eq!(
+    exported,
+    fs::read_to_string(text_dir.path().join(filename)).unwrap()
+  );
+  let means = numeric_csv(&exported);
+  assert_eq!(means.len(), 5);
+  let mut xy = Vec::new();
+  for (mean, id) in means.iter().zip([1, 2, 3, 4, 6]) {
+    assert_eq!(mean["id"], Some(f64::from(id)));
+    let selected: Vec<_> = source
+      .iter()
+      .filter(|r| r.id == id && r.y.is_some() && r.x.is_finite())
+      .collect();
+    let n = selected.len() as f64;
+    let x = selected.iter().map(|r| r.x).sum::<f64>() / n;
+    let y = selected.iter().map(|r| r.y.unwrap()).sum::<f64>() / n;
+    assert_eq!(mean["model_rows"], Some(n));
+    assert_eq!(
+      mean["first_year"],
+      Some(f64::from(selected.iter().map(|r| r.year).min().unwrap()))
+    );
+    assert_eq!(
+      mean["last_year"],
+      Some(f64::from(selected.iter().map(|r| r.year).max().unwrap()))
+    );
+    assert!((mean["mean_lnwg"].unwrap() - x).abs() < 1e-12);
+    assert!((mean["mean_lnhr"].unwrap() - y).abs() < 1e-12);
+    xy.push((x, y));
+  }
+  // Independent centered scalar formula also rules out weighting by T_i.
+  let xbar = xy.iter().map(|r| r.0).sum::<f64>() / 5.0;
+  let ybar = xy.iter().map(|r| r.1).sum::<f64>() / 5.0;
+  let slope = xy.iter().map(|(x, y)| (x - xbar) * (y - ybar)).sum::<f64>()
+    / xy.iter().map(|(x, _)| (x - xbar).powi(2)).sum::<f64>();
+  assert!((fits[0]["coefficients"][1]["value"].as_f64().unwrap() - slope).abs() < 1e-12);
+  for (mean, (x, y)) in means.iter().zip(xy) {
+    let fitted = ybar + slope * (x - xbar);
+    assert!((mean["between_fitted"].unwrap() - fitted).abs() < 1e-12);
+    assert!((mean["between_residual"].unwrap() - (y - fitted)).abs() < 1e-12);
+  }
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join("MOM.csv")).unwrap(),
+    csv
+  );
+  let out = run(&json_dir, "between.td", true);
+  assert!(!out.status.success());
+  assert_eq!(
+    fs::read_to_string(json_dir.path().join(filename)).unwrap(),
+    exported
+  );
+}
+
+#[test]
+fn between_script_rejects_bad_keys_or_unusable_samples_before_export() {
+  let (csv, _) = panel_fixture();
+  for kind in [
+    "duplicate",
+    "missing_key",
+    "fractional_key",
+    "no_model_cases",
+    "singular",
+  ] {
+    let dir = TestDir::new();
+    let mut lines: Vec<String> = csv.lines().map(str::to_owned).collect();
+    if kind == "duplicate" {
+      lines.push(lines[1].clone());
+    } else {
+      for line in &mut lines[1..] {
+        let mut fields: Vec<_> = line.split(',').map(str::to_owned).collect();
+        match kind {
+          "missing_key" => fields[7] = String::new(),
+          "fractional_key" => fields[8] = "1982.5".into(),
+          "no_model_cases" => fields[1] = String::new(),
+          "singular" => fields[2] = "2".into(),
+          _ => unreachable!(),
+        }
+        *line = fields.join(",");
+      }
+    }
+    let bad = lines.join("\n") + "\n";
+    fs::write(dir.path().join("MOM.csv"), &bad).unwrap();
+    let out = run(&dir, "between.td", true);
+    assert!(!out.status.success(), "{kind}: {out:?}");
+    let events: Vec<Value> = String::from_utf8(out.stdout)
+      .unwrap()
+      .lines()
+      .map(|line| serde_json::from_str(line).unwrap())
+      .collect();
+    assert!(
+      events.last().unwrap().get("error").is_some(),
+      "{kind}: {events:?}"
+    );
+    assert!(
+      !events
+        .iter()
+        .any(|e| e["result_type"] == "RegressionResult")
+    );
+    assert!(!dir.path().join("panel_between_predictions.csv").exists());
+    assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), bad);
+  }
+}

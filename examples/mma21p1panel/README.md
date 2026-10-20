@@ -1,7 +1,7 @@
-# MMA chapter 21: pooled, first-difference and within-FE hours/wages analyses
+# MMA chapter 21: pooled, between, first-difference and within-FE hours/wages analyses
 
 **Partial empirical coverage.** Cameron–Trivedi (2005), §21.3 pp.709–714,
-Table21.2 p.710: POLS/first-difference and Within slope/conditional-prediction
+Table21.2 p.710: POLS/first-difference, Between classical and Within slope/conditional-prediction
 portions of the March2005 author
 [`mma21p1panfeandre.do`](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do)
 and [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt).
@@ -9,12 +9,13 @@ The header's “Table21.1” is inconsistent with the explicit Table21.2 labels 
 the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 
-POLS/FD are **composed native SQL/OLS workflows**. `within.td` executes bounded
+POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage
 slope, compute its 95% interval, summarize predictions/residuals and export usable
 data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
 FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
-not `ols`. Persistent `panel`/`xtdata`, RE and whole-table coverage remain absent.
+not `ols`. Between compares classical and HC1 named reports on person means. Persistent
+`panel`/`xtdata`, RE and whole-table coverage remain absent.
 
 ## Data and exact samples
 
@@ -40,6 +41,11 @@ an existing file. Output parent directories must exist. CSV inference can store
   Exactly4,788 annual pairs/532 people, ordered by id/year. The estimated FD
   constant is retained as in the author program; it is not the level intercept.
   Exports include current/previous source rows and years for sample audit.
+- **Between:** one equally weighted person-mean row for each of 532 people,
+  `mean_lnhr ~ 1 + mean_lnwg`. Both means use jointly finite outcome/wage
+  pairs; on modified input, retain singleton people, omit people with no usable
+  pairs, and never weight means by T_i. The export records each person's usable
+  count and first/last usable year; these bounds do not imply gap-free input.
 - **Within FE:** unweighted `lnhr ~ lnwg` with 532 absorbed person intercepts,
   all5,320 rows, no year effects or additional covariates. Unit centers are
   computed only after jointly finite outcome/predictor selection; singleton
@@ -213,7 +219,58 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** between, RE-GLS/RE-MLE, Hausman and panel-specific
+**Still required:** RE-GLS/RE-MLE, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
+
+## Between: mean-response inference and reproduction
+
+`between.td` audits all raw keys before case deletion, selects joint-finite
+lnhr/lnwg rows, and groups by ID in ascending order into `between_means`.
+The active relation becomes the person means, leaving the input CSV intact.
+It fits an intercept and wage slope, stores classical/HC1 reports, tests the
+slope, computes its interval, summarizes fitted means/residuals and exports
+`panel_between_predictions.csv`. Its OLS result reports **N=532 mean rows**,
+not 5,320 original records. The initial key audit reports original counts.
+Predict/residual values describe person means, not individual-year hours or
+recovered individual effects. Other model values/covariates are outside this
+design. Empty/rank-deficient mean designs fail without a completed fit/export;
+existing exports are never replaced. Earlier script effects are not rolled back.
+
+Classical covariance is RSS/(G-2) times inverse mean-design crossproduct;
+HC1 is G/(G-2) times the sandwich of independent-person mean-row scores.
+Both use Student-t/F DF530 on the original sample. The wage slope is
+0.0668378461, classical SE0.0196634913/p0.0007270164 and HC1
+SE0.0243184885/p0.0061921439; between R²0.0213344794 and residual
+SD0.1772554957. HC1 assumes independent people, permits heteroskedastic mean
+errors, and is an analytic comparison, **not the author's panel bootstrap**.
+There is one score row per person, so no additional person-cluster fit is needed.
+Neither averaging nor HC1 removes correlation between wages and person effects;
+this is not FE or a causal identification argument. The Gaussian working
+likelihood is for mean responses, not a panel likelihood or a valid cross-design
+LR comparison. The reported R² is mean-response OLS R², not within/overall R².
+
+Append these commands to the fresh-directory reproduction above:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/between.td" > between.jsonl
+Rscript "$root/examples/mma21p1panel/between_reference.R" "$work/MOM.dat" "$work/between_reference"
+python3 "$root/examples/mma21p1panel/check_between_reference.py" "$work" "$work/between_reference" "$work/MOM.dat"
+```
+
+R4.6.1/lm and sandwich3.1.1 independently validate **60 scalar quantities**:
+coefficients/SEs/tails, full covariance, fit statistics, tests and slope
+intervals/DF under both covariances. All **532 exported rows/4,256 cells**
+compare person identity, counts, year bounds, means and predictions/residuals.
+The checker pins the original source hash; tolerance is absolute1e-9 for numeric
+values, relative1e-8 for nonzero tails, exact identities/counts/year bounds.
+Separate float32 ingestion reproduces **seven author printed classical facts**
+at half their printed precision; float64 is never rounded to match the old log.
+The synthetic CLI case checks unequal row counts, a singleton, an entirely
+excluded person, missing outcome/predictor pairs, exact mean membership,
+equal-person weighting, inference DF, identical text/JSON exports and overwrite
+refusal. Bad keys, no usable pairs and rank-deficient designs fail before export.
+No data/program/log is redistributed. This validates the classical Between
+coefficient/inference portion and an HC1 extension, not bootstrap, Figure21.2,
+all Stata panel fit statistics, general `xtreg ..., be`, or whole-table coverage.
