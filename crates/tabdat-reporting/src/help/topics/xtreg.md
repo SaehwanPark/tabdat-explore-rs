@@ -83,7 +83,8 @@ Random-effects GLS (balanced and unbalanced):
   and raw sigma_u²=between RSS/(G-p-1)-sigma_e²/T. Unbalanced retained counts
   use weighted between regression with weights T_i and the trace-corrected raw
   component `(sum_i T_i ebar_i² - (G-p-1) sigma_e²) /
-  (N - tr((Z'WZ)^-1 Z'W²Z))`, where Z contains the intercept and unit means.
+  (N - tr((Z'WZ)^-1 Z'W²Z))`, with W=diag(T_i) and Z containing the intercept
+  and unit means.
   Negative unit variance is clipped at zero and the raw value is retained.
   Unbalanced singletons are allowed when rank and residual degrees of freedom
   suffice. Zero/nonfinite sigma_e² or degenerate transformations fail.

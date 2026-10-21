@@ -24,6 +24,7 @@ for(case in if(length(a)==3)'mom_sensitivity' else c('unequal','shifted_interlea
   e<-lm.fit(Xw[,-1,drop=FALSE],e)$residuals
   d$y<-drop(X%*%c(1,.7,-.3))+e
  }
+ if(!'source_row'%in%names(d))d$source_row<-seq_len(nrow(d))
  ym<-ave(d$y,d$id);yw<-d$y-ym;W<-lm.fit(Xw[,-1,drop=FALSE],yw)
  ve<-sum(W$residuals^2)/(N-G-K+1)
  first<-!duplicated(d$id);Z<-Xm[first,,drop=FALSE];Tg<-Ti[first]
@@ -47,17 +48,32 @@ for(case in if(length(a)==3)'mom_sensitivity' else c('unequal','shifted_interlea
   emit(case,paste0('/confidence_intervals/',i-1,'/1'),b[i]+qnorm(.975)*se)
   for(j in seq_len(K))emit(case,paste0('/gls/covariance/matrix/',i-1,'/',j-1),V[i,j])
  }
- Vcl<-unname(vcovHC(fit,method='arellano',type='sss',cluster='group'))
- for(i in seq_len(K))for(j in seq_len(K))
-  emit(case,paste0('/cluster_covariance/',i-1,'/',j-1),Vcl[i,j])
  for(i in seq_len(N)){
   emit(case,paste0('/gls/fitted_values/',i-1),sum(Q[i,]*b))
   emit(case,paste0('/gls/residuals/',i-1),direct$residuals[i])
  }
+ Vcl<-unname(vcovHC(fit,method='arellano',type='sss',cluster='group'))
+ bread<-solve(crossprod(Q));scores<-rowsum(Q*as.numeric(direct$residuals),d$id)
+ multiplier<-G/(G-1)*(N-1)/(N-K)
+ Vcl_direct<-multiplier*bread%*%crossprod(scores)%*%bread
+ stopifnot(max(abs(Vcl-Vcl_direct))<1e-10)
+ for(i in seq_len(K)){
+  se<-sqrt(Vcl[i,i]);stat<-b[i]/se
+  vals<-c(value=b[i],standard_error=se,p_value=2*pnorm(-abs(stat)))
+  for(nm in names(vals))emit(case,paste0('/cluster_coefficients/',i-1,'/',nm),vals[[nm]])
+  emit(case,paste0('/cluster_confidence_intervals/',i-1,'/0'),b[i]-qnorm(.975)*se)
+  emit(case,paste0('/cluster_confidence_intervals/',i-1,'/1'),b[i]+qnorm(.975)*se)
+  for(j in seq_len(K))emit(case,paste0('/cluster_covariance/',i-1,'/',j-1),Vcl[i,j])
+ }
  wald<-drop(t(b[-1])%*%solve(V[-1,-1,drop=FALSE],b[-1]))
+ cluster_wald<-drop(t(b[-1])%*%solve(Vcl[-1,-1,drop=FALSE],b[-1]))
  vals<-c(group_count=G,group_size=0,sigma_e_squared=ve,sigma_u_squared=vu,raw_sigma_u_squared=rawvu,theta=min(theta),rho=vu/(ve+vu),wald_statistic=wald,wald_p_value=pchisq(wald,K-1,lower.tail=FALSE))
  for(nm in names(vals))emit(case,paste0('/',nm),vals[[nm]])
- inputs[[length(inputs)+1]]<-data.frame(case,id=d$id,time=d$time,y=d$y,x=d$x,z=if('z'%in%names(d))d$z else 0)
+ emit(case,'/cluster_wald_statistic',cluster_wald)
+ emit(case,'/cluster_wald_p_value',pchisq(cluster_wald,K-1,lower.tail=FALSE))
+ input<-data.frame(case,source_row=d$source_row,id=d$id,time=d$time,y=d$y,x=d$x,z=if('z'%in%names(d))d$z else 0)
+ if(case=='mom_sensitivity')input<-cbind(input,d[c('kids','ageh','agesq','disab')])
+ inputs[[length(inputs)+1]]<-input
 }
 write.csv(do.call(rbind,rows),a[1],row.names=FALSE,quote=FALSE)
 write.csv(do.call(rbind,inputs),a[2],row.names=FALSE,quote=FALSE)

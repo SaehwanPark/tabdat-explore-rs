@@ -76,7 +76,7 @@ single PR or a demand to expose every option immediately.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
 | **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced RE-GLS and balanced/unbalanced Gaussian RE-ML portions are also validated; unbalanced RE-GLS, ML variance-component/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced/unbalanced Swamy–Arora RE-GLS and balanced/unbalanced Gaussian RE-ML portions are also validated; ML variance-component/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Installed bounded unweighted IID-location inference and current-row predictions, validated .1/.5/.9 household fits; heteroskedastic/cluster uncertainty and simultaneous quantile bootstrap/tests remain. See MMA-QREG. |
 | **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits). Script context-only `seed` is separate; residual/parametric/other-estimator resampling, automatic FE/RE refits and simulation remain required. |
 
@@ -168,8 +168,8 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    comparisons with explicit boundary metadata. Either fitted boundary withholds
    ordinary LR references. The bounded profile and lack of regular unit-variance
    inference remain explicit. A small unresolved difference from old printed
-   Stata8 SEs prevents claiming the published uncertainty column. Unbalanced RE-GLS,
-   robust/variance-component ML inference, unit effects, Hausman/panel diagnostics,
+   Stata8 SEs prevents claiming the published uncertainty column. Robust/variance-component
+   ML inference, unit effects, Hausman/panel diagnostics,
    bootstrap and remaining table/figure outputs stay required. No persistent
    panel declaration or whole-table/family coverage is claimed.
 

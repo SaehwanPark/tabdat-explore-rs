@@ -51,6 +51,14 @@ fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_
       }
       let (actual, path) = if let Some(path) = r[1].strip_prefix("/cluster_covariance") {
         (&clustered_value, format!("/gls/covariance/matrix{path}"))
+      } else if let Some(path) = r[1].strip_prefix("/cluster_coefficients") {
+        (&clustered_value, format!("/gls/coefficients{path}"))
+      } else if let Some(path) = r[1].strip_prefix("/cluster_confidence_intervals") {
+        (&clustered_value, format!("/confidence_intervals{path}"))
+      } else if r[1] == "/cluster_wald_statistic" {
+        (&clustered_value, "/wald_statistic".into())
+      } else if r[1] == "/cluster_wald_p_value" {
+        (&clustered_value, "/wald_p_value".into())
       } else {
         (&value, r[1].to_owned())
       };
@@ -68,5 +76,5 @@ fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_
       compared += 1;
     }
   }
-  assert_eq!(compared, 270);
+  assert_eq!(compared, 321);
 }

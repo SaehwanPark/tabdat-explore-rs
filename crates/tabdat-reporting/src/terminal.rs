@@ -1528,6 +1528,50 @@ mod tests {
   use tabdat_domain::{SummarizeResult, SummaryRow};
 
   #[test]
+  fn unbalanced_gls_terminal_describes_theta_range_without_ml_profile_claims() {
+    let sizes = [1, 2, 3, 4, 5, 3, 2, 4];
+    let mut y = Vec::new();
+    let mut x = Vec::new();
+    let mut groups = Vec::new();
+    for (unit, &size) in sizes.iter().enumerate() {
+      let id = unit + 1;
+      for time in 0..size {
+        let predictor = 0.3 * id as f64 + 0.2 * time as f64 + 0.07 * ((id * time + 2) % 5) as f64;
+        y.push(
+          1.0
+            + 0.7 * predictor
+            + 0.3 * ((id * id + 1) % 5) as f64
+            + 0.11 * ((id * time + 3) % 7) as f64,
+        );
+        x.push(predictor);
+        groups.push(id.to_string());
+      }
+    }
+    let n = y.len();
+    let problem = tabdat_stats::EstimationProblem::new(
+      "y",
+      vec!["x".into()],
+      y,
+      x.into_iter().map(|value| vec![value]).collect(),
+    )
+    .unwrap()
+    .with_sample(
+      tabdat_stats::EstimationSample::new((0..n).collect(), n, 0, None, Some(groups)).unwrap(),
+    );
+    let result = tabdat_stats::fit_random_effects_unbalanced(&problem, "id").unwrap();
+    let output = random_effects(&tabdat_domain::RandomEffectsState {
+      time_variable: "time".into(),
+      entity_data_type: "BIGINT".into(),
+      result,
+    });
+    assert!(output.contains("Unbalanced one-way random-effects GLS"));
+    assert!(output.contains("theta@minimum T"));
+    assert!(output.contains("unit-specific Swamy-Arora theta ranges"));
+    assert!(!output.contains("eta uses minimum T"));
+    assert!(!output.contains("Interior information parameters"));
+  }
+
+  #[test]
   fn key_guard_display_escapes_names_and_preserves_owned_counters() {
     let duplicates = ExecutionResult::Duplicates(tabdat_domain::DuplicatesResult {
       variables: vec!["key\n列".into()],
