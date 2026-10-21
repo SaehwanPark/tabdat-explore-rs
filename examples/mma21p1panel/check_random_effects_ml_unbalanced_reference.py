@@ -36,7 +36,7 @@ assert math.isfinite(fit["log_likelihood"]) and "r_squared" not in fit
 assert fit['balanced'] is False and fit['group_size'] is None and fit['theta'] is None
 assert (fit['group_count'],fit['minimum_group_size'],fit['maximum_group_size'],fit['eta_reference_group_size'])==(532,5,10,5)
 scalars = records(reference / "reference.csv")
-assert len(scalars) == 19006
+assert len(scalars) == 19018
 compared = 0
 for row in scalars:
   path = row['path']

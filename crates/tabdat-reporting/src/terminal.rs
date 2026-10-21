@@ -442,6 +442,15 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
       inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
       ml.likelihood_ratio_df, inference_number(ml.likelihood_ratio), optional_inference(ml.likelihood_ratio_p_value)).unwrap();
+    if let Some(unit_variance_test) = &ml.unit_variance_test {
+      writeln!(
+        output,
+        "Unit-variance LR test: H0 sigma_u squared = 0; LR = {}; p = {} (asymptotic 50:50 chi-square(0,1) mixture)",
+        inference_number(unit_variance_test.statistic),
+        inference_number(unit_variance_test.p_value),
+      )
+      .unwrap();
+    }
     match r.variance_component_inference() {
       Ok(Some(inference)) => {
         output.push_str(
@@ -493,7 +502,7 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
       .unwrap();
     }
     if boundary {
-      output.push_str("Boundary selected: theta = rho = 0; information parameters are beta and log(sigma_e squared). No regular unit-variance SE or test.\n");
+      output.push_str("Boundary selected: theta = rho = 0; information parameters are beta and log(sigma_e squared). No regular normal-Wald unit-variance SE.\n");
     }
     output.push_str("Profile eta search [0,24], grid 0.5 and polished stationary maxima; no global-optimality guarantee for arbitrary designs.\n");
   }

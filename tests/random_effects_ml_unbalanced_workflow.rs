@@ -52,9 +52,15 @@ fn unequal_ml_reports_actual_counts_information_and_population_exports() {
     assert_eq!(fit["ml"]["unit_variance_boundary"], case == "boundary");
     assert_eq!(fit["reference_distribution"], "normal");
     let variance_inference = &fit["ml"]["variance_component_inference"];
+    let unit_variance_test = &fit["ml"]["unit_variance_test"];
     assert_eq!(
       variance_inference["method"],
       "joint_observed_information_log_wald"
+    );
+    assert_eq!(unit_variance_test["method"], "profile_likelihood_ratio");
+    assert_eq!(
+      unit_variance_test["reference_distribution"],
+      "asymptotic_50_50_chi_square_0_1_mixture"
     );
     assert_eq!(
       variance_inference["reference_distribution"],
@@ -73,8 +79,12 @@ fn unequal_ml_reports_actual_counts_information_and_population_exports() {
           .unwrap()
           .contains("boundary")
       );
+      assert_eq!(unit_variance_test["statistic"], 0.0);
+      assert_eq!(unit_variance_test["p_value"], 1.0);
     } else {
       assert!(variance_inference["sigma_u_squared"]["standard_error"].is_number());
+      assert!(unit_variance_test["statistic"].as_f64().unwrap() > 0.0);
+      assert!((0.0..0.5).contains(&unit_variance_test["p_value"].as_f64().unwrap()));
       assert!(
         variance_inference["sigma_u_squared"]["confidence_interval"][0]
           .as_f64()
@@ -155,6 +165,8 @@ fn unequal_ml_reports_actual_counts_information_and_population_exports() {
       "Unequal retained counts",
       "theta range",
       "Variance-component inference: joint observed information",
+      "Unit-variance LR test: H0 sigma_u squared = 0",
+      "asymptotic 50:50 chi-square(0,1) mixture",
       "sigma_e squared SE",
     ] {
       assert!(text.contains(phrase), "{text}");
