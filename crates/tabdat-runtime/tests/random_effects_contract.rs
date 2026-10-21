@@ -193,12 +193,85 @@ fn raw_key_errors_and_unbalanced_retained_samples_stop_without_mutating_data() {
     "sql \"\"\"SELECT * FROM active WHERE NOT (id=1 AND year=1979)\"\"\" into unbalanced",
   );
   let data = rows(&mut s, "SELECT * FROM active");
-  let error = s
-    .execute(parse_command("xtreg y x, re id(id) time(year)").unwrap())
-    .unwrap_err();
+  let r = fit(&mut s);
+  assert_eq!(r.result.group_size, 0);
+  assert_eq!(r.result.group_size_range(), Some((2, 3)));
+  assert_eq!(r.result.group_count, 6);
+  assert_eq!(
+    r.result.gls.sample.as_ref().unwrap().retained_indices.len(),
+    17
+  );
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}
+
+#[test]
+fn unbalanced_gls_cluster_predictions_and_failed_refits_preserve_the_data_contract() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(
+    &mut s,
+    "sql \"\"\"SELECT * FROM active WHERE NOT (id=1 AND year=1979)\"\"\" into unequal",
+  );
+  let original = rows(&mut s, "SELECT * FROM active");
+  let classical = fit(&mut s);
+  assert_eq!(classical.result.group_size_range(), Some((2, 3)));
+  assert_eq!(
+    classical.result.theta_range().unwrap().0,
+    classical.result.theta
+  );
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), original);
+  run(&mut s, "predict fitted, xb");
+  run(&mut s, "predict residual, residuals");
+  let beta = &classical.result.gls.coefficients;
+  for row in rows(&mut s, "SELECT y,x,fitted,residual FROM active") {
+    let fitted = beta[0].value + beta[1].value * number(&row[1]).unwrap();
+    assert!((number(&row[2]).unwrap() - fitted).abs() < 1e-12);
+    if let Some(y) = number(&row[0]) {
+      assert!((number(&row[3]).unwrap() - (y - fitted)).abs() < 1e-12);
+    } else {
+      assert_eq!(row[3], CellValue::Null);
+    }
+  }
+  let before = s.state();
+  let data = rows(&mut s, "SELECT * FROM active");
+  assert!(s.execute(parse_command("predict x, xb").unwrap()).is_err());
+  assert_eq!(s.state(), before);
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+
+  let ExecutionResult::RandomEffects(cluster) =
+    run(&mut s, "xtreg y x, re id(id) time(year) cluster(id)")
+  else {
+    panic!("wrong result")
+  };
+  let ExecutionResult::RandomEffects(robust) =
+    run(&mut s, "xtreg y x, re id(id) time(year) robust")
+  else {
+    panic!("wrong result")
+  };
+  assert_eq!(cluster, robust);
+  assert_eq!(cluster.result.group_size_range(), Some((2, 3)));
+  assert_eq!(
+    cluster.result.sigma_e_squared,
+    classical.result.sigma_e_squared
+  );
+  assert_eq!(
+    cluster.result.sigma_u_squared,
+    classical.result.sigma_u_squared
+  );
+  assert_eq!(
+    cluster.result.gls.coefficients[1].value,
+    classical.result.gls.coefficients[1].value
+  );
+  assert_ne!(
+    cluster.result.gls.covariance.matrix,
+    classical.result.gls.covariance.matrix
+  );
+
+  run(&mut s, "replace y = NULL");
+  let data = rows(&mut s, "SELECT * FROM active");
   assert!(
-    error.to_string().contains("equal retained unit counts"),
-    "{error}"
+    s.execute(parse_command("xtreg y x, re id(id) time(year)").unwrap())
+      .is_err()
   );
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);

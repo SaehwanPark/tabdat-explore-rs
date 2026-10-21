@@ -1512,6 +1512,7 @@ dependencies = [
  "serde_json",
  "tabdat-domain",
  "tabdat-language",
+ "tabdat-stats",
 ]
 
 [[package]]

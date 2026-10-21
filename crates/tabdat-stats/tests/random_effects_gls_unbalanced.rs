@@ -1,5 +1,6 @@
 use tabdat_stats::{
-  EstimationProblem, EstimationSample, fit_random_effects, fit_random_effects_unbalanced,
+  CovarianceType, EstimationProblem, EstimationSample, fit_random_effects,
+  fit_random_effects_unbalanced, fit_random_effects_unbalanced_clustered,
 };
 #[test]
 fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_matrices() {
@@ -34,6 +35,12 @@ fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_
     assert!(fit_random_effects(&p, "id").is_err());
     let fit = fit_random_effects_unbalanced(&p, "id").unwrap();
     let value = serde_json::to_value(&fit).unwrap();
+    let clustered = fit_random_effects_unbalanced_clustered(&p, "id").unwrap();
+    assert_eq!(
+      clustered.gls.covariance.covariance_type,
+      CovarianceType::Cluster("id".into())
+    );
+    let clustered_value = serde_json::to_value(&clustered).unwrap();
     for l in include_str!("fixtures/random_effects_gls_unbalanced_reference.csv")
       .lines()
       .skip(1)
@@ -42,8 +49,13 @@ fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_
       if r[0] != case {
         continue;
       }
-      let a = value
-        .pointer(r[1])
+      let (actual, path) = if let Some(path) = r[1].strip_prefix("/cluster_covariance") {
+        (&clustered_value, format!("/gls/covariance/matrix{path}"))
+      } else {
+        (&value, r[1].to_owned())
+      };
+      let a = actual
+        .pointer(&path)
         .and_then(serde_json::Value::as_f64)
         .unwrap();
       let e: f64 = r[2].parse().unwrap();
@@ -56,5 +68,5 @@ fn unbalanced_trace_components_coefficients_and_covariance_match_plm_and_direct_
       compared += 1;
     }
   }
-  assert_eq!(compared, 243);
+  assert_eq!(compared, 270);
 }

@@ -389,6 +389,11 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   } else {
     r.group_size.to_string()
   };
+  let theta_label = if unbalanced {
+    "theta@minimum T"
+  } else {
+    "theta"
+  };
   let boundary = r.ml.as_ref().is_some_and(|ml| ml.unit_variance_boundary());
   let covariance = if boundary {
     "Constrained observed-information covariance (unit variance fixed at zero); normal coefficient inference"
@@ -400,7 +405,7 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     "Model-based covariance: transformed RSS/(N-K); normal inference"
   };
   let mut output = format!(
-    "{} one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    "{} one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; {theta_label} = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
     if unbalanced { "Unbalanced" } else { "Balanced" },
     if r.ml.is_some() { "ML" } else { "GLS" },
     r.outcome.escape_debug(),
@@ -427,7 +432,11 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   );
   if unbalanced {
     let (lo, hi) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
-    writeln!(output, "Unequal retained counts: displayed theta is at minimum T; theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+    if r.ml.is_some() {
+      writeln!(output, "Unequal retained counts: theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+    } else {
+      writeln!(output, "Unequal retained counts: unit-specific Swamy-Arora theta ranges from {} to {}; singleton units are allowed when identified.",inference_number(lo),inference_number(hi)).unwrap();
+    }
   }
   if let Some(ml) = &r.ml {
     writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",

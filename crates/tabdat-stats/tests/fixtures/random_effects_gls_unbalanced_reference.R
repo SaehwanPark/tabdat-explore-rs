@@ -47,6 +47,9 @@ for(case in if(length(a)==3)'mom_sensitivity' else c('unequal','shifted_interlea
   emit(case,paste0('/confidence_intervals/',i-1,'/1'),b[i]+qnorm(.975)*se)
   for(j in seq_len(K))emit(case,paste0('/gls/covariance/matrix/',i-1,'/',j-1),V[i,j])
  }
+ Vcl<-unname(vcovHC(fit,method='arellano',type='sss',cluster='group'))
+ for(i in seq_len(K))for(j in seq_len(K))
+  emit(case,paste0('/cluster_covariance/',i-1,'/',j-1),Vcl[i,j])
  for(i in seq_len(N)){
   emit(case,paste0('/gls/fitted_values/',i-1),sum(Q[i,]*b))
   emit(case,paste0('/gls/residuals/',i-1),direct$residuals[i])

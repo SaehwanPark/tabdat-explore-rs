@@ -74,19 +74,25 @@ Legacy bare `xtreg ..., fe` remains parseable but needs explicit keys to execute
 independently audited Table21.2 Within slope/conditional-prediction portion, not
 whole-table/chapter coverage.
 
-Balanced random-effects GLS:
+Random-effects GLS (balanced and unbalanced):
 - `xtreg y xvars, re id(unit) time(year)` audits the same raw keys, then selects
-  joint-finite y/X cases. Retained unit counts must be equal T>=2; G>p+1 and
-  both within and between designs must identify every slope. Missing cases may
-  remove an entire unit; any remaining imbalance fails. Interleaving and gaps
-  are allowed; equal counts do not imply a common calendar or constructed lags.
-- Swamy-Arora uses sigma_e²=within RSS/(N-G-p), raw sigma_u²=between
-  RSS/(G-p-1)-sigma_e²/T, truncates negative sigma_u² to zero, and reports the
-  raw value. Zero/nonfinite sigma_e² or degenerate transformations fail.
-- Quasi-demean y, X and the intercept with theta=1-sqrt(sigma_e²/(sigma_e²+T*sigma_u²)).
+  joint-finite y/X cases. Both designs must identify every slope, G>p+1, and
+  transformed residual degrees of freedom must be positive. Interleaving and
+  calendar gaps are allowed; no lags are constructed.
+- Balanced Swamy-Arora requires equal T>=2, uses sigma_e²=within RSS/(N-G-p),
+  and raw sigma_u²=between RSS/(G-p-1)-sigma_e²/T. Unbalanced retained counts
+  use weighted between regression with weights T_i and the trace-corrected raw
+  component `(sum_i T_i ebar_i² - (G-p-1) sigma_e²) /
+  (N - tr((Z'WZ)^-1 Z'W²Z))`, where Z contains the intercept and unit means.
+  Negative unit variance is clipped at zero and the raw value is retained.
+  Unbalanced singletons are allowed when rank and residual degrees of freedom
+  suffice. Zero/nonfinite sigma_e² or degenerate transformations fail.
+- Quasi-demean y and X by unit-specific theta_i=1-sqrt(sigma_e² /
+  (sigma_e²+T_i*sigma_u²)); transform the intercept by 1-theta_i.
   Model-based covariance uses transformed RSS/(N-p-1) times inverse transformed
   crossproduct, matching balanced R/plm. It does not substitute sigma_e² as the
-  final scale. Report normal z/p/95% intervals and the joint zero-slope
+  final scale. Unbalanced results retain group-size and theta ranges; displayed
+  theta denotes theta at minimum T. Report normal z/p/95% intervals and the joint zero-slope
   chi-square(p) Wald test. General test/lincom restrictions are not installed.
 - Assumptions include exogeneity of unit effects relative to regressors,
   independent units. Model-based covariance relies on the specified within-unit
@@ -94,6 +100,10 @@ Balanced random-effects GLS:
   dependence but supplies no few-unit guarantee. No causal identification
   follows from fitting RE. No panel likelihood or within/between/overall R² is
   supplied. `RandomEffectsResult` is distinct from OLS and FE JSON results.
+- `robust` aliases `cluster(id)`. The unit-score sandwich uses the transformed
+  design, multiplier G/(G-1)*(N-1)/(N-K), and asymptotic normal/chi-square
+  inference; this is not few-cluster t/F inference. Unbalanced GLS is reported
+  as `UnbalancedRandomEffectsGlsResult`, distinct from Gaussian ML.
 - `predict fitted, xb` (or bare predict) uses retained intercept/slopes on current
   X, without requiring unit/time columns. `residuals` gives current y minus
   population xb, including the unit component; it is not a conditional residual.
@@ -101,8 +111,8 @@ Balanced random-effects GLS:
   missing/non-numeric required columns or unsupported modes fail atomically.
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
-  Unbalanced GLS variance estimation, unit effects/conditional
-  predictions, named RE reports and Hausman remain uninstalled.
+  Unit effects/conditional predictions, named RE reports and Hausman remain
+  uninstalled.
 
 RE unit-cluster inference:
 - `xtreg y xvars, re id(unit) time(year) cluster(unit)` or `robust` uses the same
