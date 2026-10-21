@@ -457,7 +457,7 @@ initialized nlme fit checks that interior solution. Runtime/CLI tests cover join
 sample mapping, current-data predictions, unavailable-mode errors and data/state
 preservation, including zero-component fit failure. No production R/Python is used.
 
-Still required: ML variance-component inference, unbalanced RE, robust ML, conditional
+Still required: ML variance-component inference, unbalanced RE-GLS, robust ML, conditional
 unit effects, general restrictions/named reports, Hausman/panel diagnostics,
 bootstrap and the remaining table/figure analyses. A manual core-only original
 probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
@@ -499,3 +499,45 @@ population prediction/export, explicit constrained JSON/text, identical text/JSO
 CSVs, and genuine degenerate fit failure clearing stale state while preserving data.
 This adds synthetic boundary-method evidence; it does not add a published
 Table21.2 row or resolve the historical Stata8 SE discrepancy.
+
+### Unbalanced Gaussian ML sensitivity workflow
+
+The workflow targets the same lnhr~1+lnwg analysis on an explicit sensitivity cohort: omit
+(id divisible by3, year1980 or1985) and (id divisible by7, year1981–1983),
+retaining original source-row identity/order. The audited source gives4,738 rows,
+532 people and retained counts5–10. This changes the published sample and is
+method/sensitivity evidence, not another author-table replication.
+
+Use per-unit quasi-demeaning and determinant terms for v_g=sigma_e²+T_g*sigma_u²,
+with a bounded scalar profile eta=log(1+T_min*sigma_u²/sigma_e²). Re-estimate the
+intercept-only null with the same unequal-count likelihood; its intercept is
+variance-weighted, not automatically the grand mean. The full beta /
+log(sigma_e²) / log(sigma_u²) observed information is checked against independent R/nlme and
+numerical Hessians, including singleton/interleaved/shifted and boundary cases.
+Balanced/strict-interior APIs and outputs are preserved. Reports give unequal counts and
+theta ranges explicitly, with a distinct unbalanced JSON result; keep the
+zero-unit boundary constrained and ordinary LR-reference withholding intact.
+The script provides load/guard/cohort/fit/report/predict/export. Independent R
+checks53 reported scalars and52,118 exported cells/all4,738 rows; text/JSON CSVs
+are byte-identical. The500 synthetic comparisons include singletons, shifts,
+interleaving, interior and zero-unit boundary fits. Runtime tests check actual
+joint-case counts, retained metadata after current-data changes, and failed fit
+state. Tolerances remain absolute1e-9/nonzero-tail relative1e-8. No production
+R/Python dependency is added.
+
+Reproduce in a fresh directory containing prepared MOM.csv (paths as above):
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_ml_unbalanced.td" > random_effects_ml_unbalanced.jsonl
+mkdir unbalanced_reference
+Rscript "$root/crates/tabdat-stats/tests/fixtures/random_effects_ml_unbalanced_reference.R" unbalanced_reference/reference.csv unbalanced_reference/predictions.csv "$work/MOM.dat"
+python3 "$root/examples/mma21p1panel/check_random_effects_ml_unbalanced_reference.py" . unbalanced_reference "$work/MOM.dat"
+```
+
+The full/null LL are−268.1239288317/−306.7565090109 (slope LR77.2651603583).
+The log-wage slope is0.124026401777 with joint-information SE0.0141569248153.
+Unequal ML JSON uses `UnbalancedRandomEffectsMlResult`, null common T/theta,
+actual count/theta ranges and eta reference T_min. The Rust group_size=0 sentinel
+uses retained-sample range methods, with no new required result-struct fields.
+The bounded profile, covariance assumptions, boundary LR withholding and original
+printed-Stata8 uncertainty discrepancy remain as documented above.

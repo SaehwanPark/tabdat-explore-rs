@@ -7,7 +7,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Balanced one-way RE fit (Swamy–Arora GLS or interior Gaussian ML).
+/// One-way RE fit (balanced Swamy–Arora GLS or Gaussian marginal ML).
 /// The stored regression is on the
 /// quasi-demeaned response/design, including the transformed intercept column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -17,10 +17,12 @@ pub struct RandomEffectsResult {
   pub predictor_names: Vec<String>,
   pub gls: LeastSquaresResult,
   pub group_count: usize,
+  /// Common retained count, or zero for unbalanced ML; use group_size_range().
   pub group_size: usize,
   pub sigma_e_squared: f64,
   pub sigma_u_squared: f64,
   pub raw_sigma_u_squared: f64,
+  /// Common theta, or theta at the minimum retained group size for unbalanced ML.
   pub theta: f64,
   pub rho: f64,
   pub confidence_intervals: Vec<[f64; 2]>,
@@ -30,6 +32,33 @@ pub struct RandomEffectsResult {
   pub wald_unavailable_reason: Option<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub ml: Option<crate::RandomEffectsMlInference>,
+}
+
+impl RandomEffectsResult {
+  /// Retained-model counts, independent of any subsequent active-data changes.
+  pub fn group_size_range(&self) -> Option<(usize, usize)> {
+    if self.group_size > 0 {
+      return Some((self.group_size, self.group_size));
+    }
+    let mut counts = BTreeMap::new();
+    for key in self.gls.sample.as_ref()?.cluster_groups.as_ref()? {
+      *counts.entry(key.as_str()).or_insert(0_usize) += 1;
+    }
+    Some((*counts.values().min()?, *counts.values().max()?))
+  }
+
+  pub fn theta_range(&self) -> Option<(f64, f64)> {
+    if self.group_size > 0 {
+      return Some((self.theta, self.theta));
+    }
+    let (lo, hi) = self.group_size_range()?;
+    let theta = |size: usize| {
+      1.0
+        - (self.sigma_e_squared / (self.sigma_e_squared + size as f64 * self.sigma_u_squared))
+          .sqrt()
+    };
+    Some((theta(lo), theta(hi)))
+  }
 }
 
 /// Joint finite cases must already be selected and sample-aligned unit keys

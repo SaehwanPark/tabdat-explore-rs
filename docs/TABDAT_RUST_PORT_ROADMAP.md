@@ -76,7 +76,7 @@ single PR or a demand to expose every option immediately.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
 | **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced RE-GLS and interior Gaussian RE-ML portions are also validated; unbalanced RE, ML variance-component/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
+| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced RE-GLS and balanced/unbalanced Gaussian RE-ML portions are also validated; unbalanced RE-GLS, ML variance-component/robust inference, general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Explicit quantile, estimation sample, solver/convergence policy, inference and predictions; independently validate coefficients and uncertainty. |
 | **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Current context-only `seed` is not sufficient. |
 
@@ -152,11 +152,13 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance a bounded unbalanced-RE analysis or justified panel comparison on an
+1. Advance a justified panel comparison or another required econometric analysis on an
    exact ledger-defined sample/design/reference. The
    [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
    POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
    and Gaussian ML with joint/constrained observed information and null/slope LR.
+   Unbalanced ML adds a 4,738-row MOM sensitivity audit (53 scalars/52,118 cells)
+   and500 synthetic numerical comparisons, with unequal-count null/information.
    Interior ML audits46 R quantities/58,520 cells and447 synthetic comparisons;
    zero-unit-variance ML adds372 base-R Gaussian ML/constrained-information
    comparisons with explicit boundary metadata. Either fitted boundary withholds

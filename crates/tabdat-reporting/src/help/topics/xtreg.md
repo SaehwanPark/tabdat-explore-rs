@@ -101,7 +101,7 @@ Balanced random-effects GLS:
   missing/non-numeric required columns or unsupported modes fail atomically.
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
-  Unbalanced variance estimation, unit effects/conditional
+  Unbalanced GLS variance estimation, unit effects/conditional
   predictions, named RE reports and Hausman remain uninstalled.
 
 RE unit-cluster inference:
@@ -119,11 +119,11 @@ RE unit-cluster inference:
   This assumes independent units, does not remove endogeneity of unit effects,
   and is not household/survey/multiway inference or the author's bootstrap.
 
-Balanced Gaussian marginal ML:
+Gaussian marginal ML:
 - `xtreg y xvars, mle id(unit) time(year)` uses the same raw-key audit,
   joint-finite sample and population `xb`/`residuals` prediction rules. Requires
-  equal retained counts T>=2, G>p+1, full within rank, at least one slope and
-  no weights. Time-invariant predictors, robust/cluster ML, general restrictions
+  G>p+1, positive within residual DF, full within rank, at least one slope and
+  no weights. Unequal retained counts and singletons are allowed. Time-invariant predictors, robust/cluster ML, general restrictions
   and named RE reports are unsupported. `mle` is exclusive of `fe`/`re`.
 - Gaussian marginal likelihood integrates the random intercept; this is ML,
   not REML. Unit effects must be exogenous to X and units independent, with the
@@ -170,3 +170,19 @@ Zero-unit-variance ML:
   slope LR p-values and supplies a reason. Population predictions and data/state
   semantics stay the same. The strict Rust `fit_random_effects_ml_interior`
   entry point still rejects zero unit variance; the ordinary ML workflow accepts it.
+
+Unbalanced Gaussian ML reporting:
+- Each unit uses its retained T_g in quasi-demeaning and the marginal determinant.
+  The profile uses eta=log(1+T_min*sigma_u²/sigma_e²) with the same bounded search.
+  Interior joint information uses beta, log(sigma_e²), log(sigma_u²). The null
+  re-estimates its variance-weighted intercept and variances on the same sample.
+  The zero-unit boundary retains beta/log(sigma_e²) information and LR withholding.
+- CLI-v1 uses `UnbalancedRandomEffectsMlResult` and estimator
+  `unbalanced_gaussian_random_effects_ml`. `balanced` is false; common `group_size`
+  and `theta` are null. Minimum/maximum group sizes, theta_min/theta_max,
+  theta_at_minimum_group_size and eta_reference_group_size identify actual counts.
+  Balanced JSON retains its existing result type and parameter names.
+- Rust result fields remain compatible: group_size=0 denotes unequal ML counts,
+  and theta is the value at the minimum count. Use group_size_range()/theta_range()
+  for retained-sample ranges even after changing current data. The strict
+  fit_random_effects_ml_interior entry point still requires balanced T>=2.

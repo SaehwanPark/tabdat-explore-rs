@@ -341,3 +341,47 @@ fn ml_boundary_success_replaces_fit_and_degenerate_failure_preserves_the_dataset
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
 }
+
+#[test]
+fn unbalanced_ml_uses_joint_case_counts_and_retains_them_after_current_data_changes() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(
+    &mut s,
+    "sql \"\"\"SELECT * FROM active WHERE NOT (id=1 AND year=1979)\"\"\" into unequal",
+  );
+  let before = rows(&mut s, "SELECT * FROM active");
+  let ExecutionResult::RandomEffects(r) = run(&mut s, "xtreg y x, mle id(id) time(year)") else {
+    panic!()
+  };
+  assert_eq!(r.result.group_size, 0);
+  assert_eq!(r.result.group_size_range(), Some((2, 3)));
+  assert_eq!(r.result.group_count, 6);
+  let sample = r.result.gls.sample.as_ref().unwrap();
+  assert_eq!(sample.total_observations, 27);
+  assert_eq!(sample.dropped_observations, 10);
+  assert_eq!(sample.retained_indices.len(), 17);
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), before);
+  run(&mut s, "drop id year");
+  run(&mut s, "predict ub_current");
+  for row in rows(&mut s, "SELECT x,ub_current FROM active") {
+    assert!(
+      (number(&row[1]).unwrap()
+        - r.result.gls.coefficients[0].value
+        - r.result.gls.coefficients[1].value * number(&row[0]).unwrap())
+      .abs()
+        < 1e-12
+    );
+  }
+  let Some(EstimationState::RandomEffects(model)) = s.state().estimation else {
+    panic!()
+  };
+  assert_eq!(model.result.group_size_range(), Some((2, 3)));
+  let data = rows(&mut s, "SELECT * FROM active");
+  assert!(
+    s.execute(parse_command("xtreg y x, mle id(id) time(year)").unwrap())
+      .is_err()
+  );
+  assert!(s.state().estimation.is_none());
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}
