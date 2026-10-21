@@ -149,11 +149,11 @@ pub fn bootstrap_ols(
   for i in 0..k {
     for j in 0..=i {
       let (mut sum, mut correction) = (0.0, 0.0);
-      for r in 0..replications {
+      for (&left, &right) in estimates[i].iter().zip(&estimates[j]) {
         add_compensated(
           &mut sum,
           &mut correction,
-          (estimates[i][r] - means[i]) * (estimates[j][r] - means[j]),
+          (left - means[i]) * (right - means[j]),
         );
       }
       covariance[i][j] = sum / (replications - 1) as f64;
