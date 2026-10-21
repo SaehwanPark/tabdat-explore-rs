@@ -77,3 +77,12 @@ Core references additionally cover two predictors, noconstant, shifted outcomes
 and rescaled predictors (185 quantities), failure/ambiguity and scale invariance.
 Runtime tests verify retained sample membership, fit state, current-row prediction,
 failed-fit clearing and nonmutating prediction errors.
+
+## Figure 4.2 workflow (WIP)
+
+A composed `figure.td` workflow will overlay q90, q50 and q10 on the observed
+cohort with the existing SVG renderer. Coordinates, sample identity, line order,
+labels, output refusal and visual layout remain to be checked. The native
+horizontal axis is log total expenditure and the vertical axis is log medical
+expenditure; the historical do-file's textual axis titles are reversed relative
+to its plotted variables. This does not add simultaneous uncertainty or Figure4.1.
