@@ -18,11 +18,30 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
     let input = self.prepare_panel_problem(command)?;
+    let group_sizes = input
+      .problem
+      .sample
+      .as_ref()
+      .and_then(|sample| sample.cluster_groups.as_ref())
+      .map(|groups| {
+        let mut counts = HashMap::new();
+        for group in groups {
+          *counts.entry(group).or_insert(0_usize) += 1;
+        }
+        counts
+      });
+    let unbalanced = group_sizes
+      .as_ref()
+      .is_some_and(|sizes| sizes.values().min() != sizes.values().max());
     let fit = if command.estimator == XtRegEstimator::RandomEffectsMl {
       if command.robust || command.cluster_variable.is_some() {
         return Err(fit_error("RE-ML supports model-based covariance only"));
       }
       tabdat_stats::fit_random_effects_ml
+    } else if unbalanced && (command.robust || command.cluster_variable.is_some()) {
+      tabdat_stats::fit_random_effects_unbalanced_clustered
+    } else if unbalanced {
+      tabdat_stats::fit_random_effects_unbalanced
     } else if command.robust || command.cluster_variable.is_some() {
       tabdat_stats::fit_random_effects_clustered
     } else {

@@ -86,7 +86,10 @@ pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
 };
 pub use problem::EstimationProblem;
-pub use random_effects::{RandomEffectsResult, fit_random_effects, fit_random_effects_clustered};
+pub use random_effects::{
+  RandomEffectsResult, fit_random_effects, fit_random_effects_clustered,
+  fit_random_effects_unbalanced, fit_random_effects_unbalanced_clustered,
+};
 pub use random_effects_ml::{
   RandomEffectsMlInference, RandomEffectsMlInterior, fit_random_effects_ml,
   fit_random_effects_ml_interior,

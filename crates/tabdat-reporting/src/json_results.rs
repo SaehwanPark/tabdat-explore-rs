@@ -600,8 +600,10 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
     ExecutionResult::RandomEffects(result) => (
       random_effects_result_data(result),
-      if result.result.group_size == 0 {
+      if result.result.group_size == 0 && result.result.ml.is_some() {
         "UnbalancedRandomEffectsMlResult"
+      } else if result.result.group_size == 0 {
+        "UnbalancedRandomEffectsGlsResult"
       } else {
         "RandomEffectsResult"
       },
@@ -722,7 +724,8 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     "covariance_convention": if clustered { "unit_grouped_quasi_demeaned_scores" } else { "quasi_demeaned_rss_over_n_minus_k" },
     "covariance_matrix":fit.covariance.matrix,"covariance_parameter_names":fit.parameter_names,
     "sigma_e_squared":r.sigma_e_squared,"sigma_u_squared":r.sigma_u_squared,"raw_sigma_u_squared":r.raw_sigma_u_squared,
-    "variance_component_method":"balanced_swamy_arora", "theta":r.theta,"rho":r.rho,
+    "variance_component_method":if r.ml.is_some() { "balanced_gaussian_marginal_ml" } else if r.group_size == 0 { "unbalanced_swamy_arora" } else { "balanced_swamy_arora" },
+    "theta":r.theta,"rho":r.rho,
     "transformed_root_mse":fit.fit_statistics.root_mse,"transformed_rss":fit.fit_statistics.residual_sum_of_squares,
     "wald_statistic":r.wald_statistic,"wald_p_value":r.wald_p_value,"wald_df":r.predictor_names.len(),"wald_reference":"chi_square",
     "sample":fit.sample.as_ref().map(|s|json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations})),
@@ -731,7 +734,6 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
       "ci_upper":ci[1],"ci_level":95})).collect::<Vec<_>>()
   });
   if let Some(ml) = &r.ml {
-    data["variance_component_method"] = json!("balanced_gaussian_marginal_ml");
     data["covariance_convention"] = json!(if ml.unit_variance_boundary() {
       "constrained_observed_information"
     } else {
@@ -754,6 +756,17 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
       data["eta_reference_group_size"] = json!(minimum);
       data["variance_component_method"] = json!("unbalanced_gaussian_marginal_ml");
     }
+  } else if r.group_size == 0 {
+    let (minimum, maximum) = r.group_size_range().unwrap_or((0, 0));
+    let (theta_min, theta_max) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
+    data["balanced"] = json!(false);
+    data["group_size"] = Value::Null;
+    data["minimum_group_size"] = json!(minimum);
+    data["maximum_group_size"] = json!(maximum);
+    data["theta"] = Value::Null;
+    data["theta_at_minimum_group_size"] = json!(r.theta);
+    data["theta_min"] = json!(theta_min);
+    data["theta_max"] = json!(theta_max);
   }
   if clustered {
     let n = fit.fit_statistics.observation_count;
@@ -949,6 +962,55 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn unbalanced_random_effects_gls_uses_its_own_type_and_retained_count_metadata() {
+    let sizes = [1, 2, 3, 4, 5, 3, 2, 4];
+    let mut rows = Vec::new();
+    let mut groups = Vec::new();
+    for (unit, &size) in sizes.iter().enumerate() {
+      let id = unit + 1;
+      for time in 0..size {
+        let x = 0.3 * id as f64 + 0.2 * time as f64 + 0.07 * ((id * time + 2) % 5) as f64;
+        let z = 0.13 * (time * time) as f64 + 0.03 * ((id + 2 * time) % 4) as f64;
+        let y = 1.0 + 0.7 * x - 0.3 * z
+          + 0.3 * ((id * id + 1) % 5) as f64
+          + 0.11 * ((id * time + 3) % 7) as f64;
+        rows.push((y, x, z));
+        groups.push(id.to_string());
+      }
+    }
+    let n = rows.len();
+    let problem = tabdat_stats::EstimationProblem::new(
+      "y",
+      vec!["x".into(), "z".into()],
+      rows.iter().map(|row| row.0).collect(),
+      rows.iter().map(|row| vec![row.1, row.2]).collect(),
+    )
+    .unwrap()
+    .with_sample(
+      tabdat_stats::EstimationSample::new((0..n).collect(), n, 0, None, Some(groups)).unwrap(),
+    );
+    let result = tabdat_stats::fit_random_effects_unbalanced(&problem, "id").unwrap();
+    let state = tabdat_domain::RandomEffectsState {
+      time_variable: "time".into(),
+      entity_data_type: "BIGINT".into(),
+      result,
+    };
+    let result = ExecutionResult::RandomEffects(Box::new(state));
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(envelope["result_type"], "UnbalancedRandomEffectsGlsResult");
+    let data = &envelope["data"];
+    assert_eq!(data["variance_component_method"], "unbalanced_swamy_arora");
+    assert_eq!(data["balanced"], false);
+    assert_eq!(data["group_size"], Value::Null);
+    assert_eq!(data["minimum_group_size"], 1);
+    assert_eq!(data["maximum_group_size"], 5);
+    assert_eq!(data["theta"], Value::Null);
+    assert_eq!(data["theta_at_minimum_group_size"], data["theta_min"]);
+    assert!(data["theta_min"].as_f64().unwrap() <= data["theta_max"].as_f64().unwrap());
+  }
 
   #[test]
   fn expression_results_encode_owned_metadata_without_affected_or_overflow_counts() {

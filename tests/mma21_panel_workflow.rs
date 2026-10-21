@@ -692,12 +692,39 @@ fn random_effects_scripts_report_normal_gls_and_preserve_order_and_exports() {
       fs::read_to_string(json_dir.path().join(filename)).unwrap(),
       exported
     );
-    // The original incomplete/gapped fixture has unequal joint-case unit counts.
-    let bad_dir = TestDir::new();
-    fs::write(bad_dir.path().join("MOM.csv"), panel_fixture().0).unwrap();
-    let out = run(&bad_dir, script, true);
-    assert!(!out.status.success());
-    assert!(!bad_dir.path().join(filename).exists());
+    // Ragged retained samples now use the unbalanced Swamy-Arora path.
+    let unequal_dir = TestDir::new();
+    fs::write(unequal_dir.path().join("MOM.csv"), panel_fixture().0).unwrap();
+    let out = run(&unequal_dir, script, true);
+    assert!(out.status.success(), "{out:?}");
+    let events: Vec<Value> = String::from_utf8(out.stdout)
+      .unwrap()
+      .lines()
+      .map(|line| serde_json::from_str(line).unwrap())
+      .collect();
+    let fits: Vec<_> = events
+      .iter()
+      .filter(|event| event["result_type"] == "UnbalancedRandomEffectsGlsResult")
+      .map(|event| &event["data"])
+      .collect();
+    assert_eq!(fits.len(), fit_count);
+    assert_eq!(fits[0]["covariance"], covariance);
+    assert_eq!(fits[0]["observation_count"], 22);
+    assert_eq!(fits[0]["group_count"], 6);
+    assert_eq!(fits[0]["group_size"], Value::Null);
+    assert_eq!(fits[0]["minimum_group_size"], 3);
+    assert_eq!(fits[0]["maximum_group_size"], 4);
+    assert_eq!(
+      fits[0]["sample"],
+      serde_json::json!({"total_observations":23,"dropped_observations":1})
+    );
+    if fit_count == 2 {
+      assert_eq!(fits[0], fits[1]);
+    }
+    assert_eq!(
+      numeric_csv(&fs::read_to_string(unequal_dir.path().join(filename)).unwrap()).len(),
+      23
+    );
   }
 }
 

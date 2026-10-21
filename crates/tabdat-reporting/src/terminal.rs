@@ -389,6 +389,11 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   } else {
     r.group_size.to_string()
   };
+  let theta_label = if unbalanced {
+    "theta@minimum T"
+  } else {
+    "theta"
+  };
   let boundary = r.ml.as_ref().is_some_and(|ml| ml.unit_variance_boundary());
   let covariance = if boundary {
     "Constrained observed-information covariance (unit variance fixed at zero); normal coefficient inference"
@@ -400,7 +405,7 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     "Model-based covariance: transformed RSS/(N-K); normal inference"
   };
   let mut output = format!(
-    "{} one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    "{} one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; {theta_label} = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
     if unbalanced { "Unbalanced" } else { "Balanced" },
     if r.ml.is_some() { "ML" } else { "GLS" },
     r.outcome.escape_debug(),
@@ -427,7 +432,11 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   );
   if unbalanced {
     let (lo, hi) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
-    writeln!(output, "Unequal retained counts: displayed theta is at minimum T; theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+    if r.ml.is_some() {
+      writeln!(output, "Unequal retained counts: theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+    } else {
+      writeln!(output, "Unequal retained counts: unit-specific Swamy-Arora theta ranges from {} to {}; singleton units are allowed when identified.",inference_number(lo),inference_number(hi)).unwrap();
+    }
   }
   if let Some(ml) = &r.ml {
     writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
@@ -1517,6 +1526,50 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn unbalanced_gls_terminal_describes_theta_range_without_ml_profile_claims() {
+    let sizes = [1, 2, 3, 4, 5, 3, 2, 4];
+    let mut y = Vec::new();
+    let mut x = Vec::new();
+    let mut groups = Vec::new();
+    for (unit, &size) in sizes.iter().enumerate() {
+      let id = unit + 1;
+      for time in 0..size {
+        let predictor = 0.3 * id as f64 + 0.2 * time as f64 + 0.07 * ((id * time + 2) % 5) as f64;
+        y.push(
+          1.0
+            + 0.7 * predictor
+            + 0.3 * ((id * id + 1) % 5) as f64
+            + 0.11 * ((id * time + 3) % 7) as f64,
+        );
+        x.push(predictor);
+        groups.push(id.to_string());
+      }
+    }
+    let n = y.len();
+    let problem = tabdat_stats::EstimationProblem::new(
+      "y",
+      vec!["x".into()],
+      y,
+      x.into_iter().map(|value| vec![value]).collect(),
+    )
+    .unwrap()
+    .with_sample(
+      tabdat_stats::EstimationSample::new((0..n).collect(), n, 0, None, Some(groups)).unwrap(),
+    );
+    let result = tabdat_stats::fit_random_effects_unbalanced(&problem, "id").unwrap();
+    let output = random_effects(&tabdat_domain::RandomEffectsState {
+      time_variable: "time".into(),
+      entity_data_type: "BIGINT".into(),
+      result,
+    });
+    assert!(output.contains("Unbalanced one-way random-effects GLS"));
+    assert!(output.contains("theta@minimum T"));
+    assert!(output.contains("unit-specific Swamy-Arora theta ranges"));
+    assert!(!output.contains("eta uses minimum T"));
+    assert!(!output.contains("Interior information parameters"));
+  }
 
   #[test]
   fn key_guard_display_escapes_names_and_preserves_owned_counters() {

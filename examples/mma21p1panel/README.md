@@ -219,7 +219,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** unbalanced RE-GLS, ML variance-component/robust inference, Hausman and panel-specific
+**Still required:** ML variance-component/robust inference, Hausman and panel-specific
 residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
@@ -285,13 +285,14 @@ and export `panel_re_gls_predictions.csv`. Source order and all original fields
 remain in the export. This is a separate `RandomEffectsResult`, not OLS or FE.
 There is no production R/Python dependency.
 
-The exact original design is lnhr~1+lnwg on all5,320 rows/532 people/T10.
-General bounded execution audits raw unit/time keys before jointly finite y/X
-selection. Remaining groups must have equal counts T>=2; G>p+1; both within and
+The exact published design is lnhr~1+lnwg on all5,320 rows/532 people/T10.
+This author-table fit audits raw unit/time keys before joint finite-case
+selection. Retained groups must have equal counts T>=2; G>p+1; both within and
 between preliminary designs must identify every slope. Entirely excluded units
 are omitted. Interleaved/gapped data are allowed; equal counts do not promise
-common years. Time-invariant predictors, weights, unbalanced variance estimation,
-arbitrary cluster covariance and alternative component estimators are not supplied.
+common years. Time-invariant predictors, weights, arbitrary cluster variables
+and alternative component estimators are not supplied. The separate unbalanced
+Swamy–Arora extension below covers unequal retained counts.
 
 Variance and inference are explicit:
 
@@ -348,9 +349,9 @@ predictions after edits/dropped IDs, normal reporting, identical text/JSON expor
 raw-key/unbalanced/sample failures, atomic errors and export/source preservation.
 Full-source text/JSON exports are also byte-identical.
 
-Still required: unbalanced RE, unit effects/conditional
-predictions, ML variance-component/robust inference, Hausman and other panel diagnostics, bootstrap and remaining
-table/figure outputs. This bounded classical RE-GLS portion does not complete
+Still required: unit effects/conditional predictions, ML variance-component/robust
+inference, Hausman and other panel diagnostics, bootstrap and remaining
+table/figure outputs. This bounded balanced classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
 
 ## Unit-cluster RE extension
@@ -398,8 +399,10 @@ interleaving, zero unit variance and estimable designs with singular clustered
 slope covariance. Runtime/CLI tests exercise alias equality, unchanged point fit,
 sample/components/predictions, arbitrary-cluster errors/cleared stale fits,
 current prediction preservation, unavailable-Wald text/JSON and normal prediction
-from that retained fit, as well as source/export/error contracts.
-Unbalanced RE, unit effects, ML variance-component/robust inference, general restrictions, Hausman, bootstrap and
+from that retained fit, as well as source/export/error contracts. Unbalanced GLS
+and its unit-cluster covariance are documented in the separate sensitivity
+workflow below.
+Unit effects, ML variance-component/robust inference, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
 
 ## Interior RE-ML coefficient/likelihood workflow
@@ -457,7 +460,7 @@ initialized nlme fit checks that interior solution. Runtime/CLI tests cover join
 sample mapping, current-data predictions, unavailable-mode errors and data/state
 preservation, including zero-component fit failure. No production R/Python is used.
 
-Still required: ML variance-component inference, unbalanced RE-GLS, robust ML, conditional
+Still required: ML variance-component inference, robust ML, conditional
 unit effects, general restrictions/named reports, Hausman/panel diagnostics,
 bootstrap and the remaining table/figure analyses. A manual core-only original
 probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
@@ -731,3 +734,61 @@ and432 cells across24 retained interleaved rows, plus four excluded raw rows.
 Duplicate/bad/empty keys, imbalanced joint cases, degenerate within/between designs,
 extreme theta failure and existing exports are tested. Only scripts, development
 references/tests and status docs change; no production Rust/API/dependency change.
+
+## Unbalanced RE-GLS sensitivity workflow
+
+`random_effects_gls_unbalanced.td` fits Table21.2's log-hours on log-wage
+random-intercept specification on the deterministic MOM sensitivity cohort. It
+removes years1980/1985 for IDs divisible by3 and years1981–1983 for IDs divisible
+by7 from the original ordered source rows. The cohort retains4,738 rows/532
+people with unit counts5–10. This extends the balanced book analysis; it is not
+an author result or a new published Table21.2 row.
+
+Balanced Swamy–Arora components and strict balanced APIs remain unchanged.
+Unbalanced components use a T_i-weighted between regression and trace correction
+`(sum_i T_i ebar_i² - (G-p-1) sigma_e²) /
+(N-tr((Z'WZ)^-1 Z'W²Z))`, with W=diag(T_i) and Z containing the intercept and
+unit means. Quasi-demeaning uses one theta_i per unit and transforms
+the intercept by1-theta_i. The final classical GLS covariance uses transformed
+RSS/(N-K), K=p+1, not the preliminary within variance. Negative raw unit variance
+is clipped at zero and retained diagnostically; singleton units are allowed when
+within/between rank and residual degrees of freedom suffice. The result is
+`UnbalancedRandomEffectsGlsResult` with retained count/theta ranges and null common
+T/theta.
+
+`cluster(id)` and the RE-specific `robust` alias use grouped quasi-demeaned scores
+and multiplier G/(G-1)*(N-1)/(N-K). Coefficients and components are unchanged;
+coefficient inference is asymptotic normal and slope Wald inference is
+chi-square, not few-cluster t/F. Independent clusters and exogenous unit effects
+remain assumptions. No variance-component uncertainty, robust ML, time-invariant
+predictors, unit effects, general restrictions or automatic FE/RE bootstrap is
+added.
+
+R4.6.1/plm2.6.7 and explicit original-source equations validate **9,515 scalar
+references** on the 4,738-row/532-person cohort. The native workflow checks all
+retained source identities, inputs and population predictions/residuals in
+**71,070 cells**. Classical and clustered covariance/inference, transformed fits,
+unit-specific theta and weighted trace components are compared; explicit
+`cluster(id)` and `robust` JSON results are identical. The original source hash
+is pinned, and text/JSON data exports match byte-for-byte. Three synthetic
+unequal/interleaved/boundary designs add **321 R/plm/matrix comparisons**.
+Runtime tests cover joint-case counts, retained state, current-row prediction,
+alias equality, target collisions and failed-refit data preservation. Tolerances
+remain absolute1e-9/nonzero-tail relative1e-8; no author data or program is
+bundled.
+
+Reproduce from fresh directories containing prepared `MOM.csv`:
+
+```sh
+mkdir re_gls_json re_gls_text re_gls_reference
+cp MOM.csv re_gls_json/MOM.csv
+cp MOM.csv re_gls_text/MOM.csv
+(cd re_gls_json && "$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_gls_unbalanced.td" > random_effects_gls_unbalanced.jsonl)
+(cd re_gls_text && "$root/target/debug/tabdat-explore-rs" --text -f "$root/examples/mma21p1panel/random_effects_gls_unbalanced.td" > random_effects_gls_unbalanced.txt)
+Rscript "$root/crates/tabdat-stats/tests/fixtures/random_effects_gls_unbalanced_reference.R" re_gls_reference/reference.csv re_gls_reference/inputs.csv "$work/MOM.dat"
+python3 "$root/examples/mma21p1panel/check_random_effects_gls_unbalanced_reference.py" re_gls_json re_gls_text re_gls_reference "$work/MOM.dat"
+```
+
+This sensitivity estimate does not replace the published balanced estimate.
+Original printed-Stata8 uncertainty differences, ML profile limitations, omitted
+unit effects and broader panel-diagnostic gaps remain as described above.

@@ -1064,6 +1064,44 @@ or unsupported modes/intervals preserve fit/data and publish nothing. Existing
 `PredictionResult` metadata is unchanged; use export/head to access values.
 See [audited Table21.2 Within portion](../../examples/mma21p1panel/README.md).
 
+## One-way random-effects results
+
+`xtreg y xvars, re id(unit) time(year)` returns the existing
+`RandomEffectsResult` for balanced Swamy–Arora GLS. Unbalanced retained counts
+return the distinct `UnbalancedRandomEffectsGlsResult`; unbalanced Gaussian
+marginal ML remains `UnbalancedRandomEffectsMlResult`. Balanced result fields and
+the strict balanced statistics entry points retain their existing contracts.
+
+Unbalanced Swamy–Arora uses a T_i-weighted between regression and the trace
+correction
+`(sum_i T_i ebar_i² - (G-p-1) sigma_e²) /
+(N-tr((Z'WZ)^-1 Z'W²Z))`, where W=diag(T_i) and Z has an intercept plus unit
+means. It transforms each retained unit with its own theta_i;
+the intercept column is transformed by1-theta_i. The final model-based
+quasi-demeaned covariance uses RSS/(N-K), K=p+1. Negative raw unit variance is
+clipped to zero while preserving the raw estimate. Singleton units can be kept
+when the within/between designs and residual degrees of freedom identify the fit.
+Inference is asymptotic normal for coefficients and chi-square for the slope
+Wald test; no t/F or few-cluster guarantee is implied.
+
+The unbalanced JSON data includes the existing outcome/predictor/fit/covariance
+fields and adds `balanced: false`, `minimum_group_size`, `maximum_group_size`,
+`theta_at_minimum_group_size`, `theta_min`, and `theta_max`. Common `group_size`
+and `theta` are null. `variance_component_method` is
+`unbalanced_swamy_arora`; the `estimator` string is
+`unbalanced_swamy_arora_random_effects_gls`. `sample` keeps total and dropped
+counts without exposing row vectors. For `cluster(unit)` or its RE-specific
+`robust` alias, `covariance` is `cluster(unit)`, covariance convention is
+`unit_grouped_quasi_demeaned_scores`, and additive cluster metadata reports the
+G/(G-1)*(N-1)/(N-K) multiplier and independence across units. The cluster option
+changes covariance/inference, not variance components or coefficients.
+
+These semantics apply to supported one-way random-intercept workflows with
+explicit audited ID/time keys; they do not install random-effects unit
+predictions, general panel state, weights, time-invariant predictors, general
+restrictions or variance-component uncertainty. The documented MOM sensitivity
+cohort is an altered-sample method check, not a published textbook result.
+
 ## Linear inference fields and conventions
 
 Linear JSON results reuse the supplied statistics without recalculation:

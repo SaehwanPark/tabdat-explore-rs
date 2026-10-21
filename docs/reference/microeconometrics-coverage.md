@@ -34,7 +34,7 @@ not by implementing every estimator mentioned in a chapter.
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, arbitrary-cutoff/current-variable count probability predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
-| 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, unbalanced RE-GLS, ML variance-component/robust inference, unit effects, two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
+| 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, ML variance-component/robust inference, unit effects, two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
 | 25: Treatment evaluation | Relevant parser forms only | Explicit estimands, adjustment/matching/weighting, balance/overlap and valid uncertainty |
@@ -66,7 +66,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; arbitrary-cutoff count probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
-| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS classical, interior ML coefficient/likelihood and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept inference, unbalanced RE and ML variance-component inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison validated below |
+| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS, unbalanced RE-GLS sensitivity, interior ML coefficient/likelihood and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept and ML variance-component inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison validated below |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
@@ -128,7 +128,7 @@ joint membership, unequal counts/equal person weights, singleton/all-excluded
 units, inference DF, text/JSON identity, key/sample/rank failure and export
 preservation. HC1 is not the author's bootstrap; R²/working likelihood are for
 means, not within/overall panel statistics or cross-design LR inference.
-No general `xtreg ..., be`, unbalanced RE-GLS, cluster/FE/RE bootstrap, Figure21.2 or whole-table completion
+No general `xtreg ..., be`, cluster/FE/RE bootstrap, Figure21.2 or whole-table completion
 is claimed; correlation of wages with person effects remains an identification
 concern. Source and reproduction instructions remain beside the example.
 
@@ -153,8 +153,8 @@ interleaving and the negative-component boundary. Tolerances remain absolute
 protect raw-key auditing, joint-case/balanced retained membership, fully omitted
 units, current predictions, state on error and text/JSON/export preservation.
 
-Still partial: requires equal retained counts T>=2 and full-rank within/between
-designs; unbalanced RE-GLS, time-invariant predictors, unit effects,
+For the published balanced fit, retained counts must be equal T>=2 and both
+within/between designs must be full rank. Time-invariant predictors, unit effects,
 ML variance-component/robust inference, Hausman, bootstrap and remaining table/figure outputs remain required.
 Model-based inference assumes exogenous unit effects and the specified
 error-components covariance with independent units. No panel likelihood,
@@ -175,6 +175,28 @@ Deterministic group summation protects alias equality in the shared linear
 cluster path. Independent people/exogenous unit effects are assumptions, not
 conclusions; no bootstrap, few-cluster, household/survey/multiway or new printed
 Table21.2 coverage is claimed.
+
+### MMA-PANEL unbalanced RE-GLS sensitivity extension
+
+The [unbalanced GLS workflow](../../examples/mma21p1panel/README.md#unbalanced-re-gls-sensitivity-workflow)
+fits the same lnhr~1+lnwg specification on a deterministic ragged MOM cohort
+(4,738 rows/532 people, retained counts5–10). This changed sample is a method
+extension, not another author Table21.2 result. Balanced entry points and result
+shapes stay intact; the distinct `UnbalancedRandomEffectsGlsResult` reports a
+T_i-weighted Swamy–Arora between fit, trace-corrected unit variance and unit-
+`cluster(id)`/`robust` uses grouped quasi-demeaned scores with
+G/(G-1)*(N-1)/(N-K). Coefficient inference is normal and the slope Wald is
+chi-square; no few-cluster t/F guarantee or variance-component uncertainty is
+claimed.
+
+R4.6.1/plm2.6.7 and explicit matrix algebra validate **9,515 reference scalars**,
+retained source identity and model inputs plus **71,070 exported cells** across
+4,738 rows. The audit includes model-based/cluster covariance and inference,
+per-unit transforms, predictions/residuals, and exact `cluster(id)`/`robust`
+alias equality; text and JSON data exports are byte-identical. Synthetic
+unequal/interleaved/boundary references add321 comparisons. Singleton units are
+permitted only when rank/DF checks pass; no RE unit effects, time-invariant
+predictors, general restrictions or robust ML are added.
 
 ### MMA-PANEL interior Gaussian RE-ML portion
 
@@ -242,7 +264,7 @@ independent R assertions; runtime/CLI tests protect sample/key/type/order/state
 and identical text/JSON exports. Tolerances remain1e-9 absolute/nonzero-tail
 1e-8 relative with exact source identities.
 
-**Still required:** persistent panel state, unbalanced RE-GLS, ML variance-component/robust inference, two-way effects, richer
+**Still required:** persistent panel state, ML variance-component/robust inference, two-way effects, richer
 design/weights, nuisance-intercept inference, Hausman and other panel-specific
 diagnostics/comparisons, bootstrap/RNG, lowess/Figures21.1–21.4 and remaining
 Table21.2/illustration outputs. No full Within column, table/chapter/panel-family
@@ -772,7 +794,7 @@ and boundary cases. Existing balanced/interior and boundary evidence remains.
 Runtime failure/sample-state and text/JSON/export tests protect the full workflow.
 Absolute1e-9/nonzero-tail relative1e-8 tolerances are unchanged. This is method
 and changed-sample sensitivity evidence, not a new published Table21.2 row.
-Unbalanced GLS, robust/variance-component ML inference and panel diagnostics
+Robust/variance-component ML inference and panel diagnostics
 remain required; no whole-table/family completion or global optimizer guarantee.
 
 ### MMA-COUNT current-row probability method extension

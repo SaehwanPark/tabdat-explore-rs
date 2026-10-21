@@ -7,7 +7,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// One-way RE fit (balanced Swamy–Arora GLS or Gaussian marginal ML).
+/// One-way RE fit (balanced/unbalanced Swamy–Arora GLS or Gaussian marginal ML).
 /// The stored regression is on the
 /// quasi-demeaned response/design, including the transformed intercept column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -17,12 +17,12 @@ pub struct RandomEffectsResult {
   pub predictor_names: Vec<String>,
   pub gls: LeastSquaresResult,
   pub group_count: usize,
-  /// Common retained count, or zero for unbalanced ML; use group_size_range().
+  /// Common retained count, or zero for an unbalanced fit; use group_size_range().
   pub group_size: usize,
   pub sigma_e_squared: f64,
   pub sigma_u_squared: f64,
   pub raw_sigma_u_squared: f64,
-  /// Common theta, or theta at the minimum retained group size for unbalanced ML.
+  /// Common theta, or theta at the minimum retained group size for an unbalanced fit.
   pub theta: f64,
   pub rho: f64,
   pub confidence_intervals: Vec<[f64; 2]>,
@@ -69,7 +69,7 @@ pub fn fit_random_effects(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, false)
+  fit_random_effects_impl(problem, entity_variable, false, false)
 }
 
 /// Unit-score sandwich of the quasi-demeaned design/residuals, with correction
@@ -80,19 +80,38 @@ pub fn fit_random_effects_clustered(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, true)
+  fit_random_effects_impl(problem, entity_variable, true, false)
+}
+
+/// Swamy–Arora GLS with unbiased unbalanced trace correction and per-unit theta.
+/// The original balanced-only entry points retain their strict sample contract.
+pub fn fit_random_effects_unbalanced(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+) -> Result<RandomEffectsResult, StatsError> {
+  fit_random_effects_impl(problem, entity_variable, false, true)
+}
+
+/// Unit-score covariance for the same unbalanced variance-component estimator.
+pub fn fit_random_effects_unbalanced_clustered(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+) -> Result<RandomEffectsResult, StatsError> {
+  fit_random_effects_impl(problem, entity_variable, true, true)
 }
 
 fn fit_random_effects_impl(
   problem: &EstimationProblem,
   entity_variable: &str,
   clustered: bool,
+  allow_unbalanced: bool,
 ) -> Result<RandomEffectsResult, StatsError> {
   let within = fit_fixed_effects(problem, entity_variable, false)?;
   let g = within.effects.len();
   let p = problem.predictor_names.len();
   let t = within.minimum_group_size;
-  if t < 2 || within.maximum_group_size != t {
+  let balanced = within.maximum_group_size == t;
+  if !allow_unbalanced && (t < 2 || !balanced) {
     return Err(StatsError::InvalidEstimation(
       "RE-GLS requires equal retained unit counts T >= 2; unbalanced variance estimation is not implemented".into(),
     ));
@@ -112,7 +131,7 @@ fn fit_random_effects_impl(
       "RE predictor conflicts with intercept name".into(),
     ));
   }
-  let between_problem = EstimationProblem::new(
+  let mut between_problem = EstimationProblem::new(
     &problem.outcome,
     problem.predictor_names.clone(),
     within.effects.iter().map(|e| e.response_mean).collect(),
@@ -123,6 +142,15 @@ fn fit_random_effects_impl(
       .collect(),
   )?
   .with_intercept_name(&problem.intercept_name);
+  if !balanced {
+    between_problem = between_problem.with_weights(
+      within
+        .effects
+        .iter()
+        .map(|e| e.observation_count as f64)
+        .collect(),
+    );
+  }
   let between = fit_least_squares(&between_problem)?;
   let sigma_e_squared = within
     .within
@@ -130,9 +158,48 @@ fn fit_random_effects_impl(
     .residual_sum_of_squares
     .unwrap()
     / within.within.fit_statistics.degrees_of_freedom as f64;
-  let raw_sigma_u_squared = between.fit_statistics.residual_sum_of_squares.unwrap()
-    / (g - p - 1) as f64
-    - sigma_e_squared / t as f64;
+  let raw_sigma_u_squared = if balanced {
+    between.fit_statistics.residual_sum_of_squares.unwrap() / (g - p - 1) as f64
+      - sigma_e_squared / t as f64
+  } else {
+    // Weighted between projection: A=Z' diag(Ti) Z, C=Z' diag(Ti²) Z.
+    // Its residual quadratic has expectation (G-K)*sigma_e² +
+    // (N-trace(inv(A)*C))*sigma_u²; a harmonic-T substitution is insufficient.
+    let k = p + 1;
+    let weighted: Vec<Vec<f64>> = within
+      .effects
+      .iter()
+      .map(|e| {
+        let root = (e.observation_count as f64).sqrt();
+        std::iter::once(root)
+          .chain(e.predictor_means.iter().map(|x| x * root))
+          .collect()
+      })
+      .collect();
+    let qr = crate::matrix::qr_decompose_with_response(&weighted, &vec![0.0; g])?;
+    let inverse = crate::matrix::xtx_inverse_from_r(&qr.r)?;
+    let mut trace = 0.0;
+    let mut quadratic = 0.0;
+    for (e, residual) in within.effects.iter().zip(&between.residuals) {
+      let size = e.observation_count as f64;
+      let z: Vec<_> = std::iter::once(1.0)
+        .chain(e.predictor_means.iter().copied())
+        .collect();
+      for i in 0..k {
+        for j in 0..k {
+          trace += inverse[i][j] * z[i] * z[j] * size * size;
+        }
+      }
+      quadratic += size * residual * residual;
+    }
+    let denominator = problem.observation_count() as f64 - trace;
+    if !denominator.is_finite() || denominator <= 0.0 {
+      return Err(StatsError::InvalidEstimation(
+        "unbalanced RE component trace has no positive degrees of freedom".into(),
+      ));
+    }
+    (quadratic - (g - p - 1) as f64 * sigma_e_squared) / denominator
+  };
   let sigma_u_squared = raw_sigma_u_squared.max(0.0);
   let variance = sigma_e_squared + t as f64 * sigma_u_squared;
   if !sigma_e_squared.is_finite()
@@ -165,6 +232,18 @@ fn fit_random_effects_impl(
     .insert(0, problem.intercept_name.clone());
   for (i, key) in keys.iter().enumerate() {
     let center = centers[key.as_str()];
+    let theta = if balanced {
+      theta
+    } else {
+      1.0
+        - (sigma_e_squared / (sigma_e_squared + center.observation_count as f64 * sigma_u_squared))
+          .sqrt()
+    };
+    if !theta.is_finite() || theta >= 1.0 {
+      return Err(StatsError::InvalidEstimation(
+        "RE transformation loses the intercept at machine precision".into(),
+      ));
+    }
     transformed.response[i] -= theta * center.response_mean;
     for j in 0..p {
       transformed.design_matrix[i][j] -= theta * center.predictor_means[j];
@@ -244,7 +323,12 @@ fn fit_random_effects_impl(
   gls.fit_statistics.adjusted_r_squared = None;
   gls.fit_statistics.log_likelihood = None;
   gls.fit_statistics.f_statistic = None;
-  gls.diagnostics.method = "balanced_swamy_arora_random_effects_gls".into();
+  gls.diagnostics.method = if balanced {
+    "balanced_swamy_arora_random_effects_gls"
+  } else {
+    "unbalanced_swamy_arora_random_effects_gls"
+  }
+  .into();
   Ok(RandomEffectsResult {
     ml: None,
     entity_variable: entity_variable.into(),
@@ -252,7 +336,7 @@ fn fit_random_effects_impl(
     predictor_names: problem.predictor_names.clone(),
     gls,
     group_count: g,
-    group_size: t,
+    group_size: if balanced { t } else { 0 },
     sigma_e_squared,
     sigma_u_squared,
     raw_sigma_u_squared,
