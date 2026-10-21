@@ -136,6 +136,15 @@ fn actual_nb2_script_reports_joint_dispersion_and_inference_and_preserves_all_so
     assert_eq!(fit["confidence_level"], 95.0);
     assert_eq!(fit["variance_function"], "mu_plus_alpha_mu_squared");
     assert_eq!(
+      fit["dispersion_boundary_test"],
+      "not_implemented_no_normal_alpha_zero_test"
+    );
+    let dispersion_test = &fit["dispersion_test"];
+    assert_eq!(dispersion_test["method"], "one_sided_likelihood_ratio");
+    assert_eq!(dispersion_test["null_hypothesis"], "alpha = 0 (Poisson)");
+    assert_eq!(dispersion_test["alternative_hypothesis"], "alpha > 0 (NB2)");
+    assert!(dispersion_test["statistic"].as_f64().unwrap() >= 0.0);
+    assert_eq!(
       fit["null_model"],
       "intercept_only_mean_and_dispersion_reestimated"
     );
@@ -160,11 +169,23 @@ fn actual_nb2_script_reports_joint_dispersion_and_inference_and_preserves_all_so
     }
     if mode == 0 {
       assert_eq!(
+        dispersion_test["reference_distribution"],
+        "asymptotic_50_50_chi_square_0_1_mixture"
+      );
+      assert!(dispersion_test["p_value"].as_f64().is_some());
+      assert!(dispersion_test["unavailable_reason"].is_null());
+      assert_eq!(
         fit["likelihood_ratio_reference_distribution"],
         "asymptotic_chi_square"
       );
       assert!(fit["omnibus_wald"].is_null());
     } else {
+      assert!(dispersion_test["reference_distribution"].is_null());
+      assert!(dispersion_test["p_value"].is_null());
+      assert_eq!(
+        dispersion_test["unavailable_reason"],
+        "robust_covariance_selected"
+      );
       assert!(fit["likelihood_ratio_p_value"].is_null());
       assert!(fit["likelihood_ratio_reference_distribution"].is_null());
       assert_eq!(fit["omnibus_wald"]["degrees_of_freedom"], 17);
@@ -204,7 +225,8 @@ fn actual_script_json_text_and_piped_outputs_publish_identical_csvs() {
     "N/(N-1)",
     "lnalpha",
     "NOT repeated-person/panel dependence",
-    "No normal alpha=0 test",
+    "No normal-Wald alpha=0 test",
+    "Poisson-boundary LR statistic",
     "NB2 continuous average partial effects",
   ] {
     assert!(output.contains(phrase), "{phrase}");

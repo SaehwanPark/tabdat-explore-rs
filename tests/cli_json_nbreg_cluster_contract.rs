@@ -143,6 +143,13 @@ fn actual_nb2_person_script_has_full_joint_covariance_transformed_dispersion_and
     fit["dispersion_boundary_test"],
     "not_implemented_no_normal_alpha_zero_test"
   );
+  assert!(fit["dispersion_test"]["statistic"].as_f64().unwrap() >= 0.0);
+  assert!(fit["dispersion_test"]["reference_distribution"].is_null());
+  assert!(fit["dispersion_test"]["p_value"].is_null());
+  assert_eq!(
+    fit["dispersion_test"]["unavailable_reason"],
+    "clustered_likelihood_not_independent"
+  );
   let d = &fit["dispersion"];
   let alpha = d["alpha"].as_f64().unwrap();
   let se = d["log_alpha_standard_error"].as_f64().unwrap();
@@ -205,7 +212,8 @@ fn actual_nb2_person_script_text_and_piped_match_json_without_row_independence_m
     "NOT G-1 Student t",
     "LR p-value unavailable under clustered",
     "FULL joint beta/lnalpha covariance",
-    "No normal alpha=0 test",
+    "No normal-Wald alpha=0 test",
+    "Poisson-boundary LR statistic",
   ] {
     assert!(output.contains(phrase), "{phrase}");
   }

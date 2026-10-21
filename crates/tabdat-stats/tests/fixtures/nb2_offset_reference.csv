@@ -2,6 +2,8 @@ case,quantity,i,j,value
 multiple_model,log_likelihood,0,0,-59.1627929732769
 multiple_model,null_log_likelihood,0,0,-60.4594988177644
 multiple_model,null_alpha,0,0,1.13920857991276
+multiple_model,dispersion_test_statistic,0,0,13.0498729395612
+multiple_model,dispersion_test_p_value,0,0,0.00015165249171536
 multiple_model,likelihood_ratio,0,0,2.59341168897483
 multiple_model,likelihood_ratio_p_value,0,0,0.2734310354514
 multiple_model,residual_deviance,0,0,38.5525182204337
@@ -137,6 +139,8 @@ multiple_model,xb,35,0,0.924658291237247
 multiple_robust,log_likelihood,0,0,-59.1627929732769
 multiple_robust,null_log_likelihood,0,0,-60.4594988177644
 multiple_robust,null_alpha,0,0,1.13920857991276
+multiple_robust,dispersion_test_statistic,0,0,13.0498729395612
+multiple_robust,dispersion_test_p_value,0,0,NA
 multiple_robust,likelihood_ratio,0,0,2.59341168897483
 multiple_robust,likelihood_ratio_p_value,0,0,NA
 multiple_robust,residual_deviance,0,0,38.5525182204337
@@ -274,6 +278,8 @@ multiple_robust,xb,35,0,0.924658291237247
 multiple_cluster,log_likelihood,0,0,-59.1627929732769
 multiple_cluster,null_log_likelihood,0,0,-60.4594988177644
 multiple_cluster,null_alpha,0,0,1.13920857991276
+multiple_cluster,dispersion_test_statistic,0,0,13.0498729395612
+multiple_cluster,dispersion_test_p_value,0,0,NA
 multiple_cluster,likelihood_ratio,0,0,2.59341168897483
 multiple_cluster,likelihood_ratio_p_value,0,0,NA
 multiple_cluster,residual_deviance,0,0,38.5525182204337
@@ -411,6 +417,8 @@ multiple_cluster,xb,35,0,0.924658291237247
 noconstant_model,log_likelihood,0,0,-60.008796571784
 noconstant_model,null_log_likelihood,0,0,-60.4606103017816
 noconstant_model,null_alpha,0,0,1.13533271139705
+noconstant_model,dispersion_test_statistic,0,0,19.1985280635876
+noconstant_model,dispersion_test_p_value,0,0,5.89020958825704e-06
 noconstant_model,likelihood_ratio,0,0,0.903627459995107
 noconstant_model,likelihood_ratio_p_value,0,0,0.63647271445816
 noconstant_model,residual_deviance,0,0,37.3045148649346
@@ -533,6 +541,8 @@ noconstant_model,xb,35,0,1.2670404417577
 noconstant_robust,log_likelihood,0,0,-60.008796571784
 noconstant_robust,null_log_likelihood,0,0,-60.4606103017816
 noconstant_robust,null_alpha,0,0,1.13533271139705
+noconstant_robust,dispersion_test_statistic,0,0,19.1985280635876
+noconstant_robust,dispersion_test_p_value,0,0,NA
 noconstant_robust,likelihood_ratio,0,0,0.903627459995107
 noconstant_robust,likelihood_ratio_p_value,0,0,NA
 noconstant_robust,residual_deviance,0,0,37.3045148649346
@@ -657,6 +667,8 @@ noconstant_robust,xb,35,0,1.2670404417577
 noconstant_cluster,log_likelihood,0,0,-60.008796571784
 noconstant_cluster,null_log_likelihood,0,0,-60.4606103017816
 noconstant_cluster,null_alpha,0,0,1.13533271139705
+noconstant_cluster,dispersion_test_statistic,0,0,19.1985280635876
+noconstant_cluster,dispersion_test_p_value,0,0,NA
 noconstant_cluster,likelihood_ratio,0,0,0.903627459995107
 noconstant_cluster,likelihood_ratio_p_value,0,0,NA
 noconstant_cluster,residual_deviance,0,0,37.3045148649346
@@ -781,6 +793,8 @@ noconstant_cluster,xb,35,0,1.2670404417577
 intercept_model,log_likelihood,0,0,-60.4594988177644
 intercept_model,null_log_likelihood,0,0,-60.4594988177644
 intercept_model,null_alpha,0,0,1.13920857991276
+intercept_model,dispersion_test_statistic,0,0,17.4596591796755
+intercept_model,dispersion_test_p_value,0,0,1.46734671980083e-05
 intercept_model,likelihood_ratio,0,0,0
 intercept_model,likelihood_ratio_p_value,0,0,NA
 intercept_model,residual_deviance,0,0,37.8840199564318
@@ -880,6 +894,8 @@ intercept_model,xb,35,0,1.21154475877557
 intercept_robust,log_likelihood,0,0,-60.4594988177644
 intercept_robust,null_log_likelihood,0,0,-60.4594988177644
 intercept_robust,null_alpha,0,0,1.13920857991276
+intercept_robust,dispersion_test_statistic,0,0,17.4596591796755
+intercept_robust,dispersion_test_p_value,0,0,NA
 intercept_robust,likelihood_ratio,0,0,0
 intercept_robust,likelihood_ratio_p_value,0,0,NA
 intercept_robust,residual_deviance,0,0,37.8840199564318
@@ -979,6 +995,8 @@ intercept_robust,xb,35,0,1.21154475877557
 intercept_cluster,log_likelihood,0,0,-60.4594988177644
 intercept_cluster,null_log_likelihood,0,0,-60.4594988177644
 intercept_cluster,null_alpha,0,0,1.13920857991276
+intercept_cluster,dispersion_test_statistic,0,0,17.4596591796755
+intercept_cluster,dispersion_test_p_value,0,0,NA
 intercept_cluster,likelihood_ratio,0,0,0
 intercept_cluster,likelihood_ratio_p_value,0,0,NA
 intercept_cluster,residual_deviance,0,0,37.8840199564318

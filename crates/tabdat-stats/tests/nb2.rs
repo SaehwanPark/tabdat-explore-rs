@@ -24,6 +24,10 @@ fn problem(case: &str) -> EstimationProblem {
     .with_intercept(intercept)
 }
 fn close(actual: &Value, expected: &str, tail: bool) {
+  if expected == "NA" {
+    assert!(actual.is_null());
+    return;
+  }
   let expected: f64 = expected.parse().unwrap();
   let actual = actual.as_f64().unwrap();
   let tolerance = if tail {
@@ -43,7 +47,7 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
     .skip(1)
     .map(|s| s.split(',').collect())
     .collect();
-  assert_eq!(references.len(), 742);
+  assert_eq!(references.len(), 754);
   for case in ["multiple", "noconstant", "intercept"] {
     let problem = problem(case);
     for robust in [false, true] {
@@ -52,6 +56,32 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
       assert!(fit.max_abs_scaled_score <= 1e-10 && fit.max_abs_scaled_newton_step <= 1e-10);
       assert_eq!(fit.robust, robust);
       let json = serde_json::to_value(&fit).unwrap();
+      let mut old_shape = json.clone();
+      old_shape.as_object_mut().unwrap().remove("dispersion_test");
+      let old_fit: tabdat_stats::Nb2Result = serde_json::from_value(old_shape.clone()).unwrap();
+      assert!(old_fit.dispersion_test.is_none());
+      assert_eq!(serde_json::to_value(old_fit).unwrap(), old_shape);
+      let dispersion_test = fit.dispersion_test.as_ref().unwrap();
+      assert_eq!(dispersion_test.method, "one_sided_likelihood_ratio");
+      assert_eq!(dispersion_test.null_hypothesis, "alpha = 0 (Poisson)");
+      assert_eq!(dispersion_test.alternative_hypothesis, "alpha > 0 (NB2)");
+      if robust {
+        assert_eq!(dispersion_test.reference_distribution, None);
+        assert_eq!(dispersion_test.p_value, None);
+        assert_eq!(
+          dispersion_test.unavailable_reason.as_deref(),
+          Some("robust_covariance_selected")
+        );
+      } else {
+        assert_eq!(
+          dispersion_test.reference_distribution.as_deref(),
+          Some("asymptotic_50_50_chi_square_0_1_mixture")
+        );
+        assert!(
+          (0.0..=1.0).contains(&dispersion_test.p_value.unwrap())
+            && dispersion_test.unavailable_reason.is_none()
+        );
+      }
       let effects = serde_json::to_value(effects).unwrap();
       for row in references
         .iter()
@@ -64,6 +94,8 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
           json["coefficients"][i][field].clone()
         } else if let Some(field) = q.strip_prefix("effect_") {
           effects["effects"][i][field].clone()
+        } else if let Some(field) = q.strip_prefix("dispersion_test_") {
+          json["dispersion_test"][field].clone()
         } else if json["dispersion"].get(q).is_some() {
           json["dispersion"][q].clone()
         } else {
@@ -89,6 +121,10 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
             _ => json[q].clone(),
           }
         };
+        if row[5] == "NA" {
+          assert!(actual.is_null(), "{case}, robust={robust}: {q} = {actual}");
+          continue;
+        }
         assert!(
           actual.is_number(),
           "{case}, robust={robust}: {q} = {actual}"

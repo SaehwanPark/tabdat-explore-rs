@@ -145,6 +145,11 @@ reference <- function(case,y,predictors,groups,intercept=TRUE,
   null <- polish(null_start,null_X,y)
   null_ll <- null$e$ll
   lr <- max(0,2*(e$ll-null_ll)); q <- k-as.integer(intercept)
+  poisson_fit <- glm.fit(X,y,family=poisson())
+  poisson_ll <- sum(dpois(y,poisson_fit$fitted.values,log=TRUE))
+  dispersion_lr_raw <- 2*(e$ll-poisson_ll)
+  stopifnot(dispersion_lr_raw >= -1e-8)
+  dispersion_lr <- max(0,dispersion_lr_raw)
   deviance <- sum(2*(ifelse(y==0,0,y*log(ifelse(y==0,1,y)/e$mu))-
     (y+r)*log((y+r)/(e$mu+r))))
   pearson <- sum((y-e$mu)^2/(e$mu+alpha*e$mu^2))
@@ -169,6 +174,7 @@ reference <- function(case,y,predictors,groups,intercept=TRUE,
     alpha_confidence_upper=exp(par[p]+qnorm(.975)*sqrt(V[p,p])),
     log_alpha_confidence_lower=par[p]-qnorm(.975)*sqrt(V[p,p]),
     log_alpha_confidence_upper=par[p]+qnorm(.975)*sqrt(V[p,p]),
+    dispersion_test_statistic=dispersion_lr,dispersion_test_p_value=NA_real_,
     wald_statistic=wald,wald_p_value=wald_p)
   for (name in names(fields)) emit(case,name,value=fields[[name]])
 

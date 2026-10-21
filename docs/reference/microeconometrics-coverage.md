@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, arbitrary-cutoff/current-variable count probability predictions, unresolved printed Table20.6 NB2 row, formal NB boundary/specification tests, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, arbitrary-cutoff/current-variable count probability predictions, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, robust ML inference, unit effects, two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -65,7 +65,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
-| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; arbitrary-cutoff count probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
+| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns, plus model-based Poisson-boundary NB2 LR test, validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,191 quantities/all source/design/mean/index records; native person-Poisson551/NB2 599-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; arbitrary-cutoff count probabilities/other formal tests/remaining Tables20.3–20.6 and richer counts remain required |
 | MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS, unbalanced RE-GLS sensitivity, interior ML coefficient/likelihood, positive-interior variance-component uncertainty, the one-sided zero-unit-variance LR test and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept and robust ML inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison validated below |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
@@ -546,7 +546,7 @@ require clustered inference for dependence: these two reproduced columns are
 **not panel-robust**. The ASCII omits original person IDs; the native Poisson
 extensions below recover audited DTA IDs separately. Household/site/multiway,
 Remaining exposure workflows (Poisson/NB2 fixed offsets are separately validated method evidence), current-row probabilities/unresolved printed Table20.6 NB2 row,
-formal NB boundary/specification tests,
+other formal NB specification tests and robust/clustered NB boundary-LR reference,
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` remains OLS/logit/probit
 only; no count fit restoration/persistence or general count test/lincom is claimed.
@@ -554,7 +554,7 @@ only; no count fit restoration/persistence or general count test/lincom is claim
 [PR #281](https://github.com/SaehwanPark/tabdat-explore-rs/pull/281) adds
 [`nb2.td`](../../examples/mma20p1count/nb2.td) on the identical prepared sample:
 NB2 variance mu+alpha*mu², alpha=exp(lnalpha), joint ML for beta/lnalpha. Independent
-R4.6.1/MASS7.3.65 validates 1,187 quantities and every source/design/mean/index
+R4.6.1/MASS7.3.65 validates 1,191 quantities and every source/design/mean/index
 record for both covariances. Full converged observed-information inverse includes
 beta/dispersion cross terms; MASS conditional/Fisher vcov is not substituted.
 Robust is full joint-score N/(N-1), not HC1. Normal beta inference, transformed
@@ -569,7 +569,7 @@ fits fail; there is no clipped-alpha or implicit Poisson fallback. Original
 DTA/ASCII NB2 coefficient differences <=4.38e-8 are source quantization; native
 validation uses exact ASCII. Historical stopping/rounded output is not the
 float64 score fixed point (HLTHP approximately0.4256563 vs converged0.42565748).
-General count restrictions, formal alpha=0/specification tests, multiway/survey,
+General count restrictions, other formal NB specification tests and robust/clustered NB boundary-LR reference, multiway/survey,
 current-row probability predictions and remaining illustration outputs stay required;
 this addition does not complete the book's count workflow or panel inference.
 
@@ -598,7 +598,7 @@ whole count-family or book completion.
 [PR #283](https://github.com/SaehwanPark/tabdat-explore-rs/pull/283) adds the
 [native NB2 original-person extension](../../examples/mma20p1count/nb2_clustered.td)
 on the SAME audited20,186 rows/5,908 actual people and Table20.5 mean design,
-not a printed cluster column. R4.6.1/MASS7.3.65 references527 synthetic/597
+not a printed cluster column. R4.6.1/MASS7.3.65 references535 synthetic/599
 empirical quantities/all original/prepared/person/year/source/design/mean/xb
 records. MASS starts only: full joint beta/lnalpha score/observed curvature is
 polished and checked by normalized numerical score differentiation; each grouped
@@ -606,9 +606,10 @@ score is independently checked against grouped dnbinom log-PMF differentiation.
 This is not `vcov(glm.nb)` or conditional/Fisher bread. All19x19 covariance
 entries, dispersion SE/transformed CIs and retained-X delta effects match;
 G/(G-1) full joint group scores, normal not G-1 t. Beta-slope Wald excludes
-lnalpha and guards q>=G/rank. LR reference/alpha=0 tests not manufactured.
+lnalpha and guards q>=G/rank. Clustered slope-LR references or normal-Wald
+alpha=0 tests are not manufactured.
 
-The singleton case in the527-quantity fixture matches141 shared existing
+The singleton case in the535-quantity fixture matches141 shared existing
 row-robust quantities exactly. References regenerate byte-identically; unchanged ordinary/total/design/
 relative-tail tolerances, exact state/sample/key/failure/legacy-shape tests and
 actual JSON/text/piped output agreement validate this bounded extension. Twenty
@@ -647,6 +648,22 @@ tuning is used to erase it. Exact source/sample/design/law are validated against
 the author-program specification; the printed row is not silently excluded or
 marked complete. Remaining table/illustration/formal-test/core requirements stand.
 No author data/program/book redistribution or production R/Python dependency.
+
+### NB2 Poisson-boundary likelihood-ratio method evidence
+
+[PR #308](https://github.com/SaehwanPark/tabdat-explore-rs/pull/308) adds the
+one-sided test `H0: alpha=0 (Poisson)` against `H1: alpha>0 (NB2)` using the
+full NB2 and same-design/sample/offset Poisson likelihoods. The 50:50
+chi-square(0)/chi-square(1) reference is reported only with model-based
+covariance, under the regular one-parameter boundary conditions described by
+[Self and Liang (1987)](https://doi.org/10.1080/01621459.1987.10478472).
+Robust and clustered fits report the LR statistic without that classical
+reference or p-value. R4.6.1 independently fits the Poisson null with `glm.fit`
+and checks its likelihood against `dpois`; the full original Table20.5 source
+audit matches the test along with 1,191 NB2 quantities and all 20,186 prepared
+rows. The source LR is 34,620.0220788; its float64 p-value underflows to zero,
+not an exact probability. This method extension does not reconcile the authors'
+unresolved printed Table20.6 NB2 row or complete the count chapter.
 
 ## Additional fixed count offset evidence (not a textbook replication)
 

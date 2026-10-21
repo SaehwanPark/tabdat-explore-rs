@@ -68,8 +68,13 @@ Inference and interpretation:
 - Coefficients have asymptotic normal z/two-sided p/fixed95% CIs, not Student t.
   Zero variance gives unavailable z/p/CI, not exact significance/point intervals.
 - lnalpha has its joint SE/normal interval; alpha SE is delta-method and its CI
-  exponentiates the log interval, not alpha +/- z*SE. No normal alpha=0 or boundary
-  LR test is supplied: zero dispersion is outside the interior parameterization.
+  exponentiates the log interval, not alpha +/- z*SE. A one-sided likelihood-ratio
+  statistic compares the full NB2 likelihood with the Poisson likelihood on the
+  same sample/design/offset. Its 50:50 chi-square(0)/chi-square(1) p-value is
+  supplied only with model-based covariance; robust and clustered fits expose the
+  statistic but leave its reference distribution and p-value unavailable. No
+  normal-Wald alpha=0 test is supplied: zero dispersion is outside the interior
+  parameterization.
 - The nested NB null reestimates dispersion: intercept-only mean by default,
   fixed unit mean (beta=0) without intercept when no offset is specified.
   Offset nulls retain the same offsets: jointly refit intercept and alpha when
@@ -97,7 +102,7 @@ descriptive report without uncertainty/formal goodness-of-fit test; see `help es
 
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
 exposure shorthand, NB1, PMF/CDF prediction UI, factors/discrete changes, general
-count test/lincom, interval prediction, formal alpha=0/specification tests or
+count test/lincom, interval prediction, other formal specification tests or
 named count reports. Independent-row robust is **NOT panel-robust**; choose
 actual cluster IDs and defend independence across the selected groups.
 
