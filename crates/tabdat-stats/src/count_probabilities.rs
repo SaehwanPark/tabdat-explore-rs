@@ -186,6 +186,36 @@ pub fn count_bin_probabilities(
   Ok(probabilities)
 }
 
+/// P(Y=count) and P(Y<=count), for exact counts 0..99 and finite mean>=0.
+/// Zero means include the degenerate limit reached by exponential underflow.
+/// Use a direct prefix for small CDFs and complement direct survival for large
+/// CDFs, avoiding subtraction of a rounded near-one survival.
+pub fn count_point_probabilities(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+) -> Result<(f64, f64), StatsError> {
+  let cutoff = count
+    .checked_add(1)
+    .ok_or_else(|| invalid("count must be from 0 to 99"))?;
+  validate(law, cutoff)?;
+  if mean == 0.0 {
+    return Ok((if count == 0 { 1.0 } else { 0.0 }, 1.0));
+  }
+  let bins = count_bin_probabilities(law, mean, cutoff)?;
+  let tail = bins[cutoff];
+  let cumulative = if tail > 0.5 {
+    let (mut sum, mut correction) = (0.0, 0.0);
+    for &p in &bins[..cutoff] {
+      add_compensated(&mut sum, &mut correction, p);
+    }
+    sum
+  } else {
+    1.0 - tail
+  };
+  Ok((bins[count], cumulative))
+}
+
 /// Descriptive frequencies: average each individual's conditional probability,
 /// not a probability at the average fitted mean. No uncertainty or test follows
 /// from these bins, and covariance selection does not establish the fitted law.

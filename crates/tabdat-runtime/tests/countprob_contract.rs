@@ -162,3 +162,95 @@ fn invalid_direct_requests_and_wrong_fit_fail_read_only_without_lazy_backend_ini
     assert_eq!(run(&mut s, "head 100"), rows);
   }
 }
+
+#[test]
+fn current_probabilities_preserve_retained_fit_labels_and_failure_state() {
+  let f = Fixture::new(true);
+  for family in ["poisson", "nbreg"] {
+    let mut s = f.session();
+    // Exclude the extra wide NB2 outcome while retaining the missing-y row for prediction.
+    run(&mut s, "drop if id >= 37");
+    run(&mut s, "label variable x \"original predictor\"");
+    run(&mut s, "generate log_time = 0");
+    run(&mut s, &format!("{family} y x z, offset(log_time)"));
+    let before = s.state();
+    run(&mut s, "predict p0, pmf(0)");
+    let after = s.state();
+    assert_eq!(after.estimation, before.estimation);
+    assert_eq!(after.labels, before.labels);
+    let ExecutionResult::Head(t) = run(&mut s, "head 1") else {
+      panic!("table")
+    };
+    // First row has missing outcome, but complete predictors and a PMF prediction.
+    assert!(
+      matches!(t.rows[0].last(),Some(tabdat_domain::CellValue::Float(v)) if *v>0.0 && *v<1.0)
+    );
+    run(&mut s, "replace log_time = -1000");
+    run(&mut s, "predict zero_cdf, cdf(0)");
+    let ExecutionResult::Head(t) = run(&mut s, "head 100") else {
+      panic!("head")
+    };
+    assert!(
+      t.rows
+        .iter()
+        .all(|r| r.last() == Some(&tabdat_domain::CellValue::Float(1.0)))
+    );
+    run(&mut s, "predict zero_pmf, pmf(2)");
+    let ExecutionResult::Head(t) = run(&mut s, "head 100") else {
+      panic!("head")
+    };
+    assert!(
+      t.rows
+        .iter()
+        .all(|r| r.last() == Some(&tabdat_domain::CellValue::Float(0.0)))
+    );
+    run(&mut s, "replace log_time = 1000");
+    run(&mut s, "predict extreme, cdf(0)");
+    let ExecutionResult::Head(t) = run(&mut s, "head 100") else {
+      panic!("head")
+    };
+    assert!(
+      t.rows
+        .iter()
+        .all(|r| r.last() == Some(&tabdat_domain::CellValue::Null))
+    );
+    assert_eq!(s.state().estimation, before.estimation);
+    let stable = s.state();
+    let rows = run(&mut s, "head 100");
+    for command in [
+      "predict p0, pmf(0)",
+      "predict bad, pr",
+      "predict bad, residuals",
+    ] {
+      assert!(s.execute(parse_command(command).unwrap()).is_err());
+      assert_eq!(s.state(), stable);
+      assert_eq!(run(&mut s, "head 100"), rows);
+    }
+    run(&mut s, "replace x = NULL");
+    run(&mut s, "predict missing, pmf(0)");
+    let ExecutionResult::Head(t) = run(&mut s, "head 100") else {
+      panic!("head")
+    };
+    assert!(
+      t.rows
+        .iter()
+        .all(|r| r.last() == Some(&tabdat_domain::CellValue::Null))
+    );
+    run(&mut s, "drop if id >= 0");
+    run(&mut s, "predict empty, cdf(99)");
+    let stable = s.state();
+    let Command::Predict { mut command } = parse_command("predict invalid, pmf(0)").unwrap() else {
+      panic!("predict")
+    };
+    command.kind = tabdat_domain::PredictKind::CountPmf(usize::MAX);
+    assert!(s.execute(Command::Predict { command }).is_err());
+    assert_eq!(s.state(), stable);
+    run(&mut s, "drop x");
+    let stable = s.state();
+    assert!(
+      s.execute(parse_command("predict bad, cdf(2)").unwrap())
+        .is_err()
+    );
+    assert_eq!(s.state(), stable);
+  }
+}

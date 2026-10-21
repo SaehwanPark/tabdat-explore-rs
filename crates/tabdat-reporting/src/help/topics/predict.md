@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | n]`
+`predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Supported regress/2SLS: xb (default) or residuals (outcome minus xb).
@@ -16,7 +16,7 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
 **Bare predict remains xb for every installed family.** Request probabilities
 with `, pr` or count means with `, n` explicitly. Count means are not probabilities
 or integer draws; do not clip at one. `pr` is not Poisson prediction and `n` is
-not supported after linear/binary fits. NB2 also supports n/xb, not pr. Prediction kinds cannot be combined.
+not supported after linear/binary fits. NB2 also supports n/xb and explicit pmf(k)/cdf(k), not binary pr. Prediction kinds cannot be combined.
 
 Example (after loading numeric x/y):
 - `regress y x`
@@ -60,6 +60,22 @@ Data and model notes:
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
 Not installed: binary/Poisson residuals, NB2 residuals, spatial_lag, posterior_predictive,
-std/interval/level()/saving() prediction, or arbitrary count PMF/CDF requests.
+std/interval/level()/saving() prediction, or count cutoffs beyond the bounded integer0..99.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
+
+Count distributional probabilities:
+- After Poisson/NB2, `predict p, pmf(k)` means P(Y=k); `cdf(k)` means P(Y<=k),
+  conditional on current X and any fitted offset, using retained coefficients
+  and NB2 alpha. k must be an integer literal0..99. Choose one prediction kind.
+- These assume the full fitted law, not merely a valid conditional mean or
+  robust covariance. They have no parameter uncertainty, calibration guarantee
+  or formal test. `estat countprob` remains an ORIGINAL retained-sample summary;
+  these predictions apply to current rows, including rows excluded at fitting.
+- Current outcome/cluster columns are unnecessary; fitted offsets are required.
+  Missing/nonfinite or overflowing indices/means produce NULL. Exponential
+  underflow to zero uses a point mass at zero. Probability numerical failure
+  aborts before publication, leaving data/labels/fit unchanged. Empty data works.
+- Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`
+  and `predict at_most_two, cdf(2)`. Inspect/export the appended DOUBLE columns.
+  See examples/count-probability/README.md for a complete Poisson/NB2 workflow.
