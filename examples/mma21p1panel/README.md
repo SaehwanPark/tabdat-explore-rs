@@ -731,3 +731,22 @@ and432 cells across24 retained interleaved rows, plus four excluded raw rows.
 Duplicate/bad/empty keys, imbalanced joint cases, degenerate within/between designs,
 extreme theta failure and existing exports are tested. Only scripts, development
 references/tests and status docs change; no production Rust/API/dependency change.
+
+## Unbalanced RE-GLS extension (WIP; not installed)
+
+Next bounded analysis: Table21.2's log-hours on log-wage random-intercept model,
+using the existing MOM sensitivity cohort of4,738 rows/532 people. Start with the
+original5,320 ordered source rows; remove years1980/1985 when id is divisible by3,
+and1981–1983 when id is divisible by7. This deliberately ragged sensitivity
+sample is an extension of the book's balanced analysis, not an author result.
+
+Target Swamy–Arora variance components with unbalanced unbiased trace correction,
+individual theta(T_i), transformed-intercept GLS and the existing normal/chi-square
+inference conventions. Independent R/plm and explicit matrix references must agree
+before support is advertised. Preserve the existing balanced APIs/results and
+sample/key/prediction contracts; new unbalanced APIs may include singleton groups
+when aggregate within/between rank and degrees of freedom suffice. Important
+failure cases are insufficient within/between rank, no residual DF and
+nonrepresentable variance/transform/covariance. Zero unit variance is a boundary
+estimate, not a convergence failure. No ML or variance-component uncertainty is
+added by this slice; clustered coefficient covariance needs its own reference.
