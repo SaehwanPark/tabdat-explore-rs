@@ -559,9 +559,14 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       (data, "NbregMarginalEffectsResult")
     }
     ExecutionResult::Regression(result) => (regression_result_data(result), "RegressionResult"),
-    ExecutionResult::RandomEffects(result) => {
-      (random_effects_result_data(result), "RandomEffectsResult")
-    }
+    ExecutionResult::RandomEffects(result) => (
+      random_effects_result_data(result),
+      if result.result.group_size == 0 {
+        "UnbalancedRandomEffectsMlResult"
+      } else {
+        "RandomEffectsResult"
+      },
+    ),
     ExecutionResult::FixedEffects(result) => {
       (fixed_effects_result_data(result), "FixedEffectsResult")
     }
@@ -696,6 +701,20 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     data["ml"] = json!(ml);
     data["ml"]["unit_variance_boundary"] = json!(ml.unit_variance_boundary());
     data["log_likelihood"] = json!(ml.log_likelihood);
+    if r.group_size == 0 {
+      let (minimum, maximum) = r.group_size_range().unwrap_or((0, 0));
+      let (theta_min, theta_max) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
+      data["balanced"] = json!(false);
+      data["group_size"] = Value::Null;
+      data["minimum_group_size"] = json!(minimum);
+      data["maximum_group_size"] = json!(maximum);
+      data["theta"] = Value::Null;
+      data["theta_at_minimum_group_size"] = json!(r.theta);
+      data["theta_min"] = json!(theta_min);
+      data["theta_max"] = json!(theta_max);
+      data["eta_reference_group_size"] = json!(minimum);
+      data["variance_component_method"] = json!("unbalanced_gaussian_marginal_ml");
+    }
   }
   if clustered {
     let n = fit.fit_statistics.observation_count;

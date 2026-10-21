@@ -382,6 +382,13 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     fit.covariance.covariance_type,
     tabdat_domain::CovarianceType::Cluster(_)
   );
+  let unbalanced = r.group_size == 0;
+  let group_size = if unbalanced {
+    let (lo, hi) = r.group_size_range().unwrap_or((0, 0));
+    format!("{lo}..{hi}")
+  } else {
+    r.group_size.to_string()
+  };
   let boundary = r.ml.as_ref().is_some_and(|ml| ml.unit_variance_boundary());
   let covariance = if boundary {
     "Constrained observed-information covariance (unit variance fixed at zero); normal coefficient inference"
@@ -393,7 +400,8 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     "Model-based covariance: transformed RSS/(N-K); normal inference"
   };
   let mut output = format!(
-    "Balanced one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    "{} one-way random-effects {}: {}\n{}; entity = {}; time = {}; N = {}; groups = {}; T = {}\n{covariance}\nsigma_e squared = {}; sigma_u squared = {}; raw sigma_u squared = {}; theta = {}; rho = {}\nSlope Wald chi-square({}) = {}; p = {}\n",
+    if unbalanced { "Unbalanced" } else { "Balanced" },
     if r.ml.is_some() { "ML" } else { "GLS" },
     r.outcome.escape_debug(),
     if boundary {
@@ -407,7 +415,7 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     state.time_variable.escape_debug(),
     fit.fit_statistics.observation_count,
     r.group_count,
-    r.group_size,
+    group_size,
     inference_number(r.sigma_e_squared),
     inference_number(r.sigma_u_squared),
     inference_number(r.raw_sigma_u_squared),
@@ -417,6 +425,10 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     optional_inference(r.wald_statistic),
     optional_inference(r.wald_p_value)
   );
+  if unbalanced {
+    let (lo, hi) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
+    writeln!(output, "Unequal retained counts: displayed theta is at minimum T; theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+  }
   if let Some(ml) = &r.ml {
     writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
       inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
