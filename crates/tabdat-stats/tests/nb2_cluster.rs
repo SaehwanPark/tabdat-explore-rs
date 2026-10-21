@@ -38,7 +38,7 @@ fn full_joint_group_covariance_dispersion_wald_effects_and_predictions_match_ind
     .skip(1)
     .map(|l| l.split(',').collect())
     .collect();
-  assert_eq!(references.len(), 527);
+  assert_eq!(references.len(), 535);
   for case in ["multiple", "noconstant", "intercept", "singleton"] {
     let p = problem(case);
     let fit = fit_nb2_clustered(&p, "person").unwrap();
@@ -53,6 +53,8 @@ fn full_joint_group_covariance_dispersion_wald_effects_and_predictions_match_ind
         j["coefficients"][i][field].clone()
       } else if let Some(field) = q.strip_prefix("effect_") {
         e["effects"][i][field].clone()
+      } else if let Some(field) = q.strip_prefix("dispersion_test_") {
+        j["dispersion_test"][field].clone()
       } else if j["dispersion"].get(q).is_some() {
         j["dispersion"][q].clone()
       } else {
@@ -110,6 +112,12 @@ fn full_joint_group_covariance_dispersion_wald_effects_and_predictions_match_ind
       );
     }
     assert!(j["dispersion"].get("p_value").is_none());
+    assert!(j["dispersion_test"]["p_value"].is_null());
+    assert!(j["dispersion_test"]["reference_distribution"].is_null());
+    assert_eq!(
+      j["dispersion_test"]["unavailable_reason"],
+      "clustered_likelihood_not_independent"
+    );
     assert_eq!(effects.cluster, fit.cluster);
   }
 }

@@ -532,7 +532,9 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "covariance": if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_joint_observed_information" },
         "reference_distribution": "asymptotic_standard_normal", "confidence_level": 95.0,
         "variance_function": "mu_plus_alpha_mu_squared", "dispersion_parameterization": "alpha_exp_lnalpha_size_inverse_alpha",
-        "dispersion": result.dispersion, "dispersion_boundary_test": "not_implemented_no_normal_alpha_zero_test",
+        "dispersion": result.dispersion,
+        "dispersion_boundary_test": "not_implemented_no_normal_alpha_zero_test",
+        "dispersion_test": result.dispersion_test,
         "sample": result.sample,
       });
       let diagnostics = json!({

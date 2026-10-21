@@ -46,6 +46,11 @@ def check(reference, predictions, native, native_predictions):
   assert fit['variance_function'] == 'mu_plus_alpha_mu_squared'
   assert fit['dispersion_parameterization'] == 'alpha_exp_lnalpha_size_inverse_alpha'
   assert fit['dispersion_boundary_test'] == 'not_implemented_no_normal_alpha_zero_test'
+  assert fit['dispersion_test']['method'] == 'one_sided_likelihood_ratio'
+  assert fit['dispersion_test']['statistic'] >= 0
+  assert fit['dispersion_test']['reference_distribution'] is None
+  assert fit['dispersion_test']['p_value'] is None
+  assert fit['dispersion_test']['unavailable_reason'] == 'clustered_likelihood_not_independent'
   assert [c['name'] for c in fit['coefficients']] == ['intercept', *PREDICTORS]
   assert fit['covariance_parameter_names'] == ['intercept', *PREDICTORS, 'lnalpha']
   assert len(fit['covariance_matrix']) == 19 and all(len(row) == 19 for row in fit['covariance_matrix'])
@@ -71,7 +76,7 @@ def check(reference, predictions, native, native_predictions):
   assert 0 <= fit['max_abs_scaled_score'] <= 1e-10 and 0 <= fit['max_abs_scaled_newton_step'] <= 1e-10
   assert 'statistic' not in fit['dispersion'] and 'p_value' not in fit['dispersion']
   refs = read_csv(reference)
-  assert len(refs) == 597
+  assert len(refs) == 599
   for r in refs:
     assert r['case'] == 'mma20p1count_person'
     q, i, j = r['quantity'], int(r['i']), int(r['j'])
@@ -79,6 +84,8 @@ def check(reference, predictions, native, native_predictions):
       actual = fit['coefficients'][i][q.removeprefix('coefficient_')]
     elif q.startswith('effect_'):
       actual = effects['effects'][i][q.removeprefix('effect_')]
+    elif q.startswith('dispersion_test_'):
+      actual = fit['dispersion_test'][q.removeprefix('dispersion_test_')]
     elif q in fit['dispersion']:
       actual = fit['dispersion'][q]
     elif q == 'covariance':
@@ -115,7 +122,7 @@ def check(reference, predictions, native, native_predictions):
     close(n['nb2_person_xb'], r['xb'])
     close(n['nb2_person_mu'], math.exp(float(n['nb2_person_xb'])))
   assert max(float(r['nb2_person_mu']) for r in actual) > 1
-  print('Matched all597 independently joint-clustered NB2 quantities and every source/original-row/person/year/design/mean/xb field of all20,186 records;5,908 original people.')
+  print('Matched all599 independently joint-clustered NB2 quantities and every source/original-row/person/year/design/mean/xb field of all20,186 records;5,908 original people.')
   print('FULL beta/lnalpha observed bread and grouped joint scores; G/(G-1), normal95, transformed alpha CI. Not conditional MASS/Fisher, row-robust, HC1, G-1 t, alpha=0 test or full RAND design correction.')
 
 

@@ -57,14 +57,17 @@ pub struct Nb2Dispersion {
 }
 
 /// One-sided likelihood-ratio test of the Poisson boundary against NB2.
+/// The mixture reference is supplied only for model-based inference; a robust
+/// covariance choice does not make this likelihood-ratio reference robust.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nb2DispersionTest {
   pub method: String,
   pub null_hypothesis: String,
   pub alternative_hypothesis: String,
   pub statistic: f64,
-  pub reference_distribution: String,
-  pub p_value: f64,
+  pub reference_distribution: Option<String>,
+  pub p_value: Option<f64>,
+  pub unavailable_reason: Option<String>,
 }
 
 /// Covariance order is mean-model parameters followed by lnalpha. Model-based
@@ -838,12 +841,14 @@ fn fit_nb2_covariance(
     ));
   }
   let dispersion_lr = raw_dispersion_lr.max(0.0);
-  let dispersion_p_value = if dispersion_lr == 0.0 {
-    1.0
-  } else {
-    0.5 * chi_square_tail(dispersion_lr, 1)
-  };
-  if !dispersion_p_value.is_finite() || !(0.0..=1.0).contains(&dispersion_p_value) {
+  let dispersion_p_value = (!robust).then(|| {
+    if dispersion_lr == 0.0 {
+      1.0
+    } else {
+      0.5 * chi_square_tail(dispersion_lr, 1)
+    }
+  });
+  if dispersion_p_value.is_some_and(|p| !p.is_finite() || !(0.0..=1.0).contains(&p)) {
     return Err(failed("invalid Poisson-boundary LR p-value"));
   }
   let dispersion_test = Nb2DispersionTest {
@@ -851,8 +856,13 @@ fn fit_nb2_covariance(
     null_hypothesis: "alpha = 0 (Poisson)".into(),
     alternative_hypothesis: "alpha > 0 (NB2)".into(),
     statistic: dispersion_lr,
-    reference_distribution: "asymptotic_50_50_chi_square_0_1_mixture".into(),
+    reference_distribution: (!robust).then(|| "asymptotic_50_50_chi_square_0_1_mixture".into()),
     p_value: dispersion_p_value,
+    unavailable_reason: if cluster.is_some() {
+      Some("clustered_likelihood_not_independent".into())
+    } else {
+      robust.then(|| "robust_covariance_selected".into())
+    },
   };
   let beta_covariance: Vec<Vec<f64>> = fit.covariance[..k]
     .iter()

@@ -58,6 +58,19 @@ def check(reference, predictions, native, native_predictions):
     assert fit["variance_function"] == "mu_plus_alpha_mu_squared"
     assert fit["dispersion_parameterization"] == "alpha_exp_lnalpha_size_inverse_alpha"
     assert fit["dispersion_boundary_test"] == "not_implemented_no_normal_alpha_zero_test"
+    dispersion_test = fit["dispersion_test"]
+    assert dispersion_test["method"] == "one_sided_likelihood_ratio"
+    assert dispersion_test["null_hypothesis"] == "alpha = 0 (Poisson)"
+    assert dispersion_test["alternative_hypothesis"] == "alpha > 0 (NB2)"
+    assert dispersion_test["statistic"] >= 0 and math.isfinite(dispersion_test["statistic"])
+    if mode:
+      assert dispersion_test["reference_distribution"] is None
+      assert dispersion_test["p_value"] is None
+      assert dispersion_test["unavailable_reason"] == "robust_covariance_selected"
+    else:
+      assert dispersion_test["reference_distribution"] == "asymptotic_50_50_chi_square_0_1_mixture"
+      assert dispersion_test["unavailable_reason"] is None
+      assert 0 <= dispersion_test["p_value"] <= 1
     assert "p_value" not in fit["dispersion"] and "statistic" not in fit["dispersion"]
     assert fit["null_model"] == "intercept_only_mean_and_dispersion_reestimated"
     assert fit["log_likelihood_convention"] == "nb2_count_pmf"
@@ -82,7 +95,7 @@ def check(reference, predictions, native, native_predictions):
     for bound in ("lower", "upper"):
       close(d["alpha_confidence_"+bound], math.exp(d["log_alpha_confidence_"+bound]))
   refs = read_csv(reference)
-  assert len(refs) == 1187
+  assert len(refs) == 1191
   for r in refs:
     assert r["case"] == "mma20p1count"
     mode, i, j = int(r["robust"]), int(r["i"]), int(r["j"])
@@ -91,6 +104,8 @@ def check(reference, predictions, native, native_predictions):
       actual = fits[mode]["coefficients"][i][q.removeprefix("coefficient_")]
     elif q.startswith("effect_"):
       actual = margins[mode]["effects"][i][q.removeprefix("effect_")]
+    elif q.startswith("dispersion_test_"):
+      actual = fits[mode]["dispersion_test"][q.removeprefix("dispersion_test_")]
     elif q in fits[mode]["dispersion"]:
       actual = fits[mode]["dispersion"][q]
     elif q == "covariance":
@@ -114,7 +129,7 @@ def check(reference, predictions, native, native_predictions):
       close(n["nb2_classical_"+kind], r[kind])
     close(n["nb2_classical_mu"], math.exp(float(n["nb2_classical_xb"])))
   assert max(float(r["nb2_classical_mu"]) for r in actual) > 1
-  print("Matched all 1,187 joint observed/model-based and independent-row robust NB2 coefficient/covariance/normal-CI/tail/dispersion/LR/Wald/diagnostic/delta quantities and every field/mean/xb of all 20,186 prepared records.")
+  print("Matched all 1,191 joint observed/model-based and independent-row robust NB2 coefficient/covariance/normal-CI/tail/dispersion/LR/Wald/diagnostic/delta quantities and every field/mean/xb of all 20,186 prepared records.")
   print("Count total57,746; 6,308 zeros; 17 predictors+intercept+lnalpha. Means are not probabilities. Independent-row robust is not panel-robust; prepared positions are not person IDs.")
 
 

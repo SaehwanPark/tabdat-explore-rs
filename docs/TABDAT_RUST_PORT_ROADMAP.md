@@ -178,16 +178,16 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
    and separate NB2 script validate model-based/independent-row robust coefficients,
    full inference/diagnostics/continuous effects and all 20,186 means/indices
-   against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
+   against R (Poisson1,095/NB2 1,191 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
    panel analysis: remaining exposure workflows, household/site/multiway/survey inference, arbitrary-cutoff count probability prediction,
-   formal NB boundary/specification tests and remaining table outputs stay required.
+   other formal NB specification tests and remaining table outputs stay required; the boundary LR p-value is currently model-based only.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)
    group-score/normal inference. It assumes independent people, not household/site
    dependence or FE/RE; development-only DTA identity conversion is not native DTA IO.
-   The NB2 original-person extension now independently validates597 additional
+   The NB2 original-person extension now independently validates599 additional
    quantities/all source/ID/design/mean/index records using FULL joint beta/lnalpha
    observed bread and grouped joint scores; normal95/transformed dispersion CIs,
    not conditional/Fisher substitution, G-1 t, few-cluster guarantee or alpha=0 test.

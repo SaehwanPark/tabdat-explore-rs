@@ -23,6 +23,8 @@ multiple,alpha_confidence_lower,0,0,0.231528969906304
 multiple,alpha_confidence_upper,0,0,2.05658462624821
 multiple,log_alpha_confidence_lower,0,0,-1.46305027330117
 multiple,log_alpha_confidence_upper,0,0,0.721046658460794
+multiple,dispersion_test_statistic,0,0,8.63540953536659
+multiple,dispersion_test_p_value,0,0,NA
 multiple,wald_statistic,0,0,2.68466712914033
 multiple,wald_p_value,0,0,0.261235347194417
 multiple,coefficient_value,0,0,-0.168455956875638
@@ -167,6 +169,8 @@ noconstant,alpha_confidence_lower,0,0,0.211712479864874
 noconstant,alpha_confidence_upper,0,0,2.27143470521796
 noconstant,log_alpha_confidence_lower,0,0,-1.55252615187089
 noconstant,log_alpha_confidence_upper,0,0,0.820411660577647
+noconstant,dispersion_test_statistic,0,0,8.62388607331359
+noconstant,dispersion_test_p_value,0,0,NA
 noconstant,wald_statistic,0,0,42.6078769356154
 noconstant,wald_p_value,0,0,5.59521888274527e-10
 noconstant,coefficient_value,0,0,-0.0751500103473074
@@ -298,6 +302,8 @@ intercept,alpha_confidence_lower,0,0,0.231995199503612
 intercept,alpha_confidence_upper,0,0,3.21788692043569
 intercept,log_alpha_confidence_lower,0,0,-1.46103859932468
 intercept,log_alpha_confidence_upper,0,0,1.16872490824976
+intercept,dispersion_test_statistic,0,0,11.4773642704233
+intercept,dispersion_test_p_value,0,0,NA
 intercept,wald_statistic,0,0,NA
 intercept,wald_p_value,0,0,NA
 intercept,coefficient_value,0,0,0.328504066972036
@@ -406,6 +412,8 @@ singleton,alpha_confidence_lower,0,0,0.24593211994776
 singleton,alpha_confidence_upper,0,0,1.93613961503497
 singleton,log_alpha_confidence_lower,0,0,-1.4026997162986
 singleton,log_alpha_confidence_upper,0,0,0.660696101458221
+singleton,dispersion_test_statistic,0,0,8.63540953536659
+singleton,dispersion_test_p_value,0,0,NA
 singleton,wald_statistic,0,0,3.16061511024276
 singleton,wald_p_value,0,0,0.205911759249163
 singleton,coefficient_value,0,0,-0.168455956875638

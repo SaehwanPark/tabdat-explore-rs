@@ -413,8 +413,17 @@ follow the Poisson contracts above, with these explicit NB2 differences:
   `dispersion` contains `alpha`, `log_alpha`, both `*_standard_error`, and
   nullable `alpha_confidence_lower/upper`, `log_alpha_confidence_lower/upper`.
   Alpha SE uses alpha*SE(lnalpha); its CI exponentiates the log-alpha interval.
-  Zero variance does not invent a point interval. No dispersion z/p is supplied;
-  `dispersion_boundary_test: "not_implemented_no_normal_alpha_zero_test"`.
+  Zero variance does not invent a point interval. No normal dispersion z/p is
+  supplied. The existing `dispersion_boundary_test` string
+  `"not_implemented_no_normal_alpha_zero_test"` continues to mark the absent
+  normal-Wald test; additive `dispersion_test` reports the Poisson-boundary LR
+  statistic and hypotheses. Its reference distribution and
+  p-value use the asymptotic 50:50 chi-square(0)/chi-square(1) mixture only with
+  model-based covariance. For robust covariance both are null and
+  `unavailable_reason` is `"robust_covariance_selected"`; for clustered fits it
+  is `"clustered_likelihood_not_independent"`. The test compares the
+  NB2 and Poisson likelihoods on the same retained sample, design and fixed
+  offset; it assumes the specified likelihood and is not a robust/cluster test.
 - `log_likelihood_convention: "nb2_count_pmf"`; `null_model` is
   `intercept_only_mean_and_dispersion_reestimated` or
   `unit_mean_dispersion_reestimated`. `null_alpha` records the restricted NB
@@ -462,7 +471,7 @@ See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
 [synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) validates
 full joint inference/nulls without claiming a new textbook illustration.
 FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
-specifications, current-row count PMF/CDF predictions, formal alpha=0/specification tests, discrete
+specifications, current-row count PMF/CDF predictions, other formal specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
 
@@ -481,8 +490,10 @@ s_i, let S_g=sum_i_in_g s_i. V=G/(G-1)*B[sum_g S_g*S_g']B, including cross
 parameters AND within-group cross-observation terms. No conditional MASS/Fisher
 bread, ignored dispersion, row-score substitution, HC1/centering/Pearson scaling.
 Normal95 beta/log-alpha intervals and transformed alpha intervals use selected
-joint V. No normal alpha=0 test or G-1 t/few-cluster guarantee. Descriptive NB null
-still refits dispersion; LR p/reference unavailable. Wald tests beta slopes ONLY,
+joint V. No normal-Wald alpha=0 or G-1 t/few-cluster guarantee. The boundary LR
+statistic is descriptive under clustered covariance and has no reported p-value.
+Descriptive NB null still refits dispersion; slope LR p/reference unavailable.
+Wald tests beta slopes ONLY,
 not lnalpha, retains q and guards q>=G/rank without pseudoinverse/reduced q.
 Residual DF remains N-K-1, not G-1.
 
@@ -496,7 +507,7 @@ groups/V across edits/drop IDs; current means/xb need mean predictors only. New
 fit failures clear stale inference only; bad predictions/options preserve state.
 
 [Native original-person NB2 extension](../../examples/mma20p1count/README.md)
-validates527 synthetic/597 empirical quantities/all20,186 source/original-row/
+validates535 synthetic/599 empirical quantities/all20,186 source/original-row/
 person/year/design/mean/xb records/G5908, with numerical grouped-log-PMF score
 and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book

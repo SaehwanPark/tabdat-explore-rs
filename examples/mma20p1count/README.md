@@ -219,9 +219,18 @@ python3 "$repo/examples/mma20p1count/check_nb2_reference.py" \
 The R reference uses R4.6.1/**MASS7.3.65** for an independent ML start, then
 joint score-fixed-point polishing with `dnbinom`, `digamma` and `trigamma` and
 numerical score-differentiation checks of the observed Hessian. It validates
-**1,187** full-covariance/beta/normal-CI/tail/dispersion/null/LR/Wald/diagnostic/
+**1,191** full-covariance/beta/normal-CI/tail/dispersion/null/LR/Wald/diagnostic/
 conditional-X effect quantities and every field/mean/index of **all20,186** rows.
-Without arguments it regenerates742 synthetic quantities across multiple,
+The added one-sided boundary likelihood-ratio statistic compares NB2 with a
+separately fitted Poisson model on the same design and sample; only model-based
+fits report its asymptotic 50:50 chi-square(0)/chi-square(1) p-value. For this
+source sample, LR=34,620.0220788 and the float64 p-value underflows to zero; this
+is not an exact zero probability. Robust/clustered fits expose the statistic but
+not a classical p-value. The reference follows the regular one-parameter
+boundary case described by [Self and Liang (1987)](https://doi.org/10.1080/01621459.1987.10478472).
+This extension does not reconcile the authors'
+documented Table20.6 NB2 discrepancy. Without arguments it regenerates754
+synthetic quantities across multiple,
 no-constant and intercept-only designs. The tolerances above remain unchanged,
 including1e-10 ordinary/Wald and1e-7 accumulated totals; no relaxation for an
 ill-conditioned quadratic or different DTA input is used.
@@ -256,8 +265,12 @@ historical lagged/stopped estimates into the independently converged result.
   <=1e-10. Poisson-limit/boundary/nonrepresentable fits fail, not clip alpha or
   silently fall back to Poisson. These are numerical limits, not an existence test.
 - Beta has normal95 inference. lnalpha has joint SE/normal CI; alpha SE is delta
-  and its CI exponentiates log-CI endpoints. **No normal alpha=0 or formal boundary
-  LR test** is supplied. Zero variance does not imply exact significance/intervals.
+  and its CI exponentiates log-CI endpoints. A one-sided NB2/Poisson
+  likelihood-ratio statistic is available on the same sample/design/offset, with
+  the boundary-mixture p-value only under model-based covariance. Robust/clustered
+  fits have no reference distribution or p-value for this statistic. **No normal
+  Wald alpha=0 test** is supplied. Zero variance does not imply exact
+  significance/intervals.
 - Model-based slope LR compares a restricted NB null with dispersion reestimated:
   intercept-only mean, or fixed mu1 without intercept. Robust LR p/reference are
   unavailable. Selected-V robust Wald excludes lnalpha; it tests beta slopes only.
@@ -388,12 +401,14 @@ For full joint inverse observed information B and Sg=sum_i_in_g joint_score_i,
 V=G/(G-1)*B[sum_g Sg*Sg']B. Group full joint scores BEFORE outer products,
 retaining cross-parameter and within-person cross-observation terms. No row-score
 substitution, centering, HC1 or Pearson scaling. Normal95 beta/logalpha intervals
-and transformed alpha CIs use selected joint V; no normal alpha=0/G-1 t/few-cluster
-guarantee. Wald tests beta slopes ONLY with G-1 rank guards; LR reference is
-unavailable, while descriptive restricted NB likelihood refits dispersion.
+and transformed alpha CIs use selected joint V; no normal-Wald alpha=0/G-1 t/few-cluster
+guarantee. The dispersion boundary LR statistic is descriptive under clustered
+covariance and has no reported p-value. Wald tests beta slopes ONLY with G-1 rank
+guards; slope LR reference is unavailable, while descriptive restricted NB
+likelihood refits dispersion.
 Mean fitting/null/convergence/domain and N-K-1 diagnostic DF remain unchanged.
 
-**527 synthetic/597 empirical quantities and every source/original/prepared/
+**535 synthetic/599 empirical quantities and every source/original/prepared/
 person/year/design/mean/xb field of all20,186 records match.** Singleton grouping
 matches141 shared existing row-robust quantities exactly. References regenerate
 byte-identically with unchanged ordinary1e-10/totals1e-7/design1e-12/relative-tail

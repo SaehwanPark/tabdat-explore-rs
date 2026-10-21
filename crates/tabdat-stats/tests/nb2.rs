@@ -24,6 +24,10 @@ fn problem(case: &str) -> EstimationProblem {
     .with_intercept(intercept)
 }
 fn close(actual: &Value, expected: &str, tail: bool) {
+  if expected == "NA" {
+    assert!(actual.is_null());
+    return;
+  }
   let expected: f64 = expected.parse().unwrap();
   let actual = actual.as_f64().unwrap();
   let tolerance = if tail {
@@ -61,11 +65,23 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
       assert_eq!(dispersion_test.method, "one_sided_likelihood_ratio");
       assert_eq!(dispersion_test.null_hypothesis, "alpha = 0 (Poisson)");
       assert_eq!(dispersion_test.alternative_hypothesis, "alpha > 0 (NB2)");
-      assert_eq!(
-        dispersion_test.reference_distribution,
-        "asymptotic_50_50_chi_square_0_1_mixture"
-      );
-      assert!((0.0..=1.0).contains(&dispersion_test.p_value));
+      if robust {
+        assert_eq!(dispersion_test.reference_distribution, None);
+        assert_eq!(dispersion_test.p_value, None);
+        assert_eq!(
+          dispersion_test.unavailable_reason.as_deref(),
+          Some("robust_covariance_selected")
+        );
+      } else {
+        assert_eq!(
+          dispersion_test.reference_distribution.as_deref(),
+          Some("asymptotic_50_50_chi_square_0_1_mixture")
+        );
+        assert!(
+          (0.0..=1.0).contains(&dispersion_test.p_value.unwrap())
+            && dispersion_test.unavailable_reason.is_none()
+        );
+      }
       let effects = serde_json::to_value(effects).unwrap();
       for row in references
         .iter()
@@ -105,6 +121,10 @@ fn both_joint_covariances_dispersion_null_diagnostics_effects_and_predictions_ma
             _ => json[q].clone(),
           }
         };
+        if row[5] == "NA" {
+          assert!(actual.is_null(), "{case}, robust={robust}: {q} = {actual}");
+          continue;
+        }
         assert!(
           actual.is_number(),
           "{case}, robust={robust}: {q} = {actual}"

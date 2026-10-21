@@ -50,6 +50,12 @@ for (design in c('multiple','noconstant','intercept')) {
     null <- polish(optimum$maximum,null_X,y)
   }
   null_ll <- null$e$ll; lr <- max(0,2*(e$ll-null_ll))
+  poisson_fit <- glm.fit(X,y,family=poisson(),offset=o)
+  poisson_ll <- sum(dpois(y,poisson_fit$fitted.values,log=TRUE))
+  dispersion_lr_raw <- 2*(e$ll-poisson_ll)
+  stopifnot(dispersion_lr_raw >= -1e-8)
+  dispersion_lr <- max(0,dispersion_lr_raw)
+  dispersion_p <- .5*pchisq(dispersion_lr,1,lower.tail=FALSE)
   # Independently differentiate dnbinom and the analytic score in normalized
   # coordinates, both at the optimum and at a nearby nonzero-score point.
   scales <- c(sqrt(colSums(X^2)),sqrt(n)); h <- 1e-4
@@ -74,6 +80,8 @@ for (design in c('multiple','noconstant','intercept')) {
       cluster=6/5*B%*%crossprod(rowsum(e$scores,groups))%*%B)
     se_a <- sqrt(V[p,p])
     fields <- c(log_likelihood=e$ll,null_log_likelihood=null_ll,null_alpha=exp(tail(null$par,1)),
+      dispersion_test_statistic=dispersion_lr,
+      dispersion_test_p_value=if(covariance=='model') dispersion_p else NA_real_,
       likelihood_ratio=lr,likelihood_ratio_p_value=if(covariance=='model' && q>0) pchisq(lr,q,lower.tail=FALSE) else NA_real_,
       residual_deviance=deviance,pearson_chi_square=pearson,df_residual=n-p,
       mcfadden_r_squared=1-e$ll/null_ll,alpha=alpha,log_alpha=par[p],

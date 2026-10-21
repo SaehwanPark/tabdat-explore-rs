@@ -95,7 +95,7 @@ reference <- function(case,y,predictors,intercept=TRUE,predictions_path=NULL) {
       log_alpha_confidence_upper=par[p]+qnorm(.975)*sqrt(V[p,p]))
     for (name in names(fields)) emit(case,robust,name,0,0,fields[[name]])
     emit(case,robust,'dispersion_test_statistic',0,0,dispersion_lr)
-    emit(case,robust,'dispersion_test_p_value',0,0,dispersion_p)
+    emit(case,robust,'dispersion_test_p_value',0,0,if(robust) NA_real_ else dispersion_p)
     if (!robust && q>0) emit(case,robust,'likelihood_ratio_p_value',0,0,pchisq(lr,q,lower.tail=FALSE))
     if (robust && q>0) {
       keep <- seq.int(1L+as.integer(intercept),k)

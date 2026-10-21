@@ -46,7 +46,7 @@ fn joint_offset_ml_covariance_null_dispersion_and_effects_match_independent_r() 
     .skip(1)
     .map(|line| line.split(',').collect())
     .collect();
-  assert_eq!(rows.len(), 1076);
+  assert_eq!(rows.len(), 1094);
   let offsets = offsets();
   for design in ["multiple", "noconstant", "intercept"] {
     for covariance in ["model", "robust", "cluster"] {
@@ -77,6 +77,8 @@ fn joint_offset_ml_covariance_null_dispersion_and_effects_match_independent_r() 
           j["coefficients"][i][field].clone()
         } else if let Some(field) = quantity.strip_prefix("effect_") {
           e["effects"][i][field].clone()
+        } else if let Some(field) = quantity.strip_prefix("dispersion_test_") {
+          j["dispersion_test"][field].clone()
         } else if j["dispersion"].get(quantity).is_some() {
           j["dispersion"][quantity].clone()
         } else {

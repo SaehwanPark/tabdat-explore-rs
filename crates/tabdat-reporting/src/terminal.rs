@@ -301,7 +301,23 @@ fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
   output.push_str(&poisson_estimates(&r.coefficients));
   let d = &r.dispersion;
   writeln!(output,"Dispersion\tEstimate\tStd. error\tCI lower (95%)\tCI upper (95%)\nlnalpha\t{}\t{}\t{}\t{}\nalpha\t{}\t{}\t{}\t{}",d.log_alpha,d.log_alpha_standard_error,optional_number(d.log_alpha_confidence_lower),optional_number(d.log_alpha_confidence_upper),d.alpha,d.alpha_standard_error,optional_number(d.alpha_confidence_lower),optional_number(d.alpha_confidence_upper)).unwrap();
-  output.push_str("Alpha SE is delta-method; alpha CI exponentiates the log-alpha interval. No normal alpha=0 test or boundary LR test is supplied.\nNumerical bounds: exact loaded counts 0..100000, lnalpha strictly (-12,12); Poisson-limit/boundary or nonconverged fits fail, not clip alpha.\n");
+  if let Some(test) = &r.dispersion_test {
+    writeln!(
+      output,
+      "Poisson-boundary LR statistic (H0 alpha=0 vs H1 alpha>0) = {}; p-value = {}; reference = {}",
+      test.statistic,
+      optional_number(test.p_value),
+      test
+        .reference_distribution
+        .as_deref()
+        .unwrap_or("unavailable")
+    )
+    .unwrap();
+    if let Some(reason) = &test.unavailable_reason {
+      writeln!(output, "Boundary LR p-value unavailable: {reason}.").unwrap();
+    }
+  }
+  output.push_str("Alpha SE is delta-method; alpha CI exponentiates the log-alpha interval. The Poisson-boundary LR compares NB2 and Poisson likelihoods on the same sample/design/offset; only model-based inference reports the asymptotic 50:50 chi-square(0)/chi-square(1) mixture p-value. No normal-Wald alpha=0 test is implied.\nNumerical bounds: exact loaded counts 0..100000, lnalpha strictly (-12,12); Poisson-limit/boundary or nonconverged fits fail, not clip alpha.\n");
   output
 }
 
