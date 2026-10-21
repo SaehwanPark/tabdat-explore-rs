@@ -289,6 +289,7 @@ fn fit_kernel(
     ));
   }
   let unit_variance_likelihood_ratio = raw_unit_variance_likelihood_ratio.max(0.0);
+  // The boundary mixture has an atom at zero; positive statistics use half the chi-square(1) tail.
   let unit_variance_p_value = if unit_variance_likelihood_ratio == 0.0 {
     1.0
   } else {
