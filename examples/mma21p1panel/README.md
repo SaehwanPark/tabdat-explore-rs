@@ -691,3 +691,43 @@ nonfinite floating keys, variable draw sizes and unchanged models/data/reports.
 The actual script also runs on an interleaved-person fixture and refuses existing
 exports. Any failed replication aborts without redraw/drop. Work is bounded by
 G*largest_cluster_size*B*K²<=100,000,000; IID stream/API behavior is preserved.
+
+### Fixed-transform RE-GLS whole-person bootstrap
+
+[`random_effects_gls_bootstrap.td`](random_effects_gls_bootstrap.td) implements
+March2005 mma21p2panmanual.do block5 on all5,320 MOM rows/532 people. Guard raw
+person/year/source keys and balanced joint-finite lnhr/lnwg cases (T>=2,G>2).
+Estimate balanced Swamy–Arora theta once using within N-G-1 and Between G-2
+variance denominators, with negative unit variance truncated at zero. Require
+identified within/between wage designs, positive finite within variance and
+finite theta in[0,1). Compute ordered means/quasi response/design, fit ordinary
+transformed OLS with intercept, then resample532 whole people with replacement,
+B500/explicit native seed10001. The retained transformed fit supplies predictions.
+
+The transformed intercept is **(1-theta) times the population RE intercept**.
+Theta stays fixed across draws, matching this manual program. The bootstrap wage
+slope SE is0.0512913829732 and transformed-intercept SE is0.0568585013273.
+This is conditional fixed-transform inference; it does not re-estimate RE variance
+components or provide unconditional native RE-GLS uncertainty. No equality to
+historical Stata draws/printed SEs, few-cluster accuracy or nominal coverage is
+claimed. The report uses B-1 covariance and type7 percentile95 intervals, without
+analytic p-values; every replicate must succeed without redraw/discard.
+
+Reproduce in a fresh directory containing prepared MOM.csv:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_gls_bootstrap.td" > regls_bootstrap.jsonl
+Rscript "$root/examples/mma21p1panel/random_effects_gls_bootstrap_reference.R" "$work/MOM.dat" regls_bootstrap_reference
+python3 "$root/examples/mma21p1panel/check_random_effects_gls_bootstrap_reference.py" . regls_bootstrap_reference "$work/MOM.dat"
+```
+
+R4.6.1/plm independently estimates theta, checks the original population/quasi
+intercept scaling and slope, then uses independent Python group draws and R
+lm/cov/type7 summaries. Full-source evidence:19 quantities (18 bootstrap plus
+theta),95,760 identity/design/prediction cells, all5,320 loaded raw rows pinned;
+text/JSON CSVs are byte-identical. Scalar/cell absolute tolerances are1e-9 and
+theta is checked at1e-12. The inspectable shared panel fixture adds18 quantities
+and432 cells across24 retained interleaved rows, plus four excluded raw rows.
+Duplicate/bad/empty keys, imbalanced joint cases, degenerate within/between designs,
+extreme theta failure and existing exports are tested. Only scripts, development
+references/tests and status docs change; no production Rust/API/dependency change.
