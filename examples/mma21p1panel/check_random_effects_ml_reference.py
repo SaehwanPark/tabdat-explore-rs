@@ -35,7 +35,7 @@ assert fit["sample"] == {"total_observations":5320,"dropped_observations":0}
 assert fit["covariance_parameter_names"] == ["intercept","lnwg"]
 assert math.isfinite(fit["log_likelihood"]) and "r_squared" not in fit
 scalars = records(reference / "reference.csv")
-assert len(scalars) == 46
+assert len(scalars) == 48
 for row in scalars:
   value = fit
   for part in row["path"].strip("/").split("/"):

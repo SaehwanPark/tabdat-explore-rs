@@ -48,8 +48,20 @@ fn unequal_counts_match_nlme_ml_and_independent_joint_information() {
     assert_eq!(fit.group_size_range(), Some((1, 5)));
     let (theta_min, theta_max) = fit.theta_range().unwrap();
     let ml = fit.ml.as_ref().unwrap();
+    let unit_variance_test = ml.unit_variance_test.as_ref().unwrap();
     assert_eq!(ml.unit_variance_boundary(), case == "boundary");
     assert_eq!(ml.likelihood_ratio_p_value.is_none(), case == "boundary");
+    assert_eq!(
+      unit_variance_test.reference_distribution,
+      "asymptotic_50_50_chi_square_0_1_mixture"
+    );
+    if case == "boundary" {
+      assert_eq!(unit_variance_test.statistic, 0.0);
+      assert_eq!(unit_variance_test.p_value, 1.0);
+    } else {
+      assert!(unit_variance_test.statistic > 0.0);
+      assert!((0.0..0.5).contains(&unit_variance_test.p_value));
+    }
     assert_eq!(
       ml.joint_parameter_names.last().unwrap(),
       if case == "boundary" {
@@ -126,5 +138,5 @@ fn unequal_counts_match_nlme_ml_and_independent_joint_information() {
       comparisons += 1;
     }
   }
-  assert_eq!(comparisons, 525);
+  assert_eq!(comparisons, 531);
 }

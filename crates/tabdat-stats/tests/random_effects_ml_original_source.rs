@@ -1,4 +1,6 @@
-use tabdat_stats::{EstimationProblem, EstimationSample, fit_random_effects_ml_interior};
+use tabdat_stats::{
+  EstimationProblem, EstimationSample, fit_random_effects_ml, fit_random_effects_ml_interior,
+};
 #[test]
 #[ignore = "manual original MOM source probe; verify documented hash and set TABDAT_REML_SOURCE"]
 fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
@@ -52,8 +54,18 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
   assert!((r.likelihood_ratio - 76.13663309450647).abs() < 1e-9);
   assert!((r.sigma_e_squared - 0.0542504082187426).abs() < 1e-9);
   assert!((r.sigma_u_squared - 0.026300722026628514).abs() < 1e-9);
+  let public = fit_random_effects_ml(&p, "id").unwrap();
+  let unit_test = public
+    .ml
+    .as_ref()
+    .unwrap()
+    .unit_variance_test
+    .as_ref()
+    .unwrap();
+  assert!((unit_test.statistic - 1147.08280857562).abs() < 1e-8);
+  assert!((unit_test.p_value - 9.65757009428502e-252).abs() < 1e-260);
   println!(
-    "MOM: beta={:?}; SE={:?}; LL={}; null LL={}; LR={}; eta={}",
+    "MOM: beta={:?}; SE={:?}; LL={}; null LL={}; LR={}; eta={}; unit-variance LR={} p={}",
     r.regression
       .coefficients
       .iter()
@@ -67,6 +79,8 @@ fn original_mom_ml_matches_stationary_r_likelihood_and_joint_information() {
     r.log_likelihood,
     r.null_log_likelihood,
     r.likelihood_ratio,
-    r.eta
+    r.eta,
+    unit_test.statistic,
+    unit_test.p_value
   );
 }

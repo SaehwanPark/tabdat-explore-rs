@@ -36,6 +36,12 @@ for(case in c('pooled','shifted_interleaved','both_boundary')) {
   stopifnot(max(sapply(seq(0,24,.1),profile))<=ll+1e-9)
   score <- .5*(sum(ave(e,d$id)^2)/a-G)
   stopifnot(score<0)
+  # The selected eta=0 fit is exactly its restricted null; avoid a tiny
+  # false positive from the independent lm/profile floating-point order.
+  unit_lr <- 0
+  unit_p <- 1
+  emit(case,'/ml/unit_variance_test/statistic',unit_lr)
+  emit(case,'/ml/unit_variance_test/p_value',unit_p)
   nulla <- sum((y-ym)^2)/(N-G); nullv <- sum((ym-mean(y))^2)/G
   nullboundary <- nullv<=nulla
   if(nullboundary) {

@@ -1,4 +1,6 @@
 case,path,value
+balanced,/ml/unit_variance_test/statistic,15.433954221018
+balanced,/ml/unit_variance_test/p_value,4.27196385283103e-05
 balanced,/ml/variance_component_inference/sigma_e_squared/estimate,0.0307802482225658
 balanced,/ml/variance_component_inference/sigma_e_squared/standard_error,0.00889602295055245
 balanced,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.28901725828288
@@ -121,6 +123,8 @@ balanced,/eta,2.06446440923984
 balanced,/log_likelihood,2.03022267958032
 balanced,/group_count,8
 balanced,/group_size,4
+interleaved,/ml/unit_variance_test/statistic,15.433954221018
+interleaved,/ml/unit_variance_test/p_value,4.27196385283102e-05
 interleaved,/ml/variance_component_inference/sigma_e_squared/estimate,0.0307802482225658
 interleaved,/ml/variance_component_inference/sigma_e_squared/standard_error,0.00889602295055244
 interleaved,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.28901725828288
@@ -243,6 +247,8 @@ interleaved,/eta,2.06446440923984
 interleaved,/log_likelihood,2.03022267958033
 interleaved,/group_count,8
 interleaved,/group_size,4
+shifted,/ml/unit_variance_test/statistic,15.4339542210182
+shifted,/ml/unit_variance_test/p_value,4.27196385283058e-05
 shifted,/ml/variance_component_inference/sigma_e_squared/estimate,0.0307802482225657
 shifted,/ml/variance_component_inference/sigma_e_squared/standard_error,0.0088960229505524
 shifted,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.289017258282879
@@ -365,6 +371,8 @@ shifted,/eta,2.06446440923985
 shifted,/log_likelihood,2.03022267958036
 shifted,/group_count,8
 shifted,/group_size,4
+null_boundary,/ml/unit_variance_test/statistic,144.336129939567
+null_boundary,/ml/unit_variance_test/p_value,1.49993230639025e-33
 null_boundary,/ml/variance_component_inference/sigma_e_squared/estimate,2.88026442362995e-06
 null_boundary,/ml/variance_component_inference/sigma_e_squared/standard_error,8.31491849329112e-07
 null_boundary,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.288685942341779

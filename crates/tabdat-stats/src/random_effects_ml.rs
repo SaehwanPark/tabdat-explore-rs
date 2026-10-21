@@ -32,6 +32,17 @@ pub struct RandomEffectsMlInterior {
   pub group_size: usize,
 }
 
+/// One-sided likelihood-ratio inference for the random-intercept variance.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RandomEffectsMlUnitVarianceTest {
+  pub method: String,
+  pub null_hypothesis: String,
+  pub alternative_hypothesis: String,
+  pub statistic: f64,
+  pub reference_distribution: String,
+  pub p_value: f64,
+}
+
 struct Profile {
   fit: LeastSquaresResult,
   a: f64,
@@ -230,7 +241,7 @@ fn fit_kernel(
   entity: &str,
   allow_boundary: bool,
   allow_unbalanced: bool,
-) -> Result<RandomEffectsMlInterior, StatsError> {
+) -> Result<(RandomEffectsMlInterior, RandomEffectsMlUnitVarianceTest), StatsError> {
   let within = fit_fixed_effects(problem, entity, false)?;
   if problem.predictor_names.contains(&problem.intercept_name) {
     return Err(failed("RE-ML predictor conflicts with intercept name"));
@@ -270,6 +281,32 @@ fn fit_kernel(
     .collect();
   let (best_eta, mut r) = select_profile(problem, &means, &ym, &group_sizes, &row_sizes)?;
   let unit_variance_boundary = best_eta == 0.0;
+  let boundary_profile = profile(problem, &means, &ym, &group_sizes, &row_sizes, 0.0)?;
+  let raw_unit_variance_likelihood_ratio = 2.0 * (r.ll - boundary_profile.ll);
+  if !raw_unit_variance_likelihood_ratio.is_finite() || raw_unit_variance_likelihood_ratio < -1e-8 {
+    return Err(failed(
+      "RE-ML unit-variance restricted likelihood exceeds the fitted likelihood",
+    ));
+  }
+  let unit_variance_likelihood_ratio = raw_unit_variance_likelihood_ratio.max(0.0);
+  let unit_variance_p_value = if unit_variance_likelihood_ratio == 0.0 {
+    1.0
+  } else {
+    0.5 * crate::distributions::chi_square_tail(unit_variance_likelihood_ratio, 1)
+  };
+  if !unit_variance_p_value.is_finite() || !(0.0..=1.0).contains(&unit_variance_p_value) {
+    return Err(failed(
+      "RE-ML unit-variance likelihood-ratio p-value is invalid",
+    ));
+  }
+  let unit_variance_test = RandomEffectsMlUnitVarianceTest {
+    method: "profile_likelihood_ratio".into(),
+    null_hypothesis: "sigma_u_squared = 0".into(),
+    alternative_hypothesis: "sigma_u_squared > 0".into(),
+    statistic: unit_variance_likelihood_ratio,
+    reference_distribution: "asymptotic_50_50_chi_square_0_1_mixture".into(),
+    p_value: unit_variance_p_value,
+  };
   if unit_variance_boundary && !allow_boundary {
     return Err(failed(
       "RE-ML requires an interior positive unit variance; the zero-unit-variance optimum is unsupported",
@@ -463,22 +500,25 @@ fn fit_kernel(
     "unbalanced_gaussian_random_effects_ml"
   }
   .into();
-  Ok(RandomEffectsMlInterior {
-    regression: r.fit,
-    joint_covariance: covariance,
-    sigma_e_squared: r.a,
-    sigma_u_squared: r.u,
-    eta: best_eta,
-    log_likelihood: r.ll,
-    null_log_likelihood: null_ll,
-    null_sigma_e_squared: null_a,
-    null_sigma_u_squared: null_u,
-    likelihood_ratio,
-    likelihood_ratio_p_value,
-    profile_score: r.score,
-    group_count: g,
-    group_size: if balanced { t } else { 0 },
-  })
+  Ok((
+    RandomEffectsMlInterior {
+      regression: r.fit,
+      joint_covariance: covariance,
+      sigma_e_squared: r.a,
+      sigma_u_squared: r.u,
+      eta: best_eta,
+      log_likelihood: r.ll,
+      null_log_likelihood: null_ll,
+      null_sigma_e_squared: null_a,
+      null_sigma_u_squared: null_u,
+      likelihood_ratio,
+      likelihood_ratio_p_value,
+      profile_score: r.score,
+      group_count: g,
+      group_size: if balanced { t } else { 0 },
+    },
+    unit_variance_test,
+  ))
 }
 
 /// Interior-only ML kernel: equal retained counts T>=2 and full within
@@ -491,7 +531,7 @@ pub fn fit_random_effects_ml_interior(
   problem: &EstimationProblem,
   entity: &str,
 ) -> Result<RandomEffectsMlInterior, StatsError> {
-  fit_kernel(problem, entity, false, false)
+  fit_kernel(problem, entity, false, false).map(|(fit, _)| fit)
 }
 
 /// ML-specific inference; joint parameter order is explicit to prevent treating
@@ -510,6 +550,9 @@ pub struct RandomEffectsMlInference {
   pub likelihood_ratio_df: usize,
   pub likelihood_ratio_p_value: Option<f64>,
   pub likelihood_ratio_unavailable_reason: Option<String>,
+  /// Missing only in ML results serialized before the boundary-test addition.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub unit_variance_test: Option<RandomEffectsMlUnitVarianceTest>,
 }
 
 /// Model-based observed-information uncertainty for one positive variance component.
@@ -677,7 +720,7 @@ pub fn fit_random_effects_ml(
   problem: &EstimationProblem,
   entity: &str,
 ) -> Result<crate::RandomEffectsResult, StatsError> {
-  let r = fit_kernel(problem, entity, true, true)?;
+  let (r, unit_variance_test) = fit_kernel(problem, entity, true, true)?;
   let unit_variance_boundary = r.eta == 0.0;
   let critical = crate::normal_quantile(0.975);
   let confidence_intervals: Vec<_> = r
@@ -737,6 +780,7 @@ pub fn fit_random_effects_ml(
           .into()
       }
     }),
+    unit_variance_test: Some(unit_variance_test),
   };
   ml.variance_component_inference(r.sigma_e_squared, r.sigma_u_squared, r.group_size)?;
   Ok(crate::RandomEffectsResult {

@@ -1,4 +1,6 @@
-use tabdat_stats::{EstimationProblem, EstimationSample, fit_random_effects_ml_interior};
+use tabdat_stats::{
+  EstimationProblem, EstimationSample, RandomEffectsMlInference, fit_random_effects_ml_interior,
+};
 
 fn problem(case: &str) -> EstimationProblem {
   let mut rows = Vec::new();
@@ -47,6 +49,27 @@ fn problem(case: &str) -> EstimationProblem {
 }
 
 #[test]
+fn older_serialized_ml_inference_keeps_its_shape_without_the_new_test() {
+  let old = serde_json::json!({
+    "joint_parameter_names": ["intercept", "log_sigma_e_squared"],
+    "joint_covariance": [[1.0, 0.0], [0.0, 1.0]],
+    "eta": 0.0,
+    "profile_score": -1.0,
+    "log_likelihood": -1.0,
+    "null_log_likelihood": -2.0,
+    "null_sigma_e_squared": 1.0,
+    "null_sigma_u_squared": 0.0,
+    "likelihood_ratio": 2.0,
+    "likelihood_ratio_df": 1,
+    "likelihood_ratio_p_value": null,
+    "likelihood_ratio_unavailable_reason": "boundary"
+  });
+  let parsed: RandomEffectsMlInference = serde_json::from_value(old.clone()).unwrap();
+  assert!(parsed.unit_variance_test.is_none());
+  assert_eq!(serde_json::to_value(parsed).unwrap(), old);
+}
+
+#[test]
 fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
   let reference: Vec<_> = include_str!("fixtures/random_effects_ml_reference.csv")
     .lines()
@@ -71,7 +94,14 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       case == "null_boundary"
     );
     assert_eq!(ml.joint_parameter_names.len(), 5);
+    let unit_variance_test = ml.unit_variance_test.as_ref().unwrap();
     let variance_inference = public.variance_component_inference().unwrap().unwrap();
+    assert_eq!(
+      unit_variance_test.reference_distribution,
+      "asymptotic_50_50_chi_square_0_1_mixture"
+    );
+    assert!(unit_variance_test.statistic > 0.0);
+    assert!((0.0..0.5).contains(&unit_variance_test.p_value));
     assert_eq!(
       variance_inference.method,
       "joint_observed_information_log_wald"
@@ -82,7 +112,10 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
     );
     assert!(variance_inference.sigma_u_squared.is_some());
     let mut value = serde_json::to_value(fit).unwrap();
-    value["ml"] = serde_json::json!({"variance_component_inference": variance_inference});
+    value["ml"] = serde_json::json!({
+      "variance_component_inference": variance_inference,
+      "unit_variance_test": unit_variance_test,
+    });
     for row in reference.iter().filter(|r| r[0] == case) {
       let actual = value
         .pointer(row[1])
@@ -101,7 +134,7 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       checked += 1;
     }
   }
-  assert_eq!(checked, 487);
+  assert_eq!(checked, 495);
 }
 
 #[test]

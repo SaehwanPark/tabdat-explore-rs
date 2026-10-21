@@ -1,4 +1,6 @@
 case,path,value
+unequal,/ml/unit_variance_test/statistic,2.98223573639515
+unequal,/ml/unit_variance_test/p_value,0.0420914567506807
 unequal,/ml/variance_component_inference/sigma_e_squared/estimate,0.0327967603397012
 unequal,/ml/variance_component_inference/sigma_e_squared/standard_error,0.0117948765037987
 unequal,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.359635414645535
@@ -179,6 +181,8 @@ unequal,/ml/null_sigma_u_squared,0.20052206552594
 unequal,/ml/likelihood_ratio,17.9103034238501
 unequal,/ml/likelihood_ratio_df,2
 unequal,/ml/likelihood_ratio_p_value,0.000129070510239517
+shifted_interleaved,/ml/unit_variance_test/statistic,2.98223573639476
+shifted_interleaved,/ml/unit_variance_test/p_value,0.0420914567506908
 shifted_interleaved,/ml/variance_component_inference/sigma_e_squared/estimate,0.0327967603397011
 shifted_interleaved,/ml/variance_component_inference/sigma_e_squared/standard_error,0.0117948765037987
 shifted_interleaved,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.359635414645536
@@ -359,6 +363,8 @@ shifted_interleaved,/ml/null_sigma_u_squared,0.200522065525943
 shifted_interleaved,/ml/likelihood_ratio,17.9103034238498
 shifted_interleaved,/ml/likelihood_ratio_df,2
 shifted_interleaved,/ml/likelihood_ratio_p_value,0.000129070510239533
+boundary,/ml/unit_variance_test/statistic,0
+boundary,/ml/unit_variance_test/p_value,1
 boundary,/ml/variance_component_inference/sigma_e_squared/estimate,0.0247824247519163
 boundary,/ml/variance_component_inference/sigma_e_squared/standard_error,0.00715406980084526
 boundary,/ml/variance_component_inference/sigma_e_squared/log_scale_standard_error,0.288675134594813

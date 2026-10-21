@@ -91,8 +91,9 @@ pub use random_effects::{
   fit_random_effects_unbalanced, fit_random_effects_unbalanced_clustered,
 };
 pub use random_effects_ml::{
-  RandomEffectsMlInference, RandomEffectsMlInterior, RandomEffectsMlVarianceComponentEstimate,
-  RandomEffectsMlVarianceComponentInference, fit_random_effects_ml, fit_random_effects_ml_interior,
+  RandomEffectsMlInference, RandomEffectsMlInterior, RandomEffectsMlUnitVarianceTest,
+  RandomEffectsMlVarianceComponentEstimate, RandomEffectsMlVarianceComponentInference,
+  fit_random_effects_ml, fit_random_effects_ml_interior,
 };
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
