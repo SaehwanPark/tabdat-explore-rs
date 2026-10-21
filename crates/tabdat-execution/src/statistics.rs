@@ -17,12 +17,11 @@ impl Session {
     self.execute_regression_sample(command, Some(condition))
   }
 
-  fn execute_regression_sample(
-    &mut self,
+  pub(crate) fn prepare_regression_problem(
+    &self,
     command: &RegressCommand,
     condition: Option<&GenerateExpression>,
-  ) -> Result<ExecutionResult, RuntimeError> {
-    self.estimation = None;
+  ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
@@ -129,6 +128,8 @@ impl Session {
       index
     });
     let select_sql = select_columns.join(", ");
+    // The backend sets preserve_insertion_order=true. A plain SELECT projection
+    // preserves this physical sample order, including bootstrap index mapping.
     let query = format!("SELECT {select_sql} FROM {ACTIVE_TABLE}");
 
     let p_count = command.predictors.len();
@@ -267,6 +268,17 @@ impl Session {
     if has_weight {
       problem = problem.with_weights(weights);
     }
+
+    Ok(problem)
+  }
+
+  fn execute_regression_sample(
+    &mut self,
+    command: &RegressCommand,
+    condition: Option<&GenerateExpression>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    self.estimation = None;
+    let problem = self.prepare_regression_problem(command, condition)?;
 
     let covariance_type = if let Some(cluster_var) = &command.cluster_variable {
       tabdat_stats::CovarianceType::Cluster(cluster_var.clone())

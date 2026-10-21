@@ -8,6 +8,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "bar",
   "bayes",
   "bayesplot",
+  "bootstrap",
   "by",
   "cfregress",
   "codebook",
@@ -126,6 +127,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read, CommandEffect::Plot],
       name: "bayesplot".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "bootstrap".to_string(),
     },
     CommandEffectEntry {
       effects: vec![
@@ -547,6 +552,12 @@ fn get_command_schema(
       name: "bayesplot".to_string(),
       options: vec![],
       syntax: "bayesplot trace".to_string(),
+    }),
+    "bootstrap" => Ok(CommandSchemaResult {
+      name:"bootstrap".to_owned(),help_topic,
+      arguments:vec![ArgumentDescriptor { name:"y".into(),required:true },ArgumentDescriptor { name:"xvars".into(),required:true }],
+      options:vec![OptionDescriptor { name:"seed".into(),required:true },OptionDescriptor { name:"reps".into(),required:false },OptionDescriptor { name:"noconstant".into(),required:false }],
+      syntax:"bootstrap y xvars, seed(integer) [reps(200) noconstant]".into(),
     }),
     "by" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -2136,7 +2147,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 82);
+    assert_eq!(catalog.commands.len(), 83);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2179,7 +2190,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 82);
+    assert_eq!(effects.commands.len(), 83);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());

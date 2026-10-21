@@ -908,6 +908,21 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.stored_count
     ),
     ExecutionResult::EstimateTable(result) => crate::estimate_table::render_estimate_table(result),
+    ExecutionResult::Bootstrap(result) => {
+      let mut text = format!(
+        "IID pairs-bootstrap OLS: {}\nN = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+        result.outcome.escape_debug(),
+        result.observation_count,
+        result.replications,
+        result.seed,
+        result.rng
+      );
+      for b in &result.coefficients {
+        writeln!(text,"{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]",b.name.escape_debug(),inference_number(b.estimate),inference_number(b.bootstrap_mean),inference_number(b.bias),inference_number(b.standard_error),inference_number(b.ci_lower),inference_number(b.ci_upper)).unwrap();
+      }
+      text.push_str("Resamples complete rows independently; not a cluster or residual bootstrap. Data and the retained fit are unchanged.\n");
+      text
+    }
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,

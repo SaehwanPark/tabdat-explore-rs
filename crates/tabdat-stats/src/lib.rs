@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod binary;
+mod bootstrap;
 mod count_probabilities;
 pub mod diagnostics;
 mod distributions;
@@ -36,6 +37,10 @@ pub use binary::{
   LogitMarginalEffects, LogitOptions, ProbitOptions, binary_average_marginal_effects,
   fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options, fit_binary_probit,
   fit_binary_probit_with_options, fit_binary_robust, logit_average_marginal_effects,
+};
+pub use bootstrap::{
+  BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, MAX_BOOTSTRAP_REPLICATIONS,
+  MAX_BOOTSTRAP_WORK, bootstrap_ols,
 };
 pub use count_probabilities::{
   CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_PROBABILITY_TAIL,

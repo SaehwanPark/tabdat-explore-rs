@@ -7,6 +7,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "bayes",
   "bayes_prefix",
   "bayesplot",
+  "bootstrap",
   "by",
   "cfregress",
   "codebook",
@@ -97,6 +98,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "bar" => Some(include_str!("help/topics/bar.md")),
     "bayes" => Some(include_str!("help/topics/bayes.md")),
     "bayes_prefix" => Some(include_str!("help/topics/bayes_prefix.md")),
+    "bootstrap" => Some(include_str!("help/topics/bootstrap.md")),
     "bayesplot" => Some(include_str!("help/topics/bayesplot.md")),
     "by" => Some(include_str!("help/topics/by.md")),
     "cfregress" => Some(include_str!("help/topics/cfregress.md")),
@@ -185,7 +187,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 83);
+    assert_eq!(available_help_topics().len(), 84);
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");

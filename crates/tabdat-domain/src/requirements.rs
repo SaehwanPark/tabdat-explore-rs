@@ -51,7 +51,8 @@ impl Command {
       Self::BayesPlot { .. } => {
         required.extend([Bayesian, Plotting, FileIo]);
       }
-      Self::Regress { .. }
+      Self::Bootstrap { .. }
+      | Self::Regress { .. }
       | Self::RegressQuery { .. }
       | Self::Lincom { .. }
       | Self::Test { .. }

@@ -487,6 +487,8 @@ pub enum RuntimeError {
   EstatArRequiresPriorIv,
   /// The joint AR null, covariance mode or auxiliary regression is unsupported/invalid.
   EstatArFailed(String),
+  /// Invalid bootstrap request or failed original/replicate fit.
+  BootstrapFailed(String),
   /// Sargan requires structural residuals and design from a retained 2SLS fit.
   EstatOveridRequiresPriorIv,
   /// Covariance, identification or numerical limits invalidate Sargan inference.
@@ -1139,6 +1141,7 @@ impl fmt::Display for RuntimeError {
       }
       Self::EstatVifFailed => formatter.write_str("estat vif failed for current model"),
       Self::EstatArRequiresPriorIv => formatter.write_str("estat ar requires a prior 2SLS fit"),
+      Self::BootstrapFailed(message) => write!(formatter,"bootstrap: {message}"),
       Self::EstatArFailed(message) => write!(formatter, "estat ar: {message}"),
       Self::EstatOveridRequiresPriorIv => {
         formatter.write_str("estat overid requires a prior 2SLS fit")

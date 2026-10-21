@@ -138,14 +138,17 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
   let entries = actual["commands"].as_array_mut().unwrap();
   let extension: Vec<_> = entries
     .iter()
-    .filter(|entry| entry["name"] == "estimates")
+    .filter(|entry| entry["name"] == "estimates" || entry["name"] == "bootstrap")
     .collect();
   assert_eq!(
     extension,
-    vec![&serde_json::json!({"name":"estimates","effects":["read","control"]})]
+    vec![
+      &serde_json::json!({"name":"bootstrap","effects":["read"]}),
+      &serde_json::json!({"name":"estimates","effects":["read","control"]})
+    ]
   );
-  // MIG-0016 adds one native reporting command, not a change to pinned entries.
-  entries.retain(|entry| entry["name"] != "estimates");
+  // Native reporting/resampling extensions preserve the immutable Python entries.
+  entries.retain(|entry| entry["name"] != "estimates" && entry["name"] != "bootstrap");
   assert_eq!(actual, oracle["data"]);
 }
 
