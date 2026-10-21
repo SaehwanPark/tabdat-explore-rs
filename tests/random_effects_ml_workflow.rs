@@ -59,6 +59,13 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
       fit["ml"]["likelihood_ratio_unavailable_reason"].is_string(),
       boundary
     );
+    let component_inference = &fit["ml"]["variance_component_inference"];
+    assert_eq!(
+      component_inference["method"],
+      "joint_observed_information_log_wald"
+    );
+    assert!(component_inference["sigma_e_squared"]["standard_error"].is_number());
+    assert!(component_inference["sigma_u_squared"]["standard_error"].is_number());
     assert!(fit.get("r_squared").is_none());
     let case = if boundary {
       "null_boundary"
@@ -78,7 +85,9 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
       {
         continue;
       }
-      let path = if let Some(p) = row[1].strip_prefix("/regression") {
+      let path = if row[1].starts_with("/ml/") {
+        row[1].to_owned()
+      } else if let Some(p) = row[1].strip_prefix("/regression") {
         p.to_owned()
       } else if [
         "/sigma_e_squared",
@@ -132,6 +141,8 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
       "Joint observed-information",
       "Marginal log likelihood",
       "slope LR chi-square(2)",
+      "Variance-component inference: joint observed information",
+      "sigma_u squared SE",
       "CI lower (95%)",
     ] {
       assert!(text.contains(expected), "{text}");
@@ -216,6 +227,13 @@ fn zero_unit_variance_ml_reports_constrained_information_and_exports_lm_predicti
         .unwrap()
         .contains("full-model")
     );
+    assert!(fit["ml"]["variance_component_inference"]["sigma_u_squared"].is_null());
+    assert!(
+      fit["ml"]["variance_component_inference"]["sigma_u_squared_unavailable_reason"]
+        .as_str()
+        .unwrap()
+        .contains("boundary")
+    );
     let expected: std::collections::BTreeMap<_, f64> = include_str!(
       "../crates/tabdat-stats/tests/fixtures/random_effects_ml_boundary_reference.csv"
     )
@@ -280,6 +298,7 @@ fn zero_unit_variance_ml_reports_constrained_information_and_exports_lm_predicti
       "zero unit variance boundary",
       "Constrained observed-information",
       "No regular unit-variance SE or test",
+      "sigma_u squared uncertainty unavailable",
       "Slope LR reference unavailable",
     ] {
       assert!(text.contains(phrase), "{text}");

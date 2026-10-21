@@ -47,6 +47,20 @@ for(case in c('balanced','interleaved','shifted','null_boundary')) {
   numeric <- optimHess(par,nll,gradient,control=list(ndeps=rep(1e-5,K+2)))
   stopifnot(max(abs(numeric-H)/pmax(1,abs(H)))<1e-6)
   V <- solve(H)
+  component <- function(name, estimate, log_variance) {
+    log_se <- sqrt(log_variance)
+    limits <- exp(log(estimate)+c(-1,1)*qnorm(.975)*log_se)
+    values <- c(estimate=estimate,standard_error=estimate*log_se,
+                log_scale_standard_error=log_se)
+    for(field in names(values))
+      emit(case,paste0('/ml/variance_component_inference/',name,'/',field),values[[field]])
+    emit(case,paste0('/ml/variance_component_inference/',name,'/confidence_interval/0'),limits[1])
+    emit(case,paste0('/ml/variance_component_inference/',name,'/confidence_interval/1'),limits[2])
+  }
+  log_u_gradient <- c(rep(0,K),-r$a/(r$v-r$a),r$v/(r$v-r$a))
+  log_u_variance <- drop(t(log_u_gradient)%*%V%*%log_u_gradient)
+  component('sigma_e_squared',r$a,V[K+1,K+1])
+  component('sigma_u_squared',(r$v-r$a)/T,log_u_variance)
   trusted <- lme(y~x+z,random=list(id=pdDiag(value=log(sqrt((r$v-r$a)/T/r$a)),form=~1)),data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
   stopifnot(max(abs(fixef(trusted)-r$beta))<1e-6,abs(as.numeric(logLik(trusted))-r$ll)<1e-8)
   grand <- mean(y)

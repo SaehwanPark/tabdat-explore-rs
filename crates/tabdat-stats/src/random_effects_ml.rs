@@ -512,11 +512,161 @@ pub struct RandomEffectsMlInference {
   pub likelihood_ratio_unavailable_reason: Option<String>,
 }
 
+/// Model-based observed-information uncertainty for one positive variance component.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RandomEffectsMlVarianceComponentEstimate {
+  pub estimate: f64,
+  /// Delta-method standard error on the variance scale.
+  pub standard_error: f64,
+  pub log_scale_standard_error: f64,
+  /// Exponentiated normal-Wald limits on the log-variance scale.
+  pub confidence_interval: [f64; 2],
+}
+
+/// Asymptotic uncertainty for the Gaussian RE-ML variance components.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RandomEffectsMlVarianceComponentInference {
+  pub method: String,
+  pub reference_distribution: String,
+  pub confidence_level: f64,
+  pub sigma_e_squared: RandomEffectsMlVarianceComponentEstimate,
+  pub sigma_u_squared: Option<RandomEffectsMlVarianceComponentEstimate>,
+  pub sigma_u_squared_unavailable_reason: Option<String>,
+}
+
 impl RandomEffectsMlInference {
   /// Exact active-face flag derived from the profiled nonnegative log ratio.
   pub fn unit_variance_boundary(&self) -> bool {
     self.eta == 0.0
   }
+
+  /// Transform the joint observed-information covariance to variance-component
+  /// uncertainty. Interior intervals are Wald intervals on log variance, so
+  /// their endpoints stay nonnegative. The constrained zero-unit-variance face
+  /// has no regular unit-variance standard error or interval.
+  pub fn variance_component_inference(
+    &self,
+    sigma_e_squared: f64,
+    sigma_u_squared: f64,
+    group_size: usize,
+  ) -> Result<RandomEffectsMlVarianceComponentInference, StatsError> {
+    if !sigma_e_squared.is_finite()
+      || sigma_e_squared <= 0.0
+      || !sigma_u_squared.is_finite()
+      || sigma_u_squared < 0.0
+    {
+      return Err(failed(
+        "RE-ML variance components are invalid for inference",
+      ));
+    }
+
+    let boundary = self.unit_variance_boundary();
+    let variance_parameter_count = if boundary { 1 } else { 2 };
+    let parameter_count = self.joint_parameter_names.len();
+    if parameter_count <= variance_parameter_count
+      || self.joint_covariance.len() != parameter_count
+      || self
+        .joint_covariance
+        .iter()
+        .any(|row| row.len() != parameter_count)
+    {
+      return Err(failed("RE-ML joint covariance has invalid dimensions"));
+    }
+    let variance_index = parameter_count - variance_parameter_count;
+    if self.joint_parameter_names[variance_index] != "log_sigma_e_squared" {
+      return Err(failed("RE-ML joint parameter order is invalid"));
+    }
+    let covariance = &self.joint_covariance;
+    let log_sigma_e_variance = covariance[variance_index][variance_index];
+    let sigma_e = variance_component_estimate(sigma_e_squared, log_sigma_e_variance)?;
+
+    let (sigma_u, sigma_u_unavailable_reason) = if boundary {
+      if sigma_u_squared != 0.0 {
+        return Err(failed(
+          "RE-ML boundary inference requires zero unit variance",
+        ));
+      }
+      (
+        None,
+        Some(
+          "unit variance is fixed at zero; its boundary estimator has no regular normal-Wald standard error or interval".into(),
+        ),
+      )
+    } else {
+      if sigma_u_squared <= 0.0 {
+        return Err(failed(
+          "interior RE-ML inference requires positive unit variance",
+        ));
+      }
+      let log_sigma_u_variance = if group_size == 0 {
+        if self.joint_parameter_names[variance_index + 1] != "log_sigma_u_squared" {
+          return Err(failed("unbalanced RE-ML joint parameter order is invalid"));
+        }
+        covariance[variance_index + 1][variance_index + 1]
+      } else {
+        if self.joint_parameter_names[variance_index + 1]
+          != "log_sigma_e_squared_plus_t_sigma_u_squared"
+        {
+          return Err(failed("balanced RE-ML joint parameter order is invalid"));
+        }
+        let t_u = group_size as f64 * sigma_u_squared;
+        // Balanced fits store log(a + T*u), so log(u) depends on both
+        // information coordinates and its variance needs the full gradient.
+        let log_u_gradient_e = -sigma_e_squared / t_u;
+        let log_u_gradient_v = (sigma_e_squared + t_u) / t_u;
+        log_u_gradient_e.powi(2) * covariance[variance_index][variance_index]
+          + 2.0
+            * log_u_gradient_e
+            * log_u_gradient_v
+            * covariance[variance_index][variance_index + 1]
+          + log_u_gradient_v.powi(2) * covariance[variance_index + 1][variance_index + 1]
+      };
+      (
+        Some(variance_component_estimate(
+          sigma_u_squared,
+          log_sigma_u_variance,
+        )?),
+        None,
+      )
+    };
+
+    Ok(RandomEffectsMlVarianceComponentInference {
+      method: "joint_observed_information_log_wald".into(),
+      reference_distribution: "asymptotic_standard_normal".into(),
+      confidence_level: 95.0,
+      sigma_e_squared: sigma_e,
+      sigma_u_squared: sigma_u,
+      sigma_u_squared_unavailable_reason: sigma_u_unavailable_reason,
+    })
+  }
+}
+
+fn variance_component_estimate(
+  estimate: f64,
+  log_scale_variance: f64,
+) -> Result<RandomEffectsMlVarianceComponentEstimate, StatsError> {
+  if !log_scale_variance.is_finite() || log_scale_variance <= 0.0 {
+    return Err(failed(
+      "RE-ML log-variance information is invalid for inference",
+    ));
+  }
+  let log_scale_standard_error = log_scale_variance.sqrt();
+  let standard_error = estimate * log_scale_standard_error;
+  let critical = crate::normal_quantile(0.975);
+  let log_estimate = estimate.ln();
+  let confidence_interval = [
+    (log_estimate - critical * log_scale_standard_error).exp(),
+    (log_estimate + critical * log_scale_standard_error).exp(),
+  ];
+  if !standard_error.is_finite() || confidence_interval.iter().any(|value| !value.is_finite()) {
+    return Err(failed("RE-ML variance-component interval overflowed"));
+  }
+  Ok(RandomEffectsMlVarianceComponentEstimate {
+    estimate,
+    standard_error,
+    log_scale_standard_error,
+    confidence_interval,
+  })
 }
 
 /// Unweighted Gaussian marginal ML with unequal counts and the zero-unit boundary.
@@ -588,6 +738,7 @@ pub fn fit_random_effects_ml(
       }
     }),
   };
+  ml.variance_component_inference(r.sigma_e_squared, r.sigma_u_squared, r.group_size)?;
   Ok(crate::RandomEffectsResult {
     entity_variable: entity.into(),
     outcome: problem.outcome.clone(),

@@ -59,6 +59,20 @@ impl RandomEffectsResult {
     };
     Some((theta(lo), theta(hi)))
   }
+
+  /// Model-based uncertainty for the fitted Gaussian ML variance components.
+  /// Swamy–Arora GLS results have no likelihood-based component inference.
+  pub fn variance_component_inference(
+    &self,
+  ) -> Result<Option<crate::RandomEffectsMlVarianceComponentInference>, StatsError> {
+    self
+      .ml
+      .as_ref()
+      .map(|ml| {
+        ml.variance_component_inference(self.sigma_e_squared, self.sigma_u_squared, self.group_size)
+      })
+      .transpose()
+  }
 }
 
 /// Joint finite cases must already be selected and sample-aligned unit keys
