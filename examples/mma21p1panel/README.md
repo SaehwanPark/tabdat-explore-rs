@@ -691,3 +691,14 @@ nonfinite floating keys, variable draw sizes and unchanged models/data/reports.
 The actual script also runs on an interleaved-person fixture and refuses existing
 exports. Any failed replication aborts without redraw/drop. Work is bounded by
 G*largest_cluster_size*B*K²<=100,000,000; IID stream/API behavior is preserved.
+
+### Planned fixed-transform RE-GLS bootstrap (WIP)
+
+Target March2005 mma21p2panmanual.do block5 on all5,320 MOM rows/532 people:
+balanced Swamy–Arora theta estimated once, then OLS of quasi-lnhr on quasi-lnwg
+and an ordinary intercept, resampling532 whole people, B500/native seed10001.
+The transformed intercept is (1-theta) times the population RE intercept.
+Bootstrap uncertainty conditions on fixed theta, matching the manual program;
+it is not automatic RE-GLS variance-component re-estimation. Independent R/plm
+point/theta and R whole-group draw/uncertainty/export evidence are required,
+with key, balance, rank/variance and export-failure cases. Implementation pending.
