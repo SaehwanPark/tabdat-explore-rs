@@ -73,6 +73,17 @@ fn actual_nb2_offset_script_matches_joint_r_reference_in_text_and_json() {
   );
   assert_eq!(fit["mean_parameter_count"], 3);
   assert_eq!(fit["parameter_count"], 4);
+  assert_eq!(
+    fit["dispersion_test"]["method"],
+    "one_sided_likelihood_ratio"
+  );
+  assert!(fit["dispersion_test"]["statistic"].as_f64().unwrap() >= 0.0);
+  assert!(fit["dispersion_test"]["reference_distribution"].is_null());
+  assert!(fit["dispersion_test"]["p_value"].is_null());
+  assert_eq!(
+    fit["dispersion_test"]["unavailable_reason"],
+    "robust_covariance_selected"
+  );
   assert_eq!(fit["df_residual"], 32);
   assert_eq!(
     fit["sample"]["retained_indices"],
@@ -112,6 +123,8 @@ fn actual_nb2_offset_script_matches_joint_r_reference_in_text_and_json() {
       fit["coefficients"][i][field].clone()
     } else if let Some(field) = r[1].strip_prefix("effect_") {
       effect["effects"][i][field].clone()
+    } else if let Some(field) = r[1].strip_prefix("dispersion_test_") {
+      fit["dispersion_test"][field].clone()
     } else if fit["dispersion"].get(r[1]).is_some() {
       fit["dispersion"][r[1]].clone()
     } else {
