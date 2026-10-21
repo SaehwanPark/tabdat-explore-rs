@@ -4,6 +4,7 @@ pub use tabdat_stats::{
   Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate,
   PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
+pub use tabdat_stats::{BootstrapOlsResult, ClusterBootstrapOlsResult};
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
@@ -810,6 +811,7 @@ pub enum ExecutionResult {
   /// Joint homoskedastic residual-inclusion F test of endogenous-regressor exogeneity.
   WuHausman(tabdat_stats::WuHausmanResult),
   Bootstrap(Box<tabdat_stats::BootstrapOlsResult>),
+  ClusterBootstrap(Box<tabdat_stats::ClusterBootstrapOlsResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.

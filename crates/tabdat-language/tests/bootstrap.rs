@@ -21,10 +21,25 @@ fn bootstrap_requires_explicit_exact_seed_and_bounded_iid_ols_options() {
     "bootstrap y x, seed(1) reps(5001)",
     "bootstrap y x, seed(1) reps(2.5)",
     "bootstrap y x, seed(1) robust",
-    "bootstrap y x, seed(1) cluster(id)",
+    "bootstrap y x, seed(1) cluster(id other)",
+    "bootstrap y x, seed(1) cluster(1)",
+    "bootstrap y x, seed(1) cluster(id) cluster(id)",
     "bootstrap y x if x>0, seed(1)",
     "bootstrap y x, seed(1) noconstant(true)",
   ] {
     assert!(parse_command(text).is_err(), "{text}");
   }
+}
+
+#[test]
+fn whole_cluster_option_uses_one_exact_identifier() {
+  let Command::Bootstrap { command } =
+    parse_command("bootstrap y x, seed(7) cluster(`unit key`)").unwrap()
+  else {
+    panic!("bootstrap")
+  };
+  assert_eq!(
+    command.regression.cluster_variable.as_deref(),
+    Some("unit key")
+  );
 }

@@ -892,6 +892,43 @@ fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
   output
 }
 
+fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult, whole_cluster: bool) -> String {
+  let kind = if whole_cluster {
+    "Whole-cluster"
+  } else {
+    "IID"
+  };
+  let mut text = format!(
+    "{kind} pairs-bootstrap OLS: {}\nN = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+    result.outcome.escape_debug(),
+    result.observation_count,
+    result.replications,
+    result.seed,
+    result.rng
+  );
+  for b in &result.coefficients {
+    writeln!(
+      text,
+      "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]",
+      b.name.escape_debug(),
+      inference_number(b.estimate),
+      inference_number(b.bootstrap_mean),
+      inference_number(b.bias),
+      inference_number(b.standard_error),
+      inference_number(b.ci_lower),
+      inference_number(b.ci_upper)
+    )
+    .unwrap();
+  }
+  text.push_str(if whole_cluster {
+    "Resamples whole clusters with replacement; retains within-cluster rows. Not residual, wild or automatic FE/RE bootstrap. "
+  } else {
+    "Resamples complete rows independently; not a cluster or residual bootstrap. "
+  });
+  text.push_str("Data and the retained fit are unchanged.\n");
+  text
+}
+
 /// Render owned execution results without recomputing data or statistics.
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
@@ -908,20 +945,15 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.stored_count
     ),
     ExecutionResult::EstimateTable(result) => crate::estimate_table::render_estimate_table(result),
-    ExecutionResult::Bootstrap(result) => {
-      let mut text = format!(
-        "IID pairs-bootstrap OLS: {}\nN = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
-        result.outcome.escape_debug(),
-        result.observation_count,
-        result.replications,
-        result.seed,
-        result.rng
-      );
-      for b in &result.coefficients {
-        writeln!(text,"{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]",b.name.escape_debug(),inference_number(b.estimate),inference_number(b.bootstrap_mean),inference_number(b.bias),inference_number(b.standard_error),inference_number(b.ci_lower),inference_number(b.ci_upper)).unwrap();
-      }
-      text.push_str("Resamples complete rows independently; not a cluster or residual bootstrap. Data and the retained fit are unchanged.\n");
-      text
+    ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
+    ExecutionResult::ClusterBootstrap(result) => {
+      let text = bootstrap_report(&result.bootstrap, true);
+      format!(
+        "{text}Clusters = {}; first-seen sample order; replicate N range = {}..{}; few-cluster/nominal-coverage guarantees are unavailable.\n",
+        result.cluster_count,
+        result.replicate_observation_counts.iter().min().unwrap(),
+        result.replicate_observation_counts.iter().max().unwrap()
+      )
     }
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",

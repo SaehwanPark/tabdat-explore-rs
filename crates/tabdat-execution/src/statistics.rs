@@ -21,6 +21,7 @@ impl Session {
     &self,
     command: &RegressCommand,
     condition: Option<&GenerateExpression>,
+    exact_cluster_keys: bool,
   ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -77,6 +78,15 @@ impl Session {
       .collect::<Vec<_>>();
     if !missing.is_empty() {
       return Err(RuntimeError::RegressUnknownVariable { variables: missing });
+    }
+
+    if exact_cluster_keys && let Some(key) = &command.cluster_variable {
+      let data_type = column_types[key.as_str()];
+      if !is_numeric_data_type(data_type) && !matches!(data_type, "VARCHAR" | "BOOLEAN") {
+        return Err(RuntimeError::BootstrapFailed(
+          "cluster keys must be numeric, text or boolean".into(),
+        ));
+      }
     }
 
     // Verify outcome, predictors, and weight (if present) are numeric
@@ -189,7 +199,12 @@ impl Session {
         // Extract cluster if present
         let cluster_val = if has_cluster {
           let cell = read_owned_cell(row, cluster_idx, true, "could not read cluster cell")?;
-          match cell_to_string(cell) {
+          let key = if exact_cluster_keys {
+            bootstrap_cluster_key(cell)?
+          } else {
+            cell_to_string(cell)
+          };
+          match key {
             Some(s) => s,
             None => return Ok(()),
           }
@@ -278,7 +293,7 @@ impl Session {
     condition: Option<&GenerateExpression>,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
-    let problem = self.prepare_regression_problem(command, condition)?;
+    let problem = self.prepare_regression_problem(command, condition, false)?;
 
     let covariance_type = if let Some(cluster_var) = &command.cluster_variable {
       tabdat_stats::CovarianceType::Cluster(cluster_var.clone())
@@ -1459,6 +1474,25 @@ fn python_float_literal(value: f64) -> String {
     format!("{}.{}", &significant[..split], &significant[split..])
   };
   format!("{sign}{fixed}")
+}
+
+// Preserve decimal/wide identity for the new resampling contract without
+// changing historical regression grouping. Floating nonfinite keys are excluded.
+fn bootstrap_cluster_key(cell: &CellValue) -> Result<Option<String>, RuntimeError> {
+  match cell {
+    CellValue::Decimal { value, scale, .. } => Ok(Some(python_decimal_label(*value, *scale))),
+    CellValue::Float(v) if !v.is_finite() => Ok(None),
+    CellValue::Float(v) if *v == 0.0 => Ok(Some("0".into())),
+    CellValue::Null
+    | CellValue::Text(_)
+    | CellValue::SignedInteger(_)
+    | CellValue::UnsignedInteger(_)
+    | CellValue::Float(_)
+    | CellValue::Boolean(_) => Ok(cell_to_string(cell)),
+    _ => Err(RuntimeError::BootstrapFailed(
+      "cluster keys must be numeric, text or boolean".into(),
+    )),
+  }
 }
 
 fn cell_to_string(cell: &CellValue) -> Option<String> {

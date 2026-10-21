@@ -2495,7 +2495,10 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     .transpose()?
     .unwrap_or_default();
   for option in &options {
-    if !matches!(option.name.as_str(), "seed" | "reps" | "noconstant") {
+    if !matches!(
+      option.name.as_str(),
+      "seed" | "reps" | "noconstant" | "cluster"
+    ) {
       return Err(ParseError::new(format!(
         "bootstrap unsupported option: {}",
         option.name
@@ -2534,6 +2537,11 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   if !(2..=5000).contains(&reps) {
     return Err(ParseError::new("bootstrap reps must be from 2 to 5000"));
   }
+  let cluster_values = parse_identifier_option("bootstrap", &options, "cluster")?;
+  if cluster_values.as_ref().is_some_and(|v| v.len() != 1) {
+    return Err(ParseError::new("bootstrap cluster expects one variable"));
+  }
+  let cluster_variable = cluster_values.and_then(|mut v| v.pop());
   Ok(Command::Bootstrap {
     command: tabdat_domain::BootstrapCommand {
       regression: RegressCommand {
@@ -2545,7 +2553,7 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
         estimator: RegressEstimator::Ols,
         weight_variable: None,
         robust: false,
-        cluster_variable: None,
+        cluster_variable,
         include_intercept: !options.iter().any(|o| o.name == "noconstant"),
       },
       replications: reps as usize,

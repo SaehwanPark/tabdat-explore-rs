@@ -28,7 +28,7 @@ not by implementing every estimator mentioned in a chapter.
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares and bounded binary logit/probit MLE/QR | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
-| 11–13: Bootstrap, simulation, Bayesian | Native bounded IID pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means | Cluster/residual/parametric/other-estimator bootstrap, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
+| 11–13: Bootstrap, simulation, Bayesian | Native bounded IID/whole-cluster pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means and within-transformed whole-person resampling | Residual/parametric/other-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
@@ -818,3 +818,19 @@ evidence, not the author's unspecified Stata draw stream or a printed bootstrap
 SE replication. It does not add raw person-year/cluster/FE/RE bootstrap or complete
 Chapters11–13. Any failed replicate aborts without redraw/discard. Bootstrap
 reports do not replace retained fits or supply analytic test p-values.
+
+### MMA-PANEL within-transformed whole-person pairs-bootstrap evidence
+
+The [bounded workflow](../../examples/mma21p1panel/README.md) implements block4
+of March2005 mma21p2panmanual.do: all5,320 jointly finite MOM rows/532 people,
+joint-case within-person lnhr/lnwg deviations, transformed OLS with intercept,
+B500/explicit native seed10001, resampling532 complete people per replication.
+Independent Python group draws and R lm/cov/type7 check18 bootstrap quantities
+and47,880 source/transform/prediction cells, with original loaded source pinned.
+Synthetic balanced/unbalanced/no-intercept/shifted designs add640 exact group
+indices and285 numerical/size quantities. Native text/JSON exports are identical.
+The native stream differs from historical Stata; no printed SE equality is
+claimed. Fixed-transform OLS resampling is installed, not automatic FE/RE refits,
+RE nuisance-component bootstrap or FE intercept inference. The transformed
+intercept is numerical zero. No few-cluster or nominal-coverage guarantee;
+any bad replication aborts without redraw/discard and prior fit/data stay intact.

@@ -652,3 +652,42 @@ labels/data/model/named reports. The actual script runs on a small inspectable
 interleaved-person fixture and refuses existing exports. Native RNG support adds
 only rand_xoshiro0.7.0/rand_core0.9.5, with no production R/Python/native dependency.
 Current bounds are B2..5000 and N*B*K²<=100,000,000 (K includes the intercept).
+
+### Whole-unit pairs bootstrap of within-transformed OLS
+
+[`within_bootstrap.td`](within_bootstrap.td) implements March2005
+mma21p2panmanual.do block4 (§21.3 pp709–714/Table21.2): form joint-finite
+lnhr/lnwg within-person deviations, fit ordinary transformed OLS with intercept,
+then resample532 whole people with replacement per replication, B500/explicit
+native seed10001. All5,320 original MOM rows are retained. Original within-person
+row order and repeated whole-unit blocks are preserved. The original transformed
+OLS fit remains usable for prediction/export; this is a read-only report.
+
+`bootstrap within_lnhr within_lnwg, cluster(id) reps(500) seed(10001)` reports
+B-1 covariance/SE, replicate means/bias and type7 percentile95 intervals. The wage
+slope bootstrap SE is0.0849753799988. The centered intercept is numerical zero;
+its tiny floating-point variability is not FE nuisance-intercept inference.
+These fixed input transformations match the manual program; there is no automatic
+FE/RE refit, RE variance-component re-estimation, residual/wild bootstrap or
+few-cluster/nominal-coverage guarantee. No equality to the historical Stata draw
+stream or printed bootstrap SE is claimed.
+
+Reproduce in a fresh directory containing prepared MOM.csv:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/within_bootstrap.td" > within_bootstrap.jsonl
+Rscript "$root/examples/mma21p1panel/within_bootstrap_reference.R" "$work/MOM.dat" within_bootstrap_reference
+python3 "$root/examples/mma21p1panel/check_within_bootstrap_reference.py" . within_bootstrap_reference "$work/MOM.dat"
+```
+
+Independent Python group draws and R4.6.1 lm/cov/type7 validate18 quantities and
+47,880 identity/design/prediction cells; all loaded raw rows are pinned separately.
+Text/JSON exports are byte-identical. Absolute1e-9 numerical tolerances are retained;
+the mathematically zero centered intercept is checked as numerical zero, not
+relative SE accuracy. Synthetic balanced/unbalanced/no-intercept/shifted cases
+check640 exact group indices and285 R numerical/size quantities. Runtime tests
+cover joint exclusions, first-seen order, exact decimal/wide keys, signed zero,
+nonfinite floating keys, variable draw sizes and unchanged models/data/reports.
+The actual script also runs on an interleaved-person fixture and refuses existing
+exports. Any failed replication aborts without redraw/drop. Work is bounded by
+G*largest_cluster_size*B*K²<=100,000,000; IID stream/API behavior is preserved.
