@@ -2,13 +2,20 @@ mod common;
 use common::{TestDir, tabdat_bin};
 use serde_json::Value;
 use std::{fs, path::PathBuf};
-fn run(d: &TestDir, mode: &str) -> std::process::Output {
+fn run_script(d: &TestDir, mode: &str, script: &str) -> std::process::Output {
   tabdat_bin()
     .current_dir(d.path())
     .args([mode, "-f"])
-    .arg(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma04p2qreg/quantiles.td"))
+    .arg(
+      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("examples/mma04p2qreg")
+        .join(script),
+    )
     .output()
     .unwrap()
+}
+fn run(d: &TestDir, mode: &str) -> std::process::Output {
+  run_script(d, mode, "quantiles.td")
 }
 const INPUT: &str =
   include_str!("../crates/tabdat-stats/tests/fixtures/quantile_workflow/inputs.csv");
@@ -125,4 +132,84 @@ fn duplicate_source_identity_and_unresolved_designs_publish_no_export() {
     assert!(!run(&d, "--json").status.success());
     assert!(!d.path().join("quantile_predictions.csv").exists());
   }
+}
+
+#[test]
+fn quantile_figure_preserves_reference_vertices_legends_and_refuses_existing_artifacts() {
+  let d = TestDir::new();
+  fs::write(d.path().join("qreg.csv"), INPUT).unwrap();
+  let json = run_script(&d, "--json", "figure.td");
+  assert!(
+    json.status.success(),
+    "{}",
+    String::from_utf8_lossy(&json.stderr)
+  );
+  let events: Vec<Value> = String::from_utf8(json.stdout)
+    .unwrap()
+    .lines()
+    .map(|l| serde_json::from_str(l).unwrap())
+    .collect();
+  let plot = events
+    .iter()
+    .find(|e| e["result_type"] == "PlotArtifactResult")
+    .unwrap();
+  assert_eq!(plot["data"]["candidate_rows"], 120);
+  assert_eq!(plot["data"]["jitter_y"], 0.0);
+  assert_eq!(
+    plot["data"]["lines"],
+    serde_json::json!([
+      {"variable":"q90","point_count":120,"omitted_rows":0},
+      {"variable":"q50","point_count":120,"omitted_rows":0},
+      {"variable":"q10","point_count":120,"omitted_rows":0}
+    ])
+  );
+  let path = d.path().join("quantile_lines.svg");
+  let svg = fs::read_to_string(&path).unwrap();
+  assert_eq!(svg.matches("class=\"scatter-point\"").count(), 120);
+  for label in [
+    "Log total household expenditure",
+    "Log household medical expenditure",
+    "90th percentile",
+    "Median",
+    "10th percentile",
+  ] {
+    assert!(svg.contains(label));
+  }
+  let lines: Vec<_> = svg
+    .lines()
+    .filter(|l| l.contains("class=\"line-series\""))
+    .collect();
+  assert_eq!(lines.len(), 3);
+  let mut reference: Vec<Vec<f64>> =
+    include_str!("../crates/tabdat-stats/tests/fixtures/quantile_workflow/predictions.csv")
+      .lines()
+      .skip(1)
+      .map(|l| l.split(',').map(|v| v.parse().unwrap()).collect())
+      .collect();
+  reference.sort_by(|a, b| a[1].total_cmp(&b[1]).then(a[0].total_cmp(&b[0])));
+  for (line, index) in lines.iter().zip([6, 4, 3]) {
+    let values = line
+      .split("data-y-values=\"")
+      .nth(1)
+      .unwrap()
+      .split('"')
+      .next()
+      .unwrap();
+    let values: Vec<f64> = values.split(',').map(|v| v.parse().unwrap()).collect();
+    assert_eq!(values.len(), 120);
+    for (value, row) in values.iter().zip(&reference) {
+      assert!((value - row[index]).abs() < 1e-8);
+    }
+  }
+  // Reach the plot's own no-clobber path rather than stopping at the earlier CSV export.
+  let csv_path = d.path().join("quantile_predictions.csv");
+  fs::remove_file(&csv_path).unwrap();
+  let refused = run_script(&d, "--json", "figure.td");
+  assert!(!refused.status.success());
+  assert!(String::from_utf8_lossy(&refused.stderr).contains("artifact"));
+  assert_eq!(fs::read_to_string(&path).unwrap(), svg);
+  fs::remove_file(&path).unwrap();
+  fs::remove_file(&csv_path).unwrap();
+  assert!(run_script(&d, "--text", "figure.td").status.success());
+  assert_eq!(fs::read_to_string(&path).unwrap(), svg);
 }

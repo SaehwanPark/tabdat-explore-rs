@@ -5,7 +5,7 @@ This native workflow covers the .1/.5/.9 fits from Cameron–Trivedi (2005)
 block 1: log household medical expenditure on log total expenditure with an
 intercept. The selected initial illustration is the conditional median.
 Separate fitted quantiles do not validate the simultaneous bootstrap in
-Figure 4.1 or reproduce the book's graphics.
+Figure 4.1. The native Figure 4.2 workflow is below.
 
 Download [`qreg0902.asc`](https://cameron.econ.ucdavis.edu/mmabook/qreg0902.asc)
 to a working directory. Its SHA256 is
@@ -78,11 +78,43 @@ and rescaled predictors (185 quantities), failure/ambiguity and scale invariance
 Runtime tests verify retained sample membership, fit state, current-row prediction,
 failed-fit clearing and nonmutating prediction errors.
 
-## Figure 4.2 workflow (WIP)
+## Figure 4.2: observed outcomes and conditional quantiles
 
-A composed `figure.td` workflow will overlay q90, q50 and q10 on the observed
-cohort with the existing SVG renderer. Coordinates, sample identity, line order,
-labels, output refusal and visual layout remain to be checked. The native
-horizontal axis is log total expenditure and the vertical axis is log medical
-expenditure; the historical do-file's textual axis titles are reversed relative
-to its plotted variables. This does not add simultaneous uncertainty or Figure4.1.
+From a fresh directory containing `qreg.csv`, run:
+
+```sh
+/path/to/repo/target/debug/tabdat-explore-rs --text -f /path/to/repo/examples/mma04p2qreg/figure.td
+```
+
+This composes `quantiles.td` and the existing SVG renderer, publishing the CSV
+export and `quantile_lines.svg`. Both destinations must be unused. On a later
+plot failure the earlier completed CSV remains; the script is not a multi-file
+transaction. Existing SVG destinations are never replaced. No automatic viewer
+opens. The figure contains all 5,006 finite observed pairs and the independently
+validated q90/q50/q10 fitted lines, with solid/dashed/dotted distinctions and
+explicit legends. Axes include all observations and line vertices; no outcome
+clipping or jitter is applied. Lines sort stably by x and original row index.
+
+The horizontal axis is log total expenditure and the vertical axis is log
+medical expenditure. These titles match the actual plotted variables; the
+author's historical do-file reverses its textual axis titles. This is a native
+SVG counterpart to Figure4.2, not a Stata WMF/pixel/font reproduction. Rendering
+does not add uncertainty bands or simultaneous inference. The flattened lower
+quantile and steeper upper quantile describe distributional differences, not
+causal effects or an independent test of slope equality.
+
+With the R reference directory above:
+
+```sh
+python3 /path/to/repo/examples/mma04p2qreg/check_figure.py reference/predictions.csv quantile_lines.svg
+```
+
+The audit compares every observed coordinate and all 15,018 independent R line
+vertices, stable row ordering, axes/legends, padded bounds and actual SVG path/
+screen geometry (1e-8 absolute tolerance). The full original-source SVG was also
+rasterized offline and visually inspected for axes, legend, line distinction and
+clipping. Text/JSON runs produce byte-identical SVGs and CSVs. A small native test
+checks reference vertices, artifact metadata, labels and no-clobber behavior;
+existing scatter tests cover model/data preservation and publication failures.
+The artifact embeds raw coordinates and candidate-row indices, as documented in
+`help scatter`; it is not anonymized.
