@@ -36,6 +36,13 @@ for row in scalars:
   close(value,row['value'],row,tail=row['path'].endswith('p_value'))
 actual=records(native/'panel_robust_hausman_predictions.csv'); expected=records(reference/'predictions.csv')
 assert len(actual)==len(expected)==5320 and list(actual[0])==list(expected[0])
+# Pin the analyzed input itself, not merely the presence of a correct raw file.
+tokens=raw.read_text().split(); assert len(tokens)==5320*8
+raw_columns=['lnhr','lnwg','kids','ageh','agesq','disab','id','year']
+for i,(a,e) in enumerate(zip(actual,expected)):
+  assert int(a['source_row'])==int(e['source_row'])==i+1
+  for j,key in enumerate(raw_columns):
+    assert float(a[key])==float(e[key])==float(tokens[8*i+j]),(i+1,key)
 cells=0
 for a,e in zip(actual,expected):
   for key in e:
