@@ -603,3 +603,22 @@ cover empty/bad/duplicate keys, missing-case imbalance, within/between rank,
 extreme theta failure, source ordering and refused-overwrite byte preservation.
 Only small synthetic fixtures are bundled; no production R/Python dependency.
 Earlier successful script effects are not rolled back after a later error.
+
+### Seeded Between pairs-bootstrap slice (WIP)
+
+Target the Between-bootstrap block of March2005 mma21p2panmanual.do: form the
+same jointly finite person means on all5,320 MOM rows/532 independent people,
+then pairs-resample the532 mean-response/design records for the intercept and
+wage slope, B200. Add a bounded unweighted OLS `bootstrap y xvars, reps(200)
+seed(integer)` report with explicit required seed, native xoshiro256++/SplitMix64
+initialization and unbiased integer rejection mapping. This is native reproducible
+method evidence, not the author's unspecified Stata random stream/printed draw.
+Report bootstrap means/bias/SE/covariance and fixed95% percentile intervals
+(R-type7 interpolation), no invented normal/t p-values. Every replicate must
+fit successfully; rank/degenerate failures abort with replicate index, without
+silently discarding/redrawing or mutating existing data/labels/model/files.
+Current complete-finite data are the sampling frame; this is IID pairs, not
+cluster/raw person-year resampling, residual/parametric/BCa or survey bootstrap.
+Independent RNG-index and R lm/quantile references, sample/failure/state and
+CLI reporting/export workflows must pass before merge. One small pure-Rust RNG
+dependency is justified by the actual reproducible-resampling requirement.
