@@ -140,6 +140,20 @@ pub fn supports_script_command(command: &Command) -> bool {
   supports_batch_command(command)
 }
 
+fn bootstrap_json(result: &tabdat_domain::BootstrapOlsResult) -> Value {
+  let mut data = serde_json::to_value(result).expect("finite bootstrap result");
+  data["estimator"] = json!("iid_pairs_bootstrap_ols");
+  // Decimal text preserves every u64 seed in JavaScript/IEEE754 consumers.
+  data["seed"] = json!(result.seed.to_string());
+  data["sample"] = match &result.sample {
+    Some(s) => {
+      json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations})
+    }
+    None => Value::Null,
+  };
+  data
+}
+
 /// Serialize owned execution results using the stable versioned CLI envelope.
 /// CLI callers must apply command admission first: shared DTOs (such as ByResult)
 /// do not imply that every command producing them is supported in JSON execution.
@@ -149,17 +163,17 @@ pub fn supports_script_command(command: &Command) -> bool {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::ClusterBootstrap(result) => {
+      let mut data = bootstrap_json(&result.bootstrap);
+      data["estimator"] = json!("cluster_pairs_bootstrap_ols");
+      data["cluster_count"] = json!(result.cluster_count);
+      data["cluster_sizes"] = json!(result.cluster_sizes);
+      data["cluster_order"] = json!("first_seen_complete_case");
+      data["replicate_observation_counts"] = json!(result.replicate_observation_counts);
+      (data, "ClusterBootstrapOlsResult")
+    }
     ExecutionResult::Bootstrap(result) => {
-      let mut data = serde_json::to_value(result).expect("finite bootstrap result");
-      data["estimator"] = json!("iid_pairs_bootstrap_ols");
-      // Decimal text preserves every u64 seed in JavaScript/IEEE754 consumers.
-      data["seed"] = json!(result.seed.to_string());
-      data["sample"] = match &result.sample {
-        Some(s) => {
-          json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations})
-        }
-        None => Value::Null,
-      };
+      let data = bootstrap_json(result);
       (data, "BootstrapOlsResult")
     }
     ExecutionResult::WuHausman(result) => {

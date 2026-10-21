@@ -556,8 +556,8 @@ fn get_command_schema(
     "bootstrap" => Ok(CommandSchemaResult {
       name:"bootstrap".to_owned(),help_topic,
       arguments:vec![ArgumentDescriptor { name:"y".into(),required:true },ArgumentDescriptor { name:"xvars".into(),required:true }],
-      options:vec![OptionDescriptor { name:"seed".into(),required:true },OptionDescriptor { name:"reps".into(),required:false },OptionDescriptor { name:"noconstant".into(),required:false }],
-      syntax:"bootstrap y xvars, seed(integer) [reps(200) noconstant]".into(),
+      options:vec![OptionDescriptor { name:"seed".into(),required:true },OptionDescriptor { name:"reps".into(),required:false },OptionDescriptor { name:"noconstant".into(),required:false },OptionDescriptor { name:"cluster".into(),required:false }],
+      syntax:"bootstrap y xvars, seed(integer) [reps(200) noconstant cluster(unit)]".into(),
     }),
     "by" => Ok(CommandSchemaResult {
       arguments: vec![
