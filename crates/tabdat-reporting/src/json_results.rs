@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -109,6 +109,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Probit { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
+    | Command::Qreg { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
     | Command::Test { .. }
@@ -163,6 +164,16 @@ fn bootstrap_json(result: &tabdat_domain::BootstrapOlsResult) -> Value {
 /// execution by [`supports_batch_command`].
 pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
   let (data, result_type) = match result {
+    ExecutionResult::Quantile(result) => {
+      let mut data = serde_json::to_value(result).expect("finite quantile result");
+      data["estimator"] = json!("linear_conditional_quantile");
+      data["covariance"] = json!("iid_location_hall_sheather_residual_spacing");
+      data["reference_distribution"] = json!("asymptotic_standard_normal");
+      data["confidence_level"] = json!(95);
+      data["solver"] = json!("clarabel_0.11.1_rust_qdldl_dual_lp_qr_polish");
+      data["sample"] = result.sample.as_ref().map_or(Value::Null,|s|json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations}));
+      (data, "QuantileRegressionResult")
+    }
     ExecutionResult::ClusterBootstrap(result) => {
       let mut data = bootstrap_json(&result.bootstrap);
       data["estimator"] = json!("cluster_pairs_bootstrap_ols");

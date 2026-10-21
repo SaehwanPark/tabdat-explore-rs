@@ -1092,6 +1092,9 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::QuantileFit(_))) {
+      return self.execute_qreg_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
       return self.execute_random_effects_prediction(command);
     }

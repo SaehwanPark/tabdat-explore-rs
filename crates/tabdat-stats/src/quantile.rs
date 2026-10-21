@@ -61,6 +61,7 @@ struct PointFit {
   iterations: u32,
   gap: f64,
   score: f64,
+  design_inverse: Vec<Vec<f64>>,
 }
 
 // Dual LP: max y'u, X'u=0, tau-1 <= u <= tau. Only K equality rows couple
@@ -99,7 +100,7 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
     .map(|r| (0..k).map(|j| (r[j] - centers[j]) / scales[j]).collect())
     .collect();
   let response: Vec<_> = y.iter().map(|v| (v - center_y) / scale_y).collect();
-  qr_decompose_with_response(&scaled, &response)?;
+  let qr = qr_decompose_with_response(&scaled, &response)?;
   let mut pointers = Vec::with_capacity(n + 1);
   let mut rows = Vec::with_capacity(n * (k + 2));
   let mut values = Vec::with_capacity(n * (k + 2));
@@ -166,6 +167,15 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
   let beta = qr_decompose_with_response(&ax, &ay)
     .and_then(|qr| solve_upper_triangular(&qr.r, &qr.qty))
     .map_err(|_| invalid("optimal coefficients are not isolated at solver precision"))?;
+  if ax
+    .iter()
+    .zip(&ay)
+    .any(|(row, y)| (y - sum(row.iter().zip(&beta).map(|(x, b)| x * b))).abs() > 1e-9)
+  {
+    return Err(invalid(
+      "active LP constraints are unresolved at solver precision",
+    ));
+  }
   let loss = check_loss(
     scaled
       .iter()
@@ -192,11 +202,34 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
   if coefficients.iter().any(|v| !v.is_finite()) {
     return Err(invalid("coefficient rescaling overflowed"));
   }
+  // If X_scaled = X_original * T, then inv(X'X) = T inv(Xs'Xs) T'.
+  // Keep this calculation in scaled coordinates until the final unit transform.
+  let inverse = xtx_inverse_from_r(&qr.r)?;
+  let mut transform = vec![vec![0.0; k]; k];
+  for j in 0..k {
+    transform[j][j] = 1.0 / scales[j];
+    if intercept && j > 0 {
+      transform[0][j] = -centers[j] / scales[j];
+    }
+  }
+  let mut design_inverse = vec![vec![0.0; k]; k];
+  for i in 0..k {
+    for j in 0..=i {
+      let value = sum(
+        (0..k)
+          .flat_map(|a| (0..k).map(move |b| (a, b)))
+          .map(|(a, b)| transform[i][a] * inverse[a][b] * transform[j][b]),
+      );
+      design_inverse[i][j] = value;
+      design_inverse[j][i] = value;
+    }
+  }
   Ok(PointFit {
     coefficients,
     iterations: solver.solution.iterations,
     gap,
     score,
+    design_inverse,
   })
 }
 
@@ -240,7 +273,6 @@ pub fn fit_quantile_iid(
       row
     })
     .collect();
-  let qr = qr_decompose_with_response(&design, &problem.response)?;
   let point = point_fit(&design, &problem.response, tau, problem.include_intercept)?;
   let residuals: Vec<_> = design
     .iter()
@@ -274,7 +306,8 @@ pub fn fit_quantile_iid(
     return Err(invalid("IID error sparsity must be positive and finite"));
   }
   let scale = tau * (1.0 - tau) * sparsity * sparsity;
-  let covariance: Vec<Vec<f64>> = xtx_inverse_from_r(&qr.r)?
+  let covariance: Vec<Vec<f64>> = point
+    .design_inverse
     .iter()
     .map(|r| r.iter().map(|v| v * scale).collect())
     .collect();
