@@ -47,6 +47,10 @@ for(case in c('balanced','interleaved','shifted','null_boundary')) {
   numeric <- optimHess(par,nll,gradient,control=list(ndeps=rep(1e-5,K+2)))
   stopifnot(max(abs(numeric-H)/pmax(1,abs(H)))<1e-6)
   V <- solve(H)
+  unit_lr <- max(0,2*(r$ll-profile(0)$ll))
+  unit_p <- if(unit_lr==0) 1 else .5*pchisq(unit_lr,1,lower.tail=FALSE)
+  emit(case,'/ml/unit_variance_test/statistic',unit_lr)
+  emit(case,'/ml/unit_variance_test/p_value',unit_p)
   component <- function(name, estimate, log_variance) {
     log_se <- sqrt(log_variance)
     limits <- exp(log(estimate)+c(-1,1)*qnorm(.975)*log_se)

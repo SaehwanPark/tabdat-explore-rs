@@ -47,6 +47,7 @@ fn active_zero_variance_face_matches_gaussian_lm_ml_and_constrained_information(
     let fit = fit_random_effects_ml(&p, "id").unwrap();
     assert_eq!(fit.gls.sample, p.sample);
     let ml = fit.ml.as_ref().unwrap();
+    let unit_variance_test = ml.unit_variance_test.as_ref().unwrap();
     assert!(ml.unit_variance_boundary());
     assert_eq!(ml.null_sigma_u_squared == 0.0, case == "both_boundary");
     assert_eq!(
@@ -57,6 +58,8 @@ fn active_zero_variance_face_matches_gaussian_lm_ml_and_constrained_information(
       case == "both_boundary"
     );
     assert!(ml.profile_score < 0.0);
+    assert_eq!(unit_variance_test.statistic, 0.0);
+    assert_eq!(unit_variance_test.p_value, 1.0);
     assert_eq!(
       ml.joint_parameter_names,
       ["intercept", "x", "z", "log_sigma_e_squared"]
@@ -101,5 +104,5 @@ fn active_zero_variance_face_matches_gaussian_lm_ml_and_constrained_information(
       comparisons += 1;
     }
   }
-  assert_eq!(comparisons, 372);
+  assert_eq!(comparisons, 378);
 }

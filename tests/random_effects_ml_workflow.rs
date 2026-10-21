@@ -66,6 +66,19 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
     );
     assert!(component_inference["sigma_e_squared"]["standard_error"].is_number());
     assert!(component_inference["sigma_u_squared"]["standard_error"].is_number());
+    let unit_variance_test = &fit["ml"]["unit_variance_test"];
+    assert_eq!(unit_variance_test["method"], "profile_likelihood_ratio");
+    assert_eq!(unit_variance_test["null_hypothesis"], "sigma_u_squared = 0");
+    assert_eq!(
+      unit_variance_test["alternative_hypothesis"],
+      "sigma_u_squared > 0"
+    );
+    assert_eq!(
+      unit_variance_test["reference_distribution"],
+      "asymptotic_50_50_chi_square_0_1_mixture"
+    );
+    assert!(unit_variance_test["statistic"].as_f64().unwrap() > 0.0);
+    assert!((0.0..0.5).contains(&unit_variance_test["p_value"].as_f64().unwrap()));
     assert!(fit.get("r_squared").is_none());
     let case = if boundary {
       "null_boundary"
@@ -142,6 +155,8 @@ fn ml_cli_reports_joint_information_likelihood_and_population_exports() {
       "Marginal log likelihood",
       "slope LR chi-square(2)",
       "Variance-component inference: joint observed information",
+      "Unit-variance LR test: H0 sigma_u squared = 0",
+      "asymptotic 50:50 chi-square(0,1) mixture",
       "sigma_u squared SE",
       "CI lower (95%)",
     ] {
@@ -234,6 +249,8 @@ fn zero_unit_variance_ml_reports_constrained_information_and_exports_lm_predicti
         .unwrap()
         .contains("boundary")
     );
+    assert_eq!(fit["ml"]["unit_variance_test"]["statistic"], 0.0);
+    assert_eq!(fit["ml"]["unit_variance_test"]["p_value"], 1.0);
     let expected: std::collections::BTreeMap<_, f64> = include_str!(
       "../crates/tabdat-stats/tests/fixtures/random_effects_ml_boundary_reference.csv"
     )
@@ -297,7 +314,8 @@ fn zero_unit_variance_ml_reports_constrained_information_and_exports_lm_predicti
     for phrase in [
       "zero unit variance boundary",
       "Constrained observed-information",
-      "No regular unit-variance SE or test",
+      "No regular normal-Wald unit-variance SE",
+      "Unit-variance LR test: H0 sigma_u squared = 0",
       "sigma_u squared uncertainty unavailable",
       "Slope LR reference unavailable",
     ] {

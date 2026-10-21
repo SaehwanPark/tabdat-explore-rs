@@ -1,4 +1,6 @@
 case,path,value
+pooled,/ml/unit_variance_test/statistic,0
+pooled,/ml/unit_variance_test/p_value,1
 pooled,/gls/coefficients/0/value,0.0179538416765254
 pooled,/gls/coefficients/0/standard_error,0.0913663978289316
 pooled,/gls/coefficients/0/statistic,0.196503770567173
@@ -123,6 +125,8 @@ pooled,/ml/null_sigma_e_squared,0.09328109375
 pooled,/ml/null_sigma_u_squared,0.205021592773438
 pooled,/ml/likelihood_ratio,48.3944142937105
 pooled,/ml/likelihood_ratio_df,2
+shifted_interleaved,/ml/unit_variance_test/statistic,0
+shifted_interleaved,/ml/unit_variance_test/p_value,1
 shifted_interleaved,/gls/coefficients/0/value,100.017953841677
 shifted_interleaved,/gls/coefficients/0/standard_error,0.0913663978289333
 shifted_interleaved,/gls/coefficients/0/statistic,1094.6907858723
@@ -247,6 +251,8 @@ shifted_interleaved,/ml/null_sigma_e_squared,0.0932810937499997
 shifted_interleaved,/ml/null_sigma_u_squared,0.205021592773438
 shifted_interleaved,/ml/likelihood_ratio,48.3944142937093
 shifted_interleaved,/ml/likelihood_ratio_df,2
+both_boundary,/ml/unit_variance_test/statistic,0
+both_boundary,/ml/unit_variance_test/p_value,1
 both_boundary,/gls/coefficients/0/value,0.0179538416765252
 both_boundary,/gls/coefficients/0/standard_error,0.0913663978289316
 both_boundary,/gls/coefficients/0/statistic,0.19650377056717

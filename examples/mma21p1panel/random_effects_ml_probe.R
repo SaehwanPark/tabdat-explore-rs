@@ -31,6 +31,8 @@ su<-sqrt((r$v-r$a)/T); se<-sqrt(r$a); gu<-c(rep(0,K),-r$a/(2*T*su),r$v/(2*T*su))
 rho<-(r$v-r$a)/(r$v+(T-1)*r$a); gr<-c(rep(0,K),-T*r$a*r$v/(r$v+(T-1)*r$a)^2,T*r$a*r$v/(r$v+(T-1)*r$a)^2)
 print(c(sigma_u=su,se_sigma_u=sqrt(drop(t(gu)%*%V%*%gu)),sigma_e=se,se_sigma_e=sqrt(drop(t(ge)%*%V%*%ge)),rho=rho,se_rho=sqrt(drop(t(gr)%*%V%*%gr))))
 fit<-lme(y~x,random=~1|id,data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10));print(c(fixef(fit),sigma=fit$sigma,loglik=as.numeric(logLik(fit))));print(VarCorr(fit));print(sqrt(diag(vcov(fit))))
+unit_lr<-max(0,2*(r$ll-profile(0,TRUE)$ll));unit_p<-if(unit_lr==0)1 else .5*pchisq(unit_lr,1,lower.tail=FALSE)
+stopifnot(abs(profile(0,TRUE)$ll-as.numeric(logLik(lm(y~x,data=d))))<1e-8)
 
 nullsw<-sum((y-ym)^2); nullsb<-sum((ym-mean(y))^2)
 nulla<-nullsw/(N-G); nullv<-nullsb/G
@@ -55,6 +57,8 @@ if(length(args)==3L) {
   for(name in names(vals)) emit(paste0('/',name),vals[[name]])
   vals <- c(eta=eta,log_likelihood=r$ll,null_log_likelihood=nullll,null_sigma_e_squared=nulla,null_sigma_u_squared=(nullv-nulla)/T,likelihood_ratio=2*(r$ll-nullll),likelihood_ratio_p_value=pchisq(2*(r$ll-nullll),K-1,lower.tail=FALSE))
   for(name in names(vals)) emit(paste0('/ml/',name),vals[[name]])
+  emit('/ml/unit_variance_test/statistic',unit_lr)
+  emit('/ml/unit_variance_test/p_value',unit_p)
   write.csv(do.call(rbind,rows),file.path(args[3],'reference.csv'),row.names=FALSE,quote=FALSE)
   output <- d; names(output)<-c('lnhr','lnwg','kids','ageh','agesq','disab','id','year')
   output <- cbind(source_row=seq_len(N),output)

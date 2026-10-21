@@ -51,9 +51,14 @@ for(case in if(length(args)==3) 'mom_sensitivity' else c('unequal','shifted_inte
     candidates <- c(0,roots); eta <- candidates[which.max(sapply(candidates,function(e)profile(e)$ll))]
     c(list(eta=eta),profile(eta))
   }
-  r <- select(make_profile(X)); null <- select(make_profile(matrix(1,N,1)))
+  profile_full <- make_profile(X)
+  r <- select(profile_full); null <- select(make_profile(matrix(1,N,1)))
   boundary <- r$eta==0
   stopifnot(boundary==(case=='boundary'))
+  unit_lr <- if(boundary) 0 else max(0,2*(r$ll-profile_full(0)$ll))
+  unit_p <- if(unit_lr==0) 1 else .5*pchisq(unit_lr,1,lower.tail=FALSE)
+  emit(case,'/ml/unit_variance_test/statistic',unit_lr)
+  emit(case,'/ml/unit_variance_test/p_value',unit_p)
   if(boundary) {
     trusted <- lm(formula,data=d); Vb <- unname(vcov(trusted))*df.residual(trusted)/N
     V <- matrix(0,K+1,K+1); V[1:K,1:K] <- Vb; V[K+1,K+1] <- 2/N

@@ -150,6 +150,12 @@ Gaussian marginal ML:
   interval are null with an explicit reason; the constrained component has no
   regular normal-Wald inference. These are model-based intervals, not profile
   intervals or robust ML inference.
+- `ml.unit_variance_test` tests `sigma_u² = 0` against `sigma_u² > 0` by a
+  one-sided profile likelihood ratio. Its asymptotic reference is the 50:50
+  mixture of chi-square(0) and chi-square(1), for the single variance component
+  constrained at the boundary with residual variance interior. A boundary-selected
+  fit has LR=0 and p=1. This is a model-based boundary test, not ordinary
+  chi-square(1) or finite-sample inference.
 - The bounded profile searches eta=log(1+T*sigma_u²/sigma_e²) in [0,24], on a
   0.5 grid, polishes positive-to-negative score crossings by bisection and selects
   the highest detected likelihood including eta=0. It does not guarantee the
