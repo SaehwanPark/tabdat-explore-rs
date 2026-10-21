@@ -834,3 +834,18 @@ claimed. Fixed-transform OLS resampling is installed, not automatic FE/RE refits
 RE nuisance-component bootstrap or FE intercept inference. The transformed
 intercept is numerical zero. No few-cluster or nominal-coverage guarantee;
 any bad replication aborts without redraw/discard and prior fit/data stay intact.
+
+### MMA-PANEL fixed-theta RE-GLS whole-person bootstrap evidence
+
+The [bounded workflow](../../examples/mma21p1panel/README.md) implements block5
+of March2005 mma21p2panmanual.do: all5,320 MOM rows/532 people, guarded balanced
+joint cases, Swamy–Arora theta estimated once, ordinary transformed OLS with
+intercept, whole-person B500/native seed10001 bootstrap. The transformed intercept
+is (1-theta)*population alpha. R/plm independently checks theta and original
+parameter scaling, then independent group draws and R lm/cov/type7 validate18
+bootstrap quantities plus theta,95,760 identity/design/prediction cells and all
+original loaded rows. Text/JSON exports are identical. Synthetic interleaved
+24-row evidence adds18 bootstrap quantities/432 cells and failure/export cases.
+This conditions on fixed theta, not native RE variance-component re-estimation
+or unconditional nuisance inference, historical Stata RNG/printed-SE parity,
+few-cluster accuracy or a nominal-coverage guarantee.
