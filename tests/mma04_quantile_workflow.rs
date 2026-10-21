@@ -206,7 +206,11 @@ fn quantile_figure_preserves_reference_vertices_legends_and_refuses_existing_art
   fs::remove_file(&csv_path).unwrap();
   let refused = run_script(&d, "--json", "figure.td");
   assert!(!refused.status.success());
-  assert!(String::from_utf8_lossy(&refused.stderr).contains("artifact"));
+  let error = String::from_utf8_lossy(&refused.stderr);
+  assert!(
+    error.contains("already exists") && error.contains("quantile_lines.svg"),
+    "{error}"
+  );
   assert_eq!(fs::read_to_string(&path).unwrap(), svg);
   fs::remove_file(&path).unwrap();
   fs::remove_file(&csv_path).unwrap();
