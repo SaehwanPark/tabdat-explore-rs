@@ -541,3 +541,20 @@ actual count/theta ranges and eta reference T_min. The Rust group_size=0 sentine
 uses retained-sample range methods, with no new required result-struct fields.
 The bounded profile, covariance assumptions, boundary LR withholding and original
 printed-Stata8 uncertainty discrepancy remain as documented above.
+
+### Robust auxiliary Hausman comparison (WIP)
+
+Target §21.4.3 p.719, March2005 `mma21p2panmanual.do` block7: all5,320 MOM
+rows/532 people/T10, lnhr~1+lnwg. Construct the same Swamy–Arora quasi-demeaned
+response/wage and within-demeaned wage, then regress the former on both wage
+columns with an intercept and person-cluster covariance. Test the added within
+wage coefficient. Its one-restriction F equals the author's displayed t² H;
+report native cluster F(1,G-1) p-values explicitly, not a manufactured chi-square
+p-value. Maintain the existing G/(G-1)*(N-1)/(N-K) OLS cluster correction (K3).
+Validate theta, every design/source row, coefficients/full covariance/intervals,
+F/tails and predictions against independent R and inspect printed author facts
+under their historical storage convention. The conventional covariance-difference
+Hausman is explicitly invalid under residual intracluster dependence in the
+first author program; no general `estat hausman` or model-selection guarantee
+is installed by this bounded composed workflow. Reject bad raw keys, unequal
+joint-case counts and degenerate within/between designs; protect export failure.
