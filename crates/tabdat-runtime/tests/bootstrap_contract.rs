@@ -163,6 +163,17 @@ fn whole_clusters_use_current_complete_cases_and_exact_decimal_keys_without_stat
     }
     assert_eq!(s.state(), before);
   }
+  run(
+    &mut s,
+    "sql SELECT *, DATE '2020-01-01' AS date_key FROM active into unsupported_keys",
+  );
+  let unsupported = s.state();
+  let error = s
+    .execute(parse_command("bootstrap y x z, cluster(date_key) seed(7)").unwrap())
+    .unwrap_err()
+    .to_string();
+  assert!(error.contains("numeric, text or boolean"), "{error}");
+  assert_eq!(s.state(), unsupported);
   run(&mut s, "predict preserved_after_cluster");
 }
 #[test]
@@ -181,4 +192,24 @@ fn cluster_replicate_failure_is_atomic_and_nonfinite_keys_are_excluded() {
   );
   assert_eq!(s.state(), before);
   run(&mut s, "predict preserved_after_failed_cluster");
+}
+
+#[test]
+fn missing_nonfinite_and_signed_zero_float_groups_have_explicit_sample_semantics() {
+  let f = Fixture::new("y,x,g\n1,0,0.0\n3,1,-0.0\n2,2,1.0\n5,3,1.0\n9,4,Inf\n8,5,NaN\n7,6,\n");
+  let mut s = f.load();
+  let before = s.state();
+  let ExecutionResult::ClusterBootstrap(r) =
+    run(&mut s, "bootstrap y x, cluster(g) seed(7) reps(40)")
+  else {
+    panic!("cluster bootstrap")
+  };
+  assert_eq!(r.cluster_count, 2);
+  assert_eq!(r.cluster_sizes, vec![2, 2]);
+  assert_eq!(
+    r.bootstrap.sample.as_ref().unwrap().retained_indices,
+    vec![0, 1, 2, 3]
+  );
+  assert_eq!(r.bootstrap.sample.as_ref().unwrap().dropped_observations, 3);
+  assert_eq!(s.state(), before);
 }

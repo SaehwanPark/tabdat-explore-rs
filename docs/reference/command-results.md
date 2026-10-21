@@ -1294,3 +1294,22 @@ names and the full B-1 covariance matrix use the same order. Interval method is
 A failed replicate produces an indexed execution error, not partial uncertainty.
 The pinned Python command catalogs remain unchanged as historical fixtures;
 bootstrap is an explicit native read-only catalog/effects/help extension.
+
+## ClusterBootstrapOlsResult
+
+`bootstrap y xvars, cluster(unit) seed(integer) [reps(200) noconstant]` returns
+flat CLI-v1 `ClusterBootstrapOlsResult`, estimator `cluster_pairs_bootstrap_ols`.
+Common coefficient/covariance/seed/sample fields match BootstrapOlsResult, whose
+IID wire contract is unchanged. Additive cluster fields are `cluster_count`,
+`cluster_sizes` in first-seen retained order, `cluster_order` equal to
+`first_seen_complete_case`, and `replicate_observation_counts` in replication
+order. Each draw selects G whole groups with replacement; unbalanced groups
+produce variable replicate N. Keys support numeric/text/boolean values, exact
+integer/decimal identity, merged floating signed zeros and excluded floating
+NaN/infinity; other types fail. Complete-finite y/X and nonmissing keys jointly
+define the sample. The cap is G*largest_cluster_size*B*K²<=100,000,000.
+
+This is current-column OLS with fixed supplied transforms, not automatic FE/RE,
+wild/residual or survey resampling. B-1 covariance/SE and fixed type7 percentile95
+intervals do not provide a few-cluster or nominal-coverage guarantee. Any failed
+replication aborts without discard/redraw or retained-model/data mutation.

@@ -892,9 +892,14 @@ fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
   output
 }
 
-fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult) -> String {
+fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult, whole_cluster: bool) -> String {
+  let kind = if whole_cluster {
+    "Whole-cluster"
+  } else {
+    "IID"
+  };
   let mut text = format!(
-    "IID pairs-bootstrap OLS: {}\nN = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+    "{kind} pairs-bootstrap OLS: {}\nN = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
     result.outcome.escape_debug(),
     result.observation_count,
     result.replications,
@@ -915,7 +920,12 @@ fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult) -> String {
     )
     .unwrap();
   }
-  text.push_str("Resamples complete rows independently; not a cluster or residual bootstrap. Data and the retained fit are unchanged.\n");
+  text.push_str(if whole_cluster {
+    "Resamples whole clusters with replacement; retains within-cluster rows. Not residual, wild or automatic FE/RE bootstrap. "
+  } else {
+    "Resamples complete rows independently; not a cluster or residual bootstrap. "
+  });
+  text.push_str("Data and the retained fit are unchanged.\n");
   text
 }
 
@@ -935,12 +945,9 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.stored_count
     ),
     ExecutionResult::EstimateTable(result) => crate::estimate_table::render_estimate_table(result),
-    ExecutionResult::Bootstrap(result) => bootstrap_report(result),
+    ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
     ExecutionResult::ClusterBootstrap(result) => {
-      let text = bootstrap_report(&result.bootstrap)
-        .replacen("IID pairs-bootstrap", "Whole-cluster pairs-bootstrap", 1)
-        .replace("Resamples complete rows independently; not a cluster or residual bootstrap.",
-          "Resamples whole clusters with replacement; retains within-cluster rows. Not residual, wild or automatic FE/RE bootstrap.");
+      let text = bootstrap_report(&result.bootstrap, true);
       format!(
         "{text}Clusters = {}; first-seen sample order; replicate N range = {}..{}; few-cluster/nominal-coverage guarantees are unavailable.\n",
         result.cluster_count,

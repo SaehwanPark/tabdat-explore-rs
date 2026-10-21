@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Development-only independent group-draw oracle; no production dependency."""
-import csv, importlib.util
+import csv, importlib.util, sys
+sys.dont_write_bytecode=True
 from pathlib import Path
 root=Path(__file__).parent
 spec=importlib.util.spec_from_file_location('oracle',root.parent/'bootstrap/draws.py')

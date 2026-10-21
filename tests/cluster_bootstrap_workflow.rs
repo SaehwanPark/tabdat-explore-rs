@@ -78,3 +78,66 @@ fn cluster_cli_matches_r_reports_and_preserves_prediction_exports() {
   }
   assert_eq!(compared, 285);
 }
+
+#[test]
+fn actual_within_script_resamples_whole_people_and_preserves_existing_exports() {
+  let d = TestDir::new();
+  let mut input = String::from("source_row,lnhr,lnwg,kids,ageh,agesq,disab,id,year\n");
+  let mut index = 0;
+  for t in (0..4).rev() {
+    for id in (1..=20).rev() {
+      index += 1;
+      let x = 2.0 + 0.15 * id as f64 + 0.1 * t as f64 + 0.03 * ((id * t + 2) % 5) as f64;
+      let y = 7.0 + 0.2 * id as f64 + 0.04 * t as f64 + 0.005 * ((id * t + 1) % 7) as f64;
+      input.push_str(&format!("{index},{y},{x},0,30,900,0,{id},{}\n", 1979 + t));
+    }
+  }
+  fs::write(d.path().join("MOM.csv"), input).unwrap();
+  let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    .join("examples/mma21p1panel/within_bootstrap.td");
+  let run = |mode| {
+    tabdat_bin()
+      .current_dir(d.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let json = run("--json");
+  assert!(
+    json.status.success(),
+    "{}",
+    String::from_utf8_lossy(&json.stderr)
+  );
+  let events: Vec<Value> = String::from_utf8(json.stdout)
+    .unwrap()
+    .lines()
+    .map(|l| serde_json::from_str(l).unwrap())
+    .collect();
+  let r = &events
+    .iter()
+    .find(|e| e["result_type"] == "ClusterBootstrapOlsResult")
+    .unwrap()["data"];
+  assert_eq!(r["observation_count"], 80);
+  assert_eq!(r["cluster_count"], 20);
+  assert_eq!(r["cluster_sizes"], serde_json::json!(vec![4; 20]));
+  assert_eq!(r["replications"], 500);
+  assert_eq!(r["seed"], "10001");
+  let target = d.path().join("panel_within_bootstrap_predictions.csv");
+  let bytes = fs::read(&target).unwrap();
+  let text = String::from_utf8(bytes.clone()).unwrap();
+  assert_eq!(text.lines().skip(1).count(), 80);
+  for (index, line) in text.lines().skip(1).enumerate() {
+    let row: Vec<f64> = line.split(',').map(|v| v.parse().unwrap()).collect();
+    assert_eq!(row[0], (index + 1) as f64);
+    assert_eq!(row[1], (20 - index % 20) as f64);
+    assert!((row[5] - row[7] - row[8]).abs() < 1e-12);
+  }
+  let refused = run("--json");
+  assert!(!refused.status.success());
+  assert_eq!(fs::read(&target).unwrap(), bytes);
+  fs::remove_file(&target).unwrap();
+  let text = run("--text");
+  assert!(text.status.success());
+  assert_eq!(fs::read(&target).unwrap(), bytes);
+}
