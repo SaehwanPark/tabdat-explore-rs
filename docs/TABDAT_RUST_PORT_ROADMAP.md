@@ -152,11 +152,15 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
-1. Advance a justified panel comparison or another required econometric analysis on an
+1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
    [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
    POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
    and Gaussian ML with joint/constrained observed information and null/slope LR.
+   The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
+   OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
+   printed facts, with F(1,G-1) reference and explicit covariance assumptions.
+   This does not install general native `estat hausman` or automatic model selection.
    Unbalanced ML adds a 4,738-row MOM sensitivity audit (53 scalars/52,118 cells)
    and500 synthetic numerical comparisons, with unequal-count null/information.
    Interior ML audits46 R quantities/58,520 cells and447 synthetic comparisons;

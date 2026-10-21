@@ -542,19 +542,64 @@ uses retained-sample range methods, with no new required result-struct fields.
 The bounded profile, covariance assumptions, boundary LR withholding and original
 printed-Stata8 uncertainty discrepancy remain as documented above.
 
-### Robust auxiliary Hausman comparison (WIP)
+### Robust auxiliary Hausman comparison — §21.4.3 p.719
 
-Target §21.4.3 p.719, March2005 `mma21p2panmanual.do` block7: all5,320 MOM
-rows/532 people/T10, lnhr~1+lnwg. Construct the same Swamy–Arora quasi-demeaned
-response/wage and within-demeaned wage, then regress the former on both wage
-columns with an intercept and person-cluster covariance. Test the added within
-wage coefficient. Its one-restriction F equals the author's displayed t² H;
-report native cluster F(1,G-1) p-values explicitly, not a manufactured chi-square
-p-value. Maintain the existing G/(G-1)*(N-1)/(N-K) OLS cluster correction (K3).
-Validate theta, every design/source row, coefficients/full covariance/intervals,
-F/tails and predictions against independent R and inspect printed author facts
-under their historical storage convention. The conventional covariance-difference
-Hausman is explicitly invalid under residual intracluster dependence in the
-first author program; no general `estat hausman` or model-selection guarantee
-is installed by this bounded composed workflow. Reject bad raw keys, unequal
-joint-case counts and degenerate within/between designs; protect export failure.
+[`robust_hausman.td`](robust_hausman.td) implements block7 of the authors'
+March2005 [manual panel program](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.do)
+and [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.txt),
+on all5,320 MOM rows/532 people/T10 with lnhr~1+lnwg. The first author program
+warns that conventional FE-minus-RE covariance subtraction is invalid when
+residual within-person dependence makes RE inefficient. This workflow uses the
+preferred auxiliary regression, not that conventional test.
+
+After auditing all raw keys and unique integer source_row1..5320, select joint
+finite lnhr/lnwg cases. Compute unit means and balanced Swamy–Arora components:
+sigma_e²=within RSS/(N-G-1); raw sigma_u²=between RSS/(G-2)-sigma_e²/T,
+truncated at zero. Require balanced T>=2/G>3, identified within/between designs,
+positive finite sigma_e² and finite theta in[0,1). The complete MOM sample has
+no exclusions; an entire excluded unit is allowed, while residual imbalance
+fails. Ordered window/aggregate inputs preserve deterministic source/design
+values across text/JSON. No panel declaration or implicit lag operation is used.
+
+Regress quasi_lnhr=lnhr-theta*mean_lnhr on an intercept,
+quasi_lnwg=lnwg-theta*mean_lnwg and within_lnwg=lnwg-mean_lnwg, clustered by id.
+The restriction within_lnwg=0 is the comparison: use the existing OLS group-score
+multiplier G/(G-1)*(N-1)/(N-K), K3, and t/F reference DF G-1. The one-restriction
+F equals the author's displayed H=t², **1.649507405254**, with native F(1,531)
+p=**0.199586037144**. Its asymptotic chi-square(1) tail would be0.199025989128;
+these references are not silently interchanged. `lincom` supplies the auxiliary
+coefficient interval; predictions/residuals belong to the auxiliary regression,
+not the original lnhr equation. Raw and every transformed column are exported.
+
+This is asymptotic panel-robust inference under independent units and the
+maintained linear/exogeneity conditions, not a few-cluster or finite-sample
+exact guarantee. The generated transformation is treated as fixed in the
+auxiliary covariance, following the author program. Failure to reject does not
+prove RE exogeneity or automatically select a model. It is not a test that the
+unit variance is zero. No general native `estat hausman`, arbitrary-model
+comparison, unbalanced auxiliary workflow or bootstrap is installed.
+
+Reproduce in a fresh directory containing prepared MOM.csv (root/work as above):
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/robust_hausman.td" > robust_hausman.jsonl
+Rscript "$root/examples/mma21p1panel/robust_hausman_reference.R" MOM.csv hausman_reference
+python3 "$root/examples/mma21p1panel/check_robust_hausman_reference.py" . hausman_reference "$work/MOM.dat"
+# Separate selected printed-fact audit; never round native float64 references:
+Rscript "$root/examples/mma21p1panel/robust_hausman_reference.R" MOM.csv hausman_float32 float32
+```
+
+R4.6.1/plm2.6.7/sandwich3.1.1 and independent grouped-score algebra audit
+**39 coefficient/covariance/inference/fit quantities and95,760 exported cells /
+all5,320 rows**, including complete raw/source/mean/within/quasi/prediction data.
+Tolerances remain absolute1e-9/nonzero-tail relative1e-8 with exact identities.
+Text/JSON exports are byte-identical. Separate float32 ingestion reproduces8
+selected printed coefficient/SE/H/theta facts at half a printed unit; this does
+not claim every Stata intermediate storage operation or printed column.
+
+The committed24-row independent R fixture (plus4 excluded-unit raw rows) covers
+interleaving, exact joint-case means and full inference/export. CLI checks also
+cover empty/bad/duplicate keys, missing-case imbalance, within/between rank,
+extreme theta failure, source ordering and refused-overwrite byte preservation.
+Only small synthetic fixtures are bundled; no production R/Python dependency.
+Earlier successful script effects are not rolled back after a later error.

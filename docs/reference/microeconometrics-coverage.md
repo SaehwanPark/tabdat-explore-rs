@@ -66,7 +66,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,187 quantities/all source/design/mean/index records; native person-Poisson551/NB2 597-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; arbitrary-cutoff count probabilities/formal tests/remaining Tables20.3–20.6 and richer counts remain required |
-| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS classical, interior ML coefficient/likelihood and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept inference, unbalanced RE and ML variance-component inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required |
+| MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS classical, interior ML coefficient/likelihood and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept inference, unbalanced RE and ML variance-component inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison validated below |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
@@ -787,3 +787,18 @@ Raw state/sample/labels, missing/overflow/zero-mean limits and atomic failures a
 covered; no distributional guarantee follows from robust covariance. Cutoffs
 beyond99, parameter uncertainty/formal calibration, and printed Table20.6 NB2
 reconciliation remain unresolved. Underlying count-fit contracts are preserved.
+
+### MMA-PANEL p719 robust auxiliary Hausman comparison
+
+The [complete composed workflow](../../examples/mma21p1panel/README.md) validates
+§21.4.3 p719 / March2005 mma21p2panmanual.do block7 on all5,320 MOM rows/532 people.
+Joint-finite means, balanced Swamy–Arora theta and the auxiliary within-wage
+restriction use existing SQL/OLS cluster covariance (K3) and native F(1,531)
+inference. H=t²=1.649507405254, F p=0.199586037144; the asymptotic chi-square
+tail is distinguished. Conventional covariance subtraction is not used under
+within-person dependence. Independent R/plm/sandwich checks39 quantities and
+95,760 raw/design/prediction cells at unchanged tolerances; separate float32
+input matches8 selected author-printed facts. Small interleaved/excluded-unit
+fixtures, sample/rank/theta guards and export failure/identity checks complete
+the workflow. This adds one bounded illustrated comparison, not general native
+`estat hausman`, arbitrary model selection, bootstrap or full panel coverage.
