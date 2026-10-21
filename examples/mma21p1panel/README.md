@@ -652,3 +652,16 @@ labels/data/model/named reports. The actual script runs on a small inspectable
 interleaved-person fixture and refuses existing exports. Native RNG support adds
 only rand_xoshiro0.7.0/rand_core0.9.5, with no production R/Python/native dependency.
 Current bounds are B2..5000 and N*B*K²<=100,000,000 (K includes the intercept).
+
+### Planned whole-unit pairs-bootstrap slice (WIP)
+
+Target the March2005 mma21p2panmanual.do block4: jointly finite lnhr/lnwg
+within-person deviations on all5,320 MOM rows/532 people, ordinary transformed
+OLS with intercept, resampling532 whole people with replacement per replication,
+B500/native seed10001. Native draws will be independently checked with Python
+and R lm/cov/type7 quantiles; no equality to Stata's historical stream is claimed.
+The original IID API/stream and read-only model/data contracts must remain intact.
+Unbalanced synthetic groups must retain all within-group records and expose
+variable replicate sizes. Missing groups, rank/numerical replication failure and
+work bounds must fail explicitly without discarded/redrawn replications.
+Implementation and verification are pending; this is not installed capability.
