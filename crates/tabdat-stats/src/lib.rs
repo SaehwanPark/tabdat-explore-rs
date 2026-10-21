@@ -39,7 +39,7 @@ pub use binary::{
 };
 pub use count_probabilities::{
   CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_PROBABILITY_TAIL,
-  count_bin_probabilities, count_probability_table,
+  count_bin_probabilities, count_point_probabilities, count_probability_table,
 };
 pub use diagnostics::variance_inflation_factors;
 pub use distributions::{normal_cdf, normal_pdf, normal_quantile};

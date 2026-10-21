@@ -164,7 +164,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    comparisons with explicit boundary metadata. Either fitted boundary withholds
    ordinary LR references. The bounded profile and lack of regular unit-variance
    inference remain explicit. A small unresolved difference from old printed
-   Stata8 SEs prevents claiming the published uncertainty column. Unbalanced RE,
+   Stata8 SEs prevents claiming the published uncertainty column. Unbalanced RE-GLS,
    robust/variance-component ML inference, unit effects, Hausman/panel diagnostics,
    bootstrap and remaining table/figure outputs stay required. No persistent
    panel declaration or whole-table/family coverage is claimed.
@@ -176,7 +176,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    against R (Poisson1,095/NB2 1,187 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: remaining exposure workflows, household/site/multiway/survey inference, current-row count probability prediction,
+   panel analysis: remaining exposure workflows, household/site/multiway/survey inference, arbitrary-cutoff count probability prediction,
    formal NB boundary/specification tests and remaining table outputs stay required.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)
@@ -205,6 +205,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    quantities, full joint beta/lnalpha observed covariance/group scores, same-offset
    dispersion-refitted nulls, current predictions and retained conditional-offset
    effects/count bins. These are method evidence, not new book coverage.
+   Current-row `predict ..., pmf(k)`/`cdf(k)` now supports integer0..99 with
+   retained alpha/offsets and atomic publication;288 independent base-R helper
+   values and432 offset-fit/current-row probabilities validate the bounded
+   [complete workflow](../examples/count-probability/README.md). Full laws remain
+   assumptions; robust covariance does not establish distributional calibration.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not

@@ -4642,6 +4642,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "residuals"
           | "pr"
           | "n"
+          | "pmf"
+          | "cdf"
           | "spatial_lag"
           | "posterior_predictive"
           | "interval"
@@ -4687,7 +4689,16 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   for opt in &options {
     if matches!(
       opt.name.as_str(),
-      "xb" | "xbu" | "u" | "residuals" | "pr" | "n" | "spatial_lag" | "posterior_predictive"
+      "xb"
+        | "xbu"
+        | "u"
+        | "residuals"
+        | "pr"
+        | "n"
+        | "pmf"
+        | "cdf"
+        | "spatial_lag"
+        | "posterior_predictive"
     ) && !kinds_present.contains(&opt.name.as_str())
     {
       kinds_present.push(opt.name.as_str());
@@ -4697,6 +4708,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new(
       if kinds_present.contains(&"xbu") || kinds_present.contains(&"u") {
         "predict cannot combine xbu or u with another prediction kind"
+      } else if kinds_present.contains(&"pmf") || kinds_present.contains(&"cdf") {
+        "predict pmf()/cdf() cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"n") {
         "predict option n cannot be combined with another prediction kind"
       } else {
@@ -4705,7 +4718,38 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     ));
   }
 
-  let kind = if options.iter().any(|opt| opt.name == "xbu") {
+  let probability_options: Vec<_> = options
+    .iter()
+    .filter(|o| matches!(o.name.as_str(), "pmf" | "cdf"))
+    .collect();
+  let probability_kind = match probability_options.as_slice() {
+    [] => None,
+    [option] => {
+      let UseOptionValue::Number(value) = &option.value else {
+        return Err(ParseError::new(
+          "predict pmf()/cdf() requires an integer from 0 to 99",
+        ));
+      };
+      let k = value
+        .parse::<usize>()
+        .ok()
+        .filter(|&k| k < 100)
+        .ok_or_else(|| ParseError::new("predict pmf()/cdf() requires an integer from 0 to 99"))?;
+      Some(if option.name == "pmf" {
+        PredictKind::CountPmf(k)
+      } else {
+        PredictKind::CountCdf(k)
+      })
+    }
+    _ => {
+      return Err(ParseError::new(
+        "predict pmf()/cdf() may only be supplied once",
+      ));
+    }
+  };
+  let kind = if let Some(kind) = probability_kind {
+    kind
+  } else if options.iter().any(|opt| opt.name == "xbu") {
     PredictKind::FixedEffectsResponse
   } else if options.iter().any(|opt| opt.name == "u") {
     PredictKind::FixedEffect
@@ -8603,6 +8647,8 @@ fn parse_use_parenthesized_value(
   if matches!(
     name,
     "alpha"
+      | "pmf"
+      | "cdf"
       | "ll"
       | "ul"
       | "quantile"

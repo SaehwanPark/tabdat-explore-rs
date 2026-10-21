@@ -492,9 +492,10 @@ Offsets/exposure/weights, appropriate survey/multiway/panel methods, current-row
 probability prediction, uncertainty/formal specification tests, named reports,
 richer counts and other remaining illustration/core/book work remain required.
 
-### Current-row count probability prediction slice (WIP)
+### Current-row count probability prediction extension
 
-Extend the retained Table20.5 Poisson/NB2 ln-mean specifications with explicit
+The [complete synthetic method workflow](../count-probability/README.md) extends
+the retained Table20.5 Poisson/NB2 ln-mean specifications with explicit
 `predict p, pmf(k)` / `predict p, cdf(k)` for exact k=0..99, using the existing
 bounded distributional probability helper (tail cutoff1..100). This is a method
 extension of the documented RAND mean model, not a new replicated printed row.
@@ -503,5 +504,6 @@ Covariance selection does not establish either distributional law or uncertainty
 Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
-cluster IDs are not required; fitted offsets are. Check independent base-R
-Poisson/NB probabilities, offset/sample changes, fit reuse and export in CLI.
+cluster IDs are not required; fitted offsets are. Independent base-R
+checks cover288 direct probabilities and432 changed-current-row predictions;
+runtime/CLI checks cover offsets, sample/fit reuse, atomic failures and export.

@@ -1382,8 +1382,10 @@ fn get_command_schema(
           name: "n".to_string(),
           required: false,
         },
+        OptionDescriptor { name: "pmf".to_string(), required: false },
+        OptionDescriptor { name: "cdf".to_string(), required: false },
       ],
-      syntax: "predict newvar [, xb | xbu | u | residuals | pr | n]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![

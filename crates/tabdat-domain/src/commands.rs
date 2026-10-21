@@ -920,6 +920,10 @@ pub enum PredictKind {
   Pr,
   /// Conditional mean exp(xb), requested by `n` after Poisson or NB2.
   MeanCount,
+  /// Distributional P(Y=k) after Poisson/NB2, k=0..99.
+  CountPmf(usize),
+  /// Distributional P(Y<=k) after Poisson/NB2, k=0..99.
+  CountCdf(usize),
   /// Predicted spatial lag for spatial models.
   SpatialLag,
   /// Posterior predictive draws for Bayesian models.

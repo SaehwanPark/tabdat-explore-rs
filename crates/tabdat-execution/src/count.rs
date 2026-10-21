@@ -241,8 +241,13 @@ impl Session {
       }
       _ => return Err(RuntimeError::PredictRequiresPriorRegression),
     };
-    if !matches!(command.kind, PredictKind::Xb | PredictKind::MeanCount)
-      || command.interval
+    if !matches!(
+      command.kind,
+      PredictKind::Xb
+        | PredictKind::MeanCount
+        | PredictKind::CountPmf(_)
+        | PredictKind::CountCdf(_)
+    ) || command.interval
       || command.std
       || command.saving.is_some()
     {
@@ -301,6 +306,76 @@ impl Session {
       outcome_variable: &problem.outcome,
       residuals: false,
     };
+    if let PredictKind::CountPmf(count) | PredictKind::CountCdf(count) = command.kind {
+      let law = match &self.estimation {
+        Some(EstimationState::PoissonFit(_)) => tabdat_stats::CountProbabilityLaw::Poisson,
+        Some(EstimationState::NegativeBinomialFit(state)) => {
+          tabdat_stats::CountProbabilityLaw::Nb2 {
+            alpha: state.result.dispersion.alpha,
+          }
+        }
+        _ => unreachable!(),
+      };
+      // Validate direct API commands even on empty data, before publication.
+      tabdat_stats::count_point_probabilities(law, 0.0, count)
+        .map_err(|e| family.error(e.to_string()))?;
+      let columns = if predictors.is_empty() {
+        "1".to_owned()
+      } else {
+        predictors
+          .iter()
+          .map(|n| quote_identifier(n))
+          .collect::<Vec<_>>()
+          .join(", ")
+      };
+      let mut values = Vec::new();
+      self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::PredictFailed)?
+        .visit_rows(
+          &format!("SELECT {columns} FROM {ACTIVE_TABLE}"),
+          |row| {
+            let mut xb = prediction.intercept.unwrap_or(0.0);
+            for (j, coefficient) in coefficients.iter().enumerate() {
+              let Some(x) = cell_to_f64(
+                row
+                  .cell(j)
+                  .map_err(|_| family.error("could not read predictor"))?,
+              )
+              .filter(|v| v.is_finite()) else {
+                values.push(None);
+                return Ok(());
+              };
+              xb += coefficient * x;
+            }
+            let mean = xb.exp();
+            if !xb.is_finite() || !mean.is_finite() {
+              values.push(None);
+              return Ok(());
+            }
+            let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
+              .map_err(|e| family.error(e.to_string()))?;
+            values.push(Some(if matches!(command.kind, PredictKind::CountPmf(_)) {
+              pmf
+            } else {
+              cdf
+            }));
+            Ok(())
+          },
+          |message| family.error(message),
+        )?;
+      let added = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::PredictFailed)?
+        .add_numeric_prediction_column(&dataset, &command.target_variable, &values)
+        .map_err(|_| RuntimeError::PredictFailed)?;
+      let next = self.sync_active_dataset(added)?;
+      return Ok(ExecutionResult::Prediction(PredictionResult {
+        dataset: next,
+      }));
+    }
     let added = self
       .backend
       .as_mut()
