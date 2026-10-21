@@ -55,6 +55,13 @@ reference <- function(case,y,predictors,intercept=TRUE,predictions_path=NULL) {
   null <- polish(null_start,null_X,y)
   null_ll <- null$e$ll
   lr <- max(0,2*(e$ll-null_ll)); q <- k-as.integer(intercept)
+  poisson_fit <- glm.fit(X,y,family=poisson())
+  poisson_ll <- sum(dpois(y,poisson_fit$fitted.values,log=TRUE))
+  dispersion_lr_raw <- 2*(e$ll-poisson_ll)
+  stopifnot(dispersion_lr_raw >= -1e-8)
+  dispersion_lr <- max(0,dispersion_lr_raw)
+  dispersion_p <- if(dispersion_lr==0) 1 else
+    .5*pchisq(dispersion_lr,1,lower.tail=FALSE)
   deviance <- sum(2*(ifelse(y==0,0,y*log(ifelse(y==0,1,y)/e$mu))-
     (y+r)*log((y+r)/(e$mu+r))))
   pearson <- sum((y-e$mu)^2/(e$mu+alpha*e$mu^2))
@@ -87,6 +94,8 @@ reference <- function(case,y,predictors,intercept=TRUE,predictions_path=NULL) {
       log_alpha_confidence_lower=par[p]-qnorm(.975)*sqrt(V[p,p]),
       log_alpha_confidence_upper=par[p]+qnorm(.975)*sqrt(V[p,p]))
     for (name in names(fields)) emit(case,robust,name,0,0,fields[[name]])
+    emit(case,robust,'dispersion_test_statistic',0,0,dispersion_lr)
+    emit(case,robust,'dispersion_test_p_value',0,0,dispersion_p)
     if (!robust && q>0) emit(case,robust,'likelihood_ratio_p_value',0,0,pchisq(lr,q,lower.tail=FALSE))
     if (robust && q>0) {
       keep <- seq.int(1L+as.integer(intercept),k)

@@ -56,6 +56,17 @@ pub struct Nb2Dispersion {
   pub log_alpha_confidence_upper: Option<f64>,
 }
 
+/// One-sided likelihood-ratio test of the Poisson boundary against NB2.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Nb2DispersionTest {
+  pub method: String,
+  pub null_hypothesis: String,
+  pub alternative_hypothesis: String,
+  pub statistic: f64,
+  pub reference_distribution: String,
+  pub p_value: f64,
+}
+
 /// Covariance order is mean-model parameters followed by lnalpha. Model-based
 /// bread is full inverse observed information, not conditional GLM/Fisher V.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,6 +85,9 @@ pub struct Nb2Result {
   pub coefficients: Vec<Nb2Estimate>,
   pub covariance: Vec<Vec<f64>>,
   pub dispersion: Nb2Dispersion,
+  /// Missing only in fits serialized before the Poisson-boundary test was added.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub dispersion_test: Option<Nb2DispersionTest>,
   pub log_likelihood: f64,
   pub null_log_likelihood: f64,
   pub null_alpha: f64,
@@ -816,6 +830,30 @@ fn fit_nb2_covariance(
   if p.is_some_and(|p| !p.is_finite()) {
     return Err(failed("nonfinite LR inference"));
   }
+  let raw_dispersion_lr = 2.0 * (fit.log_likelihood - poisson.log_likelihood);
+  let dispersion_lr_tolerance = 1e-10 * (1.0 + poisson.log_likelihood.abs());
+  if !raw_dispersion_lr.is_finite() || raw_dispersion_lr < -dispersion_lr_tolerance {
+    return Err(failed(
+      "NB2 likelihood is below the nested Poisson boundary",
+    ));
+  }
+  let dispersion_lr = raw_dispersion_lr.max(0.0);
+  let dispersion_p_value = if dispersion_lr == 0.0 {
+    1.0
+  } else {
+    0.5 * chi_square_tail(dispersion_lr, 1)
+  };
+  if !dispersion_p_value.is_finite() || !(0.0..=1.0).contains(&dispersion_p_value) {
+    return Err(failed("invalid Poisson-boundary LR p-value"));
+  }
+  let dispersion_test = Nb2DispersionTest {
+    method: "one_sided_likelihood_ratio".into(),
+    null_hypothesis: "alpha = 0 (Poisson)".into(),
+    alternative_hypothesis: "alpha > 0 (NB2)".into(),
+    statistic: dispersion_lr,
+    reference_distribution: "asymptotic_50_50_chi_square_0_1_mixture".into(),
+    p_value: dispersion_p_value,
+  };
   let beta_covariance: Vec<Vec<f64>> = fit.covariance[..k]
     .iter()
     .map(|row| row[..k].to_vec())
@@ -841,6 +879,7 @@ fn fit_nb2_covariance(
     coefficients,
     covariance: fit.covariance,
     dispersion,
+    dispersion_test: Some(dispersion_test),
     log_likelihood: fit.log_likelihood,
     null_log_likelihood: null.log_likelihood,
     null_alpha: null.values.last().unwrap().exp(),

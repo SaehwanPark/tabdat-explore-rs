@@ -20,6 +20,8 @@ multiple,0,alpha_confidence_lower,0,0,0.223140707055569
 multiple,0,alpha_confidence_upper,0,0,2.13389536281164
 multiple,0,log_alpha_confidence_lower,0,0,-1.49995273315864
 multiple,0,log_alpha_confidence_upper,0,0,0.757949118318268
+multiple,0,dispersion_test_statistic,0,0,8.63540953536659
+multiple,0,dispersion_test_p_value,0,0,0.00164845558320821
 multiple,0,likelihood_ratio_p_value,0,0,0.194611983943674
 multiple,0,coefficient_value,0,0,-0.168455956875638
 multiple,0,coefficient_standard_error,0,0,0.341631054710734
@@ -160,6 +162,8 @@ multiple,1,alpha_confidence_lower,0,0,0.24593211994776
 multiple,1,alpha_confidence_upper,0,0,1.93613961503497
 multiple,1,log_alpha_confidence_lower,0,0,-1.4026997162986
 multiple,1,log_alpha_confidence_upper,0,0,0.660696101458221
+multiple,1,dispersion_test_statistic,0,0,8.63540953536659
+multiple,1,dispersion_test_p_value,0,0,0.00164845558320821
 multiple,1,wald_statistic,0,0,3.16061511024276
 multiple,1,wald_p_value,0,0,0.205911759249163
 multiple,1,coefficient_value,0,0,-0.168455956875638
@@ -301,6 +305,8 @@ noconstant,0,alpha_confidence_lower,0,0,0.223729776951626
 noconstant,0,alpha_confidence_upper,0,0,2.14942812192947
 noconstant,0,log_alpha_confidence_lower,0,0,-1.497316308251
 noconstant,0,log_alpha_confidence_upper,0,0,0.765201816957762
+noconstant,0,dispersion_test_statistic,0,0,8.62388607331359
+noconstant,0,dispersion_test_p_value,0,0,0.00165891633899847
 noconstant,0,likelihood_ratio_p_value,0,0,0.067279088866398
 noconstant,0,coefficient_value,0,0,-0.0751500103473074
 noconstant,0,coefficient_standard_error,0,0,0.179481020661426
@@ -428,6 +434,8 @@ noconstant,1,alpha_confidence_lower,0,0,0.23884474887927
 noconstant,1,alpha_confidence_upper,0,0,2.0134044250473
 noconstant,1,log_alpha_confidence_lower,0,0,-1.43194152440241
 noconstant,1,log_alpha_confidence_upper,0,0,0.699827033109169
+noconstant,1,dispersion_test_statistic,0,0,8.62388607331359
+noconstant,1,dispersion_test_p_value,0,0,0.00165891633899847
 noconstant,1,wald_statistic,0,0,5.22498605159075
 noconstant,1,wald_p_value,0,0,0.07335144857395
 noconstant,1,coefficient_value,0,0,-0.0751500103473074
@@ -556,6 +564,8 @@ intercept,0,alpha_confidence_lower,0,0,0.31006763427994
 intercept,0,alpha_confidence_upper,0,0,2.40764993037791
 intercept,0,log_alpha_confidence_lower,0,0,-1.17096483020309
 intercept,0,log_alpha_confidence_upper,0,0,0.878651139128167
+intercept,0,dispersion_test_statistic,0,0,11.4773642704233
+intercept,0,dispersion_test_p_value,0,0,0.000352244845668212
 intercept,0,coefficient_value,0,0,0.328504066972036
 intercept,0,coefficient_standard_error,0,0,0.209763237864215
 intercept,0,coefficient_statistic,0,0,1.56607072963226
@@ -659,6 +669,8 @@ intercept,1,alpha_confidence_lower,0,0,0.297465396525636
 intercept,1,alpha_confidence_upper,0,0,2.50965096043433
 intercept,1,log_alpha_confidence_lower,0,0,-1.21245737496102
 intercept,1,log_alpha_confidence_upper,0,0,0.920143683886095
+intercept,1,dispersion_test_statistic,0,0,11.4773642704233
+intercept,1,dispersion_test_p_value,0,0,0.000352244845668212
 intercept,1,coefficient_value,0,0,0.328504066972036
 intercept,1,coefficient_standard_error,0,0,0.209380037252838
 intercept,1,coefficient_statistic,0,0,1.56893690192322
