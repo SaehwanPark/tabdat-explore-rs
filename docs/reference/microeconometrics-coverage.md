@@ -606,9 +606,10 @@ score is independently checked against grouped dnbinom log-PMF differentiation.
 This is not `vcov(glm.nb)` or conditional/Fisher bread. All19x19 covariance
 entries, dispersion SE/transformed CIs and retained-X delta effects match;
 G/(G-1) full joint group scores, normal not G-1 t. Beta-slope Wald excludes
-lnalpha and guards q>=G/rank. LR reference/alpha=0 tests not manufactured.
+lnalpha and guards q>=G/rank. Clustered slope-LR references or normal-Wald
+alpha=0 tests are not manufactured.
 
-The singleton case in the527-quantity fixture matches141 shared existing
+The singleton case in the535-quantity fixture matches141 shared existing
 row-robust quantities exactly. References regenerate byte-identically; unchanged ordinary/total/design/
 relative-tail tolerances, exact state/sample/key/failure/legacy-shape tests and
 actual JSON/text/piped output agreement validate this bounded extension. Twenty

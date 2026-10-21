@@ -123,7 +123,7 @@ def check(reference, predictions, native, native_predictions):
     close(n['nb2_person_mu'], math.exp(float(n['nb2_person_xb'])))
   assert max(float(r['nb2_person_mu']) for r in actual) > 1
   print('Matched all599 independently joint-clustered NB2 quantities and every source/original-row/person/year/design/mean/xb field of all20,186 records;5,908 original people.')
-  print('FULL beta/lnalpha observed bread and grouped joint scores; G/(G-1), normal95, transformed alpha CI. Not conditional MASS/Fisher, row-robust, HC1, G-1 t, alpha=0 test or full RAND design correction.')
+  print('FULL beta/lnalpha observed bread and grouped joint scores; G/(G-1), normal95, transformed alpha CI. Not conditional MASS/Fisher, row-robust, HC1, G-1 t, cluster-robust boundary LR p-value or full RAND design correction.')
 
 
 if __name__ == '__main__':
