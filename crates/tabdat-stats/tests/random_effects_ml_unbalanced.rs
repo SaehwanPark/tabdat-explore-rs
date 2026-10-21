@@ -76,7 +76,20 @@ fn unequal_counts_match_nlme_ml_and_independent_joint_information() {
       .zip(&population)
       .map(|(y, xb)| y - xb)
       .collect();
+    let variance_inference = fit.variance_component_inference().unwrap().unwrap();
+    if case == "boundary" {
+      assert!(variance_inference.sigma_u_squared.is_none());
+      assert!(variance_inference
+        .sigma_u_squared_unavailable_reason
+        .as_deref()
+        .is_some_and(|reason| reason.contains("boundary")));
+    } else {
+      assert!(variance_inference.sigma_u_squared.is_some());
+      assert!(variance_inference.sigma_u_squared_unavailable_reason.is_none());
+    }
     let mut value = serde_json::to_value(fit).unwrap();
+    value["ml"]["variance_component_inference"] =
+      serde_json::to_value(variance_inference).unwrap();
     value["population_fitted_values"] = serde_json::json!(population);
     value["population_residuals"] = serde_json::json!(residuals);
     value["minimum_group_size"] = 1.into();
@@ -108,5 +121,5 @@ fn unequal_counts_match_nlme_ml_and_independent_joint_information() {
       comparisons += 1;
     }
   }
-  assert_eq!(comparisons, 500);
+  assert_eq!(comparisons, 525);
 }

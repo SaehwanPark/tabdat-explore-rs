@@ -87,6 +87,18 @@ for(case in if(length(args)==3) 'mom_sensitivity' else c('unequal','shifted_inte
   }
   numeric <- optimHess(par,nll,gradient,control=list(ndeps=rep(1e-5,length(par))))
   stopifnot(max(abs(numeric-H)/pmax(1,abs(H)))<1e-6,all(eigen(H,symmetric=TRUE)$values>0))
+  component <- function(name, estimate, log_variance) {
+    log_se <- sqrt(log_variance)
+    limits <- exp(log(estimate)+c(-1,1)*qnorm(.975)*log_se)
+    values <- c(estimate=estimate,standard_error=estimate*log_se,
+                log_scale_standard_error=log_se)
+    for(field in names(values))
+      emit(case,paste0('/ml/variance_component_inference/',name,'/',field),values[[field]])
+    emit(case,paste0('/ml/variance_component_inference/',name,'/confidence_interval/0'),limits[1])
+    emit(case,paste0('/ml/variance_component_inference/',name,'/confidence_interval/1'),limits[2])
+  }
+  component('sigma_e_squared',r$a,V[K+1,K+1])
+  if(!boundary) component('sigma_u_squared',r$u,V[K+2,K+2])
   stopifnot(max(abs(trusted_beta-r$beta))<1e-6,abs(as.numeric(logLik(trusted))-r$ll)<1e-8)
   if(null$eta>0) {
     trusted_null <- lme(y~1,random=list(id=pdDiag(value=log(sqrt(null$u/null$a)),form=~1)),data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))

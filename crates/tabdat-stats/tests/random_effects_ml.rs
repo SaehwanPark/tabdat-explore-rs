@@ -61,7 +61,7 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
     assert!(fit.profile_score.abs() < 1e-9);
     let public = tabdat_stats::fit_random_effects_ml(&p, "id").unwrap();
     assert_eq!(public.gls, fit.regression);
-    let ml = public.ml.unwrap();
+    let ml = public.ml.as_ref().unwrap();
     assert_eq!(
       ml.likelihood_ratio_p_value.is_none(),
       case == "null_boundary"
@@ -71,7 +71,12 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       case == "null_boundary"
     );
     assert_eq!(ml.joint_parameter_names.len(), 5);
-    let value = serde_json::to_value(fit).unwrap();
+    let variance_inference = public.variance_component_inference().unwrap().unwrap();
+    assert_eq!(variance_inference.method, "joint_observed_information_log_wald");
+    assert_eq!(variance_inference.reference_distribution, "asymptotic_standard_normal");
+    assert!(variance_inference.sigma_u_squared.is_some());
+    let mut value = serde_json::to_value(fit).unwrap();
+    value["ml"] = serde_json::json!({"variance_component_inference": variance_inference});
     for row in reference.iter().filter(|r| r[0] == case) {
       let actual = value
         .pointer(row[1])
@@ -90,7 +95,7 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
       checked += 1;
     }
   }
-  assert_eq!(checked, 447);
+  assert_eq!(checked, 487);
 }
 
 #[test]
