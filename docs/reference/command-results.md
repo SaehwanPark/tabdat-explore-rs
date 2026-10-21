@@ -1096,10 +1096,22 @@ counts without exposing row vectors. For `cluster(unit)` or its RE-specific
 G/(G-1)*(N-1)/(N-K) multiplier and independence across units. The cluster option
 changes covariance/inference, not variance components or coefficients.
 
+For balanced and unbalanced Gaussian marginal ML, `ml.variance_component_inference`
+reports observed-information uncertainty for `sigma_e_squared` and, at an interior
+fit, `sigma_u_squared`. Each component has an estimate, variance-scale
+delta-method `standard_error`, `log_scale_standard_error`, and exponentiated
+95% log-Wald `confidence_interval`. The object identifies its asymptotic normal
+reference and method. At the zero-unit-variance boundary, `sigma_u_squared` is
+null and `sigma_u_squared_unavailable_reason` explains why regular normal
+inference is withheld; residual variance uncertainty remains available. These
+are model-based interior intervals, not profile intervals, boundary tests or
+robust ML inference.
+
 These semantics apply to supported one-way random-intercept workflows with
 explicit audited ID/time keys; they do not install random-effects unit
 predictions, general panel state, weights, time-invariant predictors, general
-restrictions or variance-component uncertainty. The documented MOM sensitivity
+restrictions, robust ML covariance or profile/boundary variance-component tests.
+The documented MOM sensitivity
 cohort is an altered-sample method check, not a published textbook result.
 
 ## Linear inference fields and conventions

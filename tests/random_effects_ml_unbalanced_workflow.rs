@@ -51,6 +51,37 @@ fn unequal_ml_reports_actual_counts_information_and_population_exports() {
     assert_eq!(fit["eta_reference_group_size"], 1);
     assert_eq!(fit["ml"]["unit_variance_boundary"], case == "boundary");
     assert_eq!(fit["reference_distribution"], "normal");
+    let variance_inference = &fit["ml"]["variance_component_inference"];
+    assert_eq!(
+      variance_inference["method"],
+      "joint_observed_information_log_wald"
+    );
+    assert_eq!(
+      variance_inference["reference_distribution"],
+      "asymptotic_standard_normal"
+    );
+    assert_eq!(variance_inference["confidence_level"], 95.0);
+    assert_eq!(
+      variance_inference["sigma_e_squared"]["estimate"],
+      fit["sigma_e_squared"]
+    );
+    if case == "boundary" {
+      assert!(variance_inference["sigma_u_squared"].is_null());
+      assert!(
+        variance_inference["sigma_u_squared_unavailable_reason"]
+          .as_str()
+          .unwrap()
+          .contains("boundary")
+      );
+    } else {
+      assert!(variance_inference["sigma_u_squared"]["standard_error"].is_number());
+      assert!(
+        variance_inference["sigma_u_squared"]["confidence_interval"][0]
+          .as_f64()
+          .unwrap()
+          > 0.0
+      );
+    }
     let reference: BTreeMap<_, f64> = include_str!(
       "../crates/tabdat-stats/tests/fixtures/random_effects_ml_unbalanced_reference.csv"
     )
@@ -123,9 +154,16 @@ fn unequal_ml_reports_actual_counts_information_and_population_exports() {
       "T = 1..5",
       "Unequal retained counts",
       "theta range",
+      "Variance-component inference: joint observed information",
+      "sigma_e squared SE",
     ] {
       assert!(text.contains(phrase), "{text}");
     }
+    assert_eq!(
+      text.contains("sigma_u squared uncertainty unavailable"),
+      case == "boundary"
+    );
+    assert_eq!(text.contains("sigma_u squared SE"), case != "boundary");
     assert_eq!(
       fs::read(dir.path().join("predictions.csv")).unwrap(),
       json_csv

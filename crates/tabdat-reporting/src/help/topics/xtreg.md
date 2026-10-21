@@ -143,6 +143,13 @@ Gaussian marginal ML:
   log(sigma_e²+T*sigma_u²), without a residual-DF correction. It differs from
   conditional GLS covariance. Coefficients use normal z/p/95% intervals and a
   chi-square(p) slope Wald test; transformed residual DF is descriptive only.
+- `ml.variance_component_inference` reports observed-information uncertainty for
+  variance components. Standard errors use the delta method and 95% intervals
+  exponentiate normal-Wald limits on log variance, so positive interior intervals
+  remain nonnegative. At the zero-unit-variance boundary, its standard error and
+  interval are null with an explicit reason; the constrained component has no
+  regular normal-Wald inference. These are model-based intervals, not profile
+  intervals or robust ML inference.
 - The bounded profile searches eta=log(1+T*sigma_u²/sigma_e²) in [0,24], on a
   0.5 grid, polishes positive-to-negative score crossings by bisection and selects
   the highest detected likelihood including eta=0. It does not guarantee the

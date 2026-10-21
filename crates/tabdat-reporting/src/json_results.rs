@@ -742,6 +742,18 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     data["ml"] = json!(ml);
     data["ml"]["unit_variance_boundary"] = json!(ml.unit_variance_boundary());
     data["log_likelihood"] = json!(ml.log_likelihood);
+    match r.variance_component_inference() {
+      Ok(Some(inference)) => {
+        data["ml"]["variance_component_inference"] = json!(inference);
+      }
+      Ok(None) => {
+        data["ml"]["variance_component_inference_unavailable_reason"] =
+          json!("variance-component inference requires an ML result");
+      }
+      Err(error) => {
+        data["ml"]["variance_component_inference_unavailable_reason"] = json!(error.to_string());
+      }
+    }
     if r.group_size == 0 {
       let (minimum, maximum) = r.group_size_range().unwrap_or((0, 0));
       let (theta_min, theta_max) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));

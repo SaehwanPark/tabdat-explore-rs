@@ -72,8 +72,14 @@ fn interior_ml_matches_nlme_point_fit_and_independent_joint_information() {
     );
     assert_eq!(ml.joint_parameter_names.len(), 5);
     let variance_inference = public.variance_component_inference().unwrap().unwrap();
-    assert_eq!(variance_inference.method, "joint_observed_information_log_wald");
-    assert_eq!(variance_inference.reference_distribution, "asymptotic_standard_normal");
+    assert_eq!(
+      variance_inference.method,
+      "joint_observed_information_log_wald"
+    );
+    assert_eq!(
+      variance_inference.reference_distribution,
+      "asymptotic_standard_normal"
+    );
     assert!(variance_inference.sigma_u_squared.is_some());
     let mut value = serde_json::to_value(fit).unwrap();
     value["ml"] = serde_json::json!({"variance_component_inference": variance_inference});

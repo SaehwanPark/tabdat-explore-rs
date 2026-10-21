@@ -610,6 +610,8 @@ impl RandomEffectsMlInference {
           return Err(failed("balanced RE-ML joint parameter order is invalid"));
         }
         let t_u = group_size as f64 * sigma_u_squared;
+        // Balanced fits store log(a + T*u), so log(u) depends on both
+        // information coordinates and its variance needs the full gradient.
         let log_u_gradient_e = -sigma_e_squared / t_u;
         let log_u_gradient_v = (sigma_e_squared + t_u) / t_u;
         log_u_gradient_e.powi(2) * covariance[variance_index][variance_index]

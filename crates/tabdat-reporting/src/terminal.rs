@@ -442,6 +442,48 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
       inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
       ml.likelihood_ratio_df, inference_number(ml.likelihood_ratio), optional_inference(ml.likelihood_ratio_p_value)).unwrap();
+    match r.variance_component_inference() {
+      Ok(Some(inference)) => {
+        output.push_str(
+          "Variance-component inference: joint observed information; delta-method SEs; exponentiated log-Wald 95% intervals\n",
+        );
+        let residual = inference.sigma_e_squared;
+        writeln!(
+          output,
+          "sigma_e squared SE = {}; 95% CI = [{}, {}]",
+          inference_number(residual.standard_error),
+          inference_number(residual.confidence_interval[0]),
+          inference_number(residual.confidence_interval[1]),
+        )
+        .unwrap();
+        if let Some(unit) = inference.sigma_u_squared {
+          writeln!(
+            output,
+            "sigma_u squared SE = {}; 95% CI = [{}, {}]",
+            inference_number(unit.standard_error),
+            inference_number(unit.confidence_interval[0]),
+            inference_number(unit.confidence_interval[1]),
+          )
+          .unwrap();
+        } else if let Some(reason) = inference.sigma_u_squared_unavailable_reason {
+          writeln!(
+            output,
+            "sigma_u squared uncertainty unavailable: {}",
+            reason.escape_debug()
+          )
+          .unwrap();
+        }
+      }
+      Ok(None) => {}
+      Err(error) => {
+        writeln!(
+          output,
+          "Variance-component inference unavailable: {}",
+          error.to_string().escape_debug()
+        )
+        .unwrap();
+      }
+    }
     if let Some(reason) = &ml.likelihood_ratio_unavailable_reason {
       writeln!(
         output,
