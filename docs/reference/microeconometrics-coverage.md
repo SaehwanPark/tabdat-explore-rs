@@ -128,7 +128,7 @@ joint membership, unequal counts/equal person weights, singleton/all-excluded
 units, inference DF, text/JSON identity, key/sample/rank failure and export
 preservation. HC1 is not the author's bootstrap; R²/working likelihood are for
 means, not within/overall panel statistics or cross-design LR inference.
-No general `xtreg ..., be`, unbalanced RE-GLS, bootstrap, Figure21.2 or whole-table completion
+No general `xtreg ..., be`, unbalanced RE-GLS, cluster/FE/RE bootstrap, Figure21.2 or whole-table completion
 is claimed; correlation of wages with person effects remains an identification
 concern. Source and reproduction instructions remain beside the example.
 
