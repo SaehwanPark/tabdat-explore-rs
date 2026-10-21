@@ -24,7 +24,7 @@ not by implementing every estimator mentioned in a chapter.
 
 | Book chapters / area | Installed baseline | Required remaining outcomes |
 | --- | --- | --- |
-| 4: Linear, IV and quantile models | Bounded OLS/WLS/diagonal GLS, HC1/one-way cluster | IV/2SLS and diagnostics, quantile estimation; factor/interactions and weight semantics |
+| 4: Linear, IV and quantile models | Bounded OLS/WLS/diagonal GLS, HC1/one-way cluster | Remaining IV diagnostics and quantile robust/simultaneous inference; factor/interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares and bounded binary logit/probit MLE/QR | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
@@ -57,7 +57,7 @@ provenance and redistribution terms before adding fixtures.
 | ID | Book locator and data lead | Status | Next evidence / blocker |
 | --- | --- | --- | --- |
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output; scalar weak-IV-robust intervals remain planned; bounded joint AR method evidence below |
-| MMA-QREG | pp. 88–90, Vietnam living standards; `qreg0902.dta` | Planned | Identify quantiles, model and uncertainty method; resolve ingestion |
+| MMA-QREG | §4.6.4 pp. 88–90, Vietnam living standards; author `mma04p2qreg.do`, original `qreg0902.asc` | Partial: native .1/.5/.9 conditional quantiles and IID-location inference/prediction | Original 5,999 rows / 5,006 finite cases; R quantreg validation, source identity and prediction audit in [workflow](../../examples/mma04p2qreg/README.md). DTA precision and historical Stata SE differ; Figure4.1 simultaneous bootstrap and full graphics remain |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | Validated native published-analysis contract — composed source/cohort/fitted summaries, native tables and SVG; separate binary AME extension | Exact output audit/conventions below; not literal Stata log/storage/RNG/format parity or fit restoration; binary family remains incomplete |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
