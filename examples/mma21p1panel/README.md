@@ -604,21 +604,51 @@ extreme theta failure, source ordering and refused-overwrite byte preservation.
 Only small synthetic fixtures are bundled; no production R/Python dependency.
 Earlier successful script effects are not rolled back after a later error.
 
-### Seeded Between pairs-bootstrap slice (WIP)
+### Seeded Between IID pairs bootstrap
 
-Target the Between-bootstrap block of March2005 mma21p2panmanual.do: form the
-same jointly finite person means on all5,320 MOM rows/532 independent people,
-then pairs-resample the532 mean-response/design records for the intercept and
-wage slope, B200. Add a bounded unweighted OLS `bootstrap y xvars, reps(200)
-seed(integer)` report with explicit required seed, native xoshiro256++/SplitMix64
-initialization and unbiased integer rejection mapping. This is native reproducible
-method evidence, not the author's unspecified Stata random stream/printed draw.
-Report bootstrap means/bias/SE/covariance and fixed95% percentile intervals
-(R-type7 interpolation), no invented normal/t p-values. Every replicate must
-fit successfully; rank/degenerate failures abort with replicate index, without
-silently discarding/redrawing or mutating existing data/labels/model/files.
-Current complete-finite data are the sampling frame; this is IID pairs, not
-cluster/raw person-year resampling, residual/parametric/BCa or survey bootstrap.
-Independent RNG-index and R lm/quantile references, sample/failure/state and
-CLI reporting/export workflows must pass before merge. One small pure-Rust RNG
-dependency is justified by the actual reproducible-resampling requirement.
+[`between_bootstrap.td`](between_bootstrap.td) implements the Between-bootstrap
+analysis of the March2005 manual program on all5,320 MOM observations/532 people.
+First select joint-finite lnhr/lnwg cases, compute person means (ordered by year)
+and order the532 means by person. Resample these independent mean-response/design
+records, not individual person-years, B200 with explicit native seed10001.
+Unweighted OLS supplies the original intercept and wage slope.
+
+`bootstrap mean_lnhr mean_lnwg, reps(200) seed(10001)` reports point estimates,
+replicate means/bias, B-1 SE/full covariance and fixed95% percentile intervals
+with R-type7 interpolation. It is read-only: the existing OLS fit remains usable
+for prediction/export. Every replicate must identify all coefficients; any rank
+or numerical failure aborts with its index, with no dropped/redrawn samples.
+There are no analytic normal/t p-values, BCa/basic/studentized intervals or
+finite-sample/nominal-coverage guarantee. Finite B has Monte Carlo error.
+
+The local xoshiro256++/SplitMix64 stream restarts on every explicit unsigned64-bit
+seed, using the versioned u64 rejection mapping documented in `help bootstrap`.
+The seed is decimal text in CLI-v1 JSON, preserving all64 bits in JavaScript.
+The canonical backend preserves insertion order for the plain projection used
+by the sampler; reproducibility requires the same physical sample order/design.
+Script context-only seed directives do not initialize this command. This does
+not introduce generic command prefixes, raw panel/cluster/residual/parametric
+resampling, weights or survey inference. The author's Between block did not
+specify this native stream: no equality to its particular random draw or printed
+bootstrap SE is claimed. IID person-mean resampling is not a FE/RE panel bootstrap.
+
+Reproduce in a fresh directory containing prepared MOM.csv:
+
+```sh
+"$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/between_bootstrap.td" > between_bootstrap.jsonl
+Rscript "$root/examples/mma21p1panel/between_bootstrap_reference.R" "$work/MOM.dat" between_bootstrap_reference
+python3 "$root/examples/mma21p1panel/check_between_bootstrap_reference.py" . between_bootstrap_reference "$work/MOM.dat"
+```
+
+Independent Python unsigned-integer reference draws and R4.6.1 lm/cov/quantile
+validate18 bootstrap quantities and4,256 person-mean/design/prediction cells,
+with all5,320 loaded raw rows pinned to the original source. Native bootstrap
+SEs are0.0623527028813 (intercept) and0.0231855272708 (wage slope). Absolute1e-9
+numerical tolerances and exact raw identity are retained; text/JSON exports are
+byte-identical. Synthetic fixtures validate1,440 exact indices and76 R quantities
+for two-slope/no-intercept/shifted designs, plus repeatability, exact64-bit seeds,
+joint missingness/sample mapping, original/replicate failure and unchanged
+labels/data/model/named reports. The actual script runs on a small inspectable
+interleaved-person fixture and refuses existing exports. Native RNG support adds
+only rand_xoshiro0.7.0/rand_core0.9.5, with no production R/Python/native dependency.
+Current bounds are B2..5000 and N*B*K²<=100,000,000 (K includes the intercept).

@@ -333,6 +333,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "help" => parse_help(body),
     "status" => parse_status_command(body),
     "estimates" => parse_estimates_command(body),
+    "bootstrap" => parse_bootstrap_command(body),
     "describe" => {
       if body.is_empty() {
         Ok(Command::Describe)
@@ -2476,6 +2477,81 @@ fn parse_identifier_option(
       "{command_name} option {name} expects variables"
     ))),
   }
+}
+
+fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
+  let (arguments, option_body) = match first_top_level_comma(body) {
+    Some(i) => (&body[..i], Some(&body[i + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(arguments, false)?;
+  if parts.has_options || parts.has_assignment || parts.has_condition || parts.arguments.len() < 2 {
+    return Err(ParseError::new(
+      "bootstrap expects bootstrap y xvars, seed(integer) [reps(200) noconstant]",
+    ));
+  }
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  for option in &options {
+    if !matches!(option.name.as_str(), "seed" | "reps" | "noconstant") {
+      return Err(ParseError::new(format!(
+        "bootstrap unsupported option: {}",
+        option.name
+      )));
+    }
+    if options.iter().filter(|o| o.name == option.name).count() != 1 {
+      return Err(ParseError::new(format!(
+        "bootstrap option {} may only be supplied once",
+        option.name
+      )));
+    }
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "bootstrap noconstant does not accept a value",
+      ));
+    }
+  }
+  let integer = |name: &str| -> Result<Option<u64>, ParseError> {
+    options
+      .iter()
+      .find(|o| o.name == name)
+      .map(|o| {
+        let UseOptionValue::Number(v) = &o.value else {
+          return Err(ParseError::new(format!(
+            "bootstrap {name} requires an unsigned integer"
+          )));
+        };
+        v.parse::<u64>()
+          .map_err(|_| ParseError::new(format!("bootstrap {name} requires an unsigned integer")))
+      })
+      .transpose()
+  };
+  let seed =
+    integer("seed")?.ok_or_else(|| ParseError::new("bootstrap requires explicit seed(integer)"))?;
+  let reps = integer("reps")?.unwrap_or(200);
+  if !(2..=5000).contains(&reps) {
+    return Err(ParseError::new("bootstrap reps must be from 2 to 5000"));
+  }
+  Ok(Command::Bootstrap {
+    command: tabdat_domain::BootstrapCommand {
+      regression: RegressCommand {
+        outcome: parts.arguments[0].text.clone(),
+        predictors: parts.arguments[1..]
+          .iter()
+          .map(|a| a.text.clone())
+          .collect(),
+        estimator: RegressEstimator::Ols,
+        weight_variable: None,
+        robust: false,
+        cluster_variable: None,
+        include_intercept: !options.iter().any(|o| o.name == "noconstant"),
+      },
+      replications: reps as usize,
+      seed,
+    },
+  })
 }
 
 fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
@@ -8660,6 +8736,7 @@ fn parse_use_parenthesized_value(
       | "cv"
       | "bootstrap"
       | "seed"
+      | "reps"
       | "rseed"
       | "folds"
       | "level"

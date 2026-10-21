@@ -1281,3 +1281,16 @@ null example can be a selected non-NULL NaN/infinity, not SQL missingness. The
 terminal displays those non-finite examples directly. Types/counts, scans, data,
 and model state are unchanged; unsupported composite example conversions still
 fail meaningfully rather than produce a false profile.
+
+## BootstrapOlsResult
+
+`bootstrap y xvars, seed(integer) [reps(200) noconstant]` returns a read-only
+`BootstrapOlsResult` with estimator `iid_pairs_bootstrap_ols`, current complete
+sample metadata, outcome/predictor/intercept information, N/B, exact decimal-text
+u64 seed and versioned RNG identifier. Coefficients carry original estimate,
+bootstrap mean, bias, bootstrap SE and percentile95 bounds; covariance parameter
+names and the full B-1 covariance matrix use the same order. Interval method is
+`percentile_r_type7`; no analytic t/normal p-values or installed-fit replacement.
+A failed replicate produces an indexed execution error, not partial uncertainty.
+The pinned Python command catalogs remain unchanged as historical fixtures;
+bootstrap is an explicit native read-only catalog/effects/help extension.

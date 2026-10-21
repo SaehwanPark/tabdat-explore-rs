@@ -149,6 +149,8 @@ pub enum Command {
   XtData { command: XtDataCommand },
   /// Fit a bounded instrumental-variables model (2SLS is executable).
   IvRegress { command: IvRegressCommand },
+  /// Read-only seeded IID pairs-bootstrap OLS report on current complete cases.
+  Bootstrap { command: BootstrapCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
   XtReg { command: XtRegCommand },
   /// Fit a dynamic-panel Arellano-Bond model (execution is deferred).
@@ -902,6 +904,14 @@ pub struct BayesCommand {
   pub tol: String,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
+}
+
+/// Bounded IID pairs-bootstrap report; does not install or replace a retained fit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BootstrapCommand {
+  pub regression: RegressCommand,
+  pub replications: usize,
+  pub seed: u64,
 }
 
 /// The requested prediction mode.

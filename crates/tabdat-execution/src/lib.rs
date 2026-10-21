@@ -13,6 +13,7 @@ use tabdat_language::script::{
   parse_control_flow_directive, parse_script_directive, read_script,
 };
 mod binary;
+mod bootstrap;
 mod estimates;
 mod fixed_effects;
 mod random_effects;
@@ -144,6 +145,7 @@ impl Session {
       Command::XtReg { command } if command.id_variable.is_some() => {
         self.execute_random_effects(&command)
       }
+      Command::Bootstrap { command } => self.execute_bootstrap(&command),
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),

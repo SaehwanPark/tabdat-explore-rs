@@ -28,7 +28,7 @@ not by implementing every estimator mentioned in a chapter.
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares and bounded binary logit/probit MLE/QR | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
-| 11–13: Bootstrap, simulation, Bayesian | Context-only seed, no resampling/estimation workflow | Actual RNG contract, IID/cluster bootstrap, simulation/Bayesian estimation and diagnostics |
+| 11–13: Bootstrap, simulation, Bayesian | Native bounded IID pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means | Cluster/residual/parametric/other-estimator bootstrap, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
@@ -802,3 +802,19 @@ input matches8 selected author-printed facts. Small interleaved/excluded-unit
 fixtures, sample/rank/theta guards and export failure/identity checks complete
 the workflow. This adds one bounded illustrated comparison, not general native
 `estat hausman`, arbitrary model selection, bootstrap or full panel coverage.
+
+### MMA-PANEL Between seeded pairs-bootstrap method evidence
+
+The [complete workflow](../../examples/mma21p1panel/README.md) extends the
+Between-bootstrap block of March2005 mma21p2panmanual.do: equal-weight means on
+all5,320 jointly finite MOM observations/532 people, then resample532 independent
+mean-response/design records per replicate, B200/explicit native seed10001.
+An independent Python xoshiro/SplitMix64/index oracle and base-R lm/cov/quantile
+check18 scalar summaries and4,256 mean/design/prediction cells; all original
+loaded cells are pinned separately. Synthetic references add1,440 exact sample
+indices and76 R coefficient/covariance/SE/bias/type7-interval quantities across
+multiple, no-intercept and shifted designs. This is native reproducible method
+evidence, not the author's unspecified Stata draw stream or a printed bootstrap
+SE replication. It does not add raw person-year/cluster/FE/RE bootstrap or complete
+Chapters11–13. Any failed replicate aborts without redraw/discard. Bootstrap
+reports do not replace retained fits or supply analytic test p-values.

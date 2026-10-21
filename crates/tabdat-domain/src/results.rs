@@ -809,6 +809,7 @@ pub enum ExecutionResult {
   Sargan(tabdat_stats::SarganResult),
   /// Joint homoskedastic residual-inclusion F test of endogenous-regressor exogeneity.
   WuHausman(tabdat_stats::WuHausmanResult),
+  Bootstrap(Box<tabdat_stats::BootstrapOlsResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.
