@@ -80,6 +80,15 @@ impl Session {
       return Err(RuntimeError::RegressUnknownVariable { variables: missing });
     }
 
+    if exact_cluster_keys && let Some(key) = &command.cluster_variable {
+      let data_type = column_types[key.as_str()];
+      if !is_numeric_data_type(data_type) && !matches!(data_type, "VARCHAR" | "BOOLEAN") {
+        return Err(RuntimeError::BootstrapFailed(
+          "cluster keys must be numeric, text or boolean".into(),
+        ));
+      }
+    }
+
     // Verify outcome, predictors, and weight (if present) are numeric
     let mut numeric_candidates = Vec::new();
     numeric_candidates.push(command.outcome.clone());
