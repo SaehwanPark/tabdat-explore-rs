@@ -21,22 +21,23 @@ impl Fixture {
       0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0,
       2, 2, 0, 1, 0,
     ];
-    let mut csv = "id,y,x,z,person\n".to_owned();
+    let mut csv = "id,y,x,z,person,cutoff\n".to_owned();
     if missing {
-      csv.push_str("0,,0,0,0\n");
+      csv.push_str("0,,0,0,0,2\n");
     }
     for (i, y) in y.iter().enumerate() {
       csv.push_str(&format!(
-        "{},{},{},{},{}\n",
+        "{},{},{},{},{},{}\n",
         i + 1,
         y,
         -2. + 4. * i as f64 / 35.,
         [0., 1., 0.4][i % 3],
-        i % 6
+        i % 6,
+        [0, 1, 9, 99][i % 4]
       ));
     }
     if missing {
-      csv.push_str("37,0.5,,0,1\n38,100001,0,0,\n");
+      csv.push_str("37,0.5,,0,1,1\n38,100001,0,0,,1\n");
     }
     fs::write(root.join("data.csv"), csv).unwrap();
     Self(root)
@@ -252,5 +253,87 @@ fn current_probabilities_preserve_retained_fit_labels_and_failure_state() {
         .is_err()
     );
     assert_eq!(s.state(), stable);
+  }
+}
+
+#[test]
+fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothing() {
+  let f = Fixture::new(false);
+  for family in ["poisson", "nbreg"] {
+    let mut s = f.session();
+    run(&mut s, &format!("{family} y x z"));
+    let retained = s.state().estimation;
+    for cutoff in [0, 1, 9, 99] {
+      run(
+        &mut s,
+        &format!("predict scalar_pmf_{cutoff}, pmf({cutoff})"),
+      );
+      run(
+        &mut s,
+        &format!("predict scalar_cdf_{cutoff}, cdf({cutoff})"),
+      );
+    }
+    run(&mut s, "predict row_pmf, pmf(cutoff)");
+    run(&mut s, "predict row_cdf, cdf(cutoff)");
+    let ExecutionResult::Head(table) = run(&mut s, "head 100") else {
+      panic!("head")
+    };
+    let column = |name: &str| {
+      table
+        .columns
+        .iter()
+        .position(|header| header == name)
+        .unwrap()
+    };
+    let value = |row: usize, column: usize| match &table.rows[row][column] {
+      tabdat_domain::CellValue::Float(value) => *value,
+      tabdat_domain::CellValue::SignedInteger(value) => *value as f64,
+      tabdat_domain::CellValue::UnsignedInteger(value) => *value as f64,
+      cell => panic!("expected numeric prediction, found {cell:?}"),
+    };
+    for row in 0..table.rows.len() {
+      let cutoff = [0, 1, 9, 99][row % 4];
+      assert_eq!(
+        value(row, column("row_pmf")),
+        value(row, column(&format!("scalar_pmf_{cutoff}")))
+      );
+      assert_eq!(
+        value(row, column("row_cdf")),
+        value(row, column(&format!("scalar_cdf_{cutoff}")))
+      );
+    }
+    assert_eq!(s.state().estimation, retained);
+
+    let mut invalid = f.session();
+    run(&mut invalid, &format!("{family} y x z"));
+    run(&mut invalid, "replace cutoff = 100");
+    let before = invalid.state();
+    let rows = run(&mut invalid, "head 100");
+    assert!(
+      invalid
+        .execute(parse_command("predict invalid_probability, pmf(cutoff)").unwrap())
+        .is_err()
+    );
+    assert_eq!(invalid.state(), before);
+    assert_eq!(run(&mut invalid, "head 100"), rows);
+
+    let mut missing = f.session();
+    run(&mut missing, &format!("{family} y x z"));
+    run(&mut missing, "replace cutoff = NULL");
+    run(&mut missing, "predict missing_probability, cdf(cutoff)");
+    let ExecutionResult::Head(missing_table) = run(&mut missing, "head 100") else {
+      panic!("head")
+    };
+    let index = missing_table
+      .columns
+      .iter()
+      .position(|name| name == "missing_probability")
+      .unwrap();
+    assert!(
+      missing_table
+        .rows
+        .iter()
+        .all(|row| row[index] == tabdat_domain::CellValue::Null)
+    );
   }
 }

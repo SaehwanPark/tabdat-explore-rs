@@ -1109,14 +1109,14 @@ impl fmt::Display for RuntimeError {
       ),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
       Self::PredictPoissonUnsupported => formatter.write_str(
-        "poisson prediction supports only n (mean), xb, pmf(k) or cdf(k), without interval, std or saving options",
+        "poisson prediction supports only n (mean), xb, pmf(k), cdf(k), pmf(cutoff_variable) or cdf(cutoff_variable), without interval, std or saving options",
       ),
       Self::PredictMeanCountRequiresPoisson => formatter.write_str(
         "predict n requires a prior successful count fit (Poisson or NB2); use pr for binary probabilities or xb for an index",
       ),
       Self::NbregFailed { message } => write!(formatter, "nbreg: {message}"),
       Self::PredictNbregUnsupported => formatter.write_str(
-        "nbreg NB2 prediction supports only n (mean), xb, pmf(k) or cdf(k), without interval, std or saving options",
+        "nbreg NB2 prediction supports only n (mean), xb, pmf(k), cdf(k), pmf(cutoff_variable) or cdf(cutoff_variable), without interval, std or saving options",
       ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,

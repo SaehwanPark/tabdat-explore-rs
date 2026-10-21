@@ -11,6 +11,7 @@ fn parsed_predict_requires_an_active_dataset_before_model_lookup() {
       command: PredictCommand {
         target_variable: "cost_hat".to_string(),
         kind: PredictKind::Xb,
+        count_cutoff_variable: None,
         interval: false,
         level: "95.0".to_string(),
         std: false,
@@ -38,6 +39,7 @@ fn parsed_posterior_predictive_also_requires_an_active_dataset_first() {
       command: PredictCommand {
         target_variable: "y_pp".to_string(),
         kind: PredictKind::PosteriorPredictive,
+        count_cutoff_variable: None,
         interval: true,
         level: "90".to_string(),
         std: true,

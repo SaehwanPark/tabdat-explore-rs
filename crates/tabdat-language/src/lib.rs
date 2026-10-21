@@ -4806,25 +4806,42 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     .iter()
     .filter(|o| matches!(o.name.as_str(), "pmf" | "cdf"))
     .collect();
-  let probability_kind = match probability_options.as_slice() {
-    [] => None,
-    [option] => {
-      let UseOptionValue::Number(value) = &option.value else {
+  let (probability_kind, count_cutoff_variable) = match probability_options.as_slice() {
+    [] => (None, None),
+    [option] => match &option.value {
+      UseOptionValue::Number(value) => {
+        let k = value
+          .parse::<usize>()
+          .ok()
+          .filter(|&k| k < 100)
+          .ok_or_else(|| {
+            ParseError::new(
+              "predict pmf()/cdf() requires an integer from 0 to 99 or a cutoff variable",
+            )
+          })?;
+        (
+          Some(if option.name == "pmf" {
+            PredictKind::CountPmf(k)
+          } else {
+            PredictKind::CountCdf(k)
+          }),
+          None,
+        )
+      }
+      UseOptionValue::Identifiers(values) if values.len() == 1 => (
+        Some(if option.name == "pmf" {
+          PredictKind::CountPmfVariable
+        } else {
+          PredictKind::CountCdfVariable
+        }),
+        Some(values[0].clone()),
+      ),
+      _ => {
         return Err(ParseError::new(
-          "predict pmf()/cdf() requires an integer from 0 to 99",
+          "predict pmf()/cdf() requires an integer from 0 to 99 or a cutoff variable",
         ));
-      };
-      let k = value
-        .parse::<usize>()
-        .ok()
-        .filter(|&k| k < 100)
-        .ok_or_else(|| ParseError::new("predict pmf()/cdf() requires an integer from 0 to 99"))?;
-      Some(if option.name == "pmf" {
-        PredictKind::CountPmf(k)
-      } else {
-        PredictKind::CountCdf(k)
-      })
-    }
+      }
+    },
     _ => {
       return Err(ParseError::new(
         "predict pmf()/cdf() may only be supplied once",
@@ -4938,6 +4955,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     command: PredictCommand {
       target_variable,
       kind,
+      count_cutoff_variable,
       interval,
       level: level_str,
       std,
@@ -8726,6 +8744,18 @@ fn parse_use_parenthesized_value(
     return Ok(UseOptionValue::String(
       tokens.into_iter().map(|token| token.text).collect(),
     ));
+  }
+
+  if matches!(name, "pmf" | "cdf")
+    && tokens.len() == 1
+    && matches!(tokens[0].kind, UseTokenKind::Identifier { .. })
+    && !(matches!(tokens[0].kind, UseTokenKind::Identifier { quoted: false })
+      && matches!(
+        tokens[0].text.to_ascii_lowercase().as_str(),
+        "true" | "false"
+      ))
+  {
+    return Ok(UseOptionValue::Identifiers(vec![tokens[0].text.clone()]));
   }
 
   if matches!(
@@ -14726,6 +14756,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "cost_hat".to_string(),
           kind: PredictKind::Xb,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14740,6 +14771,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "resid".to_string(),
           kind: PredictKind::Residuals,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14754,6 +14786,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "p_hat".to_string(),
           kind: PredictKind::Pr,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14768,6 +14801,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "spatial_hat".to_string(),
           kind: PredictKind::SpatialLag,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14782,6 +14816,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14796,6 +14831,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: true,
           level: "95.0".to_string(),
           std: false,
@@ -14810,6 +14846,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: true,
           level: "90".to_string(),
           std: false,
@@ -14824,6 +14861,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: true,
           level: "95.5".to_string(),
           std: false,
@@ -14838,6 +14876,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: true,
@@ -14852,6 +14891,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14866,6 +14906,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14880,6 +14921,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "y_pp".to_string(),
           kind: PredictKind::PosteriorPredictive,
+          count_cutoff_variable: None,
           interval: true,
           level: "90".to_string(),
           std: true,
@@ -14895,6 +14937,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "cost_hat".to_string(),
           kind: PredictKind::Xb,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14910,6 +14953,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "cost hat".to_string(),
           kind: PredictKind::Residuals,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14925,6 +14969,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "cost hat".to_string(),
           kind: PredictKind::Pr,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
@@ -14940,6 +14985,7 @@ mod tests {
         command: PredictCommand {
           target_variable: "cost_hat".to_string(),
           kind: PredictKind::Xb,
+          count_cutoff_variable: None,
           interval: false,
           level: "95.0".to_string(),
           std: false,
