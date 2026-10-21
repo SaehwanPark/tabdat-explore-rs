@@ -519,7 +519,7 @@ impl RandomEffectsMlInference {
   }
 }
 
-/// Balanced, unweighted Gaussian marginal ML, including the zero-unit boundary.
+/// Unweighted Gaussian marginal ML with unequal counts and the zero-unit boundary.
 /// Joint information is constrained to one log variance at the boundary.
 /// Coefficient covariance has no N/(N-K) scale or regular unit-variance inference.
 /// Population predictions reuse the retained intercept/slopes through the RE state.

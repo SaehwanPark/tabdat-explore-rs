@@ -2,17 +2,26 @@
 # Rscript random_effects_ml_unbalanced_reference.R reference.csv inputs.csv
 options(digits=17)
 library(nlme)
-args <- commandArgs(trailingOnly=TRUE); stopifnot(length(args)==2)
+args <- commandArgs(trailingOnly=TRUE); stopifnot(length(args)%in%c(2,3))
 rows <- list(); inputs <- list()
 emit <- function(case,path,value) rows[[length(rows)+1L]] <<- data.frame(case,path,value=unname(value))
-for(case in c('unequal','shifted_interleaved','boundary')) {
+for(case in if(length(args)==3) 'mom_sensitivity' else c('unequal','shifted_interleaved','boundary')) {
   sizes <- c(1,2,3,4,5,3,2,4)
   d <- do.call(rbind,lapply(1:8,function(id)data.frame(id,time=seq_len(sizes[id])-1)))
   d$x <- .3*d$id+.2*d$time+.07*((d$id*d$time+2)%%5)
   d$z <- .13*d$time^2+.03*((d$id+2*d$time)%%4)
   d$y <- 1+.7*d$x-.3*d$z+.3*((d$id^2+1)%%5)+.11*((d$id*d$time+3)%%7)
   if(case=='shifted_interleaved') { d$y <- d$y+100; d <- d[order(-d$time,-d$id),] }
-  X <- model.matrix(~x+z,d); N <- nrow(d); K <- ncol(X); G <- length(sizes)
+  formula <- y~x+z
+  if(case=='mom_sensitivity') {
+    d <- read.table(args[3],col.names=c('y','x','kids','ageh','agesq','disab','id','time'))
+    stopifnot(nrow(d)==5320,identical(as.integer(d$id),rep(1:532,each=10)),identical(as.integer(d$time),rep(1979:1988,532)))
+    d$source_row <- seq_len(nrow(d))
+    d <- d[!((d$id%%3==0 & d$time%in%c(1980,1985)) | (d$id%%7==0 & d$time>=1981 & d$time<=1983)),]
+    stopifnot(nrow(d)==4738,length(unique(d$id))==532)
+    formula <- y~x
+  }
+  X <- model.matrix(formula,d); N <- nrow(d); K <- ncol(X); G <- length(unique(d$id))
   Ti <- ave(d$id,d$id,FUN=length); first <- !duplicated(d$id); Tg <- Ti[first]; ref <- min(Ti)
   Xm <- apply(X,2,function(x)ave(x,d$id)); Xw <- X-Xm
   if(case=='boundary') {
@@ -21,7 +30,7 @@ for(case in c('unequal','shifted_interleaved','boundary')) {
     d$y <- .7*d$x+e
   }
   y <- d$y; ym <- ave(y,d$id); yw <- y-ym
-  inputs[[case]] <- cbind(case,d[,c("id","time","y","x","z")])
+  if(case!='mom_sensitivity') inputs[[case]] <- cbind(case,d[,c("id","time","y","x","z")])
   make_profile <- function(X) {
     Xm <- apply(X,2,function(x)ave(x,d$id)); Xw <- X-Xm
     function(eta) {
@@ -46,14 +55,14 @@ for(case in c('unequal','shifted_interleaved','boundary')) {
   boundary <- r$eta==0
   stopifnot(boundary==(case=='boundary'))
   if(boundary) {
-    trusted <- lm(y~x+z,data=d); Vb <- unname(vcov(trusted))*df.residual(trusted)/N
+    trusted <- lm(formula,data=d); Vb <- unname(vcov(trusted))*df.residual(trusted)/N
     V <- matrix(0,K+1,K+1); V[1:K,1:K] <- Vb; V[K+1,K+1] <- 2/N
     nll <- function(par) .5*(N*(log(2*pi)+par[K+1])+sum((y-X%*%par[1:K])^2)*exp(-par[K+1]))
     gradient <- function(par) { e<-drop(y-X%*%par[1:K]); a<-exp(par[K+1]); c(drop(-crossprod(X,e)/a),.5*(N-sum(e^2)/a)) }
     par <- c(r$beta,log(r$a)); H <- solve(V)
     trusted_beta <- unname(coef(trusted))
   } else {
-    trusted <- lme(y~x+z,random=list(id=pdDiag(value=log(sqrt(r$u/r$a)),form=~1)),data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
+    trusted <- lme(formula,random=list(id=pdDiag(value=log(sqrt(r$u/r$a)),form=~1)),data=d,method='ML',control=lmeControl(tolerance=1e-10,msTol=1e-10))
     trusted_beta <- unname(fixef(trusted))
     v <- r$a+Ti*r$u; wa <- r$a/v; wu <- Ti*r$u/v; sr <- Ti*r$eb^2/v
     H <- matrix(0,K+2,K+2); H[1:K,1:K] <- crossprod(Xw)/r$a+crossprod(Xm,Xm/v)
@@ -98,6 +107,10 @@ for(case in c('unequal','shifted_interleaved','boundary')) {
     emit(case,paste0('/gls/residuals/',i-1),r$yt[i]-sum(r$Xt[i,]*r$beta))
     emit(case,paste0('/population_fitted_values/',i-1),sum(X[i,]*r$beta))
     emit(case,paste0('/population_residuals/',i-1),y[i]-sum(X[i,]*r$beta))
+  }
+  if(case=='mom_sensitivity') {
+    inputs[[case]] <- data.frame(source_row=d$source_row,lnhr=d$y,lnwg=d$x,kids=d$kids,ageh=d$ageh,agesq=d$agesq,disab=d$disab,id=d$id,year=d$time,ub_xb=drop(X%*%r$beta),ub_residual=drop(y-X%*%r$beta))
+    stopifnot(min(Ti)==5,max(Ti)==10)
   }
   # Use the beta principal block explicitly (boundary dimension differs).
   wald <- drop(t(r$beta[-1])%*%solve(V[2:K,2:K,drop=FALSE],r$beta[-1]))
