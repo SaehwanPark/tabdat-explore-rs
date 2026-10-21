@@ -9,6 +9,6 @@ tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }
 tabdat-execution = { path = "../tabdat-execution", version = "0.1.0" }
 
 [dev-dependencies]
-duckdb = { version = "1.10505.0", features = ["bundled", "parquet"] }
+duckdb = { version = "1.10506.1", features = ["bundled", "parquet"] }
 tabdat-language = { path = "../tabdat-language", version = "0.1.0" }
 tabdat-stats = { path = "../tabdat-stats", version = "0.1.0" }

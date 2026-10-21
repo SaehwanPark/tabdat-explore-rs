@@ -8,5 +8,5 @@ publish = false
 tabdat-domain = { path = "../tabdat-domain", version = "0.1.0" }
 tabdat-io = { path = "../tabdat-io", version = "0.1.0" }
 tabdat-stats = { path = "../tabdat-stats", version = "0.1.0" }
-duckdb = { version = "1.10505.0", features = ["bundled", "parquet", "vscalar", "vscalar-arrow"] }
+duckdb = { version = "1.10506.1", features = ["bundled", "parquet", "vscalar", "vscalar-arrow"] }
 sha2 = "0.10"
