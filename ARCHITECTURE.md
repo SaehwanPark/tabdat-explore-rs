@@ -10,7 +10,7 @@ The product is not feature complete. A compiled command type is not evidence of 
 | --- | --- |
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
-| `tabdat-stats` | Pure Rust linear/within-FE/balanced-Swamy–Arora-RE/binary-logit/probit/bounded-Poisson/NB2 estimation, covariance/inference, seeded IID/whole-cluster pairs OLS bootstrap and hypothesis utilities |
+| `tabdat-stats` | Pure Rust linear/within-FE/balanced-Swamy–Arora-RE/binary-logit/probit/bounded-Poisson/NB2/quantile estimation, covariance/inference, seeded IID/whole-cluster pairs OLS bootstrap and hypothesis utilities |
 | `tabdat-io` | Local path/format and script I/O validation; complete staged SVG publication without replacing destinations |
 | `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and one registered scalar UDF (`tabdat_gauss_phi`, delegating to `tabdat-stats`' validated normal CDF); it depends on `tabdat-stats` only for that validated function, with no reverse edge |
 | `tabdat-execution` | Session coordination, data/statistical dispatch, script execution and generated SVG artifact coordination |
@@ -23,6 +23,15 @@ The product is not feature complete. A compiled command type is not evidence of 
 All eleven first-party packages currently forbid unsafe Rust. The Rust workspace
 is not an instruction to create more crates. Prefer coherent internal modules;
 consider merging crates only when actual change patterns justify the cost.
+
+Quantile regression uses Clarabel 0.11.1's Rust sparse dual LP with only its
+`serde` feature (upstream requires it even without serialization use); Python,
+BLAS and SDP backends are disabled. TabDat constructs owned CSC arrays with
+validated dimensions, sorted in-range row indices and matching column pointers,
+keeps the solver local, and returns only owned statistical values. Clarabel's
+internal QDLDL uses unchecked indexing relying on symbolic-factorization and
+matrix-dimension invariants; this is third-party unsafe Rust, not a claim of an
+unsafe-free dependency graph. No native solver handle or FFI is introduced.
 
 ## Invariants to protect
 

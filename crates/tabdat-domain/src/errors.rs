@@ -443,6 +443,8 @@ pub enum RuntimeError {
   FixedEffectsPredictionFailed { message: String },
   /// Invalid/unsupported binary logit specification or a failed finite-MLE fit.
   LogitFailed { message: String },
+  /// Invalid/unsupported conditional-quantile request or failed numerical/IID fit.
+  QregFailed { message: String },
   /// Continuous logit marginal effects require an owned preceding logit fit.
   EstatMarginsRequiresPriorLogit,
   /// A retained-design delta calculation failed.
@@ -1090,6 +1092,7 @@ impl fmt::Display for RuntimeError {
       Self::RandomEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg random-effects failed: {message}"),
       Self::FixedEffectsFailed { message } => write!(formatter, "xtreg fe failed: {message}"),
       Self::FixedEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg fe failed: {message}"),
+      Self::QregFailed { message } => write!(formatter, "qreg: {message}"),
       Self::LogitFailed { message } => write!(formatter, "logit: {message}"),
       Self::EstatMarginsRequiresPriorLogit => {
         formatter.write_str("estat margins requires a prior logit fit")

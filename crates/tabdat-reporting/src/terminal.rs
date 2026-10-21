@@ -945,6 +945,35 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.stored_count
     ),
     ExecutionResult::EstimateTable(result) => crate::estimate_table::render_estimate_table(result),
+    ExecutionResult::Quantile(result) => {
+      let mut text = format!(
+        "Conditional quantile regression: {} at tau={}\nN = {}; check loss = {}; pseudo R2 = {}\nIID location errors assumed; Hall-Sheather residual-spacing covariance, asymptotic normal 95% intervals.\n",
+        result.outcome.escape_debug(),
+        result.quantile,
+        result.observation_count,
+        inference_number(result.check_loss),
+        result
+          .pseudo_r_squared
+          .map(inference_number)
+          .unwrap_or_else(|| "unavailable".into())
+      );
+      for b in &result.coefficients {
+        writeln!(
+          text,
+          "{}: estimate = {}; SE = {}; z = {}; p = {}; 95% CI = [{}, {}]",
+          b.name.escape_debug(),
+          inference_number(b.value),
+          inference_number(b.standard_error),
+          inference_number(b.statistic),
+          inference_number(b.p_value),
+          inference_number(b.ci_lower),
+          inference_number(b.ci_upper)
+        )
+        .unwrap();
+      }
+      writeln!(text,"Sparsity = {}; local residuals = {}; bandwidth probability = {}. No heteroskedastic/cluster/survey or cross-quantile inference.",inference_number(result.sparsity),result.sparsity_observation_count,inference_number(result.bandwidth_probability)).unwrap();
+      text
+    }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
     ExecutionResult::ClusterBootstrap(result) => {
       let text = bootstrap_report(&result.bootstrap, true);

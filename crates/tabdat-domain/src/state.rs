@@ -201,6 +201,8 @@ pub enum EstimationState {
   BayesMcmc(ModelState),
   Spatial(ModelState),
   Quantile(ModelState),
+  /// Installed certified conditional-quantile fit; legacy Quantile remains readable.
+  QuantileFit(Box<tabdat_stats::QuantileResult>),
   Logit(Box<BinaryLogitState>),
   Probit(Box<BinaryProbitState>),
   Tobit(ModelState),
@@ -267,7 +269,7 @@ impl EstimationState {
       Self::BayesLinear(..) => EstimationFamily::BayesLinear,
       Self::BayesMcmc(..) => EstimationFamily::BayesMcmc,
       Self::Spatial(..) => EstimationFamily::Spatial,
-      Self::Quantile(..) => EstimationFamily::Quantile,
+      Self::Quantile(..) | Self::QuantileFit(..) => EstimationFamily::Quantile,
       Self::Logit(..) => EstimationFamily::Logit,
       Self::Probit(..) => EstimationFamily::Probit,
       Self::Tobit(..) => EstimationFamily::Tobit,

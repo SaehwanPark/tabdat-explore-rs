@@ -1313,3 +1313,35 @@ This is current-column OLS with fixed supplied transforms, not automatic FE/RE,
 wild/residual or survey resampling. B-1 covariance/SE and fixed type7 percentile95
 intervals do not provide a few-cluster or nominal-coverage guarantee. Any failed
 replication aborts without discard/redraw or retained-model/data mutation.
+
+## Conditional quantile regression
+
+`qreg y xvars [, quantile(value) noconstant]` adds CLI-v1
+`QuantileRegressionResult`. Its `data` contains outcome, ordered predictors,
+include_intercept, quantile, observation_count, ordered coefficients (intercept
+first when present), covariance_matrix/covariance_parameter_names, check_loss,
+nullable null_check_loss/pseudo_r_squared, sparsity, sparsity_observation_count,
+bandwidth_probability, solver_iterations, relative_duality_gap,
+max_score_violation and sample `{total_observations,dropped_observations}`.
+Coefficient fields are name, value, standard_error, statistic, p_value, ci_lower
+and ci_upper. No retained design or individual sample mapping is serialized.
+
+Convention fields are `estimator: "linear_conditional_quantile"`,
+`covariance: "iid_location_hall_sheather_residual_spacing"`,
+`reference_distribution: "asymptotic_standard_normal"`, confidence_level 95 and
+`solver: "clarabel_0.11.1_rust_qdldl_dual_lp_qr_polish"`. Covariance has no
+finite-sample multiplier; the local spacing design uses ranks divided by N-K.
+Loss is `sum(r*(tau-I[r<0]))`; the intercept null uses an empirical type-1
+quantile. Null loss/pseudo R² are absent without an intercept (or pseudo R²
+without a positive null loss). These are not likelihood fields.
+
+Sample preparation uses the ordered joint complete-finite numeric cases.
+QuantileFit is retained separately from legacy Quantile ModelState, so linear
+fit APIs and existing serialized command fields are unchanged. Status reports
+family quantile, with no invented linear regression metadata. Bare/current-row
+`predict` uses xb; only xb/residuals are installed, following linear NULL/NaN/
+infinity arithmetic. A failed new fit clears old inference, while prediction
+errors preserve fit/data. Robust/cluster/weighted inference, cross-quantile
+tests, margins, named quantile reports and prediction intervals are unsupported.
+See `help qreg` and the [household workflow](../../examples/mma04p2qreg/README.md)
+for numerical bounds, assumptions and independent evidence.

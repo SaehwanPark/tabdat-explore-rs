@@ -25,6 +25,7 @@ mod nb2;
 mod poisson;
 pub mod post_estimation;
 pub mod problem;
+mod quantile;
 mod random_effects;
 mod random_effects_ml;
 pub mod result;
@@ -96,3 +97,5 @@ pub use traits::Estimator;
 pub use ttest::{
   TtestSampleStatistics, TtestStatistics, independent_ttest, one_sample_ttest, paired_ttest,
 };
+
+pub use quantile::{QuantileCoefficient, QuantileResult, fit_quantile_iid};

@@ -25,6 +25,7 @@ mod labels;
 mod nb2;
 mod plotting;
 mod poisson;
+mod quantile;
 mod scripts;
 mod statistics;
 mod transforms;
@@ -150,6 +151,7 @@ impl Session {
       Command::Probit { command } => self.execute_probit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
+      Command::Qreg { command } => self.execute_qreg(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

@@ -4,6 +4,7 @@ Installed syntax:
 `predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
+- Quantile regression: xb (fitted conditional quantile) or residuals.
 - Supported regress/2SLS: xb (default) or residuals (outcome minus xb).
 - Within FE: xb (normalized common intercept + current X beta), xbu (retained
   unit intercept + current X beta), u (normalized unit deviation), or residuals
@@ -48,7 +49,7 @@ Data and model notes:
   and centers come from the joint estimation sample and never change with current
   rows. Unsupported options, missing columns or ID type mismatch fail atomically.
   FE missing/nonfinite required values and overflowing calculations yield NULL.
-- OLS/2SLS fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
+- OLS/2SLS/quantile fits retain native SQL NULL/NaN/infinity arithmetic. Binary/count
   nonfinite or unrepresentable indices yield NULL. Stable binary links avoid
   exponential overflow. Poisson/NB2 overflowing means yield NULL; finite negative
   exponential underflow is zero. Neither changes row order or the fit.

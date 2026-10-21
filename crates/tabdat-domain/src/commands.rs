@@ -626,8 +626,7 @@ pub struct ZinbCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `qreg` form retained for a later statistical runtime
-/// slice.
+/// Unweighted conditional quantile regression; inference options are runtime-validated.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QregCommand {
   /// The dependent variable.
@@ -636,9 +635,9 @@ pub struct QregCommand {
   pub predictors: Vec<String>,
   /// The requested quantile value, retained as string spelling.
   pub quantile: String,
-  /// Request robust covariance in the eventual runtime.
+  /// Parsed robust request; the installed IID-only runtime rejects it.
   pub robust: bool,
-  /// Whether the eventual runtime should include an intercept.
+  /// Whether to include an intercept.
   pub include_intercept: bool,
 }
 
