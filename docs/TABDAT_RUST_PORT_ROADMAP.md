@@ -181,7 +181,7 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    against R (Poisson1,095/NB2 1,191 quantities). NB2 specifies variance
    mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
    not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: remaining exposure workflows, household/site/multiway/survey inference, count cutoffs above99,
+   panel analysis: remaining exposure workflows, household/site/multiway/survey inference,
    other formal NB specification tests and remaining table outputs stay required; the boundary LR p-value is currently model-based only.
    The native Poisson original-person extension now audits20,186 source rows/
    5,908 actual people and validates551 additional R quantities with G/(G-1)
@@ -211,7 +211,8 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    dispersion-refitted nulls, current predictions and retained conditional-offset
    effects/count bins. These are method evidence, not new book coverage.
    Current-row `predict ..., pmf(k)`/`cdf(k)` now supports scalar or row-specific
-   integer cutoffs0..99 with retained alpha/offsets and atomic publication;288
+   integer cutoffs0..100000 with retained alpha/offsets, a 10,000,000-increment
+   expanded-work bound above99 and atomic publication;308
    independent base-R helper values,432 fixed-cutoff and144 row-specific
    offset-fit/current-row probabilities validate the bounded
    [complete workflow](../examples/count-probability/README.md). Full laws remain

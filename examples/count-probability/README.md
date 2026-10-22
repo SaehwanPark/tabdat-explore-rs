@@ -1,10 +1,12 @@
 # Current-row Poisson/NB2 probabilities
 
 `predict p, pmf(k)` appends P(Y=k|current X,offset); `cdf(k)` appends
-P(Y<=k|current X,offset). The cutoff may be an integer literal0..99 or a numeric
-current-row variable whose nonmissing values are exact integers0..99. Missing
-cutoffs produce SQL NULL; negative, fractional, or greater-than99 values fail
-before a new column is published. These are plug-in distributional probabilities,
+P(Y<=k|current X,offset). The cutoff may be an integer literal0..100000 or a numeric
+current-row variable whose nonmissing values are exact integers0..100000. Missing
+cutoffs produce SQL NULL; negative, fractional, or greater-than100000 values fail
+before a new column is published. For cutoffs above99, one prediction may add at
+most10,000,000 cutoff increments across rows with usable model inputs. Exceeding
+that work limit fails before publication. These are plug-in distributional probabilities,
 not confidence/prediction intervals or a goodness-of-fit test. A robust/cluster
 covariance does not justify a Poisson or NB2 law; NB2 uses retained alpha with
 variance mu+alpha*mu².
@@ -30,11 +32,12 @@ finite index whose exponential underflows to zero uses the limiting point mass
 at zero. Empty data is supported. Bounds, missing/nonnumeric required columns,
 existing targets, unsupported estimator/mode/options or probability convergence
 failure fail before publication, preserving data/labels/fit. Bare predict remains
-xb; `n` remains the mean and binary `pr` keeps its meaning. Cutoffs above99,
-survival options and parameter uncertainty remain unsupported.
+xb; `n` remains the mean and binary `pr` keeps its meaning. Survival options and
+parameter uncertainty remain unsupported.
 
-Independent base-R4.6.1 `dpois`/`ppois`/`dnbinom`/`pnbinom` validate288 PMF/CDF
-quantities over tiny/large/zero means, extreme supported alpha and k=0,1,9,99.
+Independent base-R4.6.1 `dpois`/`ppois`/`dnbinom`/`pnbinom` validate308 PMF/CDF
+quantities over tiny/large/zero means, extreme supported alpha and k=0,1,9,99,
+100,1,000 and100,000, including the NB2 fit-domain limit.
 The existing audited offset-fit R parameters supply432 fixed-cutoff and144
 row-specific current-row reference probabilities after predictor/offset shifts
 and reversed order. The CLI checks both laws, three covariance choices, text/JSON

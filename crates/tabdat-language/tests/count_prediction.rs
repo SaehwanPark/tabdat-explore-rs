@@ -5,6 +5,7 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
   for (text, kind) in [
     ("predict p, pmf(0)", PredictKind::CountPmf(0)),
     ("predict p, cdf(99)", PredictKind::CountCdf(99)),
+    ("predict p, pmf(100000)", PredictKind::CountPmf(100000)),
     ("predict p, pmf(k)", PredictKind::CountPmfVariable),
     (
       "predict p, cdf(`count cutoff`)",
@@ -28,7 +29,7 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     "pmf",
     "cdf(true)",
     "pmf(-1)",
-    "pmf(100)",
+    "pmf(100001)",
     "cdf(1.5)",
     "pmf(0) cdf(1)",
     "pmf(0) xb",

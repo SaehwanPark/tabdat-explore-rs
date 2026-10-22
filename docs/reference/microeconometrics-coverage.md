@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, cutoffs above99, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML, plus bounded explicit-key within FE slope/conditional-prediction workflow with classical/unit-cluster inference, retained effects and independent original-source evidence | Persistent panel declaration/general lags, robust ML inference, unit effects, two-way effects, nuisance-intercept inference, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | One-way linear cluster covariance | Survey weights, strata/PSUs and design-based workflows |
@@ -65,7 +65,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
-| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns, plus model-based Poisson-boundary NB2 LR test, validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,191 quantities/all source/design/mean/index records; native person-Poisson551/NB2 599-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated, printed Table20.6 NB2 row unresolved; cutoffs above99/remaining tables and richer counts remain required |
+| MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns, plus model-based Poisson-boundary NB2 LR test, validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,191 quantities/all source/design/mean/index records; native person-Poisson551/NB2 599-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated; current-row PMF/CDF above99 additionally checked against20 base-R values, printed Table20.6 NB2 row unresolved; remaining tables and richer counts remain required |
 | MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS, unbalanced RE-GLS sensitivity, interior ML coefficient/likelihood, positive-interior variance-component uncertainty, the one-sided zero-unit-variance LR test and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); nuisance-intercept and robust ML inference, Hausman, panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison validated below |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
@@ -826,18 +826,20 @@ completion or global optimizer guarantee is implied.
 
 ### MMA-COUNT current-row probability method extension
 
-Bounded `predict ..., pmf(k)`/`cdf(k)` for integer0..99 or the current numeric
+Bounded `predict ..., pmf(k)`/`cdf(k)` for integer0..100000 or the current numeric
 cutoff variable adds conditional PMF/CDF values on current predictors/offsets
 under Poisson/NB2 laws. Missing cutoffs return NULL; negative, fractional or
-greater-than99 values fail atomically. This is a method
+greater-than100000 values fail atomically. Above99, a prediction may add at most
+10,000,000 cutoff increments across rows with usable model inputs. This is a method
 extension of the existing Table20.5 mean-model specifications, not new printed
 coverage. The [complete synthetic workflow](../../examples/count-probability/README.md)
-validates288 base-R helper probabilities,432 fixed-cutoff and144 row-specific
+validates308 base-R helper probabilities,432 fixed-cutoff and144 row-specific
 offset-fit probabilities, including changed predictors/offsets, reversed order
 and three covariance choices. CLI exports match across text/JSON and covariance
 choices. Raw state/sample/labels, missing/overflow/zero-mean limits and atomic
-failures are covered; no distributional guarantee follows from robust covariance. Cutoffs
-beyond99, parameter uncertainty/formal calibration, and printed Table20.6 NB2
+failures, including the expanded-work guard, are covered; no distributional
+guarantee follows from robust covariance. Parameter uncertainty/formal calibration,
+and printed Table20.6 NB2
 reconciliation remain unresolved. Underlying count-fit contracts are preserved.
 
 ### MMA-PANEL p719 robust auxiliary Hausman comparison

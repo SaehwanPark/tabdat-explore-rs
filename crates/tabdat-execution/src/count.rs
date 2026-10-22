@@ -1,5 +1,7 @@
 use crate::*;
 
+const MAX_COUNT_POINT_EXPANSION_WORK: usize = 10_000_000;
+
 #[derive(Clone, Copy)]
 pub(crate) enum CountFamily {
   Poisson,
@@ -352,6 +354,7 @@ impl Session {
         tabdat_stats::count_point_probabilities(law, 0.0, count)
           .map_err(|e| family.error(e.to_string()))?;
       }
+      let mut expanded_cutoff_work = 0usize;
       let columns = if selected_columns.is_empty() {
         "1".to_owned()
       } else {
@@ -385,11 +388,13 @@ impl Session {
                     values.push(None);
                     return Ok(());
                   }
-                  _ => exact_count(cell, 99).ok_or_else(|| {
-                    family.error(
-                      "count cutoff variable must contain exact integer values from 0 to 99 or missing",
-                    )
-                  })? as usize,
+                  _ => exact_count(cell, tabdat_stats::MAX_COUNT_POINT_CUTOFF as i128)
+                    .ok_or_else(|| {
+                      family.error(format!(
+                        "count cutoff variable must contain exact integer values from 0 to {} or missing",
+                        tabdat_stats::MAX_COUNT_POINT_CUTOFF
+                      ))
+                    })? as usize,
                 }
               }
               _ => {
@@ -413,6 +418,17 @@ impl Session {
             if !xb.is_finite() || !mean.is_finite() {
               values.push(None);
               return Ok(());
+            }
+            let expansion = count.saturating_sub(tabdat_stats::MAX_COUNT_PROBABILITY_TAIL - 1);
+            if mean > 0.0 && expansion > 0 {
+              expanded_cutoff_work = expanded_cutoff_work
+                .checked_add(expansion)
+                .ok_or_else(|| family.error("expanded cutoff work overflowed"))?;
+              if expanded_cutoff_work > MAX_COUNT_POINT_EXPANSION_WORK {
+                return Err(family.error(format!(
+                  "expanded cutoff work exceeds {MAX_COUNT_POINT_EXPANSION_WORK} terms; reduce the cutoff or current row count"
+                )));
+              }
             }
             let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
               .map_err(|e| family.error(e.to_string()))?;

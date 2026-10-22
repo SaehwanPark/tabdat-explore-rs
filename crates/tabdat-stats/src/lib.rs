@@ -44,8 +44,9 @@ pub use bootstrap::{
   MAX_BOOTSTRAP_REPLICATIONS, MAX_BOOTSTRAP_WORK, bootstrap_ols, bootstrap_ols_clustered,
 };
 pub use count_probabilities::{
-  CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_PROBABILITY_TAIL,
-  count_bin_probabilities, count_point_probabilities, count_probability_table,
+  CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_POINT_CUTOFF,
+  MAX_COUNT_PROBABILITY_TAIL, count_bin_probabilities, count_point_probabilities,
+  count_probability_table,
 };
 pub use diagnostics::variance_inflation_factors;
 pub use distributions::{normal_cdf, normal_pdf, normal_quantile};

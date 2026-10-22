@@ -468,18 +468,20 @@ to installed count fits. Executable owned state uses
 not a usable/restorable fit. Failed new fits clear stale estimation only.
 
 Poisson/NB2 current-row `pmf(k)` and `cdf(k)` accept either a scalar integer or
-the name of a current numeric cutoff variable, with exact values0..99. Missing
-cutoffs yield NULL; negative, fractional, or greater-than99 values fail before
-publishing a column. These use current predictors/offsets and retained NB2 alpha,
-and assume the fitted full conditional law; robust covariance does not establish
-distributional calibration. Scalar and variable cutoff forms share the existing
-bounded probability calculations.
+the name of a current numeric cutoff variable, with exact values0..100000.
+Missing cutoffs yield NULL; negative, fractional, or greater-than100000 values
+fail before publishing a column. For cutoffs above99, one request may add at most
+10,000,000 cutoff increments across rows with usable model inputs. Exceeding that
+work bound fails before publication. These use current predictors/offsets and
+retained NB2 alpha, and assume the fitted full conditional law; robust covariance
+does not establish distributional calibration. The separate `estat countprob`
+table retains its tail cutoff1..100.
 
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
 [synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) validates
 full joint inference/nulls without claiming a new textbook illustration.
 FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
-specifications, count cutoffs above99, other formal specification tests, discrete
+specifications, other formal specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
 
