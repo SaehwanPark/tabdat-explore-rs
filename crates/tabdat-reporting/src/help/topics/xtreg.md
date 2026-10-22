@@ -40,8 +40,15 @@ Inference and reporting:
   few-cluster calibration and independence across units remain assumptions.
 - Covariance and `lincom`/`test` contain **slopes only**. The normalized common
   intercept is a descriptive point: mean(y)-mean(X)beta on the estimation sample.
-  Unit deviations have estimation-observation-weighted mean zero. There is no
-  common/unit-intercept inference or implicit intercept constraint.
+  Unit deviations have estimation-observation-weighted mean zero. Standard
+  errors and intervals for the normalization point or individual unit intercepts
+  are not reported, and there is no implicit intercept constraint. Conventional
+  nonclustered FE additionally reports the
+  classical pooled-versus-within F test of equal unit intercepts, with
+  `F(G-1, N-G-p)` degrees of freedom. It assumes independent homoskedastic
+  errors; exact finite-sample calibration also requires normal errors. Clustered
+  FE withholds this classical test; no cluster-robust unit-effects test is
+  supplied.
 - Report within R² and conditional level-fit R² (not Stata overall/between R²),
   RSS/root MSE, sample/absorbed DF and group sizes. No panel likelihood, adjusted
   within R², Hausman or serial-correlation test is supplied. Residual summaries

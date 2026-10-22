@@ -32,6 +32,16 @@ rows <- list()
 emit <- function(covariance,section,quantity,value) {
   rows[[length(rows)+1L]] <<- data.frame(covariance,section,quantity,value=as.numeric(value))
 }
+pool <- plm::plm(lnhr~lnwg,data=d,index=c('id','year'),model='pooling')
+effects_test <- plm::pFtest(fit,pool)
+for (name in c('statistic','df_num','df_denom','p_value')) {
+  value <- switch(name,
+    statistic=unname(effects_test$statistic),
+    df_num=unname(effects_test$parameter[1]),
+    df_denom=unname(effects_test$parameter[2]),
+    p_value=unname(effects_test$p.value))
+  emit('nonrobust','unit_effects_f_test',name,value)
+}
 for (covariance in c('nonrobust','cluster(id)')) {
   V <- if(covariance=='nonrobust') vcov(fit) else plm::vcovHC(fit,method='arellano',type='sss',cluster='group')
   expected <- if(covariance=='nonrobust') rss/df_fit*B else multiplier*B%*%crossprod(S)%*%B

@@ -2,7 +2,8 @@
 
 use crate::{
   CoefficientEstimate, CovarianceType, EstimationProblem, LeastSquaresOptions, LeastSquaresResult,
-  StatsError, fit_least_squares_with_options, student_t_pvalue,
+  StatsError, f_distribution_survival_probability, fit_least_squares_with_options,
+  student_t_pvalue,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -18,6 +19,15 @@ pub struct FixedEffect {
   pub intercept: f64,
   /// Unit deviation from the observation-weighted normalized common intercept.
   pub effect: f64,
+}
+
+/// Classical nested-model test that all individual intercepts are equal.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnitEffectsFTest {
+  pub f_statistic: f64,
+  pub df_num: usize,
+  pub df_denom: usize,
+  pub p_value: f64,
 }
 
 /// One-way within fit. Only slope coefficients have reported covariance/inference.
@@ -37,6 +47,12 @@ pub struct FixedEffectsResult {
   pub minimum_group_size: usize,
   pub maximum_group_size: usize,
   pub singleton_groups: usize,
+  /// Homoskedastic pooled-versus-within F test; withheld for clustered fits.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub unit_effects_f_test: Option<UnitEffectsFTest>,
+  /// Why the conventional pooled-versus-within F test was not reported.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub unit_effects_f_test_unavailable_reason: Option<String>,
 }
 
 fn average(values: impl Iterator<Item = f64> + Clone) -> Result<f64, StatsError> {
@@ -49,6 +65,67 @@ fn average(values: impl Iterator<Item = f64> + Clone) -> Result<f64, StatsError>
     ));
   }
   Ok(mean)
+}
+
+fn unit_effects_f_test(
+  problem: &EstimationProblem,
+  within: &LeastSquaresResult,
+  group_count: usize,
+) -> (Option<UnitEffectsFTest>, Option<String>) {
+  if matches!(
+    &within.covariance.covariance_type,
+    CovarianceType::Cluster(_)
+  ) {
+    return (
+      None,
+      Some(
+        "the classical homoskedastic reference is withheld for unit-clustered covariance".into(),
+      ),
+    );
+  }
+  let unavailable = |reason: &str| (None, Some(reason.to_owned()));
+  let Some(df_num) = group_count.checked_sub(1).filter(|&df| df > 0) else {
+    return unavailable("the retained panel has no testable unit-effect restrictions");
+  };
+  let df_denom = within.fit_statistics.degrees_of_freedom;
+  if df_denom == 0 {
+    return unavailable("the within fit has no residual degrees of freedom");
+  }
+  let Ok(pooled) = fit_least_squares_with_options(
+    problem,
+    &LeastSquaresOptions {
+      covariance_type: CovarianceType::NonRobust,
+    },
+  ) else {
+    return unavailable("the same-sample pooled comparison could not be estimated");
+  };
+  let (Some(rss_pooled), Some(rss_within)) = (
+    pooled.fit_statistics.residual_sum_of_squares,
+    within.fit_statistics.residual_sum_of_squares,
+  ) else {
+    return unavailable("the pooled or within residual sum of squares is unavailable");
+  };
+  if !rss_pooled.is_finite() || !rss_within.is_finite() || rss_within <= 0.0 {
+    return unavailable("the nested-model residual variance is degenerate or nonfinite");
+  }
+  let reduction = rss_pooled - rss_within;
+  if !reduction.is_finite() || reduction < 0.0 {
+    return unavailable("the pooled-versus-within residual comparison is numerically invalid");
+  }
+  let f_statistic = (reduction / df_num as f64) / (rss_within / df_denom as f64);
+  let p_value = f_distribution_survival_probability(f_statistic, df_num as f64, df_denom as f64);
+  if !f_statistic.is_finite() || !p_value.is_finite() || !(0.0..=1.0).contains(&p_value) {
+    return unavailable("the nested-model F reference is nonfinite");
+  }
+  (
+    Some(UnitEffectsFTest {
+      f_statistic,
+      df_num,
+      df_denom,
+      p_value,
+    }),
+    None,
+  )
 }
 
 /// Unweighted one-way FE with unit groups in problem.sample.cluster_groups. The input
@@ -251,6 +328,8 @@ pub fn fit_fixed_effects(
   let minimum_group_size = members.iter().map(Vec::len).min().unwrap();
   let maximum_group_size = members.iter().map(Vec::len).max().unwrap();
   let singleton_groups = members.iter().filter(|rows| rows.len() == 1).count();
+  let (unit_effects_f_test, unit_effects_f_test_unavailable_reason) =
+    unit_effects_f_test(problem, &within, g);
   Ok(FixedEffectsResult {
     entity_variable: entity_variable.into(),
     outcome: problem.outcome.clone(),
@@ -262,5 +341,7 @@ pub fn fit_fixed_effects(
     minimum_group_size,
     maximum_group_size,
     singleton_groups,
+    unit_effects_f_test,
+    unit_effects_f_test_unavailable_reason,
   })
 }

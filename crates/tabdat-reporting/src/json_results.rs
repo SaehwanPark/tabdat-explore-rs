@@ -838,6 +838,20 @@ fn fixed_effects_result_data(state: &tabdat_domain::FixedEffectsState) -> Value 
       "finite_sample_multiplier":Number::from_f64(g as f64/g.saturating_sub(1) as f64*(n-1) as f64/(n-p) as f64),
       "correction_convention":"plm_arellano_sss_nested_unit_effects","independence_assumption":"across_units"});
   }
+  if let Some(test) = &result.unit_effects_f_test {
+    data["unit_effects_f_test"] = json!({
+      "null":"all unit intercepts are equal",
+      "f_statistic":Number::from_f64(test.f_statistic),
+      "df_num":test.df_num,
+      "df_denom":test.df_denom,
+      "p_value":Number::from_f64(test.p_value),
+      "reference":"classical_homoskedastic_pooled_vs_within",
+      "exact_finite_sample_requires_normal_errors":true
+    });
+  }
+  if let Some(reason) = &result.unit_effects_f_test_unavailable_reason {
+    data["unit_effects_f_test_unavailable_reason"] = json!(reason);
+  }
   data
 }
 

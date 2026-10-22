@@ -161,6 +161,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
    printed facts, with F(1,G-1) reference and explicit covariance assumptions.
    This does not install general native `estat hausman` or automatic model selection.
+   Conventional nonclustered FE now also reports the pooled-versus-within
+   unit-effects F test; independent R/plm comparisons cover balanced, unbalanced
+   and interleaved synthetic fixtures, while clustered FE withholds the classical
+   reference. The original MOM source is not bundled.
    Unbalanced ML adds a 4,738-row MOM sensitivity audit (65 scalars/52,118 cells)
    and531 synthetic numerical comparisons, with unequal-count null/information.
    Interior ML audits48 R quantities/58,520 cells and495 synthetic comparisons;
@@ -170,8 +174,9 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    boundary mixture. The bounded profile and lack of a regular normal-Wald
    unit-variance SE remain explicit. A small unresolved difference from old printed
    Stata8 SEs prevents claiming the published uncertainty column. Robust ML
-   inference, unit effects, Hausman/panel diagnostics,
-   bootstrap and remaining table/figure outputs stay required. No persistent
+   inference, individual unit-intercept uncertainty, cluster-robust unit-effects
+   tests, other Hausman/panel diagnostics, bootstrap and remaining table/figure
+   outputs stay required. No persistent
    panel declaration or whole-table/family coverage is claimed.
 
 2. Advance the next bounded MMA-COUNT requirement from its now-resolved

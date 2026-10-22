@@ -347,6 +347,27 @@ fn within_script_reports_absorbed_and_inference_df_and_exports_conditional_predi
     );
     assert!(fit.get("log_likelihood").is_none());
   }
+  let effects_test = &fits[0]["unit_effects_f_test"];
+  assert_eq!(effects_test["null"], "all unit intercepts are equal");
+  assert_eq!(effects_test["df_num"], 5);
+  assert_eq!(effects_test["df_denom"], 15);
+  assert_eq!(
+    effects_test["reference"],
+    "classical_homoskedastic_pooled_vs_within"
+  );
+  assert_eq!(
+    effects_test["exact_finite_sample_requires_normal_errors"],
+    true
+  );
+  assert!(effects_test["f_statistic"].as_f64().unwrap() >= 0.0);
+  assert!((0.0..=1.0).contains(&effects_test["p_value"].as_f64().unwrap()));
+  assert!(fits[1].get("unit_effects_f_test").is_none());
+  assert!(
+    fits[1]["unit_effects_f_test_unavailable_reason"]
+      .as_str()
+      .unwrap()
+      .contains("withheld for unit-clustered covariance")
+  );
   for kind in ["TestResult", "LincomResult"] {
     let inference: Vec<_> = events.iter().filter(|e| e["result_type"] == kind).collect();
     assert_eq!(inference.len(), 2);
@@ -358,6 +379,8 @@ fn within_script_reports_absorbed_and_inference_df_and_exports_conditional_predi
   let text = String::from_utf8(out.stdout).unwrap();
   assert!(text.contains("Within fixed-effects regression"));
   assert!(text.contains("residual DF (N-G-p) = 15"));
+  assert!(text.contains("F test all unit effects = 0 (classical pooled-vs-within)"));
+  assert!(text.contains("Unit-effects F test unavailable:"));
   assert!(text.contains("normalization point only"));
   let filename = "panel_within_fe_predictions.csv";
   let exported = fs::read_to_string(json_dir.path().join(filename)).unwrap();

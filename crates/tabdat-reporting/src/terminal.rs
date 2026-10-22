@@ -632,6 +632,24 @@ fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
     optional_inference(stats.root_mse)
   )
   .unwrap();
+  if let Some(test) = &result.unit_effects_f_test {
+    writeln!(
+      output,
+      "F test all unit effects = 0 (classical pooled-vs-within): F({}, {}) = {}; p = {}",
+      test.df_num,
+      test.df_denom,
+      inference_number(test.f_statistic),
+      inference_number(test.p_value)
+    )
+    .unwrap();
+  } else if let Some(reason) = &result.unit_effects_f_test_unavailable_reason {
+    writeln!(
+      output,
+      "Unit-effects F test unavailable: {}",
+      reason.escape_debug()
+    )
+    .unwrap();
+  }
   writeln!(output,"Common intercept (normalization point only) = {}; unit deviations have observation-weighted mean zero",inference_number(result.common_intercept)).unwrap();
   output.push_str("Slope\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
   for c in &fit.coefficients {
@@ -647,7 +665,7 @@ fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
     .unwrap();
   }
   output.push_str(
-    "No nuisance-intercept inference or panel likelihood. NA = unavailable or undefined.\n",
+    "No standard errors or intervals for the common normalization point or individual unit-intercept coefficients; no panel likelihood. NA = unavailable or undefined.\n",
   );
   output
 }
