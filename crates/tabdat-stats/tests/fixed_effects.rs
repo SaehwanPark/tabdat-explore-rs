@@ -64,6 +64,11 @@ fn within_fits_match_independent_plm_lsdv_and_group_score_references() {
         .test_linear_hypothesis(&[vec![1.0, 0.0], vec![0.0, 1.0]], &[0.0, 0.0])
         .unwrap();
       let mut value = serde_json::to_value(&fit).unwrap();
+      if clustered {
+        assert!(value["unit_effects_f_test"].is_null());
+      } else {
+        assert!(value["unit_effects_f_test"].is_object());
+      }
       value["lincom"] = serde_json::to_value(inference).unwrap();
       value["joint"] = json!({"f_statistic":joint.f_statistic,"df_num":joint.df_num,"df_denom":joint.df_denom,
         "p_value":f_distribution_survival_probability(joint.f_statistic,joint.df_num as f64,joint.df_denom as f64)});
