@@ -101,9 +101,9 @@ law is an assumption, not guaranteed by robust/cluster covariance. This is a
 descriptive report without uncertainty/formal goodness-of-fit test; see `help estat`.
 
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
-exposure shorthand, NB1, PMF/CDF prediction UI, factors/discrete changes, general
-count test/lincom, interval prediction, other formal specification tests or
-named count reports. Independent-row robust is **NOT panel-robust**; choose
+exposure shorthand, NB1, cutoff-variable values above99, factors/discrete changes,
+general count test/lincom, interval prediction, other formal specification tests
+or named count reports. Independent-row robust is **NOT panel-robust**; choose
 actual cluster IDs and defend independence across the selected groups.
 
 See `help poisson`, `help predict`, `help estat`, and

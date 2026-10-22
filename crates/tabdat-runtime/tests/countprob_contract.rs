@@ -304,18 +304,44 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
     }
     assert_eq!(s.state().estimation, retained);
 
-    let mut invalid = f.session();
-    run(&mut invalid, &format!("{family} y x z"));
-    run(&mut invalid, "replace cutoff = 100");
-    let before = invalid.state();
-    let rows = run(&mut invalid, "head 100");
+    for invalid_cutoff in ["-1", "100"] {
+      let mut invalid = f.session();
+      run(&mut invalid, &format!("{family} y x z"));
+      run(&mut invalid, &format!("replace cutoff = {invalid_cutoff}"));
+      let before = invalid.state();
+      let rows = run(&mut invalid, "head 100");
+      assert!(
+        invalid
+          .execute(parse_command("predict invalid_probability, pmf(cutoff)").unwrap())
+          .is_err()
+      );
+      assert_eq!(invalid.state(), before);
+      assert_eq!(run(&mut invalid, "head 100"), rows);
+    }
+
+    let mut fractional = f.session();
+    run(&mut fractional, &format!("{family} y x z"));
+    run(&mut fractional, "generate fractional_cutoff = cutoff + .5");
+    let before = fractional.state();
     assert!(
-      invalid
+      fractional
+        .execute(parse_command("predict invalid_probability, pmf(fractional_cutoff)").unwrap())
+        .is_err()
+    );
+    assert_eq!(fractional.state(), before);
+
+    // Invalid cutoff values remain errors even on rows whose model predictors are missing.
+    let mut masked_invalid = f.session();
+    run(&mut masked_invalid, &format!("{family} y x z"));
+    run(&mut masked_invalid, "replace x = NULL");
+    run(&mut masked_invalid, "replace cutoff = 100");
+    let before = masked_invalid.state();
+    assert!(
+      masked_invalid
         .execute(parse_command("predict invalid_probability, pmf(cutoff)").unwrap())
         .is_err()
     );
-    assert_eq!(invalid.state(), before);
-    assert_eq!(run(&mut invalid, "head 100"), rows);
+    assert_eq!(masked_invalid.state(), before);
 
     let mut missing = f.session();
     run(&mut missing, &format!("{family} y x z"));

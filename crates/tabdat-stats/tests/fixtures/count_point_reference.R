@@ -3,6 +3,7 @@
 options(digits=17)
 root <- 'crates/tabdat-stats/tests/fixtures/'
 rows <- list()
+variable_rows <- list()
 for(family in c('poisson','nb2')) for(alpha in if(family=='poisson') NA_real_ else c(exp(-11.9),.69,exp(11.9))) {
   for(mu in c(0,1e-300,1e-8,.306,3,23.5,750,1000,1e6)) for(k in c(0,1,9,99)) {
     pmf <- if(family=='poisson') dpois(k,mu) else dnbinom(k,size=1/alpha,mu=mu)
@@ -28,6 +29,13 @@ for(family in c('poisson','nb2')) {
     cdf <- if(family=='poisson') ppois(k,mu[i]) else pnbinom(k,size=1/alpha,mu=mu[i])
     rows[[length(rows)+1]] <- data.frame(family,id=current$id[i],k,pmf,cdf)
   }
+  for(i in seq_len(nrow(current))) {
+    k <- current$id[i]-1L
+    pmf <- if(family=='poisson') dpois(k,mu[i]) else dnbinom(k,size=1/alpha,mu=mu[i])
+    cdf <- if(family=='poisson') ppois(k,mu[i]) else pnbinom(k,size=1/alpha,mu=mu[i])
+    variable_rows[[length(variable_rows)+1]] <- data.frame(family,id=current$id[i],k,pmf,cdf)
+  }
 }
 write.csv(do.call(rbind,rows),paste0(root,'count_point_workflow_reference.csv'),row.names=FALSE,quote=FALSE)
-cat(R.version.string,';',length(rows)*2,'workflow predictions\n')
+write.csv(do.call(rbind,variable_rows),paste0(root,'count_point_variable_cutoff_reference.csv'),row.names=FALSE,quote=FALSE)
+cat(R.version.string,';',length(rows)*2,'fixed-cutoff and',length(variable_rows)*2,'variable-cutoff workflow predictions\n')

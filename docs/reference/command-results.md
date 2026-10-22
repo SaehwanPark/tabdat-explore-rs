@@ -467,11 +467,19 @@ to installed count fits. Executable owned state uses
 `negative_binomial_fit`; the old `negative_binomial` placeholder remains readable,
 not a usable/restorable fit. Failed new fits clear stale estimation only.
 
+Poisson/NB2 current-row `pmf(k)` and `cdf(k)` accept either a scalar integer or
+the name of a current numeric cutoff variable, with exact values0..99. Missing
+cutoffs yield NULL; negative, fractional, or greater-than99 values fail before
+publishing a column. These use current predictors/offsets and retained NB2 alpha,
+and assume the fitted full conditional law; robust covariance does not establish
+distributional calibration. Scalar and variable cutoff forms share the existing
+bounded probability calculations.
+
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
 [synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) validates
 full joint inference/nulls without claiming a new textbook illustration.
 FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
-specifications, current-row count PMF/CDF predictions, other formal specification tests, discrete
+specifications, count cutoffs above99, other formal specification tests, discrete
 changes/general restrictions/named reports and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
 

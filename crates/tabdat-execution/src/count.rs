@@ -369,24 +369,7 @@ impl Session {
         .visit_rows(
           &format!("SELECT {columns} FROM {ACTIVE_TABLE}"),
           |row| {
-            let mut xb = prediction.intercept.unwrap_or(0.0);
-            for (j, coefficient) in coefficients.iter().enumerate() {
-              let Some(x) = cell_to_f64(
-                row
-                  .cell(j)
-                  .map_err(|_| family.error("could not read predictor"))?,
-              )
-              .filter(|v| v.is_finite()) else {
-                values.push(None);
-                return Ok(());
-              };
-              xb += coefficient * x;
-            }
-            let mean = xb.exp();
-            if !xb.is_finite() || !mean.is_finite() {
-              values.push(None);
-              return Ok(());
-            }
+            // Reject malformed cutoffs even when missing model inputs would otherwise mask them.
             let count = match (fixed_cutoff, cutoff_index) {
               (Some(count), None) => count,
               (None, Some(index)) => {
@@ -413,6 +396,24 @@ impl Session {
                 return Err(family.error("invalid count probability cutoff request"));
               }
             };
+            let mut xb = prediction.intercept.unwrap_or(0.0);
+            for (j, coefficient) in coefficients.iter().enumerate() {
+              let Some(x) = cell_to_f64(
+                row
+                  .cell(j)
+                  .map_err(|_| family.error("could not read predictor"))?,
+              )
+              .filter(|v| v.is_finite()) else {
+                values.push(None);
+                return Ok(());
+              };
+              xb += coefficient * x;
+            }
+            let mean = xb.exp();
+            if !xb.is_finite() || !mean.is_finite() {
+              values.push(None);
+              return Ok(());
+            }
             let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
               .map_err(|e| family.error(e.to_string()))?;
             values.push(Some(if is_pmf { pmf } else { cdf }));
