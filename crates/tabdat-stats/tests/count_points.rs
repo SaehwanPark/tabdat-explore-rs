@@ -48,8 +48,10 @@ fn extended_cutoffs_match_independent_r_through_the_nb2_count_limit() {
     };
     let expected_pmf: f64 = row[4].parse().unwrap();
     let expected_cdf: f64 = row[5].parse().unwrap();
-    let (pmf, cdf) =
-      count_point_probabilities(law, row[2].parse().unwrap(), row[3].parse().unwrap()).unwrap();
+    let mean: f64 = row[2].parse().unwrap();
+    let cutoff = row[3].parse::<f64>().unwrap() as usize;
+    let (pmf, cdf) = count_point_probabilities(law, mean, cutoff)
+      .unwrap_or_else(|error| panic!("{row:?}: {error}"));
     for (actual, expected) in [(pmf, expected_pmf), (cdf, expected_cdf)] {
       assert!(
         actual.is_finite()
@@ -70,5 +72,9 @@ fn invalid_domains_are_rejected_even_at_zero_mean() {
   for count in [100001, usize::MAX] {
     assert!(count_point_probabilities(Law::Poisson, 0.0, count).is_err());
   }
+  assert_eq!(
+    count_point_probabilities(Law::Poisson, 0.0, 100).unwrap(),
+    (0.0, 1.0)
+  );
   assert!(count_point_probabilities(Law::Nb2 { alpha: 0.0 }, 0.0, 0).is_err());
 }

@@ -511,8 +511,9 @@ richer counts and other remaining illustration/core/book work remain required.
 
 The [complete synthetic method workflow](../count-probability/README.md) extends
 the retained Table20.5 Poisson/NB2 ln-mean specifications with explicit
-`predict p, pmf(k)` / `predict p, cdf(k)` for exact k=0..99, using the existing
-bounded distributional probability helper (tail cutoff1..100). This is a method
+`predict p, pmf(k)` / `predict p, cdf(k)` for exact k=0..100000, with a
+10,000,000-term additional-work bound above99. The separate descriptive table
+keeps its tail cutoff1..100. This is a method
 extension of the documented RAND mean model, not a new replicated printed row.
 PMF means P(Y=k|current X, offset); CDF means P(Y<=k|current X, offset).
 Covariance selection does not establish either distributional law or uncertainty.
@@ -520,5 +521,5 @@ Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
 cluster IDs are not required; fitted offsets are. Independent base-R
-checks cover288 direct probabilities and432 changed-current-row predictions;
+checks cover308 direct probabilities and432 changed-current-row predictions;
 runtime/CLI checks cover offsets, sample/fit reuse, atomic failures and export.

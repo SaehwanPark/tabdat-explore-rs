@@ -61,16 +61,19 @@ Data and model notes:
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
 Not installed: binary/Poisson residuals, NB2 residuals, spatial_lag, posterior_predictive,
-std/interval/level()/saving() prediction, or count cutoffs beyond the bounded integer0..99.
+std/interval/level()/saving() prediction, or count cutoffs beyond the bounded integer0..100000.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
 
 Count distributional probabilities:
 - After Poisson/NB2, `predict p, pmf(k)` means P(Y=k); `cdf(k)` means P(Y<=k),
   conditional on current X and any fitted offset, using retained coefficients
-  and NB2 alpha. k may be an integer literal0..99 or the name of a current numeric
+  and NB2 alpha. k may be an integer literal0..100000 or the name of a current numeric
   cutoff variable. Choose one prediction kind. Missing cutoff values produce NULL;
-  noninteger, negative or greater-than99 values fail before adding the column.
+  noninteger, negative or greater-than100000 values fail before adding the column.
+- For cutoffs above99, a single prediction may add at most10,000,000 cutoff
+  increments across rows with usable model inputs. Exceeding this limit fails
+  before adding the column. `estat countprob` keeps its separate1..100 tail limit.
 - These assume the full fitted law, not merely a valid conditional mean or
   robust covariance. They have no parameter uncertainty, calibration guarantee
   or formal test. `estat countprob` remains an ORIGINAL retained-sample summary;

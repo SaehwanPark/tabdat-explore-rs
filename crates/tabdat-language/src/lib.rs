@@ -4813,11 +4813,11 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         let k = value
           .parse::<usize>()
           .ok()
-          .filter(|&k| k < 100)
+          .filter(|&k| k <= MAX_COUNT_POINT_CUTOFF)
           .ok_or_else(|| {
-            ParseError::new(
-              "predict pmf()/cdf() requires an integer from 0 to 99 or a cutoff variable",
-            )
+            ParseError::new(format!(
+              "predict pmf()/cdf() requires an integer from 0 to {MAX_COUNT_POINT_CUTOFF} or a cutoff variable"
+            ))
           })?;
         (
           Some(if option.name == "pmf" {
@@ -4837,9 +4837,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         Some(values[0].clone()),
       ),
       _ => {
-        return Err(ParseError::new(
-          "predict pmf()/cdf() requires an integer from 0 to 99 or a cutoff variable",
-        ));
+        return Err(ParseError::new(format!(
+          "predict pmf()/cdf() requires an integer from 0 to {MAX_COUNT_POINT_CUTOFF} or a cutoff variable"
+        )));
       }
     },
     _ => {

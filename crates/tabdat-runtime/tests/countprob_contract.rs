@@ -57,13 +57,9 @@ impl Fixture {
       NEXT.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir(&root).unwrap();
-    let mut csv = "id,y,cutoff\n".to_owned();
-    for deviation in -50..=50 {
-      csv.push_str(&format!(
-        "{},{},100000\n",
-        deviation + 50,
-        100000 + deviation
-      ));
+    let mut csv = "id,y,cutoff,log_time\n".to_owned();
+    for id in 0..101 {
+      csv.push_str(&format!("{},{},100000,0\n", id, id % 5));
     }
     fs::write(root.join("data.csv"), csv).unwrap();
     Self(root)
@@ -386,9 +382,15 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
 fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
   let f = Fixture::upper_cutoff();
   let mut s = f.session();
-  run(&mut s, "poisson y");
+  run(&mut s, "poisson y, offset(log_time)");
   let retained = s.state().estimation.clone();
   run(&mut s, "keep if id == 0");
+  let intercept = match &s.state().estimation {
+    Some(tabdat_domain::EstimationState::PoissonFit(fit)) => fit.result.coefficients[0].value,
+    other => panic!("expected retained Poisson fit, found {other:?}"),
+  };
+  let offset = 100000_f64.ln() - intercept;
+  run(&mut s, &format!("replace log_time = {offset:.17}"));
   run(&mut s, "predict high_pmf, pmf(100000)");
   run(&mut s, "predict high_cdf, cdf(cutoff)");
   assert_eq!(s.state().estimation, retained);
@@ -425,7 +427,7 @@ fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
   }
 
   let mut too_wide = f.session();
-  run(&mut too_wide, "poisson y");
+  run(&mut too_wide, "poisson y, offset(log_time)");
   let before = too_wide.state();
   let error = too_wide
     .execute(parse_command("predict too_wide, pmf(cutoff)").unwrap())

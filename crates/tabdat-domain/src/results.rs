@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::{
-  BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate, Nb2Cluster,
-  Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate,
-  PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
+  BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
+  MAX_COUNT_POINT_CUTOFF, Nb2Cluster, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result,
+  PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
 pub use tabdat_stats::{BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileResult};
 

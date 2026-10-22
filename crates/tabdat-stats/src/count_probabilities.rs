@@ -1,11 +1,13 @@
 //! Descriptive observed/fitted count frequencies on an explicitly supplied sample.
 
-use crate::matrix::{add_compensated, beta_continued_fraction_bounded};
+use crate::matrix::{add_compensated, beta_continued_fraction_bounded, lgamma};
 use crate::{MAX_NB2_COUNT, MAX_POISSON_COUNT, StatsError};
 use serde::{Deserialize, Serialize};
 
 /// Largest admitted first count in the collapsed right-tail bin.
 pub const MAX_COUNT_PROBABILITY_TAIL: usize = 100;
+/// Largest exact point-count cutoff shared by Poisson and NB2 predictions.
+pub const MAX_COUNT_POINT_CUTOFF: usize = 100_000;
 
 /// A plug-in distributional assumption, not a consequence of robust covariance.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -39,9 +41,14 @@ fn invalid(message: &str) -> StatsError {
 fn failed(message: &str) -> StatsError {
   StatsError::EstimationFailed(format!("count probabilities: {message}"))
 }
-fn validate(law: CountProbabilityLaw, tail_from: usize) -> Result<(), StatsError> {
-  if !(1..=MAX_COUNT_PROBABILITY_TAIL).contains(&tail_from) {
-    return Err(invalid("tail cutoff must be an integer from 1 to 100"));
+fn validate(
+  law: CountProbabilityLaw,
+  tail_from: usize,
+  maximum_tail: usize,
+  cutoff_error: &str,
+) -> Result<(), StatsError> {
+  if !(1..=maximum_tail).contains(&tail_from) {
+    return Err(invalid(cutoff_error));
   }
   if let CountProbabilityLaw::Nb2 { alpha } = law
     && (!alpha.is_finite() || alpha <= 0.0 || alpha.ln().abs() >= 12.0)
@@ -60,14 +67,54 @@ fn softplus(x: f64) -> f64 {
   }
 }
 
-// All shapes here are integers <=100: sum exact factorial terms rather than
-// propagating a general log-gamma approximation into a small survival tail.
+// These bounded integer shapes use compensated finite sums rather than
+// subtracting large log-gamma values in a small survival tail.
 fn log_factorial(n: usize) -> f64 {
   let (mut sum, mut correction) = (0.0, 0.0);
   for j in 1..=n {
     add_compensated(&mut sum, &mut correction, (j as f64).ln());
   }
   sum
+}
+
+fn log1pmx(x: f64) -> f64 {
+  if x.abs() >= 0.01 {
+    return x.ln_1p() - x;
+  }
+  // The direct difference loses the quadratic residual when x is small.
+  let (mut sum, mut correction) = (0.0, 0.0);
+  let mut power = x * x;
+  for n in 2..=100 {
+    let term = if n % 2 == 0 {
+      -power / n as f64
+    } else {
+      power / n as f64
+    };
+    add_compensated(&mut sum, &mut correction, term);
+    if term.abs() <= sum.abs() * 1e-16 {
+      break;
+    }
+    power *= x;
+  }
+  sum
+}
+
+fn poisson_log_prefactor(mean: f64, shape: f64) -> f64 {
+  if shape < 64.0 {
+    return shape * mean.ln() - mean - lgamma(shape);
+  }
+  // Near the mode, this rearrangement avoids subtracting O(shape*ln(shape)) terms.
+  let delta = (mean - shape) / shape;
+  let inverse = 1.0 / shape;
+  let inverse_squared = inverse * inverse;
+  let correction = inverse
+    * (1.0 / 12.0
+      + inverse_squared
+        * (-1.0 / 360.0
+          + inverse_squared
+            * (1.0 / 1260.0
+              + inverse_squared * (-1.0 / 1680.0 + inverse_squared * (1.0 / 1188.0)))));
+  shape * log1pmx(delta) + 0.5 * (shape.ln() - std::f64::consts::TAU.ln()) - correction
 }
 
 // P(Y>=m) = P(Gamma(shape=m, rate=1)<=mu). Evaluate small tails directly.
@@ -82,11 +129,11 @@ fn poisson_tail(mean: f64, m: usize, prefix: &[f64]) -> Result<f64, StatsError> 
     }
     return Ok(1.0 - sum);
   }
-  let prefactor = (a * mean.ln() - mean - log_factorial(m - 1)).exp();
-  let (mut term, mut sum) = (1.0 / a, 1.0 / a);
+  let prefactor = poisson_log_prefactor(mean, a).exp();
+  let (mut term, mut sum, mut correction) = (1.0 / a, 1.0 / a, 0.0);
   for j in 1..=10000 {
     term *= mean / (a + j as f64);
-    sum += term;
+    add_compensated(&mut sum, &mut correction, term);
     if term.abs() <= sum.abs() * 1e-15 {
       return Ok(prefactor * sum);
     }
@@ -147,7 +194,20 @@ pub fn count_bin_probabilities(
   mean: f64,
   tail_from: usize,
 ) -> Result<Vec<f64>, StatsError> {
-  validate(law, tail_from)?;
+  validate(
+    law,
+    tail_from,
+    MAX_COUNT_PROBABILITY_TAIL,
+    "tail cutoff must be an integer from 1 to 100",
+  )?;
+  calculate_count_bin_probabilities(law, mean, tail_from)
+}
+
+fn calculate_count_bin_probabilities(
+  law: CountProbabilityLaw,
+  mean: f64,
+  tail_from: usize,
+) -> Result<Vec<f64>, StatsError> {
   if !mean.is_finite() || mean <= 0.0 {
     return Err(invalid("conditional means must be finite and positive"));
   }
@@ -156,17 +216,25 @@ pub fn count_bin_probabilities(
     CountProbabilityLaw::Poisson => (-mean, None),
     CountProbabilityLaw::Nb2 { alpha } => {
       let r = 1.0 / alpha;
-      let denom = softplus(log_mean - r.ln());
-      (-r * denom, Some((r, denom)))
+      let log_zero_denom = softplus(log_mean - r.ln());
+      let log_mu_fraction = -softplus(r.ln() - log_mean);
+      (-r * log_zero_denom, Some((r, log_mu_fraction)))
     }
   };
+  let mut log_p_correction = 0.0;
   let mut probabilities = Vec::with_capacity(tail_from + 1);
   for k in 0..tail_from {
     probabilities.push(log_p.exp());
     let next = (k + 1) as f64;
-    log_p += log_mean - next.ln();
-    if let Some((r, denom)) = nb_denom {
-      log_p += (k as f64 / r).ln_1p() - denom;
+    if let Some((r, log_mu_fraction)) = nb_denom {
+      let relative_count_step = (r - 1.0) / next;
+      add_compensated(
+        &mut log_p,
+        &mut log_p_correction,
+        relative_count_step.ln_1p() + log_mu_fraction,
+      );
+    } else {
+      add_compensated(&mut log_p, &mut log_p_correction, log_mean - next.ln());
     }
   }
   let tail = match law {
@@ -174,10 +242,14 @@ pub fn count_bin_probabilities(
     CountProbabilityLaw::Nb2 { alpha } => nb2_tail(mean, 1.0 / alpha, tail_from)?,
   };
   probabilities.push(tail);
+  let (mut partition, mut partition_correction) = (0.0, 0.0);
+  for &probability in &probabilities {
+    add_compensated(&mut partition, &mut partition_correction, probability);
+  }
   if probabilities
     .iter()
     .any(|p| !p.is_finite() || !(0.0..=1.0).contains(p))
-    || (probabilities.iter().sum::<f64>() - 1.0).abs() > 1e-10
+    || (partition - 1.0).abs() > 1e-10
   {
     return Err(failed(
       "nonfinite, out-of-range or nonpartitioning probabilities",
@@ -186,7 +258,7 @@ pub fn count_bin_probabilities(
   Ok(probabilities)
 }
 
-/// P(Y=count) and P(Y<=count), for exact counts 0..99 and finite mean>=0.
+/// P(Y=count) and P(Y<=count), for exact counts 0..100000 and finite mean>=0.
 /// Zero means include the degenerate limit reached by exponential underflow.
 /// Use a direct prefix for small CDFs and complement direct survival for large
 /// CDFs, avoiding subtraction of a rounded near-one survival.
@@ -197,12 +269,18 @@ pub fn count_point_probabilities(
 ) -> Result<(f64, f64), StatsError> {
   let cutoff = count
     .checked_add(1)
-    .ok_or_else(|| invalid("count must be from 0 to 99"))?;
-  validate(law, cutoff)?;
+    .filter(|&cutoff| cutoff <= MAX_COUNT_POINT_CUTOFF + 1)
+    .ok_or_else(|| invalid("count must be an integer from 0 to 100000"))?;
+  validate(
+    law,
+    cutoff,
+    MAX_COUNT_POINT_CUTOFF + 1,
+    "count must be an integer from 0 to 100000",
+  )?;
   if mean == 0.0 {
     return Ok((if count == 0 { 1.0 } else { 0.0 }, 1.0));
   }
-  let bins = count_bin_probabilities(law, mean, cutoff)?;
+  let bins = calculate_count_bin_probabilities(law, mean, cutoff)?;
   let tail = bins[cutoff];
   let cumulative = if tail > 0.5 {
     let (mut sum, mut correction) = (0.0, 0.0);
@@ -225,7 +303,12 @@ pub fn count_probability_table(
   means: &[f64],
   tail_from: usize,
 ) -> Result<CountProbabilityTable, StatsError> {
-  validate(law, tail_from)?;
+  validate(
+    law,
+    tail_from,
+    MAX_COUNT_PROBABILITY_TAIL,
+    "tail cutoff must be an integer from 1 to 100",
+  )?;
   if response.is_empty() {
     return Err(StatsError::EmptySample);
   }
