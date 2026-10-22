@@ -1,4 +1,8 @@
 case,covariance,pointer,value
+balanced,classical,/unit_effects_f_test/f_statistic,3.51926662377368
+balanced,classical,/unit_effects_f_test/df_num,5
+balanced,classical,/unit_effects_f_test/df_denom,16
+balanced,classical,/unit_effects_f_test/p_value,0.0245626982314933
 balanced,classical,/within/coefficients/0/value,0.67675612931344
 balanced,classical,/within/coefficients/0/standard_error,0.37012413328831
 balanced,classical,/within/coefficients/0/statistic,1.82845718084067
@@ -286,6 +290,10 @@ balanced,cluster,/joint/f_statistic,3.78622159122147
 balanced,cluster,/joint/df_num,2
 balanced,cluster,/joint/df_denom,5
 balanced,cluster,/joint/p_value,0.0997414796836077
+unbalanced,classical,/unit_effects_f_test/f_statistic,3.08569360212912
+unbalanced,classical,/unit_effects_f_test/df_num,5
+unbalanced,classical,/unit_effects_f_test/df_denom,13
+unbalanced,classical,/unit_effects_f_test/p_value,0.0471461756465313
 unbalanced,classical,/within/coefficients/0/value,0.344964753632918
 unbalanced,classical,/within/coefficients/0/standard_error,0.393603370783815
 unbalanced,classical,/within/coefficients/0/statistic,0.876427335838007
@@ -555,6 +563,10 @@ unbalanced,cluster,/joint/f_statistic,0.749593345397152
 unbalanced,cluster,/joint/df_num,2
 unbalanced,cluster,/joint/df_denom,5
 unbalanced,cluster,/joint/p_value,0.519131617155813
+interleaved,classical,/unit_effects_f_test/f_statistic,3.51926662377368
+interleaved,classical,/unit_effects_f_test/df_num,5
+interleaved,classical,/unit_effects_f_test/df_denom,16
+interleaved,classical,/unit_effects_f_test/p_value,0.0245626982314933
 interleaved,classical,/within/coefficients/0/value,0.67675612931344
 interleaved,classical,/within/coefficients/0/standard_error,0.37012413328831
 interleaved,classical,/within/coefficients/0/statistic,1.82845718084067

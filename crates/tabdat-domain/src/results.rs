@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+pub use tabdat_stats::UnitEffectsFTest;
 pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
   MAX_COUNT_POINT_CUTOFF, Nb2Cluster, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result,

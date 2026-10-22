@@ -26,6 +26,12 @@ for(case in c('balanced','unbalanced','interleaved')) {
   yw <- d$y-ave(d$y,d$id); fitted_within <- drop(Xw%*%b);e <- yw-fitted_within
   stopifnot(max(abs(e-residuals(lsdv)))<1e-10)
   rss <- sum(e^2);tss <- sum(yw^2);B <- solve(crossprod(Xw));S <- rowsum(Xw*e,d$id)
+  # Classical nested-model F test of common rather than unit-specific intercepts.
+  pooling <- plm::plm(y~x+z,d,index=c('id','time'),model='pooling')
+  effects_test <- plm::pFtest(fit,pooling)
+  values <- c(f_statistic=unname(effects_test$statistic),df_num=unname(effects_test$parameter[1]),
+    df_denom=unname(effects_test$parameter[2]),p_value=unname(effects_test$p.value))
+  for(name in names(values)) emit(case,'classical',paste0('/unit_effects_f_test/',name),values[[name]])
   for(covariance in c('classical','cluster')) {
     V <- if(covariance=='classical') vcov(fit) else plm::vcovHC(fit,method='arellano',type='sss',cluster='group')
     expected <- if(covariance=='classical') vcov(lsdv)[c('x','z'),c('x','z')] else G/(G-1)*(n-1)/(n-p)*B%*%crossprod(S)%*%B

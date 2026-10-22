@@ -64,6 +64,11 @@ fn within_fits_match_independent_plm_lsdv_and_group_score_references() {
         .test_linear_hypothesis(&[vec![1.0, 0.0], vec![0.0, 1.0]], &[0.0, 0.0])
         .unwrap();
       let mut value = serde_json::to_value(&fit).unwrap();
+      if clustered {
+        assert!(value["unit_effects_f_test"].is_null());
+      } else {
+        assert!(value["unit_effects_f_test"].is_object());
+      }
       value["lincom"] = serde_json::to_value(inference).unwrap();
       value["joint"] = json!({"f_statistic":joint.f_statistic,"df_num":joint.df_num,"df_denom":joint.df_denom,
         "p_value":f_distribution_survival_probability(joint.f_statistic,joint.df_num as f64,joint.df_denom as f64)});
@@ -116,6 +121,16 @@ fn centering_shifts_rank_and_df_failure_contracts() {
       x[0] += 1000.0;
     }
     let changed = fit_fixed_effects(&shifted, "person", clustered).unwrap();
+    match (&original.unit_effects_f_test, &changed.unit_effects_f_test) {
+      (Some(original), Some(changed)) => {
+        assert_eq!(original.df_num, changed.df_num);
+        assert_eq!(original.df_denom, changed.df_denom);
+        assert!((original.f_statistic - changed.f_statistic).abs() < 1e-9);
+        assert!((original.p_value - changed.p_value).abs() < 1e-9);
+      }
+      (None, None) => {}
+      _ => panic!("a common shift changed unit-effects test availability"),
+    }
     for (a, b) in original
       .within
       .coefficients
@@ -177,4 +192,43 @@ fn centering_shifts_rank_and_df_failure_contracts() {
   p.sample.as_mut().unwrap().cluster_groups = Some(vec!["single".into(); p.response.len()]);
   assert!(fit_fixed_effects(&p, "person", false).is_ok());
   assert!(fit_fixed_effects(&p, "person", true).is_err());
+}
+
+#[test]
+fn exact_within_fit_keeps_the_model_when_the_unit_effect_test_is_undefined() {
+  let rows: Vec<_> = (1..=3)
+    .flat_map(|id| (0..4).map(move |time| (id, time, 5.0 * f64::from(id) + 2.0 * f64::from(time))))
+    .collect();
+  let problem = EstimationProblem::new(
+    "y",
+    vec!["x".into()],
+    rows.iter().map(|row| row.2).collect(),
+    rows.iter().map(|row| vec![f64::from(row.1)]).collect(),
+  )
+  .unwrap()
+  .with_sample(
+    EstimationSample::new(
+      (0..rows.len()).collect(),
+      rows.len(),
+      0,
+      None,
+      Some(rows.iter().map(|row| format!("g{}", row.0)).collect()),
+    )
+    .unwrap(),
+  );
+
+  let result = fit_fixed_effects(&problem, "person", false).unwrap();
+  assert_eq!(result.within.coefficients[0].value, 2.0);
+  assert_eq!(
+    result.within.fit_statistics.residual_sum_of_squares,
+    Some(0.0)
+  );
+  assert!(result.unit_effects_f_test.is_none());
+  assert!(
+    result
+      .unit_effects_f_test_unavailable_reason
+      .as_deref()
+      .unwrap()
+      .contains("residual variance is degenerate")
+  );
 }

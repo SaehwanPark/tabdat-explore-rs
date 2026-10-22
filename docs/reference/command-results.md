@@ -1067,7 +1067,15 @@ Fields:
 - `common_intercept` is only mean(y)-mean(X)beta on the estimation sample,
   `common_intercept_inference: "normalization_point_only"`,
   `unit_effect_normalization: "estimation_observation_weighted_zero_mean"`.
-  No nuisance-intercept covariance/inference or implicit intercept restriction.
+  No covariance, standard errors or intervals are reported for the common
+  normalization point or individual unit-intercept coefficients, and no
+  implicit intercept restriction is imposed.
+- `unit_effects_f_test`, when present, tests that all unit intercepts are equal
+  by comparing pooled and within RSS on the same estimation sample. It contains
+  `f_statistic`, `df_num` (=G-1), `df_denom` (=N-G-p), `p_value`, and the
+  classical pooled-vs-within reference label. The exact finite-sample F
+  calibration assumes independent homoskedastic normal errors. It is withheld
+  for unit-clustered fits; `unit_effects_f_test_unavailable_reason` records why.
 - `sample` has `total_observations` and `dropped_observations`, not row vectors.
   No adjusted within R², panel/Gaussian likelihood, unit vectors or named FE
   snapshots are emitted. Existing non-FE result shapes remain unchanged.

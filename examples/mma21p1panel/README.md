@@ -115,11 +115,17 @@ IDs: DOUBLE cannot recover precision lost before fitting.
 
 The common intercept c=mean(y)-mean(X)beta is a **point normalization**, not an
 additional inferred coefficient. Retained normalized deviations u have
-estimation-observation-weighted mean zero; total unit intercepts are c+u. There
-is no nuisance-intercept SE/test, sigma-u/rho inference or likelihood. Conditional
-level-fit R² includes fitted unit effects and is **not** Stata overall/between
-R². `lincom`/`test` constrain retained slopes only; residual summaries are not
-Hausman, serial-correlation or specification tests. FE removes additive
+estimation-observation-weighted mean zero; total unit intercepts are c+u. No
+common or individual unit-intercept coefficient SEs are reported. A conventional
+nonclustered FE fit additionally reports the classical F test that all unit
+intercepts are equal, comparing pooled and within RSS on the same sample with
+F(G-1,N-G-p) degrees of freedom. It assumes independent homoskedastic errors;
+exact finite-sample calibration also requires normal errors. Clustered FE
+withholds this classical test. It does not provide a cluster-robust unit-effects
+test, sigma-u/rho inference or likelihood. Conditional level-fit R² includes
+fitted unit effects and is **not** Stata overall/between R². `lincom`/`test`
+constrain retained slopes only; residual summaries are not Hausman,
+serial-correlation or other specification tests. FE removes additive
 unit-constant effects, not all endogeneity; strict-exogeneity/identification
 assumptions still matter.
 
@@ -206,11 +212,14 @@ residual, slope covariance/SE/tail/test/interval/DF and advertised fit statistic
 is checked. Separate float32 ingestion reproduces **six printed Within facts**
 (slope, classical SE, common-intercept point, sigma-e, within R² and slope F) at
 half a unit of original printed precision. Author bootstrap SEs are not the
-native analytic cluster oracle, and neither bootstrap nor nuisance-intercept
-inference is claimed. The same absolute1e-9/nonzero-tail relative1e-8 tolerances
-apply; native float64 is never rounded to mimic Stata8.
+native analytic cluster oracle. The new classical unit-effects F diagnostic is
+separately compared with `plm::pFtest` across balanced, unbalanced and interleaved
+synthetic fixtures; the original MOM source is not bundled. No individual
+unit-intercept coefficient covariance or cluster-robust unit-effects test is
+claimed. The same absolute1e-9/nonzero-tail relative1e-8 tolerances apply; native
+float64 is never rounded to mimic Stata8.
 
-Synthetic numerical fixtures add **843 R/plm/LSDV comparisons** across balanced,
+Synthetic numerical fixtures add **855 R/plm/LSDV comparisons** across balanced,
 unbalanced/singleton and interleaved designs, including two slopes/full
 covariance, shifts and post-estimation. Runtime tests cover exact UBIGINT keys,
 joint-case centers, current-vs-retained semantics and failure atomicity. The
@@ -220,7 +229,8 @@ exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
 **Still required:** robust ML inference, Hausman and panel-specific
-residual/model-comparison diagnostics, bootstrap/RNG, optional richer designs,
+residual/model-comparison diagnostics beyond the bounded conventional unit-effects
+F test, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
 illustrations. This slice completes neither the panel family nor MMA-PANEL.
 
