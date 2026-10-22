@@ -86,7 +86,7 @@ law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
 formal goodness-of-fit test is supplied; see `help estat`.
 
 Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
-count probability prediction, factors/discrete changes, general count test/lincom,
+cutoff-variable values above99, factors/discrete changes, general count test/lincom,
 interval prediction, few-cluster bootstrap or named Poisson `estimates store`.
 Clustered covariance is not FE/RE/random-effects or the full panel family.
 

@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]`
+`predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Quantile regression: xb (fitted conditional quantile) or residuals.
@@ -68,7 +68,9 @@ imply an installed workflow for other families.
 Count distributional probabilities:
 - After Poisson/NB2, `predict p, pmf(k)` means P(Y=k); `cdf(k)` means P(Y<=k),
   conditional on current X and any fitted offset, using retained coefficients
-  and NB2 alpha. k must be an integer literal0..99. Choose one prediction kind.
+  and NB2 alpha. k may be an integer literal0..99 or the name of a current numeric
+  cutoff variable. Choose one prediction kind. Missing cutoff values produce NULL;
+  noninteger, negative or greater-than99 values fail before adding the column.
 - These assume the full fitted law, not merely a valid conditional mean or
   robust covariance. They have no parameter uncertainty, calibration guarantee
   or formal test. `estat countprob` remains an ORIGINAL retained-sample summary;
@@ -78,5 +80,7 @@ Count distributional probabilities:
   underflow to zero uses a point mass at zero. Probability numerical failure
   aborts before publication, leaving data/labels/fit unchanged. Empty data works.
 - Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`
-  and `predict at_most_two, cdf(2)`. Inspect/export the appended DOUBLE columns.
+  and `predict at_most_two, cdf(2)`. For current cutoffs, generate a numeric
+  integer column and use `predict at_most_k, cdf(k)`. Inspect/export the appended
+  DOUBLE columns.
   See examples/count-probability/README.md for a complete Poisson/NB2 workflow.

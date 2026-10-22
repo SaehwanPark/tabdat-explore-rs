@@ -933,6 +933,10 @@ pub enum PredictKind {
   CountPmf(usize),
   /// Distributional P(Y<=k) after Poisson/NB2, k=0..99.
   CountCdf(usize),
+  /// Distributional P(Y=k) after Poisson/NB2 using a current-row cutoff variable.
+  CountPmfVariable,
+  /// Distributional P(Y<=k) after Poisson/NB2 using a current-row cutoff variable.
+  CountCdfVariable,
   /// Predicted spatial lag for spatial models.
   SpatialLag,
   /// Posterior predictive draws for Bayesian models.
@@ -947,6 +951,9 @@ pub struct PredictCommand {
   pub target_variable: String,
   /// Prediction kind.
   pub kind: PredictKind,
+  /// Current-row count cutoff variable for `CountPmfVariable`/`CountCdfVariable`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub count_cutoff_variable: Option<String>,
   /// Whether interval bounds are requested.
   pub interval: bool,
   /// Credible interval level, retained as string spelling.

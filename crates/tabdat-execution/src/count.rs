@@ -247,11 +247,22 @@ impl Session {
         | PredictKind::MeanCount
         | PredictKind::CountPmf(_)
         | PredictKind::CountCdf(_)
+        | PredictKind::CountPmfVariable
+        | PredictKind::CountCdfVariable
     ) || command.interval
       || command.std
       || command.saving.is_some()
     {
       return Err(family.prediction_error());
+    }
+    let variable_cutoff = matches!(
+      command.kind,
+      PredictKind::CountPmfVariable | PredictKind::CountCdfVariable
+    );
+    if variable_cutoff != command.count_cutoff_variable.is_some() {
+      return Err(
+        family.error("current-row probability prediction requires exactly one cutoff variable"),
+      );
     }
     let dataset = self
       .active_dataset
@@ -284,7 +295,20 @@ impl Session {
     if !missing.is_empty() {
       return Err(RuntimeError::PredictUnknownVariable { variables: missing });
     }
-    for name in &predictors {
+    if let Some(name) = &command.count_cutoff_variable
+      && !dataset.columns.iter().any(|column| column.name == *name)
+    {
+      return Err(RuntimeError::PredictUnknownVariable {
+        variables: vec![name.clone()],
+      });
+    }
+    let mut selected_columns = predictors.clone();
+    let cutoff_index = command.count_cutoff_variable.as_ref().map(|name| {
+      let index = selected_columns.len();
+      selected_columns.push(name.clone());
+      index
+    });
+    for name in &selected_columns {
       if dataset
         .columns
         .iter()
@@ -306,7 +330,14 @@ impl Session {
       outcome_variable: &problem.outcome,
       residuals: false,
     };
-    if let PredictKind::CountPmf(count) | PredictKind::CountCdf(count) = command.kind {
+    let probability_request = match command.kind {
+      PredictKind::CountPmf(count) => Some((true, Some(count))),
+      PredictKind::CountCdf(count) => Some((false, Some(count))),
+      PredictKind::CountPmfVariable => Some((true, None)),
+      PredictKind::CountCdfVariable => Some((false, None)),
+      _ => None,
+    };
+    if let Some((is_pmf, fixed_cutoff)) = probability_request {
       let law = match &self.estimation {
         Some(EstimationState::PoissonFit(_)) => tabdat_stats::CountProbabilityLaw::Poisson,
         Some(EstimationState::NegativeBinomialFit(state)) => {
@@ -317,12 +348,14 @@ impl Session {
         _ => unreachable!(),
       };
       // Validate direct API commands even on empty data, before publication.
-      tabdat_stats::count_point_probabilities(law, 0.0, count)
-        .map_err(|e| family.error(e.to_string()))?;
-      let columns = if predictors.is_empty() {
+      if let Some(count) = fixed_cutoff {
+        tabdat_stats::count_point_probabilities(law, 0.0, count)
+          .map_err(|e| family.error(e.to_string()))?;
+      }
+      let columns = if selected_columns.is_empty() {
         "1".to_owned()
       } else {
-        predictors
+        selected_columns
           .iter()
           .map(|n| quote_identifier(n))
           .collect::<Vec<_>>()
@@ -336,6 +369,33 @@ impl Session {
         .visit_rows(
           &format!("SELECT {columns} FROM {ACTIVE_TABLE}"),
           |row| {
+            // Reject malformed cutoffs even when missing model inputs would otherwise mask them.
+            let count = match (fixed_cutoff, cutoff_index) {
+              (Some(count), None) => count,
+              (None, Some(index)) => {
+                let cell = row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read count cutoff"))?;
+                match cell {
+                  CellValue::Null => {
+                    values.push(None);
+                    return Ok(());
+                  }
+                  CellValue::Float(value) if !value.is_finite() => {
+                    values.push(None);
+                    return Ok(());
+                  }
+                  _ => exact_count(cell, 99).ok_or_else(|| {
+                    family.error(
+                      "count cutoff variable must contain exact integer values from 0 to 99 or missing",
+                    )
+                  })? as usize,
+                }
+              }
+              _ => {
+                return Err(family.error("invalid count probability cutoff request"));
+              }
+            };
             let mut xb = prediction.intercept.unwrap_or(0.0);
             for (j, coefficient) in coefficients.iter().enumerate() {
               let Some(x) = cell_to_f64(
@@ -356,11 +416,7 @@ impl Session {
             }
             let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
               .map_err(|e| family.error(e.to_string()))?;
-            values.push(Some(if matches!(command.kind, PredictKind::CountPmf(_)) {
-              pmf
-            } else {
-              cdf
-            }));
+            values.push(Some(if is_pmf { pmf } else { cdf }));
             Ok(())
           },
           |message| family.error(message),
