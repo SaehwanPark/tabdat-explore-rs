@@ -12,6 +12,17 @@ for(family in c('poisson','nb2')) for(alpha in if(family=='poisson') NA_real_ el
   }
 }
 write.csv(do.call(rbind,rows),paste0(root,'count_point_reference.csv'),row.names=FALSE,quote=FALSE)
+large <- data.frame(
+  family=c('poisson','poisson','poisson','poisson','nb2','nb2','nb2','nb2','nb2','nb2'),
+  alpha=c(NA_real_,NA_real_,NA_real_,NA_real_,exp(-11.9),.69,exp(11.9),.69,.69,.69),
+  mu=c(100,1000,100000,1,100000,100000,100000,100,1000,1e6),
+  k=c(100,1000,100000,100000,100000,100000,100000,100,1000,100000)
+)
+large$pmf <- ifelse(large$family=='poisson', dpois(large$k,large$mu),
+                    dnbinom(large$k,size=1/large$alpha,mu=large$mu))
+large$cdf <- ifelse(large$family=='poisson', ppois(large$k,large$mu),
+                    pnbinom(large$k,size=1/large$alpha,mu=large$mu))
+write.csv(large,paste0(root,'count_point_large_reference.csv'),row.names=FALSE,quote=FALSE)
 # Use the already independently audited, polished R offset-fit parameters. This
 # isolates distributional prediction from estimator stopping-rule differences.
 d <- read.csv('examples/nb2-offset/nb2_offset.csv')

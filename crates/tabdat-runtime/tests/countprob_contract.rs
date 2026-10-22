@@ -50,6 +50,24 @@ impl Fixture {
     );
     session
   }
+  fn upper_cutoff() -> Self {
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-countprob-upper-{}-{}",
+      std::process::id(),
+      NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::create_dir(&root).unwrap();
+    let mut csv = "id,y,cutoff\n".to_owned();
+    for deviation in -50..=50 {
+      csv.push_str(&format!(
+        "{},{},100000\n",
+        deviation + 50,
+        100000 + deviation
+      ));
+    }
+    fs::write(root.join("data.csv"), csv).unwrap();
+    Self(root)
+  }
 }
 impl Drop for Fixture {
   fn drop(&mut self) {
@@ -304,7 +322,7 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
     }
     assert_eq!(s.state().estimation, retained);
 
-    for invalid_cutoff in ["-1", "100"] {
+    for invalid_cutoff in ["-1", "100001"] {
       let mut invalid = f.session();
       run(&mut invalid, &format!("{family} y x z"));
       run(&mut invalid, &format!("replace cutoff = {invalid_cutoff}"));
@@ -334,7 +352,7 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
     let mut masked_invalid = f.session();
     run(&mut masked_invalid, &format!("{family} y x z"));
     run(&mut masked_invalid, "replace x = NULL");
-    run(&mut masked_invalid, "replace cutoff = 100");
+    run(&mut masked_invalid, "replace cutoff = 100001");
     let before = masked_invalid.state();
     assert!(
       masked_invalid
@@ -362,4 +380,56 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
         .all(|row| row[index] == tabdat_domain::CellValue::Null)
     );
   }
+}
+
+#[test]
+fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
+  let f = Fixture::upper_cutoff();
+  let mut s = f.session();
+  run(&mut s, "poisson y");
+  let retained = s.state().estimation.clone();
+  run(&mut s, "keep if id == 0");
+  run(&mut s, "predict high_pmf, pmf(100000)");
+  run(&mut s, "predict high_cdf, cdf(cutoff)");
+  assert_eq!(s.state().estimation, retained);
+  let ExecutionResult::Head(table) = run(&mut s, "head 1") else {
+    panic!("head")
+  };
+  let value = |name: &str| {
+    let column = table
+      .columns
+      .iter()
+      .position(|candidate| candidate == name)
+      .unwrap();
+    match &table.rows[0][column] {
+      tabdat_domain::CellValue::Float(value) => *value,
+      other => panic!("expected a numeric probability, found {other:?}"),
+    }
+  };
+  let expected: Vec<_> =
+    include_str!("../../tabdat-stats/tests/fixtures/count_point_large_reference.csv")
+      .lines()
+      .find(|line| line.starts_with("poisson,NA,1e+05,1e+05,"))
+      .unwrap()
+      .split(',')
+      .collect();
+  for (name, reference) in [
+    ("high_pmf", expected[4].parse::<f64>().unwrap()),
+    ("high_cdf", expected[5].parse::<f64>().unwrap()),
+  ] {
+    let actual = value(name);
+    assert!(
+      (actual - reference).abs() <= reference.abs() * 1e-10 + f64::MIN_POSITIVE,
+      "{name}: {actual} != {reference}"
+    );
+  }
+
+  let mut too_wide = f.session();
+  run(&mut too_wide, "poisson y");
+  let before = too_wide.state();
+  let error = too_wide
+    .execute(parse_command("predict too_wide, pmf(cutoff)").unwrap())
+    .unwrap_err();
+  assert!(error.to_string().contains("expanded cutoff work exceeds"));
+  assert_eq!(too_wide.state(), before);
 }
