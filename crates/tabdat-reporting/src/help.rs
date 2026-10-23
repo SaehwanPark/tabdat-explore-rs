@@ -51,6 +51,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "mlogit",
   "nbreg",
   "nl",
+  "nlogit",
   "panel",
   "poisson",
   "postlasso",
@@ -141,6 +142,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "logit" => Some(include_str!("help/topics/logit.md")),
     "mlogit" => Some(include_str!("help/topics/mlogit.md")),
     "clogit" => Some(include_str!("help/topics/clogit.md")),
+    "nlogit" => Some(include_str!("help/topics/nlogit.md")),
     "lowess" => Some(include_str!("help/topics/lowess.md")),
     "missing" => Some(include_str!("help/topics/missing.md")),
     "nbreg" => Some(include_str!("help/topics/nbreg.md")),
@@ -191,7 +193,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 86);
+    assert_eq!(available_help_topics().len(), 87);
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");

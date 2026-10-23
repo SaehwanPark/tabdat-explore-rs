@@ -74,7 +74,7 @@ fn maximum_absolute(values: &[f64]) -> f64 {
   values.iter().map(|v| v.abs()).fold(0.0, f64::max)
 }
 
-fn alternative_order(codes: &[i64]) -> Result<Vec<usize>, StatsError> {
+pub(crate) fn alternative_order(codes: &[i64]) -> Result<Vec<usize>, StatsError> {
   if !(2..=16).contains(&codes.len())
     || codes
       .iter()
@@ -92,13 +92,13 @@ fn alternative_order(codes: &[i64]) -> Result<Vec<usize>, StatsError> {
   Ok(order)
 }
 
-struct Layout {
-  cases: Vec<Vec<usize>>,
-  chosen: Vec<usize>,
-  levels: Vec<i64>,
-  candidate_cases: usize,
+pub(crate) struct Layout {
+  pub(crate) cases: Vec<Vec<usize>>,
+  pub(crate) chosen: Vec<usize>,
+  pub(crate) levels: Vec<i64>,
+  pub(crate) candidate_cases: usize,
 }
-fn validate(problem: &ConditionalLogitProblem) -> Result<Layout, StatsError> {
+pub(crate) fn validate(problem: &ConditionalLogitProblem) -> Result<Layout, StatsError> {
   let d = &problem.design;
   d.validate()?;
   let n = d.response.len();

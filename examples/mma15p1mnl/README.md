@@ -8,6 +8,8 @@ and at-means calculations. The separate [conditional-choice workflow below](#con
 adds the price/catch CL column and explicitly labeled finite point contrasts.
 The [combined-utility workflow](#combined-fixed-coefficient-utility-table152-final-column)
 adds the final coefficient column and a conditional encoding check of MNL.
+The [explicitly non-normalized nested workflow](#non-normalized-nested-choice)
+targets the later MMA §15.6.3 p511 illustration, not the preferred RUM model.
 
 The March2005 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma15p1mnl.do)
 labels this executable block Table15.2; its overview's Table15.1 is a typo.
@@ -131,8 +133,8 @@ float-generated columns/probabilities; for example its beach average is about
 at mean income rather than an AME. Neither those computations nor their reported
 uncertainty are claimed reproduced. No tolerance is expanded to equate them.
 
-Nested choice models, robust/cluster/survey covariance, automatic factors,
-IIA tests, remaining Table15.1/15.2 columns and later Chapter15 illustrations remain
+Preferred-normalized/richer nested choice models, robust/cluster/survey covariance,
+automatic factors, IIA tests, remaining illustrated tables and later Chapter15 analyses remain
 required work. Current MNL bounds/failure/recovery conventions are in `help mlogit`;
 passing these local checks is not certification of every MNL problem or platform.
 
@@ -328,6 +330,114 @@ export without changing inputs; export collisions retain earlier files.
 All three principal Table15.2 coefficient columns now have source-audited
 workflows with explicit inference conventions. This is not a single formatted
 whole-table report, every exploratory fit in the author program, historical
-float-digit parity or completed Chapter15 coverage. Nested/other illustrated
-choice analyses, IIA diagnostics, broader availability, effects uncertainty,
-weights/robust/cluster/survey and automatic design/reporting remain required.
+float-digit parity or completed Chapter15 coverage. Preferred-normalized/other
+illustrated choice analyses, IIA diagnostics, broader availability, effects
+uncertainty, weights/robust/cluster/survey and automatic design/reporting remain
+required. The distinct earlier non-normalized illustration follows.
+
+## Non-normalized nested choice
+
+`nested.td` targets **MMA §15.6.3 p511**, author `mma15p2gev.do` sections2A–C,
+using all1,182 original people/four alternatives. Shore contains beach1/pier2;
+boat contains private3/charter4. This deliberately fits the earlier **non-normalized**
+parameterization, not the preferred common-utility RUM normalization. Source assets:
+
+| Asset | SHA256 |
+| --- | --- |
+| `mma15p2gev.do` | `0dff4b93103da9d075967c1517f04fbe44a1b08543a34421e44f0cd717e50e27` |
+| `mma15p2gev.txt` | `b1c2d7bf4008fae64ed659d046debd846ff59c6aa2115ea518ce8f0dc0037726` |
+
+The native command is explicit:
+
+```text
+nlogit chosen p q, group(id) alternative(alternative) nest(nest) upper(dshore dshorey) nonnormalized
+predict baseline, pr
+```
+
+Conditional lower probabilities normalize `exp(p*beta_p+q*beta_q)` inside each
+nest. Upper utility is `dshore*gamma_a+dshorey*gamma_y` plus the nest-specific
+positive scale times the lower log-sum-exp. Upper predictors must be constant
+inside each person/nest. **Raw lower utility levels are retained**: case-common
+lower shifts do not cancel when nest scales differ. There is no automatic
+intercept, factor or income-interaction update.
+
+Inference uses the full joint6×6 **observed** information inverse across1,182
+independent decisions, correction1 and asymptotic normal95. Slope tests use zero;
+IV diagnostics test **one**, not the excluded zero boundary. Natural-scale Wald
+intervals may cross zero. The λ=1 conditional restriction re-estimates four
+slopes, with a regular LR chi-square2 only after local scale identification is
+checked there. A uniform zero-slope null has unidentified scales; no corresponding
+omnibus chi-square or pseudo R² is fabricated. Optimization uses two deterministic
+positive-scale starts, not a global-maximum proof. See `help nlogit` for bounds,
+whole-set missingness/structural validation and atomic current-prediction rules.
+
+In the earlier source/preparation recipe's subshell (or after restoring `repo`,
+`work` and `cd "$work"`), with **fresh nested output paths**:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -c "run \"$repo/examples/mma15p1mnl/nested.td\"" > nested.jsonl
+Rscript "$repo/examples/mma15p1mnl/reference_nested.R" \
+  Nldata.csv R_nested_predictions.csv > R_nested_quantities.csv
+python3 "$repo/examples/mma15p1mnl/check_nested.py" "$work"
+```
+
+Native analysis needs neither R nor Python. The optional reference was tested
+with R4.6.1, `mlogit`2.0.0 and `survival`3.8.6; use an isolated development library
+via `R_LIBS_USER` if desired. `mlogit`'s `unscaled=TRUE` places all features inside
+conditional utility: multiplying its shore-constant/income coefficients by the
+shore IV gives the reported top-level coefficients. A separate base-R `deriv3`
+scalar likelihood independently checks fresh package scores/probabilities,
+refines stationarity and supplies **observed** information, not default OPG.
+The λ=1 `survival::clogit` point additionally passes the independent derivative/
+information check; at this source point its refinement shift is zero.
+
+The script guards source IDs/choice flags **before fitting**, fits the conditional
+restriction and nested model, predicts both baselines, jointly raises shore-income
+interactions for income+$1,000, and separately raises charter price by1 or catch
+by.001. It restores all original design columns, displays four means/contrasts,
+and exports `fishing_nested_predictions.csv` / `fishing_nested_contrasts.csv`.
+Income changes are unscaled probability differences; price contrasts are100ΔP
+percentage points; catch contrasts are1000ΔP. These are conditional point
+associations, not causal effects, analytic AMEs or uncertainty intervals.
+`estat margins`, general restrictions/named comparisons and robust/cluster/survey
+inference are not implemented for this bounded model. For native text, rerun
+with `--text` in a fresh output directory: exports refuse collisions.
+
+The checker validates **149 independent quantities**, including all52 covariance
+entries across the four/six-parameter fits, and **23,640 probabilities**. Both
+exports' exact identities/order, choices, nest map, raw price/catch, income,
+interactions and restored baselines bind directly to hashed original tokens.
+Nested scalars use1e-9 absolute +1e-8 relative; restriction scalars retain1e-9
+absolute. This new nested-workflow audit uses the predeclared1e-8 positive-tail
+relative contract including its restriction; existing standalone CL/MNL gates
+are unchanged. The restriction's1.73e-11 slope stopping difference amplifies to
+1.82e-9 relative at p=4.42e-56; native tails agree with independent `math.erfc`
+at native z, not a fabricated zero. Probabilities use1e-10 absolute. Native
+four-row displays, per-set sums, zero-sum contrasts and exact restores are checked.
+Identically corrupted native/R designs and a fake zero LR p-value are rejected.
+
+Observed maxima: nested coefficient1.53e-10, covariance3.98e-8 on large weak-IV
+variances, LL3.41e-12 and probability1.20e-11; income/price/catch contrasts
+1.40e-15/1.12e-13/1.08e-13. The stationary fit has LL−1180.0125384828,
+IVs32.1725778578/15.0747565917 and observed SEs29.9971412397/14.0098795481.
+The λ=1 restriction has LL−1252.7110426869, LR145.3970084082, p≈2.67572e-32.
+**Both IVs violate the descriptive (0,1] RUM bounds**; higher likelihood does
+not establish random-utility consistency.
+
+Historical Stata8 instead reports LL−1180.0156 and IVs29.98591/14.06438: this is
+**not printed-digit parity**. A float32 preparation replay still gives stationary
+IVs≈32.172579/15.074757, so storage alone does not explain the discrepancy.
+No historical tolerance is widened to erase it. The preferred-normalized probe
+on this restricted design diverged with singular shore information; that failed
+probe is not a validated substitute or an exclusion of required work.
+
+The actual-script CLI fixture has704 artificial decisions with six known natural
+MLE parameters (slopes/upper coefficients ln2/ln3; IVs2/3), explicit full-rank
+λ=1 identification, joint income/price/catch closed-form predictions, restores,
+displayed means and input/export preservation. Bad IDs/flags fail before fitting.
+Additional kernel/runtime tests cover full covariance, derivatives, permutation,
+replication, exact DECIMAL keys/outcomes, whole-set exclusion, current new IDs/
+absent outcomes, upper constancy/map errors and failure-state atomicity. These
+bounded local checks do not complete Chapter15, preferred normalization, richer
+trees/availability, effects uncertainty or platform certification.

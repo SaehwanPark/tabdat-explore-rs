@@ -52,6 +52,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "mlogit",
   "nbreg",
   "nl",
+  "nlogit",
   "panel",
   "poisson",
   "postlasso",
@@ -314,6 +315,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "nl".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "nlogit".into(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Control],
@@ -1219,6 +1224,12 @@ fn get_command_schema(
       help_topic,name:"clogit".into(),
       options:vec![OptionDescriptor {name:"group".into(),required:true},OptionDescriptor {name:"alternative".into(),required:true}],
       syntax:"clogit chosen xvars, group(id) alternative(alt)".into(),
+    }),
+    "nlogit" => Ok(CommandSchemaResult {
+      arguments:vec![ArgumentDescriptor {name:"chosen".into(),required:true},ArgumentDescriptor {name:"lower_predictors".into(),required:true}],
+      help_topic,name:"nlogit".into(),
+      options:vec![OptionDescriptor {name:"group".into(),required:true},OptionDescriptor {name:"alternative".into(),required:true},OptionDescriptor {name:"nest".into(),required:true},OptionDescriptor {name:"upper".into(),required:false},OptionDescriptor {name:"nonnormalized".into(),required:true}],
+      syntax:"nlogit chosen lower_vars, group(id) alternative(alt) nest(branch) [upper(vars)] nonnormalized".into(),
     }),
     "mlogit" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor { name:"depvar".into(),required:true },ArgumentDescriptor { name:"indepvars".into(),required:false }],
@@ -2169,7 +2180,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 85);
+    assert_eq!(catalog.commands.len(), 86);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2212,7 +2223,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 85);
+    assert_eq!(effects.commands.len(), 86);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());
