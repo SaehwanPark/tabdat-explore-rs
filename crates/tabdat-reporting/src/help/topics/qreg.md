@@ -25,8 +25,12 @@ spacing median regression, and `tau*(1-tau)*sparsity^2*inv(X'X)`, matching
 R quantreg `summary.rq(se="iid", hs=TRUE)` covariance. Reported z tests and 95%
 intervals use the asymptotic standard normal, with no finite-sample t correction.
 This inference assumes a common error density independent of the design; it is
-not heteroskedastic-robust, clustered, weighted or survey inference. Separate
-quantiles do not supply cross-quantile covariance or simultaneous tests.
+not heteroskedastic-robust, clustered, weighted or survey inference.
+Separate fits do not supply cross-quantile covariance. The optional
+`bootstrap ..., quantiles(...) contrast(variable)` report supports one
+higher-minus-lower coefficient contrast for exactly two quantiles, with shared
+IID pairs and asymptotic normal inference; it is not a general `test`/`lincom`
+interface for the retained qreg fit.
 
 The sparse dual LP uses Clarabel 0.11.1 with QR polishing and explicit numerical
 optimality checks. Limits: N>K, N<=10,000, K<=32 including the intercept,

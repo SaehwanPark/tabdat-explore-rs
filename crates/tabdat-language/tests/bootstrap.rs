@@ -72,3 +72,39 @@ fn joint_quantiles_are_ordered_bounded_and_keep_exact_seed_spelling() {
     assert!(parse_command(text).is_err(), "{text}");
   }
 }
+
+#[test]
+fn contrast_requires_one_exact_coefficient_and_two_quantiles() {
+  let Command::QuantileBootstrap { command } =
+    parse_command("bootstrap y `my x`, quantiles(.25 .75) contrast(`my x`) seed(7)").unwrap()
+  else {
+    panic!("contrast")
+  };
+  assert_eq!(command.contrast.as_deref(), Some("my x"));
+  let Command::QuantileBootstrap { command } =
+    parse_command("bootstrap y x, quantiles(.25 .75) seed(7)").unwrap()
+  else {
+    panic!("old command")
+  };
+  let mut wire = serde_json::to_value(&command).unwrap();
+  assert!(wire.get("contrast").is_none());
+  let old: tabdat_domain::QuantileBootstrapCommand = serde_json::from_value(wire.clone()).unwrap();
+  assert_eq!(old, command);
+  wire["contrast"] = serde_json::Value::Null;
+  assert_eq!(
+    serde_json::from_value::<tabdat_domain::QuantileBootstrapCommand>(wire).unwrap(),
+    command
+  );
+  for text in [
+    "bootstrap y x, contrast(x) seed(7)",
+    "bootstrap y x, quantiles(.5) contrast(x) seed(7)",
+    "bootstrap y x, quantiles(.25 .5 .75) contrast(x) seed(7)",
+    "bootstrap y x, quantiles(.25 .75) contrast(x z) seed(7)",
+    "bootstrap y x, quantiles(.25 .75) contrast(1) seed(7)",
+    "bootstrap y x, quantiles(.25 .75) contrast seed(7)",
+    "bootstrap y x, quantiles(.25 .75) contrast(x) contrast(x) seed(7)",
+    "bootstrap y x, quantiles(.25 .75) contrast(x) cluster(g) seed(7)",
+  ] {
+    assert!(parse_command(text).is_err(), "{text}");
+  }
+}

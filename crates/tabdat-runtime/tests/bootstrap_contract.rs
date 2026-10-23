@@ -282,3 +282,36 @@ fn failed_quantile_bootstrap_replication_keeps_the_prior_model_and_data() {
   assert_eq!(run(&mut s, "head"), rows);
   run(&mut s, "predict preserved");
 }
+
+#[test]
+fn contrast_reports_use_joint_sample_and_preserve_prior_fits_on_success_or_failure() {
+  let raw = include_str!("../../tabdat-stats/tests/fixtures/quantile-bootstrap/inputs.csv");
+  let f = Fixture::new(&format!("{raw},0,0\n1,,0\nInf,0,0\n"));
+  let mut s = f.load();
+  run(&mut s, "regress y x z");
+  run(&mut s, "estimates store original");
+  let before = s.state();
+  let rows = run(&mut s, "head 200");
+  let ExecutionResult::QuantileBootstrap(report) = run(
+    &mut s,
+    "bootstrap y x z, quantiles(.25 .75) contrast(x) seed(7) reps(40)",
+  ) else {
+    panic!("contrast")
+  };
+  assert_eq!(
+    report.sample.as_ref().unwrap().retained_indices,
+    (0..120).collect::<Vec<_>>()
+  );
+  assert_eq!(report.sample.as_ref().unwrap().dropped_observations, 3);
+  assert!(report.contrast.as_ref().unwrap().p_value.is_some());
+  assert_eq!(s.state(), before);
+  assert_eq!(run(&mut s, "head 200"), rows);
+  for command in [
+    "bootstrap y x z, quantiles(.25 .75) contrast(absent) seed(7)",
+    "bootstrap y x z, quantiles(.25 .75) contrast(intercept) noconstant seed(7)",
+  ] {
+    assert!(s.execute(parse_command(command).unwrap()).is_err());
+    assert_eq!(s.state(), before);
+  }
+  run(&mut s, "predict preserved");
+}

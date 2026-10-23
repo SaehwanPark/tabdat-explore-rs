@@ -920,6 +920,8 @@ pub struct BootstrapCommand {
 pub struct QuantileBootstrapCommand {
   pub bootstrap: BootstrapCommand,
   pub quantiles: Vec<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub contrast: Option<String>,
 }
 
 /// The requested prediction mode.

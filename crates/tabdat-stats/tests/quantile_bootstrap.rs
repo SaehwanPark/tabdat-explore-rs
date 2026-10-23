@@ -163,3 +163,112 @@ fn near_active_refinement_matches_independent_quantreg_without_relaxing_certific
   }
   assert_eq!(compared, 27);
 }
+
+#[test]
+fn shared_pair_contrasts_match_independent_quantreg_and_preserve_old_reports() {
+  let mut compared = 0;
+  for (case, seed) in [
+    ("joint", u64::MAX),
+    ("noconstant", 7),
+    ("shifted", 7),
+    ("rescaled", 7),
+  ] {
+    let p = problem(case);
+    let baseline = bootstrap_quantiles(&p, &[0.25, 0.75], 40, seed).unwrap();
+    let old_json = serde_json::to_value(&baseline).unwrap();
+    assert!(old_json.get("contrast").is_none());
+    let roundtrip: tabdat_stats::QuantileBootstrapResult =
+      serde_json::from_value(old_json).unwrap();
+    assert_eq!(roundtrip, baseline);
+    for parameter in p.parameter_names() {
+      let mut report =
+        tabdat_stats::bootstrap_quantiles_with_contrast(&p, &[0.25, 0.75], 40, seed, &parameter)
+          .unwrap();
+      let contrast = report.contrast.as_ref().unwrap();
+      assert!(contrast.inference_unavailable_reason.is_none());
+      assert_eq!(
+        contrast.reference_distribution.as_deref(),
+        Some("asymptotic_standard_normal")
+      );
+      let value = serde_json::to_value(&report).unwrap();
+      for line in include_str!("fixtures/quantile-bootstrap/contrast_reference.csv")
+        .lines()
+        .skip(1)
+      {
+        let row: Vec<_> = line.split(',').collect();
+        if row[0] != format!("{case}:{parameter}") {
+          continue;
+        }
+        let actual = value.pointer(row[1]).unwrap().as_f64().unwrap();
+        let expected: f64 = row[2].parse().unwrap();
+        let tolerance = if row[1].ends_with("p_value") {
+          expected.abs() * 1e-7 + 1e-300
+        } else {
+          1e-8
+        };
+        assert!(
+          (actual - expected).abs() <= tolerance,
+          "{row:?}: {actual} != {expected}"
+        );
+        compared += 1;
+      }
+      report.contrast = None;
+      assert_eq!(report, baseline);
+    }
+  }
+  assert_eq!(compared, 66);
+}
+
+#[test]
+fn malformed_contrasts_fail_and_zero_variance_keeps_marginal_results_without_normal_inference() {
+  let p = problem("joint");
+  let mut ambiguous = p.clone();
+  ambiguous.predictor_names[0] = ambiguous.intercept_name.clone();
+  assert!(
+    tabdat_stats::bootstrap_quantiles_with_contrast(&ambiguous, &[0.25, 0.75], 40, 7, "intercept")
+      .unwrap_err()
+      .to_string()
+      .contains("ambiguous contrast coefficient")
+  );
+  for (qs, name) in [
+    (vec![0.5], "x"),
+    (vec![0.2, 0.5, 0.8], "x"),
+    (vec![0.25, 0.75], "absent"),
+  ] {
+    assert!(tabdat_stats::bootstrap_quantiles_with_contrast(&p, &qs, 40, 7, name).is_err());
+  }
+  assert!(
+    tabdat_stats::bootstrap_quantiles_with_contrast(
+      &problem("noconstant"),
+      &[0.25, 0.75],
+      40,
+      7,
+      "intercept"
+    )
+    .is_err()
+  );
+  let exact = EstimationProblem::new(
+    "y",
+    vec!["x".into()],
+    (0..120).map(|i| 1. + 2. * i as f64).collect(),
+    (0..120).map(|i| vec![i as f64]).collect(),
+  )
+  .unwrap();
+  let report =
+    tabdat_stats::bootstrap_quantiles_with_contrast(&exact, &[0.25, 0.75], 40, 7, "x").unwrap();
+  let c = report.contrast.as_ref().unwrap();
+  assert_eq!(c.estimate, 0.);
+  assert_eq!(c.standard_error, Some(0.));
+  assert_eq!(
+    c.inference_unavailable_reason.as_deref(),
+    Some("zero_contrast_variance")
+  );
+  assert!(
+    c.statistic.is_none()
+      && c.p_value.is_none()
+      && c.ci_lower.is_none()
+      && c.ci_upper.is_none()
+      && c.reference_distribution.is_none()
+  );
+  assert_eq!(report.coefficients.len(), 4);
+}

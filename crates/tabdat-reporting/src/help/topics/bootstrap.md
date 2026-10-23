@@ -1,6 +1,6 @@
 # bootstrap
 
-`bootstrap y xvars, seed(integer) [reps(200) noconstant cluster(unit)]`
+`bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit) | quantiles(values) [contrast(variable)]]`
 
 Compute a read-only pairs-bootstrap OLS report on CURRENT complete-finite
 outcome/predictor rows, with an intercept unless noconstant is specified. At
@@ -63,7 +63,7 @@ covariance is installed.
 
 ## Joint conditional quantiles
 
-`bootstrap y xvars, quantiles(.25 .5 .75) seed(integer) [reps(200) noconstant]`
+`bootstrap y xvars, quantiles(.25 .5 .75) [contrast(x)] seed(integer) [reps(200) noconstant]`
 
 With quantiles(), fit unweighted conditional quantile regressions instead of OLS.
 Supply 1..19 strictly increasing finite values from .05 to .95. Clustering is
@@ -76,9 +76,27 @@ Report QuantileBootstrapResult: coefficients/covariance in quantile-major order,
 intercept first within each quantile, with names such as q0.25:intercept and
 q0.25:x. The full joint covariance includes cross-quantile blocks and uses B-1.
 Marginal percentile95 intervals use R type7; they are NOT simultaneous coverage
-bands. No analytic coefficient p-values, slope-equality test, retained bootstrap
-fit or automatic figure is installed. Covariance may be singular (rank at most
-B-1); the report does not silently regularize it.
+bands. Without contrast(), no analytic coefficient p-values or tests are added.
+Covariance may be singular (rank at most B-1); the report does not silently
+regularize it.
+
+Optional `contrast(variable)` requires exactly two requested quantiles and one
+unique coefficient name from the fitted design. It reports the higher-quantile
+coefficient minus the lower-quantile coefficient. This includes `intercept`
+when present; with `noconstant` only predictors can be selected. Unknown or
+ambiguous names fail before bootstrap fits. The point difference uses the
+original fits. Its standard error is the sample standard deviation (B-1) of
+the shared-replicate coefficient differences, computed directly for numerical
+stability. The zero-difference statistic and two-sided p-value use an
+asymptotic standard normal reference; its 95% interval is a normal-Wald
+interval. B-1 is the variance divisor, not Student-t degrees of freedom. This
+single contrast is not a general restriction interface, multiplicity
+adjustment, simultaneous test, or finite-sample coverage guarantee.
+
+If the contrast variance is zero or unrepresentable, the valid marginal
+bootstrap report remains available and the contrast carries an explicit
+unavailable reason with null normal inference fields. No retained bootstrap
+fit or automatic figure is installed.
 
 Pairs inference permits heteroskedastic conditional outcomes under IID row
 sampling and regular identified quantiles with positive conditional density.
