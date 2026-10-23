@@ -1226,11 +1226,34 @@ Linear JSON results reuse the supplied statistics without recalculation:
   and N − rank[W,Z] residual DF, not 2SLS residual DF. Valid instruments and
   homoskedasticity are required; exact finite-sample F also requires conditional
   normality. Retained fit data are used without refitting 2SLS or mutating state.
-  Robust/cluster parent fits, wrong-sized/nonfinite nulls and undefined auxiliary
-  variance/rank/DF are errors. No confidence-set or endogenous-subvector inference
+  Wrong-sized/nonfinite nulls and undefined auxiliary variance/rank/DF are errors.
+  Robust/cluster parent fits instead produce the distinct result below. No confidence-set or endogenous-subvector inference
   is implied; ordinary coefficient/tests remain conventional. The preceding
   first-stage availability flag remains false for those conventional summaries;
   the separate joint-AR availability flag advertises this post-estimation command.
+- `RobustAndersonRubinResult` (`estat ar, null(...)` after an HC1 or one-way
+  clustered 2SLS fit): `test: "anderson_rubin_joint_robust_wald"`,
+  `covariance: "robust_hc1"` or `"cluster(variable)"`,
+  `reference_distribution: "asymptotic_chi_square"`,
+  `null_scope: "all_endogenous_joint"`, `weak_iv_robust: true`, `assumptions`,
+  ordered `endogenous`/`null_values`, `excluded_instruments`, `observation_count`,
+  `auxiliary_parameter_count`, `auxiliary_residual_df`, `covariance_correction`,
+  optional `cluster_group_count` (null for HC1), `degrees_of_freedom`, `statistic`
+  and upper-tail `p_value`. No denominator DF/F reference is reported. Auxiliary
+  OLS regresses y-X_endog*b0 on included exogenous variables and all excluded
+  instruments, then tests the complete excluded block with unrestricted
+  auxiliary residual-score sandwich covariance. K_aux includes any intercept;
+  HC1 correction is N/(N-K_aux), CR1 is G/(G-1)*(N-1)/(N-K_aux). The full Wald
+  statistic uses asymptotic chi-square(q), with q equal to the excluded-instrument
+  count. Assumes valid instruments, a correctly specified linear model and
+  independent rows (HC1) or independent clusters and many-group asymptotics (CR1).
+  This is neither an exact finite-sample test nor a few-cluster guarantee.
+  Rank-limited restriction covariance (including q >= G), invalid nulls and
+  auxiliary design/variance/DF failures are errors; restrictions are never dropped
+  to manufacture a p-value. Retained sample/design/groups are used without 2SLS
+  refits, current-column reads or state mutation. Robust confidence sets and
+  endogenous-subvector inference remain unsupported. The synthetic
+  `examples/robust-ar/` workflow records independent numerical/sample evidence.
 - `AndersonRubinConfidenceSet` (`estat ar, ci [level(95)]`): scalar nonrejection
   set for exactly one endogenous coefficient, leaving included-exogenous
   coefficients unrestricted. Fields: `test: "anderson_rubin_scalar_confidence_set"`,

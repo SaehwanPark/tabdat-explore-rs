@@ -529,6 +529,15 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
     assert_eq!(r["data"], rows[5]["data"]);
     let d = &r["data"];
     assert_eq!(d["test"], "anderson_rubin_joint_robust_wald");
+    assert_eq!(
+      d["covariance"],
+      if option == "robust" {
+        "robust_hc1"
+      } else {
+        "cluster(g)"
+      }
+    );
+    assert!(d.get("covariance_type").is_none());
     assert_eq!(d["reference_distribution"], "asymptotic_chi_square");
     assert_eq!(d["weak_iv_robust"], true);
     assert_eq!(d["null_scope"], "all_endogenous_joint");

@@ -223,6 +223,12 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::RobustAndersonRubin(result) => {
       let mut data = serde_json::to_value(result).expect("finite robust AR result");
       data["test"] = json!("anderson_rubin_joint_robust_wald");
+      data.as_object_mut().unwrap().remove("covariance_type");
+      data["covariance"] = json!(match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "robust_hc1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "homoskedastic".to_owned(),
+      });
       data["reference_distribution"] = json!("asymptotic_chi_square");
       data["null_scope"] = json!("all_endogenous_joint");
       data["weak_iv_robust"] = json!(true);
