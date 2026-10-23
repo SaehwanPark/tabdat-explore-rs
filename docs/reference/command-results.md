@@ -1167,7 +1167,8 @@ Linear JSON results reuse the supplied statistics without recalculation:
   conventional homoskedastic excluded-instrument partial F),
   `weak_iv_robust_inference_available: false` (these first-stage/coefficient
   summaries do not contain weak-IV-robust inference),
-  `joint_ar_postestimation_available` (true only for nonrobust fits),
+  `joint_ar_postestimation_available` (true for classical/HC1/one-way-cluster fits;
+  actual null-specific auxiliary rank/variance checks still apply),
   `scalar_ar_confidence_set_available` (true only for nonrobust/single-endogenous
   fits; numerical/rank/variance validation can still fail),
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
