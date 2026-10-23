@@ -1,8 +1,9 @@
 # Overidentified cigarette-demand IV example
 
 This reproduces the **AER `ivreg` example**, not an empirical illustration from
-Cameron–Trivedi (2005). It validates Sargan, classical Wu–Hausman and HC1 joint
-endogeneity methods needed by the graduate IV workflow; it does not advance the
+Cameron–Trivedi (2005). It validates Sargan, independent-row robust overidentification
+score, classical Wu–Hausman and HC1 joint endogeneity methods needed by the
+graduate IV workflow; it does not advance the
 book's empirical-illustration status.
 
 - Specification: [AER 1.2-12 `ivreg` documentation](https://search.r-project.org/CRAN/refmans/AER/html/ivreg.html).
@@ -73,9 +74,9 @@ which instrument is invalid. Use substantive design knowledge and the separately
 labelled relevance/weak-IV diagnostics.
 
 `estat overid` reuses the retained 2SLS sample/design/structural residuals without
-refitting or mutating state. Just-identified or robust/cluster parent fits and
-undefined residual variance/rank/DF fail explicitly. Robust/cluster Hansen J and
-GMM remain separate required work.
+refitting or mutating state. Just-identified or cluster parent fits and undefined
+residual variance/rank/DF fail explicitly. Independent-row robust parents return
+the separate score test below, not Sargan. Hansen J and GMM remain required work.
 
 ## Classical joint Wu–Hausman endogeneity diagnostic
 
@@ -167,5 +168,56 @@ The result is read-only on the retained complete-case design and cluster IDs,
 even after edits/drop of current columns. Degenerate innovations/augmented
 variance, rank/DF failures and singular innovation Wald covariance fail explicitly
 without changing the dataset/fit; later script effects do not execute. No subset,
-survey, multiway/HAC, robust overidentification or weak-IV confidence-set extension
-is installed by this workflow.
+survey, multiway/HAC or weak-IV confidence-set extension is installed by this
+endogeneity workflow. The separate overidentification score is described below.
+
+## Independent-row robust overidentification score
+
+Using the pinned source and fresh `work` directory from the initial acquisition
+(the export path must not already exist):
+
+```sh
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/cigarettes_iv/robust_overid.td" > robust-overid.jsonl)
+Rscript examples/cigarettes_iv/reference_robust_overid.R \
+  "$work/CigarettesSW.csv" "$work/expected_robust_overid_sample.csv"
+python3 examples/cigarettes_iv/check_robust_overid.py "$work"
+```
+
+The new result is `RobustOveridScoreResult`, not `SarganResult` or Hansen J.
+Let Z contain the intercept, included controls and excluded instruments, and
+Xhat=P_Z X the instrument-projected original regressors. Residualize Z on Xhat;
+its complement has rank q=L-K. Regress ones **without an intercept** on products
+of q independent complement directions and structural 2SLS residuals u. The
+Wooldridge statistic is N-RSS, evaluated as the fitted projection norm. Its
+uncentered score OPG is **uncorrected** (factor1), not the coefficient HC1 factor
+N/(N-K). Under the null this projection removes the first-order 2SLS nuisance
+estimation effect. An arbitrary-weight quadratic of all raw IV moments is not
+instead assumed to have a chi-square(L-K) law.
+
+Independent base R4.6.1 uses SVD/lm.fit and directly confirms the equivalent
+score moment quadratic. For N=48, L=4, K=3 and q=1, it returns
+chi-square(1)=**0.3347358817061415**, p=**0.5628836468492445**. Native score/tail
+match at 1e-12 absolute; the checker also verifies the pinned source checksum,
+all 48 ordered state identities and all 240 prepared numeric cells. This is
+method evidence, not a new validated Cameron–Trivedi empirical illustration.
+
+`crates/tabdat-stats/tests/fixtures/robust_overid_score_reference.R` independently
+checks five synthetic q1/q2 designs, mixed first stages, one/two endogenous,
+intercept/no-intercept and no-control cases. Native pivoted, twice-reorthogonalized
+complement directions match R SVD values at 1e-11 absolute, including invariance
+to instrument reordering/invertible coordinate changes and residual units.
+Unit-scaled rank checks reject singular complement or score spaces instead of
+silently reducing q. Undefined structural residuals, just-identification,
+insufficient auxiliary DF and full-instrument/projected-design rank failures
+also fail without changing the retained fit/data; subsequent script effects stop.
+
+Inference is **asymptotic chi-square(q)** under independent rows, correct linear
+specification, valid instruments under the null and conventional strong
+identification. It is not an exact F, cluster/survey, few-cluster or weak-IV
+procedure. Cluster parent fits remain explicitly unsupported. Rejection may
+reflect invalid instruments or model misspecification and does not isolate an
+instrument; failure to reject proves neither validity nor identification.
+R/Python here are optional development-only references/checkers, not runtime
+dependencies. Equivalent validated score inference, not historical Stata
+syntax or internal basis choices, is the acceptance criterion.

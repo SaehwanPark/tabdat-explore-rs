@@ -813,6 +813,8 @@ pub enum ExecutionResult {
   RobustAndersonRubin(tabdat_stats::RobustAndersonRubinResult),
   /// Homoskedastic Sargan N*R² overidentification test on retained 2SLS residuals.
   Sargan(tabdat_stats::SarganResult),
+  /// Independent-row heteroskedasticity-robust residualized-instrument score test.
+  RobustOveridScore(tabdat_stats::RobustOveridScoreResult),
   /// Joint homoskedastic residual-inclusion F test of endogenous-regressor exogeneity.
   WuHausman(tabdat_stats::WuHausmanResult),
   /// HC1/CR1 joint innovation-inclusion Wald test with asymptotic chi-square inference.

@@ -732,7 +732,25 @@ tails; runtime/CLI cases cover exact retained indices, current-data changes,
 just-identified/robust/cluster rejection, undefined variance and stop-before-export.
 Inference is homoskedastic, correctly specified maintained model, conventional
 strong-identification asymptotics. Failure to reject does not prove instrument
-validity; robust/cluster Hansen J and GMM remain required work.
+validity; Hansen J and GMM remain required work. Independent-row robust parent
+fits now use a separate Wooldridge residualized-instrument score, not Sargan:
+[`robust_overid.td`](../../examples/cigarettes_iv/robust_overid.td) uses the same
+48-state design and structural residuals. With L=4, K=3 and q=1, independent base
+R4.6.1 SVD/lm.fit gives chi-square(1)=0.3347358817061415 and
+p=0.5628836468492445; native values match at 1e-12 absolute, along with all ordered
+state identities/240 prepared cells and the pinned source hash. The score OPG is
+uncorrected (factor1), not parent HC1. It projects the full instrument space off
+Xhat=P_Z X, uses exactly q=L-K complement directions and regresses ones on their
+products with structural residuals, without an intercept. Five independent R
+synthetic designs validate q1/q2, mixed first stages, single/multiple endogenous,
+intercept/no-intercept/no-control cases and native instrument-coordinate/unit
+invariance at 1e-11 absolute. See the
+[reference and checker](../../examples/cigarettes_iv/README.md#independent-row-robust-overidentification-score).
+Retained state/failure and CLI/script tests cover rank/DF/undefined-score failures
+without silently lowering q or running later file effects. This conventional
+independent-row asymptotic score is not Hansen J, weak-IV or cluster/survey
+inference; clustered overidentification remains required work. It adds external
+method evidence only, not a completed textbook illustration.
 
 The same exact sample/design additionally supports joint homoskedastic
 `estat endogenous`, using the independent

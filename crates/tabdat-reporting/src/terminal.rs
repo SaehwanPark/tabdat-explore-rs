@@ -1172,6 +1172,16 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       inference_number(result.statistic),
       inference_number(result.p_value),
     ),
+    ExecutionResult::RobustOveridScore(result) => format!(
+      "Heteroskedasticity-robust overidentification score test (Wooldridge residualized instruments)\nN = {}; asymptotic chi-square({}) = {}; p-value = {}\nFull-instrument rank L = {}; structural rank K = {}; DF = L-K; score covariance correction = {} (no N-K/HC1 adjustment).\nH0: overidentifying restrictions hold, given the maintained model. Independent rows and conventional strong identification required.\nNot Hansen J, clustered inference or weak-IV-robust inference. Failure to reject does not prove instrument validity.\n",
+      result.observation_count,
+      result.degrees_of_freedom,
+      inference_number(result.statistic),
+      inference_number(result.p_value),
+      result.instrument_parameter_count,
+      result.structural_parameter_count,
+      inference_number(result.covariance_correction),
+    ),
     ExecutionResult::Sargan(result) => format!(
       "Sargan overidentification test (homoskedastic N*R²)\nN = {}; chi-square({}) = {}; p-value = {}\nH0: overidentifying restrictions hold, given the maintained model.\nAsymptotic chi-square under homoskedasticity and strong identification; not robust Hansen J or a finite-sample F test.\nFailure to reject does not prove instrument validity or resolve weak identification.\n",
       result.observation_count,

@@ -421,21 +421,74 @@ fn sargan_uses_retained_structural_residuals_and_preserves_success_and_failure_s
   let changed = session.state();
   assert_eq!(session.execute(overid.clone()).unwrap(), result);
   assert_eq!(session.state(), changed);
-  for option in ["robust", "cluster(group_id)"] {
-    let mut session = load(&fixture);
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2) cluster(group_id)").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
     session
-      .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {option}")).unwrap())
-      .unwrap();
-    let before = session.state();
-    assert!(
-      session
-        .execute(overid.clone())
-        .unwrap_err()
-        .to_string()
-        .contains("requires a nonrobust")
-    );
-    assert_eq!(session.state(), before);
-  }
+      .execute(overid.clone())
+      .unwrap_err()
+      .to_string()
+      .contains("clustered overidentification tests are not implemented")
+  );
+  assert_eq!(session.state(), before);
+}
+
+#[test]
+fn robust_overid_score_reuses_exact_fit_sample_and_failure_keeps_iv_state() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let overid = parse_command("estat overid").unwrap();
+  let ExecutionResult::Regression(fit) = session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2) robust").unwrap())
+    .unwrap()
+  else {
+    panic!("fit");
+  };
+  assert_eq!(
+    fit.least_squares.sample.as_ref().unwrap().retained_indices,
+    (2..60).collect::<Vec<_>>()
+  );
+  let before = session.state();
+  let result = session.execute(overid.clone()).unwrap();
+  let ExecutionResult::RobustOveridScore(test) = &result else {
+    panic!("score");
+  };
+  assert_eq!(test.observation_count, 58);
+  assert_eq!(test.degrees_of_freedom, 1);
+  assert_eq!(test.instrument_parameter_count, 4);
+  assert_eq!(test.structural_parameter_count, 3);
+  assert_eq!(test.covariance_correction, 1.0);
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(overid.clone()).unwrap(), result);
+  assert_eq!(session.state(), changed);
+
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("replace y = 0").unwrap())
+    .unwrap();
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2) robust").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
+    session
+      .execute(overid)
+      .unwrap_err()
+      .to_string()
+      .contains("structural residual variance")
+  );
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("predict xb_after_overid_failure, xb").unwrap())
+    .unwrap();
 }
 
 #[test]

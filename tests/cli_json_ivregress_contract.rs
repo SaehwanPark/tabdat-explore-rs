@@ -219,7 +219,8 @@ fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
   }
   for fit in [
     "ivregress 2sls y w, endog(x1) iv(z1)",
-    "ivregress 2sls y w, endog(x1) iv(z1 z2) robust",
+    "ivregress 2sls y w, endog(x1) iv(z1) robust",
+    "ivregress 2sls y w, endog(x1) iv(z1 z2) cluster(w)",
   ] {
     let output = fixture.batch(
       "--json",
@@ -233,24 +234,59 @@ fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
     assert_eq!(output.status.code(), Some(1));
     assert!(!fixture.0.join("not-written.csv").exists());
   }
-  // A genuine zero structural variance fit cannot supply the Sargan denominator.
+  fs::write(fixture.0.join("robust-overid.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1) iv(z1 z2) robust\nestat overid\nreplace y = 999\nestat overid\n"
+  ).unwrap();
+  let rows = json_lines(&fixture.run(&["--json", "-f", "robust-overid.td"]));
+  assert_eq!(rows[2], rows[4]);
+  assert_eq!(rows[2]["result_type"], "RobustOveridScoreResult");
+  let data = &rows[2]["data"];
+  assert_eq!(
+    data["test"],
+    "wooldridge_residualized_instrument_overid_score"
+  );
+  assert_eq!(data["covariance"], "independent_row_uncentered_score_opg");
+  assert_eq!(data["covariance_correction"], 1.0);
+  assert_eq!(data["reference_distribution"], "asymptotic_chi_square");
+  assert_eq!(data["weak_iv_robust"], false);
+  assert_eq!(data["instrument_parameter_count"], 4);
+  assert_eq!(data["structural_parameter_count"], 3);
+  assert_eq!(data["degrees_of_freedom"], 1);
+  // Base R4.6.1 fixtures/robust_overid_score_reference.R CLI-design block.
+  assert!((data["statistic"].as_f64().unwrap() - 3.17180616740088).abs() < 1e-12);
+  assert!((data["p_value"].as_f64().unwrap() - 0.07491955220648723).abs() < 1e-12);
+  let text = fixture.run(&["--text", "-f", "robust-overid.td"]);
+  assert!(text.status.success());
+  let text = String::from_utf8(text.stdout).unwrap();
+  for expected in [
+    "Wooldridge residualized instruments",
+    "asymptotic chi-square(1)",
+    "no N-K/HC1 adjustment",
+    "Not Hansen J",
+    "Independent rows",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
+  // A genuine zero structural variance fit cannot supply either test.
   fs::write(
     fixture.0.join("data.csv"),
     "y,x1,z1,z2\n0,1,1,0\n0,0,0,1\n0,0,0,0\n0,0,0,0\n",
   )
   .unwrap();
-  let output = fixture.batch(
-    "--json",
-    &[
-      "use data.csv",
-      "ivregress 2sls y, endog(x1) iv(z1 z2)",
-      "estat overid",
-      "export not-written.csv",
-    ],
-  );
-  assert_eq!(output.status.code(), Some(1));
-  assert!(String::from_utf8_lossy(&output.stderr).contains("structural residual variance"));
-  assert!(!fixture.0.join("not-written.csv").exists());
+  for option in ["", " robust"] {
+    let output = fixture.batch(
+      "--json",
+      &[
+        "use data.csv",
+        &format!("ivregress 2sls y, endog(x1) iv(z1 z2){option}"),
+        "estat overid",
+        "export not-written.csv",
+      ],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("structural residual variance"));
+    assert!(!fixture.0.join("not-written.csv").exists());
+  }
 }
 
 #[test]

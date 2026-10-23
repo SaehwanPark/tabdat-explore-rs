@@ -19,6 +19,7 @@ pub mod iv;
 mod iv_confidence;
 mod iv_endogenous;
 mod iv_overid;
+mod iv_overid_score;
 pub mod least_squares;
 pub mod matrix;
 mod nb2;
@@ -69,6 +70,7 @@ pub use iv_endogenous::{
   RobustEndogeneityResult, WuHausmanResult, robust_endogeneity_test, wu_hausman_test,
 };
 pub use iv_overid::{SarganResult, sargan_test};
+pub use iv_overid_score::{RobustOveridScoreResult, robust_overid_score_test};
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
   fit_least_squares_with_options, predict_linear_response,
