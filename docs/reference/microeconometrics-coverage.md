@@ -913,7 +913,7 @@ unweighted 2SLS joint nulls with auxiliary HC1/one-way CR1 Wald chi-square(q),
 using unrestricted adjusted-outcome residuals, K_aux corrections and the entire
 excluded-instrument block. Base R4.6.1 supplies six cases across controlled,
 no-intercept and no-exogenous-control designs, with two endogenous coefficients,
-three excluded instruments, explicit missingness and weak first stages. Exact
+three excluded instruments, explicit missingness and a separate fixed-adjusted-outcome zero-relevance check. Exact
 source identities, N/K/G, corrections, statistics and tails are tested; unit/order
 invariance, unchanged state and rank-limited failures are covered. The 12-group
 fixture establishes arithmetic only, not few-cluster reliability. This is method

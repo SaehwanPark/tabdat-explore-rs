@@ -59,7 +59,7 @@ fn problem(design: &str, clustered: bool) -> InstrumentalVariablesProblem {
 #[test]
 fn robust_joint_ar_matches_independent_r_under_three_designs_and_two_covariances() {
   // base R4.6.1: fixtures/robust_ar_reference.R. Nonconsecutive omissions,
-  // weak first stages, overidentification (K_aux != K_iv), nonzero joint null.
+  // overidentification (K_aux != K_iv), nonzero joint null.
   for line in include_str!("fixtures/robust_ar_reference.csv")
     .lines()
     .skip(1)
@@ -101,6 +101,19 @@ fn robust_joint_ar_matches_independent_r_under_three_designs_and_two_covariances
         "{line}: {actual} != {expected}"
       );
     }
+    // AR depends on the supplied joint null's adjusted outcome, not a first-stage
+    // projection or relevance denominator. Even an unidentified endogenous
+    // design has the same test when that adjusted outcome is held fixed.
+    let mut unidentified = p.clone();
+    unidentified.response = p
+      .response
+      .iter()
+      .zip(&p.endogenous)
+      .map(|(y, x)| y - 1.7 * x[0] + 0.6 * x[1])
+      .collect();
+    unidentified.endogenous = vec![vec![0.0, 0.0]; p.response.len()];
+    let weak = robust_anderson_rubin_test(&unidentified, &[1.7, -0.6], &covariance).unwrap();
+    assert!((r.statistic - weak.statistic).abs() < 1e-10 * r.statistic);
     let retained = &p.sample.as_ref().unwrap().retained_indices;
     let expected = (0..72)
       .filter(|i| ![1, 7].contains(i) && (!clustered || *i != 16))

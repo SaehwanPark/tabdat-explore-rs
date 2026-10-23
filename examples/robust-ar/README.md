@@ -2,7 +2,7 @@
 
 This synthetic method workflow fills a graduate-IV inference requirement; it is
 not a newly replicated Cameron–Trivedi illustration. It uses 72 source rows,
-two weakly instrumented endogenous regressors, one included exogenous control,
+two endogenous regressors, one included exogenous control,
 three excluded instruments and an intercept. The supplied joint null is
 `(x1,x2)=(1.7,-0.6)`. There are no weights, factors or endogenous nuisance
 coefficients. The deterministic generator and independent base-R reference are
@@ -52,7 +52,9 @@ Base R4.6.1 `lm.fit`, explicit sandwich matrix operations and `pchisq` independe
 validate all six controlled/no-intercept/no-exogenous-control × HC1/cluster cases.
 Correction, statistic and tail tolerances are 1e-10 relative (a 1e-30 numerical
 floor for the smallest tail). The tests also vary instrument units and reverse
-row/group order. Runtime/CLI tests check retained behavior after edits, output
+row/group order, and hold the adjusted outcome fixed while removing first-stage
+relevance entirely. This checks the absence of a relevance denominator; the
+fixture itself is not a simulation of weak-IV size or power. Runtime/CLI tests check retained behavior after edits, output
 metadata, null errors, missing groups and rank failures, script stopping before
 later file effects, and unchanged fit/data state. The existing classical F and
 scalar confidence-set tests remain in the suite.
