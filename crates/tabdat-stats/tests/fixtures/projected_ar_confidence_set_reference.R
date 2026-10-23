@@ -1,4 +1,4 @@
-# Independent base-R reference for the analytic projected AR fixture.
+# Independent base-R reference for the analytic projected AR fixtures.
 # The profile is minimized with optim over two nuisance coefficients; each
 # objective evaluation independently fits both restricted and unrestricted OLS.
 n <- 80

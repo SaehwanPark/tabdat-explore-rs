@@ -51,7 +51,8 @@ pub struct ProjectedArConfidenceSet {
   pub critical_f: f64,
   pub shape: ArConfidenceSetShape,
   pub intervals: Vec<ArConfidenceInterval>,
-  /// True when a non-positive-definite nuisance profile forced the conservative all-real set.
+  /// True when the scaled nuisance curvature was not safely positive definite,
+  /// forcing the conservative all-real set.
   pub all_real_conservative_fallback: bool,
 }
 
