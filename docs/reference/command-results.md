@@ -1125,7 +1125,7 @@ counts without exposing row vectors. For `cluster(unit)` or its RE-specific
 G/(G-1)*(N-1)/(N-K) multiplier and independence across units. The cluster option
 changes covariance/inference, not variance components or coefficients.
 
-For balanced and unbalanced Gaussian marginal ML, `ml.variance_component_inference`
+For model-based balanced and unbalanced Gaussian marginal ML, `ml.variance_component_inference`
 reports observed-information uncertainty for `sigma_e_squared` and, at an interior
 fit, `sigma_u_squared`. Each component has an estimate, variance-scale
 delta-method `standard_error`, `log_scale_standard_error`, and exponentiated
@@ -1133,15 +1133,53 @@ delta-method `standard_error`, `log_scale_standard_error`, and exponentiated
 reference and method. At the zero-unit-variance boundary, `sigma_u_squared` is
 null and `sigma_u_squared_unavailable_reason` explains why regular normal
 inference is withheld; residual variance uncertainty remains available. These
-are model-based interior intervals, not profile intervals, boundary tests or
-robust ML inference.
+are model-based interior intervals, not profile intervals or boundary tests.
+Interior unit-cluster inference is the separate extension below.
 
 These semantics apply to supported one-way random-intercept workflows with
 explicit audited ID/time keys; they do not install random-effects unit
 predictions, general panel state, weights, time-invariant predictors, general
-restrictions, robust ML covariance or profile/boundary variance-component tests.
+restrictions, boundary sandwich covariance or general profile intervals.
 The documented MOM sensitivity
 cohort is an altered-sample method check, not a published textbook result.
+
+### Interior RE-ML unit-score covariance
+
+`xtreg ..., mle id(unit) time(year) [robust | cluster(unit)]` supports regular
+positive-unit-variance fits for balanced/unequal retained counts. `robust` aliases
+clustering on the declared unit. Existing result types, samples, point fits,
+likelihood values, coordinate names and predictions are retained. The selected
+covariance uses full joint marginal-likelihood unit scores with inverse joint
+observed-information bread, multiplier G/(G-1), no N-K scale. Balanced log-variance
+coordinates are log(a), log(a+T*u); unequal-count coordinates are log(a), log(u).
+
+The JSON `covariance` is `cluster(unit)` and `covariance_convention` is
+`unit_grouped_joint_ml_scores_observed_bread`. `covariance_matrix` is the selected
+beta block; `ml.joint_covariance` is the full selected sandwich in the existing
+`joint_parameter_names` order. `ml.cluster` adds `group_count` and
+`finite_sample_multiplier`. Top-level `cluster` retains variable/count/independence
+metadata with `correction_convention:
+"gaussian_marginal_ml_full_joint_scores_g_over_g_minus_1"`; GLS keeps its different
+correction and convention. Coefficients/intervals remain normal; the slope Wald
+reference is asymptotic chi-square(p). Singular slope restrictions yield null
+statistic/p with the existing reason field, retaining positive marginal SEs.
+
+`ml.variance_component_inference.method` is
+`unit_cluster_joint_score_log_wald`, using the selected full covariance for delta
+SEs and exponentiated normal/log-Wald 95% limits. Under within-unit misspecification,
+these concern working covariance parameters, not automatically true error-component
+variances. Independent units, many-group asymptotics, mean/exogeneity assumptions
+and a regular interior optimum remain necessary; there is no few-cluster guarantee.
+
+`ml.likelihood_ratio_p_value` is null with an explicit unavailable reason. The
+model-based `ml.unit_variance_test` is omitted and
+`ml.unit_variance_test_unavailable_reason` explains the withheld mixture reference.
+The raw slope LR/likelihoods remain descriptive; a restricted-null boundary is
+allowed. These optional new fields default to absent when reading older/classical
+serializations, preserving their prior shape. Non-unit clustering and full-model
+zero-unit-variance boundary sandwich requests fail explicitly under the existing
+failed-refit model-clearing/data-preservation rule. No silent model-based fallback,
+G-1 t/F, survey/multiway inference, or robust boundary reference is supplied.
 
 ## Linear inference fields and conventions
 

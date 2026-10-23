@@ -464,6 +464,10 @@ fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
   for unequal in [false, true] {
     let f = Fixture::new();
     let mut s = f.load();
+    run(
+      &mut s,
+      "sql SELECT * EXCLUDE(y), y + 0.3*((id*id+1)%5) AS y FROM active into ml_input",
+    );
     if unequal {
       run(
         &mut s,
@@ -494,10 +498,10 @@ fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
     assert_eq!(cluster.result.gls.residuals, model.result.gls.residuals);
     assert_eq!(
       cluster.result.gls.sample.as_ref().unwrap().retained_indices,
-      original
+      rows(&mut s, "SELECT y FROM active")
         .iter()
         .enumerate()
-        .filter_map(|(i, row)| number(&row[2]).is_some().then_some(i))
+        .filter_map(|(i, row)| number(&row[0]).is_some().then_some(i))
         .collect::<Vec<_>>()
     );
     assert_eq!(rows(&mut s, "SELECT * FROM active"), original);
@@ -535,6 +539,10 @@ fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
   }
   let f = Fixture::new();
   let mut s = f.load();
+  run(
+    &mut s,
+    "sql SELECT * EXCLUDE(y), y + 0.3*((id*id+1)%5) AS y FROM active into ml_input",
+  );
   run(&mut s, "xtreg y x, mle id(id) time(year) robust");
   for command in [
     "xtreg y x, mle id(id) time(year) cluster(year)",

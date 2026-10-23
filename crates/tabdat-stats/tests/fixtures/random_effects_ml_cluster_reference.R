@@ -124,7 +124,10 @@ for(case in cases) {
   emit(case,'/ml/cluster/finite_sample_multiplier',correction)
   prediction<-d; prediction$population_xb<-drop(X%*%r$beta); prediction$population_residual<-y-prediction$population_xb
   prediction$theta<-1-sqrt(r$a/(r$a+Ti*r$u))
-  if(case=='mom') names(prediction)[match(c('y','x','time'),names(prediction))]<-c('lnhr','lnwg','year')
+  if(case=='mom') {
+    names(prediction)[match(c('y','x','time'),names(prediction))]<-c('lnhr','lnwg','year')
+    prediction<-prediction[,c('source_row','lnhr','lnwg','kids','ageh','agesq','disab','id','year','population_xb','population_residual','theta')]
+  }
   write.csv(prediction,file.path(out,paste0(case,'_predictions.csv')),row.names=FALSE,quote=FALSE)
 }
 write.csv(do.call(rbind,refs),file.path(out,'reference.csv'),row.names=FALSE,quote=FALSE)

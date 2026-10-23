@@ -228,7 +228,7 @@ absorbed/inference DF, all prediction modes, source order, identical text/JSON
 exports and refused overwrites checked. Full-source text/JSON exports were also
 byte-identical. No author data/program/log is bundled by these references.
 
-**Still required:** robust ML inference, Hausman and panel-specific
+**Still required:** remaining illustrated ML inference, Hausman and panel-specific
 residual/model-comparison diagnostics beyond the bounded conventional unit-effects
 F test, bootstrap/RNG, optional richer designs,
 lowess/Figures21.1–21.4, remaining Table21.2/book outputs and other panel
@@ -359,7 +359,7 @@ predictions after edits/dropped IDs, normal reporting, identical text/JSON expor
 raw-key/unbalanced/sample failures, atomic errors and export/source preservation.
 Full-source text/JSON exports are also byte-identical.
 
-Still required: unit effects/conditional predictions, robust ML inference,
+Still required: unit effects/conditional predictions, remaining illustrated ML inference,
 Hausman and other panel diagnostics, bootstrap and remaining table/figure outputs.
 This bounded balanced classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
@@ -412,7 +412,7 @@ current prediction preservation, unavailable-Wald text/JSON and normal predictio
 from that retained fit, as well as source/export/error contracts. Unbalanced GLS
 and its unit-cluster covariance are documented in the separate sensitivity
 workflow below.
-Unit effects, robust ML inference, general restrictions, Hausman, bootstrap and
+Unit effects, remaining illustrated ML inference, general restrictions, Hausman, bootstrap and
 remaining table/figure outputs stay required.
 
 ## Interior RE-ML coefficient/likelihood workflow
@@ -438,7 +438,7 @@ remains unresolved; this does not validate the published uncertainty column or
 whole Table21.2. Tolerances are not widened to match it.
 
 The original-MOM fit is interior; the supported workflow is **balanced**: retained T>=2, G>p+1,
-full within rank, no weights/time-invariant predictors/robust ML. The profile
+full within rank, no weights/time-invariant predictors. The profile
 scans eta in[0,24] at0.5 spacing, polishes detected positive-to-negative score
 crossings, and compares their likelihoods with the zero-component boundary.
 This is not proof of a global maximum for arbitrary designs. Unresolved upper
@@ -457,7 +457,7 @@ exponentiated 95% log-Wald intervals. Balanced ML stores log(sigma_e²) and
 log(sigma_e²+T*sigma_u²), so unit-variance uncertainty uses both covariance
 coordinates. At a zero-unit-variance boundary, its SE/interval is null with a
 reason; no regular normal or profile interval is claimed. This inference is
-model-based and does not enable robust/cluster ML.
+model-based and does not provide a robust LR reference.
 
 Reproduce after preparing MOM.csv and checking the source hash as above:
 
@@ -482,7 +482,7 @@ initialized nlme fit checks that interior solution. Runtime/CLI tests cover join
 sample mapping, current-data predictions, unavailable-mode errors and data/state
 preservation, including zero-component fit failure. No production R/Python is used.
 
-Still required: robust ML inference, conditional
+Still required: remaining illustrated ML inference, conditional
 unit effects, general restrictions/named reports, Hausman/panel diagnostics,
 bootstrap and the remaining table/figure analyses. A manual core-only original
 probe remains available via `TABDAT_REML_SOURCE` (the historical variable name):
@@ -790,9 +790,9 @@ T/theta.
 and multiplier G/(G-1)*(N-1)/(N-K). Coefficients and components are unchanged;
 coefficient inference is asymptotic normal and slope Wald inference is
 chi-square, not few-cluster t/F. Independent clusters and exogenous unit effects
-remain assumptions. No variance-component uncertainty, robust ML, time-invariant
-predictors, unit effects, general restrictions or automatic FE/RE bootstrap is
-added.
+remain assumptions. This GLS slice adds no variance-component uncertainty or ML
+covariance. Time-invariant predictors, unit effects, general restrictions and
+automatic FE/RE bootstrap remain unsupported.
 
 R4.6.1/plm2.6.7 and explicit original-source equations validate **9,515 scalar
 references** on the 4,738-row/532-person cohort. The native workflow checks all
@@ -823,14 +823,72 @@ This sensitivity estimate does not replace the published balanced estimate.
 Original printed-Stata8 uncertainty differences, ML profile limitations, omitted
 unit effects and broader panel-diagnostic gaps remain as described above.
 
-## WIP: interior Gaussian ML unit-score inference
 
-Planned extension: on the exact Table21.2 lnhr~1+lnwg sample (5,320 records,
-532 people), retain the current Gaussian marginal ML point estimates and provide
-full joint unit-score sandwich covariance with G/(G−1), normal coefficient and
-log-variance intervals, and rank-aware asymptotic slope Wald inference. Synthetic
-balanced/unbalanced fixtures and a pinned original-MOM R reference will validate
-the full beta/log-variance covariance, sample/order and predictions. The robust
-reference withholds ordinary slope/unit-variance LR p-values. Full-model boundary
-fits, non-unit clusters, time-invariant regressors, survey/multiway inference and
-few-cluster guarantees remain outside this slice. Implementation is pending.
+## Interior Gaussian ML unit-score inference
+
+[`random_effects_ml_cluster.td`](random_effects_ml_cluster.td) extends the existing
+Table21.2 mean design, lnhr~1+lnwg on all5,320 MOM records/532 people/T10. It fits
+`xtreg lnhr lnwg, mle id(id) time(year) cluster(id)`, reports full joint unit-score
+inference, predicts population means/residuals and exports the original fields
+and source index. `robust` is an exact alias for unit clustering. The unclustered
+point fit, sample, components, theta and predictions are unchanged. This does
+not reproduce an additional printed uncertainty column or resolve the documented
+old Stata8 model-based SE difference.
+
+The sandwich uses the full inverse joint observed information and marginal
+Gaussian likelihood scores per person, with G/(G-1), no N-K multiplier. It is not
+conditional GLS or beta-only bread. Balanced coordinates are beta/log(sigma_e²)/
+log(sigma_e²+T*sigma_u²); unequal retained counts use beta/log(sigma_e²)/
+log(sigma_u²). Normal coefficient/95% inference and selected full-covariance
+log-variance delta/log-Wald intervals are supplied. Slope Wald uses asymptotic
+chi-square(p); rank-limited restrictions are unavailable without dropping slopes
+or discarding positive marginal uncertainty.
+
+This follows the independent-unit sandwich construction for the marginal working
+likelihood ([Stata methods](https://www.stata.com/manuals/xtxtreg.pdf)), with an
+explicit native correction rather than a claim of every software default. Units
+must be independent, and many-group asymptotics and conditional mean/exogeneity
+assumptions remain necessary. Within-person heteroskedasticity/dependence is
+allowed; a correct Gaussian law and causal identification do not follow. Under
+misspecification the variance-component intervals concern working covariance
+parameters, not automatically true latent/idiosyncratic variances. Small synthetic
+G validates arithmetic, not nominal coverage. There is no few-cluster guarantee.
+
+Raw likelihoods and the slope LR remain descriptive. Both ordinary slope LR and
+the model-based unit-variance mixture p-values are withheld with explicit reasons.
+A restricted-null boundary is allowed, but a full-model zero-unit-variance
+sandwich request fails explicitly, clearing the prior fit and preserving data.
+Non-unit clusters, survey/multiway inference, time-invariant regressors, general
+restrictions, unit effects and automatic resampling remain unsupported.
+
+### Reproduce
+
+After preparing/checking MOM.csv/MOM.dat as above, use separate fresh native run
+directories because exports publish without replacing existing files:
+
+```sh
+mkdir ml_cluster_json ml_cluster_text
+cp MOM.csv ml_cluster_json/MOM.csv
+cp MOM.csv ml_cluster_text/MOM.csv
+(cd ml_cluster_json && "$root/target/debug/tabdat-explore-rs" --json -f "$root/examples/mma21p1panel/random_effects_ml_cluster.td" > random_effects_ml_cluster.jsonl)
+(cd ml_cluster_text && "$root/target/debug/tabdat-explore-rs" --text -f "$root/examples/mma21p1panel/random_effects_ml_cluster.td")
+Rscript "$root/crates/tabdat-stats/tests/fixtures/random_effects_ml_cluster_reference.R" ml_cluster_reference "$work/MOM.dat"
+python3 "$root/examples/mma21p1panel/check_random_effects_ml_cluster_reference.py" ml_cluster_json ml_cluster_reference "$work/MOM.dat"
+cmp ml_cluster_json/panel_re_ml_cluster_predictions.csv ml_cluster_text/panel_re_ml_cluster_predictions.csv
+```
+
+R4.6.1/nlme3.1.169 independently checks the stationary point fit, dense per-unit
+scores (finite differences), full observed bread (numerical Hessian), selected
+joint/coefficient covariance, SE/z/tails/intervals, variance-component transforms,
+likelihoods and slope Wald. The original source hash remains the documented
+`2fe194d...` pin. The audit validates **53 scalar quantities and58,520 exported
+cells**, every original value/ID and all5,320 source/prediction records. Text and
+JSON prediction exports are byte-identical. Four synthetic designs validate292
+quantities across balanced, unequal/singleton, shifted/interleaved and restricted-
+null-boundary cases. Tolerances are1e-8*max(1,abs(reference)) for ordinary scalars
+and1e-7 relative (1e-300 floor) for tails; no unexplained discrepancy is hidden by
+widening tolerances. Richardson Hessian checks retain their2e-6 numerical-derivative
+bound, avoiding tiny-step cancellation in the small-residual-variance design.
+Boundary/input rejection, retained sample/order, current-data predictions,
+rank-limited Wald availability, aliases, script stopping and unchanged data on
+failed refits are covered. Development R/Python are not production dependencies.

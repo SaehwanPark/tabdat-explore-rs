@@ -141,23 +141,48 @@ Gaussian marginal ML:
 - `xtreg y xvars, mle id(unit) time(year)` uses the same raw-key audit,
   joint-finite sample and population `xb`/`residuals` prediction rules. Requires
   G>p+1, positive within residual DF, full within rank, at least one slope and
-  no weights. Unequal retained counts and singletons are allowed. Time-invariant predictors, robust/cluster ML, general restrictions
+  no weights. Unequal retained counts and singletons are allowed. Time-invariant predictors, general restrictions
   and named RE reports are unsupported. `mle` is exclusive of `fe`/`re`.
 - Gaussian marginal likelihood integrates the random intercept; this is ML,
   not REML. Unit effects must be exogenous to X and units independent, with the
-  specified Gaussian error-components covariance. Interior inference uses the beta block
+  specified Gaussian error-components covariance. Model-based interior inference uses the beta block
   of the inverse **joint observed information** for beta, log(sigma_e²) and
   log(sigma_e²+T*sigma_u²), without a residual-DF correction. It differs from
   conditional GLS covariance. Coefficients use normal z/p/95% intervals and a
   chi-square(p) slope Wald test; transformed residual DF is descriptive only.
-- `ml.variance_component_inference` reports observed-information uncertainty for
+- `ml.variance_component_inference` reports selected joint-covariance uncertainty for
   variance components. Standard errors use the delta method and 95% intervals
   exponentiate normal-Wald limits on log variance, so positive interior intervals
   remain nonnegative. At the zero-unit-variance boundary, its standard error and
   interval are null with an explicit reason; the constrained component has no
-  regular normal-Wald inference. These are model-based intervals, not profile
-  intervals or robust ML inference.
-- `ml.unit_variance_test` tests `sigma_u² = 0` against `sigma_u² > 0` by a
+  regular normal-Wald inference. These are log-Wald intervals from the selected
+  joint covariance; profile intervals remain unsupported.
+- Interior ML additionally supports `robust` (an alias for `cluster(unit)`). The
+  covariance uses full joint marginal-likelihood unit scores and inverse joint
+  observed-information bread, multiplied by G/(G-1), with no N-K correction.
+  Balanced coordinates are beta/log(sigma_e²)/log(sigma_e²+T*sigma_u²); unequal
+  counts use beta/log(sigma_e²)/log(sigma_u²). Conditional GLS/beta-only bread is
+  not substituted. Point estimates, selected rows and population predictions stay
+  unchanged. Coefficients/95% intervals use normal references; slope Wald uses
+  asymptotic chi-square(p), with singular joint restrictions unavailable rather
+  than dropped. Positive marginal uncertainty can remain usable.
+- Unit-score inference assumes independent units, many groups, the maintained
+  conditional mean/exogeneity assumptions and a regular interior working-model
+  optimum. It permits within-unit heteroskedasticity/dependence; it does not
+  establish a correct Gaussian law or a causal effect. Variance-component
+  intervals describe the fitted working covariance parameters under misspecification,
+  not automatically the true latent/idiosyncratic error variances. There is no
+  few-cluster, survey or multiway guarantee. Non-unit clusters and full-model
+  zero-unit-variance boundary sandwich inference fail explicitly, clearing the
+  previous fit while preserving data. A boundary in the restricted null is allowed.
+- Clustered ML withholds both ordinary slope LR p-values and the model-based
+  unit-variance boundary-mixture test. Raw likelihood/null/slope-LR values remain
+  descriptive; slope Wald supplies the selected robust test. JSON reports
+  `covariance: cluster(unit)`, `unit_grouped_joint_ml_scores_observed_bread`,
+  selected `ml.joint_covariance`, `ml.cluster` with G/multiplier, and explicit
+  unavailable-reference reasons. `ml.variance_component_inference.method` is
+  `unit_cluster_joint_score_log_wald`. Existing model-based fields are unchanged.
+- For model-based ML, `ml.unit_variance_test` tests `sigma_u² = 0` against `sigma_u² > 0` by a
   one-sided profile likelihood ratio. Its asymptotic reference is the 50:50
   mixture of chi-square(0) and chi-square(1), for the single variance component
   constrained at the boundary with residual variance interior. A boundary-selected
