@@ -59,16 +59,23 @@ fn malformed_fe_keys_and_conflicting_prediction_modes_are_rejected() {
 }
 
 #[test]
-fn mle_is_a_distinct_model_based_estimator_with_explicit_keys() {
+fn mle_is_a_distinct_estimator_with_explicit_keys_and_unit_clustering() {
   let Command::XtReg { command } = parse_command("xtreg y x, mle id(i) time(t)").unwrap() else {
     panic!()
   };
   assert_eq!(command.estimator, XtRegEstimator::RandomEffectsMl);
+  for option in ["robust", "cluster(i)"] {
+    let Command::XtReg { command } =
+      parse_command(&format!("xtreg y x, mle id(i) time(t) {option}")).unwrap()
+    else {
+      panic!()
+    };
+    assert_eq!(command.estimator, XtRegEstimator::RandomEffectsMl);
+    assert!(command.robust || command.cluster_variable.as_deref() == Some("i"));
+  }
   for text in [
     "xtreg y x, mle re id(i) time(t)",
     "xtreg y x, mle fe id(i) time(t)",
-    "xtreg y x, mle robust id(i) time(t)",
-    "xtreg y x, mle cluster(i) id(i) time(t)",
     "xtreg y x, mle(1) id(i) time(t)",
     "xtreg y x, mle id(i)",
   ] {

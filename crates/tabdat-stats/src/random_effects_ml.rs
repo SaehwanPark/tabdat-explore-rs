@@ -535,6 +535,13 @@ pub fn fit_random_effects_ml_interior(
   fit_kernel(problem, entity, false, false).map(|(fit, _)| fit)
 }
 
+/// Unit-level marginal-likelihood score covariance; no row/residual-DF scaling.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RandomEffectsMlClusterInference {
+  pub group_count: usize,
+  pub finite_sample_multiplier: f64,
+}
+
 /// ML-specific inference; joint parameter order is explicit to prevent treating
 /// log variances as variances or using conditional GLS uncertainty for beta.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -551,12 +558,16 @@ pub struct RandomEffectsMlInference {
   pub likelihood_ratio_df: usize,
   pub likelihood_ratio_p_value: Option<f64>,
   pub likelihood_ratio_unavailable_reason: Option<String>,
-  /// Missing only in ML results serialized before the boundary-test addition.
+  /// Absent for clustered fits and older serializations; see the unavailable reason.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub unit_variance_test: Option<RandomEffectsMlUnitVarianceTest>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub unit_variance_test_unavailable_reason: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster: Option<RandomEffectsMlClusterInference>,
 }
 
-/// Model-based observed-information uncertainty for one positive variance component.
+/// Selected joint-covariance uncertainty for one positive variance component.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RandomEffectsMlVarianceComponentEstimate {
   pub estimate: f64,
@@ -584,7 +595,7 @@ impl RandomEffectsMlInference {
     self.eta == 0.0
   }
 
-  /// Transform the joint observed-information covariance to variance-component
+  /// Transform the selected joint covariance to variance-component
   /// uncertainty. Interior intervals are Wald intervals on log variance, so
   /// their endpoints stay nonnegative. The constrained zero-unit-variance face
   /// has no regular unit-variance standard error or interval.
@@ -675,7 +686,12 @@ impl RandomEffectsMlInference {
     };
 
     Ok(RandomEffectsMlVarianceComponentInference {
-      method: "joint_observed_information_log_wald".into(),
+      method: if self.cluster.is_some() {
+        "unit_cluster_joint_score_log_wald"
+      } else {
+        "joint_observed_information_log_wald"
+      }
+      .into(),
       reference_distribution: "asymptotic_standard_normal".into(),
       confidence_level: 95.0,
       sigma_e_squared: sigma_e,
@@ -782,6 +798,8 @@ pub fn fit_random_effects_ml(
       }
     }),
     unit_variance_test: Some(unit_variance_test),
+    unit_variance_test_unavailable_reason: None,
+    cluster: None,
   };
   ml.variance_component_inference(r.sigma_e_squared, r.sigma_u_squared, r.group_size)?;
   Ok(crate::RandomEffectsResult {
@@ -802,4 +820,176 @@ pub fn fit_random_effects_ml(
     wald_unavailable_reason: wald.unavailable_reason,
     ml: Some(ml),
   })
+}
+
+/// Interior Gaussian working ML with independent-unit sandwich uncertainty.
+/// Uses full joint beta/log-variance observed bread and marginal unit scores,
+/// multiplied by G/(G-1). No N-K adjustment, G-1 t/F or robust LR reference.
+/// The selected unit-variance boundary is rejected rather than assigning it
+/// regular joint normal inference under arbitrary within-unit dependence.
+pub fn fit_random_effects_ml_clustered(
+  problem: &EstimationProblem,
+  entity: &str,
+) -> Result<crate::RandomEffectsResult, StatsError> {
+  let mut fit = fit_random_effects_ml(problem, entity)?;
+  if fit.ml.as_ref().unwrap().unit_variance_boundary() {
+    return Err(failed(
+      "unit-cluster RE-ML requires an interior positive unit variance; boundary sandwich inference is not implemented",
+    ));
+  }
+  let k = fit.gls.parameter_names.len();
+  let joint_size = k + 2;
+  let beta: Vec<_> = fit.gls.coefficients.iter().map(|c| c.value).collect();
+  let mut groups = BTreeMap::<&str, Vec<usize>>::new();
+  for (i, key) in problem
+    .sample
+    .as_ref()
+    .unwrap()
+    .cluster_groups
+    .as_ref()
+    .unwrap()
+    .iter()
+    .enumerate()
+  {
+    groups.entry(key.as_str()).or_default().push(i);
+  }
+  let mut meat = vec![vec![0.0; joint_size]; joint_size];
+  let a = fit.sigma_e_squared;
+  for indices in groups.values() {
+    let n = indices.len() as f64;
+    let anchor = indices[0];
+    let mean_y = problem.response[anchor]
+      + indices
+        .iter()
+        .map(|&i| problem.response[i] - problem.response[anchor])
+        .sum::<f64>()
+        / n;
+    let means: Vec<_> = (0..k - 1)
+      .map(|j| {
+        problem.design_matrix[anchor][j]
+          + indices
+            .iter()
+            .map(|&i| problem.design_matrix[i][j] - problem.design_matrix[anchor][j])
+            .sum::<f64>()
+            / n
+      })
+      .collect();
+    let eb = mean_y
+      - beta[0]
+      - means
+        .iter()
+        .zip(&beta[1..])
+        .map(|(x, b)| x * b)
+        .sum::<f64>();
+    let v = a + n * fit.sigma_u_squared;
+    let mut score = vec![0.0; joint_size];
+    let mut sw = 0.0;
+    for &i in indices {
+      let ew = (problem.response[i] - mean_y)
+        - problem.design_matrix[i]
+          .iter()
+          .zip(&means)
+          .zip(&beta[1..])
+          .map(|((x, m), b)| (x - m) * b)
+          .sum::<f64>();
+      sw += ew * ew;
+      for j in 1..k {
+        score[j] += (problem.design_matrix[i][j - 1] - means[j - 1]) * ew / a;
+      }
+    }
+    score[0] = n * eb / v;
+    for j in 1..k {
+      score[j] += n * means[j - 1] * eb / v;
+    }
+    let within = 0.5 * (sw / a - (n - 1.0));
+    let between = 0.5 * (n * eb * eb / v - 1.0);
+    if fit.group_size > 0 {
+      // Balanced information coordinates are log(a), log(v), not log(u).
+      score[k] = within;
+      score[k + 1] = between;
+    } else {
+      score[k] = within + a / v * between;
+      score[k + 1] = n * fit.sigma_u_squared / v * between;
+    }
+    if score.iter().any(|s| !s.is_finite()) {
+      return Err(failed("RE-ML unit likelihood score overflowed"));
+    }
+    for j in 0..joint_size {
+      for l in 0..joint_size {
+        meat[j][l] += score[j] * score[l];
+      }
+    }
+  }
+  let correction = fit.group_count as f64 / (fit.group_count - 1) as f64;
+  let covariance = crate::matrix::scale(
+    &crate::matrix::sandwich(&fit.ml.as_ref().unwrap().joint_covariance, &meat)?,
+    correction,
+  );
+  if covariance.iter().flatten().any(|v| !v.is_finite()) {
+    return Err(failed("RE-ML unit sandwich covariance overflowed"));
+  }
+  fit.gls.covariance.matrix = covariance[..k]
+    .iter()
+    .map(|row| row[..k].to_vec())
+    .collect();
+  fit.gls.covariance.covariance_type = crate::CovarianceType::Cluster(entity.into());
+  let errors = fit.gls.covariance.standard_errors();
+  if errors.iter().any(|se| !se.is_finite() || *se <= 0.0) {
+    return Err(failed(
+      "RE-ML unit sandwich coefficient variances must be finite and positive",
+    ));
+  }
+  let critical = crate::normal_quantile(0.975);
+  for (coefficient, se) in fit.gls.coefficients.iter_mut().zip(errors) {
+    *coefficient = crate::CoefficientEstimate::new(
+      &coefficient.name,
+      coefficient.value,
+      Some(se),
+      Some(2.0 * crate::normal_cdf(-(coefficient.value / se).abs())),
+    );
+  }
+  fit.confidence_intervals = fit
+    .gls
+    .coefficients
+    .iter()
+    .map(|c| {
+      let distance = critical * c.standard_error.unwrap();
+      [c.value - distance, c.value + distance]
+    })
+    .collect();
+  if fit
+    .confidence_intervals
+    .iter()
+    .flatten()
+    .any(|v| !v.is_finite())
+  {
+    return Err(failed(
+      "RE-ML unit sandwich coefficient intervals overflowed",
+    ));
+  }
+  let wald = crate::binary::omnibus_wald(
+    &beta,
+    &fit.gls.covariance.matrix,
+    true,
+    Some(fit.group_count),
+  );
+  fit.wald_statistic = wald.statistic;
+  fit.wald_p_value = wald.p_value;
+  fit.wald_unavailable_reason = wald.unavailable_reason;
+  let ml = fit.ml.as_mut().unwrap();
+  ml.joint_covariance = covariance;
+  ml.cluster = Some(RandomEffectsMlClusterInference {
+    group_count: fit.group_count,
+    finite_sample_multiplier: correction,
+  });
+  ml.likelihood_ratio_p_value = None;
+  ml.likelihood_ratio_unavailable_reason =
+    Some("ordinary slope LR reference is unavailable with unit-cluster sandwich inference".into());
+  ml.unit_variance_test = None;
+  ml.unit_variance_test_unavailable_reason = Some(
+    "model-based unit-variance LR mixture is unavailable with unit-cluster sandwich inference"
+      .into(),
+  );
+  fit.variance_component_inference()?;
+  Ok(fit)
 }

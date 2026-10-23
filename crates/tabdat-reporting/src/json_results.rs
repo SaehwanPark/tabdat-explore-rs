@@ -728,7 +728,7 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     fit.covariance.covariance_type,
     tabdat_domain::CovarianceType::Cluster(_)
   );
-  let covariance = if r.ml.is_some() {
+  let covariance = if r.ml.is_some() && !clustered {
     "observed_information".into()
   } else if clustered {
     format!("cluster({})", r.entity_variable)
@@ -753,7 +753,9 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
       "ci_upper":ci[1],"ci_level":95})).collect::<Vec<_>>()
   });
   if let Some(ml) = &r.ml {
-    data["covariance_convention"] = json!(if ml.unit_variance_boundary() {
+    data["covariance_convention"] = json!(if ml.cluster.is_some() {
+      "unit_grouped_joint_ml_scores_observed_bread"
+    } else if ml.unit_variance_boundary() {
       "constrained_observed_information"
     } else {
       "joint_observed_information"
@@ -803,9 +805,16 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     let n = fit.fit_statistics.observation_count;
     let g = r.group_count;
     let k = fit.parameter_names.len();
-    data["cluster"] = json!({"variable":r.entity_variable,"group_count":g,
-      "finite_sample_multiplier":g as f64/(g-1) as f64*(n-1) as f64/(n-k) as f64,
-      "correction_convention":"plm_arellano_sss_transformed_gls","independence_assumption":"across_units"});
+    data["cluster"] = if let Some(cluster) = r.ml.as_ref().and_then(|ml| ml.cluster.as_ref()) {
+      json!({"variable":r.entity_variable,"group_count":g,
+        "finite_sample_multiplier":cluster.finite_sample_multiplier,
+        "correction_convention":"gaussian_marginal_ml_full_joint_scores_g_over_g_minus_1",
+        "independence_assumption":"across_units"})
+    } else {
+      json!({"variable":r.entity_variable,"group_count":g,
+        "finite_sample_multiplier":g as f64/(g-1) as f64*(n-1) as f64/(n-k) as f64,
+        "correction_convention":"plm_arellano_sss_transformed_gls","independence_assumption":"across_units"})
+    };
   }
   if let Some(reason) = &r.wald_unavailable_reason {
     data["wald_unavailable_reason"] = json!(reason);

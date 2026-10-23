@@ -1005,7 +1005,7 @@ pub enum XtRegEstimator {
   FixedEffects,
   /// Random-effects panel estimator.
   RandomEffects,
-  /// Balanced Gaussian marginal maximum likelihood, interior variance only.
+  /// Gaussian marginal maximum likelihood, optionally with interior unit clustering.
   RandomEffectsMl,
 }
 
@@ -1018,9 +1018,9 @@ pub struct XtRegCommand {
   pub predictors: Vec<String>,
   /// The requested fixed- or random-effects estimator.
   pub estimator: XtRegEstimator,
-  /// Request unit clustering for within FE (not independent-row HC1).
+  /// Request unit clustering (not independent-row HC1).
   pub robust: bool,
-  /// Within FE currently permits only clustering on its entity variable.
+  /// Panel estimators permit only clustering on the declared entity variable.
   pub cluster_variable: Option<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub id_variable: Option<String>,

@@ -2023,7 +2023,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "xtreg y xvars, fe|re|mle id(unit) time(year) [robust | cluster(unit), FE/GLS only]".to_string(),
+      syntax: "xtreg y xvars, fe|re|mle id(unit) time(year) [robust | cluster(unit)]".to_string(),
     }),
     "zinb" => Ok(CommandSchemaResult {
       arguments: vec![
