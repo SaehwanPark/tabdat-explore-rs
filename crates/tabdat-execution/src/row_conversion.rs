@@ -1,5 +1,24 @@
 use crate::*;
 
+/// Check original integer/decimal identity before f64 rounding can turn an
+/// invalid numeric code into a permitted one. Callers own exclusion policy.
+pub(crate) fn exact_integer_code(cell: &CellValue) -> Option<i64> {
+  let value = match cell {
+    CellValue::Float(v) => return tabdat_stats::multinomial_outcome_code(*v).ok(),
+    CellValue::SignedInteger(v) => i64::try_from(*v).ok()?,
+    CellValue::UnsignedInteger(v) => i64::try_from(*v).ok()?,
+    CellValue::Decimal { value, scale, .. } => {
+      let divisor = 10_i128.checked_pow(u32::from(*scale))?;
+      if value % divisor != 0 {
+        return None;
+      }
+      i64::try_from(value / divisor).ok()?
+    }
+    _ => return None,
+  };
+  (value.unsigned_abs() <= 9_007_199_254_740_991).then_some(value)
+}
+
 pub(crate) fn cluster_key(cell: &CellValue) -> Result<Option<String>, &'static str> {
   Ok(match cell {
     CellValue::Null => None,

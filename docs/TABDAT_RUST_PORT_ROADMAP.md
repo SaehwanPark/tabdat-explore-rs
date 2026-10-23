@@ -92,12 +92,14 @@ Extend the same workflow/validation standard to:
 - **Choice:** bounded shared-design model-based multinomial logit now supplies
   the [original fishing-mode Table15.2 MNL column](../examples/mma15p1mnl/README.md),
   current category predictions and retained-X continuous joint-delta AMEs with
-  independent R evidence. This does not cover historical float/finite-difference
-  or at-means effects, conditional/alternative-specific choice, IIA diagnostics
-  or the remaining Chapter15 illustrations. Prioritize conditional choice next,
-  then ordered/nested or richer
-  specifications needed by the book's illustrations; choice-set structure,
-  probabilities, effects and relevant diagnostics.
+  independent R evidence. Balanced single-choice conditional logit additionally
+  supplies the price/catch CL column, explicit current choice-set probabilities,
+  and section2B finite-change point contrasts with independent R/survival and
+  original-token evidence. Neither workflow covers all historical float-storage
+  or at-means effects, effects uncertainty for conditional choice, IIA diagnostics
+  or remaining Chapter15 illustrations. Next resolve the author's combined
+  alternative-constant/income/price/catch specification; ordered/nested or richer
+  illustrations, broader choice sets, effects and diagnostics remain required.
 - **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
   and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric

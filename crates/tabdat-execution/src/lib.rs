@@ -14,6 +14,7 @@ use tabdat_language::script::{
 };
 mod binary;
 mod bootstrap;
+mod conditional_logit;
 mod estimates;
 mod fixed_effects;
 mod multinomial;
@@ -152,6 +153,7 @@ impl Session {
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
       Command::Mlogit { command } => self.execute_mlogit(&command),
+      Command::Clogit { command } => self.execute_clogit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),

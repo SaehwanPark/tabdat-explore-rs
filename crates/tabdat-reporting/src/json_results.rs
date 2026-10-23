@@ -109,6 +109,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Logit { .. }
     | Command::Probit { .. }
     | Command::Mlogit { .. }
+    | Command::Clogit { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -483,6 +484,31 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "LogitMarginalEffectsResult",
+    ),
+    ExecutionResult::ConditionalLogit(result) => (
+      json!({
+        "estimator":"clogit","likelihood":"single_choice_conditional_multinomial",
+        "outcome":result.outcome,"predictors":result.predictor_names,"include_intercept":false,
+        "group_variable":result.group_variable,"alternative_variable":result.alternative_variable,
+        "alternative_levels":result.alternative_levels,"chosen_counts":result.chosen_counts,
+        "observation_count":result.observation_count,"choice_set_count":result.choice_set_count,
+        "choice_set_size":result.choice_set_size,"candidate_choice_set_count":result.candidate_choice_set_count,
+        "excluded_choice_set_count":result.excluded_choice_set_count,"sample":result.sample,
+        "missingness":"whole_choice_set_complete_finite_exclusion_after_structural_validation",
+        "coefficients":result.coefficients,"covariance_matrix":result.covariance,
+        "covariance_parameter_names":result.predictor_names,"covariance":"model_based_joint_conditional_fisher_information",
+        "independent_unit":"choice_set","covariance_correction":1.0,
+        "reference_distribution":"asymptotic_standard_normal","confidence_level":95.0,
+        "log_likelihood":result.log_likelihood,"null_log_likelihood":result.null_log_likelihood,
+        "null_model":"equal_probabilities_within_complete_choice_sets_all_coefficients_zero",
+        "likelihood_ratio":result.likelihood_ratio,"likelihood_ratio_df":result.likelihood_ratio_df,
+        "likelihood_ratio_p_value":result.likelihood_ratio_p_value,"likelihood_ratio_reference_distribution":"asymptotic_chi_square",
+        "mcfadden_r_squared":result.mcfadden_r_squared,"converged":true,"iterations":result.iterations,
+        "convergence_coordinate_system":"within_first_alternative_rms_scaled_per_choice_set_score",
+        "convergence_absolute_tolerance":1e-10,"max_abs_scaled_score":result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step":result.max_abs_scaled_newton_step,
+      }),
+      "ConditionalLogitResult",
     ),
     ExecutionResult::MultinomialLogit(result) => (
       json!({

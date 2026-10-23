@@ -232,6 +232,8 @@ pub enum Command {
   Probit { command: ProbitCommand },
   /// Unweighted model-based multinomial logit with a fixed reference category.
   Mlogit { command: MlogitCommand },
+  /// Single-choice conditional logit on balanced explicit choice sets.
+  Clogit { command: ClogitCommand },
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
@@ -573,6 +575,15 @@ pub struct MlogitCommand {
   pub predictors: Vec<String>,
   pub base_outcome: Option<i64>,
   pub include_intercept: bool,
+}
+
+/// Shared utility slopes on alternative-specific numeric columns; no common intercept.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClogitCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub group_variable: String,
+  pub alternative_variable: String,
 }
 
 /// Bounded unweighted log-link Poisson with model-based, independent-row

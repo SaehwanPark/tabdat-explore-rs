@@ -1623,6 +1623,27 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::ConditionalLogit(result) => format!(
+      "Single-choice conditional logit maximum likelihood\nOutcome: {}; independent choice sets = {}; alternative rows = {}; alternatives per set = {}\nGroup: {}; alternative: {}; available levels = {:?}; chosen counts = {:?}\nCandidate choice sets = {}; whole-set exclusions = {}; converged in {} information evaluations\nCommon group intercepts cancel; joint model-based Fisher covariance without N-K/G-K correction, normal95 inference.\nLog likelihood = {}; equal-probability null = {}; LR chi2({}) = {}; p-value = {}; McFadden pseudo R2 = {}\n{}",
+      result.outcome.escape_debug(),
+      result.choice_set_count,
+      result.observation_count,
+      result.choice_set_size,
+      result.group_variable.escape_debug(),
+      result.alternative_variable.escape_debug(),
+      result.alternative_levels,
+      result.chosen_counts,
+      result.candidate_choice_set_count,
+      result.excluded_choice_set_count,
+      result.iterations,
+      inference_number(result.log_likelihood),
+      inference_number(result.null_log_likelihood),
+      result.likelihood_ratio_df,
+      inference_number(result.likelihood_ratio),
+      logit_number(result.likelihood_ratio_p_value),
+      inference_number(result.mcfadden_r_squared),
+      logit_estimates(&result.coefficients),
+    ),
     ExecutionResult::MultinomialLogit(result) => format!(
       "Multinomial logit maximum likelihood (model-based joint Fisher information)\nOutcome: {}; N = {}; base outcome = {}; converged in {} information evaluations\nCategory levels = {:?}; counts = {:?}\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nJoint covariance without N-K correction; asymptotic normal 95% intervals.\n{}",
       result.outcome.escape_debug(),

@@ -793,6 +793,7 @@ pub enum ExecutionResult {
   /// Probit conditional-on-retained-X average partial effects and delta inference.
   ProbitMarginalEffects(Box<tabdat_stats::LogitMarginalEffects>),
   MultinomialLogit(Box<tabdat_stats::MultinomialLogitResult>),
+  ConditionalLogit(Box<tabdat_stats::ConditionalLogitResult>),
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),

@@ -30,7 +30,7 @@ not by implementing every estimator mentioned in a chapter.
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Native bounded IID/whole-cluster pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means and within-transformed whole-person resampling | Residual/parametric/other-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
-| 15: Multinomial outcomes | Bounded person-level model-based MNL fit/probabilities and continuous joint-delta AMEs; Table15.2 MNL-column source audit | Conditional/alternative-specific, nested/combined and richer choice models with choice-set semantics; historical finite-difference/at-means effects and remaining illustrations |
+| 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities and continuous joint-delta AMEs; balanced single-choice price/catch conditional logit with keyed probabilities/finite point contrasts; source audits of Table15.2 MNL/CL columns | Combined/nested and richer choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
@@ -94,9 +94,61 @@ invariants. Retained-state/current-row and exact-DECIMAL/failure contracts have
 focused executable tests. Native historical coefficients/SEs agree within1e-6,
 not every printed SE digit; author finite-difference versus analytic AME
 differences remain explicitly separated. Their individual float-storage versus
-optimizer contributions have not been isolated. No conditional/nested logit,
-alternative-specific design, robust/cluster covariance, factors, discrete
-changes, IIA tests, whole-table/program or completed Chapter15 coverage is claimed.
+optimizer contributions have not been isolated. That MNL-only evidence makes no
+conditional/nested, alternative-specific, robust/cluster, factor/discrete-change,
+IIA-test, whole-table/program or completed Chapter15 claim; the separately
+validated conditional price/catch analysis follows below.
+
+### MMA-CL bounded conditional-choice contract and evidence
+
+The [native script/audit](../../examples/mma15p1mnl/README.md#conditional-logit-table152-cl-column-and-section2b-point-contrasts)
+targets the same author's section2/Table15.2 CL column: all1,182 people × four
+explicitly keyed alternatives =4,728 long rows, exactly one chosen row per person,
+alternative-specific price/catch and no common intercept or alternative constants.
+Original IDs/order, original choice flags versus mode and every price/catch input
+are bound directly to the hashed source tokens in both native/R exports.
+
+- **Sample/identity:** exact numeric/text/boolean groups; unique group/alternative
+  pairs and the same2..16 exact integer alternative codes are validated before
+  missingness. One missing/nonfinite outcome/predictor excludes the whole set;
+  finite exact0/1/chosen-count errors are enforced on retained complete sets.
+  DECIMAL keys/codes/outcomes are not rounded through f64 for identity/domain.
+- **Inference:** independent unit is the decision, not the alternative row.
+  Unweighted conditional MLE has full joint inverse conditional Fisher covariance,
+  correction1, asymptotic normal95, equal-probability null, LR chi-square(K) and
+  McFadden R². Explicit rank/separation/nonconvergence failure, no ridge or
+  pseudoinverse. Bounds and covariance/sample metadata are in `help clogit`.
+- **Usable interpretation/report:** SQL long preparation and `isid` guard, fit,
+  baseline and eight current-set predictions, restored baseline inputs, grouped
+  mean substitution contrasts, terminal/CLI-v1 and CSV. Current outcomes are
+  unused; new group IDs are allowed but the complete retained alternative universe
+  is required. Missing current predictors NULL the entire set. Failed fits clear
+  inference without data mutation; failed predictions preserve data/cache.
+- **Independent evidence:** R4.6.1/survival3.8.6 exact single-event conditional
+  likelihood supplies coefficients/full2×2 covariance; Cox expected counts also
+  match normalized original-set probabilities. All61 quantities agree at1e-9
+  absolute and42,552 probabilities at1e-10. Observed maxima: coefficient1.45e-15,
+  covariance3.30e-17, likelihood6.83e-13, price/catch contrasts1.09e-15/7.47e-15,
+  probabilities1.45e-15. Altering both exported preparations identically is
+  rejected by original-token binding, not accepted as mutual agreement.
+- **Independent small cases/failures:** closed-form2/3/4-alternative MLE and full
+  covariance, binary reduction, within-set common shifts, row/group permutations,
+  independent-decision replication covariance halving, exact DECIMAL identity,
+  whole-set exclusion precedence, stale-inference clearing and atomic prediction/
+  export regression tests. These are bounded evidence, not platform certification.
+
+Section2B price+1 uses100*deltaP; catch+.001 uses1000*deltaP. These are model point
+contrasts, **not** analytic AMEs, causal effects or delta-method intervals. Both
+inputs are restored before export, unlike the author's final extra catch+.001
+restore after computing its last prediction. Native float64 contrasts are not
+claimed identical to Stata8 float-storage digits; those differences remain
+unisolated. Historical coefficient/SE comparison separately agrees within1e-6
+and likelihood within four-decimal rounding, not every printed digit.
+
+Ragged availability, multiple-success matched sets, weights/robust/cluster/survey,
+automatic factors, IIA tests, effects uncertainty, named reports/general restrictions
+and remaining combined/nested/other illustrated analyses remain required work.
+No whole-table/program or completed Chapter15 coverage is claimed.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

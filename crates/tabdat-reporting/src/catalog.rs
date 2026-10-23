@@ -11,6 +11,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "bootstrap",
   "by",
   "cfregress",
+  "clogit",
   "codebook",
   "collapse",
   "count",
@@ -145,6 +146,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "cfregress".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "clogit".into(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1209,6 +1214,12 @@ fn get_command_schema(
       ],
       syntax: "logit y x1 x2".to_string(),
     }),
+    "clogit" => Ok(CommandSchemaResult {
+      arguments:vec![ArgumentDescriptor {name:"chosen".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],
+      help_topic,name:"clogit".into(),
+      options:vec![OptionDescriptor {name:"group".into(),required:true},OptionDescriptor {name:"alternative".into(),required:true}],
+      syntax:"clogit chosen xvars, group(id) alternative(alt)".into(),
+    }),
     "mlogit" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor { name:"depvar".into(),required:true },ArgumentDescriptor { name:"indepvars".into(),required:false }],
       help_topic,name:"mlogit".into(),
@@ -2158,7 +2169,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 84);
+    assert_eq!(catalog.commands.len(), 85);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2201,7 +2212,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 84);
+    assert_eq!(effects.commands.len(), 85);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());

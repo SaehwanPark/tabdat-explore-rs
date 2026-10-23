@@ -1,10 +1,11 @@
-# Fishing-mode multinomial logit: a bounded Chapter15 workflow
+# Fishing-mode multinomial and conditional logit: bounded Chapter15 workflows
 
-This reproduces the **MNL column of Table15.2, p.493**, §15.2.1–3 of Cameron
+The first workflow reproduces the **MNL column of Table15.2, p.493**, §15.2.1–3 of Cameron
 and Trivedi (2005), under float64/converged-information conventions. It adds
 analytic continuous income AMEs with joint-covariance delta inference. It does
 **not** reproduce the whole table/chapter or the historical p494 finite-difference
-and at-means calculations.
+and at-means calculations. The separate [conditional-choice workflow below](#conditional-logit-table152-cl-column-and-section2b-point-contrasts)
+adds the price/catch CL column and explicitly labeled finite point contrasts.
 
 The March2005 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma15p1mnl.do)
 labels this executable block Table15.2; its overview's Table15.1 is a typo.
@@ -128,8 +129,104 @@ float-generated columns/probabilities; for example its beach average is about
 at mean income rather than an AME. Neither those computations nor their reported
 uncertainty are claimed reproduced. No tolerance is expanded to equate them.
 
-Conditional, combined and nested choice models, alternative-specific regressors,
-robust/cluster/survey covariance, factors/discrete changes, IIA tests, remaining
-Table15.1/15.2 columns and later Chapter15 illustrations remain required work.
-Current bounds/failure/recovery conventions are in `help mlogit`; passing these
-local checks is not certification of every MNL problem or platform.
+Combined/nested choice models, robust/cluster/survey covariance, automatic factors,
+IIA tests, remaining Table15.1/15.2 columns and later Chapter15 illustrations remain
+required work. Current MNL bounds/failure/recovery conventions are in `help mlogit`;
+passing these local checks is not certification of every MNL problem or platform.
+
+## Conditional logit: Table15.2 CL column and section2B point contrasts
+
+`clogit.td` targets the same author program's section2/Table15.2 CL column: all
+1,182 people × four alternatives =4,728 long rows, keyed by original person ID
+and numeric alternative code. `chosen` is the original alternative indicator,
+checked against original `mode`. Utility has common price/catch slopes `p`/`q`,
+no common intercept, alternative constants or income interactions. Each person
+selects exactly one alternative from the complete four-alternative set.
+
+Native `clogit chosen p q, group(id) alternative(alternative)` uses single-choice
+conditional maximum likelihood and the full joint inverse conditional Fisher
+information, **one independent decision per person**, correction1 (no row N−K
+or group G−K adjustment). Coefficient inference is asymptotic normal95. The null
+sets both slopes to zero, yielding four equal probabilities; the LR reference
+is chi-square(2), not a binary-row or common-intercept LR convention. Assumptions
+include independent decisions, maintained utility specification and IIA; this
+workflow supplies neither an IIA test nor identification of causal price effects.
+
+In a fresh source/preparation directory created by the shell recipe above, run:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -c "run \"$repo/examples/mma15p1mnl/clogit.td\"" > clogit.jsonl
+Rscript "$repo/examples/mma15p1mnl/reference_clogit.R" \
+  Nldata.csv R_clogit_predictions.csv > R_clogit_quantities.csv
+python3 "$repo/examples/mma15p1mnl/check_clogit.py" "$work"
+```
+
+Those variables exist inside the recipe's subshell: insert these commands before
+its closing `)`, or explicitly restore `repo`/`work` and `cd "$work"` afterward.
+Use `--text` instead of `--json` for a separate human-readable run in a fresh
+output directory; exports refuse collisions. R4.6.1/survival3.8.6 and Python are
+optional development-audit dependencies only, not needed by native analysis.
+
+The script guards person/alternative identity, fits, predicts baseline
+probabilities, shifts **one alternative at a time**, and reports all32 mean
+substitution contrasts. Price+1 entries are `100*(Pnew−Pbase)` percentage points;
+catch+.001 entries are `1000*(Pnew−Pbase)`, finite approximations per catch unit.
+They are **point predictions**, not analytic AMEs, causal effects or delta-method
+uncertainty. Both predictors are reset from saved baseline columns before every
+scenario, and restored before export. The author's final catch restore at line273
+adds .001 again after computing the last predictions; we deliberately restore
+the original baseline instead. No extra post-scenario perturbation is retained.
+
+`fishing_clogit_predictions.csv` contains original keyed design, saved baselines
+and all nine probability scenarios. `fishing_clogit_contrasts.csv` contains four
+rows of baseline mean probabilities and price/catch contrasts, suitable for
+terminal inspection or downstream reporting. Full fit uncertainty is in the
+terminal/JSON fit, not invented for those finite contrasts.
+
+`check_clogit.py` binds **both** native/R keyed outcome/design exports directly to
+the hashed original source tokens, verifies exact restored inputs and validates
+all61 scalar quantities at1e-9 absolute (coefficients, full2×2 covariance,
+normal inference, likelihood/null/LR/McFadden and36 mean/contrast values). Tiny
+nonzero p-values additionally require relative agreement at1e-9, so an underflowed
+zero cannot pass an absolute-only check. All
+42,552 probabilities are checked at1e-10, with per-set sum-to-one and per-scenario
+sum-to-zero mean contrasts. R's exact single-event `survival::clogit` supplies
+independent coefficients/covariance; its Cox expected counts also equal the
+original-set normalized probabilities. Identically altered native/R design
+exports are rejected by the original-token binding.
+
+Observed local maxima: coefficient1.45e-15, covariance3.30e-17, likelihood6.83e-13,
+price contrasts1.09e-15, catch contrasts7.47e-15 and probability1.45e-15. Seven
+native information evaluations give averaged scaled score2.75e-14 and full
+undamped step3.57e-13. The separate historical comparison matches printed
+coefficients/SEs within1e-6 and likelihood within four-decimal rounding; it does
+not substitute a loose historical tolerance for native/R agreement. Float64
+finite contrasts are not claimed identical to Stata8 float-storage digits;
+individual historical storage/optimizer differences have not been isolated.
+
+Tests additionally cover exact2/3/4-alternative conditional MLE/covariance,
+binary reduction, common-within-set shifts, row/group permutation, covariance
+halving under independent-decision replication, whole-set missingness, exact
+DECIMAL IDs/codes/outcomes before rounding, current-versus-retained provenance,
+rank/separation/convergence failures and prediction/error/export invariants.
+
+Keys, duplicates and identical complete choice sets are checked **before**
+missingness. A missing/nonfinite outcome or predictor drops the whole identified
+set; other finite outcome-domain errors are checked only on retained sets.
+Current prediction ignores outcomes and admits new person IDs, but requires the
+retained alternative universe. One missing predictor makes the whole current
+set NULL; structural/numerical errors publish no column and retain the fit.
+Failed new fits clear old inference while preserving data. See `help clogit`
+for bounded resource guards and unsupported options.
+
+This is not general matched case-control conditional logistic regression,
+multiple-event choice, ragged availability, weighted/robust/cluster/survey
+inference, automatic categorical design, nested models, named reports/general
+restrictions, IIA testing or effects uncertainty. The author's combined fixed-
+coefficient design can be expressed with explicit numeric columns but is not
+source-validated here; that is not a random-coefficients mixed-logit claim.
+`estat margins`
+explicitly rejects this family. Remaining Chapter15 illustrations remain required;
+neither these two columns nor passing local tests establish whole-table/chapter
+completion or platform certification.

@@ -97,6 +97,7 @@ pub enum EstimationFamily {
   Logit,
   Probit,
   MultinomialLogit,
+  ConditionalLogit,
   Tobit,
   Heckman,
   Nonlinear,
@@ -169,6 +170,13 @@ pub struct MultinomialLogitState {
   pub result: tabdat_stats::MultinomialLogitResult,
 }
 
+/// Owned complete choice-set design and model-based conditional likelihood fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ConditionalLogitState {
+  pub problem: tabdat_stats::ConditionalLogitProblem,
+  pub result: tabdat_stats::ConditionalLogitResult,
+}
+
 /// Owned Poisson design/fit, independent of subsequent current-data edits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonFitState {
@@ -214,6 +222,7 @@ pub enum EstimationState {
   Logit(Box<BinaryLogitState>),
   Probit(Box<BinaryProbitState>),
   MultinomialLogit(Box<MultinomialLogitState>),
+  ConditionalLogit(Box<ConditionalLogitState>),
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),
@@ -282,6 +291,7 @@ impl EstimationState {
       Self::Logit(..) => EstimationFamily::Logit,
       Self::Probit(..) => EstimationFamily::Probit,
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
+      Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
       Self::Tobit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
