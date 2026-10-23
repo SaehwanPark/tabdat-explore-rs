@@ -122,6 +122,21 @@ fn independent_r_svd_references_cover_complement_df_and_noconstant() {
 }
 
 #[test]
+fn orthogonal_null_moments_give_a_zero_score_without_cancellation() {
+  let mut p = problem(2, true, true, true);
+  for (index, y) in p.response.iter_mut().enumerate() {
+    let error = (2.0 * std::f64::consts::PI * 6.0 * (index + 1) as f64 / 40.0).cos();
+    *y = 1.0 + 0.5 * p.exogenous[index][0] + 1.5 * p.endogenous[index][0]
+      - 0.7 * p.endogenous[index][1]
+      + error;
+  }
+  let test = robust_overid_score_test(&p, &residuals(&p)).unwrap();
+  assert_eq!(test.degrees_of_freedom, 2);
+  assert!(test.statistic < 1e-20, "{test:?}");
+  assert!(test.p_value > 1.0 - 1e-12, "{test:?}");
+}
+
+#[test]
 fn identification_residual_dimensions_finiteness_and_score_rank_fail_explicitly() {
   let p = problem(2, true, true, false);
   let u = residuals(&p);

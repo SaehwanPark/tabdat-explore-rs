@@ -28,8 +28,11 @@ coefficient p-values remain conventional. With a nonrobust fit and exactly one e
 `estat ar, ci [level(95)]` provides homoskedastic confidence sets,
 including empty or unbounded sets; see `help estat` for numerical limits.
 Overidentified nonrobust fits additionally support `estat overid`: homoskedastic
-Sargan N*R² with asymptotic chi-square inference, not robust Hansen J or proof of
-instrument validity. See `help estat` for its strong-identification assumptions,
+Sargan N*R² with asymptotic chi-square inference. Independent-row robust fits
+instead return a Wooldridge residualized-instrument overidentification score,
+with uncorrected score OPG (not the parent's HC1 correction), chi-square(L-K)
+reference and retained structural residuals. Neither is Hansen J or proof of
+instrument validity. See `help estat` for strong-identification assumptions,
 DF, retained-residual and failure semantics. `estat endogenous` additionally
 provides the joint homoskedastic regression-based Wu–Hausman F test of all declared
 endogenous regressors, even for just-identified models. It assumes valid
@@ -38,7 +41,7 @@ robust/cluster or endogenous-subset test. Robust/cluster parent fits instead
 support a distinct augmented-OLS joint innovation Wald test with asymptotic
 chi-square(m) inference and auxiliary HC1/CR1 corrections (Kaux=K+m), not an
 exact F or weak-IV-robust test. See `help estat` for assumptions/numerical limits.
-Subset/robust-score endogeneity, robust/cluster overid, multi-endogenous confidence regions,
+Subset/robust-score endogeneity, clustered overid, multi-endogenous confidence regions,
 robust/cluster confidence sets and GMM are not implemented;
 `gmm` is parsed but execution reports it as unsupported.
 

@@ -421,21 +421,19 @@ fn sargan_uses_retained_structural_residuals_and_preserves_success_and_failure_s
   let changed = session.state();
   assert_eq!(session.execute(overid.clone()).unwrap(), result);
   assert_eq!(session.state(), changed);
-  for option in ["cluster(group_id)"] {
-    let mut session = load(&fixture);
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2) cluster(group_id)").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
     session
-      .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {option}")).unwrap())
-      .unwrap();
-    let before = session.state();
-    assert!(
-      session
-        .execute(overid.clone())
-        .unwrap_err()
-        .to_string()
-        .contains("clustered overidentification tests are not implemented")
-    );
-    assert_eq!(session.state(), before);
-  }
+      .execute(overid.clone())
+      .unwrap_err()
+      .to_string()
+      .contains("clustered overidentification tests are not implemented")
+  );
+  assert_eq!(session.state(), before);
 }
 
 #[test]

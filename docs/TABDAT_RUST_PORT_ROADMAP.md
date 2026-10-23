@@ -330,6 +330,12 @@ now validates `estat overid` Sargan N*R² with asymptotic homoskedastic chi-squa
 inference on 48 states in 1995. Its sample/design/reference is specified; this
 advances method coverage, not the Cameron–Trivedi empirical-illustration ledger.
 Sargan is not robust Hansen J, an endogeneity test, or proof of instrument validity.
+Independent-row robust parent fits now use a distinct residualized-instrument
+Wooldridge score, with uncorrected score OPG, retained structural residuals and
+asymptotic chi-square(L-K). Independent R SVD/lm.fit matches the exact 48-state
+source/design/score/tail and five synthetic q1/q2 designs; see the same example.
+This is additional method evidence, not new textbook coverage or Hansen J.
+Clustered overidentification and GMM remain required work.
 The same specified sample additionally validates joint homoskedastic
 `estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
 using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all

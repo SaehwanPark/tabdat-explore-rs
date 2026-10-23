@@ -1260,6 +1260,27 @@ Linear JSON results reuse the supplied statistics without recalculation:
   still apply; singular/rank-limited Wald covariance fails, not a reduced test.
   Text/scripts expose the same result. Failure to reject proves neither
   exogeneity nor instrument validity.
+- `RobustOveridScoreResult` (`estat overid` after independent-row robust 2SLS):
+  `test: "wooldridge_residualized_instrument_overid_score"`,
+  `covariance: "independent_row_uncentered_score_opg"`,
+  `covariance_correction: 1.0`,
+  `reference_distribution: "asymptotic_chi_square"`, `weak_iv_robust: false`,
+  `null_hypothesis: "overidentifying_restrictions_hold_given_maintained_model"`,
+  `assumptions: "independent_rows_correctly_specified_maintained_model_valid_instruments_under_null_strong_identification"`,
+  ordered `endogenous`/`excluded_instruments`, `observation_count`,
+  `instrument_parameter_count` L, `structural_parameter_count` K,
+  `degrees_of_freedom` q=L-K, `statistic` and upper-tail `p_value`.
+  Regresses ones without an intercept on retained structural residuals times
+  q independent directions from (I-P_Xhat)Z, where Xhat=P_Z X. N-RSS is computed
+  as the fitted projection norm. The score OPG is uncorrected, not parent HC1.
+  The chi-square(q) reference assumes independent rows and conventional strong
+  identification; this is not Hansen J, classical Sargan, a finite F or a
+  weak-IV/survey/cluster procedure. No fit/data mutation, row selection or
+  structural refit occurs. Just-identification, singular Z/Xhat/score spaces,
+  zero/nonfinite structural residuals and auxiliary DF failures are errors;
+  rank is not silently reduced. Cluster parents remain unsupported. Rejection
+  may mean invalid instruments or misspecification; failing to reject proves
+  neither validity nor identification. Text/scripts expose the same result.
 - `SarganResult` (`estat overid` after an overidentified nonrobust 2SLS fit):
   `test: "sargan_n_r_squared"`, `covariance: "homoskedastic"`,
   `reference_distribution: "asymptotic_chi_square"`, `weak_iv_robust: false`,
@@ -1271,8 +1292,9 @@ Linear JSON results reuse the supplied statistics without recalculation:
   uncentered N*R² also defines noconstant behavior. DF = excluded instruments minus
   endogenous regressors. No N-K correction, Basmann, robust Hansen J or exact F.
   Strong-identification asymptotics, homoskedasticity and the correctly specified
-  maintained model are required. Just-identified/robust/cluster fits, zero or
-  nonfinite residual variance and auxiliary rank/DF/numerical failures are errors.
+  maintained model are required. Just-identified/cluster fits, zero or nonfinite
+  residual variance and auxiliary rank/DF/numerical failures are errors. Robust
+  parents return the distinct score result above, not Sargan.
   No sample rescan, 2SLS refit or state mutation occurs. Rejection can reflect
   invalid instruments or model misspecification; failure to reject does not prove
   instrument validity or resolve weak identification. The external AER example
