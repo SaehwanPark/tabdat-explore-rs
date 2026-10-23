@@ -18,8 +18,6 @@ for(case in c('joint','noconstant','shifted','rescaled')) {
   for(k in seq_along(original))emit(case,paste0('/covariance_matrix/',j-1,'/',k-1),V[j,k])
  }
 }
-write.csv(do.call(rbind,rows),file.path(a[1],'reference.csv'),row.names=FALSE,quote=FALSE)
-cat(R.version.string,'quantreg',as.character(packageVersion('quantreg')),';',length(rows),'quantities\n')
 # A near-zero residual is not an exact active constraint. The first native LP
 # precision misclassified this row; tighter numerical refinement preserves the
 # unchanged quantreg optimum and the same strict polishing certificates.
@@ -34,4 +32,4 @@ for(j in 1:3){
  for(k in 1:3)emit('near_active',paste0('/covariance_matrix/',j-1,'/',k-1),V[j,k])
 }
 write.csv(do.call(rbind,rows),file.path(a[1],'reference.csv'),row.names=FALSE,quote=FALSE)
-cat('Including near-active regression:',length(rows),'quantities\n')
+cat(R.version.string,'quantreg',as.character(packageVersion('quantreg')),';',length(rows),'quantities including near-active regression\n')

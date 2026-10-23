@@ -51,10 +51,12 @@ Rscript /path/to/repo/examples/mma04p2qreg/joint_bootstrap_reference.R qreg0902.
 python3 /path/to/repo/examples/mma04p2qreg/check_joint_bootstrap_reference.py . reference qreg0902.asc
 ```
 
-The audit compares1,672 original/bias/mean/SE/percentile/full-joint covariance
+The optimized native run passed the audit of1,672 original/bias/mean/SE/percentile/full-joint covariance
 quantities and25,030 identity/design/retained-median prediction cells, with1e-8
-absolute tolerance. Text/JSON runs should publish byte-identical cohort exports;
-run each in a fresh directory. Source data are not redistributed.
+absolute tolerance. Synthetic text/JSON runs publish byte-identical prediction exports. Original
+text/JSON cohort exports should also agree;
+run each in a fresh directory. The original audit was run with the optimized
+release binary; the debug LP is substantially slower on3,800 fits. Source data are not redistributed.
 
 A reproduced near-active numerical failure is resolved by one stricter solve
 of the same LP, retaining the original certificates; it does not redraw a
