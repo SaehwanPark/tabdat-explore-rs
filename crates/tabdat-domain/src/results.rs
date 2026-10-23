@@ -5,7 +5,9 @@ pub use tabdat_stats::{
   MAX_COUNT_POINT_CUTOFF, Nb2Cluster, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result,
   PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
 };
-pub use tabdat_stats::{BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileResult};
+pub use tabdat_stats::{
+  BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileBootstrapResult, QuantileResult,
+};
 
 use crate::{ExecutionMode, LabelValue, LazyEngine};
 use std::path::PathBuf;
@@ -815,6 +817,7 @@ pub enum ExecutionResult {
   WuHausman(tabdat_stats::WuHausmanResult),
   Quantile(Box<tabdat_stats::QuantileResult>),
   Bootstrap(Box<tabdat_stats::BootstrapOlsResult>),
+  QuantileBootstrap(Box<tabdat_stats::QuantileBootstrapResult>),
   ClusterBootstrap(Box<tabdat_stats::ClusterBootstrapOlsResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),

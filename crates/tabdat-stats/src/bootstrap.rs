@@ -57,7 +57,7 @@ fn invalid(message: impl Into<String>) -> StatsError {
 
 // A fixed-width rejection map avoids modulo bias and usize/platform-dependent
 // sampling algorithms. Seed expansion is rand_xoshiro's documented SplitMix64.
-fn draw_index(rng: &mut impl RngCore, bound: usize) -> usize {
+pub(crate) fn draw_index(rng: &mut impl RngCore, bound: usize) -> usize {
   let bound = bound as u64;
   let zone = u64::MAX - u64::MAX % bound;
   loop {
@@ -82,6 +82,64 @@ fn percentile(sorted: &[f64], probability: f64) -> f64 {
   let lo = h.floor() as usize;
   let hi = h.ceil() as usize;
   sorted[lo] + (sorted[hi] - sorted[lo]) * (h - lo as f64)
+}
+
+pub(crate) fn summarize_pairs(
+  names: &[String],
+  original: &[f64],
+  mut estimates: Vec<Vec<f64>>,
+) -> Result<(Vec<BootstrapCoefficient>, Vec<Vec<f64>>), StatsError> {
+  let k = names.len();
+  let replications = estimates[0].len();
+  let means: Vec<_> = estimates.iter().map(|v| average(v)).collect();
+  let mut covariance = vec![vec![0.0; k]; k];
+  for i in 0..k {
+    for j in 0..=i {
+      let (mut sum, mut correction) = (0.0, 0.0);
+      for (&left, &right) in estimates[i].iter().zip(&estimates[j]) {
+        add_compensated(
+          &mut sum,
+          &mut correction,
+          (left - means[i]) * (right - means[j]),
+        );
+      }
+      covariance[i][j] = sum / (replications - 1) as f64;
+      covariance[j][i] = covariance[i][j];
+    }
+  }
+  let coefficients: Vec<_> = estimates
+    .iter_mut()
+    .enumerate()
+    .map(|(j, values)| {
+      values.sort_by(f64::total_cmp);
+      BootstrapCoefficient {
+        name: names[j].clone(),
+        estimate: original[j],
+        bootstrap_mean: means[j],
+        bias: means[j] - original[j],
+        standard_error: covariance[j][j].sqrt(),
+        ci_lower: percentile(values, 0.025),
+        ci_upper: percentile(values, 0.975),
+      }
+    })
+    .collect();
+  if covariance.iter().flatten().any(|v| !v.is_finite())
+    || coefficients.iter().any(|b| {
+      [
+        b.estimate,
+        b.bootstrap_mean,
+        b.bias,
+        b.standard_error,
+        b.ci_lower,
+        b.ci_upper,
+      ]
+      .iter()
+      .any(|v| !v.is_finite())
+    })
+  {
+    return Err(invalid("coefficient summaries overflowed"));
+  }
+  Ok((coefficients, covariance))
 }
 
 /// Seeded IID pairs bootstrap of unweighted OLS coefficients on the supplied
@@ -228,54 +286,9 @@ fn bootstrap_ols_impl(
       column.push(value);
     }
   }
-  let means: Vec<_> = estimates.iter().map(|v| average(v)).collect();
-  let mut covariance = vec![vec![0.0; k]; k];
-  for i in 0..k {
-    for j in 0..=i {
-      let (mut sum, mut correction) = (0.0, 0.0);
-      for (&left, &right) in estimates[i].iter().zip(&estimates[j]) {
-        add_compensated(
-          &mut sum,
-          &mut correction,
-          (left - means[i]) * (right - means[j]),
-        );
-      }
-      covariance[i][j] = sum / (replications - 1) as f64;
-      covariance[j][i] = covariance[i][j];
-    }
-  }
-  let coefficients: Vec<_> = estimates
-    .iter_mut()
-    .enumerate()
-    .map(|(j, values)| {
-      values.sort_by(f64::total_cmp);
-      BootstrapCoefficient {
-        name: original.parameter_names[j].clone(),
-        estimate: original.coefficients[j].value,
-        bootstrap_mean: means[j],
-        bias: means[j] - original.coefficients[j].value,
-        standard_error: covariance[j][j].sqrt(),
-        ci_lower: percentile(values, 0.025),
-        ci_upper: percentile(values, 0.975),
-      }
-    })
-    .collect();
-  if covariance.iter().flatten().any(|v| !v.is_finite())
-    || coefficients.iter().any(|b| {
-      [
-        b.estimate,
-        b.bootstrap_mean,
-        b.bias,
-        b.standard_error,
-        b.ci_lower,
-        b.ci_upper,
-      ]
-      .iter()
-      .any(|v| !v.is_finite())
-    })
-  {
-    return Err(invalid("coefficient summaries overflowed"));
-  }
+  let original_values: Vec<_> = original.coefficients.iter().map(|b| b.value).collect();
+  let (coefficients, covariance) =
+    summarize_pairs(&original.parameter_names, &original_values, estimates)?;
   Ok((
     BootstrapOlsResult {
       outcome: problem.outcome.clone(),

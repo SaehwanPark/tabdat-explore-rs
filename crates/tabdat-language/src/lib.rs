@@ -2497,7 +2497,7 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   for option in &options {
     if !matches!(
       option.name.as_str(),
-      "seed" | "reps" | "noconstant" | "cluster"
+      "seed" | "reps" | "noconstant" | "cluster" | "quantiles"
     ) {
       return Err(ParseError::new(format!(
         "bootstrap unsupported option: {}",
@@ -2542,24 +2542,57 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("bootstrap cluster expects one variable"));
   }
   let cluster_variable = cluster_values.and_then(|mut v| v.pop());
-  Ok(Command::Bootstrap {
-    command: tabdat_domain::BootstrapCommand {
-      regression: RegressCommand {
-        outcome: parts.arguments[0].text.clone(),
-        predictors: parts.arguments[1..]
-          .iter()
-          .map(|a| a.text.clone())
-          .collect(),
-        estimator: RegressEstimator::Ols,
-        weight_variable: None,
-        robust: false,
-        cluster_variable,
-        include_intercept: !options.iter().any(|o| o.name == "noconstant"),
-      },
-      replications: reps as usize,
-      seed,
+  let command = tabdat_domain::BootstrapCommand {
+    regression: RegressCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      estimator: RegressEstimator::Ols,
+      weight_variable: None,
+      robust: false,
+      cluster_variable,
+      include_intercept: !options.iter().any(|o| o.name == "noconstant"),
     },
-  })
+    replications: reps as usize,
+    seed,
+  };
+  if let Some(option) = options.iter().find(|o| o.name == "quantiles") {
+    if command.regression.cluster_variable.is_some() {
+      return Err(ParseError::new(
+        "quantile bootstrap does not support cluster",
+      ));
+    }
+    let quantiles = match &option.value {
+      UseOptionValue::Number(q) => vec![q.clone()],
+      UseOptionValue::Numbers(q) => q.clone(),
+      _ => return Err(ParseError::new("quantiles expects numeric values")),
+    };
+    let values = quantiles
+      .iter()
+      .map(|q| q.parse::<f64>())
+      .collect::<Result<Vec<_>, _>>()
+      .map_err(|_| ParseError::new("invalid quantiles"))?;
+    if values.is_empty()
+      || values.len() > 19
+      || values
+        .iter()
+        .any(|q| !q.is_finite() || !(0.05..=0.95).contains(q))
+      || values.windows(2).any(|w| w[0] >= w[1])
+    {
+      return Err(ParseError::new(
+        "quantiles requires 1..19 strictly increasing finite values from 0.05 to 0.95",
+      ));
+    }
+    return Ok(Command::QuantileBootstrap {
+      command: tabdat_domain::QuantileBootstrapCommand {
+        bootstrap: command,
+        quantiles,
+      },
+    });
+  }
+  Ok(Command::Bootstrap { command })
 }
 
 fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
@@ -8845,7 +8878,7 @@ fn parse_use_parenthesized_value(
     return Ok(UseOptionValue::Numbers(values));
   }
 
-  if name == "null" {
+  if matches!(name, "null" | "quantiles") {
     // Preserve adjacent exponent/sign tokens without changing the shared lexer.
     // Whitespace separates null coefficients; quoted values are not numbers.
     let mut values = Vec::<String>::new();
@@ -8855,7 +8888,9 @@ fn parse_use_parenthesized_value(
         token.kind,
         UseTokenKind::String | UseTokenKind::Identifier { quoted: true }
       ) {
-        return Err(ParseError::new("option null values must be numeric"));
+        return Err(ParseError::new(format!(
+          "option {name} values must be numeric"
+        )));
       }
       if previous_end != Some(token.start) {
         values.push(String::new());
@@ -8867,7 +8902,9 @@ fn parse_use_parenthesized_value(
       previous_end = Some(token.end);
     }
     if values.iter().any(|value| value.parse::<f64>().is_err()) {
-      return Err(ParseError::new("option null values must be numeric"));
+      return Err(ParseError::new(format!(
+        "option {name} values must be numeric"
+      )));
     }
     return Ok(UseOptionValue::Numbers(values));
   }

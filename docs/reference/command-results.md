@@ -1486,3 +1486,30 @@ errors preserve fit/data. Robust/cluster/weighted inference, cross-quantile
 tests, margins, named quantile reports and prediction intervals are unsupported.
 See `help qreg` and the [household workflow](../../examples/mma04p2qreg/README.md)
 for numerical bounds, assumptions and independent evidence.
+
+
+### Joint IID pairs-bootstrap quantiles
+
+`bootstrap y xvars, quantiles(.25 .5 .75) seed(integer) [reps(200) noconstant]`
+returns CLI-v1 `QuantileBootstrapResult`, estimator
+`iid_pairs_bootstrap_joint_quantiles`. Existing OLS bootstrap result/command
+shapes remain unchanged; typed commands use `QuantileBootstrapCommand` wrapping
+its common bootstrap options and original numeric quantile spellings. It has
+read-only requirements/effects and never installs/clears a retained fit.
+
+The result contains outcome/predictors/intercept, N, ordered normalized quantiles,
+B, exact decimal-string seed, versioned RNG, confidence_level95 and
+interval_method `percentile_r_type7`. Coefficient rows contain name, estimate,
+bootstrap_mean, bias, standard_error, ci_lower/ci_upper. Covariance names/order
+are quantile-major, intercept then predictors; names are `q{normalized tau}:name`.
+The full covariance includes cross-quantile blocks from common IID row draws,
+with `covariance_convention=common_iid_pairs_b_minus_1` and
+`simultaneous_coverage=false`. No analytic p-value/reference distribution is
+implied by marginal percentile bounds. Singular covariance is retained rather
+than regularized; no test/lincom on this report is installed.
+
+CLI sample reports total/dropped counts; owned Rust results also retain the
+complete-case source-index map. The same ordered finite/type rules and local
+xoshiro256++/SplitMix64 draw contract as IID OLS apply. Weights/cluster modes are
+rejected. Any original or replicate fit failure aborts without redraw or partial
+results. Numerical/work limits and statistical assumptions are in help bootstrap.

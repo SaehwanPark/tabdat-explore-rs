@@ -147,6 +147,7 @@ impl Session {
         self.execute_random_effects(&command)
       }
       Command::Bootstrap { command } => self.execute_bootstrap(&command),
+      Command::QuantileBootstrap { command } => self.execute_quantile_bootstrap(&command),
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),

@@ -4,8 +4,9 @@ This native workflow covers the .1/.5/.9 fits from Cameron–Trivedi (2005)
 §4.6.4 pp. 88–90, author [`mma04p2qreg.do`](https://cameron.econ.ucdavis.edu/mmabook/mma04p2qreg.do)
 block 1: log household medical expenditure on log total expenditure with an
 intercept. The selected initial illustration is the conditional median.
-Separate fitted quantiles do not validate the simultaneous bootstrap in
-Figure 4.1. The native Figure 4.2 workflow is below.
+Separate fitted quantiles do not validate Figure4.1. A [joint IID pairs-bootstrap
+workflow](bootstrap.md) adds its underlying 19-quantile uncertainty report;
+slope-equality testing and the figure remain. The native Figure4.2 workflow is below.
 
 Download [`qreg0902.asc`](https://cameron.econ.ucdavis.edu/mmabook/qreg0902.asc)
 to a working directory. Its SHA256 is
