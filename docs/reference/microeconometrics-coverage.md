@@ -98,6 +98,18 @@ optimizer contributions have not been isolated. No conditional/nested logit,
 alternative-specific design, robust/cluster covariance, factors, discrete
 changes, IIA tests, whole-table/program or completed Chapter15 coverage is claimed.
 
+The next bounded [conditional-choice slice is in draft PR322](https://github.com/SaehwanPark/tabdat-explore-rs/pull/322),
+not yet a delivered command. It targets the same author's section2/Table15.2
+CL column: all1,182 people × four explicitly keyed alternatives, exactly one
+chosen row, alternative-specific price/catch and no common intercept. Structural
+keys/complete balanced sets precede whole-choice-set finite-case exclusion.
+The [R/survival reference](../../examples/mma15p1mnl/reference_clogit.R) covers
+coefficients/joint information and the eight section2B finite-change probability
+scenarios (price+1 with100*deltaP, catch+.001 with1000*deltaP). These are model
+point contrasts, not analytic AMEs, causal effects or delta-method intervals;
+ragged availability, multiple-success matched sets and other inference remain
+outside that bounded slice, not excluded from the long-term roadmap.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
