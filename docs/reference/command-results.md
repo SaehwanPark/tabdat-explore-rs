@@ -223,6 +223,60 @@ marginal effect. All three interactions must change jointly for the documented
 income point scenario. This does not validate random-coefficient or nested models,
 general comparison/reporting, effects uncertainty or whole Chapter15.
 
+## Explicit non-normalized nested choice
+
+`nlogit chosen lower_vars, group(id) alternative(alt) nest(branch)
+[upper(vars)] nonnormalized` fits the earlier non-normalized two-level model,
+not preferred common-utility RUM normalization. CLI-v1 type
+`NonNormalizedNestedLogitResult` reports `estimator: "nlogit"`,
+`parameterization: "non_normalized_conditional_utilities"` and
+`preferred_rum_normalization: false`. Within-nest probabilities normalize raw
+lower utilities; upper utility adds its positive nest scale times lower
+log-sum-exp. Common lower utility shifts cannot be centered away across nests.
+
+`predictors` orders lower then upper columns; `lower_predictor_count` identifies
+the split. `nest_levels`, `alternative_levels` and aligned `alternative_nests`
+retain the exact two-nest map. Exactly two nests with≥2 alternatives each are
+supported. Raw numeric/text/boolean group identity, exact integer alternative/
+nest codes and balanced complete maps are checked before whole-set finite
+exclusion. Upper columns must be constant inside retained case/nest. Response,
+long-row sample, candidate/excluded counts and independent G decision units
+follow the conditional-choice contract, not binary-row inference.
+
+`coefficients` has normal95 inference against zero; `dissimilarities` entries
+contain `nest_code`, natural-scale `estimate` and explicit `test_null: 1.0`.
+`covariance_matrix` is full joint natural-parameter covariance, ordered by
+`covariance_parameter_names` including `iv[code]`. The covariance tag is
+`model_based_joint_observed_nested_choice_hessian`, correction1 and independent
+unit `choice_set`: expected Fisher is an optimization fallback only, never the
+reported covariance. Natural-scale Wald intervals can leave the positive domain.
+`random_utility_iv_bounds_satisfied` describes fitted `(0,1]` bounds; it is not a
+composite hypothesis test or certification of preferred-RUM consistency.
+
+`restricted_log_likelihood` re-estimates slopes at both scales=1.
+`independence_likelihood_ratio`, `independence_df: 2`, `independence_p_value` and
+`independence_reference_distribution: "asymptotic_chi_square"` are emitted only
+after local full scale identification at that restriction; otherwise fitting
+fails explicitly. No uniform-null omnibus LR/pseudo R² is fabricated with
+unidentified scales. `iterations`, two attempted starts/`converged_starts` and
+both scaled score/undamped step diagnostics describe convergence, not proof of
+a global maximum. Final full observed information must be positive definite.
+
+Owned retained state is independent of later data edits. Only current complete
+map `predict newvar, pr` is supported; current outcomes are unused/new IDs allowed.
+Missing predictors NULL the whole current set; structural/constancy/schema/
+arithmetic errors publish no column and preserve data/fit. Failed new fits clear
+prior inference, not data. `estat margins`, general tests/named comparisons,
+weights/robust/cluster/survey, richer trees and preferred normalization remain
+unsupported. See `help nlogit` for explicit work bounds.
+
+The [original-source workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice)
+checks149 quantities including52 covariance entries and23,640 probabilities,
+restored source design, displayed means and point income/charter price/catch
+contrasts. These are not effects uncertainty or causal claims. Original fitted
+scales exceed1; terminal output warns. The documented historical Stata8
+stationary-point difference is not silently widened into printed-digit parity.
+
 ## Binary logit/probit and continuous marginal effects
 
 `logit y x1 ... [, robust cluster(group) noconstant]` fits an unweighted

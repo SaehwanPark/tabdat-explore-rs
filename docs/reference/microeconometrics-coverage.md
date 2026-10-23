@@ -61,7 +61,8 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | Validated native published-analysis contract — composed source/cohort/fitted summaries, native tables and SVG; separate binary AME extension | Exact output audit/conventions below; not literal Stata log/storage/RNG/format parity or fit restoration; binary family remains incomplete |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
-| MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — native Table15.2 MNL column under float64/converged-information conventions; separate analytic continuous-AME extension | [Original1,182-person workflow and independent audit](../../examples/mma15p1mnl/README.md):107 R quantities, all source/design/probability/index cells; conditional/nested/combined models and remaining choice illustrations required |
+| MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
+| MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -201,14 +202,14 @@ in the author program, historical float-digit parity or completed Chapter15.
 Nested/other choice illustrations, IIA diagnostics, broader availability, effects
 uncertainty, weights/robust/cluster/survey and automatic design/reporting remain.
 
-### MMA-NESTED draft source-resolution contract
+### MMA-NESTED bounded non-normalized contract and evidence
 
-[Draft PR324](https://github.com/SaehwanPark/tabdat-explore-rs/pull/324) targets
+[PR324](https://github.com/SaehwanPark/tabdat-explore-rs/pull/324) implements
 §15.6.3 p.511, author `mma15p2gev.do` sections2A–C, not a new coefficient column
 of Table15.2. Same1,182 people/4,728 long rows; shore={beach1,pier2},
 boat={private3,charter4}; lower utility `p q`, upper shore constant/income/1000.
 The authors explicitly identify Stata8's **earlier non-normalized** variant,
-not the preferred normalization. Proposed native support requires explicit
+not the preferred normalization. Native support requires explicit
 `nonnormalized` opt-in; a preferred RUM-normalized estimator remains separate
 required work, not silently substituted or excluded.
 
@@ -228,9 +229,10 @@ fresh score and probabilities at identical parameters, then tightly refines the
 stationary point using exact observed information. Default package OPG covariance
 and loose function-value convergence are not substituted. The R utility-level
 shore coefficients require multiplying by λ_shore to obtain the top-level
-parameterization. Its standalone export contains149 quantities,52 covariance
-entries across restricted/full fits, and23,640 probabilities; **native comparison
-is not implemented yet**.
+parameterization. The [native script](../../examples/mma15p1mnl/nested.td) and
+[source-bound checker](../../examples/mma15p1mnl/check_nested.py) now compare all149
+quantities,52 covariance entries across restricted/full fits and23,640
+probabilities, including exact original design/restores and native displayed means.
 
 Reference log likelihood is−1180.0125384828, positive IVs32.1725778578 /
 15.0747565917 (observed SEs29.9971412397 /14.0098795481). The λ=1 conditional
@@ -261,15 +263,26 @@ quantities/23,640 probabilities: coefficient max1.54e-10, covariance3.99e-8
 (on large weak-IV variances), source LL5.01e-12 and probability1.20e-11.
 New nested scalar checks use1e-9 absolute +1e-8 relative and positive-tail
 relative1e-8; covariance scaling matters for these weakly identified natural
-IVs. Existing MNL/CL tolerances are unchanged. Draft native wiring now includes
-explicit `nonnormalized` syntax, raw structural-key/map validation before whole-set
-exclusion, owned retained state, atomic current-set prediction, terminal/CLI-v1
-inference metadata and help/discovery.87 scoped tests cover parser/runtime,
-conditional-reader regressions, reporting, synthetic native script/text/JSON,
-current income contrasts, export collision and boundary/discovery contracts.
-The source-bound original native preparation/checker, actual-book-script failure
-cases and broader merge gates remain outstanding; this draft is not delivered
-coverage.
+IVs. Existing standalone MNL/CL gates are unchanged. The new nested-workflow
+positive-tail1e-8 contract includes its four-slope restriction: native~1e-11
+slope stopping differences amplify to1.82e-9 relative at p=4.42e-56, with tails
+matching independent `math.erfc` at native z. The independent derivative check
+confirms the restricted package point is already stationary (zero refinement
+shift), not an optimizer-cache substitution.
+
+Native wiring includes explicit `nonnormalized` syntax, raw structural-key/map
+validation before whole-set exclusion, owned retained state, atomic current-set
+prediction, terminal/CLI-v1 inference metadata and help/discovery.89 scoped tests
+cover parser/runtime, conditional-reader regressions, reporting, synthetic native
+script/text/JSON, the actual book script, closed-form704-person joint scenarios/
+restores/displays, source guards before fitting, input/export preservation and
+boundary/discovery contracts. Original-data native comparison maxima are
+coefficient1.53e-10, covariance3.98e-8, LL3.41e-12, probability1.20e-11;
+income/price/catch contrasts1.40e-15/1.12e-13/1.08e-13. A fresh original native
+text run produces byte-identical CSVs without changing input. Shared native/R
+design corruption and a fake zero LR p-value are rejected. This bounded evidence
+does not complete preferred normalization, historical Stata8 parity, effects
+uncertainty or the remaining Chapter15 inventory.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

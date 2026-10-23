@@ -100,9 +100,15 @@ Extend the same workflow/validation standard to:
   column and conditional MNL encoding, including its different null/LR convention;
   this is not random-coefficients mixed logit. These workflows do not cover all
   historical float-storage/at-means effects, conditional effects uncertainty, IIA
-  diagnostics or remaining Chapter15 illustrations. Next resolve an exact nested-
-  choice illustration/reference; ordered or richer models, broader choice sets,
-  effects and diagnostics remain required.
+  diagnostics or remaining Chapter15 illustrations. Explicit positive-scale
+  non-normalized two-nest `nlogit` additionally supplies the source-audited
+  [MMA §15.6.3 p511 workflow](../examples/mma15p1mnl/README.md#non-normalized-nested-choice),
+  full observed covariance/IV=1 diagnostics, identified independence-restriction
+  LR and current income/price/catch point contrasts. This earlier specification
+  is not preferred common-utility RUM normalization; fitted IV-bound violations
+  and the historical Stata8 stationary-point discrepancy remain explicit.
+  Preferred-normalized fitting, ordered/richer models, broader availability,
+  effects uncertainty, diagnostics and all remaining illustrations stay required.
 - **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
   and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
