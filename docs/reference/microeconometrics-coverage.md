@@ -247,9 +247,24 @@ is not the whole explanation. No tolerance or historical-digit claim is widened
 to erase this difference. LIMDEP reports LL−1180.013 with yet another top/utility
 coefficient parameterization. Preferred normalized fitting on these restricted
 covariates instead showed a divergent shore scale/singular information; that
-failed probe is not a validated alternative fit. Kernel, runtime/parser,
-prediction/state, independent native comparison, terminal/JSON/script evidence
-and all merge gates remain outstanding; this draft is not delivered coverage.
+failed probe is not a validated alternative fit.
+
+The pure Rust kernel now fits positive scales from two deterministic starts,
+retains raw lower-utility levels, uses full observed information (expected Fisher
+only as an optimization fallback), and requires local scale identification at
+the λ=1 restriction before assigning a regular LR reference. A704-decision
+exact-count fixture identifies all six parameters in closed form;116 independent
+R scalar/covariance/restriction checks plus analytic-derivative finite differences,
+permutations, replication, prediction/constancy/map and failure checks pass.
+A direct kernel probe on the R-prepared original design also matches149 source
+quantities/23,640 probabilities: coefficient max1.54e-10, covariance3.99e-8
+(on large weak-IV variances), source LL5.01e-12 and probability1.20e-11.
+New nested scalar checks use1e-9 absolute +1e-8 relative and positive-tail
+relative1e-8; covariance scaling matters for these weakly identified natural
+IVs. Existing MNL/CL tolerances are unchanged. Runtime/parser, structural raw-key
+and missingness auditing, native source-bound preparation/checker, owned session
+state, terminal/JSON/script integration and broader merge gates remain
+outstanding; this draft is not delivered coverage.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
