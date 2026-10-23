@@ -589,6 +589,12 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
     "{}",
     String::from_utf8_lossy(&output.stderr)
   );
-  assert_eq!(String::from_utf8_lossy(&output.stdout).lines().count(), 4);
+  let rows = String::from_utf8_lossy(&output.stdout)
+    .lines()
+    .map(|line| serde_json::from_str::<Value>(line).unwrap())
+    .collect::<Vec<_>>();
+  assert_eq!(rows.len(), 5);
+  assert_eq!(rows[3]["result_type"], "RegressionResult");
+  assert_eq!(rows[4]["error"]["type"], "ExecutionError");
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
