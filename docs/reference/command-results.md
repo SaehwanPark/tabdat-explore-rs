@@ -211,7 +211,17 @@ or uncertainty intervals. Weights, robust/cluster/survey inference, multiple-eve
 matched sets, ragged availability, automatic factors, IIA tests, named reports and
 general test/lincom remain unsupported. The [original-source workflow/audit](../../examples/mma15p1mnl/README.md#conditional-logit-table152-cl-column-and-section2b-point-contrasts)
 validates the price/catch Table15.2 CL column and separately labeled float64
-finite contrasts, not remaining combined/nested specifications or whole Chapter15.
+finite contrasts. The [combined fixed-utility workflow](../../examples/mma15p1mnl/README.md#combined-fixed-coefficient-utility-table152-final-column)
+additionally validates explicit price/catch, three alternative constants and
+three income interactions without new estimator/parser behavior. Its six-column
+conditional MNL encoding has the same full fit/covariance after parameter
+permutation but a uniform zero-all-six null/LR df6, unlike ordinary MNL's
+estimated-share zero-income null/LR df3. The eight-column combined null/LR df8
+remains explicit. Current prediction reads stored design-column names: changing
+raw income alone does not update interaction columns or provide a chain-rule
+marginal effect. All three interactions must change jointly for the documented
+income point scenario. This does not validate random-coefficient or nested models,
+general comparison/reporting, effects uncertainty or whole Chapter15.
 
 ## Binary logit/probit and continuous marginal effects
 

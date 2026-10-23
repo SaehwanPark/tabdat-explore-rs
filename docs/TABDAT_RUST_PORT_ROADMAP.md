@@ -95,11 +95,14 @@ Extend the same workflow/validation standard to:
   independent R evidence. Balanced single-choice conditional logit additionally
   supplies the price/catch CL column, explicit current choice-set probabilities,
   and section2B finite-change point contrasts with independent R/survival and
-  original-token evidence. Neither workflow covers all historical float-storage
-  or at-means effects, effects uncertainty for conditional choice, IIA diagnostics
-  or remaining Chapter15 illustrations. Next resolve the author's combined
-  alternative-constant/income/price/catch specification; ordered/nested or richer
-  illustrations, broader choice sets, effects and diagnostics remain required.
+  original-token evidence. Explicit numeric design additionally validates the
+  author's combined fixed-coefficient alternative-constant/income/price/catch
+  column and conditional MNL encoding, including its different null/LR convention;
+  this is not random-coefficients mixed logit. These workflows do not cover all
+  historical float-storage/at-means effects, conditional effects uncertainty, IIA
+  diagnostics or remaining Chapter15 illustrations. Next resolve an exact nested-
+  choice illustration/reference; ordered or richer models, broader choice sets,
+  effects and diagnostics remain required.
 - **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
   and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric

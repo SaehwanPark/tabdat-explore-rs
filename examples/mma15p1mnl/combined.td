@@ -1,5 +1,7 @@
 use Nldata.csv
 isid source_row
+sql """SELECT *,CASE WHEN mode IN (1,2,3,4) AND dbeach=CASE WHEN mode=1 THEN 1 ELSE 0 END AND dpier=CASE WHEN mode=2 THEN 1 ELSE 0 END AND dprivate=CASE WHEN mode=3 THEN 1 ELSE 0 END AND dcharter=CASE WHEN mode=4 THEN 1 ELSE 0 END THEN 1 ELSE 0 END AS source_choice_valid FROM active ORDER BY source_row""" into guarded_source
+assert source_choice_valid == 1
 generate ydiv1000 = income/1000
 mlogit mode ydiv1000, baseoutcome(1)
 predict mnl1, pr outcome(1)

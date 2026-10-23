@@ -21,8 +21,8 @@ combined_names <- c("p","q",encoded_names)
 control <- survival::coxph.control(eps=1e-12,toler.chol=1e-14,iter.max=100)
 encoded <- survival::clogit(chosen~dummy2+dummy3+dummy4+d2y+d3y+d4y+strata(id),data=d,method="exact",control=control)
 combined <- survival::clogit(chosen~p+q+dummy2+dummy3+dummy4+d2y+d3y+d4y+strata(id),data=d,method="exact",control=control)
-probability <- function(data,fit,names) {
-  eta <- drop(as.matrix(data[names])%*%coef(fit))
+probability <- function(data,fit,columns) {
+  eta <- drop(as.matrix(data[columns])%*%coef(fit))
   centers <- rep(apply(matrix(eta,nrow=4),2,max),each=4)
   weights <- exp(eta-centers)
   weights/rep(drop(rowsum(weights,data$id)),each=4)
@@ -32,9 +32,9 @@ emit <- function(model,quantity,i,j,value) {
   quantities[[length(quantities)+1L]] <<- data.frame(model=model,quantity=quantity,i=i,j=j,value=value)
 }
 for(model in c("encoded","combined")) {
-  fit <- get(model);names <- get(paste0(model,"_names"));X <- as.matrix(d[names]);b <- coef(fit);V <- vcov(fit)
-  stopifnot(!anyNA(b),all(is.finite(V)),identical(names(b),names))
-  pr <- probability(d,fit,names)
+  fit <- get(model);columns <- get(paste0(model,"_names"));X <- as.matrix(d[columns]);b <- coef(fit);V <- vcov(fit)
+  stopifnot(!anyNA(b),all(is.finite(V)),identical(names(b),columns))
+  pr <- probability(d,fit,columns)
   stopifnot(max(abs(colSums(X*(d$chosen-pr))))<1e-7,max(abs(pr-predict(fit,type="expected")))<1e-12)
   ll <- as.numeric(logLik(fit));null <- -1182*log(4);lr <- 2*(ll-null)
   stopifnot(abs(null-fit$loglik[1])<1e-10)

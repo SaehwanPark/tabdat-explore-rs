@@ -30,7 +30,7 @@ not by implementing every estimator mentioned in a chapter.
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Native bounded IID/whole-cluster pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means and within-transformed whole-person resampling | Residual/parametric/other-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
-| 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities and continuous joint-delta AMEs; balanced single-choice price/catch conditional logit with keyed probabilities/finite point contrasts; source audits of Table15.2 MNL/CL columns | Combined/nested and richer choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
+| 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
@@ -147,33 +147,59 @@ and likelihood within four-decimal rounding, not every printed digit.
 
 Ragged availability, multiple-success matched sets, weights/robust/cluster/survey,
 automatic factors, IIA tests, effects uncertainty, named reports/general restrictions
-and remaining combined/nested/other illustrated analyses remain required work.
+and remaining nested/other illustrated analyses remain required work; the combined
+fixed-coefficient analysis is separately validated below.
 No whole-table/program or completed Chapter15 coverage is claimed.
 
-### MMA-COMBINED draft source-validation slice
+### MMA-COMBINED bounded fixed-utility contract and evidence
 
-[Draft PR323](https://github.com/SaehwanPark/tabdat-explore-rs/pull/323) targets
-`mma15p1mnl.do` section4, Table15.2 p.493 combined column: all1,182 original
-people/four alternatives, beach normalization,
-`p q dummy2 dummy3 dummy4 d2y d3y d4y`, income/1000 and no common intercept. This is fixed-coefficient utility,
-not random-coefficients mixed logit. The existing conditional kernel already
-executes those explicit numeric columns; the new slice supplies an independently
-validated analysis, not a new estimator or automatic factor system.
+The [native script/audit](../../examples/mma15p1mnl/README.md#combined-fixed-coefficient-utility-table152-final-column)
+targets `mma15p1mnl.do` section4's eight-column Table15.2 p.493 combined fit,
+not the preceding five-column exploratory specification. All1,182 original people/
+four alternatives remain: `p q dummy2 dummy3 dummy4 d2y d3y d4y`, income/1000,
+beach alternative-constant/income normalization and no common intercept. This is
+fixed-coefficient utility, **not random-coefficients mixed logit**. Existing
+numeric-design/kernel capabilities execute it; no new estimator/parser/factor
+framework is introduced.
 
-Preliminary original-source/R4.6.1/survival3.8.6 audit validates218 scalar
-quantities, all100 covariance entries across six/eight-column fits,28,368
-probabilities, exact original design/interaction bindings and the six-column
-conditional encoding of native MNL. Full MNL coefficients/covariance/likelihood
-and probabilities match after parameter permutation, but **nulls/LR DF differ**:
-conditional six-column zero-all-utilities versus ordinary MNL estimated shares/
-three zero income slopes. The optional interpretation scenarios update all three
-income interactions jointly for +$1,000, or charter price+1/catch+.001 separately;
-these are extra point contrasts, not published effects or uncertainty intervals.
-Reference CSV uses explicit17-digit numeric strings so exact income-division
-source binding is not defeated by R write.csv's numeric formatting. Native/R
-comparison tolerances were not widened. Focused inspectable CLI/failure tests,
-final documentation and merge gates remain outstanding; no new delivered
-illustration, whole-table/program or Chapter15 completion is claimed yet.
+- **Inference:** full joint8×8 inverse conditional Fisher sum over independent
+  decisions, correction1, asymptotic normal95; uniform zero-all-eight null,
+  LR chi-square(8), McFadden R². Same balanced-set, whole-set exclusion,
+  rank/convergence and current-prediction contracts as the conditional core.
+- **Encoding:** author section3's six numeric dummy/income columns reproduce
+  ordinary MNL's full coefficients/covariance/likelihood/probabilities after
+  parameter permutation, but **nulls/LR DF differ**: conditional zero-all-six
+  uniform null/df6 versus ordinary MNL estimated shares/three zero income slopes.
+  Their omnibus tests/pseudo R² must not be equated as model comparisons.
+- **Native interpretation/report:** source ID and mode-versus-four-flag guards
+  before any fit, explicit long preparation/pair guard, three model fits,
+  probabilities, design-aware +$1,000 income and charter-price+1/catch+.001 point
+  scenarios, restored scalar/interaction/price/catch inputs, four-row terminal
+  summaries and CSV/CLI-v1. All three income interactions change together;
+  changing only raw income is not prediction design maintenance. These extra
+  scenarios are not published effects, analytic AMEs, causal estimates or CIs.
+- **Independent evidence:** R4.6.1/survival3.8.6 validates218 quantities, all100
+  covariance entries across six/eight-column fits and28,368 probabilities, with
+  exact source IDs/order/flags/price/catch/income/interaction/baseline binding.
+  Absolute scalar tolerance1e-9, probability1e-10, positive p-value relative1e-9.
+  Combined observed maxima: coefficient3.85e-14, covariance3.34e-15,
+  likelihood9.10e-13; income/price/catch contrasts5.87e-16/1.12e-15/1.03e-14.
+  Probability max1.65e-14. Native/R tolerances were not widened: R write.csv's
+  computed-income rounding was fixed by explicit17-digit export strings.
+  Historical combined coefficients/SEs separately agree within1e-6 and likelihood
+  four-decimal rounding; storage/optimizer contributions remain unisolated.
+- **Inspectability/failure:**138-decision, three-income-cell, four-alternative
+  full-rank fixture has exact log-odds coefficients and scenario probabilities;
+  CLI tests check full MNL covariance permutation, distinct nulls, all joint
+  interaction changes/restores and native mean contrasts. Duplicate source IDs
+  and inconsistent flags fail before any fit/export, original input bytes remain
+  unchanged, and export collisions preserve previously written files.
+
+All three principal Table15.2 coefficient columns now have explicit source-audited
+workflows. This is not one formatted whole-table report, every exploratory fit
+in the author program, historical float-digit parity or completed Chapter15.
+Nested/other choice illustrations, IIA diagnostics, broader availability, effects
+uncertainty, weights/robust/cluster/survey and automatic design/reporting remain.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

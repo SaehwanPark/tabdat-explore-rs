@@ -20,6 +20,7 @@ fits = dict(zip(["encoded", "combined"], conditional))
 for model, names in [("encoded", encoded_names), ("combined", combined_names)]:
   fit = fits[model]
   assert fit["predictors"] == names == fit["covariance_parameter_names"]
+  assert [c["name"] for c in fit["coefficients"]] == names
   assert fit["alternative_levels"] == [1, 2, 3, 4] and fit["chosen_counts"] == [134, 178, 418, 452]
   assert fit["group_variable"] == "id" and fit["alternative_variable"] == "alternative"
   assert not fit["include_intercept"] and fit["independent_unit"] == "choice_set"
@@ -99,7 +100,7 @@ for index, (a, b) in enumerate(zip(native, reference)):
       assert float(data[f"d{j}y"]) == float(alternative == j)*(float(source[15])/1000)
   for name in probabilities:
     actual, expected = float(a[name]), float(b[name])
-    assert math.isfinite(actual) and abs(actual-expected) < 1e-10, (index, name, actual, expected)
+    assert math.isfinite(actual) and 0 <= actual <= 1 and abs(actual-expected) < 1e-10, (index, name, actual, expected)
     max_probability = max(max_probability, abs(actual-expected))
   assert abs(float(a["mnl_probability"])-float(a["encoded_mnl"])) < 1e-10
 for start in range(0, 4728, 4):
@@ -107,5 +108,13 @@ for start in range(0, 4728, 4):
     assert abs(sum(float(r[name]) for r in native[start:start+4])-1) < 1e-14
 for name in ["income1000", "charter_price1", "charter_catch001"]:
   assert abs(sum(float(r[name]) for r in contrasts)) < 1e-11
+# Separate coarse historical check: the section4 eight-column fit, not its
+# five-column alternative-constant/price/catch prelude or a random-coefficient fit.
+for coefficient, value, se in zip(fits["combined"]["coefficients"],
+    [-.0251166,.357782,.7779594,.5272788,1.694366,-.1275771,.0894398,-.0332917],
+    [.0017317,.1097733,.2204939,.2227927,.2240506,.0506395,.0500671,.0503409]):
+  assert abs(coefficient["value"]-value) < 1e-6
+  assert abs(coefficient["standard_error"]-se) < 1e-6
+assert abs(fits["combined"]["log_likelihood"]-(-1215.1376)) < .00005
 print(f"Validated218 R scalars,source-bound4728-row eight-column design,full MNL encoding permutation and28368 probabilities; max p error={max_probability:.3g}")
 print(maxima)
