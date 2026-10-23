@@ -303,9 +303,9 @@ fn projected_set_matches_independent_r_and_falls_back_conservatively_for_weak_nu
     ),
     (80, 3, 75)
   );
-  close(result.critical_f, 2.726589156256709);
-  close(result.intervals[0].lower.unwrap(), 0.549119702658308);
-  close(result.intervals[0].upper.unwrap(), 2.050880297341690);
+  close(result.critical_f, 2.726_589_156_256_709);
+  close(result.intervals[0].lower.unwrap(), 0.549_119_702_658_308);
+  close(result.intervals[0].upper.unwrap(), 2.050_880_297_341_69);
   for beta in [0.0, 0.55, 1.3, 2.05, 3.0] {
     let contains = result.intervals.iter().any(|interval| {
       interval.lower.is_none_or(|bound| beta >= bound)
