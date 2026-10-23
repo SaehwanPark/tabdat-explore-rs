@@ -1760,6 +1760,31 @@ mod tests {
   use tabdat_domain::{SummarizeResult, SummaryRow};
 
   #[test]
+  fn projected_ar_terminal_marks_the_conservative_all_real_fallback() {
+    let output = render_execution_result(&ExecutionResult::ProjectedAndersonRubinConfidenceSet(
+      tabdat_stats::ProjectedArConfidenceSet {
+        coefficient: "grade76".into(),
+        nuisance_endogenous: vec!["exp76".into(), "expsq76".into()],
+        excluded_instruments: vec!["col4".into()],
+        confidence_level: 95.0,
+        observation_count: 3_010,
+        numerator_df: 1,
+        denominator_df: 3_004,
+        critical_f: 3.84,
+        shape: tabdat_stats::ArConfidenceSetShape::AllReal,
+        intervals: vec![tabdat_stats::ArConfidenceInterval {
+          lower: None,
+          upper: None,
+        }],
+        all_real_conservative_fallback: true,
+      },
+    ));
+    assert!(output.contains("Projected Anderson-Rubin confidence set"));
+    assert!(output.contains("(-inf, +inf)"));
+    assert!(output.contains("conservative all-real set"));
+  }
+
+  #[test]
   fn unbalanced_gls_terminal_describes_theta_range_without_ml_profile_claims() {
     let sizes = [1, 2, 3, 4, 5, 3, 2, 4];
     let mut y = Vec::new();
