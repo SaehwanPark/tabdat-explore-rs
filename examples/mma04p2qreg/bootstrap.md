@@ -1,5 +1,22 @@
 # Joint quantile pairs bootstrap
 
+## Next slice: coefficient contrast (work in progress)
+
+Add `contrast(variable)` with exactly two requested quantiles: higher-minus-lower
+coefficient, joint-pairs bootstrap SE, asymptotic normal zero-difference test and
+95% interval. Use the shared replicate coefficient differences directly to avoid
+cancellation when subtracting nearly equal covariance entries. Preserve the
+read-only report and older wire shapes when no contrast is requested. A zero or
+unrepresentable contrast variance must withhold inference explicitly, while
+retaining valid marginal bootstrap results.
+
+Target mma04p2qreg.do block3's .25/.75 slope comparison on the same audited
+5,006-row sample, B200/native seed10101. Compare independent R shared-draw
+differences, SE, z, normal p/interval; test unknown coefficients, noconstant,
+incompatible quantile counts, degeneracy and unchanged data/model state.
+This is an explicit asymptotic method counterpart, not Stata8's draw stream or
+finite-sample F convention. The Figure4.1 plot remains required.
+
 This native method counterpart advances the joint quantile bootstrap underlying
 MMA §4.6.4 Figure4.1 / mma04p2qreg.do block3. It uses the original audited
 5,006 complete ASCII household records and nineteen quantiles .05,.10,...,.95.
