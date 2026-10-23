@@ -30,7 +30,7 @@ not by implementing every estimator mentioned in a chapter.
 | 9: Nonparametric/semiparametric | No executable workflow | Density, local/kernel regression and methods required by illustrations |
 | 11–13: Bootstrap, simulation, Bayesian | Native bounded IID/whole-cluster pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means and within-transformed whole-person resampling | Residual/parametric/other-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
-| 15: Multinomial outcomes | No executable workflow | Required multinomial/conditional and richer choice models with choice-set semantics |
+| 15: Multinomial outcomes | Bounded person-level model-based MNL fit/probabilities and continuous joint-delta AMEs; Table15.2 MNL-column source audit | Conditional/alternative-specific, nested/combined and richer choice models with choice-set semantics; historical finite-difference/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Relevant parser forms only | Tobit/truncation, selection and two-part workflows with correct effects/inference |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
@@ -61,7 +61,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | Validated native published-analysis contract — composed source/cohort/fitted summaries, native tables and SVG; separate binary AME extension | Exact output audit/conventions below; not literal Stata log/storage/RNG/format parity or fit restoration; binary family remains incomplete |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
-| MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | In progress — Table15.2 MNL column source/design resolved; draft implementation, not an executable command | Bounded model-based MNL/probability/continuous-AME workflow in [draft PR321](https://github.com/SaehwanPark/tabdat-explore-rs/pull/321); conditional/nested/combined models and remaining choice illustrations required |
+| MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — native Table15.2 MNL column under float64/converged-information conventions; separate analytic continuous-AME extension | [Original1,182-person workflow and independent audit](../../examples/mma15p1mnl/README.md):107 R quantities, all source/design/probability/index cells; conditional/nested/combined models and remaining choice illustrations required |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -72,7 +72,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
 
-### MMA-CHOICE bounded MNL contract — implementation in progress
+### MMA-CHOICE bounded MNL contract and evidence
 
 The March2005 author `mma15p1mnl.do` executable section identifies Table15.2,
 p.493 (the overview's Table15.1 is a typo). Its `mlogit mode ydiv1000,
@@ -86,11 +86,17 @@ inference, scalar category probabilities/indices and conditional-X continuous
 AME/delta inference. The author p494 finite-difference averages and at-means
 `mfx` must not be silently equated with analytic AMEs or their uncertainty.
 
-This is a **draft**, not completed empirical coverage. Native command, retained
-state/failure and terminal/script/JSON acceptance evidence is still required.
-No conditional/nested logit, alternative-specific design, robust/cluster
-covariance, factors, discrete changes, IIA tests or whole-program replication is
-claimed by this contract or its preliminary numerical-core tests.
+The [native workflow and audit](../../examples/mma15p1mnl/README.md) verify107
+independent-R scalar quantities, all21,276 source/design cells,4,728 category
+probabilities and4,728 indices; additional synthetic references cover376
+quantities, two predictors, no-intercept and nonlowest-base covariance/effect
+invariants. Retained-state/current-row and exact-DECIMAL/failure contracts have
+focused executable tests. Native historical coefficients/SEs agree within1e-6,
+not every printed SE digit; author finite-difference versus analytic AME
+differences remain explicitly separated. Their individual float-storage versus
+optimizer contributions have not been isolated. No conditional/nested logit,
+alternative-specific design, robust/cluster covariance, factors, discrete
+changes, IIA tests, whole-table/program or completed Chapter15 coverage is claimed.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

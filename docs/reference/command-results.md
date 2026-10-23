@@ -10,6 +10,7 @@ source and fixtures below are relative to the repository root; use in-session
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
+- [Multinomial logit and continuous marginal effects](#multinomial-logit-and-continuous-marginal-effects)
 - [Binary logit/probit and continuous marginal effects](#binary-logitprobit-and-continuous-marginal-effects)
 - [Expressions and recoding](#expressions-and-recoding)
 - [Grouped collapse](#grouped-collapse)
@@ -56,7 +57,7 @@ works before loading without initializing DuckDB, and never clones model arrays.
 CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
 `active_table_name`, sorted `named_tables`, nullable `estimation_family` and nullable
 `linear_model`. The family is the retained cache's snake-case tag (currently
-`linear`, `instrumental_variables`, `logit`, `probit`, `poisson`,
+`linear`, `instrumental_variables`, `logit`, `probit`, `multinomial_logit`, `poisson`,
 `negative_binomial` or `panel_linear` for native within FE), not a claim of
 current-data prediction eligibility. `linear_model` remains OLS/2SLS-only and is
 null after other families, including FE; its existing fields are unchanged.
@@ -125,6 +126,43 @@ records; tests cover alignment, immutable ownership, samples, inference DF,
 missing/zero-variance terms, limits, failure atomicity and script/terminal/JSON.
 This bounded reporting subset is not full Stata estimates parity, stored-model
 prediction, disk persistence or whole-illustration completion.
+
+## Multinomial logit and continuous marginal effects
+
+`mlogit y [xvars] [, baseoutcome(integer) noconstant]` fits unweighted,
+independent-row shared-design multinomial logit. CLI-v1 `MultinomialLogitResult`
+has `estimator: "mlogit"`, sorted `category_levels`, explicit `base_outcome`,
+`category_counts`, complete-finite `sample`, outcome/predictor/intercept metadata,
+coefficients and full `covariance_matrix`. Coefficient rows include category IDs
+and names; covariance order is category-major nonbase, intercept then predictors.
+The default base is the lowest retained numeric category. Codes must be exact
+integers within ±(2^53−1); categorical strings/factors are not interpreted.
+
+`covariance: "model_based_joint_fisher_information"`, correction1.0,
+`reference_distribution: "asymptotic_standard_normal"` and confidence95 apply.
+Likelihood/null/LR/McFadden metadata identify the intercept-only estimated-shares
+null or, with `noconstant`, equal probabilities. LR df is `(J−1)*slope_count`
+and its reference is asymptotic chi-square; df0 has a null p-value. Convergence
+requires averaged RMS-scaled score and full undamped Newton step both≤1e-10.
+Bounds:2..16 levels,N≤10000,K≤32,P≤128,N*P²≤20million. Rank, separation-like
+numerical degeneracy and iteration-limit failures clear prior inference without
+mutating data; no ridge/pseudoinverse fallback is presented as an identified fit.
+
+`predict newvar, pr outcome(code)` or `xb outcome(code)` appends scalar current-X
+probabilities/base-relative indices (base index0). Current outcomes are unused;
+missing/nonfinite predictors yield NULL. Invalid categories/targets/schemas or
+nonfinite arithmetic fail without publishing a column. `estat margins` returns
+`MultinomialMarginalEffectsResult`, one continuous derivative/normal95 delta
+inference row per category/predictor, using retained X and the full joint
+covariance. Metadata explicitly mark conditional-on-observed-X uncertainty.
+An intercept-only fit returns no predictor effects. Analytic AMEs are neither
+at-means effects, discrete changes nor historical float/finite differences.
+
+No robust/cluster/weighted/survey inference, factors, alternative-specific design,
+conditional/nested models, IIA tests, prediction uncertainty or named reports/
+general test/lincom is installed for this family. See the [original-source
+workflow/reference audit](../../examples/mma15p1mnl/README.md) for precise
+Table15.2 scope and historical numerical differences.
 
 ## Binary logit/probit and continuous marginal effects
 

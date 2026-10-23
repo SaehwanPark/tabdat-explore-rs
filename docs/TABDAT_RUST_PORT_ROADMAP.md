@@ -89,7 +89,13 @@ a passing parser test or a coefficient-only estimator is not that milestone.
 
 Extend the same workflow/validation standard to:
 
-- **Choice:** multinomial and conditional choice, then ordered/nested or richer
+- **Choice:** bounded shared-design model-based multinomial logit now supplies
+  the [original fishing-mode Table15.2 MNL column](../examples/mma15p1mnl/README.md),
+  current category predictions and retained-X continuous joint-delta AMEs with
+  independent R evidence. This does not cover historical float/finite-difference
+  or at-means effects, conditional/alternative-specific choice, IIA diagnostics
+  or the remaining Chapter15 illustrations. Prioritize conditional choice next,
+  then ordered/nested or richer
   specifications needed by the book's illustrations; choice-set structure,
   probabilities, effects and relevant diagnostics.
 - **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection

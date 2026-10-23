@@ -114,6 +114,87 @@ fn exact_three_class_cell_odds_match_independent_r_nnet_and_delta_reference() {
 }
 
 #[test]
+fn four_class_two_predictor_joint_inference_matches_r_with_and_without_intercepts() {
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  for a in -1_i32..=1 {
+    for b in -1_i32..=1 {
+      let counts = [
+        1,
+        2usize.pow((a + 1) as u32) * 3usize.pow((b + 1) as u32),
+        2usize.pow((1 - a) as u32) * 3usize.pow((b + 1) as u32),
+        2usize.pow((a + 1) as u32) * 3usize.pow((1 - b) as u32),
+      ];
+      for (category, &count) in counts.iter().enumerate() {
+        for _ in 0..count {
+          y.push((category + 1) as f64);
+          x.push(vec![a as f64, b as f64]);
+        }
+      }
+    }
+  }
+  assert_eq!(y.len(), 282);
+  let mut checked = 0;
+  for intercept in [true, false] {
+    let problem = EstimationProblem::new("y", vec!["x".into(), "z".into()], y.clone(), x.clone())
+      .unwrap()
+      .with_intercept(intercept);
+    let fit = fit_multinomial_logit(&problem, &MultinomialOptions::default()).unwrap();
+    let effects = multinomial_marginal_effects(&problem, &fit).unwrap();
+    assert_eq!(fit.category_levels, [1, 2, 3, 4]);
+    assert_eq!(fit.likelihood_ratio_df, 6);
+    for row in include_str!("fixtures/multinomial_four_class_reference.csv")
+      .lines()
+      .skip(1)
+    {
+      let parts = row.split(',').collect::<Vec<_>>();
+      if (parts[0] == "intercept") != intercept {
+        continue;
+      }
+      let i: usize = parts[2].parse().unwrap();
+      let j: usize = parts[3].parse().unwrap();
+      let expected: f64 = parts[4].parse().unwrap();
+      let actual = if let Some(field) = parts[1].strip_prefix("coefficient_") {
+        estimate_field(&fit.coefficients[i].estimate, field)
+      } else if let Some(field) = parts[1].strip_prefix("effect_") {
+        estimate_field(&effects.effects[i].estimate, field)
+      } else {
+        match parts[1] {
+          "covariance" => fit.covariance[i][j],
+          "log_likelihood" => fit.log_likelihood,
+          "null_log_likelihood" => fit.null_log_likelihood,
+          "likelihood_ratio" => fit.likelihood_ratio,
+          "likelihood_ratio_p_value" => fit.likelihood_ratio_p_value.unwrap(),
+          "mcfadden_r_squared" => fit.mcfadden_r_squared,
+          _ => panic!(),
+        }
+      };
+      assert!(
+        (actual - expected).abs() < 1e-9,
+        "{} {}[{i},{j}]: {actual} != {expected}",
+        parts[0],
+        parts[1]
+      );
+      checked += 1;
+    }
+    for predictor in 0..2 {
+      assert!(
+        effects
+          .effects
+          .iter()
+          .skip(predictor)
+          .step_by(2)
+          .map(|e| e.estimate.value)
+          .sum::<f64>()
+          .abs()
+          < 1e-14
+      );
+    }
+  }
+  assert_eq!(checked, 313);
+}
+
+#[test]
 fn nonlowest_reference_reparameterizes_full_covariance_without_changing_probabilities_or_effects() {
   let problem = cell_problem();
   let first = fit_multinomial_logit(&problem, &MultinomialOptions::default()).unwrap();

@@ -138,17 +138,28 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
   let entries = actual["commands"].as_array_mut().unwrap();
   let extension: Vec<_> = entries
     .iter()
-    .filter(|entry| entry["name"] == "estimates" || entry["name"] == "bootstrap")
+    .filter(|entry| {
+      matches!(
+        entry["name"].as_str(),
+        Some("estimates" | "bootstrap" | "mlogit")
+      )
+    })
     .collect();
   assert_eq!(
     extension,
     vec![
       &serde_json::json!({"name":"bootstrap","effects":["read"]}),
-      &serde_json::json!({"name":"estimates","effects":["read","control"]})
+      &serde_json::json!({"name":"estimates","effects":["read","control"]}),
+      &serde_json::json!({"name":"mlogit","effects":["read"]})
     ]
   );
-  // Native reporting/resampling extensions preserve the immutable Python entries.
-  entries.retain(|entry| entry["name"] != "estimates" && entry["name"] != "bootstrap");
+  // Native extensions preserve the immutable Python entries.
+  entries.retain(|entry| {
+    !matches!(
+      entry["name"].as_str(),
+      Some("estimates" | "bootstrap" | "mlogit")
+    )
+  });
   assert_eq!(actual, oracle["data"]);
 }
 

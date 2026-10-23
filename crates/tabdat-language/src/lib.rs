@@ -8920,6 +8920,8 @@ fn parse_use_parenthesized_value(
   if matches!(
     name,
     "alpha"
+      | "baseoutcome"
+      | "outcome"
       | "pmf"
       | "cdf"
       | "ll"

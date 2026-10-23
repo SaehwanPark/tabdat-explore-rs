@@ -57,6 +57,18 @@ fn rows(s: &mut Session) -> Vec<Vec<CellValue>> {
   };
   p.rows
 }
+fn assert_same_rows(actual: &[Vec<CellValue>], expected: &[Vec<CellValue>]) {
+  assert_eq!(actual.len(), expected.len());
+  for (a, b) in actual.iter().zip(expected) {
+    assert_eq!(a.len(), b.len());
+    for (a, b) in a.iter().zip(b) {
+      match (a, b) {
+        (CellValue::Float(a), CellValue::Float(b)) => assert_eq!(a.to_bits(), b.to_bits()),
+        _ => assert_eq!(a, b),
+      }
+    }
+  }
+}
 fn close(a: f64, b: f64) {
   assert!((a - b).abs() < 1e-9, "{a} != {b}");
 }
@@ -132,8 +144,31 @@ fn prediction_uses_current_predictors_only_while_effects_use_retained_design() {
     let data = rows(&mut s);
     let _ = fail(&mut s, command);
     assert_eq!(s.state(), state);
-    assert_eq!(rows(&mut s), data);
+    assert_same_rows(&rows(&mut s), &data);
   }
+}
+
+#[test]
+fn overflowing_current_indices_fail_without_publishing_or_losing_retained_inference() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(&mut s, "replace x = x/10");
+  run(&mut s, "mlogit choice x");
+  let effects = run(&mut s, "estat margins");
+  run(
+    &mut s,
+    r#"sql """SELECT id,choice,CAST('1.7976931348623157e308' AS DOUBLE) AS x FROM active""" into inflated"#,
+  );
+  let state = s.state();
+  let data = rows(&mut s);
+  let error = fail(&mut s, "predict bad, pr outcome(2)");
+  assert!(
+    error.to_string().contains("nonfinite linear index"),
+    "{error}"
+  );
+  assert_eq!(s.state(), state);
+  assert_same_rows(&rows(&mut s), &data);
+  assert_eq!(run(&mut s, "estat margins"), effects);
 }
 
 #[test]
@@ -155,7 +190,7 @@ fn failed_new_fits_clear_stale_inference_but_do_not_mutate_data() {
     ));
     assert!(s.state().estimation.is_none());
     assert_eq!(s.state().active_dataset, metadata);
-    assert_eq!(rows(&mut s), before);
+    assert_same_rows(&rows(&mut s), &before);
   }
 }
 
@@ -176,7 +211,7 @@ fn exact_decimal_categories_are_validated_before_rounding_and_after_exclusion() 
     let before = rows(&mut s);
     let error = fail(&mut s, "mlogit choice x");
     assert!(error.to_string().contains("exact integer"), "{error}");
-    assert_eq!(rows(&mut s), before);
+    assert_same_rows(&rows(&mut s), &before);
   }
   let mut s = f.load();
   run(
