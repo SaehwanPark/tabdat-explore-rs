@@ -435,6 +435,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "regress" => parse_regress_command(body),
     "logit" => parse_binary_or_count_response_command("logit", body),
     "probit" => parse_binary_or_count_response_command("probit", body),
+    "mlogit" => parse_mlogit_command(body),
     "poisson" => parse_binary_or_count_response_command("poisson", body),
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
     "zip" => parse_zero_inflated_count_command("zip", body),
@@ -2716,6 +2717,77 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, ParseError> {
+  if let UseOptionValue::Number(spelling) = value
+    && let Ok(code) = spelling.parse::<i64>()
+    && code.unsigned_abs() <= 9_007_199_254_740_991
+  {
+    return Ok(code);
+  }
+  Err(ParseError::new(format!(
+    "{context} requires an integer code within +/- (2^53-1)"
+  )))
+}
+
+fn parse_mlogit_command(body: &str) -> Result<Command, ParseError> {
+  let (arguments, option_body) = match first_unquoted_comma(body) {
+    Some(i) => (&body[..i], Some(&body[i + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(arguments, false)?;
+  if parts.has_condition
+    || parts.has_assignment
+    || parts.has_options
+    || parts.missing_condition_expression
+    || parts.arguments.is_empty()
+  {
+    return Err(ParseError::new(
+      "mlogit expects syntax: mlogit <y> [<xvars>] [, baseoutcome(integer) noconstant]",
+    ));
+  }
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut base_outcome = None;
+  let mut include_intercept = true;
+  for option in &options {
+    match option.name.as_str() {
+      "baseoutcome" => {
+        if base_outcome.is_some() {
+          return Err(ParseError::new(
+            "mlogit baseoutcome() may only be supplied once",
+          ));
+        }
+        base_outcome = Some(parse_category_code(&option.value, "mlogit baseoutcome()")?);
+      }
+      "noconstant" if option.value == UseOptionValue::Flag => include_intercept = false,
+      "noconstant" => return Err(ParseError::new("mlogit noconstant does not accept a value")),
+      name => {
+        return Err(ParseError::new(format!(
+          "mlogit unsupported option: {name}; only model-based unweighted inference is supported"
+        )));
+      }
+    }
+  }
+  if !include_intercept && parts.arguments.len() == 1 {
+    return Err(ParseError::new(
+      "mlogit noconstant requires at least one predictor",
+    ));
+  }
+  Ok(Command::Mlogit {
+    command: MlogitCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      base_outcome,
+      include_intercept,
+    },
+  })
+}
+
 fn parse_binary_or_count_response_command(
   command_name: &str,
   body: &str,
@@ -4773,6 +4845,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "n"
           | "pmf"
           | "cdf"
+          | "outcome"
           | "spatial_lag"
           | "posterior_predictive"
           | "interval"
@@ -4893,7 +4966,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       ));
     }
   };
-  let kind = if let Some(kind) = probability_kind {
+  let mut kind = if let Some(kind) = probability_kind {
     kind
   } else if options.iter().any(|opt| opt.name == "xbu") {
     PredictKind::FixedEffectsResponse
@@ -4913,6 +4986,30 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::Xb
   };
 
+  let outcomes = options
+    .iter()
+    .filter(|o| o.name == "outcome")
+    .collect::<Vec<_>>();
+  match outcomes.as_slice() {
+    [] => {}
+    [option] => {
+      let category = parse_category_code(&option.value, "predict outcome()")?;
+      kind = match kind {
+        PredictKind::Pr => PredictKind::MultinomialPr(category),
+        PredictKind::Xb if kinds_present.contains(&"xb") => PredictKind::MultinomialXb(category),
+        _ => {
+          return Err(ParseError::new(
+            "predict outcome() requires explicit pr or xb; use after mlogit",
+          ));
+        }
+      };
+    }
+    _ => {
+      return Err(ParseError::new(
+        "predict outcome() may only be supplied once",
+      ));
+    }
+  }
   let interval = options.iter().any(|opt| opt.name == "interval");
 
   let level_options = options

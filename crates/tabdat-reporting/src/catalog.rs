@@ -48,6 +48,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "logit",
   "lowess",
   "missing",
+  "mlogit",
   "nbreg",
   "nl",
   "panel",
@@ -296,6 +297,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "missing".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "mlogit".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1203,6 +1208,12 @@ fn get_command_schema(
         },
       ],
       syntax: "logit y x1 x2".to_string(),
+    }),
+    "mlogit" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor { name:"depvar".into(),required:true },ArgumentDescriptor { name:"indepvars".into(),required:false }],
+      help_topic,name:"mlogit".into(),
+      options:vec![OptionDescriptor { name:"baseoutcome".into(),required:false },OptionDescriptor { name:"noconstant".into(),required:false }],
+      syntax:"mlogit y [x1 x2] [, baseoutcome(integer) noconstant]".into(),
     }),
     "lowess" => Ok(CommandSchemaResult {
       arguments: vec![
