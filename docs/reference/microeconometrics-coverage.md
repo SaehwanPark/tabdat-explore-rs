@@ -150,6 +150,31 @@ automatic factors, IIA tests, effects uncertainty, named reports/general restric
 and remaining combined/nested/other illustrated analyses remain required work.
 No whole-table/program or completed Chapter15 coverage is claimed.
 
+### MMA-COMBINED draft source-validation slice
+
+[Draft PR323](https://github.com/SaehwanPark/tabdat-explore-rs/pull/323) targets
+`mma15p1mnl.do` section4, Table15.2 p.493 combined column: all1,182 original
+people/four alternatives, beach normalization,
+`p q dummy2 dummy3 dummy4 d2y d3y d4y`, income/1000 and no common intercept. This is fixed-coefficient utility,
+not random-coefficients mixed logit. The existing conditional kernel already
+executes those explicit numeric columns; the new slice supplies an independently
+validated analysis, not a new estimator or automatic factor system.
+
+Preliminary original-source/R4.6.1/survival3.8.6 audit validates218 scalar
+quantities, all100 covariance entries across six/eight-column fits,28,368
+probabilities, exact original design/interaction bindings and the six-column
+conditional encoding of native MNL. Full MNL coefficients/covariance/likelihood
+and probabilities match after parameter permutation, but **nulls/LR DF differ**:
+conditional six-column zero-all-utilities versus ordinary MNL estimated shares/
+three zero income slopes. The optional interpretation scenarios update all three
+income interactions jointly for +$1,000, or charter price+1/catch+.001 separately;
+these are extra point contrasts, not published effects or uncertainty intervals.
+Reference CSV uses explicit17-digit numeric strings so exact income-division
+source binding is not defeated by R write.csv's numeric formatting. Native/R
+comparison tolerances were not widened. Focused inspectable CLI/failure tests,
+final documentation and merge gates remain outstanding; no new delivered
+illustration, whole-table/program or Chapter15 completion is claimed yet.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
