@@ -4,6 +4,7 @@ How to invoke:
 `estat vif`
 `estat ar, null(b1 b2 ...)`
 `estat ar, ci [level(95)]`
+`estat ar, ci coefficient(name) [level(95)]`
 `estat overid`
 `estat endogenous`
 `estat margins` (after logit, probit, Poisson or NB2)
@@ -306,8 +307,37 @@ N, both DF, critical F, `shape` and `intervals`. An absent lower/upper bound
 (`null`) means **negative/positive infinity**, not missingness; `empty` has an
 empty interval list and `all_real` has one interval with both bounds null.
 No heteroskedastic/cluster confidence sets or endogenous-subvector/nuisance
-projection are implied. In particular, this does not provide a schooling-only
-confidence set from the three-endogenous DATA66 specification.
+projection are implied by this single-endogenous form. A separate projected form
+is available for multi-endogenous fits below.
+
+## Projected Anderson–Rubin confidence sets
+
+For a nonrobust 2SLS model with multiple endogenous regressors, name the
+coefficient of interest:
+
+```text
+ivregress 2sls wage w, endog(grade76 exp76 expsq76) iv(col4 age76 agesq76)
+estat ar, ci coefficient(grade76) level(95)
+```
+
+TabDat analytically profiles every other endogenous coefficient out of the joint
+homoskedastic AR nonrejection region. Included exogenous coefficients remain
+unrestricted nuisance parameters. This is a projection of the joint region, so
+coverage is at least the requested level and can be conservative. It does not
+plug in nuisance estimates and does not use a finite search grid. The reported
+critical value remains F(q, N − rank[W,Z]), for the complete endogenous null.
+Exact finite-sample coverage requires valid instruments, homoskedastic errors
+and conditional normality; without normality the F calibration is the usual
+homoskedastic large-sample reference.
+
+The nuisance profile is inverted exactly when its curvature is numerically
+positive definite after unit-diagonal scaling, with every Cholesky pivot above
+1e-12. Otherwise the command reports the all-real set as a conservative fallback
+and marks `all_real_conservative_fallback: true` in JSON.
+This may reflect a truly unbounded projection or numerical/rank-degenerate
+nuisance curvature. Robust/cluster projected confidence sets and a less
+conservative subvector AR test are not implemented. The command uses the
+retained estimation sample and does not change session state.
 
 
 Links:

@@ -56,6 +56,39 @@ fn scalar_confidence_sets_require_explicit_ci_and_a_valid_optional_level() {
 }
 
 #[test]
+fn projected_confidence_sets_name_one_endogenous_coefficient() {
+  for (input, coefficient, level) in [
+    ("estat ar, ci coefficient(grade76)", "grade76", "95"),
+    (
+      "estat ar, level(90) ci coefficient(grade76)",
+      "grade76",
+      "90",
+    ),
+  ] {
+    assert_eq!(
+      parse_command(input).unwrap(),
+      Command::Estat {
+        command: EstatCommand {
+          subcommand: EstatSubcommand::AndersonRubinProjectedConfidenceSet {
+            coefficient: coefficient.into(),
+            level: level.into(),
+          }
+        },
+      }
+    );
+  }
+  for input in [
+    "estat ar, coefficient(grade76)",
+    "estat ar, ci coefficient()",
+    "estat ar, ci coefficient(grade76 exp76)",
+    "estat ar, ci coefficient(grade76) coefficient(exp76)",
+    "estat ar, ci coefficient(grade76) null(0)",
+  ] {
+    assert!(parse_command(input).is_err(), "accepted {input}");
+  }
+}
+
+#[test]
 fn ar_requires_one_numeric_null_and_rejects_unimplemented_options() {
   for input in [
     "estat ar",

@@ -6341,7 +6341,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
       if options.iter().filter(|option| option.name == "ci").count() != 1
         || options
           .iter()
-          .any(|option| !matches!(option.name.as_str(), "ci" | "level"))
+          .any(|option| !matches!(option.name.as_str(), "ci" | "level" | "coefficient"))
         || options
           .iter()
           .find(|option| option.name == "ci")
@@ -6353,9 +6353,14 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
           .filter(|option| option.name == "level")
           .count()
           > 1
+        || options
+          .iter()
+          .filter(|option| option.name == "coefficient")
+          .count()
+          > 1
       {
         return Err(ParseError::new(
-          "estat ar confidence sets expect ci [level(95)], without null() or other options",
+          "estat ar confidence sets expect ci [coefficient(name)] [level(95)], without null() or other options",
         ));
       }
       let level = match options
@@ -6377,9 +6382,27 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
           ));
         }
       };
+      let coefficient = match options
+        .iter()
+        .find(|option| option.name == "coefficient")
+        .map(|option| &option.value)
+      {
+        None => None,
+        Some(UseOptionValue::Identifiers(values)) if values.len() == 1 => Some(values[0].clone()),
+        _ => {
+          return Err(ParseError::new(
+            "estat ar coefficient() requires one endogenous variable name",
+          ));
+        }
+      };
       return Ok(Command::Estat {
         command: EstatCommand {
-          subcommand: EstatSubcommand::AndersonRubinConfidenceSet { level },
+          subcommand: match coefficient {
+            Some(coefficient) => {
+              EstatSubcommand::AndersonRubinProjectedConfidenceSet { coefficient, level }
+            }
+            None => EstatSubcommand::AndersonRubinConfidenceSet { level },
+          },
         },
       });
     }

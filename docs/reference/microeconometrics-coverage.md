@@ -479,8 +479,9 @@ panel likelihood is supplied.
 - **Access/limits:** source data remain external and are not copied into the
   repository until redistribution rights are established. The converter retains
   numeric values but not source labels. The example is just-identified, so an
-  overidentification test does not apply to this design. GMM and schooling-specific
-  scalar weak-IV-robust intervals remain unimplemented. A successful 2SLS fit or conventional first-stage
+  overidentification test does not apply to this design. GMM remains unimplemented;
+  the schooling-specific scalar interval has now been replayed on DATA66 as described
+  below. A successful 2SLS fit or conventional first-stage
   F does not resolve weak identification.
 - **Bounded joint AR method:** `estat ar, null(b1 b2 ...)` after a nonrobust 2SLS
   fit tests all endogenous coefficients jointly using retained sample/design.
@@ -492,9 +493,9 @@ panel likelihood is supplied.
   Rust tests cover zero/nonzero nulls, no-intercept/no-control designs, weak
   relevance, and auxiliary failures; runtime/CLI tests verify retained sample,
   state, scripts and reporting. This is **method evidence**, not a newly validated
-  book illustration or a scalar schooling confidence set with experience effects
-  left as endogenous nuisance parameters. Robust/cluster AR confidence sets and endogenous-
-  subvector confidence sets remain required work.
+  book illustration or an empirical scalar schooling confidence set with experience
+  effects left as endogenous nuisance parameters. Robust/cluster AR confidence sets
+  and the less-conservative subvector AR test remain required work.
 - **Bounded scalar AR confidence-set method:** after a nonrobust fit with exactly
   one endogenous regressor, `estat ar, ci [level(95)]` analytically inverts the
   homoskedastic AR test, leaving exogenous coefficients unrestricted. Independent
@@ -509,6 +510,26 @@ panel likelihood is supplied.
   pairs are explicit errors; see `help estat` for the positive-variance condition.
   This is synthetic method validation, not a newly replicated empirical
   illustration or a schooling-only interval from the three-endogenous design.
+- **Bounded projected scalar AR method:** after a nonrobust multi-endogenous 2SLS
+  fit, `estat ar, ci coefficient(name) [level(95)]` profiles all other endogenous
+  coefficients out of the homoskedastic joint AR region and reports the scalar
+  projection. The joint region uses F(q, N-rank[W,Z]); projection therefore has
+  at-least-nominal coverage, not the nominal coverage of a less-conservative
+  subvector test. Profiling is analytic, with no finite grid or nuisance plug-in.
+  The three-endogenous synthetic design has a bounded 95% grade interval
+  [0.549119702658308, 2.050880297341690], matching independent R 4.6.1 `lm.fit`,
+  `optim` and `uniroot` to 1e-10; a second non-orthogonal design with nonzero
+  nuisance cross terms matches its nonsymmetric interval
+  [1.381379408356060, 2.513745876229364], and a weak-nuisance design exercises the
+  explicit conservative all-real fallback. On the author
+  DATA66 sample the command retains N=3,010 and reports a 95% grade76 set of
+  [-0.014387552440543, 0.502853235901166], matching the independent
+  [`reference_ar_projected.R`](../../examples/mma04p4ivweak/reference_ar_projected.R)
+  profile to 1e-10. The exact source/design are recorded above; the source data
+  remain external and are not committed. Runtime tests cover retained sample,
+  state, JSON metadata and robust/cluster rejection. This advances the weak-IV
+  inference method for Table 4.5 but does not validate the entire illustration.
+  Robust/cluster projection and the less-conservative subvector AR test remain open.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain

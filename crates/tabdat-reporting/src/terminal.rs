@@ -1202,6 +1202,46 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       output.push_str("\nAssumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous coefficient; no endogenous nuisance/subvector inference.\n");
       output
     }
+    ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {
+      let mut output = format!(
+        "Projected Anderson-Rubin confidence set (homoskedastic, weak-IV-robust, at least nominal coverage)\n{}; level = {}%; N = {}; critical F({}, {}) = {}\nNuisance endogenous coefficients left unrestricted: {:?}\n",
+        result.coefficient.escape_debug(),
+        inference_number(result.confidence_level),
+        result.observation_count,
+        result.numerator_df,
+        result.denominator_df,
+        inference_number(result.critical_f),
+        result.nuisance_endogenous
+      );
+      if result.intervals.is_empty() {
+        output.push_str("Empty set\n");
+      }
+      for (index, interval) in result.intervals.iter().enumerate() {
+        if index > 0 {
+          output.push_str(" union ");
+        }
+        write!(
+          output,
+          "{}{}, {}{}",
+          if interval.lower.is_some() { "[" } else { "(" },
+          interval
+            .lower
+            .map(inference_number)
+            .unwrap_or_else(|| "-inf".into()),
+          interval
+            .upper
+            .map(inference_number)
+            .unwrap_or_else(|| "+inf".into()),
+          if interval.upper.is_some() { "]" } else { ")" }
+        )
+        .unwrap();
+      }
+      output.push_str("\nAssumes valid instruments and homoskedastic errors; exact F requires conditional normality. The scalar set projects the joint region over every other endogenous coefficient and therefore has at-least-nominal coverage.\n");
+      if result.all_real_conservative_fallback {
+        output.push_str("The nuisance profile was not safely positive definite, so the conservative all-real set is reported.\n");
+      }
+      output
+    }
     ExecutionResult::RobustAndersonRubin(result) => {
       let mut output = String::from(
         "Anderson-Rubin joint Wald test (HC1/one-way cluster, weak-IV-robust)\nH0: all endogenous coefficients jointly, in fit order\n",
@@ -1718,6 +1758,31 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
 mod tests {
   use super::*;
   use tabdat_domain::{SummarizeResult, SummaryRow};
+
+  #[test]
+  fn projected_ar_terminal_marks_the_conservative_all_real_fallback() {
+    let output = render_execution_result(&ExecutionResult::ProjectedAndersonRubinConfidenceSet(
+      tabdat_stats::ProjectedArConfidenceSet {
+        coefficient: "grade76".into(),
+        nuisance_endogenous: vec!["exp76".into(), "expsq76".into()],
+        excluded_instruments: vec!["col4".into()],
+        confidence_level: 95.0,
+        observation_count: 3_010,
+        numerator_df: 1,
+        denominator_df: 3_004,
+        critical_f: 3.84,
+        shape: tabdat_stats::ArConfidenceSetShape::AllReal,
+        intervals: vec![tabdat_stats::ArConfidenceInterval {
+          lower: None,
+          upper: None,
+        }],
+        all_real_conservative_fallback: true,
+      },
+    ));
+    assert!(output.contains("Projected Anderson-Rubin confidence set"));
+    assert!(output.contains("(-inf, +inf)"));
+    assert!(output.contains("conservative all-real set"));
+  }
 
   #[test]
   fn unbalanced_gls_terminal_describes_theta_range_without_ml_profile_claims() {

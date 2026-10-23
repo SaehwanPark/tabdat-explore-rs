@@ -333,6 +333,51 @@ fn scalar_ar_scripts_report_all_set_shapes_without_clipping_infinity() {
   assert!(!fixture.0.join("numerical-not-written.csv").exists());
 }
 
+#[test]
+fn projected_ar_json_identifies_nuisance_policy_and_conservative_coverage() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("projected.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1 x2) iv(z1 z2)\nestat ar, ci coefficient(x1) level(90)\n",
+  )
+  .unwrap();
+  let results = json_lines(&fixture.run(&["--json", "-f", "projected.td"]));
+  assert_eq!(
+    results[2]["result_type"],
+    "ProjectedAndersonRubinConfidenceSet"
+  );
+  let data = &results[2]["data"];
+  assert_eq!(
+    data["test"],
+    "anderson_rubin_projected_scalar_confidence_set"
+  );
+  assert_eq!(data["coverage"], "at_least_confidence_level_by_projection");
+  assert_eq!(data["coefficient"], "x1");
+  assert_eq!(data["nuisance_endogenous"], json!(["x2"]));
+  assert_eq!(data["confidence_level"], 90.0);
+  assert_eq!(data["numerator_df"], 2);
+  assert_eq!(data["denominator_df"], 56);
+  assert_eq!(data["all_real_conservative_fallback"], false);
+  assert_eq!(data["weak_iv_robust"], true);
+  assert_eq!(data["covariance"], "homoskedastic");
+  assert_eq!(data["shape"], "bounded");
+  let output = fixture.run(&["--text", "-f", "projected.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let text = String::from_utf8(output.stdout).unwrap();
+  for expected in [
+    "Projected Anderson-Rubin confidence set",
+    "at least nominal coverage",
+    "Nuisance endogenous coefficients left unrestricted: [\"x2\"]",
+    "at-least-nominal coverage",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
+}
+
 fn json_lines(output: &Output) -> Vec<Value> {
   assert!(
     output.status.success(),

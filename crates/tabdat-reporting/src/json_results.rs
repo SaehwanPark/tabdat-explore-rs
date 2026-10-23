@@ -122,6 +122,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             EstatSubcommand::Vif
             | EstatSubcommand::AndersonRubin { .. }
             | EstatSubcommand::AndersonRubinConfidenceSet { .. }
+            | EstatSubcommand::AndersonRubinProjectedConfidenceSet { .. }
             | EstatSubcommand::Overid
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
@@ -234,6 +235,17 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["assumptions"] =
         json!("valid_instruments_homoskedastic_errors_exact_F_requires_conditional_normality");
       (data, "AndersonRubinConfidenceSet")
+    }
+    ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {
+      let mut data = serde_json::to_value(result).expect("serializable projected AR set");
+      data["test"] = json!("anderson_rubin_projected_scalar_confidence_set");
+      data["covariance"] = json!("homoskedastic");
+      data["weak_iv_robust"] = json!(true);
+      data["coverage"] = json!("at_least_confidence_level_by_projection");
+      data["endogenous_nuisance_policy"] = json!("project_over_all_other_endogenous_coefficients");
+      data["assumptions"] =
+        json!("valid_instruments_homoskedastic_errors_exact_F_requires_conditional_normality");
+      (data, "ProjectedAndersonRubinConfidenceSet")
     }
     ExecutionResult::RobustAndersonRubin(result) => {
       let mut data = serde_json::to_value(result).expect("finite robust AR result");

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  EstimationProblem, InstrumentalVariablesProblem, StatsError, f_distribution_survival_probability,
-  fit_least_squares,
+  EstimationProblem, InstrumentalVariablesProblem, IvOptions, StatsError,
+  f_distribution_survival_probability, fit_least_squares, fit_two_stage_least_squares,
 };
 
 /// Shape of the scalar AR nonrejection set; rays include their finite endpoint.
@@ -36,6 +36,24 @@ pub struct AndersonRubinConfidenceSet {
   pub critical_f: f64,
   pub shape: ArConfidenceSetShape,
   pub intervals: Vec<ArConfidenceInterval>,
+}
+
+/// Projection of a joint homoskedastic AR region onto one endogenous coefficient.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProjectedArConfidenceSet {
+  pub coefficient: String,
+  pub nuisance_endogenous: Vec<String>,
+  pub excluded_instruments: Vec<String>,
+  pub confidence_level: f64,
+  pub observation_count: usize,
+  pub numerator_df: usize,
+  pub denominator_df: usize,
+  pub critical_f: f64,
+  pub shape: ArConfidenceSetShape,
+  pub intervals: Vec<ArConfidenceInterval>,
+  /// True when the scaled nuisance curvature was not safely positive definite,
+  /// forcing the conservative all-real set.
+  pub all_real_conservative_fallback: bool,
 }
 
 fn invalid(message: &str) -> StatsError {
@@ -98,6 +116,385 @@ fn residualize(
 
 fn interval(lower: Option<f64>, upper: Option<f64>) -> ArConfidenceInterval {
   ArConfidenceInterval { lower, upper }
+}
+
+fn dot(left: &[f64], right: &[f64]) -> f64 {
+  left.iter().zip(right).map(|(a, b)| a * b).sum()
+}
+
+const PROFILE_MIN_SCALED_PIVOT: f64 = 1e-12;
+
+// Cholesky is applied to a matrix standardized to unit diagonal. A small or
+// nonpositive pivot declines exact profiling; callers return the conservative all-real set.
+fn positive_definite_factor(matrix: &[Vec<f64>]) -> Option<(Vec<f64>, Vec<Vec<f64>>)> {
+  let n = matrix.len();
+  let scales = matrix
+    .iter()
+    .enumerate()
+    .map(|(index, row)| row[index].sqrt())
+    .collect::<Vec<_>>();
+  if scales
+    .iter()
+    .any(|scale| !scale.is_finite() || *scale <= 0.0)
+  {
+    return None;
+  }
+  let standardized = matrix
+    .iter()
+    .enumerate()
+    .map(|(i, row)| {
+      row
+        .iter()
+        .enumerate()
+        .map(|(j, value)| value / scales[i] / scales[j])
+        .collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+  if standardized
+    .iter()
+    .flatten()
+    .any(|value| !value.is_finite())
+  {
+    return None;
+  }
+  let mut lower = vec![vec![0.0; n]; n];
+  for i in 0..n {
+    for j in 0..=i {
+      let prior = (0..j).map(|k| lower[i][k] * lower[j][k]).sum::<f64>();
+      let value = standardized[i][j] - prior;
+      if i == j {
+        if !value.is_finite() || value <= PROFILE_MIN_SCALED_PIVOT {
+          return None;
+        }
+        lower[i][j] = value.sqrt();
+      } else {
+        lower[i][j] = value / lower[j][j];
+      }
+    }
+  }
+  Some((scales, lower))
+}
+
+fn cholesky_solve(lower: &[Vec<f64>], rhs: &[f64]) -> Option<Vec<f64>> {
+  let n = lower.len();
+  let mut forward = vec![0.0; n];
+  for i in 0..n {
+    let prior = (0..i).map(|j| lower[i][j] * forward[j]).sum::<f64>();
+    forward[i] = (rhs[i] - prior) / lower[i][i];
+  }
+  let mut solution = vec![0.0; n];
+  for i in (0..n).rev() {
+    let prior = (i + 1..n).map(|j| lower[j][i] * solution[j]).sum::<f64>();
+    solution[i] = (forward[i] - prior) / lower[i][i];
+  }
+  solution
+    .iter()
+    .all(|value| value.is_finite())
+    .then_some(solution)
+}
+
+fn all_real_projection(
+  problem: &InstrumentalVariablesProblem,
+  coefficient: &str,
+  nuisance_endogenous: Vec<String>,
+  level: f64,
+  df: usize,
+  critical: f64,
+) -> ProjectedArConfidenceSet {
+  ProjectedArConfidenceSet {
+    coefficient: coefficient.to_owned(),
+    nuisance_endogenous,
+    excluded_instruments: problem.instrument_names.clone(),
+    confidence_level: level,
+    observation_count: problem.response.len(),
+    numerator_df: problem.instrument_names.len(),
+    denominator_df: df,
+    critical_f: critical,
+    shape: ArConfidenceSetShape::AllReal,
+    intervals: vec![interval(None, None)],
+    all_real_conservative_fallback: true,
+  }
+}
+
+/// Project the joint homoskedastic AR confidence region onto one endogenous
+/// coefficient, leaving every other endogenous coefficient unrestricted.
+///
+/// Projection has at-least-nominal coverage because it projects a joint region.
+/// The nuisance quadratic is profiled analytically when its curvature is safely
+/// positive definite after unit-diagonal scaling (Cholesky pivots above 1e-12).
+/// Otherwise the all-real set is returned as a conservative fallback; no nuisance
+/// coefficient is fixed at an estimate or searched on a grid.
+pub fn projected_anderson_rubin_confidence_set(
+  problem: &InstrumentalVariablesProblem,
+  coefficient: &str,
+  level: f64,
+) -> Result<ProjectedArConfidenceSet, StatsError> {
+  problem.validate()?;
+  if problem.endogenous_names.len() < 2 {
+    return Err(invalid(
+      "projected AR confidence sets require at least two endogenous regressors",
+    ));
+  }
+  if !level.is_finite() || level <= 0.0 || level >= 100.0 {
+    return Err(invalid(
+      "AR confidence level must be finite and strictly between 0 and 100",
+    ));
+  }
+  let Some(target) = problem
+    .endogenous_names
+    .iter()
+    .position(|name| name == coefficient)
+  else {
+    return Err(invalid(
+      "projected AR coefficient must name an endogenous regressor in the retained fit",
+    ));
+  };
+  let nuisance_indices = (0..problem.endogenous_names.len())
+    .filter(|index| *index != target)
+    .collect::<Vec<_>>();
+  let nuisance_endogenous = nuisance_indices
+    .iter()
+    .map(|index| problem.endogenous_names[*index].clone())
+    .collect::<Vec<_>>();
+  let n = problem.response.len();
+  let names = problem
+    .exogenous_names
+    .iter()
+    .chain(&problem.instrument_names)
+    .cloned()
+    .collect::<Vec<_>>();
+  let parameters = names.len() + usize::from(problem.include_intercept);
+  if n <= parameters {
+    return Err(StatsError::ZeroDegreesOfFreedom {
+      observations: n,
+      parameters,
+    });
+  }
+  let df = n - parameters;
+  let critical = critical_f(1.0 - level / 100.0, problem.instrument_names.len(), df)?;
+  let design = problem
+    .exogenous
+    .iter()
+    .zip(&problem.instruments)
+    .map(|(w, z)| w.iter().chain(z).copied().collect())
+    .collect::<Vec<Vec<f64>>>();
+
+  // Center the quadratic at the existing 2SLS estimate to reduce cancellation;
+  // the center affects only arithmetic, never the projected test or its coverage.
+  let fitted = fit_two_stage_least_squares(problem, &IvOptions::default())?;
+  let centers = fitted
+    .regression
+    .coefficients
+    .iter()
+    .filter(|estimate| problem.endogenous_names.contains(&estimate.name))
+    .map(|estimate| estimate.value)
+    .collect::<Vec<_>>();
+  if centers.len() != problem.endogenous_names.len() {
+    return Err(invalid("projected AR coefficient center is incomplete"));
+  }
+  let centered_response = problem
+    .response
+    .iter()
+    .zip(&problem.endogenous)
+    .map(|(y, row)| y - row.iter().zip(&centers).map(|(x, b)| x * b).sum::<f64>())
+    .collect::<Vec<_>>();
+  if centered_response.iter().any(|value| !value.is_finite()) {
+    return Err(invalid("projected AR centered outcome is non-finite"));
+  }
+  let restricted_y = residualize(
+    &centered_response,
+    &problem.exogenous,
+    &problem.exogenous_names,
+    problem.include_intercept,
+  )?;
+  let unrestricted_y = residualize(
+    &centered_response,
+    &design,
+    &names,
+    problem.include_intercept,
+  )?;
+  let mut restricted_x = Vec::with_capacity(problem.endogenous_names.len());
+  let mut unrestricted_x = Vec::with_capacity(problem.endogenous_names.len());
+  for column in 0..problem.endogenous_names.len() {
+    let values = problem
+      .endogenous
+      .iter()
+      .map(|row| row[column])
+      .collect::<Vec<_>>();
+    restricted_x.push(residualize(
+      &values,
+      &problem.exogenous,
+      &problem.exogenous_names,
+      problem.include_intercept,
+    )?);
+    unrestricted_x.push(residualize(
+      &values,
+      &design,
+      &names,
+      problem.include_intercept,
+    )?);
+  }
+  let unrestricted_y_ss = dot(&unrestricted_y, &unrestricted_y);
+  if !unrestricted_y_ss.is_finite() || unrestricted_y_ss <= 0.0 {
+    return Err(invalid(
+      "AR confidence-set auxiliary residual variance is undefined or non-finite",
+    ));
+  }
+  let innovation = fit_least_squares(
+    &EstimationProblem::new(
+      "projected_ar_auxiliary_variance",
+      problem.endogenous_names.clone(),
+      unrestricted_y.clone(),
+      (0..n)
+        .map(|row| {
+          unrestricted_x
+            .iter()
+            .map(|column| column[row])
+            .collect::<Vec<_>>()
+        })
+        .collect(),
+    )?
+    .with_intercept(false),
+  )?
+  .residuals
+  .iter()
+  .map(|value| value * value)
+  .sum::<f64>();
+  if !innovation.is_finite() || innovation <= 1e-24 * unrestricted_y_ss {
+    return Err(invalid(
+      "AR confidence-set auxiliary residual pair is numerically degenerate",
+    ));
+  }
+
+  let k = 1.0 + problem.instrument_names.len() as f64 * critical / df as f64;
+  if !k.is_finite() || k <= 1.0 {
+    return Err(invalid(
+      "AR critical increment exceeds floating-point resolution",
+    ));
+  }
+  let dimension = problem.endogenous_names.len();
+  let mut curvature = vec![vec![0.0; dimension]; dimension];
+  let mut linear = vec![0.0; dimension];
+  for i in 0..dimension {
+    linear[i] = dot(&restricted_x[i], &restricted_y) - k * dot(&unrestricted_x[i], &unrestricted_y);
+    for j in 0..dimension {
+      curvature[i][j] =
+        dot(&restricted_x[i], &restricted_x[j]) - k * dot(&unrestricted_x[i], &unrestricted_x[j]);
+    }
+  }
+  let constant = dot(&restricted_y, &restricted_y) - k * unrestricted_y_ss;
+  if !constant.is_finite()
+    || linear.iter().any(|value| !value.is_finite())
+    || curvature.iter().flatten().any(|value| !value.is_finite())
+  {
+    return Err(invalid("projected AR quadratic is non-finite"));
+  }
+
+  let nuisance_curvature = nuisance_indices
+    .iter()
+    .map(|i| nuisance_indices.iter().map(|j| curvature[*i][*j]).collect())
+    .collect::<Vec<Vec<f64>>>();
+  let Some((nuisance_scales, factor)) = positive_definite_factor(&nuisance_curvature) else {
+    return Ok(all_real_projection(
+      problem,
+      coefficient,
+      nuisance_endogenous,
+      level,
+      df,
+      critical,
+    ));
+  };
+  let nuisance_linear = nuisance_indices
+    .iter()
+    .map(|index| linear[*index])
+    .collect::<Vec<_>>();
+  let nuisance_cross = nuisance_indices
+    .iter()
+    .map(|index| curvature[*index][target])
+    .collect::<Vec<_>>();
+  let scaled_linear = nuisance_indices
+    .iter()
+    .enumerate()
+    .map(|(position, index)| linear[*index] / nuisance_scales[position])
+    .collect::<Vec<_>>();
+  let scaled_cross = nuisance_cross
+    .iter()
+    .enumerate()
+    .map(|(position, value)| value / nuisance_scales[position])
+    .collect::<Vec<_>>();
+  let Some(solution_linear) = cholesky_solve(&factor, &scaled_linear).map(|solution| {
+    solution
+      .iter()
+      .zip(&nuisance_scales)
+      .map(|(value, scale)| value / scale)
+      .collect::<Vec<_>>()
+  }) else {
+    return Ok(all_real_projection(
+      problem,
+      coefficient,
+      nuisance_endogenous,
+      level,
+      df,
+      critical,
+    ));
+  };
+  let Some(solution_cross) = cholesky_solve(&factor, &scaled_cross).map(|solution| {
+    solution
+      .iter()
+      .zip(&nuisance_scales)
+      .map(|(value, scale)| value / scale)
+      .collect::<Vec<_>>()
+  }) else {
+    return Ok(all_real_projection(
+      problem,
+      coefficient,
+      nuisance_endogenous,
+      level,
+      df,
+      critical,
+    ));
+  };
+  let profile_a = curvature[target][target] - dot(&nuisance_cross, &solution_cross);
+  let profile_b = -2.0 * linear[target] + 2.0 * dot(&nuisance_cross, &solution_linear);
+  let profile_c = constant - dot(&nuisance_linear, &solution_linear);
+  let (shape, mut intervals) = quadratic_set(profile_a, profile_b, profile_c)?;
+  let center = centers[target];
+  for interval in &mut intervals {
+    for bound in [&mut interval.lower, &mut interval.upper]
+      .into_iter()
+      .flatten()
+    {
+      *bound += center;
+      if !bound.is_finite() {
+        return Err(invalid(
+          "AR confidence-set endpoint exceeds the finite numerical range",
+        ));
+      }
+    }
+  }
+  let collapsed = match shape {
+    ArConfidenceSetShape::Bounded => intervals[0].lower >= intervals[0].upper,
+    ArConfidenceSetShape::Disjoint => intervals[0].upper >= intervals[1].lower,
+    _ => false,
+  };
+  if collapsed {
+    return Err(invalid(
+      "AR confidence-set endpoints exceed floating-point resolution",
+    ));
+  }
+  Ok(ProjectedArConfidenceSet {
+    coefficient: coefficient.to_owned(),
+    nuisance_endogenous,
+    excluded_instruments: problem.instrument_names.clone(),
+    confidence_level: level,
+    observation_count: n,
+    numerator_df: problem.instrument_names.len(),
+    denominator_df: df,
+    critical_f: critical,
+    shape,
+    intervals,
+    all_real_conservative_fallback: false,
+  })
 }
 
 // Solve a*b^2 + b_coefficient*b + c <= 0 without a finite search grid. Scaling
