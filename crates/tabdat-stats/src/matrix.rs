@@ -463,6 +463,36 @@ pub fn xtx_inverse_from_r(r: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   Ok(xtx_inv)
 }
 
+/// Invert positive-definite choice information from RMS-scaled predictors and
+/// a per-independent-decision average. Tiny/nonpositive pivots fail rather than
+/// introducing a ridge or pseudoinverse into coefficient inference.
+pub(crate) fn choice_information_inverse(
+  information: &[Vec<f64>],
+) -> Result<Vec<Vec<f64>>, StatsError> {
+  let p = information.len();
+  validate_row_lengths(information, p, "choice information")?;
+  let mut lower = vec![vec![0.0; p]; p];
+  for i in 0..p {
+    for j in 0..=i {
+      let value = information[i][j] - (0..j).map(|s| lower[i][s] * lower[j][s]).sum::<f64>();
+      if i == j {
+        if !value.is_finite() || value <= 1e-12 {
+          return Err(StatsError::EstimationFailed(
+            "singular or numerically degenerate information; possible separation".into(),
+          ));
+        }
+        lower[i][j] = value.sqrt();
+      } else {
+        lower[i][j] = value / lower[j][j];
+      }
+    }
+  }
+  let upper = (0..p)
+    .map(|i| (0..p).map(|j| lower[j][i]).collect())
+    .collect::<Vec<Vec<f64>>>();
+  xtx_inverse_from_r(&upper)
+}
+
 /// Compute sandwich quadratic form: V = A * B * A'.
 pub fn sandwich(a: &[Vec<f64>], b: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
   let ab = multiply(a, b)?;

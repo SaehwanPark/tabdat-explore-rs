@@ -9,6 +9,7 @@
 
 mod binary;
 mod bootstrap;
+mod conditional_logit;
 mod count_probabilities;
 pub mod diagnostics;
 mod distributions;
@@ -45,6 +46,10 @@ pub use binary::{
 pub use bootstrap::{
   BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, ClusterBootstrapOlsResult,
   MAX_BOOTSTRAP_REPLICATIONS, MAX_BOOTSTRAP_WORK, bootstrap_ols, bootstrap_ols_clustered,
+};
+pub use conditional_logit::{
+  ConditionalLogitOptions, ConditionalLogitProblem, ConditionalLogitResult,
+  conditional_logit_predict_set, fit_conditional_logit,
 };
 pub use count_probabilities::{
   CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_POINT_CUTOFF,

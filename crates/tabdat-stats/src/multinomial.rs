@@ -2,7 +2,7 @@
 //! All coefficient inference uses the full joint model-based Fisher information.
 
 use crate::distributions::chi_square_tail;
-use crate::matrix::{qr_decompose_with_response, xtx_inverse_from_r};
+use crate::matrix::{choice_information_inverse, qr_decompose_with_response};
 use crate::{EstimationProblem, EstimationSample, LogitEstimate, StatsError};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -215,31 +215,11 @@ fn evaluate(
   })
 }
 
-// Positive-definite Cholesky on per-observation information from RMS-scaled X.
-// A small/nonpositive pivot is an identification/separation failure, not a
-// pseudoinverse or ridge fallback that could manufacture coefficient inference.
 fn information_inverse(information: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, StatsError> {
-  let p = information.len();
-  let mut lower = vec![vec![0.0; p]; p];
-  for i in 0..p {
-    for j in 0..=i {
-      let value = information[i][j] - (0..j).map(|s| lower[i][s] * lower[j][s]).sum::<f64>();
-      if i == j {
-        if !value.is_finite() || value <= 1e-12 {
-          return Err(failed(
-            "singular or numerically degenerate information; possible separation",
-          ));
-        }
-        lower[i][j] = value.sqrt();
-      } else {
-        lower[i][j] = value / lower[j][j];
-      }
-    }
-  }
-  let upper = (0..p)
-    .map(|i| (0..p).map(|j| lower[j][i]).collect())
-    .collect::<Vec<Vec<f64>>>();
-  xtx_inverse_from_r(&upper)
+  choice_information_inverse(information).map_err(|error| match error {
+    StatsError::EstimationFailed(message) => failed(&message),
+    error => error,
+  })
 }
 
 fn inference(
