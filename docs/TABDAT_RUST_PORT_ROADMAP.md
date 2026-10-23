@@ -332,9 +332,14 @@ advances method coverage, not the Cameron–Trivedi empirical-illustration ledge
 Sargan is not robust Hansen J, an endogeneity test, or proof of instrument validity.
 The same specified sample additionally validates joint homoskedastic
 `estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
-using auxiliary original/innovation-augmented OLS. Robust/cluster/subset forms
-remain unsupported; this conventional test assumes valid instruments and does
-not establish exogeneity or instrument validity by failing to reject.
+using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all
+first-stage innovations jointly by augmented-OLS Wald with asymptotic chi-square
+inference. Its auxiliary K/DF/corrections and exact 48-state HC1 R reference are
+explicit in the same example; five synthetic designs independently validate HC1
+and grouped-score CR1. This is additional method evidence, not new book coverage.
+Subset forms, robust score/GMM C variants and few-cluster guarantees remain
+unsupported; these conventional tests assume valid instruments and do not
+establish exogeneity or instrument validity by failing to reject.
 
 Implement the selected bounded plan without broadening scope. If it conflicts
 with the codebase or reference semantics, stop and report the conflict rather than

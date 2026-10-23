@@ -164,8 +164,8 @@ Sargan uses the retained sample/design/residuals even after current data changes
 it does not refit 2SLS, rescan current columns or mutate dataset/model state.
 CLI-v1 JSON returns `SarganResult` with test convention, assumptions, N, endogenous
 and excluded-instrument names, DF, statistic and upper-tail p-value. Scripts and
-`--text` expose the same owned results. Endogeneity tests, robust/cluster overid
-and GMM remain separate work. See the reproducible external-data example under
+`--text` expose the same owned results. Endogeneity tests are described below;
+robust/cluster overid and GMM remain separate work. See the reproducible external-data example under
 `examples/cigarettes_iv/`.
 
 ## Joint Wu–Hausman endogeneity test
@@ -187,7 +187,8 @@ The homoskedastic Wu–Hausman statistic is
 `((RSS_restricted - RSS_augmented)/m) / (RSS_augmented/(N-K-m))`, where K includes
 the original intercept and regressors. It reports F(m, N-K-m), **not** the
 first-stage or 2SLS residual DF. No Durbin chi-square LM, covariance-difference
-Hausman, endogenous-subset, or robust/cluster variant is implied.
+Hausman or endogenous-subset test is implied. Robust/cluster fits use the separate
+Wald convention below, not this F reference.
 
 The conventional reference requires valid instruments, homoskedastic errors,
 correct specification and standard strong-identification regularity. Exact
@@ -195,7 +196,8 @@ finite-sample F additionally requires conditional normality. Rejection of joint
 exogeneity is conditional on these assumptions; invalid instruments or a
 misspecified model can invalidate that interpretation. Failure to reject does
 not prove exogeneity, instrument validity or weak-IV-robust coefficient inference.
-Robust/cluster parent fits are rejected, not silently converted.
+The classical result and its reference are not silently substituted for robust
+or clustered inference.
 
 Auxiliary predictors are norm-rescaled without changing their column spaces.
 An innovation norm at most 1e-12 relative to the endogenous residual norm after
@@ -212,6 +214,34 @@ names, excluded instruments, N, numerator/denominator DF, F, upper-tail p-value,
 joint-null scope and assumptions. The external AER example in
 `examples/cigarettes_iv/endogenous.td` distinguishes the classical F from an HC0
 contrast; neither is silently substituted for the other.
+
+### Robust/one-way clustered joint endogeneity Wald
+
+After `ivregress 2sls ..., robust` or `cluster(unit)`, the same `estat endogenous`
+command jointly tests all first-stage innovation coefficients in the augmented
+OLS regression. It uses **auxiliary** HC1 `N/(N-Kaux)` or one-way CR1
+`G/(G-1)*(N-1)/(N-Kaux)` score covariance, where `Kaux = K+m`, not the parent IV
+parameter count. First stages remain OLS; cluster IDs come from the retained fit
+sample, not current data. All classical innovation/variance/rank guards still
+apply, and a singular/rank-limited innovation Wald covariance is an error rather
+than a reduced-rank test.
+
+`RobustEndogeneityResult` reports the Wald statistic with an **asymptotic
+chi-square(m)** reference, auxiliary K/residual DF, correction, covariance mode
+and optional group count. Residual DF is correction metadata, not a chi-square
+denominator or G-1 t/F reference. This is not an exact finite-sample F, robust
+score test, GMM difference-in-Sargan test, subset test or weak-IV-robust inference.
+Valid instruments, the maintained linear model and conventional strong
+identification are required. HC1 assumes independent rows; CR1 allows within-group
+dependence but needs independent, growing groups, with no few-cluster guarantee.
+Failure to reject does not establish exogeneity or instrument validity.
+
+The [Stata methods discussion, p22](https://www.stata.com/manuals/rivregresspostestimation.pdf)
+describes residual inclusion and appropriate robust covariance, citing Cameron
+and Trivedi (2005, p276); native chi-square/correction conventions are explicit,
+not a claim of historical Stata finite-F parity. The independent base-R workflow
+`examples/cigarettes_iv/robust_endogenous.td` and synthetic HC1/CR1 references
+provide method evidence, not another validated textbook illustration.
 
 ## Joint Anderson–Rubin test
 

@@ -135,7 +135,7 @@ fn robust_joint_wald_matches_base_r_auxiliary_scores_across_five_designs() {
       true,
       true,
       false,
-      8.839999999999989,
+      8.839_999_999_999_99,
       0.01203423228472384,
       6.998166248971174,
       0.0302250833605348,

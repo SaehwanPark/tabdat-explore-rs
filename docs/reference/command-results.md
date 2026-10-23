@@ -1231,13 +1231,35 @@ Linear JSON results reuse the supplied statistics without recalculation:
   intercept. This is not Durbin LM or a covariance-difference/robust Hausman test.
   Just-identification is allowed. Valid instruments, homoskedasticity, maintained
   specification and conventional strong-identification regularity are required;
-  exact F additionally requires conditional normality. Endogenous-subset and
-  robust/cluster parent forms are unsupported. Auxiliary predictors are rescaled,
+  exact F additionally requires conditional normality. Endogenous-subset forms
+  are unsupported; robust/cluster parents return the distinct result below.
+  Auxiliary predictors are rescaled,
   not redefined; all rows/designs come from the retained problem. No 2SLS refit,
   current-data scan or model/data mutation occurs. Rank/DF/finite/variance failures
   and relative innovation/augmented-residual norm at most 1e-12 (see `help estat`)
   are errors, not a claim of exogeneity. Failure to reject does not prove
   exogeneity or instrument validity. Text/scripts expose the same owned result.
+- `RobustEndogeneityResult` (`estat endogenous` after HC1/one-way clustered 2SLS):
+  `test: "endogeneity_augmented_regression_robust_wald"`,
+  `covariance: "robust_hc1"` or `"cluster(variable)"`,
+  `reference_distribution: "asymptotic_chi_square"`,
+  `null_scope: "all_endogenous_joint"`,
+  `null_hypothesis: "all_declared_endogenous_regressors_exogenous"`,
+  `weak_iv_robust: false`,
+  `assumptions: "valid_instruments_maintained_linear_model_strong_identification_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"`,
+  ordered `endogenous`/`excluded_instruments`, `observation_count`,
+  `auxiliary_parameter_count`, `auxiliary_residual_df`, `covariance_correction`,
+  nullable `cluster_group_count`, `degrees_of_freedom`, `statistic`, `p_value`.
+  Tests all m first-stage innovation coefficients jointly in retained-design
+  augmented OLS, with HC1 N/(N-Kaux) or CR1 G/(G-1)*(N-1)/(N-Kaux), Kaux=K+m.
+  Auxiliary residual DF is correction metadata, not an F denominator; Wald uses
+  asymptotic chi-square(m). This is not an exact F, robust score/GMM C, subset,
+  few-cluster or weak-IV procedure. Valid instruments and conventional strong
+  identification are required. Uses retained cluster IDs, not current columns;
+  no data/model mutation or 2SLS refit. Classical innovation/variance/rank guards
+  still apply; singular/rank-limited Wald covariance fails, not a reduced test.
+  Text/scripts expose the same result. Failure to reject proves neither
+  exogeneity nor instrument validity.
 - `SarganResult` (`estat overid` after an overidentified nonrobust 2SLS fit):
   `test: "sargan_n_r_squared"`, `covariance: "homoskedastic"`,
   `reference_distribution: "asymptotic_chi_square"`, `weak_iv_robust: false`,

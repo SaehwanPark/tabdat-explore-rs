@@ -34,8 +34,11 @@ DF, retained-residual and failure semantics. `estat endogenous` additionally
 provides the joint homoskedastic regression-based Wu–Hausman F test of all declared
 endogenous regressors, even for just-identified models. It assumes valid
 instruments and uses N-K-m augmented-regression residual DF; it is not a Durbin LM,
-robust/cluster or endogenous-subset test. See `help estat` for numerical limits.
-Robust/cluster endogeneity/overid, multi-endogenous confidence regions,
+robust/cluster or endogenous-subset test. Robust/cluster parent fits instead
+support a distinct augmented-OLS joint innovation Wald test with asymptotic
+chi-square(m) inference and auxiliary HC1/CR1 corrections (Kaux=K+m), not an
+exact F or weak-IV-robust test. See `help estat` for assumptions/numerical limits.
+Subset/robust-score endogeneity, robust/cluster overid, multi-endogenous confidence regions,
 robust/cluster confidence sets and GMM are not implemented;
 `gmm` is parsed but execution reports it as unsupported.
 

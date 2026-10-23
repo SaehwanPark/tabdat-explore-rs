@@ -297,14 +297,22 @@ fn wu_hausman_reuses_retained_sample_and_supports_joint_just_identified_models()
   assert_eq!(session.state(), changed);
   for mode in ["robust", "cluster(group_id)"] {
     let mut session = load(&fixture);
-    session
+    let ExecutionResult::Regression(fit) = session
       .execute(
         parse_command(&format!(
           "ivregress 2sls y w, endog(x1 x2) iv(z1 z2) {mode}"
         ))
         .unwrap(),
       )
-      .unwrap();
+      .unwrap()
+    else {
+      panic!("fit");
+    };
+    let first_retained = if mode.starts_with("cluster") { 3 } else { 2 };
+    assert_eq!(
+      fit.least_squares.sample.as_ref().unwrap().retained_indices,
+      (first_retained..60).collect::<Vec<_>>()
+    );
     let before = session.state();
     let result = session.execute(command.clone()).unwrap();
     let ExecutionResult::RobustEndogeneity(test) = &result else {
@@ -330,6 +338,32 @@ fn wu_hausman_reuses_retained_sample_and_supports_joint_just_identified_models()
     assert_eq!(session.execute(command.clone()).unwrap(), result);
     assert_eq!(session.state(), changed);
   }
+}
+
+#[test]
+fn robust_endogeneity_failure_keeps_the_retained_iv_fit_and_dataset() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  session
+    .execute(
+      parse_command(
+        r#"sql """SELECT *, CASE WHEN w > 0 THEN 1 ELSE 0 END AS two FROM active""" into two_groups"#,
+      )
+      .unwrap(),
+    )
+    .unwrap();
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2) cluster(two)").unwrap())
+    .unwrap();
+  let before = session.state();
+  let error = session
+    .execute(parse_command("estat endogenous").unwrap())
+    .unwrap_err();
+  assert!(error.to_string().contains("Wald"), "{error}");
+  assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("predict xb_after_failure, xb").unwrap())
+    .unwrap();
 }
 
 #[test]
