@@ -446,6 +446,63 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
+fn projected_ar_confidence_sets_reuse_the_retained_fit_and_keep_robust_limits_explicit() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("ivregress 2sls y w, endog(x1 x2) iv(z1 z2)").unwrap())
+    .unwrap();
+  let before = session.state();
+  assert!(
+    session
+      .execute(parse_command("estat ar, ci coefficient(w)").unwrap())
+      .unwrap_err()
+      .to_string()
+      .contains("must name an endogenous regressor")
+  );
+  assert_eq!(session.state(), before);
+  let command = parse_command("estat ar, ci coefficient(x1) level(90)").unwrap();
+  let result = session.execute(command.clone()).unwrap();
+  let ExecutionResult::ProjectedAndersonRubinConfidenceSet(set) = &result else {
+    panic!("expected projected AR confidence set");
+  };
+  assert_eq!(set.coefficient, "x1");
+  assert_eq!(set.nuisance_endogenous, ["x2"]);
+  assert_eq!(set.observation_count, 58);
+  assert_eq!(set.confidence_level, 90.0);
+  assert_eq!(session.state(), before);
+
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(command).unwrap(), result);
+  assert_eq!(session.state(), changed);
+
+  for option in ["robust", "cluster(group_id)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x1 x2) iv(z1 z2) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    assert!(
+      session
+        .execute(parse_command("estat ar, ci coefficient(x1)").unwrap())
+        .unwrap_err()
+        .to_string()
+        .contains("robust/cluster confidence sets are not implemented")
+    );
+    assert_eq!(session.state(), before);
+  }
+}
+
+#[test]
 fn ivregress_failure_clears_stale_model_state_but_gmm_is_explicitly_unsupported() {
   let fixture = Fixture::new_with_sql(
     "SELECT i::DOUBLE AS i, sin(i::DOUBLE) AS y, sin(i::DOUBLE * 0.4) AS w, \

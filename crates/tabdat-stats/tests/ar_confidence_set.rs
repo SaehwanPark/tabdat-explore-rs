@@ -1,6 +1,6 @@
 use tabdat_stats::{
   ArConfidenceSetShape, InstrumentalVariablesProblem, StatsError, anderson_rubin_confidence_set,
-  anderson_rubin_test,
+  anderson_rubin_test, projected_anderson_rubin_confidence_set,
 };
 
 fn close(actual: f64, expected: f64) {
@@ -30,6 +30,39 @@ fn problem(strength: f64, direct_z1: f64, direct_z2: f64) -> InstrumentalVariabl
     problem.exogenous.push(vec![w]);
     problem.endogenous.push(vec![x]);
     problem.instruments.push(vec![basis(1.0), basis(2.0)]);
+  }
+  problem
+}
+
+fn three_endogenous_problem(nuisance_strength: f64) -> InstrumentalVariablesProblem {
+  let mut problem = InstrumentalVariablesProblem {
+    outcome: "y".into(),
+    exogenous_names: vec!["w".into()],
+    endogenous_names: vec!["grade".into(), "exp".into(), "expsq".into()],
+    instrument_names: vec!["z1".into(), "z2".into(), "z3".into()],
+    response: Vec::new(),
+    exogenous: Vec::new(),
+    endogenous: Vec::new(),
+    instruments: Vec::new(),
+    include_intercept: true,
+    sample: None,
+  };
+  for i in 1..=80 {
+    let basis = |k: f64| (2.0 * std::f64::consts::PI * k * i as f64 / 80.0).cos();
+    let w = basis(7.0);
+    let x = [
+      0.55 * basis(1.0) + basis(4.0),
+      nuisance_strength * basis(2.0) + basis(5.0),
+      nuisance_strength * basis(3.0) + basis(6.0),
+    ];
+    problem
+      .response
+      .push(1.3 * x[0] - 0.6 * x[1] + 0.15 * x[2] + 0.5 * w + basis(8.0));
+    problem.exogenous.push(vec![w]);
+    problem.endogenous.push(x.to_vec());
+    problem
+      .instruments
+      .push(vec![basis(1.0), basis(2.0), basis(3.0)]);
   }
   problem
 }
@@ -251,4 +284,49 @@ fn invalid_scope_levels_rank_df_and_variance_are_errors() {
   assert!(anderson_rubin_confidence_set(&problem, 95.0).is_err());
   problem.response.fill(0.0);
   assert!(anderson_rubin_confidence_set(&problem, 95.0).is_err());
+}
+
+#[test]
+fn projected_set_matches_independent_r_and_falls_back_conservatively_for_weak_nuisance() {
+  // R 4.6.1 fixture reference uses lm.fit, optim and uniroot in
+  // fixtures/projected_ar_confidence_set_reference.R.
+  let problem = three_endogenous_problem(1.4);
+  let result = projected_anderson_rubin_confidence_set(&problem, "grade", 95.0).unwrap();
+  assert_eq!(result.shape, ArConfidenceSetShape::Bounded);
+  assert_eq!(result.nuisance_endogenous, ["exp", "expsq"]);
+  assert!(!result.all_real_conservative_fallback);
+  assert_eq!(
+    (
+      result.observation_count,
+      result.numerator_df,
+      result.denominator_df
+    ),
+    (80, 3, 75)
+  );
+  close(result.critical_f, 2.726589156256709);
+  close(result.intervals[0].lower.unwrap(), 0.549119702658308);
+  close(result.intervals[0].upper.unwrap(), 2.050880297341690);
+  for beta in [0.0, 0.55, 1.3, 2.05, 3.0] {
+    let contains = result.intervals.iter().any(|interval| {
+      interval.lower.is_none_or(|bound| beta >= bound)
+        && interval.upper.is_none_or(|bound| beta <= bound)
+    });
+    if beta == 0.0 || beta == 3.0 {
+      assert!(!contains);
+    } else {
+      assert!(contains, "beta={beta}, set={:?}", result.intervals);
+    }
+  }
+
+  let weak_nuisance = three_endogenous_problem(0.01);
+  let fallback = projected_anderson_rubin_confidence_set(&weak_nuisance, "grade", 95.0).unwrap();
+  assert_eq!(fallback.shape, ArConfidenceSetShape::AllReal);
+  assert!(fallback.all_real_conservative_fallback);
+  assert_eq!(
+    fallback.intervals,
+    [tabdat_stats::ArConfidenceInterval {
+      lower: None,
+      upper: None,
+    }]
+  );
 }

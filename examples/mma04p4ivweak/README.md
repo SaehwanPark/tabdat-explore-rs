@@ -19,10 +19,28 @@ and excluded-instrument first-stage F(3, 2980)=8.07. The app reports ordinary
 partial R²=0.00805582 separately from Shea's partial R²=0.00640757 for `grade76`.
 Neither relevance diagnostic supplies weak-IV-robust inference.
 
+To obtain a schooling-specific weak-IV-robust interval while leaving the
+experience coefficients as endogenous nuisance parameters, run the nonrobust
+projection workflow:
+
+```sh
+(cd examples/mma04p4ivweak && cargo run --manifest-path ../../Cargo.toml -- \
+  --text -f schooling_iv_ar_ci.td)
+```
+
+On DATA66 this retains N=3,010 and reports the 95% `grade76` projection
+[-0.014387552440543, 0.502853235901166]. This is an analytic projection of the
+joint homoskedastic AR region, so coverage is at least 95% and can be conservative.
+Exact finite-sample coverage also requires conditional normality. The published
+program reports conventional robust 2SLS standard errors; this method currently
+requires a separate nonrobust fit and does not inherit that robust covariance
+claim.
+
 For a development-only independent R reference (not a runtime dependency):
 
 ```sh
 Rscript examples/mma04p4ivweak/reference_shea.R /path/to/DATA66.csv
+Rscript examples/mma04p4ivweak/reference_ar_projected.R /path/to/DATA66.csv
 ```
 
 This uses the same selected complete-case sample, residualizes each original and
@@ -31,3 +49,8 @@ residual sums of squares. It checks N and the author's rounded Shea statistic,
 prints all three Shea values and the retained original CSV row indices. The
 synthetic R reference and Rust tests additionally cover covariance invariance,
 no-intercept designs and outcome-independent diagnostics.
+
+The projected-AR reference independently profiles `exp76` and `expsq76` with
+base-R `optim`, obtains each auxiliary residual sum of squares with `lm.fit`, and
+brackets the two grade endpoints with `uniroot`. Source files are downloaded
+temporarily for validation and are not included in the repository.

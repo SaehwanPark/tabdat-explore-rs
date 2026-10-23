@@ -1291,7 +1291,7 @@ Linear JSON results reuse the supplied statistics without recalculation:
   auxiliary design/variance/DF failures are errors; restrictions are never dropped
   to manufacture a p-value. Retained sample/design/groups are used without 2SLS
   refits, current-column reads or state mutation. Robust confidence sets and
-  endogenous-subvector inference remain unsupported. The synthetic
+  less-conservative endogenous-subvector tests remain unsupported. The synthetic
   `examples/robust-ar/` workflow records independent numerical/sample evidence.
 - `AndersonRubinConfidenceSet` (`estat ar, ci [level(95)]`): scalar nonrejection
   set for exactly one endogenous coefficient, leaving included-exogenous
@@ -1310,8 +1310,25 @@ Linear JSON results reuse the supplied statistics without recalculation:
   fits are rejected. Rank/DF/nonfinite/range failures and auxiliary residual
   variance that cannot remain positive for all nulls are errors, not empty sets
   (see `help estat` for the relative 1e-12 innovation-norm policy). Assumptions and
-  retained sample/state semantics match the homoskedastic joint test; this does
-  not project a region onto one coefficient with endogenous nuisance parameters.
+  retained sample/state semantics match the homoskedastic joint test; use the
+  projected result below to leave other endogenous coefficients unrestricted.
+- `ProjectedAndersonRubinConfidenceSet`
+  (`estat ar, ci coefficient(name) [level(95)]` after a nonrobust multi-endogenous
+  2SLS fit): analytic projection of the joint homoskedastic AR nonrejection region
+  onto one named endogenous coefficient, leaving all other endogenous coefficients
+  unrestricted. It reports `test: "anderson_rubin_projected_scalar_confidence_set"`,
+  `coverage: "at_least_confidence_level_by_projection"`, the selected `coefficient`,
+  ordered `nuisance_endogenous`, instruments, level, N, F numerator/denominator DF,
+  critical F, `shape`, `intervals`, and
+  `all_real_conservative_fallback`. The joint-region critical value uses
+  F(q, N − rank[W,Z]); the projection is at least nominal and can be conservative.
+  If unit-diagonal-scaled nuisance curvature has a Cholesky pivot at or below
+  1e-12, the all-real set is returned conservatively and the fallback field is true.
+  Valid instruments and
+  homoskedastic errors are required; exact finite-sample coverage also requires
+  conditional normality. Robust/cluster covariance, multidimensional regions and
+  the less-conservative subvector AR test remain unsupported. The command uses the
+  retained fit sample/design and does not mutate state.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,

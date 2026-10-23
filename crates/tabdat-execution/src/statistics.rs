@@ -974,7 +974,9 @@ impl Session {
     }
     if matches!(
       &command.subcommand,
-      EstatSubcommand::AndersonRubin { .. } | EstatSubcommand::AndersonRubinConfidenceSet { .. }
+      EstatSubcommand::AndersonRubin { .. }
+        | EstatSubcommand::AndersonRubinConfidenceSet { .. }
+        | EstatSubcommand::AndersonRubinProjectedConfidenceSet { .. }
     ) {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatArRequiresPriorIv);
@@ -1015,6 +1017,21 @@ impl Session {
             .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;
           tabdat_stats::anderson_rubin_confidence_set(&state.problem, level)
             .map(ExecutionResult::AndersonRubinConfidenceSet)
+            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+        }
+        EstatSubcommand::AndersonRubinProjectedConfidenceSet { coefficient, level } => {
+          if state.linear.result.covariance.covariance_type
+            != tabdat_stats::CovarianceType::NonRobust
+          {
+            return Err(RuntimeError::EstatArFailed(
+              "projected homoskedastic AR confidence sets require a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
+            ));
+          }
+          let level = level
+            .parse::<f64>()
+            .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;
+          tabdat_stats::projected_anderson_rubin_confidence_set(&state.problem, coefficient, level)
+            .map(ExecutionResult::ProjectedAndersonRubinConfidenceSet)
             .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
         }
         _ => unreachable!("AR command checked above"),

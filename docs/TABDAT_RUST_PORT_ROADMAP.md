@@ -311,9 +311,15 @@ completion of the illustration. A separate `estat ar, null(...)` command now sup
 homoskedastic weak-IV-robust **joint tests of all endogenous coefficients** on the
 retained fit sample. Single-endogenous fits additionally support analytic
 homoskedastic confidence sets via `estat ar, ci [level(95)]`, including disjoint,
-unbounded and empty sets within documented numerical limits. This does not supply
-schooling-specific scalar confidence sets with endogenous nuisance parameters,
-endogenous-subvector inference or heteroskedastic/cluster confidence sets. A separate
+unbounded and empty sets within documented numerical limits. For multiple-endogenous
+fits, `estat ar, ci coefficient(name) [level(95)]` analytically projects the joint
+AR region onto one coefficient while leaving every other endogenous coefficient
+unrestricted; this has at-least-nominal coverage and can be conservative. It is
+validated on a synthetic R reference and the original DATA66 sample: N=3,010 and
+the 95% grade76 set is [-0.01438755244, 0.50285323590], matching an independent
+base-R profile. This does
+not supply robust/cluster projected confidence sets, multidimensional projected
+regions or the less-conservative subvector AR test. A separate
 [synthetic robust AR workflow](../examples/robust-ar/README.md) now validates
 retained-sample HC1/one-way CR1 auxiliary-regression joint tests against base R
 under three designs, with explicit auxiliary corrections and asymptotic

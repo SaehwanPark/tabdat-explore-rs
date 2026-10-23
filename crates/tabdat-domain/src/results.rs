@@ -821,6 +821,8 @@ pub enum ExecutionResult {
   ClusterBootstrap(Box<tabdat_stats::ClusterBootstrapOlsResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
+  /// At-least-nominal projection of a joint homoskedastic AR region.
+  ProjectedAndersonRubinConfidenceSet(tabdat_stats::ProjectedArConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.
   Ttest(Box<TtestResult>),
 }

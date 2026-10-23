@@ -1339,6 +1339,11 @@ pub enum EstatSubcommand {
   AndersonRubinConfidenceSet {
     level: String,
   },
+  /// Project a multi-endogenous joint homoskedastic AR region onto one coefficient.
+  AndersonRubinProjectedConfidenceSet {
+    coefficient: String,
+    level: String,
+  },
   /// Joint homoskedastic Anderson-Rubin null, in endogenous fit order.
   AndersonRubin {
     null_values: Vec<String>,

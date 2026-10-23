@@ -62,8 +62,8 @@ pub use iv::{
   robust_anderson_rubin_test,
 };
 pub use iv_confidence::{
-  AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape,
-  anderson_rubin_confidence_set,
+  AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape, ProjectedArConfidenceSet,
+  anderson_rubin_confidence_set, projected_anderson_rubin_confidence_set,
 };
 pub use iv_endogenous::{WuHausmanResult, wu_hausman_test};
 pub use iv_overid::{SarganResult, sargan_test};
