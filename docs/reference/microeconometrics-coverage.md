@@ -61,7 +61,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` | Planned | Identify density/regression specifications, bandwidths and reference outputs |
 | MMA-BINARY | §14.2, pp. 464–466, Tables 14.1–14.2/Figure 14.1; `mma14p1binary.do` / `Nldata.asc` | Validated native published-analysis contract — composed source/cohort/fitted summaries, native tables and SVG; separate binary AME extension | Exact output audit/conventions below; not literal Stata log/storage/RNG/format parity or fit restoration; binary family remains incomplete |
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
-| MMA-CHOICE | pp. 491–495, fishing modes; `Nldata.asc` / `mma15p4gev.asc` | Planned | Resolve choice-set layout and exact multinomial model variants/effects |
+| MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | In progress — Table15.2 MNL column source/design resolved; draft implementation, not an executable command | Bounded model-based MNL/probability/continuous-AME workflow in [draft PR321](https://github.com/SaehwanPark/tabdat-explore-rs/pull/321); conditional/nested/combined models and remaining choice illustrations required |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -71,6 +71,26 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
 | MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
+
+### MMA-CHOICE bounded MNL contract — implementation in progress
+
+The March2005 author `mma15p1mnl.do` executable section identifies Table15.2,
+p.493 (the overview's Table15.1 is a typo). Its `mlogit mode ydiv1000,
+basecategory(1)` uses all1,182 original `Nldata.asc` people, income/1000 and an
+intercept, beach1 as reference; pier2/private3/charter4 counts are178/418/452,
+with134 beach observations. Reuse the [16-field token-stream converter](../../examples/mma14p1binary/nldata_to_csv.awk),
+preserve source IDs/order, and make no stochastic preparation or sample filter.
+The [development R/nnet reference](../../examples/mma15p1mnl/reference_mlogit.R)
+covers the full joint model-based Fisher covariance, normal95 coefficient
+inference, scalar category probabilities/indices and conditional-X continuous
+AME/delta inference. The author p494 finite-difference averages and at-means
+`mfx` must not be silently equated with analytic AMEs or their uncertainty.
+
+This is a **draft**, not completed empirical coverage. Native command, retained
+state/failure and terminal/script/JSON acceptance evidence is still required.
+No conditional/nested logit, alternative-specific design, robust/cluster
+covariance, factors, discrete changes, IIA tests or whole-program replication is
+claimed by this contract or its preliminary numerical-core tests.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
