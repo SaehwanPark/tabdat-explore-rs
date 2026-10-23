@@ -306,14 +306,29 @@ fn wu_hausman_reuses_retained_sample_and_supports_joint_just_identified_models()
       )
       .unwrap();
     let before = session.state();
-    assert!(
-      session
-        .execute(command.clone())
-        .unwrap_err()
-        .to_string()
-        .contains("requires a nonrobust")
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustEndogeneity(test) = &result else {
+      panic!("robust endogeneity result");
+    };
+    assert_eq!(test.endogenous, ["x1", "x2"]);
+    // The third candidate has a missing group ID and is excluded only by CR1.
+    let expected_n = if mode.starts_with("cluster") { 57 } else { 58 };
+    assert_eq!(test.observation_count, expected_n);
+    assert_eq!(test.auxiliary_parameter_count, 6);
+    assert_eq!(test.auxiliary_residual_df, expected_n - 6);
+    assert_eq!(test.degrees_of_freedom, 2);
+    assert_eq!(
+      test.cluster_group_count.is_some(),
+      mode.starts_with("cluster")
     );
     assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command.clone()).unwrap(), result);
+    assert_eq!(session.state(), changed);
   }
 }
 

@@ -203,6 +203,24 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       let data = bootstrap_json(result);
       (data, "BootstrapOlsResult")
     }
+    ExecutionResult::RobustEndogeneity(result) => {
+      let mut data = serde_json::to_value(result).expect("finite robust endogeneity result");
+      data["test"] = json!("endogeneity_augmented_regression_robust_wald");
+      data.as_object_mut().unwrap().remove("covariance_type");
+      data["covariance"] = json!(match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "robust_hc1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "homoskedastic".to_owned(),
+      });
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["null_scope"] = json!("all_endogenous_joint");
+      data["null_hypothesis"] = json!("all_declared_endogenous_regressors_exogenous");
+      data["weak_iv_robust"] = json!(false);
+      data["assumptions"] = json!(
+        "valid_instruments_maintained_linear_model_strong_identification_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"
+      );
+      (data, "RobustEndogeneityResult")
+    }
     ExecutionResult::WuHausman(result) => {
       let mut data = serde_json::to_value(result).expect("finite Wu-Hausman result");
       data["test"] = json!("wu_hausman_augmented_regression_f");
