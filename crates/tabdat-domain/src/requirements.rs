@@ -73,6 +73,7 @@ impl Command {
       | Self::Logit { .. }
       | Self::Probit { .. }
       | Self::Mlogit { .. }
+      | Self::Clogit { .. }
       | Self::Poisson { .. }
       | Self::Nbreg { .. }
       | Self::Zip { .. }

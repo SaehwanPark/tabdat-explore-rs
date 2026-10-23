@@ -4,26 +4,6 @@ fn mlogit_error(message: String) -> RuntimeError {
   RuntimeError::MlogitFailed { message }
 }
 
-// Check integer/decimal identity before f64 conversion can round a noninteger or
-// an out-of-domain key into a permitted category. Complete-case exclusion occurs
-// before this validation is used to reject the row.
-fn exact_category(cell: &CellValue) -> Option<i64> {
-  let value = match cell {
-    CellValue::Float(v) => return tabdat_stats::multinomial_outcome_code(*v).ok(),
-    CellValue::SignedInteger(v) => i64::try_from(*v).ok()?,
-    CellValue::UnsignedInteger(v) => i64::try_from(*v).ok()?,
-    CellValue::Decimal { value, scale, .. } => {
-      let divisor = 10_i128.checked_pow(u32::from(*scale))?;
-      if value % divisor != 0 {
-        return None;
-      }
-      i64::try_from(value / divisor).ok()?
-    }
-    _ => return None,
-  };
-  (value.unsigned_abs() <= 9_007_199_254_740_991).then_some(value)
-}
-
 impl Session {
   pub(crate) fn execute_mlogit(
     &mut self,
@@ -69,7 +49,7 @@ impl Session {
       let index=total; total+=1; let mut code=None; let mut values=Vec::with_capacity(variables.len());
       for j in 0..variables.len() {
         let cell = row.cell(j).map_err(|_|mlogit_error("could not read numeric cell".into()))?;
-        if j==0 { code=exact_category(cell); }
+        if j==0 { code=exact_integer_code(cell); }
         let Some(value)=cell_to_f64(cell).filter(|v|v.is_finite()) else { return Ok(()); };
         values.push(value);
       }

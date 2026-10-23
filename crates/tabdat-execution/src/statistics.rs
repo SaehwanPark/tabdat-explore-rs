@@ -1065,6 +1065,9 @@ impl Session {
       return match &self.estimation {
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
         Some(EstimationState::MultinomialLogit(state)) => self.execute_mlogit_margins(state),
+        Some(EstimationState::ConditionalLogit(_)) => Err(RuntimeError::EstatMarginsFailed {
+          message: "conditional-choice analytic/discrete effect inference is not implemented; explicit current-set probability contrasts are point predictions only".into(),
+        }),
         Some(EstimationState::PoissonFit(state)) => self.execute_poisson_margins(state),
         Some(EstimationState::NegativeBinomialFit(state)) => self.execute_nbreg_margins(state),
         // Preserves the pinned logit margins contract, including its
@@ -1153,6 +1156,9 @@ impl Session {
     }
     if matches!(self.estimation, Some(EstimationState::MultinomialLogit(_))) {
       return self.execute_mlogit_prediction(command);
+    }
+    if matches!(self.estimation, Some(EstimationState::ConditionalLogit(_))) {
+      return self.execute_clogit_prediction(command);
     }
     if matches!(
       self.estimation,

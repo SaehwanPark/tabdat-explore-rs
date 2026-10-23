@@ -436,6 +436,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "logit" => parse_binary_or_count_response_command("logit", body),
     "probit" => parse_binary_or_count_response_command("probit", body),
     "mlogit" => parse_mlogit_command(body),
+    "clogit" => parse_clogit_command(body),
     "poisson" => parse_binary_or_count_response_command("poisson", body),
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
     "zip" => parse_zero_inflated_count_command("zip", body),
@@ -2727,6 +2728,61 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
   Err(ParseError::new(format!(
     "{context} requires an integer code within +/- (2^53-1)"
   )))
+}
+
+fn parse_clogit_command(body: &str) -> Result<Command, ParseError> {
+  let syntax =
+    "clogit expects: clogit <chosen> <predictors> , group(variable) alternative(variable)";
+  let Some(i) = first_unquoted_comma(body) else {
+    return Err(ParseError::new(syntax));
+  };
+  let parts = parse_simple_body(&body[..i], false)?;
+  if parts.has_condition
+    || parts.has_assignment
+    || parts.has_options
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+  let options = parse_use_options(&body[i + 1..])?;
+  let mut group = None;
+  let mut alternative = None;
+  for option in &options {
+    let slot = match option.name.as_str() {
+      "group" => &mut group,
+      "alternative" => &mut alternative,
+      name => {
+        return Err(ParseError::new(format!(
+          "clogit unsupported option: {name}; only unweighted model-based single-choice inference is implemented"
+        )));
+      }
+    };
+    if slot.is_some() {
+      return Err(ParseError::new(format!(
+        "clogit {}() may only be supplied once",
+        option.name
+      )));
+    }
+    let UseOptionValue::Identifiers(values) = &option.value else {
+      return Err(ParseError::new(syntax));
+    };
+    if values.len() != 1 {
+      return Err(ParseError::new(syntax));
+    }
+    *slot = Some(values[0].clone());
+  }
+  Ok(Command::Clogit {
+    command: ClogitCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      group_variable: group.ok_or_else(|| ParseError::new(syntax))?,
+      alternative_variable: alternative.ok_or_else(|| ParseError::new(syntax))?,
+    },
+  })
 }
 
 fn parse_mlogit_command(body: &str) -> Result<Command, ParseError> {
