@@ -361,6 +361,21 @@ fn projected_ar_json_identifies_nuisance_policy_and_conservative_coverage() {
   assert_eq!(data["weak_iv_robust"], true);
   assert_eq!(data["covariance"], "homoskedastic");
   assert_eq!(data["shape"], "bounded");
+  let output = fixture.run(&["--text", "-f", "projected.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let text = String::from_utf8(output.stdout).unwrap();
+  for expected in [
+    "Projected Anderson-Rubin confidence set",
+    "at least nominal coverage",
+    "Nuisance endogenous coefficients left unrestricted: [\"x2\"]",
+    "at-least-nominal coverage",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
 }
 
 fn json_lines(output: &Output) -> Vec<Value> {
