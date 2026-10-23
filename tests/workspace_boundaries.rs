@@ -141,7 +141,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
     .filter(|entry| {
       matches!(
         entry["name"].as_str(),
-        Some("estimates" | "bootstrap" | "clogit" | "mlogit")
+        Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit")
       )
     })
     .collect();
@@ -151,14 +151,15 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
       &serde_json::json!({"name":"bootstrap","effects":["read"]}),
       &serde_json::json!({"name":"clogit","effects":["read"]}),
       &serde_json::json!({"name":"estimates","effects":["read","control"]}),
-      &serde_json::json!({"name":"mlogit","effects":["read"]})
+      &serde_json::json!({"name":"mlogit","effects":["read"]}),
+      &serde_json::json!({"name":"nlogit","effects":["read"]})
     ]
   );
   // Native extensions preserve the immutable Python entries.
   entries.retain(|entry| {
     !matches!(
       entry["name"].as_str(),
-      Some("estimates" | "bootstrap" | "clogit" | "mlogit")
+      Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit")
     )
   });
   assert_eq!(actual, oracle["data"]);

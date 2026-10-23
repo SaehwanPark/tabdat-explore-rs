@@ -98,6 +98,7 @@ pub enum EstimationFamily {
   Probit,
   MultinomialLogit,
   ConditionalLogit,
+  NonNormalizedNestedLogit,
   Tobit,
   Heckman,
   Nonlinear,
@@ -177,6 +178,13 @@ pub struct ConditionalLogitState {
   pub result: tabdat_stats::ConditionalLogitResult,
 }
 
+/// Owned retained design, structural nest map and non-normalized likelihood fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NonNormalizedNestedLogitState {
+  pub problem: tabdat_stats::NonNormalizedNestedLogitProblem,
+  pub result: tabdat_stats::NonNormalizedNestedLogitResult,
+}
+
 /// Owned Poisson design/fit, independent of subsequent current-data edits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonFitState {
@@ -223,6 +231,7 @@ pub enum EstimationState {
   Probit(Box<BinaryProbitState>),
   MultinomialLogit(Box<MultinomialLogitState>),
   ConditionalLogit(Box<ConditionalLogitState>),
+  NonNormalizedNestedLogit(Box<NonNormalizedNestedLogitState>),
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),
@@ -292,6 +301,7 @@ impl EstimationState {
       Self::Probit(..) => EstimationFamily::Probit,
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
+      Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::Tobit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,

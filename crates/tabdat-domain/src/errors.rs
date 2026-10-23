@@ -533,6 +533,8 @@ pub enum RuntimeError {
   MlogitFailed { message: String },
   /// Conditional-choice structure, fit or current-set prediction failed.
   ClogitFailed { message: String },
+  /// Non-normalized nested-choice structure, fit or current-set prediction failed.
+  NlogitFailed { message: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -1110,6 +1112,7 @@ impl fmt::Display for RuntimeError {
       Self::ProbitFailed { message } => write!(formatter, "probit: {message}"),
       Self::MlogitFailed { message } => write!(formatter, "mlogit: {message}"),
       Self::ClogitFailed { message } => write!(formatter, "clogit: {message}"),
+      Self::NlogitFailed { message } => write!(formatter, "nlogit nonnormalized: {message}"),
       Self::PredictBinaryUnsupported => formatter.write_str(
         "probit prediction supports only pr or xb, without interval, std or saving options",
       ),

@@ -1623,6 +1623,41 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::NonNormalizedNestedLogit(result) => format!(
+      "Non-normalized two-level nested choice maximum likelihood\nOutcome: {}; independent choice sets = {}; alternative rows = {}; alternatives per set = {}\nGroup: {}; alternative: {}; nest: {}; alternative/nest map = {:?}/{:?}\nCandidate sets = {}; whole-set exclusions = {}; selected fit iterations = {}; converged starts = {}/2\nLower utilities retain levels: NOT the preferred common-utility RUM normalization.\nFull joint observed-Hessian covariance, correction1, asymptotic normal95; no uniform-null omnibus chi-square.\nLog likelihood = {}; fitted scale=1 conditional restriction = {}; independence LR chi2({}) = {}; p-value = {}\nSlope/upper coefficients (H0=0):\n{}\nInclusive-value diagnostics (H0=1; natural-scale Wald intervals may cross zero):\n{}\nFitted IV bounds (0,1] satisfied: {}{}",
+      result.outcome.escape_debug(),
+      result.choice_set_count,
+      result.observation_count,
+      result.choice_set_size,
+      result.group_variable.escape_debug(),
+      result.alternative_variable.escape_debug(),
+      result.nest_variable.escape_debug(),
+      result.alternative_levels,
+      result.alternative_nests,
+      result.candidate_choice_set_count,
+      result.excluded_choice_set_count,
+      result.iterations,
+      result.converged_starts,
+      inference_number(result.log_likelihood),
+      inference_number(result.restricted_log_likelihood),
+      result.independence_df,
+      inference_number(result.independence_likelihood_ratio),
+      logit_number(result.independence_p_value),
+      logit_estimates(&result.coefficients),
+      logit_estimates(
+        &result
+          .dissimilarities
+          .iter()
+          .map(|d| d.estimate.clone())
+          .collect::<Vec<_>>()
+      ),
+      result.random_utility_iv_bounds_satisfied,
+      if result.random_utility_iv_bounds_satisfied {
+        ""
+      } else {
+        "\nWARNING: fitted inclusive values violate RUM bounds; higher likelihood is not random-utility consistency."
+      },
+    ),
     ExecutionResult::ConditionalLogit(result) => format!(
       "Single-choice conditional logit maximum likelihood\nOutcome: {}; independent choice sets = {}; alternative rows = {}; alternatives per set = {}\nGroup: {}; alternative: {}; available levels = {:?}; chosen counts = {:?}\nCandidate choice sets = {}; whole-set exclusions = {}; converged in {} information evaluations\nCommon group intercepts cancel; joint model-based Fisher covariance without N-K/G-K correction, normal95 inference.\nLog likelihood = {}; equal-probability null = {}; LR chi2({}) = {}; p-value = {}; McFadden pseudo R2 = {}\n{}",
       result.outcome.escape_debug(),

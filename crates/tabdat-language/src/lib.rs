@@ -437,6 +437,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "probit" => parse_binary_or_count_response_command("probit", body),
     "mlogit" => parse_mlogit_command(body),
     "clogit" => parse_clogit_command(body),
+    "nlogit" => parse_nlogit_command(body),
     "poisson" => parse_binary_or_count_response_command("poisson", body),
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
     "zip" => parse_zero_inflated_count_command("zip", body),
@@ -2781,6 +2782,84 @@ fn parse_clogit_command(body: &str) -> Result<Command, ParseError> {
         .collect(),
       group_variable: group.ok_or_else(|| ParseError::new(syntax))?,
       alternative_variable: alternative.ok_or_else(|| ParseError::new(syntax))?,
+    },
+  })
+}
+
+fn parse_nlogit_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "nlogit expects: nlogit <chosen> <lower predictors>, group(variable) alternative(variable) nest(variable) [upper(variables)] nonnormalized; preferred RUM normalization is not implemented";
+  let Some(i) = first_unquoted_comma(body) else {
+    return Err(ParseError::new(syntax));
+  };
+  let parts = parse_simple_body(&body[..i], false)?;
+  if parts.has_condition
+    || parts.has_assignment
+    || parts.has_options
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+  let options = parse_use_options(&body[i + 1..])?;
+  let mut seen = std::collections::BTreeSet::new();
+  let mut group = None;
+  let mut alternative = None;
+  let mut nest = None;
+  let mut upper = Vec::new();
+  let mut nonnormalized = false;
+  for option in &options {
+    if !seen.insert(&option.name) {
+      return Err(ParseError::new(format!(
+        "nlogit {} may only be supplied once",
+        option.name
+      )));
+    }
+    match option.name.as_str() {
+      "nonnormalized" if option.value == UseOptionValue::Flag => nonnormalized = true,
+      "upper" => {
+        let UseOptionValue::Identifiers(values) = &option.value else {
+          return Err(ParseError::new(syntax));
+        };
+        if values.is_empty() {
+          return Err(ParseError::new(syntax));
+        }
+        upper = values.clone();
+      }
+      "group" | "alternative" | "nest" => {
+        let UseOptionValue::Identifiers(values) = &option.value else {
+          return Err(ParseError::new(syntax));
+        };
+        if values.len() != 1 {
+          return Err(ParseError::new(syntax));
+        }
+        let slot = match option.name.as_str() {
+          "group" => &mut group,
+          "alternative" => &mut alternative,
+          _ => &mut nest,
+        };
+        *slot = Some(values[0].clone());
+      }
+      name => {
+        return Err(ParseError::new(format!(
+          "nlogit unsupported option: {name}; only explicit nonnormalized unweighted model-based two-nest inference is implemented"
+        )));
+      }
+    }
+  }
+  if !nonnormalized {
+    return Err(ParseError::new(syntax));
+  }
+  Ok(Command::Nlogit {
+    command: NlogitCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      upper_predictors: upper,
+      group_variable: group.ok_or_else(|| ParseError::new(syntax))?,
+      alternative_variable: alternative.ok_or_else(|| ParseError::new(syntax))?,
+      nest_variable: nest.ok_or_else(|| ParseError::new(syntax))?,
     },
   })
 }

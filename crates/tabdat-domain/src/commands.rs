@@ -234,6 +234,8 @@ pub enum Command {
   Mlogit { command: MlogitCommand },
   /// Single-choice conditional logit on balanced explicit choice sets.
   Clogit { command: ClogitCommand },
+  /// Explicit non-normalized two-nest model, not preferred RUM normalization.
+  Nlogit { command: NlogitCommand },
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
@@ -584,6 +586,16 @@ pub struct ClogitCommand {
   pub predictors: Vec<String>,
   pub group_variable: String,
   pub alternative_variable: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NlogitCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub upper_predictors: Vec<String>,
+  pub group_variable: String,
+  pub alternative_variable: String,
+  pub nest_variable: String,
 }
 
 /// Bounded unweighted log-link Poisson with model-based, independent-row

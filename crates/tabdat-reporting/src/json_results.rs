@@ -110,6 +110,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Probit { .. }
     | Command::Mlogit { .. }
     | Command::Clogit { .. }
+    | Command::Nlogit { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -485,6 +486,40 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       }),
       "LogitMarginalEffectsResult",
     ),
+    ExecutionResult::NonNormalizedNestedLogit(result) => {
+      // Split the literal objects rather than raising the crate's macro recursion limit.
+      let mut data = json!({
+        "estimator":"nlogit","parameterization":"non_normalized_conditional_utilities",
+        "preferred_rum_normalization":false,"outcome":result.outcome,"predictors":result.predictor_names,
+        "lower_predictor_count":result.lower_predictor_count,"include_intercept":false,
+        "group_variable":result.group_variable,"alternative_variable":result.alternative_variable,"nest_variable":result.nest_variable,
+        "alternative_levels":result.alternative_levels,"nest_levels":result.nest_levels,"alternative_nests":result.alternative_nests,"chosen_counts":result.chosen_counts,
+        "observation_count":result.observation_count,"choice_set_count":result.choice_set_count,"choice_set_size":result.choice_set_size,
+        "candidate_choice_set_count":result.candidate_choice_set_count,"excluded_choice_set_count":result.excluded_choice_set_count,"sample":result.sample,
+        "parameter_count":result.predictor_names.len()+result.dissimilarities.len(),
+        "missingness":"whole_choice_set_complete_finite_exclusion_after_structural_validation",
+        "coefficients":result.coefficients,"coefficient_test_null":0.0,"dissimilarities":result.dissimilarities,
+        "covariance_matrix":result.covariance,"covariance_parameter_names":result.covariance_parameter_names,
+        "covariance":"model_based_joint_observed_nested_choice_hessian","covariance_correction":1.0,"independent_unit":"choice_set",
+      });
+      let inference = json!({
+        "reference_distribution":"asymptotic_standard_normal","confidence_level":95.0,
+        "confidence_interval_method":"normal_wald_natural_scale_may_leave_parameter_domain",
+        "log_likelihood":result.log_likelihood,"restricted_log_likelihood":result.restricted_log_likelihood,
+        "independence_null":"both_positive_nest_scales_equal_one_slopes_reestimated",
+        "independence_likelihood_ratio":result.independence_likelihood_ratio,"independence_df":result.independence_df,
+        "independence_p_value":result.independence_p_value,"independence_reference_distribution":"asymptotic_chi_square",
+        "random_utility_iv_bounds_satisfied":result.random_utility_iv_bounds_satisfied,
+        "converged":true,"iterations":result.iterations,"optimization_starts_attempted":2,"converged_starts":result.converged_starts,
+        "convergence_coordinate_system":"raw_predictor_rms_and_log_scale_per_choice_set_score",
+        "convergence_absolute_tolerance":1e-10,"max_abs_scaled_score":result.max_abs_scaled_score,"max_abs_scaled_newton_step":result.max_abs_scaled_newton_step,
+      });
+      data
+        .as_object_mut()
+        .expect("literal object")
+        .extend(inference.as_object().expect("literal object").clone());
+      (data, "NonNormalizedNestedLogitResult")
+    }
     ExecutionResult::ConditionalLogit(result) => (
       json!({
         "estimator":"clogit","likelihood":"single_choice_conditional_multinomial",

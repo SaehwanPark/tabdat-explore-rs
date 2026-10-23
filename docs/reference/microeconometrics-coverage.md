@@ -261,10 +261,15 @@ quantities/23,640 probabilities: coefficient max1.54e-10, covariance3.99e-8
 (on large weak-IV variances), source LL5.01e-12 and probability1.20e-11.
 New nested scalar checks use1e-9 absolute +1e-8 relative and positive-tail
 relative1e-8; covariance scaling matters for these weakly identified natural
-IVs. Existing MNL/CL tolerances are unchanged. Runtime/parser, structural raw-key
-and missingness auditing, native source-bound preparation/checker, owned session
-state, terminal/JSON/script integration and broader merge gates remain
-outstanding; this draft is not delivered coverage.
+IVs. Existing MNL/CL tolerances are unchanged. Draft native wiring now includes
+explicit `nonnormalized` syntax, raw structural-key/map validation before whole-set
+exclusion, owned retained state, atomic current-set prediction, terminal/CLI-v1
+inference metadata and help/discovery.87 scoped tests cover parser/runtime,
+conditional-reader regressions, reporting, synthetic native script/text/JSON,
+current income contrasts, export collision and boundary/discovery contracts.
+The source-bound original native preparation/checker, actual-book-script failure
+cases and broader merge gates remain outstanding; this draft is not delivered
+coverage.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

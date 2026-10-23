@@ -18,6 +18,7 @@ mod conditional_logit;
 mod estimates;
 mod fixed_effects;
 mod multinomial;
+mod nested_logit;
 mod random_effects;
 mod row_conversion;
 use row_conversion::*;
@@ -154,6 +155,7 @@ impl Session {
       Command::Probit { command } => self.execute_probit(&command),
       Command::Mlogit { command } => self.execute_mlogit(&command),
       Command::Clogit { command } => self.execute_clogit(&command),
+      Command::Nlogit { command } => self.execute_nlogit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
