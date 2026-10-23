@@ -44,8 +44,8 @@ required reading for every task.
    status. Select the **smallest end-to-end user-visible outcome** that fits.
 2. Define a few observable acceptance cases and important failure cases. Do not
    build an exhaustive requirements matrix for a routine change.
-3. Implement, run focused tests, then the applicable checks in
-   [CONTRIBUTING.md](CONTRIBUTING.md). Keep test fixtures small and inspectable.
+3. Implement using the impact-scoped test policy below and the applicable checks
+   in [CONTRIBUTING.md](CONTRIBUTING.md). Keep test fixtures small and inspectable.
 4. Check the diff, report what was and was not verified, and update the current
    specification/roadmap only if public capability or priority changed.
 5. Commit, push, create PRs, or merge **only within the user's actual authorization**.
@@ -65,6 +65,31 @@ replays by default. Escalate evidence proportional to risk:
 | Data mutation, persistence, state | Invariants, failure/rollback, representative end-to-end case |
 | Estimator, covariance, inference | Independent numerical/reference comparison and documented tolerances |
 | Unsafe/FFI, native distribution | Ownership/safety, platform, licensing and specialized testing |
+
+## Test execution policy
+
+Optimize for rapid feedback without sacrificing regression safety.
+
+- **Before testing:** Inspect the branch diff and uncommitted changes; identify
+  changed behaviors, their direct tests, integration tests and consumers. Include
+  newly added or modified tests explicitly; do not rely on a name filter finding
+  them incidentally.
+- **During implementation:** Run the smallest relevant test or module first,
+  rather than an entire crate. Include integration tests for changed boundaries
+  or contracts and expand to reverse-dependent crates for shared APIs. Do not
+  repeat passing tests unless subsequent changes could affect them. If impact is
+  uncertain, choose the broader scope.
+- **Before completion:** Run affected-crate tests and relevant integration tests;
+  include doctests when documentation examples change. Earlier passing runs
+  count when no subsequent change invalidates them. Skip full-workspace
+  validation unless the change is cross-cutting or explicitly requires local
+  validation. Do not begin by rerunning an already-verified baseline.
+- **Output:** Keep successful output concise, preserve complete failure
+  diagnostics, and report commands/scope tested plus validation not performed.
+  Never treat an empty test selection as a passing regression check.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#impact-scoped-testing) for selection,
+runner configuration, Cargo fallbacks and broader validation commands.
 
 ## Scope control
 
