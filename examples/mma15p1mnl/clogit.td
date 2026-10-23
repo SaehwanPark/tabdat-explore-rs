@@ -25,4 +25,5 @@ predict p_catch4, pr
 sql """SELECT * REPLACE(pbase AS p,qbase AS q) FROM active ORDER BY id,alternative""" into restored_choices
 export fishing_clogit_predictions.csv
 sql """SELECT alternative,avg(pr) AS mean_probability,avg(100*(p_price1-pr)) AS price1,avg(100*(p_price2-pr)) AS price2,avg(100*(p_price3-pr)) AS price3,avg(100*(p_price4-pr)) AS price4,avg(1000*(p_catch1-pr)) AS catch1,avg(1000*(p_catch2-pr)) AS catch2,avg(1000*(p_catch3-pr)) AS catch3,avg(1000*(p_catch4-pr)) AS catch4 FROM active GROUP BY alternative ORDER BY alternative""" into finite_contrasts
+head 4
 export fishing_clogit_contrasts.csv

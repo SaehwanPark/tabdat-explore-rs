@@ -164,6 +164,55 @@ general test/lincom is installed for this family. See the [original-source
 workflow/reference audit](../../examples/mma15p1mnl/README.md) for precise
 Table15.2 scope and historical numerical differences.
 
+## Conditional choice likelihood and grouped probability predictions
+
+`clogit chosen xvars, group(id) alternative(alt)` fits the bounded unweighted
+single-choice McFadden model on explicit balanced long data. CLI-v1 result type
+`ConditionalLogitResult` has `estimator: "clogit"`, outcome/predictor/group/
+alternative variable names, sorted `alternative_levels`, `chosen_counts`, row
+`observation_count`, independent `choice_set_count`, `choice_set_size`, candidate/
+excluded choice-set counts and retained long-row `sample`. Parameter/covariance
+order follows the explicit predictor list. No common intercept is estimated;
+explicit numeric alternative constants/interactions can be supplied as columns,
+not automatically constructed or claimed validated for every specification.
+
+`coefficients` contain normal95 inference. `covariance_matrix` is the full joint
+inverse conditional Fisher information with
+`covariance: "model_based_joint_conditional_fisher_information"`,
+`covariance_correction: 1.0`, `independent_unit: "choice_set"` and
+`reference_distribution: "asymptotic_standard_normal"`. There is no N−K/G−K
+correction or alternative-row independent-Bernoulli interpretation. The null
+sets all utility coefficients to zero, giving equal probabilities within each
+complete set; likelihood/null/LR/McFadden metadata and LR chi-square(K) identify
+that convention. Convergence reports per-decision averaged within-baseline-
+differenced/RMS-scaled score and full undamped Newton step, both≤1e-10.
+
+Group identity follows exact numeric/text/boolean key policy. Alternative codes
+must be exact integers within ±(2^53−1); every group has the same2..16 codes,
+each once. Keys/duplicate pairs/complete sets are validated **before** missingness.
+A missing/nonfinite outcome/predictor excludes the whole set; other finite
+outcome-domain errors fail on retained complete sets. The chosen value must be
+exact0/1 with exactly one success; DECIMAL identity/domain is checked before f64
+rounding. Bounds: retained G>K, candidate groups≤10000, candidate rows≤40000,
+K≤32 and retained rows*K²≤
+20million. Rank/separation/numerical/iteration failures clear prior inference
+without data mutation; no ridge/pseudoinverse fallback is reported as inference.
+
+`predict newvar, pr` returns ordinary `PredictionResult` and appends current-set
+probabilities in current row order. Current outcomes are not read; new group IDs
+are allowed, but every set must contain exactly the retained alternative universe.
+One missing/nonfinite predictor yields NULL for the entire set, never a smaller
+normalizing denominator. Structural or arithmetic failure preserves data/cache
+and publishes no column. Other prediction kinds/selectors are not implemented.
+
+`estat margins` explicitly rejects this family: source-workflow before/after
+price/catch contrasts are point probabilities, not analytic AMEs, causal effects
+or uncertainty intervals. Weights, robust/cluster/survey inference, multiple-event
+matched sets, ragged availability, automatic factors, IIA tests, named reports and
+general test/lincom remain unsupported. The [original-source workflow/audit](../../examples/mma15p1mnl/README.md#conditional-logit-table152-cl-column-and-section2b-point-contrasts)
+validates the price/catch Table15.2 CL column and separately labeled float64
+finite contrasts, not remaining combined/nested specifications or whole Chapter15.
+
 ## Binary logit/probit and continuous marginal effects
 
 `logit y x1 ... [, robust cluster(group) noconstant]` fits an unweighted

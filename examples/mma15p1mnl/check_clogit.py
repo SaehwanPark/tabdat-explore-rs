@@ -53,6 +53,10 @@ for row in read_csv("R_clogit_quantities.csv"):
   expected = float(row["value"])
   difference = abs(actual - expected)
   assert math.isfinite(actual) and difference < 1e-9, (key, i, j, actual, expected)
+  if key in {"coefficient_p_value", "likelihood_ratio_p_value"} and expected > 0:
+    # The original sample has extremely small but representable tails: an
+    # absolute-only comparison would incorrectly accept an underflowed zero.
+    assert difference < 1e-9 * expected, (key, actual, expected)
   maxima[key] = max(maxima.get(key, 0), difference)
   count += 1
 assert count == 61

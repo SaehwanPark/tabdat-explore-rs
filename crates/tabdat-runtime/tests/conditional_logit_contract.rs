@@ -226,6 +226,37 @@ fn exact_decimal_group_identity_and_chosen_domain_are_not_rounded_through_f64() 
 }
 
 #[test]
+fn text_and_boolean_group_keys_preserve_distinct_complete_choice_sets() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(
+    &mut s,
+    r#"sql """SELECT * REPLACE('person-' || CAST(id AS VARCHAR) AS id) FROM active""" into text_keys"#,
+  );
+  assert_eq!(fit(&mut s).result.choice_set_count, 12);
+  run(
+    &mut s,
+    r#"sql """SELECT * FROM (VALUES (false,1,1,0),(false,2,0,1),(true,1,0,0),(true,2,1,1)) AS t(id,alternative,chosen,p)""" into boolean_keys"#,
+  );
+  let ExecutionResult::ConditionalLogit(result) = run(
+    &mut s,
+    "clogit chosen p, group(id) alternative(alternative)",
+  ) else {
+    panic!()
+  };
+  assert_eq!(result.choice_set_count, 2);
+  close(result.coefficients[0].value, 0.0);
+  close(result.covariance[0][0], 2.0);
+  run(&mut s, "predict probability, pr");
+  for row in rows(&mut s) {
+    let CellValue::Float(p) = row[4] else {
+      panic!()
+    };
+    close(p, 0.5);
+  }
+}
+
+#[test]
 fn failed_new_fits_clear_prior_inference_without_mutating_rows_or_metadata() {
   let f = Fixture::new();
   for command in [
