@@ -60,3 +60,41 @@ automatic within/RE fit or re-estimation of variance components. For the bounded
 manual-program within workflow, joint-case person means are computed first and
 whole persons are resampled afterward. No retained model or analytic test
 covariance is installed.
+
+## Joint conditional quantiles
+
+`bootstrap y xvars, quantiles(.25 .5 .75) seed(integer) [reps(200) noconstant]`
+
+With quantiles(), fit unweighted conditional quantile regressions instead of OLS.
+Supply 1..19 strictly increasing finite values from .05 to .95. Clustering is
+not supported in this mode. The same joint complete-finite sample and explicit
+local RNG contract apply. Each replication draws N whole rows ONCE, then fits
+all requested quantiles on those identical rows. Adding quantiles does not
+consume extra random draws. There is no shared global RNG state.
+
+Report QuantileBootstrapResult: coefficients/covariance in quantile-major order,
+intercept first within each quantile, with names such as q0.25:intercept and
+q0.25:x. The full joint covariance includes cross-quantile blocks and uses B-1.
+Marginal percentile95 intervals use R type7; they are NOT simultaneous coverage
+bands. No analytic coefficient p-values, slope-equality test, retained bootstrap
+fit or automatic figure is installed. Covariance may be singular (rank at most
+B-1); the report does not silently regularize it.
+
+Pairs inference permits heteroskedastic conditional outcomes under IID row
+sampling and regular identified quantiles with positive conditional density.
+It is not survey/design-based inference for the source's household survey, and
+supplies no finite-sample coverage guarantee. Quantile LP bounds are N>K,
+N<=10000, K<=32 and N*K²<=10000000; additionally
+N*K²*number_of_quantiles*(replications+1)<=100000000. The latter counts original
+fits as well as all resampled fits, not worst-case LP iteration cost. Each coefficient fit retains the existing solved/identification/numerical-certificate
+requirements. A failed first solve may refine the SAME LP at stricter solver
+tolerance once; all active-constraint/gap/score checks remain unchanged. This
+never redraws a sample. Iteration/time limits apply per attempt.
+
+Bootstrap fits require point coefficients only; no IID residual-spacing SE is
+estimated on a replicate. Ambiguous or numerically unresolved coefficients,
+rank deficiency, lack of representable response variation or failed convergence
+abort with original/replicate index and quantile. No draws are discarded/retried.
+The original data and retained model stay unchanged. Fit qreg explicitly for
+current-row predictions; the bootstrap report does not replace that fit.
+See examples/mma04p2qreg/bootstrap.md for the original 19-quantile workflow.

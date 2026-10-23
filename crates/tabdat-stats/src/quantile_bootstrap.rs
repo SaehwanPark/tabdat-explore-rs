@@ -54,7 +54,8 @@ pub fn bootstrap_quantiles(
   let design = quantile_design(problem, quantiles[0])?;
   let n = problem.observation_count();
   let k = problem.parameter_count();
-  // Count every quantile LP, including the original fits, in the work budget.
+  // Count all coefficient fits, including originals; solver iteration/refinement
+  // costs remain separately bounded by the quantile solver.
   let work = n
     .checked_mul(k * k)
     .and_then(|v| v.checked_mul(quantiles.len()))

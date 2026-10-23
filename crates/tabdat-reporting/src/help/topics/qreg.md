@@ -47,3 +47,8 @@ median is half the absolute-deviation sum; it is not a likelihood.
 
 See `examples/mma04p2qreg/README.md` for the original-source household workflow,
 independent references and historical Stata input/convention differences.
+
+For heteroskedastic IID pairs uncertainty and cross-quantile covariance, see
+`help bootstrap`: `bootstrap y x, quantiles(.25 .5 .75) seed(10101)`.
+This separate read-only report preserves qreg's retained fit and does not change
+its IID-location covariance, prediction behavior or post-estimation support.

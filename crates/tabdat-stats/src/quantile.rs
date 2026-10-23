@@ -66,7 +66,13 @@ struct PointFit {
 
 // Dual LP: max y'u, X'u=0, tau-1 <= u <= tau. Only K equality rows couple
 // observations. Pure-Rust sparse QDLDL avoids native LP/BLAS/Python dependencies.
-fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<PointFit, StatsError> {
+fn point_fit_attempt(
+  x: &[Vec<f64>],
+  y: &[f64],
+  tau: f64,
+  intercept: bool,
+  tolerance: f64,
+) -> Result<PointFit, StatsError> {
   let n = y.len();
   let k = x[0].len();
   let offset = usize::from(intercept);
@@ -126,9 +132,9 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
     .verbose(false)
     .max_iter(200)
     .time_limit(10.0)
-    .tol_gap_abs(1e-10)
-    .tol_gap_rel(1e-10)
-    .tol_feas(1e-10)
+    .tol_gap_abs(tolerance)
+    .tol_gap_rel(tolerance)
+    .tol_feas(tolerance)
     .build()
     .map_err(|e| invalid(e.to_string()))?;
   let mut solver = DefaultSolver::new(
@@ -230,6 +236,14 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
     gap,
     score,
     design_inverse,
+  })
+}
+
+fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<PointFit, StatsError> {
+  point_fit_attempt(x, y, tau, intercept, 1e-10).or_else(|initial| {
+    // Near-zero residuals can look active when their dual is almost at a bound.
+    // Refine the same LP rather than weakening the active/gap/score certificates.
+    point_fit_attempt(x, y, tau, intercept, 1e-12).map_err(|_| initial)
   })
 }
 
