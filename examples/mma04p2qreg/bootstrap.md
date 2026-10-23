@@ -53,9 +53,8 @@ python3 /path/to/repo/examples/mma04p2qreg/check_joint_bootstrap_reference.py . 
 
 The optimized native run passed the audit of1,672 original/bias/mean/SE/percentile/full-joint covariance
 quantities and25,030 identity/design/retained-median prediction cells, with1e-8
-absolute tolerance. Synthetic text/JSON runs publish byte-identical prediction exports. Original
-text/JSON cohort exports should also agree;
-run each in a fresh directory. The original audit was run with the optimized
+absolute tolerance. Text/JSON parity is tested on synthetic workflows; the original audit uses JSON.
+Run each in a fresh directory. The original audit was run with the optimized
 release binary; the debug LP is substantially slower on3,800 fits. Source data are not redistributed.
 
 A reproduced near-active numerical failure is resolved by one stricter solve

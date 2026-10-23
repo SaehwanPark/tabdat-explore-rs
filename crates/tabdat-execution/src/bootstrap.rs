@@ -6,7 +6,7 @@ impl Session {
     command: &QuantileBootstrapCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     let r = &command.bootstrap.regression;
-    let error = |e: String| RuntimeError::BootstrapFailed(e);
+    let error = RuntimeError::BootstrapFailed;
     if r.estimator != RegressEstimator::Ols
       || r.weight_variable.is_some()
       || r.robust
