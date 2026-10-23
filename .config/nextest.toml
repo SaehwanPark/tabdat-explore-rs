@@ -1,0 +1,8 @@
+[profile.default]
+# Finish the selected scope so one failure does not hide other regressions.
+fail-fast = false
+retries = 0
+success-output = "never"
+failure-output = "immediate"
+status-level = "fail"
+final-status-level = "fail"

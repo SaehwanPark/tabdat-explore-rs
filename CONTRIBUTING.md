@@ -65,20 +65,137 @@ Parser acceptance alone does not imply executable support.
 Prefer a focused test beside the behavior it protects. Share repeated plumbing,
 not a test DSL that hides commands, expected rows, numerical tolerances or errors.
 
-## Normal Rust checks
+## Impact-scoped testing
+
+Follow the [agent test execution policy](AGENTS.md#test-execution-policy): inspect
+changes and consumers, run the smallest relevant scope first, then finish with
+affected-crate tests and relevant integrations. Previously passing runs count
+unless later edits could affect them. Do not rerun a verified baseline at startup
+or run the entire workspace by habit. When impact is uncertain, broaden scope.
+
+### Runner setup
+
+Use [cargo-nextest](https://nexte.st/docs/installation/) for unit/integration
+execution. On macOS, `brew install cargo-nextest`; alternatively,
+`cargo install cargo-nextest --locked`. Check `cargo nextest --version` after
+installation (this setup was verified with **0.9.149**). This is a developer tool,
+not an application dependency; plain Cargo remains supported.
+
+The checked-in [`.config/nextest.toml`](.config/nextest.toml) hides passing-test
+noise, emits captured failure output immediately, disables retries, and finishes
+all selected tests after a failure. It does **not** exclude slow tests or change
+Cargo's compilation profile, test concurrency or statistical tolerances. Use
+`--status-level pass` when individual successful-test status is useful. Nextest
+runs tests in separate processes; use Cargo to investigate runner-specific
+behavior, and do not silently accept a difference.
+
+### Select from the diff, not just test names
+
+Before testing, inspect both committed branch work and uncommitted/new files:
+
+```sh
+git diff --stat origin/main...HEAD
+git diff origin/main...HEAD
+git diff HEAD
+git status --short
+```
+
+For a PR based elsewhere, substitute its actual base (a fixed base commit is
+useful when main advances). Map each behavior to its implementation, direct
+unit/module tests, crate integration targets, and callers. Read changed/new tests
+and include them explicitly. Use `rg` and [ARCHITECTURE.md](ARCHITECTURE.md) for
+consumers; inspect the dependency graph when a shared API changes:
+
+```sh
+cargo tree --locked --workspace --invert tabdat-stats
+```
+
+The graph identifies candidate consumers, not semantic impact. Account for root
+`tests/`, fixtures, scripts and data files: a filename-only changed-crate tool
+cannot prove which workflows are unaffected. Changes to shared contracts,
+workspace configuration, toolchains or dependencies can require broad validation.
+Documentation-only changes need relevant link/example checks, not an invented
+application-test obligation.
+
+### Smallest scope first
+
+Use Cargo package/target flags to avoid building unrelated test binaries. Root
+integration tests belong to **`tabdat-explore-rs`**, not to the runtime crate.
+Filters narrow execution, but are not a substitute for build-target selection.
+Examples (replace the selections with the actual changed behavior):
+
+```sh
+# Private parser unit test; list first if the exact name is uncertain.
+cargo nextest list --locked -p tabdat-language --lib -E 'test(~lincom)'
+cargo nextest run --locked -p tabdat-language --lib --no-tests fail -E 'test(~lincom)'
+
+# One numerical integration target, then a root boundary/CLI target when relevant.
+cargo nextest run --locked -p tabdat-stats --test gamma_inference_contract --no-tests fail
+cargo nextest run --locked -p tabdat-explore-rs --test cli_json_linear_contract --no-tests fail
+
+# Completion: all tests in affected crates (unit and crate integration tests).
+cargo nextest run --locked -p tabdat-language -p tabdat-execution --no-tests fail
+
+# Shared API: changed crate plus transitive reverse dependents, including root tests.
+cargo nextest run --locked --workspace --no-tests fail -E 'rdeps(=tabdat-stats)'
+```
+
+The [`rdeps` filter](https://nexte.st/docs/filtersets/reference/) includes the
+named crate itself. Do not combine it with a restrictive `-p` that removes needed
+consumers. Add relevant cross-crate integrations even when a dependency edge does
+not capture their contract. Include **every new/modified test** rather than
+assuming a topic substring matches it. An empty selection is an error, not test
+evidence (`--no-tests fail` makes this explicit).
+
+Cargo fallback and documentation examples:
+
+```sh
+cargo test --locked -p tabdat-language --lib lincom
+cargo test --locked -p tabdat-stats --test gamma_inference_contract
+cargo test --locked -p tabdat-language -p tabdat-execution
+# Nextest does not run doctests. Run these when Rust documentation examples change.
+cargo test --locked -p tabdat-domain --doc
+```
+
+Cargo name filters can succeed with zero matches: inspect the reported count.
+Do not use `--all-targets` as a substitute for doctests. No automatic selector can
+replace inspecting changed behavior, fixtures and consumers.
+
+### Checks and output
+
+For code changes, format changed Rust files (or check their owning package) and
+run applicable affected-package checks; for example:
+
+```sh
+cargo fmt -p tabdat-language -- --check
+cargo check --locked -p tabdat-language --all-targets
+cargo clippy --locked -p tabdat-language --all-targets -- -D warnings
+git diff --check
+```
+
+A successful test build already checks compilation of its selected targets; do
+not mechanically repeat equivalent checks unless another target/feature needs
+validation. Expand package selection for shared APIs. Reserve these broad checks
+for cross-cutting changes or explicitly requested local validation:
 
 ```sh
 cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets
-cargo test --locked --workspace --all-targets
+cargo nextest run --locked --workspace --all-targets --no-tests fail
+cargo test --locked --workspace --doc
 cargo clippy --locked --workspace --all-targets -- -D warnings
-git diff --check
 ```
 
-Run focused commands while iterating. Before publishing a completed code change,
-run the relevant full checks; report any failure rather than hiding it. GitHub
-Actions are currently **disabled**: checks do not run automatically. CI status
-must not be inferred from old workflow records.
+Keep passing output to scope/count/timing summaries. Preserve complete failure
+diagnostics: do not pipe test output through `tail`, suppress stderr, or discard
+the runner's exit status. If saving a log, use `set -o pipefail` with `tee` and
+retain the full log. Report tested commands/scopes, failures, and checks not run
+with reasons; filtered-out, ignored and unrun tests are not passes. No runtime
+speedup is implied merely by installing nextest.
+
+GitHub Actions are currently **disabled**: checks do not run automatically. CI
+status must not be inferred from old workflow records. Scope selection is a local
+responsibility, not a reason to assume CI will cover omissions.
 
 ## Proportional additional verification
 
