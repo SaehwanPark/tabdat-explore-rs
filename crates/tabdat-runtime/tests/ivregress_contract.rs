@@ -214,9 +214,39 @@ fn anderson_rubin_uses_retained_sample_and_preserves_state_on_success_and_failur
       )
       .unwrap();
     let before = session.state();
-    let error = session.execute(ar.clone()).unwrap_err();
-    assert!(error.to_string().contains("requires a nonrobust 2SLS fit"));
+    let test = session.execute(ar.clone()).unwrap();
+    let ExecutionResult::RobustAndersonRubin(result) = &test else {
+      panic!("robust AR");
+    };
+    assert_eq!(
+      result.observation_count,
+      if option == "robust" { 58 } else { 57 }
+    );
+    let tabdat_domain::EstimationState::InstrumentalVariables(state) =
+      before.estimation.as_ref().unwrap()
+    else {
+      panic!("IV state");
+    };
+    let expected = (2..60)
+      .filter(|i| option == "robust" || *i != 2)
+      .collect::<Vec<_>>();
+    assert_eq!(
+      state.problem.sample.as_ref().unwrap().retained_indices,
+      expected
+    );
     assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(ar.clone()).unwrap(), test);
+    assert!(
+      session
+        .execute(parse_command("estat ar, null(0)").unwrap())
+        .is_err()
+    );
+    assert_eq!(session.state(), changed);
   }
 }
 

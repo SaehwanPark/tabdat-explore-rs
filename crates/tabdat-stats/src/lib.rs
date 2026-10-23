@@ -57,7 +57,8 @@ pub use estimates::{
 pub use fixed_effects::{FixedEffect, FixedEffectsResult, UnitEffectsFTest, fit_fixed_effects};
 pub use iv::{
   AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
-  anderson_rubin_test, fit_two_stage_least_squares,
+  RobustAndersonRubinResult, anderson_rubin_test, fit_two_stage_least_squares,
+  robust_anderson_rubin_test,
 };
 pub use iv_confidence::{
   AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape,

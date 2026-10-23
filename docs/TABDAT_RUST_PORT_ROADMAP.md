@@ -292,7 +292,7 @@ script outputs remain on later failure, not whole-script rollback. Reporting for
 future estimator families remains required. This completes that bounded native
 analytical contract, not the binary milestone, IV illustration or full book.
 
-Keep GMM/Hansen J, robust/cluster AR, endogenous-subvector confidence sets and
+Keep GMM/Hansen J, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
 any further endogeneity inference required by exact illustrations explicit as
 remaining required work.
 Conventional Wald results, Sargan/Wu diagnostics and first-stage relevance tests
@@ -307,7 +307,12 @@ retained fit sample. Single-endogenous fits additionally support analytic
 homoskedastic confidence sets via `estat ar, ci [level(95)]`, including disjoint,
 unbounded and empty sets within documented numerical limits. This does not supply
 schooling-specific scalar confidence sets with endogenous nuisance parameters,
-endogenous-subvector inference or heteroskedastic/cluster AR. The separate
+endogenous-subvector inference or heteroskedastic/cluster confidence sets. A separate
+[synthetic robust AR workflow](../examples/robust-ar/README.md) now validates
+retained-sample HC1/one-way CR1 auxiliary-regression joint tests against base R
+under three designs, with explicit auxiliary corrections and asymptotic
+chi-square(q) inference. This is method evidence, not new book coverage or
+few-cluster validation. The separate
 [overidentified AER cigarette-demand example](../examples/cigarettes_iv/README.md)
 now validates `estat overid` Sargan N*R² with asymptotic homoskedastic chi-square
 inference on 48 states in 1995. Its sample/design/reference is specified; this

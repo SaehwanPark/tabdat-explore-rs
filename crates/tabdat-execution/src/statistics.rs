@@ -979,11 +979,6 @@ impl Session {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatArRequiresPriorIv);
       };
-      if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
-        return Err(RuntimeError::EstatArFailed(
-          "this homoskedastic AR test requires a nonrobust 2SLS fit; robust/cluster AR is not implemented".into(),
-        ));
-      }
       return match &command.subcommand {
         EstatSubcommand::AndersonRubin { null_values } => {
           let null_values = null_values
@@ -993,11 +988,28 @@ impl Session {
             .map_err(|_| {
               RuntimeError::EstatArFailed("null values must be finite numbers".into())
             })?;
+          let covariance_type = &state.linear.result.covariance.covariance_type;
+          if *covariance_type != tabdat_stats::CovarianceType::NonRobust {
+            return tabdat_stats::robust_anderson_rubin_test(
+              &state.problem,
+              &null_values,
+              covariance_type,
+            )
+            .map(ExecutionResult::RobustAndersonRubin)
+            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()));
+          }
           tabdat_stats::anderson_rubin_test(&state.problem, &null_values)
             .map(ExecutionResult::AndersonRubin)
             .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
         }
         EstatSubcommand::AndersonRubinConfidenceSet { level } => {
+          if state.linear.result.covariance.covariance_type
+            != tabdat_stats::CovarianceType::NonRobust
+          {
+            return Err(RuntimeError::EstatArFailed(
+              "this homoskedastic AR confidence set requires a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
+            ));
+          }
           let level = level
             .parse::<f64>()
             .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;

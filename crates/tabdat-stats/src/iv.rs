@@ -527,18 +527,10 @@ pub struct AndersonRubinResult {
   pub p_value: f64,
 }
 
-/// Test all endogenous coefficients jointly, leaving included-exogenous coefficients
-/// unrestricted. The auxiliary regression tests excluded instruments in y - X*b0.
-/// This is weak-identification robust, not heteroskedasticity/cluster robust or a
-/// test of instrument validity. Exact F inference requires classical normal errors;
-/// homoskedastic large-sample validity still requires valid instruments.
-///
-/// No endogenous nuisance coefficients may be left unspecified. The caller supplies
-/// the fixed complete estimation sample. Undefined auxiliary variance is an error.
-pub fn anderson_rubin_test(
+fn ar_auxiliary_problem(
   problem: &InstrumentalVariablesProblem,
   null_values: &[f64],
-) -> Result<AndersonRubinResult, StatsError> {
+) -> Result<EstimationProblem, StatsError> {
   problem.validate()?;
   if null_values.len() != problem.endogenous_names.len() {
     return Err(StatsError::DimensionMismatch(
@@ -573,15 +565,124 @@ pub fn anderson_rubin_test(
     .chain(&problem.instrument_names)
     .cloned()
     .collect::<Vec<_>>();
-  let full = fit_least_squares(
-    &EstimationProblem::new(
-      "ar_adjusted_outcome",
-      names,
-      adjusted.clone(),
-      concatenate_columns(&problem.exogenous, &problem.instruments),
-    )?
-    .with_intercept(problem.include_intercept),
+  let mut auxiliary = EstimationProblem::new(
+    "ar_adjusted_outcome",
+    names,
+    adjusted,
+    concatenate_columns(&problem.exogenous, &problem.instruments),
+  )?
+  .with_intercept(problem.include_intercept);
+  auxiliary.sample = problem.sample.clone();
+  Ok(auxiliary)
+}
+
+/// HC1/one-way clustered auxiliary-regression AR Wald test of the complete joint null.
+/// The chi-square reference is asymptotic, including under weak identification;
+/// clustering requires independent groups with a growing number of groups.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RobustAndersonRubinResult {
+  pub endogenous: Vec<String>,
+  pub null_values: Vec<f64>,
+  pub excluded_instruments: Vec<String>,
+  pub observation_count: usize,
+  pub auxiliary_parameter_count: usize,
+  pub auxiliary_residual_df: usize,
+  pub covariance_type: CovarianceType,
+  pub covariance_correction: f64,
+  pub cluster_group_count: Option<usize>,
+  pub degrees_of_freedom: usize,
+  pub statistic: f64,
+  pub p_value: f64,
+}
+
+/// Test excluded instruments in y-X*b0 using unrestricted auxiliary OLS scores,
+/// not structural 2SLS residuals or the parent's coefficient covariance. Corrections
+/// use the auxiliary parameter count, which differs in overidentified models.
+pub fn robust_anderson_rubin_test(
+  problem: &InstrumentalVariablesProblem,
+  null_values: &[f64],
+  covariance_type: &CovarianceType,
+) -> Result<RobustAndersonRubinResult, StatsError> {
+  if *covariance_type == CovarianceType::NonRobust {
+    return Err(StatsError::IncompatibleHypothesis(
+      "robust Anderson-Rubin requires HC1 or one-way cluster covariance".into(),
+    ));
+  }
+  let auxiliary = ar_auxiliary_problem(problem, null_values)?;
+  let full = crate::fit_least_squares_with_options(
+    &auxiliary,
+    &crate::LeastSquaresOptions {
+      covariance_type: covariance_type.clone(),
+    },
   )?;
+  let n = full.fit_statistics.observation_count;
+  let k = full.fit_statistics.parameter_count;
+  let df = n - k;
+  let group_count = if matches!(covariance_type, CovarianceType::Cluster(_)) {
+    Some(
+      auxiliary
+        .sample
+        .as_ref()
+        .unwrap()
+        .cluster_groups
+        .as_ref()
+        .unwrap()
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len(),
+    )
+  } else {
+    None
+  };
+  let correction = group_count.map_or(n as f64 / df as f64, |g| {
+    g as f64 / (g - 1) as f64 * (n - 1) as f64 / df as f64
+  });
+  let start = usize::from(problem.include_intercept) + problem.exogenous_names.len();
+  let values = full.coefficients[start..]
+    .iter()
+    .map(|c| c.value)
+    .collect::<Vec<_>>();
+  let covariance = full.covariance.matrix[start..]
+    .iter()
+    .map(|row| row[start..].to_vec())
+    .collect::<Vec<_>>();
+  let wald = crate::binary::omnibus_wald(&values, &covariance, false, group_count);
+  if let Some(reason) = wald.unavailable_reason {
+    return Err(StatsError::IncompatibleHypothesis(format!(
+      "Anderson-Rubin excluded-instrument Wald test unavailable: {reason}"
+    )));
+  }
+  Ok(RobustAndersonRubinResult {
+    endogenous: problem.endogenous_names.clone(),
+    null_values: null_values.to_vec(),
+    excluded_instruments: problem.instrument_names.clone(),
+    observation_count: n,
+    auxiliary_parameter_count: k,
+    auxiliary_residual_df: df,
+    covariance_type: covariance_type.clone(),
+    covariance_correction: correction,
+    cluster_group_count: group_count,
+    degrees_of_freedom: values.len(),
+    statistic: wald.statistic.unwrap(),
+    p_value: wald.p_value.unwrap(),
+  })
+}
+
+/// Test all endogenous coefficients jointly, leaving included-exogenous coefficients
+/// unrestricted. The auxiliary regression tests excluded instruments in y - X*b0.
+/// This is weak-identification robust, not heteroskedasticity/cluster robust or a
+/// test of instrument validity. Exact F inference requires classical normal errors;
+/// homoskedastic large-sample validity still requires valid instruments.
+///
+/// No endogenous nuisance coefficients may be left unspecified. The caller supplies
+/// the fixed complete estimation sample. Undefined auxiliary variance is an error.
+pub fn anderson_rubin_test(
+  problem: &InstrumentalVariablesProblem,
+  null_values: &[f64],
+) -> Result<AndersonRubinResult, StatsError> {
+  let auxiliary = ar_auxiliary_problem(problem, null_values)?;
+  let adjusted = &auxiliary.response;
+  let full = fit_least_squares(&auxiliary)?;
   let restricted_rss = if problem.exogenous_names.is_empty() && !problem.include_intercept {
     adjusted.iter().map(|value| value * value).sum::<f64>()
   } else {
@@ -589,7 +690,7 @@ pub fn anderson_rubin_test(
       &EstimationProblem::new(
         "ar_adjusted_outcome",
         problem.exogenous_names.clone(),
-        adjusted,
+        adjusted.clone(),
         problem.exogenous.clone(),
       )?
       .with_intercept(problem.include_intercept),
