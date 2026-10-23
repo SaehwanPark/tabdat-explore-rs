@@ -576,7 +576,7 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
     "--json",
     &[
       "use data.csv",
-      "sql \"SELECT *, source_row % 3 AS few FROM active\" into few_groups",
+      "sql SELECT *, source_row % 3 AS few FROM active into few_groups",
       "use few_groups",
       "ivregress 2sls y w, endog(x1 x2) iv(z1 z2 z3) cluster(few)",
       "estat ar, null(1.7 -0.6)",
@@ -584,6 +584,11 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
     ],
   );
   assert_eq!(output.status.code(), Some(1));
-  assert!(String::from_utf8_lossy(&output.stderr).contains("insufficient_cluster_rank"));
+  assert!(
+    String::from_utf8_lossy(&output.stderr).contains("insufficient_cluster_rank"),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  assert_eq!(String::from_utf8_lossy(&output.stdout).lines().count(), 4);
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
