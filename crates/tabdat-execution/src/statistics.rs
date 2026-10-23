@@ -1007,7 +1007,7 @@ impl Session {
             != tabdat_stats::CovarianceType::NonRobust
           {
             return Err(RuntimeError::EstatArFailed(
-              "AR confidence sets require a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
+              "this homoskedastic AR confidence set requires a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
             ));
           }
           let level = level
