@@ -395,7 +395,7 @@ fn cli_json_and_text_report_iv_estimates_and_label_first_stage_limits() {
   );
   assert_eq!(
     regression["first_stage"]["joint_ar_postestimation_available"],
-    false
+    true
   );
   let first_stage = regression["first_stage"]["rows"].as_array().unwrap();
   assert_eq!(first_stage.len(), 2);
@@ -576,7 +576,8 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
     "--json",
     &[
       "use data.csv",
-      "generate few = source_row % 3",
+      "sql \"SELECT *, source_row % 3 AS few FROM active\" into few_groups",
+      "use few_groups",
       "ivregress 2sls y w, endog(x1 x2) iv(z1 z2 z3) cluster(few)",
       "estat ar, null(1.7 -0.6)",
       "export should-not-exist.csv",
