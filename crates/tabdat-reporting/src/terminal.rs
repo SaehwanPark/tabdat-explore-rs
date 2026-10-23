@@ -391,6 +391,29 @@ fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
   output
 }
 
+fn multinomial_estimates(estimates: &[tabdat_domain::MultinomialEstimate]) -> String {
+  let mut output = String::from(
+    "Category\tVariable\tEstimate\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+  );
+  for row in estimates {
+    let c = &row.estimate;
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+      row.category,
+      c.name.escape_debug(),
+      logit_number(c.value),
+      logit_number(c.standard_error),
+      logit_number(c.statistic),
+      logit_number(c.p_value),
+      logit_number(c.confidence_lower),
+      logit_number(c.confidence_upper)
+    )
+    .unwrap();
+  }
+  output
+}
+
 fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   let r = &state.result;
   let fit = &r.gls;
@@ -1599,6 +1622,41 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         ""
       }
+    ),
+    ExecutionResult::MultinomialLogit(result) => format!(
+      "Multinomial logit maximum likelihood (model-based joint Fisher information)\nOutcome: {}; N = {}; base outcome = {}; converged in {} information evaluations\nCategory levels = {:?}; counts = {:?}\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; LR chi2({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\nJoint covariance without N-K correction; asymptotic normal 95% intervals.\n{}",
+      result.outcome.escape_debug(),
+      result.observation_count,
+      result.base_outcome,
+      result.iterations,
+      result.category_levels,
+      result.category_counts,
+      result
+        .sample
+        .as_ref()
+        .map_or(result.observation_count, |s| s.total_observations),
+      result.sample.as_ref().map_or(0, |s| s.dropped_observations),
+      inference_number(result.log_likelihood),
+      inference_number(result.null_log_likelihood),
+      result.likelihood_ratio_df,
+      inference_number(result.likelihood_ratio),
+      result
+        .likelihood_ratio_p_value
+        .map(logit_number)
+        .unwrap_or_else(|| "NA".into()),
+      inference_number(result.mcfadden_r_squared),
+      multinomial_estimates(&result.coefficients),
+    ),
+    ExecutionResult::MultinomialMarginalEffects(result) => format!(
+      "Multinomial logit continuous average partial effects; retained estimation N = {}\nAll category probabilities; base outcome = {}. Predictor-column derivatives, not at-means effects or discrete changes.\nDelta-method uncertainty conditional on observed estimation X; full joint model-based covariance, asymptotic normal 95% intervals.\n{}{}",
+      result.observation_count,
+      result.base_outcome,
+      multinomial_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      },
     ),
     ExecutionResult::Probit(result) => format!(
       "Binary probit maximum likelihood ({})\nOutcome: {}; N = {}; events = {}; converged in {} information evaluations\nCandidate rows = {}; excluded missing/nonfinite = {}\nLog likelihood = {}; null log likelihood = {}; {lr_label}({}) = {}; p-value = {}\nMcFadden pseudo R2 = {}\n{inference_note}\n{}",

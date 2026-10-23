@@ -1064,6 +1064,7 @@ impl Session {
     if command.subcommand == EstatSubcommand::Margins {
       return match &self.estimation {
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
+        Some(EstimationState::MultinomialLogit(state)) => self.execute_mlogit_margins(state),
         Some(EstimationState::PoissonFit(state)) => self.execute_poisson_margins(state),
         Some(EstimationState::NegativeBinomialFit(state)) => self.execute_nbreg_margins(state),
         // Preserves the pinned logit margins contract, including its
@@ -1149,6 +1150,9 @@ impl Session {
     }
     if matches!(self.estimation, Some(EstimationState::Probit(_))) {
       return self.execute_probit_prediction(command);
+    }
+    if matches!(self.estimation, Some(EstimationState::MultinomialLogit(_))) {
+      return self.execute_mlogit_prediction(command);
     }
     if matches!(
       self.estimation,

@@ -22,6 +22,7 @@ mod iv_overid;
 mod iv_overid_score;
 pub mod least_squares;
 pub mod matrix;
+mod multinomial;
 mod nb2;
 mod poisson;
 pub mod post_estimation;
@@ -78,6 +79,11 @@ pub use least_squares::{
 pub use matrix::{
   covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
   sample_covariance, sample_variance, scale, student_t_pvalue, student_t_quantile, transpose,
+};
+pub use multinomial::{
+  MultinomialEstimate, MultinomialLogitResult, MultinomialMarginalEffects, MultinomialOptions,
+  fit_multinomial_logit, multinomial_marginal_effects, multinomial_outcome_code,
+  multinomial_predict_row,
 };
 pub use nb2::{
   MAX_NB2_COUNT, Nb2Cluster, Nb2Dispersion, Nb2DispersionTest, Nb2Estimate, Nb2MarginalEffects,

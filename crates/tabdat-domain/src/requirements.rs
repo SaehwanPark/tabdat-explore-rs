@@ -72,6 +72,7 @@ impl Command {
       | Self::CfRegress { .. }
       | Self::Logit { .. }
       | Self::Probit { .. }
+      | Self::Mlogit { .. }
       | Self::Poisson { .. }
       | Self::Nbreg { .. }
       | Self::Zip { .. }

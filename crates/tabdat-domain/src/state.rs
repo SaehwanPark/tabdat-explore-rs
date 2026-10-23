@@ -96,6 +96,7 @@ pub enum EstimationFamily {
   Quantile,
   Logit,
   Probit,
+  MultinomialLogit,
   Tobit,
   Heckman,
   Nonlinear,
@@ -161,6 +162,13 @@ pub struct BinaryLogitState {
 /// encoded by `EstimationState::Probit` and the fitted `result.model`.
 pub type BinaryProbitState = BinaryLogitState;
 
+/// Complete finite design retained for continuous MNL effects after data edits.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MultinomialLogitState {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub result: tabdat_stats::MultinomialLogitResult,
+}
+
 /// Owned Poisson design/fit, independent of subsequent current-data edits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonFitState {
@@ -205,6 +213,7 @@ pub enum EstimationState {
   QuantileFit(Box<tabdat_stats::QuantileResult>),
   Logit(Box<BinaryLogitState>),
   Probit(Box<BinaryProbitState>),
+  MultinomialLogit(Box<MultinomialLogitState>),
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),
@@ -272,6 +281,7 @@ impl EstimationState {
       Self::Quantile(..) | Self::QuantileFit(..) => EstimationFamily::Quantile,
       Self::Logit(..) => EstimationFamily::Logit,
       Self::Probit(..) => EstimationFamily::Probit,
+      Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
       Self::Tobit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,

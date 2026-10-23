@@ -16,6 +16,7 @@ mod binary;
 mod bootstrap;
 mod estimates;
 mod fixed_effects;
+mod multinomial;
 mod random_effects;
 mod row_conversion;
 use row_conversion::*;
@@ -150,6 +151,7 @@ impl Session {
       Command::QuantileBootstrap { command } => self.execute_quantile_bootstrap(&command),
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
+      Command::Mlogit { command } => self.execute_mlogit(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),

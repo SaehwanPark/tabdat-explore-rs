@@ -48,6 +48,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "logit",
   "lowess",
   "missing",
+  "mlogit",
   "nbreg",
   "nl",
   "panel",
@@ -296,6 +297,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "missing".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "mlogit".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1203,6 +1208,12 @@ fn get_command_schema(
         },
       ],
       syntax: "logit y x1 x2".to_string(),
+    }),
+    "mlogit" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor { name:"depvar".into(),required:true },ArgumentDescriptor { name:"indepvars".into(),required:false }],
+      help_topic,name:"mlogit".into(),
+      options:vec![OptionDescriptor { name:"baseoutcome".into(),required:false },OptionDescriptor { name:"noconstant".into(),required:false }],
+      syntax:"mlogit y [x1 x2] [, baseoutcome(integer) noconstant]".into(),
     }),
     "lowess" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -2147,7 +2158,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 83);
+    assert_eq!(catalog.commands.len(), 84);
     for window in catalog.commands.windows(2) {
       assert!(window[0].name < window[1].name);
     }
@@ -2190,7 +2201,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 83);
+    assert_eq!(effects.commands.len(), 84);
     let valid_categories = ["read", "write", "control", "plot", "unknown"];
     for entry in &effects.commands {
       assert!(!entry.effects.is_empty());

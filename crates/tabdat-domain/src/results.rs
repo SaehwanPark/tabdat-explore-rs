@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 pub use tabdat_stats::UnitEffectsFTest;
 pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
-  MAX_COUNT_POINT_CUTOFF, Nb2Cluster, Nb2Dispersion, Nb2Estimate, Nb2MarginalEffects, Nb2Result,
-  PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult,
+  MAX_COUNT_POINT_CUTOFF, MultinomialEstimate, Nb2Cluster, Nb2Dispersion, Nb2Estimate,
+  Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate, PoissonMarginalEffects,
+  PoissonOmnibusWald, PoissonResult,
 };
 pub use tabdat_stats::{
   BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileBootstrapResult, QuantileResult,
@@ -791,6 +792,8 @@ pub enum ExecutionResult {
   Probit(Box<tabdat_stats::BinaryMleResult>),
   /// Probit conditional-on-retained-X average partial effects and delta inference.
   ProbitMarginalEffects(Box<tabdat_stats::LogitMarginalEffects>),
+  MultinomialLogit(Box<tabdat_stats::MultinomialLogitResult>),
+  MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.

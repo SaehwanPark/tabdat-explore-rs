@@ -230,6 +230,8 @@ pub enum Command {
   Logit { command: LogitCommand },
   /// Fit a probit regression model (execution is deferred).
   Probit { command: ProbitCommand },
+  /// Unweighted model-based multinomial logit with a fixed reference category.
+  Mlogit { command: MlogitCommand },
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
@@ -561,6 +563,15 @@ pub struct ProbitCommand {
   /// Optional cluster variable for the eventual runtime.
   pub cluster_variable: Option<String>,
   /// Whether the eventual runtime should include an intercept.
+  pub include_intercept: bool,
+}
+
+/// Shared person-level design across unordered numeric categories.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MlogitCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub base_outcome: Option<i64>,
   pub include_intercept: bool,
 }
 
@@ -938,6 +949,10 @@ pub enum PredictKind {
   FixedEffect,
   /// Predicted probabilities for binary choice models.
   Pr,
+  /// Multinomial scalar probability for an explicitly selected retained category.
+  MultinomialPr(i64),
+  /// Multinomial reference-relative index (zero for the base category).
+  MultinomialXb(i64),
   /// Conditional mean exp(xb), requested by `n` after Poisson or NB2.
   MeanCount,
   /// Distributional P(Y=k) after Poisson/NB2, k=0..99.

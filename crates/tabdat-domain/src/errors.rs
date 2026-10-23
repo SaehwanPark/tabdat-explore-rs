@@ -529,6 +529,8 @@ pub enum RuntimeError {
   PredictUnknownVariable { variables: Vec<String> },
   /// DuckDB could not stage or publish fitted values or residuals.
   PredictFailed,
+  /// Multinomial fit or category-specific prediction could not be completed.
+  MlogitFailed { message: String },
 }
 
 impl fmt::Display for RuntimeError {
@@ -1104,6 +1106,7 @@ impl fmt::Display for RuntimeError {
         "logit prediction supports only pr or xb, without interval, std or saving options",
       ),
       Self::ProbitFailed { message } => write!(formatter, "probit: {message}"),
+      Self::MlogitFailed { message } => write!(formatter, "mlogit: {message}"),
       Self::PredictBinaryUnsupported => formatter.write_str(
         "probit prediction supports only pr or xb, without interval, std or saving options",
       ),

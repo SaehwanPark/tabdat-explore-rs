@@ -108,6 +108,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::QuantileBootstrap { .. }
     | Command::Logit { .. }
     | Command::Probit { .. }
+    | Command::Mlogit { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -482,6 +483,37 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "LogitMarginalEffectsResult",
+    ),
+    ExecutionResult::MultinomialLogit(result) => (
+      json!({
+        "estimator":"mlogit", "outcome":result.outcome, "predictors":result.predictor_names,
+        "include_intercept":result.include_intercept, "category_levels":result.category_levels,
+        "base_outcome":result.base_outcome, "category_counts":result.category_counts,
+        "observation_count":result.observation_count, "coefficients":result.coefficients,
+        "coefficient_order":"category_major_nonbase_intercept_then_predictors",
+        "covariance_matrix":result.covariance, "covariance":"model_based_joint_fisher_information",
+        "covariance_correction":1.0, "reference_distribution":"asymptotic_standard_normal", "confidence_level":95.0,
+        "log_likelihood":result.log_likelihood,"null_log_likelihood":result.null_log_likelihood,
+        "null_model":if result.include_intercept { "intercept_only_estimated_category_shares" } else { "equal_probabilities_all_coefficients_zero" },
+        "likelihood_ratio":result.likelihood_ratio,"likelihood_ratio_df":result.likelihood_ratio_df,
+        "likelihood_ratio_p_value":result.likelihood_ratio_p_value,"likelihood_ratio_reference_distribution":"asymptotic_chi_square",
+        "mcfadden_r_squared":result.mcfadden_r_squared,"sample":result.sample,
+        "converged":true,"iterations":result.iterations,"convergence_coordinate_system":"rms_column_scaled_per_observation_score",
+        "convergence_absolute_tolerance":1e-10,"max_abs_scaled_score":result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step":result.max_abs_scaled_newton_step,
+      }),
+      "MultinomialLogitResult",
+    ),
+    ExecutionResult::MultinomialMarginalEffects(result) => (
+      json!({
+        "estimator":"mlogit","effect":"average_continuous_predictor_column_derivative",
+        "sample":"retained_estimation_design","uncertainty":"conditional_on_observed_design_delta_method",
+        "covariance":"model_based_joint_fisher_information","covariance_correction":1.0,
+        "confidence_level":95.0,"reference_distribution":"asymptotic_standard_normal",
+        "observation_count":result.observation_count,"category_levels":result.category_levels,
+        "base_outcome":result.base_outcome,"effects":result.effects,
+      }),
+      "MultinomialMarginalEffectsResult",
     ),
     ExecutionResult::Probit(result) => (
       json!({
