@@ -1150,6 +1150,19 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         result.replicate_observation_counts.iter().max().unwrap()
       )
     }
+    ExecutionResult::RobustEndogeneity(result) => format!(
+      "Robust joint endogeneity test (augmented-regression Wald)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; asymptotic chi-square({}) = {}; p-value = {}\nCovariance = {:?}; auxiliary K = {}; residual DF = {}; correction = {}; clusters = {:?}\nConventional strong-identification reference; independent rows or independent growing clusters required, no few-cluster guarantee.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
+      result.endogenous,
+      result.observation_count,
+      result.degrees_of_freedom,
+      inference_number(result.statistic),
+      inference_number(result.p_value),
+      result.covariance_type,
+      result.auxiliary_parameter_count,
+      result.auxiliary_residual_df,
+      inference_number(result.covariance_correction),
+      result.cluster_group_count,
+    ),
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,

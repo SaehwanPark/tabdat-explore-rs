@@ -1,4 +1,7 @@
-use tabdat_stats::{InstrumentalVariablesProblem, StatsError, wu_hausman_test};
+use tabdat_stats::{
+  CovarianceType, EstimationSample, InstrumentalVariablesProblem, StatsError,
+  robust_endogeneity_test, wu_hausman_test,
+};
 
 fn problem(m: usize, control: bool, intercept: bool, overid: bool) -> InstrumentalVariablesProblem {
   let mut p = InstrumentalVariablesProblem {
@@ -120,6 +123,151 @@ fn joint_f_matches_independent_r_including_just_identification_and_zero_control_
       assert!((wu_hausman_test(&scaled).unwrap().statistic - statistic).abs() < 1e-12);
     }
   }
+}
+
+#[test]
+fn robust_joint_wald_matches_base_r_auxiliary_scores_across_five_designs() {
+  // R 4.6.1 fixtures/robust_endogeneity_reference.R; absolute 1e-11 accounts
+  // for independent QR/bread arithmetic, not a different finite-sample correction.
+  for (m, control, intercept, overid, hc1_w, hc1_p, cr1_w, cr1_p) in [
+    (
+      2,
+      true,
+      true,
+      false,
+      8.839_999_999_999_99,
+      0.01203423228472384,
+      6.998166248971174,
+      0.0302250833605348,
+    ),
+    (
+      2,
+      true,
+      false,
+      false,
+      2.099999999999999,
+      0.3499377491111555,
+      0.7875891691668562,
+      0.674492593188149,
+    ),
+    (
+      1,
+      false,
+      false,
+      false,
+      1.710000000000002,
+      0.1909853704997109,
+      0.7102632140040858,
+      0.3993564450769161,
+    ),
+    (
+      1,
+      true,
+      true,
+      true,
+      6.48,
+      0.01090949836426928,
+      5.168918870622576,
+      0.02299452234977532,
+    ),
+    (
+      2,
+      false,
+      true,
+      true,
+      5.503448275862056,
+      0.06381773571939689,
+      5.453154679692124,
+      0.06544289557737284,
+    ),
+  ] {
+    let mut p = problem(m, control, intercept, overid);
+    p.sample = Some(
+      EstimationSample::new(
+        (2..42).collect(),
+        42,
+        2,
+        None,
+        Some((0..40).map(|i| (i / 4).to_string()).collect()),
+      )
+      .unwrap(),
+    );
+    for (mode, expected_w, expected_p, groups) in [
+      (CovarianceType::RobustHc1, hc1_w, hc1_p, None),
+      (
+        CovarianceType::Cluster("unit".into()),
+        cr1_w,
+        cr1_p,
+        Some(10),
+      ),
+    ] {
+      let before = p.clone();
+      let result = robust_endogeneity_test(&p, &mode).unwrap();
+      let k = usize::from(intercept) + usize::from(control) + 2 * m;
+      let correction = groups.map_or(40.0 / (40 - k) as f64, |g| {
+        g as f64 / (g - 1) as f64 * 39.0 / (40 - k) as f64
+      });
+      assert_eq!(result.endogenous, p.endogenous_names);
+      assert_eq!(result.excluded_instruments, p.instrument_names);
+      assert_eq!(result.observation_count, 40);
+      assert_eq!(result.auxiliary_parameter_count, k);
+      assert_eq!(result.auxiliary_residual_df, 40 - k);
+      assert_eq!(result.degrees_of_freedom, m);
+      assert_eq!(result.covariance_type, mode);
+      assert_eq!(result.cluster_group_count, groups);
+      assert!((result.covariance_correction - correction).abs() < 1e-14);
+      assert!((result.statistic - expected_w).abs() < 1e-11, "{result:?}");
+      assert!((result.p_value - expected_p).abs() < 1e-11, "{result:?}");
+      assert_eq!(p, before);
+      for scale in [1e-8, 1e8] {
+        let mut scaled = p.clone();
+        for row in &mut scaled.endogenous {
+          row[0] *= scale;
+        }
+        for row in &mut scaled.instruments {
+          row[0] *= scale;
+        }
+        assert!(
+          (robust_endogeneity_test(&scaled, &mode).unwrap().statistic - expected_w).abs() < 1e-11
+        );
+      }
+    }
+  }
+}
+
+#[test]
+fn robust_endogeneity_rejects_degenerate_innovations_variance_and_cluster_rank() {
+  let p = problem(2, true, true, false);
+  assert!(robust_endogeneity_test(&p, &CovarianceType::NonRobust).is_err());
+  assert!(robust_endogeneity_test(&p, &CovarianceType::Cluster("unit".into())).is_err());
+  let mut bad = p.clone();
+  for (x, z) in bad.endogenous.iter_mut().zip(&bad.instruments) {
+    x[0] = z[0];
+  }
+  assert!(
+    robust_endogeneity_test(&bad, &CovarianceType::RobustHc1)
+      .unwrap_err()
+      .to_string()
+      .contains("first-stage innovation")
+  );
+  bad = p.clone();
+  bad.response = bad.endogenous.iter().map(|x| x[0]).collect();
+  assert!(
+    robust_endogeneity_test(&bad, &CovarianceType::RobustHc1)
+      .unwrap_err()
+      .to_string()
+      .contains("residual variance")
+  );
+  bad = p;
+  let mut sample = EstimationSample::all_retained(40);
+  sample.cluster_groups = Some((0..40).map(|i| (i / 20).to_string()).collect());
+  bad.sample = Some(sample);
+  assert!(
+    robust_endogeneity_test(&bad, &CovarianceType::Cluster("unit".into()))
+      .unwrap_err()
+      .to_string()
+      .contains("Wald")
+  );
 }
 
 #[test]

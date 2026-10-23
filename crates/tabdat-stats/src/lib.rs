@@ -65,7 +65,9 @@ pub use iv_confidence::{
   AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape, ProjectedArConfidenceSet,
   anderson_rubin_confidence_set, projected_anderson_rubin_confidence_set,
 };
-pub use iv_endogenous::{WuHausmanResult, wu_hausman_test};
+pub use iv_endogenous::{
+  RobustEndogeneityResult, WuHausmanResult, robust_endogeneity_test, wu_hausman_test,
+};
 pub use iv_overid::{SarganResult, sargan_test};
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,

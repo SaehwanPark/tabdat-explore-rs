@@ -748,9 +748,24 @@ cases and retained state/reporting. All m declared endogenous regressors are
 jointly tested with N-K-m denominator DF, conditional on valid instruments and
 the maintained model; no 2SLS refit or current-data rescan occurs. The conventional
 F is not weak-IV-robust coefficient inference; exact finite-sample F additionally
-requires conditional normality. Robust/cluster/subset endogeneity tests are not
-installed; any such inference required by the roadmap or exact illustrations
-remains unfinished, not excluded. **This is method evidence only: no Cameron–Trivedi illustration
+requires conditional normality. The separate
+[`robust_endogenous.td`](../../examples/cigarettes_iv/robust_endogenous.td)
+now adds HC1 augmented-OLS joint innovation Wald inference: independent base
+R4.6.1 gives chi-square(1)=3.504844914950468, p=0.06118957434570806 and correction
+48/44, matched at 1e-12 absolute alongside every ordered state ID/240 prepared
+cells by the [replay checker](../../examples/cigarettes_iv/check_robust_endogenous.py).
+One-way clustered parent fits use grouped auxiliary scores and
+G/(G-1)*(N-1)/(N-Kaux), with Kaux=K+m, not parent IV K. Five independent base-R
+synthetic designs validate ten HC1/CR1 statistic/tail pairs (1e-11 absolute),
+unit invariance, intercept/no-control variants and joint one/two-endogenous
+just-/overidentified designs. Result metadata distinguishes correction DF from
+the asymptotic chi-square(m) reference; singular Wald covariance is an error.
+The command retains exact fit sample/group IDs across current edits without
+mutating model/data. These conventional joint tests require valid instruments,
+the maintained linear model and strong identification; clustered inference
+needs independent growing groups, not a few-cluster guarantee. Robust score/GMM
+C and subset tests, and any other inference required by exact illustrations,
+remain unfinished, not excluded. **This is method evidence only: no Cameron–Trivedi illustration
 row changes status or becomes validated because this external example works.**
 
 ## Additional clustered binary method evidence (not a textbook replication)

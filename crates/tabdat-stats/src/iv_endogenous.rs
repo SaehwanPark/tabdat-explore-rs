@@ -1,6 +1,7 @@
 use crate::{
-  EstimationProblem, InstrumentalVariablesProblem, LeastSquaresResult, StatsError,
-  f_distribution_survival_probability, fit_least_squares, mean,
+  CovarianceType, EstimationProblem, InstrumentalVariablesProblem, LeastSquaresOptions,
+  LeastSquaresResult, StatsError, f_distribution_survival_probability, fit_least_squares,
+  fit_least_squares_with_options, mean,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,15 +12,15 @@ fn norm_squared(values: &[f64]) -> f64 {
   values.iter().map(|value| value * value).sum()
 }
 
-// Only residuals are used. Rescaling auxiliary predictors leaves the nested
-// models unchanged and makes QR rank checks insensitive to variable units.
-fn auxiliary_fit(
+// Rescaling leaves the nested spaces and zero-innovation hypothesis unchanged,
+// and makes QR rank checks insensitive to variable units.
+fn auxiliary_problem(
   outcome: &str,
   response: Vec<f64>,
   names: Vec<String>,
   mut design: Vec<Vec<f64>>,
   intercept: bool,
-) -> Result<LeastSquaresResult, StatsError> {
+) -> Result<EstimationProblem, StatsError> {
   for column in 0..names.len() {
     let norm = design
       .iter()
@@ -35,9 +36,19 @@ fn auxiliary_fit(
       row[column] /= norm;
     }
   }
-  fit_least_squares(
-    &EstimationProblem::new(outcome, names, response, design)?.with_intercept(intercept),
-  )
+  Ok(EstimationProblem::new(outcome, names, response, design)?.with_intercept(intercept))
+}
+
+fn auxiliary_fit(
+  outcome: &str,
+  response: Vec<f64>,
+  names: Vec<String>,
+  design: Vec<Vec<f64>>,
+  intercept: bool,
+) -> Result<LeastSquaresResult, StatsError> {
+  fit_least_squares(&auxiliary_problem(
+    outcome, response, names, design, intercept,
+  )?)
 }
 
 /// Joint, homoskedastic regression-based Wu-Hausman F test of exogeneity.
@@ -52,15 +63,10 @@ pub struct WuHausmanResult {
   pub p_value: f64,
 }
 
-/// Test all declared endogenous regressors jointly, on this retained IV sample.
-/// Uses auxiliary first stages and restricted/innovation-augmented OLS, not a
-/// 2SLS refit, Durbin LM or covariance-difference Hausman calculation. Inference
-/// presumes valid instruments, homoskedastic errors and the maintained model;
-/// conventional identification conditions apply. An exact F additionally needs
-/// conditional normality. This does not deliver weak-IV-robust coefficient inference.
-pub fn wu_hausman_test(
+fn endogeneity_fits(
   problem: &InstrumentalVariablesProblem,
-) -> Result<WuHausmanResult, StatsError> {
+  covariance_type: &CovarianceType,
+) -> Result<(LeastSquaresResult, LeastSquaresResult), StatsError> {
   problem.validate()?;
   let m = problem.endogenous_names.len();
   let n = problem.response.len();
@@ -147,12 +153,19 @@ pub fn wu_hausman_test(
     original_design,
     problem.include_intercept,
   )?;
-  let augmented = auxiliary_fit(
+  let mut augmented_problem = auxiliary_problem(
     &problem.outcome,
     problem.response.clone(),
     augmented_names,
     augmented_design,
     problem.include_intercept,
+  )?;
+  augmented_problem.sample = problem.sample.clone();
+  let augmented = fit_least_squares_with_options(
+    &augmented_problem,
+    &LeastSquaresOptions {
+      covariance_type: covariance_type.clone(),
+    },
   )?;
   let rss_r = norm_squared(&restricted.residuals);
   let rss_u = norm_squared(&augmented.residuals);
@@ -183,7 +196,24 @@ pub fn wu_hausman_test(
       "Wu-Hausman auxiliary residual variance is undefined or numerically degenerate",
     ));
   }
-  let df = n - k - m;
+  Ok((restricted, augmented))
+}
+
+/// Test all declared endogenous regressors jointly, on this retained IV sample.
+/// Uses auxiliary first stages and restricted/innovation-augmented OLS, not a
+/// 2SLS refit, Durbin LM or covariance-difference Hausman calculation. Inference
+/// presumes valid instruments, homoskedastic errors and the maintained model;
+/// conventional identification conditions apply. An exact F additionally needs
+/// conditional normality. This does not deliver weak-IV-robust coefficient inference.
+pub fn wu_hausman_test(
+  problem: &InstrumentalVariablesProblem,
+) -> Result<WuHausmanResult, StatsError> {
+  let (restricted, augmented) = endogeneity_fits(problem, &CovarianceType::NonRobust)?;
+  let m = problem.endogenous_names.len();
+  let n = problem.response.len();
+  let df = augmented.fit_statistics.degrees_of_freedom;
+  let rss_r = norm_squared(&restricted.residuals);
+  let rss_u = norm_squared(&augmented.residuals);
   // The augmented space contains the restricted space; roundoff can make a
   // theoretically zero RSS reduction slightly negative. Divide by RSS before
   // applying DF, avoiding underflow from RSS/DF for tiny outcome units.
@@ -200,5 +230,91 @@ pub fn wu_hausman_test(
     denominator_df: df,
     statistic,
     p_value,
+  })
+}
+
+/// Joint residual-inclusion Wald test using auxiliary HC1 or one-way CR1 scores.
+/// The chi-square reference is asymptotic under valid instruments, the maintained
+/// model and conventional identification. Clusters must be independent with a
+/// growing group count; this is not a weak-IV or few-cluster procedure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RobustEndogeneityResult {
+  pub endogenous: Vec<String>,
+  pub excluded_instruments: Vec<String>,
+  pub observation_count: usize,
+  pub auxiliary_parameter_count: usize,
+  pub auxiliary_residual_df: usize,
+  pub covariance_type: CovarianceType,
+  pub covariance_correction: f64,
+  pub cluster_group_count: Option<usize>,
+  pub degrees_of_freedom: usize,
+  pub statistic: f64,
+  pub p_value: f64,
+}
+
+/// Test zero coefficients on all first-stage innovations in augmented OLS.
+/// Under this joint null the first-stage nuisance estimation does not contribute
+/// at first order. Covariance corrections use the augmented parameter count,
+/// not the parent IV count. No subset, score or covariance-difference test is used.
+pub fn robust_endogeneity_test(
+  problem: &InstrumentalVariablesProblem,
+  covariance_type: &CovarianceType,
+) -> Result<RobustEndogeneityResult, StatsError> {
+  if *covariance_type == CovarianceType::NonRobust {
+    return Err(invalid(
+      "robust endogeneity requires HC1 or one-way cluster covariance",
+    ));
+  }
+  let (_, augmented) = endogeneity_fits(problem, covariance_type)?;
+  let n = augmented.observation_count();
+  let k = augmented.fit_statistics.parameter_count;
+  let df = n - k;
+  let groups = if matches!(covariance_type, CovarianceType::Cluster(_)) {
+    Some(
+      augmented
+        .sample
+        .as_ref()
+        .unwrap()
+        .cluster_groups
+        .as_ref()
+        .unwrap()
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len(),
+    )
+  } else {
+    None
+  };
+  let correction = groups.map_or(n as f64 / df as f64, |g| {
+    g as f64 / (g - 1) as f64 * (n - 1) as f64 / df as f64
+  });
+  let m = problem.endogenous_names.len();
+  let start = k - m;
+  let values = augmented.coefficients[start..]
+    .iter()
+    .map(|c| c.value)
+    .collect::<Vec<_>>();
+  let covariance = augmented.covariance.matrix[start..]
+    .iter()
+    .map(|row| row[start..].to_vec())
+    .collect::<Vec<_>>();
+  let wald = crate::binary::omnibus_wald(&values, &covariance, false, groups);
+  if let Some(reason) = wald.unavailable_reason {
+    return Err(invalid(&format!(
+      "endogeneity innovation Wald test unavailable: {reason}"
+    )));
+  }
+  Ok(RobustEndogeneityResult {
+    endogenous: problem.endogenous_names.clone(),
+    excluded_instruments: problem.instrument_names.clone(),
+    observation_count: n,
+    auxiliary_parameter_count: k,
+    auxiliary_residual_df: df,
+    covariance_type: covariance_type.clone(),
+    covariance_correction: correction,
+    cluster_group_count: groups,
+    degrees_of_freedom: m,
+    statistic: wald.statistic.unwrap(),
+    p_value: wald.p_value.unwrap(),
   })
 }

@@ -1065,9 +1065,12 @@ impl Session {
         return Err(RuntimeError::EstatEndogenousRequiresPriorIv);
       };
       if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
-        return Err(RuntimeError::EstatEndogenousFailed(
-          "this homoskedastic Wu-Hausman F test requires a nonrobust 2SLS fit; robust/cluster endogeneity tests are not implemented".into(),
-        ));
+        return tabdat_stats::robust_endogeneity_test(
+          &state.problem,
+          &state.linear.result.covariance.covariance_type,
+        )
+        .map(ExecutionResult::RobustEndogeneity)
+        .map_err(|error| RuntimeError::EstatEndogenousFailed(error.to_string()));
       }
       return tabdat_stats::wu_hausman_test(&state.problem)
         .map(ExecutionResult::WuHausman)
