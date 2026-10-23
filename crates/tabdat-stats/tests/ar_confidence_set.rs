@@ -67,6 +67,41 @@ fn three_endogenous_problem(nuisance_strength: f64) -> InstrumentalVariablesProb
   problem
 }
 
+fn correlated_three_endogenous_problem() -> InstrumentalVariablesProblem {
+  let mut problem = InstrumentalVariablesProblem {
+    outcome: "y".into(),
+    exogenous_names: vec!["w1".into(), "w2".into()],
+    endogenous_names: vec!["x1".into(), "x2".into(), "x3".into()],
+    instrument_names: vec!["z1".into(), "z2".into(), "z3".into()],
+    response: Vec::new(),
+    exogenous: Vec::new(),
+    endogenous: Vec::new(),
+    instruments: Vec::new(),
+    include_intercept: true,
+    sample: None,
+  };
+  for i in 1..=64 {
+    let basis =
+      |k: f64, phase: f64| (2.0 * std::f64::consts::PI * k * i as f64 / 64.0 + phase).sin();
+    let w1 = basis(1.0, 0.0) + 0.2 * basis(3.0, std::f64::consts::FRAC_PI_2);
+    let w2 = basis(1.0, std::f64::consts::FRAC_PI_2) - 0.3 * basis(5.0, 0.0);
+    let z1 = basis(2.0, std::f64::consts::FRAC_PI_2) + 0.4 * basis(1.0, 0.0);
+    let z2 = basis(3.0, 0.0) + 0.3 * basis(4.0, std::f64::consts::FRAC_PI_2);
+    let z3 = basis(4.0, std::f64::consts::FRAC_PI_2) + 0.2 * basis(2.0, 0.0);
+    let x1 = 0.9 * z1 + 0.4 * z2 + 0.2 * w1 + 0.5 * basis(6.0, 0.0);
+    let x2 =
+      0.3 * z1 + 0.8 * z2 + 0.5 * z3 + 0.2 * w2 + 0.4 * basis(7.0, std::f64::consts::FRAC_PI_2);
+    let x3 = 0.2 * z1 + 0.3 * z2 + 0.9 * z3 + 0.3 * w1 - 0.2 * w2 + 0.3 * basis(8.0, 0.0);
+    problem.response.push(
+      1.2 * x1 - 0.5 * x2 + 0.3 * x3 + 0.7 * w1 - 0.4 * w2 + 0.6 * z1 + 0.2 * z2 + basis(9.0, 0.0),
+    );
+    problem.exogenous.push(vec![w1, w2]);
+    problem.endogenous.push(vec![x1, x2, x3]);
+    problem.instruments.push(vec![z1, z2, z3]);
+  }
+  problem
+}
+
 #[test]
 fn confidence_set_shapes_and_endpoints_match_independent_r() {
   // R 4.6.1 lm.fit/qf/polyroot: fixtures/ar_confidence_set_reference.R.
@@ -328,5 +363,35 @@ fn projected_set_matches_independent_r_and_falls_back_conservatively_for_weak_nu
       lower: None,
       upper: None,
     }]
+  );
+}
+
+#[test]
+fn projected_set_profiles_correlated_nuisance_curvature_against_r() {
+  // The orthogonal cosine design above is symmetric around the 2SLS center and
+  // therefore cannot detect a sign error in the nuisance cross terms. This
+  // non-orthogonal design has a nonsymmetric profile; expected values come from
+  // fixtures/projected_ar_confidence_set_reference.R (R 4.6.1 optim/uniroot).
+  let result =
+    projected_anderson_rubin_confidence_set(&correlated_three_endogenous_problem(), "x1", 95.0)
+      .unwrap();
+  assert_eq!(result.shape, ArConfidenceSetShape::Bounded);
+  assert!(!result.all_real_conservative_fallback);
+  assert_eq!(
+    (
+      result.observation_count,
+      result.numerator_df,
+      result.denominator_df
+    ),
+    (64, 3, 58)
+  );
+  close(result.critical_f, 2.763_551_837_432_787);
+  close(result.intervals[0].lower.unwrap(), 1.381_379_408_356_06);
+  close(result.intervals[0].upper.unwrap(), 2.513_745_876_229_364);
+  let lower_offset = 1.892_134_831_460_676 - result.intervals[0].lower.unwrap();
+  let upper_offset = result.intervals[0].upper.unwrap() - 1.892_134_831_460_676;
+  assert!(
+    (upper_offset - lower_offset).abs() > 0.1,
+    "the correlated profile should be visibly nonsymmetric"
   );
 }

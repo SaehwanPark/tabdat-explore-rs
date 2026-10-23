@@ -518,9 +518,10 @@ panel likelihood is supplied.
   subvector test. Profiling is analytic, with no finite grid or nuisance plug-in.
   The three-endogenous synthetic design has a bounded 95% grade interval
   [0.549119702658308, 2.050880297341690], matching independent R 4.6.1 `lm.fit`,
-  `optim` and `uniroot` to 1e-10; a weak-nuisance design exercises the explicit
-  conservative all-real fallback. On the author DATA66 sample the command retains
-  N=3,010 and reports a 95% grade76 set of
+  `optim` and `uniroot` to 1e-10; a second non-orthogonal design with nonzero
+  nuisance cross terms matches its own nonsymmetric interval, and a weak-nuisance
+  design exercises the explicit conservative all-real fallback. On the author
+  DATA66 sample the command retains N=3,010 and reports a 95% grade76 set of
   [-0.014387552440543, 0.502853235901166], matching the independent
   [`reference_ar_projected.R`](../../examples/mma04p4ivweak/reference_ar_projected.R)
   profile to 1e-10. The exact source/design are recorded above; the source data
