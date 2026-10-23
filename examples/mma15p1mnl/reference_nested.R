@@ -77,7 +77,31 @@ V <- D%*%solve(-D%*%H%*%D)%*%D
 ll <- sum(value)
 restricted <- survival::clogit(chosen~p+q+dshore+dshorey+strata(id),data=d,method='exact',
   control=survival::coxph.control(eps=1e-12,toler.chol=1e-14,iter.max=100))
-restricted_ll <- as.numeric(logLik(restricted))
+# Independently audit/refine the restricted package point too. Optimizer status
+# or function-value convergence alone is not a stationarity/information check.
+# At this source point the package already meets this tighter derivative check.
+restricted_par <- unname(coef(restricted))
+restricted_D <- diag(c(.01,1,1,1))
+restricted_converged <- FALSE
+for(restricted_iteration in 1:10) {
+  restricted_value <- do.call(fn,as.list(c(restricted_par,1,1)))
+  restricted_g <- colSums(attr(restricted_value,'gradient'))[1:4]
+  restricted_H <- apply(attr(restricted_value,'hessian'),c(2,3),sum)[1:4,1:4]
+  restricted_step <- drop(restricted_D%*%solve(-restricted_D%*%restricted_H%*%restricted_D,restricted_D%*%restricted_g))
+  if(max(abs(solve(restricted_D,restricted_step)))<1e-12 &&
+      max(abs(restricted_D%*%restricted_g))/1182<1e-12) {
+    restricted_converged <- TRUE;break
+  }
+  restricted_next <- restricted_par+restricted_step
+  stopifnot(sum(do.call(fn,as.list(c(restricted_next,1,1))))>=sum(restricted_value)-1e-9)
+  restricted_par <- restricted_next
+}
+stopifnot(restricted_converged,max(abs(restricted_par-coef(restricted)))<1e-8,
+  abs(sum(restricted_value)-as.numeric(logLik(restricted)))<1e-9)
+restricted_covariance <- restricted_D%*%solve(-restricted_D%*%restricted_H%*%restricted_D)%*%restricted_D
+restricted_ll <- sum(restricted_value)
+cat(sprintf('Restricted independent Newton refinement: max slope shift %.3g; scaled step %.3g\n',
+  max(abs(restricted_par-coef(restricted))),max(abs(solve(restricted_D,restricted_step)))),file=stderr())
 probability <- function(data,par) {
   utility <- matrix(par[1]*data$p+par[2]*data$q,nrow=4)
   center_s <- apply(utility[1:2,,drop=FALSE],2,max)
@@ -97,8 +121,8 @@ emit <- function(model,quantity,i,j,value) {
   quantities[[length(quantities)+1L]] <<- data.frame(model=model,quantity=quantity,i=i,j=j,value=value)
 }
 for(model in c('restricted','nested')) {
-  beta <- if(model=='nested')par else coef(restricted)
-  covariance <- if(model=='nested')V else vcov(restricted)
+  beta <- if(model=='nested')par else restricted_par
+  covariance <- if(model=='nested')V else restricted_covariance
   fit_ll <- if(model=='nested')ll else restricted_ll
   for(name in c('observation_count','choice_set_count','parameter_count','log_likelihood')) {
     emit(model,name,0,0,switch(name,observation_count=4728,choice_set_count=1182,
@@ -120,8 +144,8 @@ emit('nested','independence_likelihood_ratio',0,0,lr)
 emit('nested','independence_df',0,0,2)
 emit('nested','independence_p_value',0,0,pchisq(lr,2,lower.tail=FALSE))
 expected <- d
-expected$restricted <- probability(d,c(coef(restricted),1,1))
-stopifnot(max(abs(expected$restricted-predict(restricted,type='expected')))<1e-12)
+stopifnot(max(abs(probability(d,c(coef(restricted),1,1))-predict(restricted,type='expected')))<1e-12)
+expected$restricted <- probability(d,c(restricted_par,1,1))
 expected$baseline <- probability(d,par)
 income <- d;income$ydiv1000 <- income$ydiv1000+1
 expected$income <- probability(income,par)
