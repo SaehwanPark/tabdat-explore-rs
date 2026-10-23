@@ -53,6 +53,7 @@ impl Command {
       }
       Self::Qreg { .. }
       | Self::Bootstrap { .. }
+      | Self::QuantileBootstrap { .. }
       | Self::Regress { .. }
       | Self::RegressQuery { .. }
       | Self::Lincom { .. }

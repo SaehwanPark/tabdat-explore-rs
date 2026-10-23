@@ -43,3 +43,32 @@ fn whole_cluster_option_uses_one_exact_identifier() {
     Some("unit key")
   );
 }
+
+#[test]
+fn joint_quantiles_are_ordered_bounded_and_keep_exact_seed_spelling() {
+  let Command::QuantileBootstrap { command } = parse_command(
+    "bootstrap y x, quantiles(.05 .25 .5 .75 .95) seed(18446744073709551615) reps(40) noconstant",
+  )
+  .unwrap() else {
+    panic!("joint quantiles")
+  };
+  assert_eq!(command.quantiles, [".05", ".25", ".5", ".75", ".95"]);
+  assert_eq!(command.bootstrap.seed, u64::MAX);
+  assert!(!command.bootstrap.regression.include_intercept);
+  assert!(matches!(
+    parse_command("bootstrap y x, quantiles(.5) seed(7)").unwrap(),
+    Command::QuantileBootstrap { .. }
+  ));
+  for text in [
+    "bootstrap y x, quantiles(.5) cluster(id) seed(7)",
+    "bootstrap y x, quantiles(.5 .5) seed(7)",
+    "bootstrap y x, quantiles(.9 .1) seed(7)",
+    "bootstrap y x, quantiles(.01 .5) seed(7)",
+    "bootstrap y x, quantiles() seed(7)",
+    "bootstrap y x, quantiles(x) seed(7)",
+    "bootstrap y x, quantiles(.5)",
+    "bootstrap y x, quantiles(.5) quantiles(.9) seed(7)",
+  ] {
+    assert!(parse_command(text).is_err(), "{text}");
+  }
+}

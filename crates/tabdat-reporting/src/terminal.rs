@@ -1090,6 +1090,32 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       writeln!(text,"Sparsity = {}; local residuals = {}; bandwidth probability = {}. No heteroskedastic/cluster/survey or cross-quantile inference.",inference_number(result.sparsity),result.sparsity_observation_count,inference_number(result.bandwidth_probability)).unwrap();
       text
     }
+    ExecutionResult::QuantileBootstrap(result) => {
+      let mut text = format!(
+        "Joint IID pairs-bootstrap quantiles: {}\nN = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nFull joint covariance uses common row draws and B-1 denominator.\n95% marginal percentile intervals (R type7); no simultaneous coverage or analytic p-values\n",
+        result.outcome,
+        result.observation_count,
+        result.quantiles,
+        result.replications,
+        result.seed,
+        result.rng
+      );
+      for b in &result.coefficients {
+        let _ = writeln!(
+          text,
+          "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]",
+          b.name,
+          inference_number(b.estimate),
+          inference_number(b.bootstrap_mean),
+          inference_number(b.bias),
+          inference_number(b.standard_error),
+          inference_number(b.ci_lower),
+          inference_number(b.ci_upper)
+        );
+      }
+      text.push_str("IID complete-row pairs; no cluster/survey inference. Failed draws are not discarded or retried. Data and retained fit unchanged.");
+      text
+    }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
     ExecutionResult::ClusterBootstrap(result) => {
       let text = bootstrap_report(&result.bootstrap, true);

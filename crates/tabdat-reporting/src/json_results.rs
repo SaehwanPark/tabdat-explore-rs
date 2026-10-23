@@ -105,6 +105,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Tail { .. }
     | Command::Regress { .. }
     | Command::Bootstrap { .. }
+    | Command::QuantileBootstrap { .. }
     | Command::Logit { .. }
     | Command::Probit { .. }
     | Command::Poisson { .. }
@@ -173,6 +174,20 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["solver"] = json!("clarabel_0.11.1_rust_qdldl_dual_lp_qr_polish");
       data["sample"] = result.sample.as_ref().map_or(Value::Null,|s|json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations}));
       (data, "QuantileRegressionResult")
+    }
+    ExecutionResult::QuantileBootstrap(result) => {
+      let mut data = serde_json::to_value(result).expect("finite quantile bootstrap");
+      data["estimator"] = json!("iid_pairs_bootstrap_joint_quantiles");
+      data["seed"] = json!(result.seed.to_string());
+      data["sample"] = match &result.sample {
+        Some(s) => {
+          json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations})
+        }
+        None => Value::Null,
+      };
+      data["covariance_convention"] = json!("common_iid_pairs_b_minus_1");
+      data["simultaneous_coverage"] = json!(false);
+      (data, "QuantileBootstrapResult")
     }
     ExecutionResult::ClusterBootstrap(result) => {
       let mut data = bootstrap_json(&result.bootstrap);

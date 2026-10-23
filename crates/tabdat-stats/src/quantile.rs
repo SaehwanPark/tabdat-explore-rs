@@ -233,13 +233,12 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
   })
 }
 
-/// Unweighted conditional quantiles with IID-location-error sparsity covariance.
-/// Hall–Sheather bandwidth and local residual-spacing median regression follow
-/// quantreg::summary.rq(se="iid", hs=TRUE). Tails here are asymptotic normal.
-pub fn fit_quantile_iid(
+// Bootstrap point fits deliberately omit residual-spacing inference: duplicate
+// pairs can have zero residual spacings without invalidating their coefficients.
+pub(crate) fn quantile_design(
   problem: &EstimationProblem,
   tau: f64,
-) -> Result<QuantileResult, StatsError> {
+) -> Result<Vec<Vec<f64>>, StatsError> {
   problem.validate()?;
   let n = problem.observation_count();
   let k = problem.parameter_count();
@@ -273,6 +272,28 @@ pub fn fit_quantile_iid(
       row
     })
     .collect();
+  Ok(design)
+}
+
+pub(crate) fn quantile_point_coefficients(
+  x: &[Vec<f64>],
+  y: &[f64],
+  tau: f64,
+  intercept: bool,
+) -> Result<Vec<f64>, StatsError> {
+  point_fit(x, y, tau, intercept).map(|p| p.coefficients)
+}
+
+/// Unweighted conditional quantiles with IID-location-error sparsity covariance.
+/// Hall–Sheather bandwidth and local residual-spacing median regression follow
+/// quantreg::summary.rq(se="iid", hs=TRUE). Tails here are asymptotic normal.
+pub fn fit_quantile_iid(
+  problem: &EstimationProblem,
+  tau: f64,
+) -> Result<QuantileResult, StatsError> {
+  let design = quantile_design(problem, tau)?;
+  let n = problem.observation_count();
+  let k = problem.parameter_count();
   let point = point_fit(&design, &problem.response, tau, problem.include_intercept)?;
   let residuals: Vec<_> = design
     .iter()

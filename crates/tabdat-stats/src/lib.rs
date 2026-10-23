@@ -26,6 +26,7 @@ mod poisson;
 pub mod post_estimation;
 pub mod problem;
 mod quantile;
+mod quantile_bootstrap;
 mod random_effects;
 mod random_effects_ml;
 pub mod result;
@@ -106,3 +107,4 @@ pub use ttest::{
 };
 
 pub use quantile::{QuantileCoefficient, QuantileResult, fit_quantile_iid};
+pub use quantile_bootstrap::{QuantileBootstrapResult, bootstrap_quantiles};

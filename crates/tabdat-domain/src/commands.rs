@@ -151,6 +151,8 @@ pub enum Command {
   IvRegress { command: IvRegressCommand },
   /// Read-only seeded IID or whole-cluster pairs-bootstrap OLS report on current complete cases.
   Bootstrap { command: BootstrapCommand },
+  /// Read-only joint IID pairs-bootstrap quantiles, sharing draws across quantiles.
+  QuantileBootstrap { command: QuantileBootstrapCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
   XtReg { command: XtRegCommand },
   /// Fit a dynamic-panel Arellano-Bond model (execution is deferred).
@@ -911,6 +913,13 @@ pub struct BootstrapCommand {
   pub regression: RegressCommand,
   pub replications: usize,
   pub seed: u64,
+}
+
+/// The quantile bootstrap is a report, not a retained estimator.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuantileBootstrapCommand {
+  pub bootstrap: BootstrapCommand,
+  pub quantiles: Vec<String>,
 }
 
 /// The requested prediction mode.

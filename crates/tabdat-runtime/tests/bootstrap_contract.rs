@@ -213,3 +213,72 @@ fn missing_nonfinite_and_signed_zero_float_groups_have_explicit_sample_semantics
   assert_eq!(r.bootstrap.sample.as_ref().unwrap().dropped_observations, 3);
   assert_eq!(s.state(), before);
 }
+
+#[test]
+fn joint_quantile_reports_preserve_current_data_labels_named_models_and_retained_fits() {
+  let raw = include_str!("../../tabdat-stats/tests/fixtures/quantile-bootstrap/inputs.csv");
+  let mut csv = String::from("y,x,z\n,0,0\n");
+  csv.push_str(&raw.lines().skip(1).collect::<Vec<_>>().join("\n"));
+  csv.push_str("\n0,,0\nInf,0,0\n");
+  let f = Fixture::new(&csv);
+  let mut s = f.load();
+  run(&mut s, "regress y x z");
+  run(&mut s, "estimates store original");
+  run(&mut s, "label variable x \"original x\"");
+  let before = s.state();
+  let rows = run(&mut s, "head 200");
+  let text = "bootstrap y x z, quantiles(.2 .5 .8) seed(18446744073709551615) reps(40)";
+  let a = run(&mut s, text);
+  let ExecutionResult::QuantileBootstrap(r) = &a else {
+    panic!("quantile bootstrap")
+  };
+  assert_eq!(
+    r.sample.as_ref().unwrap().retained_indices,
+    (1..=120).collect::<Vec<_>>()
+  );
+  assert_eq!(r.sample.as_ref().unwrap().dropped_observations, 3);
+  assert_eq!(a, run(&mut s, text));
+  assert_eq!(s.state(), before);
+  assert_eq!(run(&mut s, "head 200"), rows);
+  for text in [
+    "bootstrap absent x, quantiles(.5) seed(7)",
+    "bootstrap y x x, quantiles(.5) seed(7)",
+  ] {
+    assert!(s.execute(parse_command(text).unwrap()).is_err());
+    assert_eq!(s.state(), before);
+  }
+  let Command::QuantileBootstrap { mut command } = parse_command(text).unwrap() else {
+    panic!("command")
+  };
+  command.bootstrap.regression.robust = true;
+  assert!(s.execute(Command::QuantileBootstrap { command }).is_err());
+  assert_eq!(s.state(), before);
+  run(&mut s, "replace y = y + 100");
+  let changed = s.state();
+  let ExecutionResult::QuantileBootstrap(current) = run(&mut s, text) else {
+    panic!("current")
+  };
+  assert!((current.coefficients[0].estimate - r.coefficients[0].estimate - 100.).abs() < 1e-8);
+  assert_eq!(s.state(), changed);
+  run(&mut s, "predict preserved");
+}
+
+#[test]
+fn failed_quantile_bootstrap_replication_keeps_the_prior_model_and_data() {
+  let f = Fixture::new("y,x\n1,0\n2,1\n4,2\n8,3\n16,4\n");
+  let mut s = f.load();
+  run(&mut s, "regress y x");
+  let before = s.state();
+  let rows = run(&mut s, "head");
+  let error = s
+    .execute(parse_command("bootstrap y x, quantiles(.5) seed(1) reps(100)").unwrap())
+    .unwrap_err()
+    .to_string();
+  assert!(
+    error.contains("replicate") && error.contains("no draws were discarded or retried"),
+    "{error}"
+  );
+  assert_eq!(s.state(), before);
+  assert_eq!(run(&mut s, "head"), rows);
+  run(&mut s, "predict preserved");
+}
