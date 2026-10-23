@@ -458,3 +458,108 @@ fn unbalanced_ml_uses_joint_case_counts_and_retains_them_after_current_data_chan
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
 }
+
+#[test]
+fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
+  for unequal in [false, true] {
+    let f = Fixture::new();
+    let mut s = f.load();
+    if unequal {
+      run(
+        &mut s,
+        "sql SELECT * FROM active WHERE NOT (id=1 AND year=1979) into unequal",
+      );
+    }
+    let original = rows(&mut s, "SELECT * FROM active");
+    let ExecutionResult::RandomEffects(model) = run(&mut s, "xtreg y x, mle id(id) time(year)")
+    else {
+      panic!()
+    };
+    let ExecutionResult::RandomEffects(cluster) =
+      run(&mut s, "xtreg y x, mle id(id) time(year) cluster(id)")
+    else {
+      panic!()
+    };
+    let ExecutionResult::RandomEffects(robust) =
+      run(&mut s, "xtreg y x, mle id(id) time(year) robust")
+    else {
+      panic!()
+    };
+    assert_eq!(cluster, robust);
+    assert_eq!(cluster.result.gls.sample, model.result.gls.sample);
+    assert_eq!(
+      cluster.result.gls.fitted_values,
+      model.result.gls.fitted_values
+    );
+    assert_eq!(cluster.result.gls.residuals, model.result.gls.residuals);
+    assert_eq!(
+      cluster.result.gls.sample.as_ref().unwrap().retained_indices,
+      original
+        .iter()
+        .enumerate()
+        .filter_map(|(i, row)| number(&row[2]).is_some().then_some(i))
+        .collect::<Vec<_>>()
+    );
+    assert_eq!(rows(&mut s, "SELECT * FROM active"), original);
+    run(&mut s, "predict ml_cluster_xb");
+    run(&mut s, "predict ml_cluster_residual, residuals");
+    let b = &cluster.result.gls.coefficients;
+    for row in rows(
+      &mut s,
+      "SELECT y,x,ml_cluster_xb,ml_cluster_residual FROM active",
+    ) {
+      let expected = b[0].value + b[1].value * number(&row[1]).unwrap();
+      assert!((number(&row[2]).unwrap() - expected).abs() < 1e-12);
+      if let Some(y) = number(&row[0]) {
+        assert!((number(&row[3]).unwrap() - (y - expected)).abs() < 1e-12);
+      } else {
+        assert!(number(&row[3]).is_none());
+      }
+    }
+    run(&mut s, "drop id year");
+    run(&mut s, "replace x = x + 1");
+    run(&mut s, "predict changed_xb");
+    for row in rows(&mut s, "SELECT x,changed_xb FROM active") {
+      assert!(
+        (number(&row[1]).unwrap() - b[0].value - b[1].value * number(&row[0]).unwrap()).abs()
+          < 1e-12
+      );
+    }
+    let data = rows(&mut s, "SELECT * FROM active");
+    assert!(
+      s.execute(parse_command("xtreg y x, mle id(id) time(year) robust").unwrap())
+        .is_err()
+    );
+    assert!(s.state().estimation.is_none());
+    assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+  }
+  let f = Fixture::new();
+  let mut s = f.load();
+  run(&mut s, "xtreg y x, mle id(id) time(year) robust");
+  for command in [
+    "xtreg y x, mle id(id) time(year) cluster(year)",
+    "xtreg y x, mle id(id) time(year) cluster(unknown)",
+  ] {
+    let data = rows(&mut s, "SELECT * FROM active");
+    assert!(s.execute(parse_command(command).unwrap()).is_err());
+    assert!(s.state().estimation.is_none());
+    assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+  }
+  run(
+    &mut s,
+    "sql SELECT * EXCLUDE(y), 0.7*x + CASE WHEN year IN (1979,1982) THEN -0.2 ELSE 0.2 END AS y FROM active into boundary_input",
+  );
+  run(&mut s, "xtreg y x, mle id(id) time(year)");
+  let data = rows(&mut s, "SELECT * FROM active");
+  let error = s
+    .execute(parse_command("xtreg y x, mle id(id) time(year) robust").unwrap())
+    .unwrap_err();
+  assert!(
+    error
+      .to_string()
+      .contains("interior positive unit variance"),
+    "{error}"
+  );
+  assert!(s.state().estimation.is_none());
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}

@@ -5304,12 +5304,6 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("xtreg cannot combine robust and cluster"));
   }
 
-  if has_mle && (robust || cluster_variable.is_some()) {
-    return Err(ParseError::new(
-      "xtreg mle supports model-based covariance only",
-    ));
-  }
-
   Ok(Command::XtReg {
     command: XtRegCommand {
       outcome: parts.arguments[0].text.clone(),

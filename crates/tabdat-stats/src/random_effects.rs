@@ -60,7 +60,7 @@ impl RandomEffectsResult {
     Some((theta(lo), theta(hi)))
   }
 
-  /// Model-based uncertainty for the fitted Gaussian ML variance components.
+  /// Selected joint-covariance uncertainty for fitted ML working variance components.
   /// Swamy–Arora GLS results have no likelihood-based component inference.
   pub fn variance_component_inference(
     &self,

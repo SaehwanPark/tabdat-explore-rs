@@ -35,9 +35,10 @@ impl Session {
       .is_some_and(|sizes| sizes.values().min() != sizes.values().max());
     let fit = if command.estimator == XtRegEstimator::RandomEffectsMl {
       if command.robust || command.cluster_variable.is_some() {
-        return Err(fit_error("RE-ML supports model-based covariance only"));
+        tabdat_stats::fit_random_effects_ml_clustered
+      } else {
+        tabdat_stats::fit_random_effects_ml
       }
-      tabdat_stats::fit_random_effects_ml
     } else if unbalanced && (command.robust || command.cluster_variable.is_some()) {
       tabdat_stats::fit_random_effects_unbalanced_clustered
     } else if unbalanced {

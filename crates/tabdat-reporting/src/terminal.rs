@@ -413,6 +413,8 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
   let boundary = r.ml.as_ref().is_some_and(|ml| ml.unit_variance_boundary());
   let covariance = if boundary {
     "Constrained observed-information covariance (unit variance fixed at zero); normal coefficient inference"
+  } else if r.ml.is_some() && clustered {
+    "Full joint ML unit-score sandwich with observed-information bread; normal inference"
   } else if r.ml.is_some() {
     "Joint observed-information covariance; normal inference"
   } else if clustered {
@@ -455,9 +457,14 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     }
   }
   if let Some(ml) = &r.ml {
-    writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
-      inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
-      ml.likelihood_ratio_df, inference_number(ml.likelihood_ratio), optional_inference(ml.likelihood_ratio_p_value)).unwrap();
+    if ml.cluster.is_some() {
+      writeln!(output, "Working marginal log likelihood = {}; intercept-only null = {}; descriptive slope LR = {}; reference withheld",
+        inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood), inference_number(ml.likelihood_ratio)).unwrap();
+    } else {
+      writeln!(output, "Marginal log likelihood = {}; intercept-only null = {}; slope LR chi-square({}) = {}; p = {}",
+        inference_number(ml.log_likelihood), inference_number(ml.null_log_likelihood),
+        ml.likelihood_ratio_df, inference_number(ml.likelihood_ratio), optional_inference(ml.likelihood_ratio_p_value)).unwrap();
+    }
     if let Some(unit_variance_test) = &ml.unit_variance_test {
       writeln!(
         output,
@@ -467,11 +474,21 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
       )
       .unwrap();
     }
+    if let Some(reason) = &ml.unit_variance_test_unavailable_reason {
+      writeln!(
+        output,
+        "Unit-variance LR reference unavailable: {}",
+        reason.escape_debug()
+      )
+      .unwrap();
+    }
     match r.variance_component_inference() {
       Ok(Some(inference)) => {
-        output.push_str(
-          "Variance-component inference: joint observed information; delta-method SEs; exponentiated log-Wald 95% intervals\n",
-        );
+        output.push_str(if ml.cluster.is_some() {
+          "Working variance-component inference: full joint unit-score sandwich; delta-method SEs; exponentiated log-Wald 95% intervals\n"
+        } else {
+          "Variance-component inference: joint observed information; delta-method SEs; exponentiated log-Wald 95% intervals\n"
+        });
         let residual = inference.sigma_e_squared;
         writeln!(
           output,
@@ -526,12 +543,17 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     let n = fit.fit_statistics.observation_count;
     let g = r.group_count;
     let k = fit.parameter_names.len();
-    writeln!(
-      output,
-      "Unit-cluster multiplier G/(G-1)*(N-1)/(N-K) = {} (plm Arellano sss; independent units)",
-      inference_number(g as f64 / (g - 1) as f64 * (n - 1) as f64 / (n - k) as f64)
-    )
-    .unwrap();
+    if let Some(cluster) = r.ml.as_ref().and_then(|ml| ml.cluster.as_ref()) {
+      writeln!(output, "Unit-score multiplier G/(G-1) = {}; full joint beta/log-variance scores, independent units, many-group asymptotics; no few-cluster guarantee",
+        inference_number(cluster.finite_sample_multiplier)).unwrap();
+    } else {
+      writeln!(
+        output,
+        "Unit-cluster multiplier G/(G-1)*(N-1)/(N-K) = {} (plm Arellano sss; independent units)",
+        inference_number(g as f64 / (g - 1) as f64 * (n - 1) as f64 / (n - k) as f64)
+      )
+      .unwrap();
+    }
   }
   if let Some(reason) = &r.wald_unavailable_reason {
     writeln!(output, "Slope Wald unavailable: {}", reason.escape_debug()).unwrap();
