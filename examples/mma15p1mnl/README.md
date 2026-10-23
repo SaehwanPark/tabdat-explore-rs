@@ -1,4 +1,4 @@
-# Fishing-mode multinomial and conditional logit: bounded Chapter15 workflows
+# Fishing-mode choice models: bounded Chapter15 workflows
 
 The first workflow reproduces the **MNL column of Table15.2, p.493**, §15.2.1–3 of Cameron
 and Trivedi (2005), under float64/converged-information conventions. It adds
@@ -6,6 +6,8 @@ analytic continuous income AMEs with joint-covariance delta inference. It does
 **not** reproduce the whole table/chapter or the historical p494 finite-difference
 and at-means calculations. The separate [conditional-choice workflow below](#conditional-logit-table152-cl-column-and-section2b-point-contrasts)
 adds the price/catch CL column and explicitly labeled finite point contrasts.
+The [combined-utility workflow](#combined-fixed-coefficient-utility-table152-final-column)
+adds the final coefficient column and a conditional encoding check of MNL.
 
 The March2005 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma15p1mnl.do)
 labels this executable block Table15.2; its overview's Table15.1 is a typo.
@@ -129,7 +131,7 @@ float-generated columns/probabilities; for example its beach average is about
 at mean income rather than an AME. Neither those computations nor their reported
 uncertainty are claimed reproduced. No tolerance is expanded to equate them.
 
-Combined/nested choice models, robust/cluster/survey covariance, automatic factors,
+Nested choice models, robust/cluster/survey covariance, automatic factors,
 IIA tests, remaining Table15.1/15.2 columns and later Chapter15 illustrations remain
 required work. Current MNL bounds/failure/recovery conventions are in `help mlogit`;
 passing these local checks is not certification of every MNL problem or platform.
@@ -224,9 +226,108 @@ This is not general matched case-control conditional logistic regression,
 multiple-event choice, ragged availability, weighted/robust/cluster/survey
 inference, automatic categorical design, nested models, named reports/general
 restrictions, IIA testing or effects uncertainty. The author's combined fixed-
-coefficient design can be expressed with explicit numeric columns but is not
-source-validated here; that is not a random-coefficients mixed-logit claim.
+coefficient design is validated in the separate workflow below, not as a
+random-coefficients mixed-logit claim.
 `estat margins`
 explicitly rejects this family. Remaining Chapter15 illustrations remain required;
 neither these two columns nor passing local tests establish whole-table/chapter
 completion or platform certification.
+
+## Combined fixed-coefficient utility: Table15.2 final column
+
+`combined.td` targets `mma15p1mnl.do` section4's **eight-column** final fit,
+labelled the Mixed column of Table15.2 p.493. This is a fixed-coefficient
+combination of alternative-specific price/catch and person-income interactions,
+**not random-coefficients mixed logit**. The preceding five-column exploratory
+fit is not substituted for it. All1,182 original people/four alternatives remain.
+
+Utility is `p q dummy2 dummy3 dummy4 d2y d3y d4y`. Price/catch slopes are common;
+nonbeach alternative constants and income/1000 slopes are explicit numeric
+columns. Beach's alternative constant/income slope are normalized to zero, not
+its price/catch utility. The conditional likelihood removes a common person
+intercept. Covariance is the full8×8 inverse conditional Fisher sum over1,182
+independent decisions, correction1 and asymptotic normal95. The zero-all-eight
+null gives equal choice probabilities, LR chi-square(8), and McFadden R² relative
+to that null. No weights, robust/cluster covariance or causal identification.
+
+The script first fits ordinary person-level MNL and its **six-column conditional
+encoding** from author section3. Parameter order changes from category-major
+`(intercept,income)` to all three constants then all three income interactions;
+the audit permutes the full covariance, not just standard errors. Full fitted
+likelihood/probabilities and coefficients agree. **Nulls are not equivalent**:
+ordinary MNL estimates category shares under zero income slopes (LR df3), while
+the conditional encoding zeros all six utility columns (uniform null, LR df6).
+Do not rank these models by pseudo R² with unlike nulls or equate their omnibus
+LR tests merely because their full fits are identical. General nested-model
+LR comparison/named fit tables are not introduced by this workflow.
+
+Using the source/preparation directory from the earlier shell recipe, insert
+these commands inside its subshell, or restore `repo`/`work` and `cd "$work"`:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -c "run \"$repo/examples/mma15p1mnl/combined.td\"" > combined.jsonl
+Rscript "$repo/examples/mma15p1mnl/reference_combined.R" \
+  Nldata.csv R_combined_predictions.csv > R_combined_quantities.csv
+python3 "$repo/examples/mma15p1mnl/check_combined.py" "$work"
+```
+
+Only the optional audit needs R4.6.1/survival3.8.6 and standard-library Python.
+For native tables use `--text` in a fresh output directory. The script guards
+source identity and exact agreement of mode with all four choice flags **before
+any fit**, guards long group/alternative pairs, fits the three models, predicts,
+restores all baseline features, displays four contrast rows and exports
+`fishing_combined_predictions.csv` / `fishing_combined_contrasts.csv`. No source
+file is modified; an existing export is not overwritten.
+
+Extra interpretation scenarios, **not additional claimed published effects**, are:
+
+- `income1000`: mean probability change for income+$1,000, holding prices/catch
+  fixed. All three income-interaction predictors change jointly. Changing only
+  raw `ydiv1000` would leave predictions unchanged: that raw column is not one
+  of the eight stored predictors. Every scenario resets the scalar and all
+  three interactions from saved baselines.
+- `charter_price1`: mean `100*(Pnew−Pbase)` percentage-point change when only
+  charter price increases by1, other alternatives' prices/catch/income held fixed.
+- `charter_catch001`: mean `1000*(Pnew−Pbase)` for charter catch+.001, a finite
+  approximation per catch unit. It is not an analytic derivative or uncertainty
+  interval. All scenarios are conditional model point associations, not causal
+  effects or resampled-X inference; `estat margins` remains unsupported here.
+
+`check_combined.py` binds both exports' exact IDs/order, flags versus mode,
+price/catch, income division, all six indicator/interaction columns and restored
+baselines to the hashed original tokens. It validates **218 R scalar quantities**
+including all100 covariance entries across the six/eight-column fits at1e-9
+absolute, and **28,368 probabilities** at1e-10. Positive p-values also require
+relative1e-9 agreement; zero underflow cannot pass an absolute-only check. The
+native MNL/full-covariance encoding permutation, distinct null metadata, sample,
+normal reference, per-set sums and zero-sum mean contrasts are also checked.
+
+Observed maxima: combined coefficient3.85e-14, covariance3.34e-15,
+likelihood9.10e-13; income/price/catch contrasts5.87e-16/1.12e-15/1.03e-14.
+The conditional MNL encoding gives coefficient3.34e-14, covariance5.60e-15 and
+likelihood3.19e-12. Across all six probability columns the maximum is1.65e-14.
+Historical combined coefficient/SE agreement is separately1e-6, likelihood
+four-decimal rounding; individual Stata8 storage/optimizer effects remain
+unisolated. No tolerance is widened to make those historical conventions equal.
+
+Reference-export precision matters: R `write.csv` rounded computed income
+values even with `options(digits=17)`, breaking exact source binding by one ULP.
+The reference formats numeric exports with `sprintf("%.17g",x)` before writing;
+regeneration then round-trips every design value exactly. This fixes audit
+serialization, not statistical estimates or comparison tolerances. Preserve
+that formatting when extending the reference and rerun exact design binding.
+
+The inspectable CLI fixture uses138 artificial decisions at three income values,
+four alternatives and exact positive cell counts. Its full-rank eight-column
+MLE has known log-odds coefficients; baseline and all three joint/design-aware
+scenarios are checked against closed form, including restored inputs and mean
+contrasts. Duplicate source IDs or inconsistent choice flags fail before fitting/
+export without changing inputs; export collisions retain earlier files.
+
+All three principal Table15.2 coefficient columns now have source-audited
+workflows with explicit inference conventions. This is not a single formatted
+whole-table report, every exploratory fit in the author program, historical
+float-digit parity or completed Chapter15 coverage. Nested/other illustrated
+choice analyses, IIA diagnostics, broader availability, effects uncertainty,
+weights/robust/cluster/survey and automatic design/reporting remain required.
