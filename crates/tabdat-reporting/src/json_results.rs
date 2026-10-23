@@ -233,6 +233,18 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       );
       (data, "WuHausmanResult")
     }
+    ExecutionResult::RobustOveridScore(result) => {
+      let mut data = serde_json::to_value(result).expect("finite robust overidentification score");
+      data["test"] = json!("wooldridge_residualized_instrument_overid_score");
+      data["covariance"] = json!("independent_row_uncentered_score_opg");
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["weak_iv_robust"] = json!(false);
+      data["null_hypothesis"] = json!("overidentifying_restrictions_hold_given_maintained_model");
+      data["assumptions"] = json!(
+        "independent_rows_correctly_specified_maintained_model_valid_instruments_under_null_strong_identification"
+      );
+      (data, "RobustOveridScoreResult")
+    }
     ExecutionResult::Sargan(result) => {
       let mut data = serde_json::to_value(result).expect("finite Sargan result");
       data["test"] = json!("sargan_n_r_squared");

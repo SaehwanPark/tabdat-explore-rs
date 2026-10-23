@@ -1041,10 +1041,21 @@ impl Session {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatOveridRequiresPriorIv);
       };
-      if state.linear.result.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
-        return Err(RuntimeError::EstatOveridFailed(
-          "Sargan requires a nonrobust 2SLS fit; robust/cluster Hansen J is not implemented".into(),
-        ));
+      match &state.linear.result.covariance.covariance_type {
+        tabdat_stats::CovarianceType::RobustHc1 => {
+          return tabdat_stats::robust_overid_score_test(
+            &state.problem,
+            &state.linear.result.residuals,
+          )
+          .map(ExecutionResult::RobustOveridScore)
+          .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
+        }
+        tabdat_stats::CovarianceType::Cluster(_) => {
+          return Err(RuntimeError::EstatOveridFailed(
+            "clustered overidentification tests are not implemented; the independent-row robust score and homoskedastic Sargan references cannot be substituted".into(),
+          ));
+        }
+        tabdat_stats::CovarianceType::NonRobust => {}
       }
       return tabdat_stats::sargan_test(&state.problem, &state.linear.result.residuals)
         .map(ExecutionResult::Sargan)
