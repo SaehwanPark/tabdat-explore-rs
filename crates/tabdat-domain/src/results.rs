@@ -807,6 +807,8 @@ pub enum ExecutionResult {
   Test(TestResult),
   /// Homoskedastic joint weak-IV-robust test on a retained IV design.
   AndersonRubin(tabdat_stats::AndersonRubinResult),
+  /// HC1/clustered joint AR Wald test, with asymptotic chi-square inference.
+  RobustAndersonRubin(tabdat_stats::RobustAndersonRubinResult),
   /// Homoskedastic Sargan N*R² overidentification test on retained 2SLS residuals.
   Sargan(tabdat_stats::SarganResult),
   /// Joint homoskedastic residual-inclusion F test of endogenous-regressor exogeneity.

@@ -723,7 +723,7 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
   }
   if let Some(first_stage) = &result.first_stage {
     output.push_str(
-      "Warning: coefficient p-values use conventional t inference, not weak-IV-robust inference. A separate joint test is available via estat ar after a nonrobust fit.\n",
+      "Warning: coefficient p-values use conventional t inference, not weak-IV-robust inference. A separate joint test is available via estat ar (classical F or robust/cluster asymptotic chi-square).\n",
     );
     output.push_str(
       "First stage: conventional excluded-instrument partial F tests (relevance diagnostics only)\n",
@@ -1128,6 +1128,41 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         .unwrap();
       }
       output.push_str("\nAssumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous coefficient; no endogenous nuisance/subvector inference.\n");
+      output
+    }
+    ExecutionResult::RobustAndersonRubin(result) => {
+      let mut output = String::from(
+        "Anderson-Rubin joint Wald test (HC1/one-way cluster, weak-IV-robust)\nH0: all endogenous coefficients jointly, in fit order\n",
+      );
+      for (name, value) in result.endogenous.iter().zip(&result.null_values) {
+        writeln!(
+          output,
+          "{} = {}",
+          name.escape_debug(),
+          inference_number(*value)
+        )
+        .unwrap();
+      }
+      writeln!(
+        output,
+        "N = {}; asymptotic chi-square({}) = {}; p-value = {}",
+        result.observation_count,
+        result.degrees_of_freedom,
+        inference_number(result.statistic),
+        inference_number(result.p_value)
+      )
+      .unwrap();
+      writeln!(
+        output,
+        "Auxiliary covariance: {:?}; K = {}; residual DF = {}; correction = {}; clusters = {:?}",
+        result.covariance_type,
+        result.auxiliary_parameter_count,
+        result.auxiliary_residual_df,
+        inference_number(result.covariance_correction),
+        result.cluster_group_count
+      )
+      .unwrap();
+      output.push_str("Assumes valid instruments and a correctly specified linear model; independent rows for HC1 or independent clusters with many groups. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters; no endogenous-subvector inference, confidence set or instrument-validity test.\n");
       output
     }
     ExecutionResult::AndersonRubin(result) => {

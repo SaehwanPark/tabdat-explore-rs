@@ -493,7 +493,7 @@ panel likelihood is supplied.
   relevance, and auxiliary failures; runtime/CLI tests verify retained sample,
   state, scripts and reporting. This is **method evidence**, not a newly validated
   book illustration or a scalar schooling confidence set with experience effects
-  left as endogenous nuisance parameters. Robust/cluster AR and endogenous-
+  left as endogenous nuisance parameters. Robust/cluster AR confidence sets and endogenous-
   subvector confidence sets remain required work.
 - **Bounded scalar AR confidence-set method:** after a nonrobust fit with exactly
   one endogenous regressor, `estat ar, ci [level(95)]` analytically inverts the
@@ -905,3 +905,17 @@ original loaded rows. Text/JSON exports are identical. Synthetic interleaved
 This conditions on fixed theta, not native RE variance-component re-estimation
 or unconditional nuisance inference, historical Stata RNG/printed-SE parity,
 few-cluster accuracy or a nominal-coverage guarantee.
+
+### Robust joint Anderson–Rubin method extension
+
+The [synthetic workflow](../../examples/robust-ar/README.md) validates retained
+unweighted 2SLS joint nulls with auxiliary HC1/one-way CR1 Wald chi-square(q),
+using unrestricted adjusted-outcome residuals, K_aux corrections and the entire
+excluded-instrument block. Base R4.6.1 supplies six cases across controlled,
+no-intercept and no-exogenous-control designs, with two endogenous coefficients,
+three excluded instruments, explicit missingness and weak first stages. Exact
+source identities, N/K/G, corrections, statistics and tails are tested; unit/order
+invariance, unchanged state and rank-limited failures are covered. The 12-group
+fixture establishes arithmetic only, not few-cluster reliability. This is method
+evidence advancing required IV inference, not a new textbook illustration,
+robust confidence sets, endogenous-subvector inference, HAC or survey support.

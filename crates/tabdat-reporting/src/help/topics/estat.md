@@ -214,7 +214,7 @@ contrast; neither is silently substituted for the other.
 
 ## Joint Anderson–Rubin test
 
-After a **nonrobust** `ivregress 2sls` fit, run for example:
+After an `ivregress 2sls` fit, run for example:
 
 ```text
 ivregress 2sls y w, endog(x1 x2) iv(z1 z2)
@@ -233,10 +233,21 @@ and on the included exogenous plus excluded instruments, then compares residual
 sums of squares. It reports F(q, N − rank[W,Z]), where q is the excluded-instrument
 count. Valid instruments and homoskedastic errors are required; exact finite-sample
 F inference additionally requires conditional normality. The test is robust to
-weak identification, **not** heteroskedasticity or clustering, and it does not test
-instrument validity. Robust/cluster parent fits are rejected, not silently
-converted to classical inference. Undefined auxiliary variance, rank or residual
+weak identification and does not test instrument validity. This F form applies
+only to a nonrobust parent fit. Undefined auxiliary variance, rank or residual
 DF failures are explicit errors.
+
+After a `robust` or `cluster(group)` parent fit, the same command instead tests
+all excluded-instrument coefficients in the unrestricted auxiliary regression
+using HC1 or one-way CR1 covariance. It reports the full Wald statistic with an
+**asymptotic chi-square(q)** reference. HC1 uses N/(N−K_aux); CR1 uses
+G/(G−1)*(N−1)/(N−K_aux), with K_aux counting the intercept, included exogenous
+variables and excluded instruments. These are auxiliary residual scores and
+auxiliary DF, not the parent's structural residuals or parameter count. HC1
+requires independent rows; CR1 requires independent clusters and many-group
+asymptotics. Neither is an exact finite-sample test or a few-cluster guarantee.
+Singular excluded-instrument covariance (including q >= G) is an explicit error;
+the test never drops restrictions to obtain a p-value.
 
 The retained complete-case fit sample/design is used even after current data is
 changed; AR does not refit 2SLS, reread current columns or mutate model/data state.
@@ -244,7 +255,11 @@ changed; AR does not refit 2SLS, reread current columns or mutate model/data sta
 excluded instruments, N, both DF, F, p-value and assumptions (`AndersonRubinResult`).
 A small p-value rejects the **entire supplied joint null** under these assumptions;
 it does not identify which endogenous coefficient differs.
-Endogenous nuisance coefficients and robust/cluster AR are not implemented.
+Robust results use the distinct `RobustAndersonRubinResult` type with covariance,
+correction, auxiliary K/DF, optional G and asymptotic reference metadata; the
+classical `AndersonRubinResult` contract remains unchanged. See
+`examples/robust-ar/README.md` for an independently validated complete workflow.
+Endogenous nuisance coefficients and robust/cluster confidence sets are not implemented.
 Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
 inference.
 

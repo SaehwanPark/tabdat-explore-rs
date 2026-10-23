@@ -472,7 +472,7 @@ fn joint_ar_runs_in_scripts_and_json_with_explicit_inference_scope() {
   assert!(text.contains("No confidence set or subvector inference"));
 
   for option in ["", "robust"] {
-    let null = if option.is_empty() { "0" } else { "0 0" };
+    let null = "0";
     let output = fixture.batch(
       "--json",
       &[
@@ -486,4 +486,94 @@ fn joint_ar_runs_in_scripts_and_json_with_explicit_inference_scope() {
     assert!(!fixture.0.join("should-not-exist.csv").exists());
     assert!(String::from_utf8_lossy(&output.stderr).contains("estat ar"));
   }
+}
+
+#[test]
+fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("data.csv"),
+    include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_data.csv"),
+  )
+  .unwrap();
+  for (option, n, correction, statistic, p) in [
+    (
+      "robust",
+      70,
+      1.07692307692308,
+      3.53464562620592,
+      0.316296420698153,
+    ),
+    (
+      "cluster(g)",
+      69,
+      1.15909090909091,
+      35.2116876251244,
+      1.099029699071e-7,
+    ),
+  ] {
+    fs::write(fixture.0.join("robust-ar.td"), format!(
+      "use data.csv\nivregress 2sls y w, endog(x1 x2) iv(z1 z2 z3) {option}\nestat ar, null(1.7 -0.6)\nreplace y = 999\ndrop z1\nestat ar, null(1.7 -0.6)\n"
+    )).unwrap();
+    let rows = json_lines(&fixture.run(&["--json", "-f", "robust-ar.td"]));
+    let r = &rows[2];
+    assert_eq!(r["result_type"], "RobustAndersonRubinResult");
+    assert_eq!(
+      rows[1]["data"]["first_stage"]["joint_ar_postestimation_available"],
+      true
+    );
+    assert_eq!(
+      rows[1]["data"]["first_stage"]["scalar_ar_confidence_set_available"],
+      false
+    );
+    assert_eq!(r["data"], rows[5]["data"]);
+    let d = &r["data"];
+    assert_eq!(d["test"], "anderson_rubin_joint_robust_wald");
+    assert_eq!(d["reference_distribution"], "asymptotic_chi_square");
+    assert_eq!(d["weak_iv_robust"], true);
+    assert_eq!(d["null_scope"], "all_endogenous_joint");
+    assert_eq!(d["endogenous"], json!(["x1", "x2"]));
+    assert_eq!(d["null_values"], json!([1.7, -0.6]));
+    assert_eq!(d["observation_count"], n);
+    assert_eq!(d["auxiliary_parameter_count"], 5);
+    assert_eq!(d["auxiliary_residual_df"], n - 5);
+    assert_eq!(d["degrees_of_freedom"], 3);
+    assert!(d.get("denominator_df").is_none());
+    close(&d["covariance_correction"], correction);
+    close(&d["statistic"], statistic);
+    assert!((d["p_value"].as_f64().unwrap() - p).abs() < 1e-10 * p);
+    assert_eq!(
+      d["cluster_group_count"],
+      if option == "robust" {
+        json!(null)
+      } else {
+        json!(12)
+      }
+    );
+    let text = fixture.run(&["--text", "-f", "robust-ar.td"]);
+    assert!(
+      text.status.success(),
+      "{}",
+      String::from_utf8_lossy(&text.stderr)
+    );
+    let text = String::from_utf8(text.stdout).unwrap();
+    assert!(text.contains("asymptotic chi-square(3)"));
+    assert!(text.contains("No finite-sample or few-cluster guarantee"));
+    assert!(text.contains("unrestricted nuisance parameters"));
+  }
+  // A rank-limited joint restriction must fail without dropping instruments or
+  // running the later file effect, while preserving earlier ordered outputs.
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "generate few = source_row % 3",
+      "ivregress 2sls y w, endog(x1 x2) iv(z1 z2 z3) cluster(few)",
+      "estat ar, null(1.7 -0.6)",
+      "export should-not-exist.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("insufficient_cluster_rank"));
+  assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
