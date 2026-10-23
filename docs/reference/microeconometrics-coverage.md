@@ -201,6 +201,56 @@ in the author program, historical float-digit parity or completed Chapter15.
 Nested/other choice illustrations, IIA diagnostics, broader availability, effects
 uncertainty, weights/robust/cluster/survey and automatic design/reporting remain.
 
+### MMA-NESTED draft source-resolution contract
+
+[Draft PR324](https://github.com/SaehwanPark/tabdat-explore-rs/pull/324) targets
+§15.6.3 p.511, author `mma15p2gev.do` sections2A–C, not a new coefficient column
+of Table15.2. Same1,182 people/4,728 long rows; shore={beach1,pier2},
+boat={private3,charter4}; lower utility `p q`, upper shore constant/income/1000.
+The authors explicitly identify Stata8's **earlier non-normalized** variant,
+not the preferred normalization. Proposed native support requires explicit
+`nonnormalized` opt-in; a preferred RUM-normalized estimator remains separate
+required work, not silently substituted or excluded.
+
+For nest m, conditional probabilities normalize `exp(xβ)` within the nest;
+upper utility is `zγ + λ_m*logsumexp(xβ)`, with positive free λ. Unlike preferred
+common-utility normalization, case-common shifts of lower utility do NOT cancel
+when λ differs. Full fitting must retain those levels rather than reusing the
+conditional core's within-case baseline differences. Upper predictors must be
+constant within each retained case/nest. First native scope is exactly two nests,
+at least two alternatives each, balanced exact structural keys/maps, whole-set
+finite exclusion and atomic current-set prediction. No automatic intercept.
+
+The [development reference](../../examples/mma15p1mnl/reference_nested.R) executes
+R4.6.1/mlogit2.0.0's `unscaled=TRUE` model and a separately automatically
+first/second-differentiated scalar likelihood. It verifies package likelihood,
+fresh score and probabilities at identical parameters, then tightly refines the
+stationary point using exact observed information. Default package OPG covariance
+and loose function-value convergence are not substituted. The R utility-level
+shore coefficients require multiplying by λ_shore to obtain the top-level
+parameterization. Its standalone export contains149 quantities,52 covariance
+entries across restricted/full fits, and23,640 probabilities; **native comparison
+is not implemented yet**.
+
+Reference log likelihood is−1180.0125384828, positive IVs32.1725778578 /
+15.0747565917 (observed SEs29.9971412397 /14.0098795481). The λ=1 conditional
+restriction has LL−1252.71104268689, LR145.397008408188, chi-square2 p≈2.676e-32.
+Fitted IVs violate the RUM bounds; higher likelihood is not a consistency claim.
+Planned covariance is full joint observed-Hessian inverse/correction1; normal
+slope tests use zero, IV diagnostics explicitly use **one**, not the excluded
+zero-scale boundary. No regular uniform-null omnibus χ² with unidentified IVs.
+
+Historical Stata8 reports LL−1180.0156 and IVs29.98591/14.06438, not the tightly
+stationary result. Explicit float32 input/generated-income replay still yields
+stationary IVs≈32.172579/15.074757 and LL−1180.0125377643: float storage alone
+is not the whole explanation. No tolerance or historical-digit claim is widened
+to erase this difference. LIMDEP reports LL−1180.013 with yet another top/utility
+coefficient parameterization. Preferred normalized fitting on these restricted
+covariates instead showed a divergent shore scale/singular information; that
+failed probe is not a validated alternative fit. Kernel, runtime/parser,
+prediction/state, independent native comparison, terminal/JSON/script evidence
+and all merge gates remain outstanding; this draft is not delivered coverage.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
