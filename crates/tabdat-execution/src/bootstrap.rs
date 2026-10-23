@@ -25,14 +25,24 @@ impl Session {
     let problem = self
       .prepare_regression_problem(r, None, false)
       .map_err(|e| error(e.to_string()))?;
-    tabdat_stats::bootstrap_quantiles(
-      &problem,
-      &quantiles,
-      command.bootstrap.replications,
-      command.bootstrap.seed,
-    )
-    .map(|r| ExecutionResult::QuantileBootstrap(Box::new(r)))
-    .map_err(|e| error(e.to_string()))
+    let result = match command.contrast.as_deref() {
+      Some(parameter) => tabdat_stats::bootstrap_quantiles_with_contrast(
+        &problem,
+        &quantiles,
+        command.bootstrap.replications,
+        command.bootstrap.seed,
+        parameter,
+      ),
+      None => tabdat_stats::bootstrap_quantiles(
+        &problem,
+        &quantiles,
+        command.bootstrap.replications,
+        command.bootstrap.seed,
+      ),
+    };
+    result
+      .map(|r| ExecutionResult::QuantileBootstrap(Box::new(r)))
+      .map_err(|e| error(e.to_string()))
   }
 
   pub(crate) fn execute_bootstrap(

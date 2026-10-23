@@ -2497,7 +2497,7 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   for option in &options {
     if !matches!(
       option.name.as_str(),
-      "seed" | "reps" | "noconstant" | "cluster" | "quantiles"
+      "seed" | "reps" | "noconstant" | "cluster" | "quantiles" | "contrast"
     ) {
       return Err(ParseError::new(format!(
         "bootstrap unsupported option: {}",
@@ -2558,6 +2558,11 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     replications: reps as usize,
     seed,
   };
+  let contrast = parse_identifier_option("bootstrap", &options, "contrast")?;
+  if contrast.as_ref().is_some_and(|v| v.len() != 1) {
+    return Err(ParseError::new("contrast expects one coefficient name"));
+  }
+  let contrast = contrast.and_then(|mut v| v.pop());
   if let Some(option) = options.iter().find(|o| o.name == "quantiles") {
     if command.regression.cluster_variable.is_some() {
       return Err(ParseError::new(
@@ -2585,12 +2590,19 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
         "quantiles requires 1..19 strictly increasing finite values from 0.05 to 0.95",
       ));
     }
+    if contrast.is_some() && quantiles.len() != 2 {
+      return Err(ParseError::new("contrast requires exactly two quantiles"));
+    }
     return Ok(Command::QuantileBootstrap {
       command: tabdat_domain::QuantileBootstrapCommand {
         bootstrap: command,
         quantiles,
+        contrast,
       },
     });
+  }
+  if contrast.is_some() {
+    return Err(ParseError::new("contrast requires quantiles(values)"));
   }
   Ok(Command::Bootstrap { command })
 }

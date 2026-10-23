@@ -107,4 +107,7 @@ pub use ttest::{
 };
 
 pub use quantile::{QuantileCoefficient, QuantileResult, fit_quantile_iid};
-pub use quantile_bootstrap::{QuantileBootstrapResult, bootstrap_quantiles};
+pub use quantile_bootstrap::{
+  QuantileBootstrapContrast, QuantileBootstrapResult, bootstrap_quantiles,
+  bootstrap_quantiles_with_contrast,
+};

@@ -1092,7 +1092,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     }
     ExecutionResult::QuantileBootstrap(result) => {
       let mut text = format!(
-        "Joint IID pairs-bootstrap quantiles: {}\nN = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nFull joint covariance uses common row draws and B-1 denominator.\n95% marginal percentile intervals (R type7); no simultaneous coverage or analytic p-values\n",
+        "Joint IID pairs-bootstrap quantiles: {}\nN = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nFull joint covariance uses common row draws and B-1 denominator.\n95% marginal percentile intervals (R type7); no simultaneous coverage or marginal coefficient p-values\n",
         result.outcome,
         result.observation_count,
         result.quantiles,
@@ -1112,6 +1112,30 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
           inference_number(b.ci_lower),
           inference_number(b.ci_upper)
         );
+      }
+      if let Some(c) = &result.contrast {
+        let _ = writeln!(
+          text,
+          "Contrast {}: q{} minus q{}; difference = {}; bootstrap SE = {}",
+          c.parameter,
+          c.upper_quantile,
+          c.lower_quantile,
+          inference_number(c.estimate),
+          c.standard_error
+            .map_or_else(|| "unavailable".into(), inference_number)
+        );
+        if let Some(reason) = &c.inference_unavailable_reason {
+          let _ = writeln!(text, "Contrast normal inference unavailable: {reason}");
+        } else {
+          let _ = writeln!(
+            text,
+            "H0: difference = 0; asymptotic normal z = {}; two-sided p = {}; 95% normal CI = [{}, {}]. B-1 is the bootstrap covariance divisor, not Student-t degrees of freedom.",
+            inference_number(c.statistic.unwrap()),
+            inference_number(c.p_value.unwrap()),
+            inference_number(c.ci_lower.unwrap()),
+            inference_number(c.ci_upper.unwrap())
+          );
+        }
       }
       text.push_str("IID complete-row pairs; no cluster/survey inference. Failed draws are not discarded or retried. Data and retained fit unchanged.");
       text
