@@ -822,3 +822,15 @@ python3 "$root/examples/mma21p1panel/check_random_effects_gls_unbalanced_referen
 This sensitivity estimate does not replace the published balanced estimate.
 Original printed-Stata8 uncertainty differences, ML profile limitations, omitted
 unit effects and broader panel-diagnostic gaps remain as described above.
+
+## WIP: interior Gaussian ML unit-score inference
+
+Planned extension: on the exact Table21.2 lnhr~1+lnwg sample (5,320 records,
+532 people), retain the current Gaussian marginal ML point estimates and provide
+full joint unit-score sandwich covariance with G/(G−1), normal coefficient and
+log-variance intervals, and rank-aware asymptotic slope Wald inference. Synthetic
+balanced/unbalanced fixtures and a pinned original-MOM R reference will validate
+the full beta/log-variance covariance, sample/order and predictions. The robust
+reference withholds ordinary slope/unit-variance LR p-values. Full-model boundary
+fits, non-unit clusters, time-invariant regressors, survey/multiway inference and
+few-cluster guarantees remain outside this slice. Implementation is pending.
