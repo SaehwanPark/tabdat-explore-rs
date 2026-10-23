@@ -1506,7 +1506,17 @@ The full covariance includes cross-quantile blocks from common IID row draws,
 with `covariance_convention=common_iid_pairs_b_minus_1` and
 `simultaneous_coverage=false`. No analytic p-value/reference distribution is
 implied by marginal percentile bounds. Singular covariance is retained rather
-than regularized; no test/lincom on this report is installed.
+than regularized. Optional `contrast(variable)` is accepted only with exactly
+two quantiles and adds a `contrast` object; the field is omitted when the option
+is absent, preserving the serialized result shape. Its `parameter`, `lower_quantile`, `upper_quantile`
+and `estimate` identify the higher-minus-lower original coefficient difference.
+The `standard_error` is the B-1 sample SD of shared-replicate differences. When
+inference is available, `statistic` is normal z, `p_value` is two-sided,
+`reference_distribution` is `asymptotic_standard_normal`, `interval_method` is
+`normal_wald`, and `ci_lower`/`ci_upper` form the normal 95% interval. These
+nullable inference fields are null with `inference_unavailable_reason` for zero
+or unrepresentable variance; zero variance retains standard_error 0. This is
+one coefficient contrast, not a general restriction or simultaneous test.
 
 CLI sample reports total/dropped counts; owned Rust results also retain the
 complete-case source-index map. The same ordered finite/type rules and local
