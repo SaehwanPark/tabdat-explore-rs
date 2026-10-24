@@ -31,7 +31,7 @@ not by implementing every estimator mentioned in a chapter.
 | 11–13: Bootstrap, simulation, Bayesian | Native bounded IID/whole-cluster pairs OLS bootstrap with explicit local seed, B-1 SE/covariance/bias and percentile95 intervals; audited MOM Between independent-person means and within-transformed whole-person resampling | Residual/parametric/other-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
-| 16: Censoring, truncation, selection | Validated bounded lower-censored Gaussian Tobit/source workflow with full observed inference/current predictions/retained continuous effects | Remaining censoring/truncation, selection and two-part workflows with correct effects/inference; Heckman two-step source/reference slice now WIP |
+| 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit and corrected Heckman two-step author-program workflows, full declared covariance and current predictions; Tobit retained continuous effects | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | No executable workflow | Event/censoring/truncation semantics, KM/parametric/Cox, mixture/frailty and multiple-event analyses |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow, the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
@@ -64,7 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
-| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — explicit bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates plus98 synthetic quantities/3600 synthetic predictions; separate covariance blocks, no exclusion restriction; owned runtime/parser/reporting/atomic five-mode predictions and script implemented; actual-script regression, reverse checks and integration review remain; distinct from RAND below |
+| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | Validated bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates/1000 native predictions plus98 synthetic quantities/3600 predictions and49 closed-form actual-script gates/120 predictions; separate covariance blocks/no exclusion restriction; owned state/atomic five-mode prediction, failure controls, reverse checks and independent source reviews; distinct from RAND below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -544,9 +544,10 @@ were retained and only never-started artifacts resumed under bounded runners.
 Workspace Clippy/formatting and the applicable final schema/test checks pass;
 local macOS evidence is not Actions/other-platform certification or a
 whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
-Heckman/two-part/CLAD and the rest of Chapter16 remain required.
+Other selection/two-part/CLAD analyses and the rest of Chapter16 remain required;
+the bounded corrected Heckman comparison below is separate, not whole coverage.
 
-### MMA-SELECT bounded Heckman two-step contract (WIP)
+### MMA-SELECT bounded Heckman two-step contract and evidence
 
 Next exact analysis: March2005 `mma16p1tobit.do` §2A's built-in Heckman
 comparison, using the same original200-row export: selection `dy` on intercept
@@ -626,18 +627,30 @@ hash-checked artifacts. The all-stats nextest discovery timeout remains incomple
 exact-inventory bounded direct execution supplied the regression evidence, with
 all-target stats Clippy/workspace format/diff/zero-doctest checks. See the
 [source/kernel notes](../../examples/mma16p1tobit/heckman.md) for numerical limits,
-provenance and remaining validation. Native integration now implements explicit `twostep`, legacy-default deferred
+provenance and final integration evidence. Native integration implements explicit `twostep`, legacy-default deferred
 behavior, owned state/wire compatibility, DuckDB asymmetric eligibility and
 atomic current prediction, terminal/CLI-v1/help and `heckman.td`. Two new parser
 tests, four related existing parser-unit tests, two wire tests and six runtime
 contracts pass. The actual original-source script passes the independent audit;
 10 adversarial shared-reference/native corruptions are rejected with all6 input
-fingerprints preserved. Current library/new-target Clippy passes. Initial compile/
-test-setup failures and interrupted all-target Clippy are retained, not recast as
-successful full checks. Actual-script regression/failure controls, reverse
-consumers and independent integration review still remain before merge.
+fingerprints preserved. Two actual-script tests use a distinct closed-form24-row
+control (NOT replacement book data):49 independent R quantities/all13 covariance
+entries/120 predictions, exact beta=(3,2),alpha=.5,sigma=1,rho=.5, byte-identical
+JSON/text exports and file/input/prediction-target failures. The original200-row
+source script also passes the current JSON/text export comparison. Independent
+frozen integration/source-checker review found no issues; reviewer did not run tests.
 
-This remains native-integration WIP, not a delivered selection workflow.
+Final local shared-API/reverse-consumer evidence:1497passed/two pre-existing ignored
+across259 current exact fresh workspace artifacts, with main/all test hashes
+reconciled. Interrupted nextest/build/Clippy/doctest attempts and dyld loader
+samples remain preserved, not counted passing. Bounded exact-artifact resumptions
+retain completed passes and only run unexecuted/diagnosed loader-stalled records.
+One stale discovery expectation omitted mills/ycond/yexpected: explicit updated
+schema/help/explain contracts and all25 target tests pass; no numerical tolerance
+or parser widening. Workspace all-target Clippy/format/diff and completed doctest
+scope pass. CI disabled/other platforms unverified. This validates the bounded
+source workflow, not default ML, a published coefficient table, a valid exclusion/
+causal claim, the distinct RAND illustration or whole Chapter16.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

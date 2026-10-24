@@ -476,7 +476,7 @@ fn tobit_discovery_requires_predictors_and_separates_kernel_only_intercept_suppo
 }
 
 #[test]
-fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
+fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "PREDICT"])
     .output()
@@ -488,7 +488,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k)]"
+    "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | cdf(k)]"
   );
   assert_eq!(
     envelope["data"]["options"],
@@ -499,6 +499,9 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
       {"name": "residuals", "required": false},
       {"name": "pr", "required": false},
       {"name": "mean", "required": false},
+      {"name": "mills", "required": false},
+      {"name": "ycond", "required": false},
+      {"name": "yexpected", "required": false},
       {"name": "n", "required": false},
       {"name": "pmf", "required": false},
       {"name": "cdf", "required": false}
@@ -514,6 +517,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   let topic = include_str!("../crates/tabdat-reporting/src/help/topics/predict.md");
   assert_eq!(envelope["data"]["text"], topic);
   assert!(topic.contains("Probit: pr (Gaussian probability)"));
+  assert!(topic.contains("Explicit Heckman two-step: xb (latent X beta)"));
   assert!(topic.contains("Poisson: n (conditional mean exp(xb))"));
   assert!(topic.contains("Bare predict remains xb"));
   assert!(topic.contains("Not installed: binary/Poisson residuals"));
@@ -523,6 +527,9 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
     "predict fitted, xb",
     "predict residual, residuals",
     "predict probability, pr",
+    "predict selection_mills, mills",
+    "predict selected_mean, ycond",
+    "predict contribution, yexpected",
     "predict count_mean, n",
     "predict spillover, spatial_lag",
     "predict posterior, posterior_predictive std interval level(90)",

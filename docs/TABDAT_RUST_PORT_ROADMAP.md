@@ -121,11 +121,12 @@ Extend the same workflow/validation standard to:
   observed-mean delta effects, current latent/uncensoring/censored-mean prediction
   and48 original-source R reference gates/600 predictions. This bounded §16.2.1
   author-program extension is not a published table or complete Chapter16.
-  PR328 now has a [WIP explicit Heckman two-step workflow](../examples/mma16p1tobit/heckman.md)
-  on the same original200/130 selection/outcome rows, corrected generated-regressor
-  covariance, owned state/five point projections and independent source audit.
-  Final actual-script regressions, reverse-consumer checks and independent
-  integration review remain before delivery; it is not default ML or RAND parity.
+  The [explicit Heckman two-step workflow](../examples/mma16p1tobit/heckman.md)
+  validates the same original200/130 selection/outcome rows with corrected
+  generated-regressor covariance, owned state/five point projections and an
+  independent source audit. Closed-form actual-script/failure controls,
+  reverse-consumer checks and independent source review pass. This is not default
+  ML, excluded-instrument/causal identification or RAND illustration parity.
   Truncated regression, richer censoring/inference, remaining selection/two-part
   workflows and illustrations stay required.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric

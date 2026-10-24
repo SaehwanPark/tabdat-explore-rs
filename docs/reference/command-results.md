@@ -486,9 +486,9 @@ outcome range with intercept, max(abs(y)) otherwise).
 The owned `heckman_two_step_fit` state remains distinct from legacy `heckman`
 placeholder serialization, both family Heckman and neither an OLS linear state.
 See [source/method/evidence notes](../../examples/mma16p1tobit/heckman.md).
-Integration/source-script code is implemented in PR328; final actual-script
-regressions, reverse-consumer validation and independent integration review
-remain WIP.
+The original-source and closed-form actual-script audits, reverse-consumer
+checks and independent frozen-source integration review validate this bounded
+workflow, not default ML, whole-Chapter16 coverage or platform certification.
 
 ## Bounded lower-censored Gaussian Tobit
 

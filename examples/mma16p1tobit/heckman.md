@@ -1,8 +1,8 @@
-# Heckman two-step source/reference — WIP
+# Corrected Heckman two-step selection workflow
 
-This is an **in-progress native** slice: kernel and terminal/data integration
-are implemented and independently source-audited; final integration validation
-is WIP. It is not a released workflow or published coefficient-table replication. Exact author analysis:
+This bounded native terminal/script workflow is independently validated. It is
+not whole-Chapter16/release certification or a published coefficient-table replay.
+Exact author analysis:
 `mma16p1tobit.do` (March2005) §2A, associated with MMA §16.2.1 pp530–531.
 The same original export has200 selection observations and130 observed outcomes:
 selection `dy ~ lnwage`, outcome `ytrunc ~ lnwage`, intercept in both.
@@ -86,7 +86,7 @@ input/output/reference fingerprints remain unchanged. Initial top-level chol
 printing and named-scalar field suffixes were caught and fixed; their failed
 CSV/inventory diagnostics are retained, not counted as passing runs.
 
-## Validated kernel and WIP terminal workflow
+## Kernel and terminal workflow validation
 
 `crates/tabdat-stats/src/heckman.rs` exports `fit_heckman_two_step` and
 `heckman_predict_row`. Inputs are explicit eligible-selection and selected-outcome
@@ -119,16 +119,17 @@ attempt compiled then timed out in discovery with no test outcomes; it remains
 incomplete. The bounded direct-artifact fallback verified all45 inventory hashes
 before/after, retained the identical passing focused artifact and ran the other44
 artifacts to exit0. This is local macOS evidence, not CI/platform certification.
-Reverse-consumer/integration checks remain for the frontend slice.
+Final frontend/reverse-consumer evidence is below; this earlier kernel-only
+milestone does not itself establish terminal support.
 
-## Identification and remaining implementation
+## Identification, integration and supported limits
 
 There is **no excluded selection predictor** in the author design. Identification
 uses the normal functional form; corr(lnwage,Mills)=−.97446818460552 makes the
 small-sample outcome estimates imprecise. An exclusion variable is not created or
 implied. Negative fitted rho is an estimate, not evidence of a causal mechanism.
 
-The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-select-bounded-heckman-two-step-contract-wip)
+The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-select-bounded-heckman-two-step-contract-and-evidence)
 sets the exact two-stage eligibility/missingness policy, explicit twostep mode,
 current latent/selection/Mills/conditional-selected/observed-contribution point
 predictions and state/failure requirements. Parser/owned state, typed atomic prediction/reporting/help and `heckman.td` are
@@ -151,8 +152,29 @@ equations, sigma moment and generated-regressor covariance; shared wrong referen
 and native results do not suffice. `check_heckman_failures.py` rejects10 owned-copy
 corruptions, including shared covariance, shared zero tail and shared false
 stationary control; all6 original artifact fingerprints stay unchanged.
-The actual-script regression/failure controls, reverse-consumer validation and
-independent integration review still remain before merge. Do not present the existing parser-only bare heckman form as ML or
+Two actual-script root tests add a separate closed-form24-row control with
+selection proportions1/4,1/2,3/4, exact probit gamma=(0,qnorm(.75)), outcome
+beta=(3,2),alpha=.5,sigma=1,rho=.5. Base R and the pinned external covariance
+function supply49 quantities/all13 covariance entries and120 predictions; text/
+JSON exports are byte-identical. Export-sentinel, missing-input and existing
+prediction-target failures preserve files. Fixtures and their development-only
+R generator are in `tests/fixtures/heckman_script_*`; this is not replacement
+book data. The original200-row script also passes the current text/JSON export
+comparison and both independent audit drivers.
+
+Independent read-only kernel and frozen integration reviews found no issues;
+neither reviewer executed tests. Parent current workspace verification reconciles
+1497 passed/two pre-existing ignored across259 exact fresh artifacts, with all
+binary/main hashes checked. Earlier nextest/build and bounded loader timeouts
+remain incomplete; dyld samples, bounded resumptions and complete diagnostics
+are retained in PR evidence. A discovery snapshot initially omitted the newly
+advertised three kinds; its explicit expectations/help/explain cases were updated
+and all25 discovery tests pass. No numerical tolerance/parser expansion hid a
+failure. Workspace all-target Clippy/format/diff and doctests pass; the earlier
+timed-out Clippy/doctest commands are not relabeled successful. This is local
+macOS evidence, not Actions/other-platform certification.
+
+Do not present the existing parser-only bare heckman form as ML or
 silently reinterpret it as two-step. Conditional-selected means differ from
 Tobit truncation, and the zero-filled observed-contribution mean is not an
 imputation of unobserved outcomes or a causal effect.
