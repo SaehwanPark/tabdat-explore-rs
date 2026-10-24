@@ -606,6 +606,20 @@ High risk: novel estimator/inference and public data/model/script contracts.
 Before merge require affected/reverse-consumer checks and independent read-only
 statistical/integration review. No native command is implemented by this contract.
 
+**Reference milestone (native still WIP).** R4.6.1/truncreg0.2-5/maxLik1.5-2.2,
+source/archive-pinned installed function bodies, analytic package information
+plus independent symbolic full/null observed-Newton and three-step full-joint
+AME-gradient checks. Source130-row LL=-1012.605957391; beta=(-1682.93983040031,
+789.454004335952),sigma=874.882624503239; same-sample LR=17.8020155567762,
+df1,p=0.0000245123441161169; conditional-mean AME=451.714502048142,
+SE=104.559756594971. All49 exact-inventory quantities (45 numeric/four separately
+bounded certificates),9 covariance entries,600 projections,1400 cells/ordinals
+and exact130 membership pass an independent standard-library audit. Six existing/
+malformed source/archive/installed-body/output controls reject with empty stdout/
+no new predictions; four input fingerprints unchanged. Full provenance,
+reproduction and limitations: [source/reference notes](../../examples/mma16p1tobit/truncreg.md).
+Kernel and native workflow still remain; this is not executable support.
+
 ### MMA-SELECT bounded Heckman two-step contract and evidence
 
 Next exact analysis: March2005 `mma16p1tobit.do` §2A's built-in Heckman
