@@ -336,6 +336,23 @@ Acceptance cases before implementation:
    old non-normalized/parser/CLI contracts stay covered. No weights, robust/
    cluster/survey, richer trees, general tests/reports or effects uncertainty.
 
+The [exact-count R fixture](../../crates/tabdat-stats/tests/fixtures/normalized_common_choice_reference.R)
+now independently checks all six empirical cell distributions, zero score and
+positive observed information at the five known natural parameters, plus99
+coefficient/covariance/restriction quantities (41 covariance entries). Chosen
+counts are216/384/108/192. These are reference checks, not native estimator tests.
+
+A minimal exact implementation can reuse the existing earlier-variant case
+likelihood with **equal** logged nest scales and internal lower coefficients
+b_tilde=β/λ. Project its two scale score/Hessian coordinates onto one common
+coordinate, checking identification of that projected system at λ=1 (not the
+unrestricted two-scale system). Return natural β=λ*b_tilde, unchanged upper γ,
+and λ=exp(eta). Full covariance must use the complete Jacobian, including lower
+coefficient derivatives with respect to eta; multiplying only standard errors
+would lose coefficient/scale cross terms. Case-common centering is safe in this
+common-scale normalized fit, not in the existing free-scale earlier variant.
+This equivalence avoids a second independently maintained derivative engine.
+
 Native kernel/parser/runtime/reporting/script/checker and broader gates are
 outstanding. Independent nest scales and remaining Chapter15 work stay required.
 
