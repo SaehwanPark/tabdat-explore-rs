@@ -2787,7 +2787,7 @@ fn parse_clogit_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_nlogit_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "nlogit expects: nlogit <chosen> <lower predictors>, group(variable) alternative(variable) nest(variable) [upper(variables)] nonnormalized; preferred RUM normalization is not implemented";
+  let syntax = "nlogit expects: nlogit <chosen> <lower predictors>, group(variable) alternative(variable) nest(variable) [upper(variables)] nonnormalized | normalized common; select exactly one explicit mode, with common required for normalized fitting";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -2807,6 +2807,8 @@ fn parse_nlogit_command(body: &str) -> Result<Command, ParseError> {
   let mut nest = None;
   let mut upper = Vec::new();
   let mut nonnormalized = false;
+  let mut normalized = false;
+  let mut common = false;
   for option in &options {
     if !seen.insert(&option.name) {
       return Err(ParseError::new(format!(
@@ -2816,6 +2818,8 @@ fn parse_nlogit_command(body: &str) -> Result<Command, ParseError> {
     }
     match option.name.as_str() {
       "nonnormalized" if option.value == UseOptionValue::Flag => nonnormalized = true,
+      "normalized" if option.value == UseOptionValue::Flag => normalized = true,
+      "common" if option.value == UseOptionValue::Flag => common = true,
       "upper" => {
         let UseOptionValue::Identifiers(values) = &option.value else {
           return Err(ParseError::new(syntax));
@@ -2841,26 +2845,32 @@ fn parse_nlogit_command(body: &str) -> Result<Command, ParseError> {
       }
       name => {
         return Err(ParseError::new(format!(
-          "nlogit unsupported option: {name}; only explicit nonnormalized unweighted model-based two-nest inference is implemented"
+          "nlogit unsupported option: {name}; only explicit nonnormalized or normalized common unweighted model-based two-nest inference is implemented"
         )));
       }
     }
   }
-  if !nonnormalized {
+  if !matches!(
+    (nonnormalized, normalized, common),
+    (true, false, false) | (false, true, true)
+  ) {
     return Err(ParseError::new(syntax));
   }
-  Ok(Command::Nlogit {
-    command: NlogitCommand {
-      outcome: parts.arguments[0].text.clone(),
-      predictors: parts.arguments[1..]
-        .iter()
-        .map(|a| a.text.clone())
-        .collect(),
-      upper_predictors: upper,
-      group_variable: group.ok_or_else(|| ParseError::new(syntax))?,
-      alternative_variable: alternative.ok_or_else(|| ParseError::new(syntax))?,
-      nest_variable: nest.ok_or_else(|| ParseError::new(syntax))?,
-    },
+  let command = NlogitCommand {
+    outcome: parts.arguments[0].text.clone(),
+    predictors: parts.arguments[1..]
+      .iter()
+      .map(|a| a.text.clone())
+      .collect(),
+    upper_predictors: upper,
+    group_variable: group.ok_or_else(|| ParseError::new(syntax))?,
+    alternative_variable: alternative.ok_or_else(|| ParseError::new(syntax))?,
+    nest_variable: nest.ok_or_else(|| ParseError::new(syntax))?,
+  };
+  Ok(if normalized {
+    Command::NlogitNormalizedCommon(command)
+  } else {
+    Command::Nlogit { command }
   })
 }
 

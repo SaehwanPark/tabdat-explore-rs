@@ -99,6 +99,7 @@ pub enum EstimationFamily {
   MultinomialLogit,
   ConditionalLogit,
   NonNormalizedNestedLogit,
+  NormalizedCommonNestedLogit,
   Tobit,
   Heckman,
   Nonlinear,
@@ -185,6 +186,13 @@ pub struct NonNormalizedNestedLogitState {
   pub result: tabdat_stats::NonNormalizedNestedLogitResult,
 }
 
+/// Retained raw design and natural-utility common-scale normalized fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NormalizedCommonNestedLogitState {
+  pub problem: tabdat_stats::NestedChoiceProblem,
+  pub result: tabdat_stats::NormalizedCommonNestedLogitResult,
+}
+
 /// Owned Poisson design/fit, independent of subsequent current-data edits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonFitState {
@@ -232,6 +240,7 @@ pub enum EstimationState {
   MultinomialLogit(Box<MultinomialLogitState>),
   ConditionalLogit(Box<ConditionalLogitState>),
   NonNormalizedNestedLogit(Box<NonNormalizedNestedLogitState>),
+  NormalizedCommonNestedLogit(Box<NormalizedCommonNestedLogitState>),
   Tobit(ModelState),
   Heckman(ModelState),
   Nonlinear(ModelState),
@@ -302,6 +311,7 @@ impl EstimationState {
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
+      Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,

@@ -236,6 +236,8 @@ pub enum Command {
   Clogit { command: ClogitCommand },
   /// Explicit non-normalized two-nest model, not preferred RUM normalization.
   Nlogit { command: NlogitCommand },
+  /// Preferred utility normalization with one explicitly selected common scale.
+  NlogitNormalizedCommon(NlogitCommand),
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.

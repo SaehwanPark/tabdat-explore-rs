@@ -795,6 +795,7 @@ pub enum ExecutionResult {
   MultinomialLogit(Box<tabdat_stats::MultinomialLogitResult>),
   ConditionalLogit(Box<tabdat_stats::ConditionalLogitResult>),
   NonNormalizedNestedLogit(Box<tabdat_stats::NonNormalizedNestedLogitResult>),
+  NormalizedCommonNestedLogit(Box<tabdat_stats::NormalizedCommonNestedLogitResult>),
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),

@@ -109,7 +109,7 @@ impl Command {
       Command::Probit { .. } => "probit",
       Command::Mlogit { .. } => "mlogit",
       Command::Clogit { .. } => "clogit",
-      Command::Nlogit { .. } => "nlogit",
+      Command::Nlogit { .. } | Command::NlogitNormalizedCommon(..) => "nlogit",
       Command::Poisson { .. } => "poisson",
       Command::Nbreg { .. } => "nbreg",
       Command::Zip { .. } => "zip",
@@ -217,7 +217,9 @@ impl Command {
       Command::Logit { .. } => &[CommandEffect::Read],
       Command::Probit { .. } => &[CommandEffect::Read],
       Command::Mlogit { .. } => &[CommandEffect::Read],
-      Command::Clogit { .. } | Command::Nlogit { .. } => &[CommandEffect::Read],
+      Command::Clogit { .. } | Command::Nlogit { .. } | Command::NlogitNormalizedCommon(..) => {
+        &[CommandEffect::Read]
+      }
       Command::Poisson { .. } => &[CommandEffect::Read],
       Command::Nbreg { .. } => &[CommandEffect::Read],
       Command::Zip { .. } => &[CommandEffect::Read],

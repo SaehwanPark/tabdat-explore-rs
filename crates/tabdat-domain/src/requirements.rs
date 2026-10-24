@@ -75,6 +75,7 @@ impl Command {
       | Self::Mlogit { .. }
       | Self::Clogit { .. }
       | Self::Nlogit { .. }
+      | Self::NlogitNormalizedCommon(..)
       | Self::Poisson { .. }
       | Self::Nbreg { .. }
       | Self::Zip { .. }
