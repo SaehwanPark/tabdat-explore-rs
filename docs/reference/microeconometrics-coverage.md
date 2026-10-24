@@ -64,6 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
+| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — corrected two-step reference on original200/130 selection/outcome rows |58 R glm/lm/unmodified sampleSelection covariance quantities and1200 predictions; no exclusion restriction; native implementation pending; distinct from the RAND selection illustration below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -560,6 +561,7 @@ Heckman/Greene generated-regressor correction for the augmented outcome
 coefficients, not naive/HC second-stage OLS. Scale is reconstructed from
 selected RSS/n_selected plus alpha^2*mean(delta), alpha=rho*sigma. Report
 normal95 for selection/outcome/Mills coefficients; sigma/rho are points only.
+Selection and augmented-outcome covariance are separate declared blocks.
 Do not fabricate their uncertainty, a joint ML likelihood/LR, cross-equation
 restrictions or causal identification. Original regressors have **no exclusion
 restriction**; identification is functional-form dependent and weakly separated
@@ -593,7 +595,23 @@ Acceptance/failure cases before implementation:
    degenerate/out-of-range-rho and unsupported inference/method requests; failed
    new fits clear stale estimation, prediction/file failures preserve state/data.
 
-This is a source-bound WIP contract, not native support or passing evidence.
+Reference milestone: R4.6.1 glm/lm with base-R symbolic observed probit
+score/Hessian refinement and the **unmodified** sampleSelection1.2-16
+`heckitVcov` function (pinned external development source, not a full installed
+package claim) emits58 exact-inventory quantities,13 covariance entries and
+1200 finite point predictions. Independent algebra reconstructs the correction;
+all1400 original cells/ordinals and five malformed/collision/reference-fingerprint
+failure guards pass. Sigma740.143348254785, rho−.674188264626690;
+outcome intercept745.306997010131, slope176.646780648963 and Mills
+coefficient−498.995959534882, corrected SEs1617.58343858516,
+425.002572278714 and760.500897353647. The first-stage LL is−105.296713010228;
+there is no fitted joint two-step likelihood. These are declared float64 R
+reference values, not exact historical Stata stopping/storage/digit parity.
+Initial reference stdout/schema defects (top-level chol printing, named scalar
+suffixes) were caught by CSV/inventory validation and corrected, with diagnostics
+preserved. No numerical tolerance was widened.
+
+This remains source/reference WIP, not native support or a delivered workflow.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
