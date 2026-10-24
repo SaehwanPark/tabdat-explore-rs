@@ -3,7 +3,10 @@
 Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 `mma16p1tobit.do` §2A. Its estimation extension is explicitly not a published
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
-selection and CLAD analyses are separate required outcomes, not this fit.
+selection and CLAD analyses are separate outcomes, not this fit. The distinct
+[corrected Heckman two-step comparison](heckman.md) now has its own native script,
+source/reference audit and inference/identification limits; truncation/CLAD and
+remaining Chapter16 work stay required.
 
 The native script/checker validates the exact
 source sample, full joint covariance, all600 point predictions and continuous

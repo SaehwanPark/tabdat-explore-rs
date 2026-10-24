@@ -1146,12 +1146,26 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(
+      command.kind,
+      PredictKind::SelectionMills
+        | PredictKind::SelectionConditionalMean
+        | PredictKind::SelectionObservedContribution
+    ) && !matches!(self.estimation, Some(EstimationState::HeckmanTwoStepFit(_)))
+    {
+      return Err(RuntimeError::HeckmanFailed(
+        "predict mills/ycond/yexpected requires a prior successful Heckman twostep fit".into(),
+      ));
+    }
     if command.kind == PredictKind::TobitMean
       && !matches!(self.estimation, Some(EstimationState::TobitFit(_)))
     {
       return Err(RuntimeError::TobitFailed(
         "predict mean requires a prior successful lower-censored Gaussian Tobit fit".into(),
       ));
+    }
+    if matches!(self.estimation, Some(EstimationState::HeckmanTwoStepFit(_))) {
+      return self.execute_heckman_prediction(command);
     }
     if matches!(self.estimation, Some(EstimationState::TobitFit(_))) {
       return self.execute_tobit_prediction(command);

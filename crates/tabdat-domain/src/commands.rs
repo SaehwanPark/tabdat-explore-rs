@@ -250,7 +250,7 @@ pub enum Command {
   Qreg { command: QregCommand },
   /// Fit a tobit (censored) regression model (execution is deferred).
   Tobit { command: TobitCommand },
-  /// Fit a Heckman sample-selection regression model (execution is deferred).
+  /// Explicit two-step sample selection; the default ML form remains deferred.
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
   Nl { command: NlCommand },
@@ -699,10 +699,13 @@ pub struct TobitCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `heckman` form retained for a later statistical runtime
-/// slice.
+/// Sample selection request. Only explicit `twostep` has a native runtime;
+/// the historical bare form is not silently reinterpreted as two-step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeckmanCommand {
+  /// Explicit two-step method; absent legacy serialized fields remain deferred.
+  #[serde(default)]
+  pub twostep: bool,
   /// The dependent variable.
   pub outcome: String,
   /// Ordered predictor variables.
@@ -972,10 +975,16 @@ pub enum PredictKind {
   FixedEffectsResponse,
   /// Retained normalized unit deviation (`u`) after within FE.
   FixedEffect,
-  /// Family-defined probabilities: binary/choice or Tobit uncensoring.
+  /// Family-defined probabilities: binary/choice, Tobit uncensoring or selection.
   Pr,
   /// E[max(lower,Y*)|X] after a lower-censored Gaussian Tobit fit (`mean`).
   TobitMean,
+  /// Selection inverse Mills ratio phi(Z gamma)/Phi(Z gamma).
+  SelectionMills,
+  /// E[Y*|D=1,X,Z] after Heckman two-step.
+  SelectionConditionalMean,
+  /// E[D Y*|X,Z], with zero contribution when not selected.
+  SelectionObservedContribution,
   /// Multinomial scalar probability for an explicitly selected retained category.
   MultinomialPr(i64),
   /// Multinomial reference-relative index (zero for the base category).

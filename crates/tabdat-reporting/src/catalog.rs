@@ -1000,7 +1000,7 @@ fn get_command_schema(
         },
         ArgumentDescriptor {
           name: "indepvars".to_string(),
-          required: false,
+          required: true,
         },
       ],
       help_topic,
@@ -1014,8 +1014,16 @@ fn get_command_schema(
           name: "select".to_string(),
           required: true,
         },
+        OptionDescriptor {
+          name: "twostep".to_string(),
+          required: true,
+        },
+        OptionDescriptor {
+          name: "noconstant".to_string(),
+          required: false,
+        },
       ],
-      syntax: "heckman y x1 x2, selectdep(var) select(vars)".to_string(),
+      syntax: "heckman y x1 x2, selectdep(var) select(vars) twostep [noconstant]".to_string(),
     }),
     "help" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {
@@ -1423,6 +1431,9 @@ fn get_command_schema(
           required: false,
         },
         OptionDescriptor { name: "mean".to_string(), required: false },
+        OptionDescriptor { name: "mills".to_string(), required: false },
+        OptionDescriptor { name: "ycond".to_string(), required: false },
+        OptionDescriptor { name: "yexpected".to_string(), required: false },
         OptionDescriptor {
           name: "n".to_string(),
           required: false,
@@ -1430,7 +1441,7 @@ fn get_command_schema(
         OptionDescriptor { name: "pmf".to_string(), required: false },
         OptionDescriptor { name: "cdf".to_string(), required: false },
       ],
-      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k)]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | cdf(k)]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![

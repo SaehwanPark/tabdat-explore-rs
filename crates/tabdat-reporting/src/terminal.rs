@@ -1815,6 +1815,34 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::HeckmanTwoStep(result) => format!(
+      "Heckman two-step sample selection (IID Gaussian model; not joint ML)\nOutcome: {}; selection: {}; eligible N = {}; selected = {}; unselected = {}\nCandidate rows = {}; excluded = {}\nSelection equation (observed probit ML covariance):\n{}Augmented outcome equation (corrected generated-regressor covariance):\n{}Sigma = {}; rho = {} (moment points only; no scale/correlation SEs)\nSelection-stage log likelihood ONLY = {}\nSeparate covariance blocks, correction1, asymptotic normal95; no joint ML/LR or cross-equation inference.\n{}Exclusion validity is a user assumption, not tested. Coefficients are latent-mean associations, not causal effects.\nUse predict ..., xb / pr / mills / ycond / yexpected for point projections.\n",
+      result.outcome.escape_debug(),
+      result.selection.outcome.escape_debug(),
+      result.selection.observation_count,
+      result.selected_count,
+      result.unselected_count,
+      result
+        .selection
+        .sample
+        .as_ref()
+        .map_or(result.selection.observation_count, |s| s.total_observations),
+      result
+        .selection
+        .sample
+        .as_ref()
+        .map_or(0, |s| s.dropped_observations),
+      logit_estimates(&result.selection.coefficients),
+      logit_estimates(&result.coefficients),
+      inference_number(result.sigma),
+      inference_number(result.rho),
+      inference_number(result.selection.log_likelihood),
+      if result.excluded_selection_predictors.is_empty() {
+        "WARNING: No excluded selection predictor; identification relies on Gaussian functional form and may be weak.\n"
+      } else {
+        ""
+      },
+    ),
     ExecutionResult::Tobit(result) => format!(
       "Lower-censored Gaussian Tobit maximum likelihood (IID homoskedastic model)\nOutcome: {}; lower limit = {}; N = {}; left-censored = {}; uncensored = {}\nCandidate rows = {}; excluded missing/nonfinite = {}; Newton iterations = {}\nLog likelihood = {}; refitted same-sample null log likelihood = {}\nLR chi2({}) = {}; p-value = {}\nFull joint beta/lnsigma inverse observed information; correction1; asymptotic normal95, not Student t.\n{}Sigma = {}; delta SE = {}; log-Wald95 interval = [{}, {}]\nNo sigma=0 Wald test. Coefficients describe the latent mean, not observed-mean effects.\nUse predict ..., pr for P(Y*>lower|X), predict ..., mean for E[max(lower,Y*)|X], estat margins for continuous observed-mean effects.\n",
       result.outcome.escape_debug(),

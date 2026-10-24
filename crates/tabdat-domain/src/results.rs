@@ -800,6 +800,7 @@ pub enum ExecutionResult {
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.
   Tobit(Box<tabdat_stats::TobitResult>),
   TobitMarginalEffects(Box<tabdat_stats::TobitMarginalEffects>),
+  HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.

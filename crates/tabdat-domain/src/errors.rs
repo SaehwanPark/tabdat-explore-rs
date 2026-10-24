@@ -461,6 +461,8 @@ pub enum RuntimeError {
   PredictBinaryUnsupported,
   /// Invalid/unsupported Gaussian Tobit request or failed regular numerical fit.
   TobitFailed(String),
+  /// Invalid/unsupported sample-selection request or failed regular two-step fit.
+  HeckmanFailed(String),
   /// Invalid/unsupported Poisson request or failed finite numerical fit.
   PoissonFailed { message: String },
   /// Only n/xb without auxiliary options are installed for Poisson.
@@ -1122,6 +1124,7 @@ impl fmt::Display for RuntimeError {
         "probit prediction supports only pr or xb, without interval, std or saving options",
       ),
       Self::TobitFailed(message) => write!(formatter, "tobit: {message}"),
+      Self::HeckmanFailed(message) => write!(formatter, "heckman: {message}"),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
       Self::PredictPoissonUnsupported => formatter.write_str(
         "poisson prediction supports only n (mean), xb, pmf(k), cdf(k), pmf(cutoff_variable) or cdf(cutoff_variable), without interval, std or saving options",

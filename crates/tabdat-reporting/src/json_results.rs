@@ -46,6 +46,7 @@ fn add_count_cluster_metadata(
 /// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
   match command {
+    Command::Heckman { command } => command.twostep,
     Command::TabulateQuery {
       command,
       aggregation: None,
@@ -636,6 +637,39 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "ProbitMarginalEffectsResult",
+    ),
+    ExecutionResult::HeckmanTwoStep(result) => (
+      json!({
+        "estimator":"heckman", "method":"twostep", "distribution":"iid_gaussian_sample_selection",
+        "outcome":result.outcome, "predictors":result.predictor_names,
+        "include_intercept":result.include_intercept,
+        "observation_count":result.selection.observation_count,
+        "selected_count":result.selected_count, "unselected_count":result.unselected_count,
+        "selection_outcome":result.selection.outcome, "selection_predictors":result.selection.predictor_names,
+        "selection_coefficients":result.selection.coefficients,
+        "selection_covariance_matrix":result.selection.covariance,
+        "selection_covariance_parameter_names":result.selection.coefficients.iter().map(|c|c.name.as_str()).collect::<Vec<_>>(),
+        "selection_covariance":"model_based_observed_probit_information",
+        "selection_sample":result.selection.sample, "selected_sample":result.sample,
+        "selection_log_likelihood":result.selection.log_likelihood,
+        "selection_iterations":result.selection.iterations,
+        "selection_max_abs_scaled_score":result.selection.max_abs_scaled_score,
+        "selection_max_abs_scaled_newton_step":result.selection.max_abs_scaled_newton_step,
+        "max_abs_scaled_outcome_normal_equation":result.max_abs_scaled_normal_equation,
+        "coefficients":result.coefficients, "covariance_matrix":result.covariance,
+        "covariance_parameter_names":result.coefficients.iter().map(|c|c.name.as_str()).collect::<Vec<_>>(),
+        "covariance":"model_based_heckman_two_step_generated_regressor_correction",
+        "covariance_blocks":"separate_selection_and_augmented_outcome_no_cross_equation_inference",
+        "covariance_correction":1.0,"reference_distribution":"asymptotic_standard_normal","confidence_level":95.0,
+        "sigma":result.sigma,"rho":result.rho,"scale_correlation_inference":"points_only",
+        "scale_moment":"selected_rss_over_selected_n_plus_alpha_squared_mean_delta",
+        "outcome_sse":result.outcome_sse,
+        "excluded_selection_predictors":result.excluded_selection_predictors,
+        "identification_warning":if result.excluded_selection_predictors.is_empty() {Some("No excluded selection predictor; identification relies on the Gaussian functional form and may be weak.")} else {None},
+        "exclusion_validity":"user_assumption_not_tested", "joint_log_likelihood":null,
+        "converged":true,
+      }),
+      "HeckmanTwoStepResult",
     ),
     ExecutionResult::Tobit(result) => (
       json!({

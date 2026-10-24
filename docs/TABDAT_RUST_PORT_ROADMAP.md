@@ -121,8 +121,14 @@ Extend the same workflow/validation standard to:
   observed-mean delta effects, current latent/uncensoring/censored-mean prediction
   and48 original-source R reference gates/600 predictions. This bounded §16.2.1
   author-program extension is not a published table or complete Chapter16.
-  Truncated regression, richer censoring/inference, Heckman selection and two-part
-  workflows, likelihood/two-step distinctions and remaining illustrations stay required.
+  The [explicit Heckman two-step workflow](../examples/mma16p1tobit/heckman.md)
+  validates the same original200/130 selection/outcome rows with corrected
+  generated-regressor covariance, owned state/five point projections and an
+  independent source audit. Closed-form actual-script/failure controls,
+  reverse-consumer checks and independent source review pass. This is not default
+  ML, excluded-instrument/causal identification or RAND illustration parity.
+  Truncated regression, richer censoring/inference, remaining selection/two-part
+  workflows and illustrations stay required.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
   and Cox models, with baseline/survival/hazard outputs and diagnostics.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
