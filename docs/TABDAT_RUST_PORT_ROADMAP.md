@@ -107,8 +107,15 @@ Extend the same workflow/validation standard to:
   LR and current income/price/catch point contrasts. This earlier specification
   is not preferred common-utility RUM normalization; fitted IV-bound violations
   and the historical Stata8 stationary-point discrepancy remain explicit.
-  Preferred-normalized fitting, ordered/richer models, broader availability,
-  effects uncertainty, diagnostics and all remaining illustrations stay required.
+  A separately labelled [normalized common-scale extension](../examples/mma15p1mnl/README.md#normalized-common-scale-nested-choice)
+  now supplies preferred common-utility normalization with one shared positive
+  scale, full natural covariance/scale-one diagnostics and identified LR
+  chi-square1;131 R quantities/41 covariance entries/23,640 source probabilities
+  and an exact900-decision in-bound-scale fixture. The real source fit still
+  violates RUM bounds; preferred normalization does not certify consistency.
+  Unrestricted preferred nest-specific fitting, ordered/richer models, broader
+  availability, effects uncertainty, diagnostics and all remaining illustrations
+  stay required.
 - **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
   and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric

@@ -10,6 +10,9 @@ The [combined-utility workflow](#combined-fixed-coefficient-utility-table152-fin
 adds the final coefficient column and a conditional encoding check of MNL.
 The [explicitly non-normalized nested workflow](#non-normalized-nested-choice)
 targets the later MMA §15.6.3 p511 illustration, not the preferred RUM model.
+The [normalized common-scale extension](#normalized-common-scale-nested-choice)
+separately adds preferred utility normalization with one shared scale, not a
+silent specification substitution or unrestricted nest-specific support.
 
 The March2005 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma15p1mnl.do)
 labels this executable block Table15.2; its overview's Table15.1 is a typo.
@@ -133,7 +136,7 @@ float-generated columns/probabilities; for example its beach average is about
 at mean income rather than an AME. Neither those computations nor their reported
 uncertainty are claimed reproduced. No tolerance is expanded to equate them.
 
-Preferred-normalized/richer nested choice models, robust/cluster/survey covariance,
+Unrestricted preferred-normalized/richer nested choice models, robust/cluster/survey covariance,
 automatic factors, IIA tests, remaining illustrated tables and later Chapter15 analyses remain
 required work. Current MNL bounds/failure/recovery conventions are in `help mlogit`;
 passing these local checks is not certification of every MNL problem or platform.
@@ -330,7 +333,7 @@ export without changing inputs; export collisions retain earlier files.
 All three principal Table15.2 coefficient columns now have source-audited
 workflows with explicit inference conventions. This is not a single formatted
 whole-table report, every exploratory fit in the author program, historical
-float-digit parity or completed Chapter15 coverage. Preferred-normalized/other
+float-digit parity or completed Chapter15 coverage. Unrestricted preferred-normalized/other
 illustrated choice analyses, IIA diagnostics, broader availability, effects
 uncertainty, weights/robust/cluster/survey and automatic design/reporting remain
 required. The distinct earlier non-normalized illustration follows.
@@ -428,7 +431,7 @@ not establish random-utility consistency.
 Historical Stata8 instead reports LL−1180.0156 and IVs29.98591/14.06438: this is
 **not printed-digit parity**. A float32 preparation replay still gives stationary
 IVs≈32.172579/15.074757, so storage alone does not explain the discrepancy.
-No historical tolerance is widened to erase it. The preferred-normalized probe
+No historical tolerance is widened to erase it. The unrestricted preferred-normalized probe
 on this restricted design diverged with singular shore information; that failed
 probe is not a validated substitute or an exclusion of required work.
 
@@ -439,5 +442,77 @@ displayed means and input/export preservation. Bad IDs/flags fail before fitting
 Additional kernel/runtime tests cover full covariance, derivatives, permutation,
 replication, exact DECIMAL keys/outcomes, whole-set exclusion, current new IDs/
 absent outcomes, upper constancy/map errors and failure-state atomicity. These
-bounded local checks do not complete Chapter15, preferred normalization, richer
-trees/availability, effects uncertainty or platform certification.
+bounded local checks do not complete Chapter15, unrestricted preferred nest-specific
+normalization, richer trees/availability, effects uncertainty or platform certification.
+
+## Normalized common-scale nested choice
+
+`normalized_common.td` is a **separately labelled extension**, not the author's
+published earlier Stata8 fit: same §15.6.3 lower price/catch and upper shore/
+shore-income design and same1,182 people/4,728 rows, but preferred common-utility
+normalization with **one shared positive λ**. This does not silently replace the
+failed unrestricted preferred-normalized probe or complete that required model.
+
+```text
+nlogit chosen p q, group(id) alternative(alternative) nest(nest) upper(dshore dshorey) normalized common
+```
+
+Conditional probabilities normalize `exp(xβ/λ)`; top utility is
+`zγ + λ*logsumexp(xβ/λ)`. Both nests share λ. Natural lower β and unchanged upper γ
+are reported; case-common lower shifts cancel. Internally the exact equal-scale
+earlier likelihood uses β/λ, and the **full** covariance transformation retains
+coefficient/scale cross terms. The inverse joint observed Hessian uses G decision
+units, correction1 and normal95. Scale diagnostics test1, not zero; the re-estimated
+λ=1 conditional restriction has LR chi-square1 after common-scale identification
+is checked. No unidentified uniform-null omnibus is invented. λ is estimated
+positive, **not constrained above1**; normal Wald intervals can leave its domain.
+
+In the prepared source-data subshell (`repo`, `work`, `cd "$work"` as above), with
+fresh normalized-common export paths:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -c "run \"$repo/examples/mma15p1mnl/normalized_common.td\"" > normalized_common.jsonl
+Rscript "$repo/examples/mma15p1mnl/reference_normalized_common.R" \
+  Nldata.csv R_normalized_common_predictions.csv > R_normalized_common_quantities.csv
+python3 "$repo/examples/mma15p1mnl/check_normalized_common.py" "$work"
+```
+
+Native execution needs no R/Python. Optional development reference: R4.6.1,
+`mlogit`2.0.0 `unscaled=FALSE, un.nest.el=TRUE` and `survival`3.8.6; an isolated
+`R_LIBS_USER` library is supported. Fresh package likelihood/score/probabilities
+are independently checked by base-R `deriv3`; tightly refined stationarity and
+positive observed information supply covariance, **not default OPG**. Here
+package nest-constant coefficients enter top utility unchanged (unlike the earlier
+variant's λ multiplier). The conditional restriction is independently checked.
+
+The source fit has LL−1211.53537250817, shared λ25.009343096962 and observed
+SE50.033049627836; λ=1 LL−1252.7110426869, LR82.351340357452 and chi-square1
+p≈1.1392419190882e-19. **This fitted scale violates RUM bounds despite preferred
+utility normalization.** The terminal warning and CLI flag disclose that failure;
+this is not a composite consistency test, fitted RUM certification, causal claim
+or effects uncertainty. It does not reproduce the earlier Stata8 coefficients.
+
+The checker audits131 independent quantities including41 full/restricted covariance
+entries and23,640 probabilities, exact source-hash-bound design/keys/choices/map,
+restores, displayed/exported means and joint income+$1,000 / charter price+1 /
+catch+.001 point contrasts. Positive tails bind to both R and independent
+`math.erfc`; even shared native/reference zero LR p-values are rejected. Shared
+design corruption is rejected against original tokens. Normalized scalars use
+1e-9 absolute +1e-8 relative, restriction scalars1e-9 absolute, positive tails1e-8
+relative and probabilities1e-10 absolute; existing standalone gates are unchanged.
+Original maxima: coefficients1.73e-11, covariance4.43e-7 on the weak natural-scale
+variance, LL5.01e-12, probability1.20e-11; income/price/catch contrasts
+4.78e-17/7.42e-15/6.68e-15. Fresh explicit `--text` execution preserves input and
+produces byte-identical CSVs to JSON; outputs refuse collisions.
+
+The actual-script fixture has900 exact-count decisions with β/γ=ln2/ln3 and
+**in-bound λ=.5**,99 R quantities/full covariance, closed-form current scenarios,
+restores/displays, input/collision preservation and source-ID/flag failures before
+fits/exports. Kernel tests additionally cover an identifiable no-upper225-decision
+case, common shifts, permutations, replication and restriction rank failure;
+runtime tests cover owned samples, exact structural validation before exclusion,
+new IDs/absent outcomes, whole-set NULL prediction and atomic failures. General/
+named-model storage/comparisons, effects uncertainty, robust/cluster/survey,
+unrestricted nest-specific normalization and remaining Chapter15 work are not
+claimed. These local checks are not platform certification.

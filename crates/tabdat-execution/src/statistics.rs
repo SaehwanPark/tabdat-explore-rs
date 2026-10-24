@@ -1065,6 +1065,9 @@ impl Session {
       return match &self.estimation {
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
         Some(EstimationState::MultinomialLogit(state)) => self.execute_mlogit_margins(state),
+        Some(EstimationState::NormalizedCommonNestedLogit(_)) => Err(RuntimeError::EstatMarginsFailed {
+          message: "normalized common-scale nested-choice effect inference is not implemented; explicit current-set probability contrasts are point predictions only".into(),
+        }),
         Some(EstimationState::NonNormalizedNestedLogit(_)) => Err(RuntimeError::EstatMarginsFailed {
           message: "non-normalized nested-choice effect inference is not implemented; explicit current-set probability contrasts are point predictions only".into(),
         }),
@@ -1164,7 +1167,13 @@ impl Session {
       self.estimation,
       Some(EstimationState::NonNormalizedNestedLogit(_))
     ) {
-      return self.execute_nlogit_prediction(command);
+      return self.execute_nlogit_prediction(command, false);
+    }
+    if matches!(
+      self.estimation,
+      Some(EstimationState::NormalizedCommonNestedLogit(_))
+    ) {
+      return self.execute_nlogit_prediction(command, true);
     }
     if matches!(self.estimation, Some(EstimationState::ConditionalLogit(_))) {
       return self.execute_clogit_prediction(command);

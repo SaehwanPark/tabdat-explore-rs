@@ -1228,8 +1228,8 @@ fn get_command_schema(
     "nlogit" => Ok(CommandSchemaResult {
       arguments:vec![ArgumentDescriptor {name:"chosen".into(),required:true},ArgumentDescriptor {name:"lower_predictors".into(),required:true}],
       help_topic,name:"nlogit".into(),
-      options:vec![OptionDescriptor {name:"group".into(),required:true},OptionDescriptor {name:"alternative".into(),required:true},OptionDescriptor {name:"nest".into(),required:true},OptionDescriptor {name:"upper".into(),required:false},OptionDescriptor {name:"nonnormalized".into(),required:true}],
-      syntax:"nlogit chosen lower_vars, group(id) alternative(alt) nest(branch) [upper(vars)] nonnormalized".into(),
+      options:vec![OptionDescriptor {name:"group".into(),required:true},OptionDescriptor {name:"alternative".into(),required:true},OptionDescriptor {name:"nest".into(),required:true},OptionDescriptor {name:"upper".into(),required:false},OptionDescriptor {name:"nonnormalized".into(),required:false},OptionDescriptor {name:"normalized".into(),required:false},OptionDescriptor {name:"common".into(),required:false}],
+      syntax:"nlogit chosen lower_vars, group(id) alternative(alt) nest(branch) [upper(vars)] (nonnormalized | normalized common)".into(),
     }),
     "mlogit" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor { name:"depvar".into(),required:true },ArgumentDescriptor { name:"indepvars".into(),required:false }],

@@ -267,8 +267,9 @@ map `predict newvar, pr` is supported; current outcomes are unused/new IDs allow
 Missing predictors NULL the whole current set; structural/constancy/schema/
 arithmetic errors publish no column and preserve data/fit. Failed new fits clear
 prior inference, not data. `estat margins`, general tests/named comparisons,
-weights/robust/cluster/survey, richer trees and preferred normalization remain
-unsupported. See `help nlogit` for explicit work bounds.
+weights/robust/cluster/survey, richer trees and normalized utilities in this mode
+remain unsupported. The common normalized mode is separate below. See `help nlogit`
+for explicit work bounds.
 
 The [original-source workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice)
 checks149 quantities including52 covariance entries and23,640 probabilities,
@@ -276,6 +277,44 @@ restored source design, displayed means and point income/charter price/catch
 contrasts. These are not effects uncertainty or causal claims. Original fitted
 scales exceed1; terminal output warns. The documented historical Stata8
 stationary-point difference is not silently widened into printed-digit parity.
+
+## Normalized common-scale nested choice
+
+`nlogit chosen lower_vars, group(id) alternative(alt) nest(branch)
+[upper(vars)] normalized common` explicitly selects preferred common-utility
+normalization with **one shared positive λ**, not unrestricted nest-specific
+scales or a silent replacement for `nonnormalized`. CLI-v1 type
+`NormalizedCommonNestedLogitResult` uses `parameterization:
+"normalized_common_utility"`, `preferred_rum_normalization: true` and
+`shared_nest_scale: true`. These describe normalization, **not RUM consistency**.
+Within-nest utility is xβ/λ; upper utility is zγ+λ*logsumexp(xβ/λ).
+
+`coefficients` are natural lower β and unchanged upper γ. `dissimilarity` is one
+`LogitEstimate` named `iv_common`, with `scale_test_null: 1.0`. Full covariance
+names are predictor order then `iv_common`; `covariance_matrix` includes all
+coefficient/scale cross terms. Covariance is
+`model_based_joint_observed_normalized_common_nested_choice_hessian`, correction1,
+independent unit `choice_set`, standard-normal/95% natural Wald intervals which
+can leave the positive domain. Internal β/λ, equal logged scales and case-centered
+RMS optimization are transformed with the complete Jacobian, not diagonal-only
+standard-error scaling. `fitted_probabilities` are not emitted in the fit record.
+
+The re-estimated conditional restriction has `independence_df: 1`, null
+`shared_positive_nest_scale_equal_one_slopes_reestimated` and asymptotic
+chi-square reference only after common-scale identification at λ=1. No regular
+uniform-null omnibus/pseudo R² is invented. All sample/map/convergence/current-set
+prediction and atomic-failure contracts are as above, with P including one scale.
+Unlike free-scale earlier utilities, case-common lower shifts cancel. No weights,
+robust/cluster/survey, richer trees, named-model storage/comparisons or effects
+uncertainty are added. Missing/mixed modes and `normalized` without `common` fail.
+Discovery keeps the single `nlogit` name; syntax requires one explicit mode even
+though each alternative mode flag is individually non-required in the option list.
+
+The [source-design extension/audit](../../examples/mma15p1mnl/README.md#normalized-common-scale-nested-choice)
+checks131 quantities/41 covariance entries/23,640 probabilities and point
+contrasts/restores. Original fitted λ≈25.009343 is outside (0,1]; terminal warning
+and `random_utility_iv_bounds_satisfied: false` expose that failure. Preferred
+normalization alone does not make this fit a valid RUM or reproduce Stata8.
 
 ## Binary logit/probit and continuous marginal effects
 

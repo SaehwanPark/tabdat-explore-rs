@@ -111,6 +111,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Mlogit { .. }
     | Command::Clogit { .. }
     | Command::Nlogit { .. }
+    | Command::NlogitNormalizedCommon(..)
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -486,6 +487,31 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       }),
       "LogitMarginalEffectsResult",
     ),
+    ExecutionResult::NormalizedCommonNestedLogit(result) => {
+      let mut data = serde_json::to_value(result).expect("finite normalized nested fit");
+      let object = data.as_object_mut().expect("fit object");
+      object.remove("fitted_probabilities");
+      let predictors = object.remove("predictor_names").expect("predictors");
+      object.insert("predictors".into(), predictors);
+      let covariance = object.remove("covariance").expect("covariance");
+      object.insert("covariance_matrix".into(), covariance);
+      object.extend(json!({
+        "estimator":"nlogit", "parameterization":"normalized_common_utility",
+        "preferred_rum_normalization":true, "shared_nest_scale":true,
+        "include_intercept":false, "parameter_count":result.predictor_names.len()+1,
+        "missingness":"whole_choice_set_complete_finite_exclusion_after_structural_validation",
+        "coefficient_test_null":0.0, "covariance":"model_based_joint_observed_normalized_common_nested_choice_hessian",
+        "covariance_correction":1.0, "independent_unit":"choice_set",
+        "reference_distribution":"asymptotic_standard_normal", "confidence_level":95.0,
+        "confidence_interval_method":"normal_wald_natural_scale_may_leave_parameter_domain",
+        "independence_null":"shared_positive_nest_scale_equal_one_slopes_reestimated",
+        "independence_reference_distribution":"asymptotic_chi_square",
+        "converged":true,"optimization_starts_attempted":2,
+        "convergence_coordinate_system":"within_case_baseline_rms_beta_over_common_scale_and_log_scale_per_choice_set_score",
+        "convergence_absolute_tolerance":1e-10
+      }).as_object().expect("literal object").clone());
+      (data, "NormalizedCommonNestedLogitResult")
+    }
     ExecutionResult::NonNormalizedNestedLogit(result) => {
       // Split the literal objects rather than raising the crate's macro recursion limit.
       let mut data = json!({

@@ -156,6 +156,7 @@ impl Session {
       Command::Mlogit { command } => self.execute_mlogit(&command),
       Command::Clogit { command } => self.execute_clogit(&command),
       Command::Nlogit { command } => self.execute_nlogit(&command),
+      Command::NlogitNormalizedCommon(command) => self.execute_nlogit_normalized_common(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
