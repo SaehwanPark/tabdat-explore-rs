@@ -1,12 +1,11 @@
-# Classic lower-censored Gaussian Tobit — WIP
+# Classic lower-censored Gaussian Tobit
 
 Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 `mma16p1tobit.do` §2A. Its estimation extension is explicitly not a published
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
 selection and CLAD analyses are separate required outcomes, not this fit.
 
-**Working draft slice; broader regression validation and integration review are
-still required before merge.** The native script/checker now validates the exact
+The native script/checker validates the exact
 source sample, full joint covariance, all600 point predictions and continuous
 observed-mean inference against independent R. Owned Gaussian state, current
 xb/pr/mean predictions, retained-X effects and terminal/CLI-v1/help are installed.
@@ -15,8 +14,13 @@ recordings, retained effects, joint missingness, numerical/schema/option failure
 and failure atomicity. Two actual-script tests use a separate closed-form
 Gaussian control (not replacement textbook data), verify full covariance/delta
 inference, byte-identical text/JSON exports and input/output-collision failures.
-The intended command/sample/inference/failure contract is in
-[the coverage ledger](../../docs/reference/microeconometrics-coverage.md#mma-tobit-bounded-classic-lower-censoring-contract-wip).
+The command/sample/inference/failure contract and evidence are in
+[the coverage ledger](../../docs/reference/microeconometrics-coverage.md#mma-tobit-bounded-classic-lower-censoring-contract-and-evidence).
+Independent read-only source/evidence review found no remaining blocker after a
+CLI predictor-requirement documentation/schema correction. Local macOS validation
+reconciled1486 passed/two pre-existing ignored tests across256 current workspace
+artifacts with recorded binary hashes; earlier timed-out runner commands remain
+incomplete, not passes. This is not CI or other-platform certification.
 
 | Original author asset | SHA256 |
 | --- | --- |

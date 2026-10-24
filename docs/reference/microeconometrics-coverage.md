@@ -63,7 +63,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
-| MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | WIP — classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with broader regression/integration review still WIP. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
+| MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -459,7 +459,7 @@ performed by the parent rather than the reviewer. Python syntax/diff checks pass
 No Rust/native behavior changed or full-workspace rerun was needed; this is not
 CI/platform certification, new native capability or an approved exclusion.
 
-### MMA-TOBIT bounded classic lower-censoring contract (WIP)
+### MMA-TOBIT bounded classic lower-censoring contract and evidence
 
 Use the original author `mma16p1tobit.asc`200-row export, not a replacement RNG
 sample: `ycens` on `lnwage` plus an intercept, lower limit0,70 left-censored and
@@ -533,8 +533,15 @@ all six input hashes. Two actual-script cases use a separate closed-form
 Gaussian control, full joint covariance/delta and byte-identical JSON/text
 exports, plus existing-target/missing-input failures. Added runtime controls
 validate the independent-R nonzero-limit/no-constant/below-limit sample and
-numerical prediction rollback/failed numerical refit clearing. Broader
-regressions and independent integration review remain WIP; this is not a
+numerical prediction rollback/failed numerical refit clearing. Independent
+read-only source/evidence review found no P0/P1 and one P2 CLI predictor-requirement
+mismatch; corrected docs/schema and explicit parser/discovery regressions resolve
+it without parser expansion. All256 current workspace test artifacts are
+hash-reconciled:1486 passed/two pre-existing ignored, no omitted artifacts.
+Original nextest/Cargo timeouts remain incomplete; completed passing artifacts
+were retained and only never-started artifacts resumed under bounded runners.
+Workspace Clippy/formatting and the applicable final schema/test checks pass;
+local macOS evidence is not Actions/other-platform certification or a
 whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
 Heckman/two-part/CLAD and the rest of Chapter16 remain required.
 

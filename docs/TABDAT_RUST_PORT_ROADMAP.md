@@ -116,8 +116,13 @@ Extend the same workflow/validation standard to:
   Unrestricted preferred nest-specific fitting, ordered/richer models, broader
   availability, effects uncertainty, diagnostics and all remaining illustrations
   stay required.
-- **Limited outcomes:** censored/truncated regression, Tobit, Heckman selection
-  and two-part workflows; likelihood/two-step distinctions and correct uncertainty.
+- **Limited outcomes:** the [classic lower-censored Gaussian Tobit workflow](../examples/mma16p1tobit/README.md)
+  now supplies model-based full joint observed inference, retained continuous
+  observed-mean delta effects, current latent/uncensoring/censored-mean prediction
+  and48 original-source R reference gates/600 predictions. This bounded §16.2.1
+  author-program extension is not a published table or complete Chapter16.
+  Truncated regression, richer censoring/inference, Heckman selection and two-part
+  workflows, likelihood/two-step distinctions and remaining illustrations stay required.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
   and Cox models, with baseline/survival/hazard outputs and diagnostics.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
