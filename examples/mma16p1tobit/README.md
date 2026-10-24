@@ -5,8 +5,11 @@ Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
 selection and CLAD analyses are separate required outcomes, not this fit.
 
-**Native execution is not implemented yet.** The current files establish the
-source/preparation and independent development reference before numerical code.
+**Native command execution is not implemented yet.** A pure Rust numerical
+kernel now passes five synthetic R/survival/base-R references and the original
+source's48 quantities/600 predictions. Owned session state, command execution,
+reporting/help and actual-script contracts remain WIP; this is not a delivered CLI
+workflow. The files below establish reproducible source/preparation/references.
 The intended command/sample/inference/failure contract is in
 [the coverage ledger](../../docs/reference/microeconometrics-coverage.md#mma-tobit-bounded-classic-lower-censoring-contract-wip).
 

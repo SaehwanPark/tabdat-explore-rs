@@ -492,11 +492,26 @@ Acceptance/failure cases before implementation:
    prediction/model failure; reject rank failure, all-censored/degenerate-scale
    fits, unsupported covariance/upper-censor options and occupied output paths.
 
-The first read-only source probe confirms70/130 classifications and reproduces
-printed coefficients/scale/likelihood with `survreg`. Parser acceptance is existing
-behavior; native fitting/inference/predictions/effects and source-bound workflow
-are **not implemented/validated yet**. Theoretical Figure16.1 curves, truncated
-regression, Heckman/two-part/CLAD and the rest of Chapter16 remain required.
+The pure Rust kernel now optimizes the concave beta/sigma,positive inverse-scale
+parameterization with strict score/step and positive joint information; full
+Jacobian inference returns beta/lnsigma covariance. Five independent
+R/survival/base-R fixtures contain1396 entries (540 input cells,540 predictions,
+316 inference/gradient/covariance/metadata values): censoring, nonzero-limit/no
+intercept, all-uncensored Gaussian, bound shift and response scaling. One private
+derivative test/four kernel tests pass, including replication/order/sample and
+explicit rank/scale/iteration/unsupported-inference failures. An initial saturated
+mean-probability accumulation rounded above1 and failed an AME test; sum-then-divide
+fixes it without widening a gate. Current stats all-target Clippy passes.
+
+The original source numerical probe additionally checks all48 R quantities,
+nine full joint covariance entries/600 probabilities/latent/observed-mean
+predictions and joint-delta AMEs under declared1e-9 absolute+1e-8 relative scalars,
+1e-8 positive-tail relative and1e-10 probability gates. Source conversion and
+malformed/truncated/output-collision guards pass. Parser acceptance is existing
+behavior; owned session/command/reporting and actual-script contracts are **not
+implemented/validated yet**. This kernel evidence is not a usable native workflow
+or whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
+Heckman/two-part/CLAD and the rest of Chapter16 remain required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
