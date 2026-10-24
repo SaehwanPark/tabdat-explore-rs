@@ -353,8 +353,21 @@ would lose coefficient/scale cross terms. Case-common centering is safe in this
 common-scale normalized fit, not in the existing free-scale earlier variant.
 This equivalence avoids a second independently maintained derivative engine.
 
-Native kernel/parser/runtime/reporting/script/checker and broader gates are
-outstanding. Independent nest scales and remaining Chapter15 work stay required.
+The native pure kernel and complete-set prediction are now implemented in
+`tabdat-stats`, retaining the old non-normalized input name as a compatibility
+alias for the shared design. Eight new numerical/shape/provenance/failure tests,
+five existing earlier-variant tests and the existing away-from-MLE analytic
+derivative test pass. A source **pure-kernel probe, not the CLI**, passes all131
+quantities/41 covariance entries/23,640 keyed probabilities. Maximum original
+coefficient error1.73e-11, covariance error4.43e-7 (weak natural-scale variance,
+within the predeclared relative gate), LL5.01e-12 and probability1.20e-11;
+income/price/catch contrast errors4.17e-17/7.44e-15/6.65e-15. Both starts converge,
+source score bound1.17e-15 and step7.63e-14. Native λ25.0093430969551 and observed
+SE50.0330496234127 diagnose the same RUM-bound violation.
+
+Parser/runtime/reporting/script/checker, actual-script tests and broader gates
+remain outstanding; this is **not yet a delivered terminal/script capability**.
+Independent nest scales and remaining Chapter15 work stay required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

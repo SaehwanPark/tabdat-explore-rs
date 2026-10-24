@@ -14,15 +14,19 @@ const TOLERANCE: f64 = 1e-10;
 const NORMAL_95: f64 = 1.959963984540054;
 
 /// Design columns are lower-utility predictors followed by upper predictors.
-/// Upper predictors must be constant within each case/nest. Unlike conditional
-/// logit, case-common lower utility shifts must NOT be subtracted.
+/// Upper predictors must be constant within each case/nest. The design is shared
+/// by the earlier free-scale and normalized common-scale estimators; likelihood
+/// and utility-shift semantics are determined by the fitting function.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct NonNormalizedNestedLogitProblem {
+pub struct NestedChoiceProblem {
   pub choice: ConditionalLogitProblem,
   pub lower_predictor_count: usize,
   pub nest_variable: String,
   pub nest_codes: Vec<i64>,
 }
+
+/// Compatibility name for the existing earlier-variant design API.
+pub type NonNormalizedNestedLogitProblem = NestedChoiceProblem;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NestedLogitOptions {
@@ -97,7 +101,7 @@ fn matrix_vector(a: &[Vec<f64>], x: &[f64]) -> Vec<f64> {
     .map(|row| row.iter().zip(x).map(|(a, b)| a * b).sum())
     .collect()
 }
-fn inference(
+pub(crate) fn inference(
   name: String,
   value: f64,
   variance: f64,
@@ -133,13 +137,17 @@ fn inference(
   })
 }
 
-struct NestedLayout {
-  choice: Layout,
-  nest_levels: Vec<i64>,
-  alternative_nests: Vec<i64>,
-  row_nest: Vec<usize>,
+pub(crate) struct NestedLayout {
+  pub(crate) choice: Layout,
+  pub(crate) nest_levels: Vec<i64>,
+  pub(crate) alternative_nests: Vec<i64>,
+  pub(crate) row_nest: Vec<usize>,
 }
-fn upper_constants(rows: &[&[f64]], nests: &[usize], lower: usize) -> Result<(), StatsError> {
+pub(crate) fn upper_constants(
+  rows: &[&[f64]],
+  nests: &[usize],
+  lower: usize,
+) -> Result<(), StatsError> {
   for nest in 0..2 {
     let first = nests
       .iter()
@@ -161,11 +169,18 @@ fn upper_constants(rows: &[&[f64]], nests: &[usize], lower: usize) -> Result<(),
   Ok(())
 }
 fn validate(problem: &NonNormalizedNestedLogitProblem) -> Result<NestedLayout, StatsError> {
+  validate_nested_design(problem, false)
+}
+
+pub(crate) fn validate_nested_design(
+  problem: &NestedChoiceProblem,
+  common_scale: bool,
+) -> Result<NestedLayout, StatsError> {
   let choice = validate_choices(&problem.choice)?;
   let d = &problem.choice.design;
   let n = d.response.len();
   let k = d.predictor_names.len();
-  let p = k + 2;
+  let p = k + if common_scale { 1 } else { 2 };
   if problem.lower_predictor_count == 0
     || problem.lower_predictor_count > k
     || problem.lower_predictor_count > 16
@@ -174,9 +189,11 @@ fn validate(problem: &NonNormalizedNestedLogitProblem) -> Result<NestedLayout, S
     || choice.cases.len() <= p
     || n.saturating_mul(p * p) > 20_000_000
   {
-    return Err(invalid(
-      "requires 1..16 lower, 0..16 upper predictors, P<=32, G>P and rows*P^2<=20000000 (P includes both scales)",
-    ));
+    return Err(invalid(if common_scale {
+      "requires 1..16 lower, 0..16 upper predictors, P<=32, G>P and rows*P^2<=20000000 (P includes one common scale)"
+    } else {
+      "requires 1..16 lower, 0..16 upper predictors, P<=32, G>P and rows*P^2<=20000000 (P includes both scales)"
+    }));
   }
   if problem.nest_variable.trim().is_empty()
     || problem.nest_codes.len() != n
@@ -226,7 +243,11 @@ fn validate(problem: &NonNormalizedNestedLogitProblem) -> Result<NestedLayout, S
     upper_constants(&rows, &nests, problem.lower_predictor_count)?;
   }
   let mut names = d.predictor_names.clone();
-  names.extend(nest_levels.iter().map(|code| format!("iv[{code}]")));
+  if common_scale {
+    names.push("iv_common".into());
+  } else {
+    names.extend(nest_levels.iter().map(|code| format!("iv[{code}]")));
+  }
   if names.iter().collect::<BTreeSet<_>>().len() != p {
     return Err(invalid("all covariance parameter names must be unique"));
   }
@@ -263,15 +284,15 @@ fn softmax(eta: &[f64]) -> Result<Softmax, StatsError> {
     log_sum,
   })
 }
-struct Terms {
+pub(crate) struct Terms {
   within: Vec<f64>,
   nest: Vec<f64>,
   inclusive: [f64; 2],
   lambda: [f64; 2],
-  probabilities: Vec<f64>,
+  pub(crate) probabilities: Vec<f64>,
   log_probabilities: Vec<f64>,
 }
-fn terms(
+pub(crate) fn terms(
   rows: &[&[f64]],
   nests: &[usize],
   lower: usize,
@@ -336,14 +357,14 @@ fn terms(
   })
 }
 
-struct Evaluation {
-  log_likelihood: f64,
-  probabilities: Vec<f64>,
-  score: Vec<f64>,
-  observed: Vec<Vec<f64>>,
-  fisher: Vec<Vec<f64>>,
+pub(crate) struct Evaluation {
+  pub(crate) log_likelihood: f64,
+  pub(crate) probabilities: Vec<f64>,
+  pub(crate) score: Vec<f64>,
+  pub(crate) observed: Vec<Vec<f64>>,
+  pub(crate) fisher: Vec<Vec<f64>>,
 }
-fn evaluate(
+pub(crate) fn evaluate(
   x: &[Vec<f64>],
   layout: &NestedLayout,
   lower: usize,
@@ -455,23 +476,31 @@ fn evaluate(
   Ok(result)
 }
 
-struct Solution {
-  theta: Vec<f64>,
-  evaluation: Evaluation,
-  inverse: Vec<Vec<f64>>,
-  iterations: usize,
-  score_bound: f64,
-  step_bound: f64,
+pub(crate) struct Solution {
+  pub(crate) theta: Vec<f64>,
+  pub(crate) evaluation: Evaluation,
+  pub(crate) inverse: Vec<Vec<f64>>,
+  pub(crate) iterations: usize,
+  pub(crate) score_bound: f64,
+  pub(crate) step_bound: f64,
 }
 fn optimize(
   x: &[Vec<f64>],
   layout: &NestedLayout,
   lower: usize,
-  mut theta: Vec<f64>,
+  theta: Vec<f64>,
   options: &NestedLogitOptions,
 ) -> Result<Solution, StatsError> {
+  optimize_with(theta, options, |theta| evaluate(x, layout, lower, theta))
+}
+
+pub(crate) fn optimize_with(
+  mut theta: Vec<f64>,
+  options: &NestedLogitOptions,
+  evaluate: impl Fn(&[f64]) -> Result<Evaluation, StatsError>,
+) -> Result<Solution, StatsError> {
   for iteration in 0..options.max_iterations {
-    let current = evaluate(x, layout, lower, &theta)?;
+    let current = evaluate(&theta)?;
     let observed_inverse = choice_information_inverse(&current.observed).ok();
     // Expected information gives an ascent direction when the nonconcave
     // observed Hessian is indefinite. It is never the reported covariance.
@@ -504,7 +533,7 @@ fn optimize(
         .zip(&step)
         .map(|(b, s)| b + damping * s)
         .collect::<Vec<_>>();
-      if let Ok(trial) = evaluate(x, layout, lower, &candidate)
+      if let Ok(trial) = evaluate(&candidate)
         && trial.log_likelihood
           >= current.log_likelihood - 1e-12 * (1.0 + current.log_likelihood.abs())
       {

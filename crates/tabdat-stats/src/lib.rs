@@ -26,6 +26,7 @@ pub mod matrix;
 mod multinomial;
 mod nb2;
 mod nested_logit;
+mod normalized_common_nested_logit;
 mod poisson;
 pub mod post_estimation;
 pub mod problem;
@@ -97,9 +98,13 @@ pub use nb2::{
   nb2_average_marginal_effects,
 };
 pub use nested_logit::{
-  NestedLogitOptions, NestedScaleEstimate, NonNormalizedNestedLogitProblem,
+  NestedChoiceProblem, NestedLogitOptions, NestedScaleEstimate, NonNormalizedNestedLogitProblem,
   NonNormalizedNestedLogitResult, fit_non_normalized_nested_logit,
   non_normalized_nested_predict_set,
+};
+pub use normalized_common_nested_logit::{
+  NormalizedCommonNestedLogitResult, fit_normalized_common_nested_logit,
+  normalized_common_nested_predict_set,
 };
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
