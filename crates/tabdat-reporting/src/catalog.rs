@@ -81,6 +81,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "tail",
   "test",
   "tobit",
+  "truncreg",
   "ttest",
   "use",
   "xtabond",
@@ -436,6 +437,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "tobit".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "truncreg".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1879,6 +1884,12 @@ fn get_command_schema(
       name: "test".to_string(),
       options: vec![],
       syntax: "test spec".to_string(),
+    }),
+    "truncreg" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor {name:"depvar".into(),required:true},ArgumentDescriptor {name:"indepvars".into(),required:true}],
+      help_topic,name:"truncreg".into(),
+      options:vec![OptionDescriptor{name:"ll".into(),required:true},OptionDescriptor{name:"noconstant".into(),required:false}],
+      syntax:"truncreg y x1 x2, ll(number) [noconstant]".into(),
     }),
     "tobit" => Ok(CommandSchemaResult {
       arguments: vec![

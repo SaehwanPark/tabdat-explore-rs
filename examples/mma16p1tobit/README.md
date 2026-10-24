@@ -5,8 +5,12 @@ Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
 selection and CLAD analyses are separate outcomes, not this fit. The distinct
 [corrected Heckman two-step comparison](heckman.md) now has its own native script,
-source/reference audit and inference/identification limits; truncation/CLAD and
-remaining Chapter16 work stay required.
+source/reference audit and inference/identification limits. The distinct
+[fixed-lower truncated Gaussian workflow](truncreg.md) is now implemented with
+original130-row R/independent audits and actual-script/failure checks, but still
+awaits integration review and final regression gates in draft PR329. It fills
+the author's described but unexecuted truncated-MLE gap, not historical/table
+parity. CLAD, richer limited outcomes and remaining Chapter16 work stay required.
 
 The native script/checker validates the exact
 source sample, full joint covariance, all600 point predictions and continuous

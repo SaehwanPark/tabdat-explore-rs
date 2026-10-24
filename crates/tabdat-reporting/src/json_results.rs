@@ -114,6 +114,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
+    | Command::Truncreg { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -670,6 +671,44 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "converged":true,
       }),
       "HeckmanTwoStepResult",
+    ),
+    ExecutionResult::TruncatedGaussian(result) => (
+      json!({
+        "estimator":"truncreg", "distribution":"iid_homoskedastic_gaussian_conditioned_above_known_lower_limit",
+        "outcome":result.outcome, "predictors":result.predictor_names,
+        "include_intercept":result.include_intercept,"lower_limit":result.lower_limit,
+        "support":"joint_finite_sample_then_strictly_above_limit_or_error_no_censoring",
+        "observation_count":result.observation_count,"sample":result.sample,
+        "coefficients":result.coefficients,"scale":result.scale,
+        "scale_interval":"exponentiated_log_scale_normal_wald_95_not_sigma_zero_test",
+        "covariance_matrix":result.covariance,
+        "covariance_parameter_names":result.coefficients.iter().map(|c|c.name.as_str()).chain(std::iter::once("lnsigma")).collect::<Vec<_>>(),
+        "covariance_parameter_order":"location_coefficients_then_lnsigma",
+        "covariance":"model_based_joint_observed_beta_lnsigma_information","covariance_correction":1.0,
+        "reference_distribution":"asymptotic_standard_normal","confidence_level":95.0,
+        "log_likelihood":result.log_likelihood,"log_likelihood_convention":"gaussian_density_divided_by_population_retention_probability",
+        "null_log_likelihood":result.null_log_likelihood,
+        "null_model":if result.include_intercept {"intercept_and_scale_refitted_same_sample_bound"}else{"zero_latent_location_scale_refitted_same_sample_bound"},
+        "likelihood_ratio":result.likelihood_ratio,"likelihood_ratio_df":result.likelihood_ratio_df,
+        "likelihood_ratio_p_value":result.likelihood_ratio_p_value,
+        "likelihood_ratio_reference_distribution":result.likelihood_ratio_p_value.map(|_|"asymptotic_chi_square"),
+        "mean_conditional_derivative":result.mean_conditional_derivative,
+        "mean_conditional_derivative_gradient":result.mean_conditional_derivative_gradient,
+        "converged":true,"iterations":result.iterations,
+        "convergence_coordinate_system":"rms_predictors_effective_response_canonical_eta_and_precision",
+        "convergence_score_normalization":"per_observation_mean","convergence_step_normalization":"1_plus_abs_parameter","convergence_tolerance":1e-10,
+        "max_abs_scaled_score":result.max_abs_scaled_score,"max_abs_scaled_newton_step":result.max_abs_scaled_newton_step,
+      }),
+      "TruncatedGaussianResult",
+    ),
+    ExecutionResult::TruncatedGaussianMarginalEffects(result) => (
+      json!({"estimator":"truncreg","effect":"average_continuous_conditional_truncated_mean_derivative",
+        "sample":"retained_estimation_design","lower_limit":result.lower_limit,
+        "uncertainty":"conditional_on_observed_design_full_joint_beta_lnsigma_delta_method",
+        "covariance":"model_based_joint_observed_beta_lnsigma_information","covariance_correction":1.0,
+        "reference_distribution":"asymptotic_standard_normal","confidence_level":95.0,
+        "observation_count":result.observation_count,"effects":result.effects}),
+      "TruncatedGaussianMarginalEffectsResult",
     ),
     ExecutionResult::Tobit(result) => (
       json!({

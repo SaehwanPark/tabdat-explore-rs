@@ -127,8 +127,13 @@ Extend the same workflow/validation standard to:
   independent source audit. Closed-form actual-script/failure controls,
   reverse-consumer checks and independent source review pass. This is not default
   ML, excluded-instrument/causal identification or RAND illustration parity.
-  Truncated regression, richer censoring/inference, remaining selection/two-part
-  workflows and illustrations stay required.
+  The [fixed-lower truncated Gaussian slice](../examples/mma16p1tobit/truncreg.md)
+  is WIP: native conditional ML/full inference/effects/current point projections,
+  original130-row R/independent audit and actual-script/failure checks pass.
+  Kernel review passes; integration review/remaining regression gates precede
+  delivery. This fills the author's documented but unexecuted truncated-MLE gap,
+  not historical/table parity. Richer truncation/censoring/inference, remaining
+  selection/two-part workflows and illustrations stay required.
 - **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
   and Cox models, with baseline/survival/hazard outputs and diagnostics.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,

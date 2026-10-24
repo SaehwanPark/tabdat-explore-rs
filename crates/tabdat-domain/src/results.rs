@@ -799,6 +799,8 @@ pub enum ExecutionResult {
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.
   Tobit(Box<tabdat_stats::TobitResult>),
+  TruncatedGaussian(Box<tabdat_stats::TruncatedGaussianResult>),
+  TruncatedGaussianMarginalEffects(Box<tabdat_stats::TruncatedGaussianMarginalEffects>),
   TobitMarginalEffects(Box<tabdat_stats::TobitMarginalEffects>),
   HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.

@@ -604,7 +604,9 @@ prediction/file/overflow failure controls. Do not widen tolerances for an
 unexplained difference or substitute generated control data for the author data.
 High risk: novel estimator/inference and public data/model/script contracts.
 Before merge require affected/reverse-consumer checks and independent read-only
-statistical/integration review. No native command is implemented by this contract.
+statistical/integration review. Native integration is now implemented and focused
+checks pass; independent integration review and remaining regression gates are
+still pending, so this entry remains WIP.
 
 **Reference milestone (native still WIP).** R4.6.1/truncreg0.2-5/maxLik1.5-2.2,
 source/archive-pinned installed function bodies, analytic package information
@@ -631,8 +633,19 @@ Independent frozen118a9d3 kernel/math review found no issues (no reviewer
 executions). Affected stats:199 passed/one pre-existing ignored across46 exact
 all-fresh hash-checked artifacts; stats doctests and eight reverse-consumer
 runtime/actual Tobit script tests pass. Incomplete discovery/loader/helper
-attempts remain separate from the reconciled accepted records. Parser/runtime/
-reporting/scripts still remain. This is not native terminal execution.
+attempts remain separate from the reconciled accepted records.
+Native parser/owned state/terminal/CLI-v1/current-X projection/retained effects
+and discovery/help are now implemented. Parser2/wire2/runtime4 and actual shipped-
+script2 tests pass. The original130-row JSON/text script exports are byte-identical:
+45 numeric comparisons/four R certificate bounds/nine covariance entries/600
+projections/1400 source cells and exact membership pass, with independent full/null
+score/information/inverse and conditional-moment null/LR/full-delta gates.
+Eleven corruptions reject with six fingerprints unchanged. A separate affine
+certified-R control validates actual script49 gates/nine covariance entries/726
+projections and file-failure preservation; it is not substitute author data.
+Default-package endpoint error5.884176e-8 was resolved by actual-density symbolic
+full/null refinement, not a widened gate. Independent integration review and
+remaining affected/reverse-consumer validation remain before merge.
 
 ### MMA-SELECT bounded Heckman two-step contract and evidence
 

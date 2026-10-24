@@ -141,6 +141,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "select",
       "run",
       "sql",
+      "truncreg",
       "regress",
       "logit",
       "probit",
@@ -279,6 +280,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "regress",
       "logit",
       "probit",
+      "truncreg",
       "bayes",
       "poisson",
       "nbreg",
@@ -444,6 +446,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "zinb" => parse_zero_inflated_count_command("zinb", body),
     "qreg" => parse_qreg_command(body),
     "tobit" => parse_tobit_command(body),
+    "truncreg" => parse_truncreg_command(body),
     "heckman" => parse_heckman_command(body),
     "nl" => parse_nl_command(body),
     "streg" => parse_streg_command(body),
@@ -3508,6 +3511,67 @@ fn parse_tobit_command(body: &str) -> Result<Command, ParseError> {
       robust,
       cluster_variable,
       include_intercept,
+    },
+  })
+}
+
+fn parse_truncreg_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "truncreg expects syntax: truncreg <y> <xvars>, ll(<finite number>) [noconstant]";
+  let comma = first_unquoted_comma(body).ok_or_else(|| ParseError::new(syntax))?;
+  let parts = parse_simple_body(&body[..comma], false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+  let options = parse_use_options(&body[comma + 1..])?;
+  for option in &options {
+    if !matches!(option.name.as_str(), "ll" | "noconstant") {
+      return Err(ParseError::new(format!(
+        "truncreg unsupported option: {}",
+        option.name
+      )));
+    }
+    if options.iter().filter(|v| v.name == option.name).count() != 1 {
+      return Err(ParseError::new(format!(
+        "truncreg option {} may only be supplied once",
+        option.name
+      )));
+    }
+    if option.name == "noconstant" && option.value != UseOptionValue::Flag {
+      return Err(ParseError::new(
+        "truncreg noconstant does not accept a value",
+      ));
+    }
+  }
+  let lower = options
+    .iter()
+    .find(|v| v.name == "ll")
+    .ok_or_else(|| ParseError::new("truncreg requires ll(<finite number>)"))?;
+  let lower_limit = match &lower.value {
+    UseOptionValue::Number(v) | UseOptionValue::String(v)
+      if v.parse::<f64>().is_ok_and(f64::is_finite) =>
+    {
+      v.clone()
+    }
+    _ => {
+      return Err(ParseError::new(
+        "truncreg ll expects one finite numeric value",
+      ));
+    }
+  };
+  Ok(Command::Truncreg {
+    command: TruncregCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|v| v.text.clone())
+        .collect(),
+      lower_limit,
+      include_intercept: !options.iter().any(|v| v.name == "noconstant"),
     },
   })
 }

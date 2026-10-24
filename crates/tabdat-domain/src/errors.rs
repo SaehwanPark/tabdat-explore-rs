@@ -461,6 +461,8 @@ pub enum RuntimeError {
   PredictBinaryUnsupported,
   /// Invalid/unsupported Gaussian Tobit request or failed regular numerical fit.
   TobitFailed(String),
+  /// Unsupported or numerically unavailable fixed-lower Gaussian truncation fit.
+  TruncregFailed(String),
   /// Invalid/unsupported sample-selection request or failed regular two-step fit.
   HeckmanFailed(String),
   /// Invalid/unsupported Poisson request or failed finite numerical fit.
@@ -1124,6 +1126,7 @@ impl fmt::Display for RuntimeError {
         "probit prediction supports only pr or xb, without interval, std or saving options",
       ),
       Self::TobitFailed(message) => write!(formatter, "tobit: {message}"),
+      Self::TruncregFailed(message) => write!(formatter, "truncreg: {message}"),
       Self::HeckmanFailed(message) => write!(formatter, "heckman: {message}"),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
       Self::PredictPoissonUnsupported => formatter.write_str(

@@ -1,4 +1,4 @@
-# Lower-truncated Gaussian regression — source/reference WIP
+# Lower-truncated Gaussian regression — native workflow WIP
 
 ## Exact source and distinction
 
@@ -15,8 +15,10 @@ positive observations contribute conditional densities;70 missing truncated
 outcomes contribute **nothing**, not censoring/Bernoulli masses. Retain original
 row identities and raw cells. The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-trunc-bounded-lower-truncated-gaussian-contract-wip)
 defines support/missingness, inference, effects, prediction, failure and resource
-semantics. A bounded safe-Rust kernel is now implemented and numerically checked;
-no native terminal command is implemented yet.
+semantics. Native kernel, owned terminal/script execution, full inference,
+retained effects and atomic current-X predictions are implemented and pass
+focused/source/script checks. This draft slice still needs independent
+integration review and remaining affected/reverse-consumer validation.
 
 ## Independent development reference
 
@@ -127,8 +129,56 @@ direct fallback retained a sampled dyld loader stall, unstarted work and a helpe
 termination/natural-exit race. Only diagnosed incomplete/unstarted targets were
 resumed; accepted records preserve prior diagnostics and all current hashes.
 
-Owned runtime/parser/reporting/effects/prediction, actual scripts/failure
-controls and integration review remain required before merge. Scope is fixed-left-truncated IID homoskedastic
+## Native workflow and focused integration evidence
+
+From a fresh prepared directory (export refuses an existing target):
+
+```sh
+cp "$repo/examples/mma16p1tobit/truncreg.td" .
+"$repo/target/debug/tabdat-explore-rs" --json -f truncreg.td > truncreg.jsonl
+python3 "$repo/examples/mma16p1tobit/check_truncreg.py" "$PWD"
+python3 "$repo/examples/mma16p1tobit/check_truncreg_failures.py" "$PWD"
+```
+
+The shipped script loads original data, fits, reports retained-X conditional-mean
+AMEs, scores xb/population retention/conditional mean, and exports. Real original
+JSON/text runs exit0 with byte-identical exports. The standard-library audit
+passes45 numeric comparisons+four bounded R certificates, nine covariance entries,
+600 predictions,1400 original cells/ordinals and exact130 membership. In addition
+to both native canonical certificate bounds, it reconstructs full raw-coordinate
+score/positive observed information/inverse/step, normal/log-Wald inference,
+full-joint AME and an INDEPENDENT same-sample null via conditional mean/variance
+moment-ratio bisection, then checks null stationarity/LR. Eleven temporary-copy
+corruptions reject, including paired native/R covariance/prediction corruption,
+shared zero tail and forged native+R stationarity caught at the independent score
+gate; six input fingerprints stay unchanged.
+
+Four runtime tests cover both independent intercept conventions/full covariance,
+exact asymmetric missingness/support membership, current-X-only projections,
+retained effects after edits/drop, labels/order/owned state and fit-vs-prediction
+failure atomicity. Extremely negative current indices legitimately score xb/pr0
+while conditional-mean tail failure publishes nothing. Parser2/wire2 pass; new
+serialized requests reject unknown inference fields rather than silently drop
+robust/cluster/weight requests and report IID covariance. Owned
+state has a distinct lossless tag and the existing generic mean option retains
+its legacy wire tag while resolving by fitted family.
+
+Two actual shipped-script tests use a separate240-retained/242-row affine control,
+NOT substitute author data. The reference translates certified R case1 by+0.6,
+then verifies a fresh pinned-package fit and full observed symbolic full/null
+refinement. Its49 gates/nine covariance entries/726 projections, original cells,
+JSON/text equivalence and existing-target/missing-source/export-sentinel cases
+pass. The package default endpoint differed by5.884176e-8 in a parameter: the
+initial strict reference check failed and was preserved. Actual-density symbolic
+Newton refinement resolved it without widening any gate. A u64/usize row-cap
+compile error was corrected before the four runtime tests passed.
+
+Discovery/help/schema/explain are implemented; their focused contract passes.
+Earlier changed-library all-target and current focused runtime/script/discovery
+Clippy pass; the later broader all-target attempt timed out after checking the
+root package and remains incomplete.
+Independent integration review and remaining affected/reverse checks still
+precede merge; this is not whole-Chapter16/book/platform/release certification. Scope is fixed-left-truncated IID homoskedastic
 Gaussian ML; no upper/variable truncation, robust/cluster/weights, factors, named
 storage, generic tests or fabricated sigma0 test. No numerical tolerances have
 been broadened to conceal a discrepancy.

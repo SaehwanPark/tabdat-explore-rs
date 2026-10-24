@@ -490,6 +490,55 @@ The original-source and closed-form actual-script audits, reverse-consumer
 checks and independent frozen-source integration review validate this bounded
 workflow, not default ML, whole-Chapter16 coverage or platform certification.
 
+## Bounded lower-truncated Gaussian regression (PR329 WIP)
+
+`truncreg y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic
+Gaussian density CONDITIONAL on Y*>known fixed lower. Select joint finite y/X
+first; every retained y must be strictly above the limit or execution fails.
+At/below-limit values are never censored, clipped or silently dropped. Exact
+original sample indices/candidate/drop counts are owned, with no data mutation.
+CLI needs at least one predictor; kernel/API intercept-only support is separate.
+Upper/two-sided/variable limits, robust/cluster/weights/factors/general tests/
+lincom/named storage are not admitted. New serialized TruncregCommand requests
+reject unknown fields; inference options cannot silently be discarded as IID.
+Bounds: N<=10000,K1..32,N>K+1,
+N*(K+1)^2<=10000000; prediction current rows<=10000.
+
+CLI-v1 **TruncatedGaussianResult** has `estimator: truncreg`, `outcome`,
+`predictors`, `include_intercept`, `lower_limit`, `observation_count`, `sample`,
+normal95 `coefficients` and `scale`. `covariance_matrix` is FULL model-based
+inverse observed beta/lnsigma information with correction1; names/order are
+location coefficients then lnsigma. Scale has delta SE/log-SE and strictly
+positive exponentiated log-Wald95 endpoints; no sigma=0 test. `log_likelihood`
+uses Gaussian density divided by population retention probability. Null refits
+intercept+scale on the SAME sample/bound, or fixed-zero location+scale without a
+constant. LR df counts slopes; intercept-only API has no LR p-value. Convergence
+metadata explicitly uses RMS-X/effective-response canonical eta=beta/sigma^2,
+precision=1/sigma^2, per-observation score and relative step, tolerance1e-10.
+These certificate values must not be equated to raw beta/logsigma R diagnostics.
+`mean_conditional_derivative`/gradient are retained-X summaries for effects.
+
+**TruncatedGaussianMarginalEffectsResult** (`estat margins`) reports continuous
+conditional-truncated-mean effects, retained N/lower and full joint beta/lnsigma
+delta/normal95 uncertainty conditional on retained design, correction1. It does
+not reread edited/dropped current inputs or claim discrete/causal effects.
+
+Current **PredictionResult** has metadata only: xb=latent X beta; pr=POPULATION
+P(Y*>lower|X), not probability1 conditional on observation; mean=conditional
+E[Y*|Y*>lower,X], not Tobit censored/count mean. The generic mean option retains
+its existing `PredictKind::TobitMean` wire tag, with semantics resolved by the
+owned fitted family; existing Tobit wire behavior is unchanged. Current X only,
+never y; missing/nonfinite X gives NULL. xb/pr do not require an unnecessary Mills
+division. Schema/target/numerical/auxiliary-option failures leave fit/data/labels
+intact and publish no column. Failed new supported fits clear stale estimation,
+not data. Owned state tag is `truncated_gaussian_fit`, family
+`truncated_gaussian`, distinct from preserved legacy/owned Tobit tags.
+
+Focused/original-source/script checks pass; independent integration review and
+remaining affected/reverse-consumer evidence precede merge. See the
+[source-intended workflow/reference](../../examples/mma16p1tobit/truncreg.md),
+not a historical coefficient/table or whole-Chapter16 certification.
+
 ## Bounded lower-censored Gaussian Tobit
 
 `tobit y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic

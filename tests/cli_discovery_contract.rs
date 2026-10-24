@@ -445,6 +445,54 @@ fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
 }
 
 #[test]
+fn truncreg_discovery_links_only_fixed_lower_supported_options_and_family_mean() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "truncreg"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "truncreg y x1 x2, ll(number) [noconstant]"
+  );
+  assert_eq!(envelope["data"]["help_topic"], "truncreg");
+  assert_eq!(
+    envelope["data"]["options"],
+    serde_json::json!([{"name":"ll","required":true},{"name":"noconstant","required":false}])
+  );
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "truncreg"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = envelope["data"]["text"].as_str().unwrap();
+  for contract in [
+    "truncation, not censoring",
+    "CLI requires at least one numeric predictor",
+    "not accepted CLI syntax",
+    "not probability1",
+    "Full joint beta/lnsigma delta",
+    "no sigma=0 Wald test",
+  ] {
+    assert!(text.contains(contract), "missing {contract}");
+  }
+  let output = tabdat_bin()
+    .args(["--json", "--explain", "-c", "truncreg y x, ll(0)"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  assert!(
+    String::from_utf8(output.stdout)
+      .unwrap()
+      .contains("truncreg")
+  );
+}
+
+#[test]
 fn tobit_discovery_requires_predictors_and_separates_kernel_only_intercept_support() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "tobit"])
