@@ -431,9 +431,11 @@ not establish random-utility consistency.
 Historical Stata8 instead reports LL−1180.0156 and IVs29.98591/14.06438: this is
 **not printed-digit parity**. A float32 preparation replay still gives stationary
 IVs≈32.172579/15.074757, so storage alone does not explain the discrepancy.
-No historical tolerance is widened to erase it. The unrestricted preferred-normalized probe
-on this restricted design diverged with singular shore information; that failed
-probe is not a validated substitute or an exclusion of required work.
+No historical tolerance is widened to erase it. The [source audit below](#nested-choice-source-and-boundary-audit)
+reproduces the likelihood at the printed Stata point and diagnoses its
+nonstationarity; the exact historical stopping mechanism is not replayed.
+The unrestricted preferred-normalized probe is diagnosed through a stable
+reciprocal-scale boundary audit, not relabelled a finite MLE or an exclusion.
 
 The actual-script CLI fixture has704 artificial decisions with six known natural
 MLE parameters (slopes/upper coefficients ln2/ln3; IVs2/3), explicit full-rank
@@ -516,3 +518,82 @@ new IDs/absent outcomes, whole-set NULL prediction and atomic failures. General/
 named-model storage/comparisons, effects uncertainty, robust/cluster/survey,
 unrestricted nest-specific normalization and remaining Chapter15 work are not
 claimed. These local checks are not platform certification.
+
+## Nested-choice source and boundary audit
+
+`reference_nested_source_audit.R` / `check_nested_source_audit.py` are optional
+**development reference diagnostics**, not a new native estimator or alternative
+specification. They use the same1,182 decisions/4,728 rows, lower price/catch and
+upper shore/shore-income design. First run both existing R references above;
+this audit needs their quantities CSVs but not native JSON/exports. In the
+prepared-source subshell, with a fresh diagnostics output path:
+
+```sh
+for asset in mma15p2gev.do mma15p2gev.txt mma15p4gev.lim mma15p4gev.out; do
+  curl --fail --location "https://cameron.econ.ucdavis.edu/mmabook/$asset" --output "$asset"
+done
+Rscript "$repo/examples/mma15p1mnl/reference_nested_source_audit.R" \
+  Nldata.csv R_nested_quantities.csv R_normalized_common_quantities.csv > R_nested_source_audit.csv
+python3 "$repo/examples/mma15p1mnl/check_nested_source_audit.py" "$work"
+# Optional corruption/rollback checks, including the standalone R control gate:
+python3 "$repo/examples/mma15p1mnl/check_nested_source_audit_failures.py" "$work" --r-check
+```
+
+The Stata assets' hashes are above; the additional author assets are:
+
+| Asset | SHA256 |
+| --- | --- |
+| `mma15p4gev.lim` | `56327afb5d709b26d88465850a273376ed94e51aa9280f1e997ebd1613cf146b` |
+| `mma15p4gev.out` | `1a72c351216114d3c49f14ab6f1e45b02721a8278a20c5c47d2aadeb9b5e63de` |
+
+**Preferred two-scale diagnostic closure.** Write `ks=1/lambda_shore`,
+`kb=1/lambda_boat` and absorb `(lambda_shore-lambda_boat)*log(2)` in a centered
+upper intercept. The inclusive contribution becomes the within-nest mean utility
+plus `log(cosh(k*utility_difference/2))/k`, with a well-defined `k=0` limit.
+At finite positive reciprocal scales this is exactly the preferred model, checked
+against fresh mlogit likelihood/score/probabilities at four points. The diagnostic
+closure includes zero explicitly instead of subtracting divergent intercepts or
+hiding a bound behind logged-scale coordinates.
+
+Eleven deterministic starts reach `ks=0`, `kb≈.0538106827551` (boat lambda≈18.58367),
+LL−1211.43655668914. The inward shore derivative is−2.09714424048; five-free-direction
+stationarity and positive observed curvature agree with independent base-R
+`deriv3`. The centered intercept is finite; the original shore scale/intercept
+are not finite estimates there. Twelve shore profiles/three starts each, including
+a possible active boat boundary, and three Hessian step sizes are retained.
+Raw L-BFGS line-search failures are not convergence evidence: separate observed
+Newton polishing, score/step, positive free curvature and active-bound KKT checks
+are required. This is **not a global nonexistence/maximum proof or a finite
+unrestricted preferred MLE**. No ordinary boundary covariance or LR inference is
+validated/emitted, and unrestricted native fitting remains required work.
+
+**Historical earlier-variant controls.** At the printed Stata coefficients,
+the explicit likelihood is−1180.01558604 (rounds to its printed−1180.0156), but
+scaled mean score≈1.31e-4 and scaled Newton step≈.658, not the stationary control.
+The64 printed-rounding vertices under float64 and explicit float32 preparation
+also remain nonstationary. These are vertex sensitivity checks, **not an interval
+certificate for every interior box point**. Float32 holds the double-reference
+coefficients fixed while changing inputs; it is not labelled a re-fitted optimum.
+The source log's236 iterations/33 BFGS resets are observed facts, not reproduction
+of a proprietary stopping rule or proof of its exact failure mechanism.
+
+The original LIMDEP program instead defines raw lower `dshorey=1-(d3y+d4y)`.
+If its nest-constant coefficients are `delta_shore,delta_y`, conversion to native
+top utilities is `gamma0=lambda_shore*delta_shore+(lambda_shore-lambda_boat)*delta_y`,
+`gammay=lambda_boat*delta_y`. Its printed point maps near the stationary reference
+and reproduces its likelihood; this is not preferred normalization or printed
+coefficient/SE parity. Dropping the case-common lower component would be wrong
+with unequal earlier-variant scales.
+
+The checker source-binds1068 diagnostics to all five original hashes/prepared
+tokens, parses the original printed points, and independently recomputes boundary
+and earlier-model likelihoods/scores and128 rounding vertices using stdlib Python.
+Both layers require the original double stationary control's mean scaled score
+and scaled Newton step below1e-10 with positive information; agreement alone is
+not a stationarity certificate. A regression coherently replaces that control
+with the nonstationary Stata point and verifies rejection by both layers. Seven
+other corruptions cover source design, shifted likelihoods, false boundary
+scores, incorrect LIMDEP mapping, omitted float32 controls, duplicate diagnostics
+and zero curvature. All nine original source/reference inputs are preserved.
+Existing native inference gates remain unchanged. These local development checks
+do not supply new native capability, an approved exclusion or platform certification.

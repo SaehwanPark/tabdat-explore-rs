@@ -208,14 +208,22 @@ for(single in c(FALSE,TRUE)) {
   set_data(single);j <- as.integer(single)
   for(i in 1:3) {
     result <- audit(list(stationary,stata,limdep)[[i]])
+    stopifnot(result['minimum_information']>0)
+    if(!single && i==1) {
+      stopifnot(result['scaled_score']<1e-10,result['scaled_step']<1e-10)
+      control_ll <- result['log_likelihood']
+    }
+    if(i==2)stopifnot(round(result['log_likelihood'],4)==-1180.0156,
+      result['scaled_score']>1e-8,result['scaled_step']>1e-3)
+    if(!single && i==3)stopifnot(abs(result['log_likelihood']-control_ll)<1e-8)
     for(name in names(result))emit('historical_point',name,result[name],i,j)
   }
   for(i in 1:64) {
     result <- audit(stata+signs[i,]*half_units)
-    stopifnot(result['scaled_score']>1e-8,result['scaled_step']>1e-3)
+    stopifnot(result['scaled_score']>1e-8,result['scaled_step']>1e-3,result['minimum_information']>0)
     for(name in names(result))emit('historical_rounding_vertex',name,result[name],i,j)
   }
 }
-# Emit atomically at script completion: a failed audit does not produce a
-# plausible-looking truncated diagnostics table. No Wald covariance/LR is emitted.
+# Emit only after all checks complete: validation failure emits no diagnostics.
+# The checker also requires the complete table. No Wald covariance/LR is emitted.
 write.csv(do.call(rbind,records),stdout(),row.names=FALSE,quote=FALSE)

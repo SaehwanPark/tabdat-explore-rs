@@ -203,8 +203,13 @@ for single in [False, True]:
     close(get("historical_point", "scaled_score", i, j), score, 1e-10)
     assert get("historical_point", "scaled_step", i, j) >= 0
     assert get("historical_point", "minimum_information", i, j) > 0
+    if i == 1 and not single:
+      assert score < 1e-10 and get("historical_point", "scaled_step", i, j) < 1e-10
     if i == 2:
       assert round(ll, 4) == -1180.0156 and score > 1e-8
+      assert get("historical_point", "scaled_step", i, j) > 1e-3
+    if i == 3 and not single:
+      close(ll, get("historical_point", "log_likelihood", 1, 0), 1e-8)
   for i, direction in enumerate(signs, 1):
     par = [p+s*h for p, s, h in zip(stata, direction, half_units)]
     ll, score = earlier(par, single)
