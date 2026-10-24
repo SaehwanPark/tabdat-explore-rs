@@ -36,6 +36,7 @@ mod random_effects;
 mod random_effects_ml;
 pub mod result;
 pub mod sample;
+mod tobit;
 pub mod traits;
 pub mod ttest;
 
@@ -127,6 +128,10 @@ pub use random_effects_ml::{
 };
 pub use result::LeastSquaresResult;
 pub use sample::EstimationSample;
+pub use tobit::{
+  TobitEstimate, TobitMarginalEffects, TobitOptions, TobitResult, TobitScale, fit_tobit,
+  tobit_average_marginal_effects, tobit_predict_row,
+};
 pub use traits::Estimator;
 pub use ttest::{
   TtestSampleStatistics, TtestStatistics, independent_ttest, one_sample_ttest, paired_ttest,

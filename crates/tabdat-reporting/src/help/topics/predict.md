@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Quantile regression: xb (fitted conditional quantile) or residuals.
@@ -11,6 +11,11 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   (current outcome minus xbu). **Use xbu for conditional fitted levels.**
 - Logit: pr (probability) or xb (log odds).
 - Probit: pr (Gaussian probability) or xb (latent index).
+- Lower-censored Gaussian Tobit: xb (latent mean), pr (uncensoring probability),
+  mean (observed censored mean E[max(lower,Y*)|X]). Not a truncated mean or count n.
+  Missing/nonfinite current predictors give NULL; numerical failure aborts before
+  publication. Current outcome values are unused. At most10000 current rows.
+  No auxiliary prediction options; retained-X effects use `estat margins`.
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
 - NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
 

@@ -1422,6 +1422,7 @@ fn get_command_schema(
           name: "pr".to_string(),
           required: false,
         },
+        OptionDescriptor { name: "mean".to_string(), required: false },
         OptionDescriptor {
           name: "n".to_string(),
           required: false,
@@ -1429,7 +1430,7 @@ fn get_command_schema(
         OptionDescriptor { name: "pmf".to_string(), required: false },
         OptionDescriptor { name: "cdf".to_string(), required: false },
       ],
-      syntax: "predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k)]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -1876,7 +1877,7 @@ fn get_command_schema(
         },
         ArgumentDescriptor {
           name: "indepvars".to_string(),
-          required: false,
+          required: true,
         },
       ],
       help_topic,
@@ -1903,7 +1904,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "tobit y x1 x2 [, ll(val) ul(val)]".to_string(),
+      syntax: "tobit y x1 x2, ll(number) [noconstant]".to_string(),
     }),
     "ttest" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

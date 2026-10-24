@@ -679,8 +679,8 @@ pub struct QregCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `tobit` form retained for a later statistical runtime
-/// slice.
+/// Lower-censored IID Gaussian Tobit. Upper/robust/cluster syntax remains
+/// accepted but is explicitly rejected by the bounded model-based runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TobitCommand {
   /// The dependent variable.
@@ -691,11 +691,11 @@ pub struct TobitCommand {
   pub lower_limit: String,
   /// The optional upper censoring limit, retained as string spelling.
   pub upper_limit: Option<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Request robust covariance (currently rejected, never silently ignored).
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
+  /// Optional cluster variable (currently rejected).
   pub cluster_variable: Option<String>,
-  /// Whether the eventual runtime should include an intercept.
+  /// Whether the fitted latent mean includes an intercept.
   pub include_intercept: bool,
 }
 
@@ -972,8 +972,10 @@ pub enum PredictKind {
   FixedEffectsResponse,
   /// Retained normalized unit deviation (`u`) after within FE.
   FixedEffect,
-  /// Predicted probabilities for binary choice models.
+  /// Family-defined probabilities: binary/choice or Tobit uncensoring.
   Pr,
+  /// E[max(lower,Y*)|X] after a lower-censored Gaussian Tobit fit (`mean`).
+  TobitMean,
   /// Multinomial scalar probability for an explicitly selected retained category.
   MultinomialPr(i64),
   /// Multinomial reference-relative index (zero for the base category).

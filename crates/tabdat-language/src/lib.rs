@@ -4988,6 +4988,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "residuals"
           | "pr"
           | "n"
+          | "mean"
           | "pmf"
           | "cdf"
           | "outcome"
@@ -5019,6 +5020,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "residuals"
         | "pr"
         | "n"
+        | "mean"
         | "spatial_lag"
         | "posterior_predictive"
         | "interval"
@@ -5042,6 +5044,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "residuals"
         | "pr"
         | "n"
+        | "mean"
         | "pmf"
         | "cdf"
         | "spatial_lag"
@@ -5057,6 +5060,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         "predict cannot combine xbu or u with another prediction kind"
       } else if kinds_present.contains(&"pmf") || kinds_present.contains(&"cdf") {
         "predict pmf()/cdf() cannot be combined with another prediction kind"
+      } else if kinds_present.contains(&"mean") {
+        "predict option mean cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"n") {
         "predict option n cannot be combined with another prediction kind"
       } else {
@@ -5121,6 +5126,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::Residuals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
+  } else if options.iter().any(|opt| opt.name == "mean") {
+    PredictKind::TobitMean
   } else if options.iter().any(|opt| opt.name == "n") {
     PredictKind::MeanCount
   } else if options.iter().any(|opt| opt.name == "spatial_lag") {

@@ -1063,6 +1063,7 @@ impl Session {
     }
     if command.subcommand == EstatSubcommand::Margins {
       return match &self.estimation {
+        Some(EstimationState::TobitFit(state)) => self.execute_tobit_margins(state),
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
         Some(EstimationState::MultinomialLogit(state)) => self.execute_mlogit_margins(state),
         Some(EstimationState::NormalizedCommonNestedLogit(_)) => Err(RuntimeError::EstatMarginsFailed {
@@ -1145,6 +1146,16 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if command.kind == PredictKind::TobitMean
+      && !matches!(self.estimation, Some(EstimationState::TobitFit(_)))
+    {
+      return Err(RuntimeError::TobitFailed(
+        "predict mean requires a prior successful lower-censored Gaussian Tobit fit".into(),
+      ));
+    }
+    if matches!(self.estimation, Some(EstimationState::TobitFit(_))) {
+      return self.execute_tobit_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::QuantileFit(_))) {
       return self.execute_qreg_prediction(command);
     }

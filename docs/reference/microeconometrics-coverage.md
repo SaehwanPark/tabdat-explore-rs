@@ -63,6 +63,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
+| MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -457,6 +458,92 @@ confirmed that finding; its targeted follow-up confirms resolution, with executi
 performed by the parent rather than the reviewer. Python syntax/diff checks pass.
 No Rust/native behavior changed or full-workspace rerun was needed; this is not
 CI/platform certification, new native capability or an approved exclusion.
+
+### MMA-TOBIT bounded classic lower-censoring contract and evidence
+
+Use the original author `mma16p1tobit.asc`200-row export, not a replacement RNG
+sample: `ycens` on `lnwage` plus an intercept, lower limit0,70 left-censored and
+130 uncensored. The March2005 program identifies §16.2.1 pp.530–531/Figure16.1;
+its §2A Tobit estimation is explicitly **not a coefficient table in the book**.
+Raw ASCII SHA256 is `8ec7ba9cf3da6854217f873441e47fd5492e777904057c8d9ca8f8ee00244ba6`.
+Preserve every source cell/order and the supplied generated outcomes; no attempt
+to reproduce Stata8's uniform stream or float-generation sequence is required.
+
+Intended first native scope is unweighted IID homoskedastic Gaussian
+`tobit y xvars, ll(number) [noconstant]`: joint finite sample; responses≤limit
+contribute a left-censor probability, greater responses an ordinary Gaussian
+density. Original responses remain unchanged. Use full joint observed covariance
+for beta/lnsigma, correction1/asymptotic normal95, positive log-Wald sigma intervals
+and a same-sample/bound re-fitted slope-null LR. Old Stata8 t intervals are not
+silently labelled normal or used to widen native tolerances. Upper censoring,
+robust/cluster/weights, factors, general tests and named-model storage are excluded
+from this first executable slice, not completed family outcomes.
+
+Acceptance/failure cases before implementation:
+1. Original200-row source fit/inference/full covariance agrees with independent
+   R4.6.1/survival3.8.6 Gaussian `survreg`, checked/refined with independent base-R
+   likelihood/derivatives; report retained censor counts/scale/likelihood/LR.
+2. Current-row latent `xb`, probability of being uncensored (`pr`) and observed
+   censored mean (`mean`) predictions; retained-X continuous observed-mean AMEs
+   with full-joint delta uncertainty, not latent slopes/truncated means/causal effects.
+3. All-uncensored Gaussian/OLS equivalence, shifted nonzero censor limits and
+   no-intercept/multiple-predictor references; covariance/response-scale invariants.
+4. Joint missingness/current-row NULL predictions, input preservation and atomic
+   prediction/model failure; reject rank failure, all-censored/degenerate-scale
+   fits, unsupported covariance/upper-censor options and occupied output paths.
+
+The pure Rust kernel now optimizes the concave beta/sigma,positive inverse-scale
+parameterization with strict score/step and positive joint information; full
+Jacobian inference returns beta/lnsigma covariance. Five independent
+R/survival/base-R fixtures contain1396 entries (540 input cells,540 predictions,
+316 inference/gradient/covariance/metadata values): censoring, nonzero-limit/no
+intercept, all-uncensored Gaussian, bound shift and response scaling. One private
+derivative test/six kernel tests pass, including replication/order/sample and
+explicit rank/scale/iteration/unsupported-inference failures. An initial saturated
+mean-probability accumulation rounded above1 and failed an AME test; sum-then-divide
+fixes it without widening a gate. Independent read-only review additionally
+found that unused censor bounds/extreme below-limit recordings could distort
+response scaling and spuriously fail positive information. Both counterexamples
+were reproduced as failing regressions; scaling now uses only likelihood-effective
+values, preserving raw responses and the unchanged information/convergence gates.
+All six current kernel tests/current stats all-target Clippy pass. Probabilities/
+observed means legitimately change when a prediction bound changes, even if an
+entirely uncensored estimation likelihood is unchanged.
+
+The original source numerical probe additionally checks all48 R quantities,
+nine full joint covariance entries/600 probabilities/latent/observed-mean
+predictions and joint-delta AMEs under declared1e-9 absolute+1e-8 relative scalars,
+1e-8 positive-tail relative and1e-10 probability gates. Source conversion and
+malformed/truncated/output-collision guards pass. Parser acceptance is existing
+behavior. Owned Gaussian session state, command execution, retained continuous
+observed-mean effects, current xb/pr/mean predictions and terminal/CLI-v1/help
+are now implemented. Two focused parser/four runtime cases pass, including
+joint sampling/full covariance, original-X effects after edits, NULL predictions
+from missing/nonfinite X, unused outcomes, labels/order and failure atomicity.
+Current all-target execution/reporting/language/runtime Clippy and the explicit
+prediction discovery contract pass. The native original-source script now passes
+all48 R reference gates (46 comparisons plus two independently gated R solver
+certificates), nine full covariance entries/600 predictions and1400 original
+cells/ordinals. It independently binds the natural-coordinate source score,
+observed-information inverse, retained gradient/full delta variance and tails;
+Rust/R convergence coordinates are not equated. Nine permanent corruption
+regressions reject shared zero tails, wrong covariance/gradients and false
+stationary controls alongside source/order/cell/inventory failures, preserving
+all six input hashes. Two actual-script cases use a separate closed-form
+Gaussian control, full joint covariance/delta and byte-identical JSON/text
+exports, plus existing-target/missing-input failures. Added runtime controls
+validate the independent-R nonzero-limit/no-constant/below-limit sample and
+numerical prediction rollback/failed numerical refit clearing. Independent
+read-only source/evidence review found no P0/P1 and one P2 CLI predictor-requirement
+mismatch; corrected docs/schema and explicit parser/discovery regressions resolve
+it without parser expansion. All256 current workspace test artifacts are
+hash-reconciled:1486 passed/two pre-existing ignored, no omitted artifacts.
+Original nextest/Cargo timeouts remain incomplete; completed passing artifacts
+were retained and only never-started artifacts resumed under bounded runners.
+Workspace Clippy/formatting and the applicable final schema/test checks pass;
+local macOS evidence is not Actions/other-platform certification or a
+whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
+Heckman/two-part/CLAD and the rest of Chapter16 remain required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

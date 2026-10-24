@@ -445,6 +445,37 @@ fn poisson_discovery_distinguishes_row_cluster_and_panel_family_support() {
 }
 
 #[test]
+fn tobit_discovery_requires_predictors_and_separates_kernel_only_intercept_support() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "tobit"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(
+    envelope["data"]["arguments"],
+    serde_json::json!([
+      {"name":"depvar","required":true},{"name":"indepvars","required":true}
+    ])
+  );
+  assert_eq!(
+    envelope["data"]["syntax"],
+    "tobit y x1 x2, ll(number) [noconstant]"
+  );
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "tobit"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = envelope["data"]["text"].as_str().unwrap();
+  assert!(text.contains("CLI requires at least one predictor"));
+  assert!(text.contains("not accepted CLI syntax"));
+}
+
+#[test]
 fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "PREDICT"])
@@ -457,7 +488,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]"
+    "predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k)]"
   );
   assert_eq!(
     envelope["data"]["options"],
@@ -467,6 +498,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
       {"name": "u", "required": false},
       {"name": "residuals", "required": false},
       {"name": "pr", "required": false},
+      {"name": "mean", "required": false},
       {"name": "n", "required": false},
       {"name": "pmf", "required": false},
       {"name": "cdf", "required": false}

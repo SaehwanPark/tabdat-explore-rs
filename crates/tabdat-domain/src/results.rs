@@ -4,7 +4,7 @@ pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
   MAX_COUNT_POINT_CUTOFF, MultinomialEstimate, Nb2Cluster, Nb2Dispersion, Nb2Estimate,
   Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate, PoissonMarginalEffects,
-  PoissonOmnibusWald, PoissonResult,
+  PoissonOmnibusWald, PoissonResult, TobitEstimate,
 };
 pub use tabdat_stats::{
   BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileBootstrapResult, QuantileResult,
@@ -797,6 +797,9 @@ pub enum ExecutionResult {
   NonNormalizedNestedLogit(Box<tabdat_stats::NonNormalizedNestedLogitResult>),
   NormalizedCommonNestedLogit(Box<tabdat_stats::NormalizedCommonNestedLogitResult>),
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
+  /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.
+  Tobit(Box<tabdat_stats::TobitResult>),
+  TobitMarginalEffects(Box<tabdat_stats::TobitMarginalEffects>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
