@@ -441,7 +441,7 @@ workflow below does not complete broader illustration graphics.
 
 ## Bounded lower-censored Gaussian Tobit
 
-`tobit y [xvars], ll(number) [noconstant]` fits unweighted IID homoskedastic
+`tobit y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic
 Gaussian lower censoring. Joint finite y/X rows define the retained sample;
 recorded y<=lower contributes censor probability at the limit, never a density
 at its raw below-limit value. All-uncensored samples are allowed; all-censored,
@@ -462,8 +462,9 @@ conditional-on-sigma, OPG, residual-DF-scaled or Student-t inference.
 Likelihood metadata includes the censored-Gaussian density/mass convention,
 `null_log_likelihood`, `null_model`, LR/df/p and its asymptotic chi-square reference.
 The null is refitted at the same sample/bound: intercept+scale when a constant is
-included, fixed-zero location+scale otherwise. LR df counts slopes; intercept-only
-fits have no LR p/reference. There is no pseudo-R2. Convergence metadata identifies
+included, fixed-zero location+scale otherwise. LR df counts slopes. The installed
+CLI requires at least one predictor; only the kernel/programmatic API additionally
+supports intercept-only fits, which have no LR p/reference. There is no pseudo-R2. Convergence metadata identifies
 Rust's RMS-X concave delta/scaled-inverse-sigma coordinates, mean-score and
 1+abs(parameter) step normalizations,1e-10 gates and iterations; do not equate
 these diagnostics numerically with an independent natural-coordinate solver.

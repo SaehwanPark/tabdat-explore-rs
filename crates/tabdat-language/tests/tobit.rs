@@ -3,6 +3,7 @@ use tabdat_language::parse_command;
 
 #[test]
 fn lower_censored_fit_and_observed_mean_prediction_are_explicit() {
+  assert!(parse_command("tobit y, ll(0)").is_err());
   let Command::Tobit { command } = parse_command("tobit y x1 x2, ll(-0.8) noconstant").unwrap()
   else {
     panic!("tobit");

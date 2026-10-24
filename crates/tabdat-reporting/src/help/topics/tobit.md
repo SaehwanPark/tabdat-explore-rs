@@ -29,7 +29,9 @@ Example (after loading numeric y/x):
 Sample/design:
 - Joint complete finite y/X rows, in original order; unrelated columns do not
   affect inclusion. Missing/nonfinite model inputs are excluded, not filled.
-- Intercept included unless noconstant. Finite nonzero lower limits work.
+- CLI requires at least one predictor; intercept included unless noconstant.
+  Finite nonzero lower limits work. Intercept-only fits are kernel/API support,
+  not accepted CLI syntax.
 - Entirely uncensored samples are allowed; all-censored, unidentified,
   degenerate-scale, nonconverged or nonpositive-information fits fail explicitly.
 - Retained N<=10000, location K=1..32 including any intercept, N>K+1,
@@ -42,7 +44,7 @@ Inference/reporting:
   interval. There is **no sigma=0 Wald test**.
 - Refit same-sample, same-bound null: intercept+scale if a constant is included,
   otherwise fixed-zero latent location+scale. LR df is the number of slopes;
-  intercept-only fits have no LR p-value. No pseudo-R2 label is supplied.
+  kernel/API intercept-only fits have no LR p-value. No pseudo-R2 label is supplied.
 - CLI-v1 `TobitResult` includes counts, sample indices, full covariance and
   beta-then-lnsigma order, scale/null/LR and numerical convergence metadata.
   It does not emit full internal fitted vectors; inspect/export predictions.
