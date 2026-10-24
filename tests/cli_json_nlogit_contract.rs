@@ -195,7 +195,7 @@ fn cli_v1_and_text_disclose_non_normalization_joint_covariance_and_scale_one_dia
 }
 
 #[test]
-fn native_schema_requires_non_normalized_opt_in_and_exposes_upper_roles() {
+fn native_schema_exposes_required_roles_and_exact_explicit_choice_modes() {
   let f = Fixture::new();
   let out = f.run(&["--json", "--describe-command", "nlogit"]);
   assert!(out.status.success());
@@ -203,7 +203,7 @@ fn native_schema_requires_non_normalized_opt_in_and_exposes_upper_roles() {
   let schema = &record["data"];
   assert_eq!(schema["name"], "nlogit");
   assert_eq!(schema["help_topic"], "nlogit");
-  for name in ["group", "alternative", "nest", "nonnormalized"] {
+  for name in ["group", "alternative", "nest"] {
     let option = schema["options"]
       .as_array()
       .unwrap()
@@ -212,11 +212,24 @@ fn native_schema_requires_non_normalized_opt_in_and_exposes_upper_roles() {
       .unwrap();
     assert_eq!(option["required"], true);
   }
-  let upper = schema["options"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .find(|o| o["name"] == "upper")
-    .unwrap();
-  assert_eq!(upper["required"], false);
+  for name in ["upper", "nonnormalized", "normalized", "common"] {
+    let option = schema["options"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .find(|o| o["name"] == name)
+      .unwrap();
+    assert_eq!(option["required"], false);
+  }
+  assert!(
+    schema["syntax"]
+      .as_str()
+      .unwrap()
+      .contains("(nonnormalized | normalized common)")
+  );
+  let help = f.run(&["--json", "--help-topic", "nlogit"]);
+  assert!(help.status.success(), "{help:?}");
+  let help = String::from_utf8(help.stdout).unwrap();
+  assert!(help.contains("normalized common"), "{help}");
+  assert!(help.contains("mixing modes fails"), "{help}");
 }
