@@ -15,7 +15,8 @@ positive observations contribute conditional densities;70 missing truncated
 outcomes contribute **nothing**, not censoring/Bernoulli masses. Retain original
 row identities and raw cells. The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-trunc-bounded-lower-truncated-gaussian-contract-wip)
 defines support/missingness, inference, effects, prediction, failure and resource
-semantics. No native command or Rust kernel is implemented yet.
+semantics. A bounded safe-Rust kernel is now implemented and numerically checked;
+no native terminal command is implemented yet.
 
 ## Independent development reference
 
@@ -86,7 +87,7 @@ modified archive, truncated source, nonbinary source selection, modified selecte
 outcome and an in-memory modified installed likelihood body. They produce empty
 stdout/no new prediction file and preserve all four input fingerprints.
 
-The planned native optimization uses the **concave canonical precision** form:
+The native kernel uses the **concave canonical precision** form:
 eta=beta/sigma², v=1/sigma²>0, density proportional to
 `exp(y*X*eta-v*y²/2)` on known y>lower. Its negative Hessian is the conditional
 covariance of the sufficient statistics; this avoids assuming beta/lnsigma
@@ -96,9 +97,30 @@ RMS designs using effective selected data, not a huge statistically inactive
 lower bound. Finite interior existence still must be checked, not clipped or
 inferred from parser acceptance.
 
-Kernel/synthetic reference and owned runtime/parser/reporting/effects/prediction,
-actual scripts/failure controls, affected/reverse checks and independent review
-remain required before merge. Scope is fixed-left-truncated IID homoskedastic
+Three independent240-row controls cover intercept/nonzero limit, no intercept/
+positive limit and the ordinary Gaussian inactive-bound limit. Their153 exact
+reference quantities include27 covariance entries and2160 point projections;
+normal/tail/scale/null/LR and full-joint effects compare numerically. Six kernel
+tests additionally cover units down to1e-9 (normalized back before comparison),
+intercept shift1e6, permutation, IID replication/covariance1/r, strict support,
+rank/name/resource/weight/identity failures, a positive exponential precision0
+closure and current-mode-specific tail behavior. The canonical sufficient-statistic
+score/information passes a private finite-difference test. A native original-source
+probe passes45 numerical quantities/nine covariance entries/600 projections and
+two separately bounded native certificates; it does not establish terminal support.
+
+The existing guarded Gaussian Newton loop is shared with Tobit without changing
+its initialization, positive-information check, tolerances,60 backtracks or
+convergence/failure messages. All six Tobit integration tests and its existing
+private derivative test pass. A new malformed-sample test exposed that generic
+problem validation permits repeated identities; this estimator now explicitly
+rejects repeated/out-of-range or inconsistent candidate/drop identities under
+its declared independent-original-row contract. The initial duplicate-ID test
+failure and test-literal compile error remain recorded; no tolerance widening.
+
+Affected/reverse checks and independent kernel review still precede completion
+of this milestone. Owned runtime/parser/reporting/effects/prediction, actual
+scripts/failure controls and integration review remain required before merge. Scope is fixed-left-truncated IID homoskedastic
 Gaussian ML; no upper/variable truncation, robust/cluster/weights, factors, named
 storage, generic tests or fabricated sigma0 test. No numerical tolerances have
 been broadened to conceal a discrepancy.

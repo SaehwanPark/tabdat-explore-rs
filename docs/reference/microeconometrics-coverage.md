@@ -618,7 +618,17 @@ and exact130 membership pass an independent standard-library audit. Six existing
 malformed source/archive/installed-body/output controls reject with empty stdout/
 no new predictions; four input fingerprints unchanged. Full provenance,
 reproduction and limitations: [source/reference notes](../../examples/mma16p1tobit/truncreg.md).
-Kernel and native workflow still remain; this is not executable support.
+A bounded safe-Rust kernel now implements canonical precision ML, full observed
+beta/lnsigma inference/null/LR, retained conditional-mean delta effects and
+mode-specific current projection helpers. Three240-row R controls supply153
+reference quantities/27 covariance entries/2160 projections. Six focused kernel
+tests, canonical derivative checks and six affected Tobit integration tests pass;
+original-source probe passes45 numerical quantities/nine covariance entries/600
+projections and separately bounded native certificates. Malformed duplicate-ID
+failure led to explicit independent-original-sample checks, not a generic sample
+API change. A small shared guarded Gaussian Newton loop preserves Tobit behavior.
+Affected/reverse checks and independent kernel review remain; parser/runtime/
+reporting/scripts still remain. This is not native terminal execution.
 
 ### MMA-SELECT bounded Heckman two-step contract and evidence
 

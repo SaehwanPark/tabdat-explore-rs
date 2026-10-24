@@ -7,12 +7,12 @@
 #![allow(clippy::needless_range_loop)]
 
 use crate::distributions::{chi_square_tail, normal_cdf, normal_pdf};
-use crate::matrix::{add_compensated, choice_information_inverse, qr_decompose_with_response};
+use crate::gaussian_mle::{Evaluation, Solution};
+use crate::matrix::{add_compensated, qr_decompose_with_response};
 use crate::{EstimationProblem, EstimationSample, StatsError};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-const TOLERANCE: f64 = 1e-10;
 const NORMAL_95: f64 = 1.959963984540054;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,7 +95,11 @@ fn failed(message: &str) -> StatsError {
   StatsError::EstimationFailed(format!("tobit: {message}"))
 }
 
-fn inference(name: String, value: f64, variance: f64) -> Result<TobitEstimate, StatsError> {
+pub(crate) fn inference(
+  name: String,
+  value: f64,
+  variance: f64,
+) -> Result<TobitEstimate, StatsError> {
   let standard_error = variance.sqrt();
   let statistic = value / standard_error;
   let p_value = chi_square_tail(statistic * statistic, 1);
@@ -126,12 +130,6 @@ fn inference(name: String, value: f64, variance: f64) -> Result<TobitEstimate, S
     confidence_lower,
     confidence_upper,
   })
-}
-
-struct Evaluation {
-  log_likelihood: f64,
-  score: Vec<f64>,
-  information: Vec<Vec<f64>>,
 }
 
 fn evaluate(
@@ -217,15 +215,6 @@ fn evaluate(
   })
 }
 
-struct Solution {
-  theta: Vec<f64>,
-  evaluation: Evaluation,
-  inverse: Vec<Vec<f64>>,
-  iterations: usize,
-  score_bound: f64,
-  step_bound: f64,
-}
-
 fn optimize(
   x: &[Vec<f64>],
   y: &[f64],
@@ -234,66 +223,11 @@ fn optimize(
   options: &TobitOptions,
 ) -> Result<Solution, StatsError> {
   let p = x[0].len() + 1;
-  let n = y.len() as f64;
-  let mut theta = vec![0.0; p];
-  theta[p - 1] = 1.0;
-  for iteration in 1..=options.max_iterations {
-    let e = evaluate(x, y, lower, response_scale, &theta)?;
-    let average: Vec<Vec<f64>> = e
-      .information
-      .iter()
-      .map(|row| row.iter().map(|v| v / n).collect())
-      .collect();
-    // Same positive-information check used by existing RMS-scaled choice ML:
-    // no damping, ridge or pseudoinverse is allowed into the final covariance.
-    let inverse = choice_information_inverse(&average)
-      .map_err(|_| failed("singular or numerically degenerate joint information"))?;
-    let score: Vec<f64> = e.score.iter().map(|v| v / n).collect();
-    let step: Vec<f64> = inverse
-      .iter()
-      .map(|row| row.iter().zip(&score).map(|(a, b)| a * b).sum())
-      .collect();
-    let score_bound = score.iter().map(|v| v.abs()).fold(0.0, f64::max);
-    let step_bound = step
-      .iter()
-      .zip(&theta)
-      .map(|(d, t)| d.abs() / (1.0 + t.abs()))
-      .fold(0.0, f64::max);
-    if score_bound <= TOLERANCE && step_bound <= TOLERANCE {
-      return Ok(Solution {
-        theta,
-        evaluation: e,
-        inverse: inverse
-          .iter()
-          .map(|row| row.iter().map(|v| v / n).collect())
-          .collect(),
-        iterations: iteration,
-        score_bound,
-        step_bound,
-      });
-    }
-    let mut alpha = 1.0;
-    let mut accepted = None;
-    for _ in 0..60 {
-      let candidate: Vec<f64> = theta
-        .iter()
-        .zip(&step)
-        .map(|(t, d)| t + alpha * d)
-        .collect();
-      if let Ok(next) = evaluate(x, y, lower, response_scale, &candidate)
-        && next.log_likelihood
-          >= e.log_likelihood - 32.0 * f64::EPSILON * (1.0 + e.log_likelihood.abs())
-      {
-        accepted = Some(candidate);
-        break;
-      }
-      alpha *= 0.5;
-    }
-    theta = accepted.ok_or_else(|| failed("positive-scale Newton line search failed"))?;
-  }
-  Err(failed(
-    "iteration limit reached without score/step convergence; no finite regular fit established",
-  ))
+  let mut initial = vec![0.0; p];
+  initial[p - 1] = 1.0;
+  crate::gaussian_mle::maximize(initial, y.len(), options.max_iterations, "tobit", |theta| {
+    evaluate(x, y, lower, response_scale, theta)
+  })
 }
 
 fn full_design(problem: &EstimationProblem) -> Vec<Vec<f64>> {
