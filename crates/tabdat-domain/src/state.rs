@@ -246,6 +246,7 @@ pub enum EstimationState {
   /// Owned Gaussian fit/sample and retained-X effect-gradient summaries.
   TobitFit(Box<tabdat_stats::TobitResult>),
   Heckman(ModelState),
+  HeckmanTwoStepFit(Box<tabdat_stats::HeckmanTwoStepResult>),
   Nonlinear(ModelState),
   /// Legacy normalized placeholder, retained for old serialized state reads.
   Poisson(ModelState),
@@ -316,7 +317,7 @@ impl EstimationState {
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,
-      Self::Heckman(..) => EstimationFamily::Heckman,
+      Self::Heckman(..) | Self::HeckmanTwoStepFit(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
       Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,
       Self::NegativeBinomial(..) | Self::NegativeBinomialFit(..) => {

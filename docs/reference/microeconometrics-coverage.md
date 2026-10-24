@@ -64,7 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
-| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — validated bounded corrected two-step kernel on original200/130 selection/outcome rows, terminal workflow pending |58 original R gates plus98 synthetic quantities/3600 synthetic predictions; separate covariance blocks, no exclusion restriction; owned runtime/parser/reporting/scripts remain; distinct from the RAND selection illustration below |
+| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — explicit bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates plus98 synthetic quantities/3600 synthetic predictions; separate covariance blocks, no exclusion restriction; owned runtime/parser/reporting/atomic five-mode predictions and script implemented; actual-script regression, reverse checks and integration review remain; distinct from RAND below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -626,8 +626,16 @@ hash-checked artifacts. The all-stats nextest discovery timeout remains incomple
 exact-inventory bounded direct execution supplied the regression evidence, with
 all-target stats Clippy/workspace format/diff/zero-doctest checks. See the
 [source/kernel notes](../../examples/mma16p1tobit/heckman.md) for numerical limits,
-provenance and remaining validation. No native command, owned runtime state,
-DuckDB sample/prediction path or actual-script workflow is yet delivered.
+provenance and remaining validation. Native integration now implements explicit `twostep`, legacy-default deferred
+behavior, owned state/wire compatibility, DuckDB asymmetric eligibility and
+atomic current prediction, terminal/CLI-v1/help and `heckman.td`. Two new parser
+tests, four related existing parser-unit tests, two wire tests and six runtime
+contracts pass. The actual original-source script passes the independent audit;
+10 adversarial shared-reference/native corruptions are rejected with all6 input
+fingerprints preserved. Current library/new-target Clippy passes. Initial compile/
+test-setup failures and interrupted all-target Clippy are retained, not recast as
+successful full checks. Actual-script regression/failure controls, reverse
+consumers and independent integration review still remain before merge.
 
 This remains native-integration WIP, not a delivered selection workflow.
 

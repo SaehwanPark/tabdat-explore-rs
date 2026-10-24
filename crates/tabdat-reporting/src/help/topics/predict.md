@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Quantile regression: xb (fitted conditional quantile) or residuals.
@@ -16,6 +16,14 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   Missing/nonfinite current predictors give NULL; numerical failure aborts before
   publication. Current outcome values are unused. At most10000 current rows.
   No auxiliary prediction options; retained-X effects use `estat margins`.
+- Explicit Heckman two-step: xb (latent X beta), pr (selection probability),
+  mills (selection inverse Mills ratio), ycond (conditional-selected outcome
+  mean) or yexpected (zero-filled observed contribution). Current y/d are unused.
+  xb needs only outcome X, pr/Mills only selection Z, other modes both; relevant
+  missing/nonfinite regressors give NULL, irrelevant columns need not exist.
+  Numerical/Mills-range failures abort atomically. At most10000 current rows;
+  point-only, no margins or auxiliary options. Not Tobit mean/count n or causal
+  effects; see help heckman for formulas and identification limits.
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
 - NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
 

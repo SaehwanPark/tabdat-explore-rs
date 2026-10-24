@@ -3539,7 +3539,7 @@ fn parse_heckman_command(body: &str) -> Result<Command, ParseError> {
     .filter(|option| {
       !matches!(
         option.name.as_str(),
-        "selectdep" | "select" | "robust" | "cluster" | "noconstant"
+        "selectdep" | "select" | "robust" | "cluster" | "noconstant" | "twostep"
       )
     })
     .map(|option| option.name.as_str())
@@ -3554,7 +3554,7 @@ fn parse_heckman_command(body: &str) -> Result<Command, ParseError> {
   }
 
   for option in &options {
-    if matches!(option.name.as_str(), "robust" | "noconstant")
+    if matches!(option.name.as_str(), "robust" | "noconstant" | "twostep")
       && option.value != UseOptionValue::Flag
     {
       return Err(ParseError::new(format!(
@@ -3662,6 +3662,7 @@ fn parse_heckman_command(body: &str) -> Result<Command, ParseError> {
 
   Ok(Command::Heckman {
     command: HeckmanCommand {
+      twostep: options.iter().any(|option| option.name == "twostep"),
       outcome,
       predictors,
       selection_dependent,
@@ -4989,6 +4990,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "pr"
           | "n"
           | "mean"
+          | "mills"
+          | "ycond"
+          | "yexpected"
           | "pmf"
           | "cdf"
           | "outcome"
@@ -5021,6 +5025,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "pr"
         | "n"
         | "mean"
+        | "mills"
+        | "ycond"
+        | "yexpected"
         | "spatial_lag"
         | "posterior_predictive"
         | "interval"
@@ -5045,6 +5052,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "pr"
         | "n"
         | "mean"
+        | "mills"
+        | "ycond"
+        | "yexpected"
         | "pmf"
         | "cdf"
         | "spatial_lag"
@@ -5060,6 +5070,11 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         "predict cannot combine xbu or u with another prediction kind"
       } else if kinds_present.contains(&"pmf") || kinds_present.contains(&"cdf") {
         "predict pmf()/cdf() cannot be combined with another prediction kind"
+      } else if kinds_present
+        .iter()
+        .any(|k| matches!(*k, "mills" | "ycond" | "yexpected"))
+      {
+        "predict mills, ycond and yexpected cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"mean") {
         "predict option mean cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"n") {
@@ -5128,6 +5143,12 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::Pr
   } else if options.iter().any(|opt| opt.name == "mean") {
     PredictKind::TobitMean
+  } else if options.iter().any(|opt| opt.name == "mills") {
+    PredictKind::SelectionMills
+  } else if options.iter().any(|opt| opt.name == "ycond") {
+    PredictKind::SelectionConditionalMean
+  } else if options.iter().any(|opt| opt.name == "yexpected") {
+    PredictKind::SelectionObservedContribution
   } else if options.iter().any(|opt| opt.name == "n") {
     PredictKind::MeanCount
   } else if options.iter().any(|opt| opt.name == "spatial_lag") {
@@ -13036,6 +13057,7 @@ mod tests {
           predictors: vec!["x1".to_owned()],
           selection_dependent: "selected".to_owned(),
           selection_predictors: vec!["z1".to_owned()],
+          twostep: false,
           robust: false,
           cluster_variable: None,
           include_intercept: true,
@@ -13050,6 +13072,7 @@ mod tests {
           predictors: vec!["x1".to_owned(), "x2".to_owned()],
           selection_dependent: "selected".to_owned(),
           selection_predictors: vec!["z1".to_owned(), "z2".to_owned()],
+          twostep: false,
           robust: true,
           cluster_variable: None,
           include_intercept: true,
@@ -13067,6 +13090,7 @@ mod tests {
           predictors: vec!["x1".to_owned()],
           selection_dependent: "selected".to_owned(),
           selection_predictors: vec!["z1".to_owned()],
+          twostep: false,
           robust: false,
           cluster_variable: Some("group_id".to_owned()),
           include_intercept: false,
@@ -13084,6 +13108,7 @@ mod tests {
           predictors: vec!["x var".to_owned()],
           selection_dependent: "sel var".to_owned(),
           selection_predictors: vec!["z var".to_owned()],
+          twostep: false,
           robust: true,
           cluster_variable: None,
           include_intercept: false,

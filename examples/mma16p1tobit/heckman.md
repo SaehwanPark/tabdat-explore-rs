@@ -1,7 +1,8 @@
 # Heckman two-step source/reference — WIP
 
-This is an **in-progress native** slice: the statistical kernel is validated,
-but there is no delivered terminal command or published coefficient-table replication. Exact author analysis:
+This is an **in-progress native** slice: kernel and terminal/data integration
+are implemented and independently source-audited; final integration validation
+is WIP. It is not a released workflow or published coefficient-table replication. Exact author analysis:
 `mma16p1tobit.do` (March2005) §2A, associated with MMA §16.2.1 pp530–531.
 The same original export has200 selection observations and130 observed outcomes:
 selection `dy ~ lnwage`, outcome `ytrunc ~ lnwage`, intercept in both.
@@ -50,6 +51,22 @@ Rscript --vanilla "$repo/examples/mma16p1tobit/reference_heckman_two_step.R" \
   mma16p1tobit.asc R_heckman_predictions.csv heckitVcov.R > R_heckman_quantities.csv
 ```
 
+Execute the native workflow in that same prepared directory (no R/Python is
+needed by the native commands):
+
+```sh
+(cd "$repo" && cargo build --locked --bin tabdat-explore-rs)
+cp "$repo/examples/mma16p1tobit/heckman.td" .
+"$repo/target/debug/tabdat-explore-rs" --json -f heckman.td > heckman.jsonl
+python3 "$repo/examples/mma16p1tobit/check_heckman.py" .
+python3 "$repo/examples/mma16p1tobit/check_heckman_failures.py" .
+```
+
+The two Python commands are optional development audits. Native export refuses
+an existing target; use a fresh prepared directory for another run (including
+`--text`), rather than overwriting results. The checker reuses standard-library
+normal inference helpers from `check_tobit.py`; no production Python dependency.
+
 The reference emits58 exact-inventory quantities (13 covariance entries),1200
 point predictions and1400 original cells/ordinals. First-stage log likelihood
 is−105.296713010228; outcome intercept745.306997010131, slope176.646780648963,
@@ -69,7 +86,7 @@ input/output/reference fingerprints remain unchanged. Initial top-level chol
 printing and named-scalar field suffixes were caught and fixed; their failed
 CSV/inventory diagnostics are retained, not counted as passing runs.
 
-## Validated kernel, not yet a terminal workflow
+## Validated kernel and WIP terminal workflow
 
 `crates/tabdat-stats/src/heckman.rs` exports `fit_heckman_two_step` and
 `heckman_predict_row`. Inputs are explicit eligible-selection and selected-outcome
@@ -114,8 +131,28 @@ implied. Negative fitted rho is an estimate, not evidence of a causal mechanism.
 The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-select-bounded-heckman-two-step-contract-wip)
 sets the exact two-stage eligibility/missingness policy, explicit twostep mode,
 current latent/selection/Mills/conditional-selected/observed-contribution point
-predictions and state/failure requirements. Parser/owned state, reporting, actual scripts, runtime/data failure coverage
-and independent integration review remain required. Do not present the existing parser-only bare heckman form as ML or
+predictions and state/failure requirements. Parser/owned state, typed atomic prediction/reporting/help and `heckman.td` are
+now implemented. Two parser tests, two legacy/owned wire tests and six runtime
+contracts pass; runtime cases include original membership/asymmetric missingness,
+full independent-R covariance, all five projections, changed/dropped current
+inputs, exact DECIMAL selection before rounding, failed-fit stale-state clearing
+and numerical/schema/target/typed-auxiliary prediction atomicity. Bare legacy
+ML remains unsupported without changing the prior fit; only explicit two-step
+attempts clear stale state. Initial test setup failures (uppercase option names,
+integer d assumed DOUBLE, parser-invalid auxiliary combinations) were diagnosed
+and corrected rather than widening language/numerical behavior. The initial
+u64/usize compile mismatch is fixed; original failure logs are retained.
+
+The actual source script now passes `check_heckman.py`:55 numerical comparisons
+plus3 separately bounded certificates,13 covariance entries,1000 exported native
+projections/200 first-stage indices and1400 original cells/ordinals. It independently
+certifies the source likelihood/score/information inverse, selected normal
+equations, sigma moment and generated-regressor covariance; shared wrong reference
+and native results do not suffice. `check_heckman_failures.py` rejects10 owned-copy
+corruptions, including shared covariance, shared zero tail and shared false
+stationary control; all6 original artifact fingerprints stay unchanged.
+The actual-script regression/failure controls, reverse-consumer validation and
+independent integration review still remain before merge. Do not present the existing parser-only bare heckman form as ML or
 silently reinterpret it as two-step. Conditional-selected means differ from
 Tobit truncation, and the zero-filled observed-contribution mean is not an
 imputation of unobserved outcomes or a causal effect.

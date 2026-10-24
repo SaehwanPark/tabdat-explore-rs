@@ -439,6 +439,57 @@ Weighted/survey/multiway binary inference and factors/interactions/discrete
 changes remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
+## Bounded Heckman two-step selection
+
+`heckman y xvars, selectdep(d) select(zvars) twostep [noconstant]` requires
+at least one predictor per equation and exact numeric0/1 selection. The bare
+method remains deferred: legacy commands without serialized `twostep` default
+false and retain their unsupported identity without clearing the previous fit.
+Explicit two-step failures clear stale estimation but leave data/labels intact.
+Both equations share the CLI intercept option. Selection eligibility requires
+finite d/Z; selected units additionally need finite y/X and are excluded from
+BOTH stages if invalid. Unselected outcome-only missing values are ignored.
+
+CLI-v1 **HeckmanTwoStepResult** has `estimator: heckman`, `method: twostep`,
+`observation_count` for all eligible units, `selected_count`, `unselected_count`,
+`selection_sample` and `selected_sample` original-row identities, outcome
+`coefficients`/`covariance_matrix` (location then `mills_coefficient`=alpha),
+`selection_coefficients`/`selection_covariance_matrix` with separately named
+orders, predictors/outcomes, sigma/rho moment points and selected `outcome_sse`.
+Selection covariance is inverse observed probit information. Outcome covariance
+is the conventional generated-regressor correction, not ordinary/HC OLS;
+correction1/normal95, no residual-DF multiplier. `covariance_blocks` explicitly
+withholds cross-equation inference; `scale_correlation_inference: points_only`.
+`joint_log_likelihood` is null; `selection_log_likelihood` is first-stage ONLY.
+Selection iterations/score/step and scaled outcome normal-equation diagnostics
+are separately named, not pooled joint-ML convergence. No clipping, pseudoinverse
+or fabricated sigma/rho SEs, joint LR or cross-equation restrictions.
+
+`excluded_selection_predictors` is a nominal name comparison, not validity.
+Absent exclusions produce `identification_warning` in JSON and a text warning:
+Gaussian functional-form identification may be weak. No causal claim is implied.
+The original author200-row comparison has no excluded predictor.
+
+Current `PredictionResult` keeps its existing dataset-only shape. xb needs only
+outcome X; pr/Mills only selection Z; ycond/yexpected both. Current y/d are unused.
+The five point meanings are X beta, Phi, phi/Phi, X beta+alpha*phi/Phi and
+Phi*X beta+alpha*phi, respectively. The last is zero-filled contribution, not
+imputation/Tobit/count mean. Relevant missing/nonfinite values give NULL;
+nonrepresented Mills/numerical failure aborts before typed atomic publication.
+Failure preserves fit/data/labels. At most10000 current rows. Auxiliary options,
+margins, generic tests/lincom and named storage remain unsupported. Model limits:
+10000 eligible rows,32 parameters/stage including Mills/intercepts,
+N*q²+N_selected*p²<=20million, more rows than stage parameters, full rank,
+positive corrected covariance, abs(rho)<1 and relative sigma>1e-12 (selected
+outcome range with intercept, max(abs(y)) otherwise).
+
+The owned `heckman_two_step_fit` state remains distinct from legacy `heckman`
+placeholder serialization, both family Heckman and neither an OLS linear state.
+See [source/method/evidence notes](../../examples/mma16p1tobit/heckman.md).
+Integration/source-script code is implemented in PR328; final actual-script
+regressions, reverse-consumer validation and independent integration review
+remain WIP.
+
 ## Bounded lower-censored Gaussian Tobit
 
 `tobit y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic
