@@ -151,7 +151,12 @@ full-joint AME and an INDEPENDENT same-sample null via conditional mean/variance
 moment-ratio bisection, then checks null stationarity/LR. Eleven temporary-copy
 corruptions reject, including paired native/R covariance/prediction corruption,
 shared zero tail and forged native+R stationarity caught at the independent score
-gate; six input fingerprints stay unchanged.
+gate; six input fingerprints stay unchanged. A later paired native/R SE/statistic/
+p/CI corruption exposed a missing coefficient-SE-to-independent-covariance link:
+the guard first failed because the poisoned audit passed. The audit now anchors
+each coefficient SE to the independently rebuilt observed inverse; all12 guards
+pass, preserving six fingerprints. This was an audit-strength fix, not changed
+native estimates/covariance or widened tolerances.
 
 Four runtime tests cover both independent intercept conventions/full covariance,
 exact asymmetric missingness/support membership, current-X-only projections,

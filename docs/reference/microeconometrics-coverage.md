@@ -640,7 +640,10 @@ script2 tests pass. The original130-row JSON/text script exports are byte-identi
 45 numeric comparisons/four R certificate bounds/nine covariance entries/600
 projections/1400 source cells and exact membership pass, with independent full/null
 score/information/inverse and conditional-moment null/LR/full-delta gates.
-Eleven corruptions reject with six fingerprints unchanged. A separate affine
+Twelve corruptions reject with six fingerprints unchanged. Parent paired native/R
+SE/statistic/p/CI poisoning reproduced an audit gap; coefficient SEs are now
+anchored to independently reconstructed observed covariance, with unchanged
+native estimates and tolerances. A separate affine
 certified-R control validates actual script49 gates/nine covariance entries/726
 projections and file-failure preservation; it is not substitute author data.
 Default-package endpoint error5.884176e-8 was resolved by actual-density symbolic

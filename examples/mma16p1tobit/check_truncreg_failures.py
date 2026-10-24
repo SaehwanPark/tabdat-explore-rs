@@ -38,6 +38,18 @@ def shared_covariance(work):
 def shared_zero_tail(work):
   events(work,lambda r:r[1]['data']['coefficients'][0].__setitem__('p_value',0));reference(work,'coefficient_p_value',1,0,0)
 
+def shared_coefficient_uncertainty(work):
+  records = [json.loads(line) for line in (work/'truncreg.jsonl').read_text().splitlines()]
+  b = records[1]['data']['coefficients'][0]
+  b['standard_error'] *= 1.2
+  b['statistic'] = b['value']/b['standard_error']
+  b['p_value'] = math.erfc(abs(b['statistic'])/math.sqrt(2))
+  b['confidence_lower'] = b['value']-1.959963984540054*b['standard_error']
+  b['confidence_upper'] = b['value']+1.959963984540054*b['standard_error']
+  for key in ['value','standard_error','statistic','p_value','confidence_lower','confidence_upper']:
+    reference(work,'coefficient_'+key,1,0,b[key])
+  (work/'truncreg.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in records))
+
 def forged_stationarity(work):
   records = [json.loads(line) for line in (work/'truncreg.jsonl').read_text().splitlines()];fit = records[1]['data'];b = fit['coefficients'][0];b['value'] += 100
   b['statistic'] = b['value']/b['standard_error'];b['p_value'] = math.erfc(abs(b['statistic'])/math.sqrt(2));b['confidence_lower'] = b['value']-1.959963984540054*b['standard_error'];b['confidence_upper'] = b['value']+1.959963984540054*b['standard_error']
@@ -65,6 +77,7 @@ def run(work):
 if __name__ == '__main__':
   verified = pathlib.Path(sys.argv[1]);before = {n:hashlib.sha256((verified/n).read_bytes()).hexdigest() for n in FILES};baseline = run(verified);assert baseline.returncode==0,baseline.stderr
   cases = [
+    ('shared_coefficient_uncertainty',shared_coefficient_uncertainty,'independent coefficient observed SE'),
     ('shared_covariance',shared_covariance,'independent full observed inverse'),
     ('shared_zero_tail',shared_zero_tail,'positive normal p-value'),
     ('forged_native_and_R_stationarity',forged_stationarity,'independent observed score certificate'),
@@ -85,4 +98,4 @@ if __name__ == '__main__':
         assert gate in result.stderr,(name,gate,result.stderr)
       print(name,'rejected')
   assert before=={n:hashlib.sha256((verified/n).read_bytes()).hexdigest() for n in FILES}
-  print('All11 temporary-copy corruptions rejected;6 verified input fingerprints unchanged.')
+  print('All12 temporary-copy corruptions rejected;6 verified input fingerprints unchanged.')

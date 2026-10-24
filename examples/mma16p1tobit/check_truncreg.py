@@ -151,6 +151,10 @@ def audit(work):
   for i in range(3):
     for j in range(3):
       close(covariance[i][j],fit['covariance_matrix'][i][j],'independent full observed inverse')
+  # Shared native/R SE/statistic/tail/CI corruption can be internally Wald-
+  # consistent. Anchor each SE to the independently rebuilt observed inverse.
+  for i, row in enumerate(fit['coefficients']):
+    close(row['standard_error'],math.sqrt(covariance[i][i]),'independent coefficient observed SE')
   null_ll = null_fit(selected)
   close(null_ll,fit['null_log_likelihood'],'independent same-sample moment null')
   lr = 2*(ll-null_ll)
