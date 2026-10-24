@@ -16,6 +16,7 @@ mod distributions;
 pub mod error;
 pub mod estimates;
 mod fixed_effects;
+mod heckman;
 pub mod iv;
 mod iv_confidence;
 mod iv_endogenous;
@@ -66,6 +67,10 @@ pub use estimates::{
   CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationDiagnostics, FitStatistics,
 };
 pub use fixed_effects::{FixedEffect, FixedEffectsResult, UnitEffectsFTest, fit_fixed_effects};
+pub use heckman::{
+  HeckmanPredictionKind, HeckmanTwoStepResult, MAX_HECKMAN_OBSERVATIONS, MAX_HECKMAN_PARAMETERS,
+  MAX_HECKMAN_WORK, fit_heckman_two_step, heckman_predict_row,
+};
 pub use iv::{
   AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,
   RobustAndersonRubinResult, anderson_rubin_test, fit_two_stage_least_squares,
