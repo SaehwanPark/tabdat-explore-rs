@@ -457,7 +457,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | xbu | u | residuals | pr | n | pmf(k) | cdf(k)]"
+    "predict newvar [, xb | xbu | u | residuals | pr | mean | n | pmf(k) | cdf(k)]"
   );
   assert_eq!(
     envelope["data"]["options"],
@@ -467,6 +467,7 @@ fn predict_discovery_names_mean_kind_and_keeps_family_limits_explicit() {
       {"name": "u", "required": false},
       {"name": "residuals", "required": false},
       {"name": "pr", "required": false},
+      {"name": "mean", "required": false},
       {"name": "n", "required": false},
       {"name": "pmf", "required": false},
       {"name": "cdf", "required": false}

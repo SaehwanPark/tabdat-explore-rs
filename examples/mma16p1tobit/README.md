@@ -5,11 +5,15 @@ Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
 selection and CLAD analyses are separate required outcomes, not this fit.
 
-**Native command execution is not implemented yet.** A pure Rust numerical
-kernel now passes five synthetic R/survival/base-R references and the original
-source's48 quantities/600 predictions. Owned session state, command execution,
-reporting/help and actual-script contracts remain WIP; this is not a delivered CLI
-workflow. The files below establish reproducible source/preparation/references.
+**Native integration is WIP, not a delivered workflow.** The numerical kernel
+passes five synthetic R/survival/base-R references and the original source's48
+quantities/600 predictions. Owned Gaussian fit state, lower-censored command,
+current xb/pr/mean prediction, retained continuous observed-mean effects and
+terminal/CLI-v1/help paths are implemented. Focused runtime tests check the joint
+finite sample, full covariance, retained effects and failure atomicity. Actual
+original-source scripts/checker, broader regression evidence and integration
+review remain required before merge. The files below establish reproducible
+source/preparation/references.
 The intended command/sample/inference/failure contract is in
 [the coverage ledger](../../docs/reference/microeconometrics-coverage.md#mma-tobit-bounded-classic-lower-censoring-contract-wip).
 

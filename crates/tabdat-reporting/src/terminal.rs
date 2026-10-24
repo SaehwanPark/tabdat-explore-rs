@@ -391,6 +391,23 @@ fn logit_estimates(estimates: &[tabdat_domain::LogitEstimate]) -> String {
   output
 }
 
+fn tobit_estimates(estimates: &[tabdat_domain::TobitEstimate]) -> String {
+  // Presentation-only conversion: both rows use the same normal-inference layout.
+  let rows = estimates
+    .iter()
+    .map(|c| tabdat_domain::LogitEstimate {
+      name: c.name.clone(),
+      value: c.value,
+      standard_error: c.standard_error,
+      statistic: c.statistic,
+      p_value: c.p_value,
+      confidence_lower: c.confidence_lower,
+      confidence_upper: c.confidence_upper,
+    })
+    .collect::<Vec<_>>();
+  logit_estimates(&rows)
+}
+
 fn multinomial_estimates(estimates: &[tabdat_domain::MultinomialEstimate]) -> String {
   let mut output = String::from(
     "Category\tVariable\tEstimate\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
@@ -1797,6 +1814,44 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       } else {
         ""
       }
+    ),
+    ExecutionResult::Tobit(result) => format!(
+      "Lower-censored Gaussian Tobit maximum likelihood (IID homoskedastic model)\nOutcome: {}; lower limit = {}; N = {}; left-censored = {}; uncensored = {}\nCandidate rows = {}; excluded missing/nonfinite = {}; Newton iterations = {}\nLog likelihood = {}; refitted same-sample null log likelihood = {}\nLR chi2({}) = {}; p-value = {}\nFull joint beta/lnsigma inverse observed information; correction1; asymptotic normal95, not Student t.\n{}Sigma = {}; delta SE = {}; log-Wald95 interval = [{}, {}]\nNo sigma=0 Wald test. Coefficients describe the latent mean, not observed-mean effects.\nUse predict ..., pr for P(Y*>lower|X), predict ..., mean for E[max(lower,Y*)|X], estat margins for continuous observed-mean effects.\n",
+      result.outcome.escape_debug(),
+      inference_number(result.lower_limit),
+      result.observation_count,
+      result.left_censored_count,
+      result.uncensored_count,
+      result
+        .sample
+        .as_ref()
+        .map_or(result.observation_count, |s| s.total_observations),
+      result.sample.as_ref().map_or(0, |s| s.dropped_observations),
+      result.iterations,
+      inference_number(result.log_likelihood),
+      inference_number(result.null_log_likelihood),
+      result.likelihood_ratio_df,
+      inference_number(result.likelihood_ratio),
+      result
+        .likelihood_ratio_p_value
+        .map(logit_number)
+        .unwrap_or_else(|| "NA".into()),
+      tobit_estimates(&result.coefficients),
+      inference_number(result.scale.value),
+      inference_number(result.scale.standard_error),
+      inference_number(result.scale.confidence_lower),
+      inference_number(result.scale.confidence_upper),
+    ),
+    ExecutionResult::TobitMarginalEffects(result) => format!(
+      "Tobit continuous observed-censored-mean average partial effects; retained estimation N = {}; lower limit = {}\nDerivatives of E[max(lower,Y*)|X], not latent slopes, truncated means, discrete changes or causal effects.\nConditional-on-X full joint beta/lnsigma delta covariance; correction1, asymptotic normal95.\n{}{}",
+      result.observation_count,
+      inference_number(result.lower_limit),
+      tobit_estimates(&result.effects),
+      if result.effects.is_empty() {
+        "No predictor effects in an intercept-only model.\n"
+      } else {
+        ""
+      },
     ),
     ExecutionResult::CountProbabilities(result) => {
       let law = match result.distribution {

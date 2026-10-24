@@ -515,9 +515,18 @@ nine full joint covariance entries/600 probabilities/latent/observed-mean
 predictions and joint-delta AMEs under declared1e-9 absolute+1e-8 relative scalars,
 1e-8 positive-tail relative and1e-10 probability gates. Source conversion and
 malformed/truncated/output-collision guards pass. Parser acceptance is existing
-behavior; owned session/command/reporting and actual-script contracts are **not
-implemented/validated yet**. This kernel evidence is not a usable native workflow
-or whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
+behavior. Owned Gaussian session state, command execution, retained continuous
+observed-mean effects, current xb/pr/mean predictions and terminal/CLI-v1/help
+are now implemented. Two focused parser/four runtime cases pass, including
+joint sampling/full covariance, original-X effects after edits, NULL predictions
+from missing/nonfinite X, unused outcomes, labels/order and failure atomicity.
+Current all-target execution/reporting/language/runtime Clippy and the explicit
+prediction discovery contract pass. A native original-source JSON batch fits200
+rows/70 censored, matches the reference LL/sigma, emits joint3x3 covariance and
+successfully exports all three prediction columns. This is a **smoke check, not
+the complete48/600 native checker**. Actual-script contracts, broader regressions
+and independent integration review remain WIP; neither kernel nor smoke evidence
+is a whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
 Heckman/two-part/CLAD and the rest of Chapter16 remain required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence

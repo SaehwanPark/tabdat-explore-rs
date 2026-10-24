@@ -241,7 +241,10 @@ pub enum EstimationState {
   ConditionalLogit(Box<ConditionalLogitState>),
   NonNormalizedNestedLogit(Box<NonNormalizedNestedLogitState>),
   NormalizedCommonNestedLogit(Box<NormalizedCommonNestedLogitState>),
+  /// Legacy normalized placeholder, retained for serialized-state compatibility.
   Tobit(ModelState),
+  /// Owned Gaussian fit/sample and retained-X effect-gradient summaries.
+  TobitFit(Box<tabdat_stats::TobitResult>),
   Heckman(ModelState),
   Nonlinear(ModelState),
   /// Legacy normalized placeholder, retained for old serialized state reads.
@@ -312,7 +315,7 @@ impl EstimationState {
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
-      Self::Tobit(..) => EstimationFamily::Tobit,
+      Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,
       Self::Heckman(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
       Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,

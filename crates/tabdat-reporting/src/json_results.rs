@@ -112,6 +112,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Clogit { .. }
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
+    | Command::Tobit { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
@@ -635,6 +636,48 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "ProbitMarginalEffectsResult",
+    ),
+    ExecutionResult::Tobit(result) => (
+      json!({
+        "estimator":"tobit", "distribution":"iid_homoskedastic_gaussian",
+        "outcome":result.outcome, "predictors":result.predictor_names,
+        "include_intercept":result.include_intercept, "lower_limit":result.lower_limit,
+        "censoring":"recorded_response_at_or_below_lower_limit",
+        "observation_count":result.observation_count, "left_censored_count":result.left_censored_count,
+        "uncensored_count":result.uncensored_count, "sample":result.sample,
+        "coefficients":result.coefficients, "scale":result.scale,
+        "scale_interval":"exponentiated_log_scale_normal_wald_95_not_sigma_zero_test",
+        "covariance_matrix":result.covariance,
+        "covariance_parameter_names":result.coefficients.iter().map(|c|c.name.as_str()).chain(std::iter::once("lnsigma")).collect::<Vec<_>>(),
+        "covariance_parameter_order":"location_coefficients_then_lnsigma",
+        "covariance":"model_based_joint_observed_beta_lnsigma_information", "covariance_correction":1.0,
+        "reference_distribution":"asymptotic_standard_normal", "confidence_level":95.0,
+        "log_likelihood":result.log_likelihood,
+        "log_likelihood_convention":"gaussian_uncensored_density_and_left_censor_probability",
+        "null_log_likelihood":result.null_log_likelihood,
+        "null_model":if result.include_intercept {"intercept_and_scale_refitted_same_sample_bound"}else{"zero_latent_location_scale_refitted_same_sample_bound"},
+        "likelihood_ratio":result.likelihood_ratio, "likelihood_ratio_df":result.likelihood_ratio_df,
+        "likelihood_ratio_p_value":result.likelihood_ratio_p_value,
+        "likelihood_ratio_reference_distribution":result.likelihood_ratio_p_value.map(|_|"asymptotic_chi_square"),
+        "converged":true, "iterations":result.iterations,
+        "convergence_coordinate_system":"rms_predictors_delta_and_scaled_inverse_sigma",
+        "convergence_score_normalization":"per_observation_mean",
+        "convergence_step_normalization":"1_plus_abs_parameter", "convergence_tolerance":1e-10,
+        "max_abs_scaled_score":result.max_abs_scaled_score,
+        "max_abs_scaled_newton_step":result.max_abs_scaled_newton_step,
+      }),
+      "TobitResult",
+    ),
+    ExecutionResult::TobitMarginalEffects(result) => (
+      json!({
+        "estimator":"tobit", "effect":"average_continuous_observed_censored_mean_derivative",
+        "sample":"retained_estimation_design", "lower_limit":result.lower_limit,
+        "uncertainty":"conditional_on_observed_design_full_joint_beta_lnsigma_delta_method",
+        "covariance":"model_based_joint_observed_beta_lnsigma_information", "covariance_correction":1.0,
+        "reference_distribution":"asymptotic_standard_normal", "confidence_level":95.0,
+        "observation_count":result.observation_count, "effects":result.effects,
+      }),
+      "TobitMarginalEffectsResult",
     ),
     ExecutionResult::Poisson(result) => {
       let mut data = json!({
