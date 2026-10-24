@@ -284,19 +284,19 @@ design corruption and a fake zero LR p-value are rejected. This bounded evidence
 does not complete preferred normalization, historical Stata8 parity, effects
 uncertainty or the remaining Chapter15 inventory.
 
-### MMA-NESTED-NORMALIZED-COMMON draft contract
+### MMA-NESTED-NORMALIZED-COMMON bounded contract and evidence
 
-The next bounded slice is a **separately labelled normalized common-scale
+This slice implements a **separately labelled normalized common-scale
 extension** of §15.6.3's source design, not reproduction of the author's earlier
 Stata8 fit or implementation of unrestricted preferred nest-specific scales.
 Same original1,182 people/4,728 rows, shore={beach1,pier2}, boat={private3,charter4},
 lower `p q`, upper `dshore dshorey` with income/1000. A single positive λ is shared
 by both nests: conditional probabilities normalize `exp(xβ/λ)` and upper utility
 is `zγ + λ*logsumexp(xβ/λ)`. Unlike the earlier variant, case-common lower shifts
-cancel. Proposed explicit syntax is `nlogit ... normalized common`; existing
+cancel. Explicit syntax is `nlogit ... normalized common`; existing
 `nonnormalized` behavior must remain unchanged.
 
-Planned inference: inverse full joint observed information/correction1, G decision
+Inference: inverse full joint observed information/correction1, G decision
 units and normal95; shared-scale normal diagnostic tests1, not zero. Re-estimated
 λ=1 conditional restriction has LR chi-square1 only after local identification.
 No unidentified uniform-null omnibus or composite RUM-consistency test. Positive
@@ -313,12 +313,11 @@ quantities including41 covariance entries across four/five-parameter fits and
 observed SE50.033049627836, independence LR82.351340357452 and chi-square1
 p1.1392419190882e-19. This real-data fit **violates RUM bounds**, even under the
 preferred utility normalization; the model must disclose that distinction.
-Package default OPG/scale-zero tests are not adopted. This is reference evidence,
-**not delivered native capability**. Planned new-family scalar tolerance is1e-9
+Package default OPG/scale-zero tests are not adopted. New-family scalar tolerance is1e-9
 absolute +1e-8 relative, positive tails relative1e-8 and probabilities absolute
 1e-10; standalone MNL/CL/non-normalized gates remain unchanged.
 
-Acceptance cases before implementation:
+Acceptance contract:
 
 1. A900-decision exact-count fixture identifies β=(ln2,ln3), upper γ=(ln2,ln3)
    and shared λ=.5, including full observed covariance/inference against R.
@@ -340,9 +339,9 @@ The [exact-count R fixture](../../crates/tabdat-stats/tests/fixtures/normalized_
 now independently checks all six empirical cell distributions, zero score and
 positive observed information at the five known natural parameters, plus99
 coefficient/covariance/restriction quantities (41 covariance entries). Chosen
-counts are216/384/108/192. These are reference checks, not native estimator tests.
+counts are216/384/108/192. Native kernel and actual-script tests independently consume those99 quantities.
 
-A minimal exact implementation can reuse the existing earlier-variant case
+The implementation reuses the existing earlier-variant case
 likelihood with **equal** logged nest scales and internal lower coefficients
 b_tilde=β/λ. Project its two scale score/Hessian coordinates onto one common
 coordinate, checking identification of that projected system at λ=1 (not the
@@ -365,9 +364,26 @@ income/price/catch contrast errors4.17e-17/7.44e-15/6.65e-15. Both starts conver
 source score bound1.17e-15 and step7.63e-14. Native λ25.0093430969551 and observed
 SE50.0330496234127 diagnose the same RUM-bound violation.
 
-Parser/runtime/reporting/script/checker, actual-script tests and broader gates
-remain outstanding; this is **not yet a delivered terminal/script capability**.
-Independent nest scales and remaining Chapter15 work stay required.
+The explicit native mode now owns raw retained state, predicts current complete
+sets atomically, and reports a separate CLI-v1 `NormalizedCommonNestedLogitResult`/
+terminal result with the RUM-bound warning. Three parser and nine runtime cases
+cover both modes and failure-state boundaries. One initial test incorrectly
+assumed named-model storage supported this family; it was corrected to verify the
+existing explicit rejection/preservation boundary, not to expand that subsystem.
+
+The actual source CLI run passes131 quantities/41 covariance entries/23,640
+probabilities with source-input preservation. Two actual-script tests fit900
+known decisions, consume99 R quantities and check current scenarios, restores,
+displays, source guards and input/export collisions. Fresh explicit `--text`
+execution yields byte-identical exports and the expected warning/LR df1. Shared
+native/R design corruption and mutually zeroed native/R LR p-values are rejected
+by the source-hash and independent-tail checks. Initial text validation omitted
+`--text` and incorrectly expected batch-default output; explicit text and the
+public terminal formatter both pass without changing quiet batch behavior.
+
+Broader workspace regression gates remain in progress on the draft PR; these
+bounded workflows do not complete unrestricted preferred scales, Chapter15 or
+platform certification. Independent nest scales and remaining work stay required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
