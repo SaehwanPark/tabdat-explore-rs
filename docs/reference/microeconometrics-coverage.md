@@ -392,6 +392,31 @@ with zero cases. No CI checks are available. These bounded local checks do not
 complete unrestricted preferred scales, Chapter15 or platform certification.
 Independent nest scales and remaining work stay required.
 
+### MMA-NESTED-SOURCE-AUDIT reference-resolution contract (WIP)
+
+Before offering unrestricted preferred nest-specific inference on the fishing
+source, audit the exact same1,182 decisions/4,728 rows and lower `p q`, upper
+`dshore dshorey` design. This does not add native estimator syntax or replace the
+published earlier variant/common-scale extension. Existing numerical gates stay
+unchanged; no unresolved entry is counted complete or excluded.
+
+Acceptance/failure cases:
+
+1. Bind the original source/data hashes and both author Stata8/LIMDEP programs;
+   distinguish raw lower features from upper utilities and their normalization.
+2. Check a stable preferred likelihood/score against fresh R/mlogit evaluations
+   at finite positive nest scales, with independent symbolic derivatives where
+   applicable. Audit the reciprocal-scale limit rather than treating a nearly
+   singular, large-scale optimizer printout as a finite regular MLE.
+3. Profile the source shore scale with multiple deterministic starts and validate
+   interior stationarity/full observed information before any covariance claim.
+   Boundary/failed/unresolved profiles do not supply ordinary unrestricted Wald
+   or LR inference, global-maximum proofs, or an approved exclusion.
+4. Audit the earlier published Stata8 point and author LIMDEP parameterization
+   against explicit likelihood/score/curvature, including source preparation
+   precision. Keep published output, a stationary reference and an inferred
+   historical-software mechanism distinct; do not invent a cause or widen gates.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
