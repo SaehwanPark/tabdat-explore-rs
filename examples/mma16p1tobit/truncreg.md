@@ -118,9 +118,17 @@ rejects repeated/out-of-range or inconsistent candidate/drop identities under
 its declared independent-original-row contract. The initial duplicate-ID test
 failure and test-literal compile error remain recorded; no tolerance widening.
 
-Affected/reverse checks and independent kernel review still precede completion
-of this milestone. Owned runtime/parser/reporting/effects/prediction, actual
-scripts/failure controls and integration review remain required before merge. Scope is fixed-left-truncated IID homoskedastic
+Frozen118a9d3 independent read-only kernel/math review found no issues; it did
+not execute tests or approve the pending frontend. Affected stats validation
+reconciles199 passed/one pre-existing ignored across46 all-fresh hash-checked
+artifacts. Stats doctests and eight reverse-consumer runtime/actual Tobit script
+tests pass. The original nextest discovery timeout remains incomplete; a bounded
+direct fallback retained a sampled dyld loader stall, unstarted work and a helper
+termination/natural-exit race. Only diagnosed incomplete/unstarted targets were
+resumed; accepted records preserve prior diagnostics and all current hashes.
+
+Owned runtime/parser/reporting/effects/prediction, actual scripts/failure
+controls and integration review remain required before merge. Scope is fixed-left-truncated IID homoskedastic
 Gaussian ML; no upper/variable truncation, robust/cluster/weights, factors, named
 storage, generic tests or fabricated sigma0 test. No numerical tolerances have
 been broadened to conceal a discrepancy.

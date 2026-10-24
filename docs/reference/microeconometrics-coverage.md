@@ -627,7 +627,11 @@ original-source probe passes45 numerical quantities/nine covariance entries/600
 projections and separately bounded native certificates. Malformed duplicate-ID
 failure led to explicit independent-original-sample checks, not a generic sample
 API change. A small shared guarded Gaussian Newton loop preserves Tobit behavior.
-Affected/reverse checks and independent kernel review remain; parser/runtime/
+Independent frozen118a9d3 kernel/math review found no issues (no reviewer
+executions). Affected stats:199 passed/one pre-existing ignored across46 exact
+all-fresh hash-checked artifacts; stats doctests and eight reverse-consumer
+runtime/actual Tobit script tests pass. Incomplete discovery/loader/helper
+attempts remain separate from the reconciled accepted records. Parser/runtime/
 reporting/scripts still remain. This is not native terminal execution.
 
 ### MMA-SELECT bounded Heckman two-step contract and evidence
