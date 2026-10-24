@@ -645,6 +645,8 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "censoring":"recorded_response_at_or_below_lower_limit",
         "observation_count":result.observation_count, "left_censored_count":result.left_censored_count,
         "uncensored_count":result.uncensored_count, "sample":result.sample,
+        "mean_uncensored_probability":result.mean_uncensored_probability,
+        "mean_probability_gradient":result.mean_probability_gradient,
         "coefficients":result.coefficients, "scale":result.scale,
         "scale_interval":"exponentiated_log_scale_normal_wald_95_not_sigma_zero_test",
         "covariance_matrix":result.covariance,

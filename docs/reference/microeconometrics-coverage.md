@@ -63,7 +63,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-MAXSCORE | §14.7.5, p. 486; `mma14p2maxscore.lim` / `mma14p1binary.asc` | Planned — author-index locator only | Resolve maximum-score specification, preparation and nonstandard uncertainty; not covered by logit |
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
-| MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | WIP — classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; source-bound inference/predictions/continuous effects planned below. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
+| MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | WIP — classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with broader regression/integration review still WIP. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -521,12 +521,21 @@ are now implemented. Two focused parser/four runtime cases pass, including
 joint sampling/full covariance, original-X effects after edits, NULL predictions
 from missing/nonfinite X, unused outcomes, labels/order and failure atomicity.
 Current all-target execution/reporting/language/runtime Clippy and the explicit
-prediction discovery contract pass. A native original-source JSON batch fits200
-rows/70 censored, matches the reference LL/sigma, emits joint3x3 covariance and
-successfully exports all three prediction columns. This is a **smoke check, not
-the complete48/600 native checker**. Actual-script contracts, broader regressions
-and independent integration review remain WIP; neither kernel nor smoke evidence
-is a whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
+prediction discovery contract pass. The native original-source script now passes
+all48 R reference gates (46 comparisons plus two independently gated R solver
+certificates), nine full covariance entries/600 predictions and1400 original
+cells/ordinals. It independently binds the natural-coordinate source score,
+observed-information inverse, retained gradient/full delta variance and tails;
+Rust/R convergence coordinates are not equated. Nine permanent corruption
+regressions reject shared zero tails, wrong covariance/gradients and false
+stationary controls alongside source/order/cell/inventory failures, preserving
+all six input hashes. Two actual-script cases use a separate closed-form
+Gaussian control, full joint covariance/delta and byte-identical JSON/text
+exports, plus existing-target/missing-input failures. Added runtime controls
+validate the independent-R nonzero-limit/no-constant/below-limit sample and
+numerical prediction rollback/failed numerical refit clearing. Broader
+regressions and independent integration review remain WIP; this is not a
+whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
 Heckman/two-part/CLAD and the rest of Chapter16 remain required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence

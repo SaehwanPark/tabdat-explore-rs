@@ -5,15 +5,16 @@ Exact source: Cameron–Trivedi (2005) §16.2.1 pp.530–531, author March2005
 coefficient table. Figure16.1's theoretical curves and the program's truncation,
 selection and CLAD analyses are separate required outcomes, not this fit.
 
-**Native integration is WIP, not a delivered workflow.** The numerical kernel
-passes five synthetic R/survival/base-R references and the original source's48
-quantities/600 predictions. Owned Gaussian fit state, lower-censored command,
-current xb/pr/mean prediction, retained continuous observed-mean effects and
-terminal/CLI-v1/help paths are implemented. Focused runtime tests check the joint
-finite sample, full covariance, retained effects and failure atomicity. Actual
-original-source scripts/checker, broader regression evidence and integration
-review remain required before merge. The files below establish reproducible
-source/preparation/references.
+**Working draft slice; broader regression validation and integration review are
+still required before merge.** The native script/checker now validates the exact
+source sample, full joint covariance, all600 point predictions and continuous
+observed-mean inference against independent R. Owned Gaussian state, current
+xb/pr/mean predictions, retained-X effects and terminal/CLI-v1/help are installed.
+Six focused runtime cases include no-intercept/nonzero-limit/below-limit
+recordings, retained effects, joint missingness, numerical/schema/option failures
+and failure atomicity. Two actual-script tests use a separate closed-form
+Gaussian control (not replacement textbook data), verify full covariance/delta
+inference, byte-identical text/JSON exports and input/output-collision failures.
 The intended command/sample/inference/failure contract is in
 [the coverage ledger](../../docs/reference/microeconometrics-coverage.md#mma-tobit-bounded-classic-lower-censoring-contract-wip).
 
@@ -42,9 +43,14 @@ work="$(mktemp -d)"
   done
   printf '%s\n' '8ec7ba9cf3da6854217f873441e47fd5492e777904057c8d9ca8f8ee00244ba6  mma16p1tobit.asc' | shasum -a256 -c
   awk -f "$repo/examples/mma16p1tobit/tobit_to_csv.awk" mma16p1tobit.asc > mma16p1tobit.csv
-  # Optional development reference: R4.6.1 / survival3.8.6.
+  cp "$repo/examples/mma16p1tobit/tobit.td" .
+  # First build at the repository root: cargo build --locked
+  "$repo/target/debug/tabdat-explore-rs" --json -f tobit.td > tobit.jsonl
+  # Optional independent development validation: R4.6.1 / survival3.8.6.
   Rscript "$repo/examples/mma16p1tobit/reference_tobit.R" \
     mma16p1tobit.asc R_tobit_predictions.csv > R_tobit_quantities.csv
+  python3 "$repo/examples/mma16p1tobit/check_tobit.py" "$PWD"
+  PYTHONDONTWRITEBYTECODE=1 python3 "$repo/examples/mma16p1tobit/check_tobit_failures.py" "$PWD"
 )
 ```
 
@@ -57,4 +63,32 @@ lnwage956.4877300, sigma896.6810974, LL−1118.3856951, LR65.64311764 on1df,
 continuous observed-mean AME625.5806292. Uncertainty is asymptotic normal95,
 conditional on X, with positive log-Wald sigma intervals; do not equate these
 intervals with historical Stata8's t intervals or an AME with the latent slope.
-This reference does not certify a native implementation or whole Chapter16.
+The checker validates48 reference gates:46 numerical comparisons plus two
+independent R score/step certificates. It **does not equate** R beta/lnsigma
+solver diagnostics with Rust's RMS-X, concave delta/scaled inverse-sigma
+coordinates. Rust's own reported gates and an independently differentiated
+source-likelihood natural-coordinate score are checked separately. The checker
+also binds the joint inverse to independently derived observed information,
+normal tails/intervals, positive log-Wald scale bounds, full-joint AME variance,
+all600 native/R/source-formula predictions and1400 original cells/ordinals.
+Scalars use1e-9 absolute+1e-8 relative; positive tails use1e-8 relative (never an
+absolute zero-tail escape); probabilities use1e-10 absolute. Joint inverse
+identity residuals must be below1e-8, score certificates below1e-10.
+
+Nine corruption regressions reject wrong source hashes/order/cells, latent means
+substituted for censored means, incomplete references, shared zero tails, shared
+wrong joint covariance/retained gradients and a shared false stationary control.
+They mutate only temporary copies and preserve all six input fingerprints.
+
+Native execution/preparation needs no Python/R; the optional development audit
+uses Python's standard library and R/survival only for reference generation.
+Use a fresh work directory: existing exports are never replaced. Bare `predict`
+remains the **latent** mean; observed censored means require `, mean`, not count n
+or a conditional truncated-mean interpretation. `estat margins` uses the retained
+estimation design, not current edited X. In CLI-v1 the small retained mean
+uncensoring probability and its full beta/lnsigma gradient support this audit;
+full internal fitted vectors are not dumped into the fit envelope.
+
+The native author-program extension is not a published coefficient-table replay
+or whole-illustration/Chapter16 completion. The theoretical Figure16.1,
+truncation/selection/two-part/CLAD workflows remain required.

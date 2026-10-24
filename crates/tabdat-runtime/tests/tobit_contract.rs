@@ -12,12 +12,15 @@ use tabdat_runtime::{RuntimeError, Session};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
 fn gold() -> BTreeMap<(String, usize, usize), f64> {
+  gold_model("1")
+}
+fn gold_model(model: &str) -> BTreeMap<(String, usize, usize), f64> {
   include_str!("../../tabdat-stats/tests/fixtures/tobit_reference.csv")
     .lines()
     .skip(1)
     .filter_map(|line| {
       let v: Vec<_> = line.split(',').collect();
-      (v[0] == "1").then(|| {
+      (v[0] == model).then(|| {
         (
           (v[1].into(), v[2].parse().unwrap(), v[3].parse().unwrap()),
           v[4].parse().unwrap(),
@@ -102,6 +105,125 @@ fn same_rows(a: &[Vec<CellValue>], b: &[Vec<CellValue>]) {
       assert_eq!(a, b);
     }
   }
+}
+
+#[test]
+fn nonzero_bound_no_constant_and_below_limit_recording_match_independent_r() {
+  let f = Fixture::new();
+  let r = gold_model("2");
+  let mut csv = String::from("y,x1,x2\n");
+  for i in 1..=36 {
+    writeln!(
+      csv,
+      "{},{},{}",
+      get(&r, "input_y", i, 0),
+      get(&r, "input_x", i, 1),
+      get(&r, "input_x", i, 2)
+    )
+    .unwrap();
+  }
+  fs::write(f.0.join("data.csv"), csv).unwrap();
+  let mut s = f.load();
+  let original = rows(&mut s);
+  let ExecutionResult::Tobit(fit) = run(&mut s, "tobit y x1 x2, ll(-0.8) noconstant") else {
+    panic!("tobit");
+  };
+  assert!(!fit.include_intercept);
+  assert_eq!(fit.lower_limit, -0.8);
+  assert_eq!(fit.observation_count, 36);
+  assert_eq!(fit.likelihood_ratio_df, 2);
+  close(
+    fit.null_log_likelihood,
+    get(&r, "null_log_likelihood", 0, 0),
+  );
+  close(fit.likelihood_ratio, get(&r, "likelihood_ratio", 0, 0));
+  close(
+    fit.likelihood_ratio_p_value.unwrap(),
+    get(&r, "likelihood_ratio_p_value", 0, 0),
+  );
+  close(fit.scale.value, get(&r, "sigma", 0, 0));
+  for (i, c) in fit.coefficients.iter().enumerate() {
+    close(c.value, get(&r, "coefficient_value", i + 1, 0));
+    close(
+      c.standard_error,
+      get(&r, "coefficient_standard_error", i + 1, 0),
+    );
+  }
+  for (i, row) in fit.covariance.iter().enumerate() {
+    for (j, v) in row.iter().enumerate() {
+      close(*v, get(&r, "covariance", i + 1, j + 1));
+    }
+  }
+  same_rows(&rows(&mut s), &original);
+  assert!(original.iter().any(|row| number(&row[0]) < -0.8));
+  let ExecutionResult::TobitMarginalEffects(effects) = run(&mut s, "estat margins") else {
+    panic!("effects");
+  };
+  for (i, e) in effects.effects.iter().enumerate() {
+    close(e.value, get(&r, "ame_value", i + 1, 0));
+    close(e.standard_error, get(&r, "ame_standard_error", i + 1, 0));
+  }
+  for c in [
+    "predict latent, xb",
+    "predict probability, pr",
+    "predict observed, mean",
+  ] {
+    run(&mut s, c);
+  }
+  for (i, row) in rows(&mut s).iter().enumerate() {
+    for (q, col) in [("latent", 3), ("probability", 4), ("mean", 5)] {
+      close(number(&row[col]), get(&r, q, i + 1, 0));
+    }
+  }
+}
+
+#[test]
+fn numerical_prediction_failure_is_atomic_and_numerical_refit_clears_stale_state() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  let ExecutionResult::Tobit(fit) = run(&mut s, "tobit y x1 x2, ll(0)") else {
+    panic!("tobit");
+  };
+  assert!(
+    fit
+      .coefficients
+      .iter()
+      .skip(1)
+      .map(|c| c.value.abs())
+      .sum::<f64>()
+      > 1.1
+  );
+  for c in fit.coefficients.iter().skip(1) {
+    run(&mut s, &format!("replace {} = {:.0}", c.name, 1.7e308_f64));
+    if c.value < 0.0 {
+      run(&mut s, &format!("replace {} = 0 - {}", c.name, c.name));
+    }
+  }
+  let state = s.state();
+  let before = rows(&mut s);
+  assert_eq!(number(&before[1][2]).abs(), 1.7e308_f64);
+  assert_eq!(number(&before[1][3]).abs(), 1.7e308_f64);
+  for kind in ["xb", "pr", "mean"] {
+    assert!(matches!(
+      fail(&mut s, &format!("predict bad, {kind}")),
+      RuntimeError::TobitFailed(_)
+    ));
+    assert_eq!(s.state(), state);
+    same_rows(&rows(&mut s), &before);
+  }
+  let mut s = f.load();
+  run(&mut s, "tobit y x1 x2, ll(0)");
+  run(&mut s, "replace y = 0");
+  let before = rows(&mut s);
+  let state = s.state();
+  assert!(matches!(
+    fail(&mut s, "tobit y x1 x2, ll(0)"),
+    RuntimeError::TobitFailed(_)
+  ));
+  assert!(s.state().estimation.is_none());
+  assert_eq!(s.state().active_dataset, state.active_dataset);
+  assert_eq!(s.state().labels, state.labels);
+  same_rows(&rows(&mut s), &before);
 }
 
 #[test]

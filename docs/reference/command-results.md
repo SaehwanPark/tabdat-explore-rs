@@ -439,6 +439,57 @@ Weighted/survey/multiway binary inference and factors/interactions/discrete
 changes remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
+## Bounded lower-censored Gaussian Tobit
+
+`tobit y [xvars], ll(number) [noconstant]` fits unweighted IID homoskedastic
+Gaussian lower censoring. Joint finite y/X rows define the retained sample;
+recorded y<=lower contributes censor probability at the limit, never a density
+at its raw below-limit value. All-uncensored samples are allowed; all-censored,
+degenerate-scale, rank/information or convergence failures are explicit. A failed
+new fit clears stale estimation without changing data. Bounds: N<=10000,
+location K1..32 including any intercept, N>K+1 and N(K+1)^2<=10000000.
+
+CLI-v1 **TobitResult** has `estimator: tobit`, `distribution:
+iid_homoskedastic_gaussian`, outcome/predictors/intercept/lower-limit, N/censor
+counts and original-position `sample`. Ordered normal95 `coefficients` have
+name/value/SE/z/p/interval fields. `scale` has value/log_value, delta SE,
+log_standard_error and positive exponentiated-log-Wald95 bounds; **no sigma=0
+test**. `covariance_matrix` is the full beta/lnsigma inverse observed information
+with correction1, `covariance_parameter_names` and explicit
+`covariance_parameter_order: location_coefficients_then_lnsigma`. This is not
+conditional-on-sigma, OPG, residual-DF-scaled or Student-t inference.
+
+Likelihood metadata includes the censored-Gaussian density/mass convention,
+`null_log_likelihood`, `null_model`, LR/df/p and its asymptotic chi-square reference.
+The null is refitted at the same sample/bound: intercept+scale when a constant is
+included, fixed-zero location+scale otherwise. LR df counts slopes; intercept-only
+fits have no LR p/reference. There is no pseudo-R2. Convergence metadata identifies
+Rust's RMS-X concave delta/scaled-inverse-sigma coordinates, mean-score and
+1+abs(parameter) step normalizations,1e-10 gates and iterations; do not equate
+these diagnostics numerically with an independent natural-coordinate solver.
+Small retained `mean_uncensored_probability` and `mean_probability_gradient`
+summaries follow the same full beta/lnsigma order; full fitted vectors are omitted.
+
+**TobitMarginalEffectsResult** reports `effects`, retained N/lower-limit,
+`effect: average_continuous_observed_censored_mean_derivative`,
+`sample: retained_estimation_design` and conditional-on-X full joint beta/lnsigma
+delta covariance/normal95 metadata. Continuous AMEs are beta_j*mean(Phi(z)),
+not latent slopes, truncated means, discrete changes or causal effects. Retained
+summaries preserve these effects after current data edits/drops.
+
+`predict` xb is the latent mean (including bare predict), pr is P(Y*>lower|X),
+and **mean** is E[max(lower,Y*)|X], not count n or a truncated conditional mean.
+Current X only, at most10000 rows; missing/nonfinite X yields NULL. Numeric
+failure, missing/nonnumeric columns, unsupported auxiliaries or existing targets
+fail before publication; the existing typed adapter atomically adds the DOUBLE
+column without changing order, labels or fit. Prediction envelopes remain the
+ordinary **PredictionResult** dataset metadata.
+
+Upper censoring/robust/cluster options still parse but explicitly fail at runtime.
+Weights, factors, generic test/lincom and named-model storage are not installed.
+See the [source-bound workflow/reference](../../examples/mma16p1tobit/README.md);
+this author-program extension is not a whole-Chapter16 completion claim.
+
 ## Bounded Poisson ML / independent-row robust QMLE
 
 `poisson y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link regression.
