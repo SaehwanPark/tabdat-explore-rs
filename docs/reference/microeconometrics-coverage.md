@@ -381,9 +381,16 @@ by the source-hash and independent-tail checks. Initial text validation omitted
 `--text` and incorrectly expected batch-default output; explicit text and the
 public terminal formatter both pass without changing quiet batch behavior.
 
-Broader workspace regression gates remain in progress on the draft PR; these
-bounded workflows do not complete unrestricted preferred scales, Chapter15 or
-platform certification. Independent nest scales and remaining work stay required.
+Current workspace/all-target evidence verifies1,469 passed and2 pre-existing
+ignored across253 executables, with every current executable SHA256 checked.
+The original broad run failed one obsolete schema expectation that required the
+old mode individually; the corrected two-test schema/legacy JSON/text/help target
+passes, combined explicitly with252 successful broad artifacts, not misreported
+as a clean original run. Full-workspace all-target Clippy and current root Clippy
+pass with warnings denied; format/diff checks pass and workspace doctests succeed
+with zero cases. No CI checks are available. These bounded local checks do not
+complete unrestricted preferred scales, Chapter15 or platform certification.
+Independent nest scales and remaining work stay required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
