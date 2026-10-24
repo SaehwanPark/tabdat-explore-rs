@@ -284,6 +284,61 @@ design corruption and a fake zero LR p-value are rejected. This bounded evidence
 does not complete preferred normalization, historical Stata8 parity, effects
 uncertainty or the remaining Chapter15 inventory.
 
+### MMA-NESTED-NORMALIZED-COMMON draft contract
+
+The next bounded slice is a **separately labelled normalized common-scale
+extension** of §15.6.3's source design, not reproduction of the author's earlier
+Stata8 fit or implementation of unrestricted preferred nest-specific scales.
+Same original1,182 people/4,728 rows, shore={beach1,pier2}, boat={private3,charter4},
+lower `p q`, upper `dshore dshorey` with income/1000. A single positive λ is shared
+by both nests: conditional probabilities normalize `exp(xβ/λ)` and upper utility
+is `zγ + λ*logsumexp(xβ/λ)`. Unlike the earlier variant, case-common lower shifts
+cancel. Proposed explicit syntax is `nlogit ... normalized common`; existing
+`nonnormalized` behavior must remain unchanged.
+
+Planned inference: inverse full joint observed information/correction1, G decision
+units and normal95; shared-scale normal diagnostic tests1, not zero. Re-estimated
+λ=1 conditional restriction has LR chi-square1 only after local identification.
+No unidentified uniform-null omnibus or composite RUM-consistency test. Positive
+scale estimation is unconstrained above1; descriptive `(0,1]` violations must be
+reported, not called RUM-consistent or silently clipped. Existing structural/
+whole-set missingness/current-prediction atomicity contracts remain required.
+
+The [development reference](../../examples/mma15p1mnl/reference_normalized_common.R)
+checks R4.6.1/mlogit2.0.0 `unscaled=FALSE, un.nest.el=TRUE` fresh likelihood, score
+and probabilities against independent base-R `deriv3`, Newton stationarity and
+observed information; survival3.8.6 supplies the λ=1 restriction. It emits131
+quantities including41 covariance entries across four/five-parameter fits and
+23,640 probabilities. Stationary LL−1211.53537250817, common λ25.009343096962,
+observed SE50.033049627836, independence LR82.351340357452 and chi-square1
+p1.1392419190882e-19. This real-data fit **violates RUM bounds**, even under the
+preferred utility normalization; the model must disclose that distinction.
+Package default OPG/scale-zero tests are not adopted. This is reference evidence,
+**not delivered native capability**. Planned new-family scalar tolerance is1e-9
+absolute +1e-8 relative, positive tails relative1e-8 and probabilities absolute
+1e-10; standalone MNL/CL/non-normalized gates remain unchanged.
+
+Acceptance cases before implementation:
+
+1. A900-decision exact-count fixture identifies β=(ln2,ln3), upper γ=(ln2,ln3)
+   and shared λ=.5, including full observed covariance/inference against R.
+   Three covariate cells use shore weights9/16 and boat weights multiplied by
+   k² for k=2,3,1; shore nest odds multiply2*3^income, income0/1. The true shared
+   scale is inside RUM bounds; it is not validated only on the violating source.
+2. λ=1 reduces to the conditional model; common lower shifts cancel; permutations,
+   independent-decision replication, retained provenance and rank/iteration/
+   restriction-identification failures preserve statistical contracts.
+3. The actual source script guards IDs/flags before fit, audits all131 quantities/
+   41 covariances/23,640 keyed probabilities, jointly updates income, restores
+   design, displays means and preserves inputs/existing exports.
+4. Native exact structural keys/maps before exclusion, whole-set NULL prediction,
+   upper constancy, failed-fit clearing and prediction rollback are exercised;
+   old non-normalized/parser/CLI contracts stay covered. No weights, robust/
+   cluster/survey, richer trees, general tests/reports or effects uncertainty.
+
+Native kernel/parser/runtime/reporting/script/checker and broader gates are
+outstanding. Independent nest scales and remaining Chapter15 work stay required.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
