@@ -64,6 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
+| MMA-TRUNC | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A commented intended truncated MLE | WIP — source-bound lower-truncated Gaussian likelihood extension on original130 positive observations | Author did NOT execute a correct truncated MLE and explicitly warned that censoring Tobit on ytrunc gives truncated OLS. No historical coefficient/table parity claim. Independent truncreg/base-R reference, native inference/effects/current prediction and state/failure validation required |
 | MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | Validated bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates/1000 native predictions plus98 synthetic quantities/3600 predictions and49 closed-form actual-script gates/120 predictions; separate covariance blocks/no exclusion restriction; owned state/atomic five-mode prediction, failure controls, reverse checks and independent source reviews; distinct from RAND below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
@@ -546,6 +547,64 @@ local macOS evidence is not Actions/other-platform certification or a
 whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
 Other selection/two-part/CLAD analyses and the rest of Chapter16 remain required;
 the bounded corrected Heckman comparison below is separate, not whole coverage.
+
+### MMA-TRUNC bounded lower-truncated Gaussian contract (WIP)
+
+**Exact source and honest scope.** March2005 `mma16p1tobit.do` §2A, using the
+same six-field `mma16p1tobit.asc`/converter as MMA-TOBIT and MMA-SELECT. The program
+executes truncated OLS, then comments on an intended truncated Gaussian MLE and
+explicitly warns that `tobit ytrunc lnwage, ll(0)` is not that estimator. There is
+NO executed historical truncated-MLE coefficient table to replay. This slice is a
+validated extension filling that documented gap, not a published illustration/
+historical stopping-parity claim. Figure16.1, CLAD and other selection/censoring
+illustrations remain separate required work.
+
+**Bounded outcome.** Implement `truncreg y xvars, ll(number) [noconstant]` and a
+source script on original `ytrunc ~ lnwage` plus intercept, lower limit0. Its exact
+sample is the130 positive original outcomes; the70 missing truncated outcomes
+are excluded, not censoring masses or extra Bernoulli observations. Original
+order, cells and ordinal sample identities must be audited. CLI requires at
+least one numeric predictor; kernel intercept-only support does not imply CLI
+acceptance. Joint-finite y/X selection precedes strict support validation:
+finite retained y<=lower is an error, not censoring/clipping or silent exclusion.
+
+For mu=X beta, s>0, t=(mu-lower)/s and z=(y-mu)/s, maximize
+`sum(log(phi(z))-log(s)-log(Phi(t)))`. Full beta/ln(s) observed-information inverse,
+correction1/normal95 location and positive log-Wald scale intervals; no sigma0
+test or residual-DF multiplier. Refit same-sample intercept+scale null (fixed
+zero-location+scale without intercept), report LR/slopes df only with regular
+null/full fits. Require finite score/Newton-step certificates and positive full
+information; boundary/nonidentified scale fails honestly. A four-start base-R
+probe reaches the same finite regular source optimum, but is not global proof.
+
+Retain owned X/sample/full covariance for continuous conditional-truncated-mean
+AMEs `beta_j*average(1-lambda*(lambda+t))`, lambda=phi(t)/Phi(t), with full joint
+delta uncertainty. Current X-only point `predict` xb/pr/mean means latent mu,
+underlying-population retention Phi(t), and conditional mean mu+s*lambda,
+respectively. pr is NOT conditional probability1 in the observed truncated
+sample, and mean is NOT Tobit censored mean/Heckman selection/count mean or causal
+imputation. Current y is unnecessary; missing relevant X gives NULL; numerical
+failure aborts before typed atomic publication. Failed new fits clear stale
+estimation without mutating data/labels; prediction failures preserve fit/data/
+labels/targets. Named storage, generic tests/lincom, upper/two-sided/variable
+truncation, factors, robust/cluster/weights, censoring and endogeneity are out.
+Reuse existing matrix/distribution/typed-publication seams; no production R/
+Python or new dependency. Planned bounds match the small Gaussian foundation:
+N<=10000,K1..32 including intercept,N>K+1,N*(K+1)^2<=10million; current rows<=10000.
+
+**Reference and acceptance.** Independent development-only R `truncreg`0.2-5
+(maxLik observed-information fit) plus separately reconstructed score/Hessian/
+Newton/null/delta checks; pin versions/source provenance. Compare actual130
+identities, all coefficients/covariance/SE/normal tails/intervals, sigma/log-scale
+covariance, likelihood/null/LR, AMEs and all600 source-row projections (missing
+outcome rows can receive current-X predictions). Add small independent controls
+with nonzero limits/no constant, outcome shift/units and permutation; actual
+shipped-script JSON/text export equivalence; support/missingness/stale-state and
+prediction/file/overflow failure controls. Do not widen tolerances for an
+unexplained difference or substitute generated control data for the author data.
+High risk: novel estimator/inference and public data/model/script contracts.
+Before merge require affected/reverse-consumer checks and independent read-only
+statistical/integration review. No native command is implemented by this contract.
 
 ### MMA-SELECT bounded Heckman two-step contract and evidence
 
