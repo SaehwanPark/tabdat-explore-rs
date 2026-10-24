@@ -498,10 +498,17 @@ Jacobian inference returns beta/lnsigma covariance. Five independent
 R/survival/base-R fixtures contain1396 entries (540 input cells,540 predictions,
 316 inference/gradient/covariance/metadata values): censoring, nonzero-limit/no
 intercept, all-uncensored Gaussian, bound shift and response scaling. One private
-derivative test/four kernel tests pass, including replication/order/sample and
+derivative test/six kernel tests pass, including replication/order/sample and
 explicit rank/scale/iteration/unsupported-inference failures. An initial saturated
 mean-probability accumulation rounded above1 and failed an AME test; sum-then-divide
-fixes it without widening a gate. Current stats all-target Clippy passes.
+fixes it without widening a gate. Independent read-only review additionally
+found that unused censor bounds/extreme below-limit recordings could distort
+response scaling and spuriously fail positive information. Both counterexamples
+were reproduced as failing regressions; scaling now uses only likelihood-effective
+values, preserving raw responses and the unchanged information/convergence gates.
+All six current kernel tests/current stats all-target Clippy pass. Probabilities/
+observed means legitimately change when a prediction bound changes, even if an
+entirely uncensored estimation likelihood is unchanged.
 
 The original source numerical probe additionally checks all48 R quantities,
 nine full joint covariance entries/600 probabilities/latent/observed-mean

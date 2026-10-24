@@ -366,11 +366,14 @@ pub fn fit_tobit(
     .map(|row| row.iter().zip(&scales).map(|(a, s)| a / s).collect())
     .collect();
   qr_decompose_with_response(&x, &vec![0.0; n])?;
+  // Scaling must depend only on values used by the likelihood: a censored
+  // recording's magnitude is irrelevant, as is a bound with no censored rows.
   let response_scale = problem
     .response
     .iter()
-    .map(|y| y.abs())
-    .fold(lower_limit.abs(), f64::max);
+    .map(|&y| if y <= lower_limit { lower_limit } else { y })
+    .map(f64::abs)
+    .fold(0.0, f64::max);
   if !response_scale.is_finite() || response_scale <= 0.0 {
     return Err(invalid("degenerate response scale"));
   }

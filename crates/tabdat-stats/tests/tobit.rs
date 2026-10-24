@@ -240,6 +240,78 @@ fn explicit_invalid_design_iteration_scale_and_inference_failures() {
 }
 
 #[test]
+fn an_unused_censor_bound_cannot_change_a_regular_gaussian_fit() {
+  let p = EstimationProblem::new("y", vec![], vec![-1.0, 0.0, 1.0], vec![vec![]; 3]).unwrap();
+  let base = fit_tobit(&p, -2.0, &TobitOptions::default()).unwrap();
+  let far = fit_tobit(&p, -1e8, &TobitOptions::default()).unwrap();
+  close(far.coefficients[0].value, 0.0);
+  close(far.scale.value, (2.0_f64 / 3.0).sqrt());
+  close(base.log_likelihood, far.log_likelihood);
+  for (a, b) in base
+    .covariance
+    .iter()
+    .flatten()
+    .zip(far.covariance.iter().flatten())
+  {
+    close(*a, *b);
+  }
+  close(
+    tobit_predict_row(&base, &[]).unwrap().0,
+    tobit_predict_row(&far, &[]).unwrap().0,
+  );
+  // Censor probabilities/observed means legitimately depend on the new bound;
+  // only the entirely uncensored estimation likelihood and latent fit are equal.
+  assert!(tobit_predict_row(&far, &[]).unwrap().1 > tobit_predict_row(&base, &[]).unwrap().1);
+  assert!(
+    tobit_average_marginal_effects(&far)
+      .unwrap()
+      .effects
+      .is_empty()
+  );
+}
+
+#[test]
+fn extreme_below_limit_recordings_cannot_change_fit_predictions_or_effects() {
+  let p = EstimationProblem::new(
+    "y",
+    vec!["x".into()],
+    vec![0.0, 1.0, 2.0, 3.0],
+    vec![vec![-1.0], vec![0.0], vec![1.0], vec![0.0]],
+  )
+  .unwrap();
+  let mut changed = p.clone();
+  changed.response[0] = -1e8;
+  let base = fit_tobit(&p, 0.0, &TobitOptions::default()).unwrap();
+  let far = fit_tobit(&changed, 0.0, &TobitOptions::default()).unwrap();
+  assert_eq!(changed.response[0], -1e8);
+  close(base.log_likelihood, far.log_likelihood);
+  close(base.scale.value, far.scale.value);
+  for (a, b) in base.coefficients.iter().zip(&far.coefficients) {
+    close(a.value, b.value);
+    close(a.standard_error, b.standard_error);
+  }
+  for (a, b) in base
+    .covariance
+    .iter()
+    .flatten()
+    .zip(far.covariance.iter().flatten())
+  {
+    close(*a, *b);
+  }
+  for row in &p.design_matrix {
+    let a = tobit_predict_row(&base, row).unwrap();
+    let b = tobit_predict_row(&far, row).unwrap();
+    close(a.0, b.0);
+    close(a.1, b.1);
+    close(a.2, b.2);
+  }
+  let a = tobit_average_marginal_effects(&base).unwrap();
+  let b = tobit_average_marginal_effects(&far).unwrap();
+  close(a.effects[0].value, b.effects[0].value);
+  close(a.effects[0].standard_error, b.effects[0].standard_error);
+}
+
+#[test]
 fn current_prediction_and_continuous_mean_derivative_are_not_latent_slopes() {
   let r = reference();
   let p = problem(&r, 1);
