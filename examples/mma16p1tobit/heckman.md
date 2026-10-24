@@ -1,7 +1,7 @@
 # Heckman two-step source/reference — WIP
 
-This is the next **unimplemented native** slice, not a delivered command or
-published coefficient-table replication. Exact author analysis:
+This is an **in-progress native** slice: the statistical kernel is validated,
+but there is no delivered terminal command or published coefficient-table replication. Exact author analysis:
 `mma16p1tobit.do` (March2005) §2A, associated with MMA §16.2.1 pp530–531.
 The same original export has200 selection observations and130 observed outcomes:
 selection `dy ~ lnwage`, outcome `ytrunc ~ lnwage`, intercept in both.
@@ -69,6 +69,41 @@ input/output/reference fingerprints remain unchanged. Initial top-level chol
 printing and named-scalar field suffixes were caught and fixed; their failed
 CSV/inventory diagnostics are retained, not counted as passing runs.
 
+## Validated kernel, not yet a terminal workflow
+
+`crates/tabdat-stats/src/heckman.rs` exports `fit_heckman_two_step` and
+`heckman_predict_row`. Inputs are explicit eligible-selection and selected-outcome
+problems; supplied original samples must match the exact ordered subset. Weights/
+clusters, deficient rank, invalid flags, nonregular sigma/rho and unsupported
+represented Mills values fail rather than silently substituting inference.
+Bounds: at most10000 eligible rows,32 parameters per stage (including Mills),
+N*q²+N_selected*p²<=20million. Intercept fits center at min(selected outcome),
+so the scale is the observed selected range; otherwise max(abs(y)). Relative
+sigma<=1e-12 is numerically degenerate. No ridge, pseudoinverse or rho clipping.
+
+Two independently differentiated R glm/lm/pinned-covariance controls validate98
+quantities (26 covariance entries) and3600 helper predictions, with/without
+intercepts and an excluded selection predictor. Seven kernel tests also cover
+exact samples, rank/separation/bounds/iteration/scale/rho failures, affine outcome
+units (including1e-9), large intercept shifts, row permutation, IID replication
+and covariance1/replication scaling, and equation-specific/tail predictions.
+On the original source,55 numerical quantities plus3 separately bounded,
+coordinate-dependent solver certificates pass, including13 covariance entries,
+1000 core-helper predictions and200 fitted-selection linear indices;1400
+original cells/ordinals remain exact. This is a kernel probe, **not DuckDB/CLI
+execution or a completed analysis workflow**.
+
+A frozen-source independent read-only statistical review of `ad664c5` found no
+issues; it did not execute tests. Parent current-code checks passed: seven
+focused tests,192 passing stats-crate tests across45 hash-checked current artifacts
+plus one pre-existing ignored external-source test, all-target stats Clippy,
+workspace format/diff checks and zero stats doctests. The original broad nextest
+attempt compiled then timed out in discovery with no test outcomes; it remains
+incomplete. The bounded direct-artifact fallback verified all45 inventory hashes
+before/after, retained the identical passing focused artifact and ran the other44
+artifacts to exit0. This is local macOS evidence, not CI/platform certification.
+Reverse-consumer/integration checks remain for the frontend slice.
+
 ## Identification and remaining implementation
 
 There is **no excluded selection predictor** in the author design. Identification
@@ -79,9 +114,8 @@ implied. Negative fitted rho is an estimate, not evidence of a causal mechanism.
 The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-select-bounded-heckman-two-step-contract-wip)
 sets the exact two-stage eligibility/missingness policy, explicit twostep mode,
 current latent/selection/Mills/conditional-selected/observed-contribution point
-predictions and state/failure requirements. Native kernel, parser/owned state,
-reporting, actual scripts, synthetic references and independent review remain
-required. Do not present the existing parser-only bare heckman form as ML or
+predictions and state/failure requirements. Parser/owned state, reporting, actual scripts, runtime/data failure coverage
+and independent integration review remain required. Do not present the existing parser-only bare heckman form as ML or
 silently reinterpret it as two-step. Conditional-selected means differ from
 Tobit truncation, and the zero-filled observed-contribution mean is not an
 imputation of unobserved outcomes or a causal effect.

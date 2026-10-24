@@ -213,18 +213,18 @@ fn affine_outcome_units_and_large_intercept_shift_preserve_two_step_geometry() {
       *y = *y * scale + shift;
     }
     let transformed = fit(&s, &p);
-    close(transformed.sigma, f.sigma * scale);
+    close(transformed.sigma / scale, f.sigma);
     close(transformed.rho, f.rho);
     for (i, b) in f.coefficients.iter().enumerate() {
       close(
-        transformed.coefficients[i].value,
-        b.value * scale + if i == 0 { shift } else { 0.0 },
+        (transformed.coefficients[i].value - if i == 0 { shift } else { 0.0 }) / scale,
+        b.value,
       );
       for (j, v) in f.covariance[i].iter().enumerate() {
-        close(transformed.covariance[i][j], v * scale * scale);
+        close(transformed.covariance[i][j] / scale / scale, *v);
       }
     }
-    close(transformed.outcome_sse, f.outcome_sse * scale * scale);
+    close(transformed.outcome_sse / scale / scale, f.outcome_sse);
   }
 }
 

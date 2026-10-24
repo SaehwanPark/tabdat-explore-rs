@@ -64,7 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
-| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — corrected two-step reference on original200/130 selection/outcome rows |58 R glm/lm/unmodified sampleSelection covariance quantities and1200 predictions; no exclusion restriction; native implementation pending; distinct from the RAND selection illustration below |
+| MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | WIP — validated bounded corrected two-step kernel on original200/130 selection/outcome rows, terminal workflow pending |58 original R gates plus98 synthetic quantities/3600 synthetic predictions; separate covariance blocks, no exclusion restriction; owned runtime/parser/reporting/scripts remain; distinct from the RAND selection illustration below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
@@ -611,7 +611,25 @@ Initial reference stdout/schema defects (top-level chol printing, named scalar
 suffixes) were caught by CSV/inventory validation and corrected, with diagnostics
 preserved. No numerical tolerance was widened.
 
-This remains source/reference WIP, not native support or a delivered workflow.
+Kernel milestone: `crates/tabdat-stats/src/heckman.rs` now implements explicit
+two-problem sample identity, existing observed-probit/QR reuse, full augmented
+outcome generated-regressor covariance, sigma/rho points and five projections.
+Two synthetic independent R cases cover98 quantities/26 covariance entries and
+3600 predictions; seven focused tests include affine units, permutation and
+IID replication, exact identity and rank/separation/scale/rho/unsupported failures.
+Original-source native kernel probe passes55 numerical quantities and3 separately
+bounded coordinate-dependent certificates,13 covariance entries,1000 core-helper
+projections plus200 fitted-selection indices and1400 exact source cells/ordinals.
+Read-only independent frozen-source review found no issues; parent current-code
+execution passed192 stats tests/1 pre-existing ignored across45 current
+hash-checked artifacts. The all-stats nextest discovery timeout remains incomplete;
+exact-inventory bounded direct execution supplied the regression evidence, with
+all-target stats Clippy/workspace format/diff/zero-doctest checks. See the
+[source/kernel notes](../../examples/mma16p1tobit/heckman.md) for numerical limits,
+provenance and remaining validation. No native command, owned runtime state,
+DuckDB sample/prediction path or actual-script workflow is yet delivered.
+
+This remains native-integration WIP, not a delivered selection workflow.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
