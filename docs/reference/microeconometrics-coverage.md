@@ -392,6 +392,72 @@ with zero cases. No CI checks are available. These bounded local checks do not
 complete unrestricted preferred scales, Chapter15 or platform certification.
 Independent nest scales and remaining work stay required.
 
+### MMA-NESTED-SOURCE-AUDIT bounded reference audit and evidence
+
+Before offering unrestricted preferred nest-specific inference on the fishing
+source, audit the exact same1,182 decisions/4,728 rows and lower `p q`, upper
+`dshore dshorey` design. This does not add native estimator syntax or replace the
+published earlier variant/common-scale extension. Existing numerical gates stay
+unchanged; no unresolved entry is counted complete or excluded.
+
+Acceptance/failure cases:
+
+1. Bind the original source/data hashes and both author Stata8/LIMDEP programs;
+   distinguish raw lower features from upper utilities and their normalization.
+2. Check a stable preferred likelihood/score against fresh R/mlogit evaluations
+   at finite positive nest scales, with independent symbolic derivatives where
+   applicable. Audit the reciprocal-scale limit rather than treating a nearly
+   singular, large-scale optimizer printout as a finite regular MLE.
+3. Profile the source shore scale with multiple deterministic starts and validate
+   interior stationarity/full observed information before any covariance claim.
+   Boundary/failed/unresolved profiles do not supply ordinary unrestricted Wald
+   or LR inference, global-maximum proofs, or an approved exclusion.
+4. Audit the earlier published Stata8 point and author LIMDEP parameterization
+   against explicit likelihood/score/curvature, including source preparation
+   precision. Keep published output, a stationary reference and an inferred
+   historical-software mechanism distinct; do not invent a cause or widen gates.
+
+The [source/boundary audit](../../examples/mma15p1mnl/README.md#nested-choice-source-and-boundary-audit)
+now emits/checks1068 diagnostics. Fresh mlogit2.0.0 controls at four finite positive
+scale points agree with the centered reciprocal-scale likelihood/full score and
+probabilities. Eleven deterministic starts reach the diagnostic closure
+`ks=0,kb≈.0538106827551`, LL−1211.43655668914; the derivative into positive shore
+reciprocal scale is−2.09714424048. Independent base-R `deriv3` validates value/full
+score and positive five-free-direction observed curvature in the declared
+numerical coordinates. Twelve profiles/three starts each retain possible active
+boat bounds. Raw L-BFGS code52 remains visible; separate observed-Newton polishing,
+positive free curvature, score/step and active-bound KKT checks certify the
+reported candidates. Three Hessian step sizes provide derivative sensitivity.
+This is a local boundary/profile diagnosis, **not a global proof or finite
+positive-scale unrestricted MLE**. No ordinary boundary covariance/LR is emitted;
+regular native unrestricted preferred fitting remains required.
+
+The original Stata printed point reproduces its printed likelihood but has mean
+scaled score≈1.31e-4 and scaled Newton step≈.658, versus the double stationary
+control≈3.50e-14/5.92e-12. The64 rounding vertices under each of float64/explicit
+float32 preparation remain nonstationary; this is sensitivity evidence, not a
+certificate over every interior rounding-box point. Float32 holds the double
+parameters fixed against changed inputs, not a re-fit. Source logs show236
+iterations/33 BFGS resets; the exact proprietary stopping mechanism is not claimed.
+LIMDEP's raw lower `dshorey=1-(d3y+d4y)` maps through
+`gamma0=lambda_s*delta_shore+(lambda_s-lambda_b)*delta_y` and
+`gammay=lambda_b*delta_y`; its printed point reproduces the stationary likelihood
+and nearby parameters, not preferred-normalized or printed-SE parity.
+
+The checker binds all five original source/data hashes and prepared tokens,
+parses original printed points and independently recomputes boundary/historical
+likelihoods/scores and128 rounding vertices. Corruption testing exposed a missing
+stationary-control acceptance gate: coherent nonstationary control metadata could
+pass agreement checks. Both layers now require the double control's score/step
+below1e-10 and positive information; the float32 sensitivity control is not
+mislabelled stationary. Fresh R/reference/checker and all eight permanent
+corruption regressions, including standalone R rejection with no partial output,
+pass while preserving nine original inputs. One independent read-only review
+confirmed that finding; its targeted follow-up confirms resolution, with execution
+performed by the parent rather than the reviewer. Python syntax/diff checks pass.
+No Rust/native behavior changed or full-workspace rerun was needed; this is not
+CI/platform certification, new native capability or an approved exclusion.
+
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 
 The [native workflows and independent audit](../../examples/mma21p1panel/README.md)
