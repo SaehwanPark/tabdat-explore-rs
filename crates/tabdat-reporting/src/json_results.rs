@@ -114,6 +114,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
+    | Command::Streg { .. }
     | Command::Truncreg { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
@@ -710,6 +711,66 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count":result.observation_count,"effects":result.effects}),
       "TruncatedGaussianMarginalEffectsResult",
     ),
+    ExecutionResult::Weibull(result) => {
+      let mut data = serde_json::to_value(result).expect("finite Weibull result");
+      let object = data.as_object_mut().expect("Weibull result object");
+      for key in [
+        "fitted_xb",
+        "fitted_hazard",
+        "fitted_cumulative_hazard",
+        "fitted_survival",
+        "predictor_names",
+      ] {
+        object.remove(key);
+      }
+      data["estimator"] = json!("streg_weibull");
+      data["distribution"] = json!("weibull_proportional_hazards_entry_zero_single_spell");
+      data["predictors"] = json!(result.predictor_names);
+      data["support"] = json!("joint_finite_sample_then_positive_time_exact_binary_event_or_error");
+      data["covariance"] = json!(if result.robust {
+        "robust_full_joint_observed_information_score_sandwich"
+      } else {
+        "model_based_full_joint_observed_information"
+      });
+      data["covariance_parameter_names"] = json!(
+        result
+          .coefficients
+          .iter()
+          .map(|c| c.name.as_str())
+          .chain(std::iter::once("lnshape"))
+          .collect::<Vec<_>>()
+      );
+      data["covariance_parameter_order"] = json!("ph_coefficients_then_lnshape");
+      data["reference_distribution"] = json!("asymptotic_standard_normal");
+      data["confidence_level"] = json!(95.0);
+      data["shape_interval"] =
+        json!("exponentiated_logshape_normal_wald_95_shape_one_test_not_shape_zero");
+      data["log_likelihood_convention"] =
+        json!("event_log_weibull_density_and_nonevent_log_survival");
+      data["normalized_log_likelihood_convention"] =
+        json!("duration_density_plus_fixed_sum_event_log_time");
+      data["null_model"] = json!(if result.include_intercept {
+        "intercept_and_shape_refitted_same_sample"
+      } else {
+        "zero_ph_index_shape_refitted_same_sample"
+      });
+      data["likelihood_ratio_reference_distribution"] = json!(
+        result
+          .likelihood_ratio_p_value
+          .map(|_| "asymptotic_chi_square")
+      );
+      data["omnibus_wald_reference_distribution"] =
+        json!(result.omnibus_wald.p_value.map(|_| "asymptotic_chi_square"));
+      data["survival_interpretation"] =
+        json!("net_cause_specific_not_all_cause_survival_or_competing_risk_cumulative_incidence");
+      data["converged"] = json!(true);
+      data["convergence_coordinate_system"] =
+        json!("rms_predictors_positive_rescaled_natural_shape");
+      data["convergence_score_normalization"] = json!("per_observation_mean");
+      data["convergence_step_normalization"] = json!("1_plus_abs_parameter");
+      data["convergence_tolerance"] = json!(1e-10);
+      (data, "WeibullResult")
+    }
     ExecutionResult::Tobit(result) => (
       json!({
         "estimator":"tobit", "distribution":"iid_homoskedastic_gaussian",

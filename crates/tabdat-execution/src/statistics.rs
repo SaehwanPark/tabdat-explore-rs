@@ -1147,6 +1147,17 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::WeibullFit(_))) {
+      return self.execute_weibull_prediction(command);
+    }
+    if matches!(
+      command.kind,
+      PredictKind::Hazard | PredictKind::CumulativeHazard | PredictKind::Survival
+    ) {
+      return Err(RuntimeError::StregFailed(
+        "predict hazard/cumhaz/survival requires a prior successful Weibull streg fit".into(),
+      ));
+    }
     if matches!(
       command.kind,
       PredictKind::SelectionMills

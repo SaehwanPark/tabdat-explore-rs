@@ -1,6 +1,6 @@
 # WIP: original Table17.8 Weibull duration regression
 
-**Status: pure stats kernel/reference controls pass. Native `streg` execution is NOT installed.**
+**Status: native Weibull execution/prediction/reporting and original-data audit pass focused checks; broad regression/final review remain pending. Draft PR #333 is NOT ready to merge.**
 This is one ongoing vertical slice; do not merge parser/kernel-only work or start
 another slice before the complete workflow passes its checks.
 
@@ -125,9 +125,11 @@ model-based/1942 robust gates, including an independently bracketed scalar shape
 only null (not a fake intercept or fixed shape), and reversed-row covariance/
 owned-sample identity passes. Original intercept-reference artifacts remain byte-
 identical after extending the reference generator. The original3343-spell R
-reference passes its separate full observed/sandwich reconstruction, but original
-native execution is NOT yet checked. Shared runtime/reporting/prediction and
-whole affected-crate checks remain pending. With noconstant the PH scale is fixed;
+reference passes its separate full observed/sandwich reconstruction. Initial
+native execution now also passes2031 R gates/all1764 covariance entries,
+197237 native cells/147092 exact original source cells,276 author printed facts
+including14 Table17.8 cells and all140406 rounded ASCII fields. Original native
+JSON/text CSV exports are byte-identical. With noconstant the PH scale is fixed;
 unlike a free intercept, this specification is not generally time-unit invariant.
 
 Reference reproduction (development only):
@@ -147,6 +149,35 @@ when unrepresentable, never spuriously exact or zero-tailed. Prediction survival
 can round to0 for huge integrated hazard even when H cannot itself be represented;
 hazard/H overflow fails, while a genuine probability endpoint is preserved.
 
+Runtime boundary: four `weibull_contract` tests pass all four covariance/intercept
+combinations, joint finite sample identities, current-X/time predictions without
+event data, typed DOUBLE/NULL order, labels/owned-fit preservation, support/target/
+schema/overflow atomic failure, genuine probability0 endpoints, unsupported native
+variants and stale-inference clearing. Two new parser tests plus the existing count
+prediction target pass. Three actual-script root tests pass both CLI modes,
+23600 control cells, source/file guards and shared-wrong native/R beta-shape cross-
+covariance/normal+shape+Wald tails/survival corruptions. Workspace all-target Clippy
+`-D warnings` passes after an initial timeout with NO passing claim for that attempt.
+Full affected-crate/reverse tests and final docs/review are still required.
+
+Original-data run (new directory, prepared `duration.csv`; see source preparation
+and caveats in README.md):
+
+```sh
+/path/target/debug/tabdat-explore-rs --json -f /path/examples/mma17p4duration/weibull.td > native.json
+Rscript /path/examples/mma17p4duration/weibull_reference.R duration.csv reference ema1996.dta
+python3 /path/examples/mma17p4duration/check_weibull_source.py mma17p4duration.do mma17p4duration.txt ema1996.dta ema1996.asc . reference
+```
+
+The script writes `weibull_predictions.csv` (59 columns), restores source UI and
+both interactions, and publishes no replacement of an existing file. JSON emits
+`WeibullResult` with full PH beta/lnshape covariance/shape and likelihood conventions;
+no fitted arrays are exposed in this CLI envelope. Final grouped score balances are
+included-model equations, NOT specification/censoring tests or causal UI evidence.
+Native exponential/cluster remain explicitly unsupported; the merged exponential
+composition is unchanged. The source validators reuse only standard-library matrix/
+CSV/numerical helpers from the exponential audit, not its estimator likelihood.
+
 Finish gates: focused numerical/runtime/new script tests first, then stats and
 reverse-dependent packages/root consumers proportional to new shared result/state/
 predict boundaries; relevant doctests/Clippy/format/diff. Early draft PR,
@@ -155,6 +186,12 @@ safe branch cleanup. Model/source/R evidence and capability docs/ledger must
 clearly distinguish source audit, parser acceptance, execution and tested support.
 
 ## Ordered implementation / handoff
+
+Current next step: full affected/reverse-dependent regression scope, formal public
+capability/machine-contract documentation, final numerical/state/source review,
+then PR readiness/merge/cleanup. No new slice before this one is merged. The
+implementation sequence below records the original plan, now executed through
+its actual source workflow; it is not an instruction to rebuild the kernel.
 
 Risk: **high** (new estimator, joint shape inference and shared model/predict DTOs).
 First three actions: commit/open this draft; implement independent source/control
