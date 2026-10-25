@@ -7,7 +7,10 @@ Table17.8 exponential coefficient column. Original `ema1996.dta`:3343 one-record
 spells,1073 full-time events,20887 observed two-week intervals, time1..28;
 all40 author regressors plus intercept, complete finite sample. `censor1=1`
 is full-time re-employment; part-time/unknown-status re-employment and continued
-joblessness are non-events for this cause. Original source ordinals retained.
+joblessness are non-events for this cause. Also retain the102 original rows
+whose four status flags are all zero: the author still treats censor1=0 as
+censored. Flags are nonoverlapping, not exhaustive; do not impose one-hot
+membership or invent a status. Original source ordinals retained.
 
 Use native `poisson censor1 ... , offset(log_spell) robust` for the EXACT
 exponential cause-specific likelihood parameter estimates and robust covariance:
