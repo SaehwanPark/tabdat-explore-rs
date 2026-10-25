@@ -81,6 +81,7 @@ impl Command {
       | Self::Zip { .. }
       | Self::Zinb { .. }
       | Self::Tobit { .. }
+      | Self::Truncreg { .. }
       | Self::Heckman { .. }
       | Self::Nl { .. }
       | Self::Streg { .. }

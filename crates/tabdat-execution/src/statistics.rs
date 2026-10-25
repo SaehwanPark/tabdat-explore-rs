@@ -1064,6 +1064,7 @@ impl Session {
     if command.subcommand == EstatSubcommand::Margins {
       return match &self.estimation {
         Some(EstimationState::TobitFit(state)) => self.execute_tobit_margins(state),
+        Some(EstimationState::TruncatedGaussianFit(state)) => self.execute_truncreg_margins(state),
         Some(EstimationState::Probit(state)) => self.execute_probit_margins(state),
         Some(EstimationState::MultinomialLogit(state)) => self.execute_mlogit_margins(state),
         Some(EstimationState::NormalizedCommonNestedLogit(_)) => Err(RuntimeError::EstatMarginsFailed {
@@ -1156,6 +1157,12 @@ impl Session {
       return Err(RuntimeError::HeckmanFailed(
         "predict mills/ycond/yexpected requires a prior successful Heckman twostep fit".into(),
       ));
+    }
+    if matches!(
+      self.estimation,
+      Some(EstimationState::TruncatedGaussianFit(_))
+    ) {
+      return self.execute_truncreg_prediction(command);
     }
     if command.kind == PredictKind::TobitMean
       && !matches!(self.estimation, Some(EstimationState::TobitFit(_)))

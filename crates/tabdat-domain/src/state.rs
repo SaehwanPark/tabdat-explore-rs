@@ -101,6 +101,7 @@ pub enum EstimationFamily {
   NonNormalizedNestedLogit,
   NormalizedCommonNestedLogit,
   Tobit,
+  TruncatedGaussian,
   Heckman,
   Nonlinear,
   Poisson,
@@ -245,6 +246,7 @@ pub enum EstimationState {
   Tobit(ModelState),
   /// Owned Gaussian fit/sample and retained-X effect-gradient summaries.
   TobitFit(Box<tabdat_stats::TobitResult>),
+  TruncatedGaussianFit(Box<tabdat_stats::TruncatedGaussianResult>),
   Heckman(ModelState),
   HeckmanTwoStepFit(Box<tabdat_stats::HeckmanTwoStepResult>),
   Nonlinear(ModelState),
@@ -317,6 +319,7 @@ impl EstimationState {
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,
+      Self::TruncatedGaussianFit(..) => EstimationFamily::TruncatedGaussian,
       Self::Heckman(..) | Self::HeckmanTwoStepFit(..) => EstimationFamily::Heckman,
       Self::Nonlinear(..) => EstimationFamily::Nonlinear,
       Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,

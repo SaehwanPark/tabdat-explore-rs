@@ -34,6 +34,7 @@ mod scripts;
 mod statistics;
 mod tobit;
 mod transforms;
+mod truncreg;
 
 struct AffineCombination {
   offset: f64,
@@ -160,6 +161,7 @@ impl Session {
       Command::Nlogit { command } => self.execute_nlogit(&command),
       Command::NlogitNormalizedCommon(command) => self.execute_nlogit_normalized_common(&command),
       Command::Tobit { command } => self.execute_tobit(&command),
+      Command::Truncreg { command } => self.execute_truncreg(&command),
       Command::Heckman { command } if command.twostep => self.execute_heckman(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),

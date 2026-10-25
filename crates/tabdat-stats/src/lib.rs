@@ -16,6 +16,7 @@ mod distributions;
 pub mod error;
 pub mod estimates;
 mod fixed_effects;
+mod gaussian_mle;
 mod heckman;
 pub mod iv;
 mod iv_confidence;
@@ -39,6 +40,14 @@ pub mod result;
 pub mod sample;
 mod tobit;
 pub mod traits;
+mod truncated_gaussian;
+
+pub use truncated_gaussian::{
+  MAX_TRUNCATED_GAUSSIAN_OBSERVATIONS, MAX_TRUNCATED_GAUSSIAN_PARAMETERS,
+  MAX_TRUNCATED_GAUSSIAN_WORK, TruncatedGaussianMarginalEffects, TruncatedGaussianOptions,
+  TruncatedGaussianPredictionKind, TruncatedGaussianResult, fit_truncated_gaussian,
+  truncated_gaussian_average_marginal_effects, truncated_gaussian_predict_row,
+};
 pub mod ttest;
 
 pub use binary::{

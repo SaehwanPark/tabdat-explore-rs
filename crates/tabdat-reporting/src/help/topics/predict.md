@@ -16,6 +16,13 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   Missing/nonfinite current predictors give NULL; numerical failure aborts before
   publication. Current outcome values are unused. At most10000 current rows.
   No auxiliary prediction options; retained-X effects use `estat margins`.
+- Lower-truncated Gaussian regression: xb (underlying latent mean), pr
+  (population retention P(Y*>lower|X), NOT conditional probability1), mean
+  (conditional truncated mean E[Y*|Y*>lower,X], NOT censored mean).
+  Current X only; missing/nonfinite predictors give NULL. At most10000 current
+  rows, point-only without auxiliary options. Unrepresentable conditional means
+  fail atomically; finite xb/pr do not require an unnecessary Mills division.
+  Retained-X conditional-mean effects use `estat margins`; see help truncreg.
 - Explicit Heckman two-step: xb (latent X beta), pr (selection probability),
   mills (selection inverse Mills ratio), ycond (conditional-selected outcome
   mean) or yexpected (zero-filled observed contribution). Current y/d are unused.

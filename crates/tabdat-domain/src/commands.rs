@@ -250,6 +250,8 @@ pub enum Command {
   Qreg { command: QregCommand },
   /// Fit a tobit (censored) regression model (execution is deferred).
   Tobit { command: TobitCommand },
+  /// Fit IID Gaussian regression conditional on outcome above a known limit.
+  Truncreg { command: TruncregCommand },
   /// Explicit two-step sample selection; the default ML form remains deferred.
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
@@ -699,6 +701,17 @@ pub struct TobitCommand {
   pub include_intercept: bool,
 }
 
+/// Known fixed lower truncation, not censoring; unsupported covariance variants
+/// are not accepted or silently reinterpreted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TruncregCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub lower_limit: String,
+  pub include_intercept: bool,
+}
+
 /// Sample selection request. Only explicit `twostep` has a native runtime;
 /// the historical bare form is not silently reinterpreted as two-step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -977,7 +990,8 @@ pub enum PredictKind {
   FixedEffect,
   /// Family-defined probabilities: binary/choice, Tobit uncensoring or selection.
   Pr,
-  /// E[max(lower,Y*)|X] after a lower-censored Gaussian Tobit fit (`mean`).
+  /// Family-defined Gaussian mean (`mean`): E[max(lower,Y*)|X] for Tobit,
+  /// E[Y*|Y*>lower,X] for truncated regression. Retains its legacy wire tag.
   TobitMean,
   /// Selection inverse Mills ratio phi(Z gamma)/Phi(Z gamma).
   SelectionMills,
