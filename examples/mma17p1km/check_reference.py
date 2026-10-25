@@ -63,22 +63,31 @@ def check(directory, input_csv, reference_csv):
       expected.update(survival_se=None, survival_lower=None, survival_upper=None)
     for name, value in expected.items():
       close(number(a[name]), value)
+  return checks, check_steps_and_svg(directory, reference)
+
+
+def check_steps_and_svg(directory, reference, prefix="strikes", hazard_bands=False):
+  """Audit the shared right-continuous step representation, including actual pixels."""
+  directory = Path(directory)
   # Independently construct the staircase from the reference, not native table.
   previous = dict(time="0", survival="1", survival_lower="1", survival_upper="1", cumhaz="0")
+  if hazard_bands:
+    previous.update(cumhaz_lower="0", cumhaz_upper="0")
   expected_steps = [dict(previous, phase="0")]
   for row in reference:
     expected_steps.append(dict(previous, time=row["time"], phase="0"))
     previous = {name: row[name] for name in previous}
     expected_steps.append(dict(previous, phase="1"))
-  steps = rows(directory / "strikes_steps.csv")
+  steps = rows(directory / f"{prefix}_steps.csv")
   assert len(steps) == len(expected_steps)
   for a, b in zip(steps, expected_steps):
     assert set(a) == set(b)
     for name in a:
       close(number(a[name]), number(b[name]))
   vertices = 0
-  for filename, variables in [("strikes_survival.svg", ["survival", "survival_lower", "survival_upper"]),
-      ("strikes_cumhaz.svg", ["cumhaz"])]:
+  hazard_variables = ["cumhaz", "cumhaz_lower", "cumhaz_upper"] if hazard_bands else ["cumhaz"]
+  for filename, variables in [(f"{prefix}_survival.svg", ["survival", "survival_lower", "survival_upper"]),
+      (f"{prefix}_cumhaz.svg", hazard_variables)]:
     svg = ET.parse(directory / filename).getroot()
     attrs = svg.attrib
     assert int(attrs["data-candidate-rows"]) == len(steps)
@@ -110,7 +119,7 @@ def check(directory, input_csv, reference_csv):
       for actual, expected in zip(actual_pixels, expected_pixels):
         assert all(abs(float(a)-b) < .001 for a, b in zip(actual, expected)), (actual, expected)
       vertices += len(expected_pixels)
-  return checks, vertices
+  return vertices
 
 
 if __name__ == "__main__":
