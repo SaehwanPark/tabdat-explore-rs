@@ -1,5 +1,10 @@
 # Empirical exponential full-time re-employment hazard
 
+The separate [native Weibull Table17.8 column](weibull.md) shares this exact source
+and preparation, but has its own duration likelihood/retained family, current-time
+point modes, full beta/lnshape inference, script and independent source audit.
+The exclusions below describe this exponential composition, not all app features.
+
 ## Implemented contract
 
 Cameron–Trivedi (2005) §17.11 pp.603–608, `mma17p4duration.do`,

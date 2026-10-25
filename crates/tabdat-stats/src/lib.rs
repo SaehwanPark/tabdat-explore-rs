@@ -41,6 +41,13 @@ pub mod sample;
 mod tobit;
 pub mod traits;
 mod truncated_gaussian;
+mod weibull;
+
+pub use weibull::{
+  MAX_WEIBULL_OBSERVATIONS, MAX_WEIBULL_PARAMETERS, MAX_WEIBULL_WORK, WeibullEstimate,
+  WeibullOmnibusWald, WeibullOptions, WeibullPredictionKind, WeibullResult, WeibullShape,
+  fit_weibull, weibull_predict_row,
+};
 
 pub use truncated_gaussian::{
   MAX_TRUNCATED_GAUSSIAN_OBSERVATIONS, MAX_TRUNCATED_GAUSSIAN_PARAMETERS,

@@ -247,6 +247,8 @@ pub enum EstimationState {
   /// Owned Gaussian fit/sample and retained-X effect-gradient summaries.
   TobitFit(Box<tabdat_stats::TobitResult>),
   TruncatedGaussianFit(Box<tabdat_stats::TruncatedGaussianResult>),
+  /// Owned entry-zero Weibull PH fit with full joint shape inference.
+  WeibullFit(Box<tabdat_stats::WeibullResult>),
   Heckman(ModelState),
   HeckmanTwoStepFit(Box<tabdat_stats::HeckmanTwoStepResult>),
   Nonlinear(ModelState),
@@ -328,7 +330,7 @@ impl EstimationState {
       }
       Self::ZeroInflatedPoisson(..) => EstimationFamily::ZeroInflatedPoisson,
       Self::ZeroInflatedNegativeBinomial(..) => EstimationFamily::ZeroInflatedNegativeBinomial,
-      Self::Survival(..) => EstimationFamily::Survival,
+      Self::Survival(..) | Self::WeibullFit(..) => EstimationFamily::Survival,
       Self::InstrumentalVariables(..) => EstimationFamily::InstrumentalVariables,
       Self::PanelLinear(..) | Self::FixedEffects(..) | Self::RandomEffects(..) => {
         EstimationFamily::PanelLinear

@@ -32,6 +32,7 @@ mod poisson;
 mod quantile;
 mod scripts;
 mod statistics;
+mod streg;
 mod tobit;
 mod transforms;
 mod truncreg;
@@ -160,6 +161,7 @@ impl Session {
       Command::Clogit { command } => self.execute_clogit(&command),
       Command::Nlogit { command } => self.execute_nlogit(&command),
       Command::NlogitNormalizedCommon(command) => self.execute_nlogit_normalized_common(&command),
+      Command::Streg { command } => self.execute_streg(&command),
       Command::Tobit { command } => self.execute_tobit(&command),
       Command::Truncreg { command } => self.execute_truncreg(&command),
       Command::Heckman { command } if command.twostep => self.execute_heckman(&command),

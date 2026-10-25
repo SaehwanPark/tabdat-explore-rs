@@ -797,6 +797,8 @@ pub enum ExecutionResult {
   NonNormalizedNestedLogit(Box<tabdat_stats::NonNormalizedNestedLogitResult>),
   NormalizedCommonNestedLogit(Box<tabdat_stats::NormalizedCommonNestedLogitResult>),
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
+  /// Entry-zero Weibull PH fit with full beta/lnshape joint inference.
+  Weibull(Box<tabdat_stats::WeibullResult>),
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.
   Tobit(Box<tabdat_stats::TobitResult>),
   TruncatedGaussian(Box<tabdat_stats::TruncatedGaussianResult>),

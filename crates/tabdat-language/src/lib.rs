@@ -5057,6 +5057,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "mills"
           | "ycond"
           | "yexpected"
+          | "hazard"
+          | "cumhaz"
+          | "survival"
           | "pmf"
           | "cdf"
           | "outcome"
@@ -5092,6 +5095,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "mills"
         | "ycond"
         | "yexpected"
+        | "hazard"
+        | "cumhaz"
+        | "survival"
         | "spatial_lag"
         | "posterior_predictive"
         | "interval"
@@ -5119,6 +5125,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "mills"
         | "ycond"
         | "yexpected"
+        | "hazard"
+        | "cumhaz"
+        | "survival"
         | "pmf"
         | "cdf"
         | "spatial_lag"
@@ -5130,7 +5139,12 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   }
   if kinds_present.len() > 1 {
     return Err(ParseError::new(
-      if kinds_present.contains(&"xbu") || kinds_present.contains(&"u") {
+      if kinds_present
+        .iter()
+        .any(|k| matches!(*k, "hazard" | "cumhaz" | "survival"))
+      {
+        "predict hazard, cumhaz and survival cannot be combined with another prediction kind"
+      } else if kinds_present.contains(&"xbu") || kinds_present.contains(&"u") {
         "predict cannot combine xbu or u with another prediction kind"
       } else if kinds_present.contains(&"pmf") || kinds_present.contains(&"cdf") {
         "predict pmf()/cdf() cannot be combined with another prediction kind"
@@ -5205,6 +5219,12 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::Residuals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
+  } else if options.iter().any(|opt| opt.name == "hazard") {
+    PredictKind::Hazard
+  } else if options.iter().any(|opt| opt.name == "cumhaz") {
+    PredictKind::CumulativeHazard
+  } else if options.iter().any(|opt| opt.name == "survival") {
+    PredictKind::Survival
   } else if options.iter().any(|opt| opt.name == "mean") {
     PredictKind::TobitMean
   } else if options.iter().any(|opt| opt.name == "mills") {

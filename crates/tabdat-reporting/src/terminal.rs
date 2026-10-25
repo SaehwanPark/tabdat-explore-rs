@@ -1879,6 +1879,72 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::Weibull(r) => {
+      let mut coefficients = String::from(
+        "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+      );
+      for c in &r.coefficients {
+        writeln!(
+          coefficients,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          c.name.escape_debug(),
+          c.value,
+          c.standard_error,
+          optional_number(c.statistic),
+          optional_number(c.p_value),
+          optional_number(c.confidence_lower),
+          optional_number(c.confidence_upper)
+        )
+        .unwrap();
+      }
+      format!(
+        "Weibull proportional-hazards maximum likelihood (entry-zero, single spell)\nTime: {}; event: {}; N = {}; failures = {}; non-events = {}\nCandidate rows = {}; excluded joint missing/nonfinite = {}; Newton iterations = {}\nDensity log likelihood = {}; Stata-normalized log likelihood = {}\nSame-sample refitted null density log likelihood = {}; normalized = {}\nSlope LR chi2({}) = {}; p-value = {}{}\nSlope Wald chi2({}) = {}; p-value = {}; availability = {}\nFull joint PH beta/lnshape covariance: {}; multiplier = {}; asymptotic normal95, not Student t.\n{}Shape = {}; delta SE = {}; lnshape = {}; SE(lnshape) = {}; z(shape=1) = {}; p-value = {}; positive log-Wald95 interval = [{}, {}]\nNo shape=0 Wald test; shape=1 tests constant hazard within this family, not overall model adequacy.\nNA = unavailable or unrepresentable; zero SE does not imply exact inference.\nxb is the PH index; hazard/cumhaz/survival use current time and X. Net survival is NOT all-cause joblessness survival or competing-risk incidence; associations are NOT causal effects.\n",
+        r.time_variable.escape_debug(),
+        r.failure_variable.escape_debug(),
+        r.observation_count,
+        r.failure_count,
+        r.censored_count,
+        r.sample
+          .as_ref()
+          .map_or(r.observation_count, |s| s.total_observations),
+        r.sample.as_ref().map_or(0, |s| s.dropped_observations),
+        r.iterations,
+        inference_number(r.log_likelihood),
+        inference_number(r.normalized_log_likelihood),
+        inference_number(r.null_log_likelihood),
+        inference_number(r.null_normalized_log_likelihood),
+        r.likelihood_ratio_df,
+        inference_number(r.likelihood_ratio),
+        optional_number(r.likelihood_ratio_p_value),
+        if r.robust {
+          " (robust LR reference withheld)"
+        } else {
+          ""
+        },
+        r.omnibus_wald.degrees_of_freedom,
+        optional_number(r.omnibus_wald.statistic),
+        optional_number(r.omnibus_wald.p_value),
+        r.omnibus_wald
+          .unavailable_reason
+          .as_deref()
+          .unwrap_or("available"),
+        if r.robust {
+          "independent-spell score sandwich N/(N-1), not OLS HC1"
+        } else {
+          "inverse observed information, no N-K scaling"
+        },
+        r.covariance_correction,
+        coefficients,
+        inference_number(r.shape.value),
+        inference_number(r.shape.standard_error),
+        inference_number(r.shape.log_value),
+        inference_number(r.shape.log_standard_error),
+        optional_number(r.shape.log_statistic),
+        optional_number(r.shape.log_p_value),
+        optional_number(r.shape.confidence_lower),
+        optional_number(r.shape.confidence_upper)
+      )
+    }
     ExecutionResult::Tobit(result) => format!(
       "Lower-censored Gaussian Tobit maximum likelihood (IID homoskedastic model)\nOutcome: {}; lower limit = {}; N = {}; left-censored = {}; uncensored = {}\nCandidate rows = {}; excluded missing/nonfinite = {}; Newton iterations = {}\nLog likelihood = {}; refitted same-sample null log likelihood = {}\nLR chi2({}) = {}; p-value = {}\nFull joint beta/lnsigma inverse observed information; correction1; asymptotic normal95, not Student t.\n{}Sigma = {}; delta SE = {}; log-Wald95 interval = [{}, {}]\nNo sigma=0 Wald test. Coefficients describe the latent mean, not observed-mean effects.\nUse predict ..., pr for P(Y*>lower|X), predict ..., mean for E[max(lower,Y*)|X], estat margins for continuous observed-mean effects.\n",
       result.outcome.escape_debug(),

@@ -256,7 +256,7 @@ pub enum Command {
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
   Nl { command: NlCommand },
-  /// Fit a parametric survival regression model (execution is deferred).
+  /// Fit bounded entry-zero Weibull PH regression; other parsed variants remain unsupported.
   Streg { command: StregCommand },
   /// Fit a spatial autoregressive regression model (execution is deferred).
   Spregress { command: SpregressCommand },
@@ -753,7 +753,7 @@ pub struct NlCommand {
   pub include_intercept: bool,
 }
 
-/// The parametric distributions accepted by the parser-only `streg` command.
+/// Parsed distributions; only entry-zero Weibull has native execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StregDistribution {
@@ -763,8 +763,9 @@ pub enum StregDistribution {
   Exponential,
 }
 
-/// The parser-only `streg` form retained for a later statistical runtime
-/// slice.
+/// Parametric survival specification. Native execution currently supports
+/// entry-zero single-spell Weibull, model-based or independent-spell robust;
+/// exponential and cluster variants are parsed but remain unsupported.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StregCommand {
   /// The survival time variable.
@@ -1013,6 +1014,12 @@ pub enum PredictKind {
   CountPmfVariable,
   /// Distributional P(Y<=k) after Poisson/NB2 using a current-row cutoff variable.
   CountCdfVariable,
+  /// Current-time cause-specific Weibull hazard (not a probability).
+  Hazard,
+  /// Current-time integrated cause-specific Weibull hazard.
+  CumulativeHazard,
+  /// Weibull net survival exp(-H), not competing-risk incidence.
+  Survival,
   /// Predicted spatial lag for spatial models.
   SpatialLag,
   /// Posterior predictive draws for Bayesian models.
