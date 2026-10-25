@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod script;
+mod stcox;
 mod tabulate;
 pub use script::{
   ControlFlowDirective, ElseDirective, EndDirective, IfDirective, LetDirective, ScriptBlockState,
@@ -142,6 +143,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "run",
       "sql",
       "truncreg",
+      "stcox",
       "regress",
       "logit",
       "probit",
@@ -282,6 +284,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "probit",
       "truncreg",
       "bayes",
+      "stcox",
       "poisson",
       "nbreg",
       "zip",
@@ -450,6 +453,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "heckman" => parse_heckman_command(body),
     "nl" => parse_nl_command(body),
     "streg" => parse_streg_command(body),
+    "stcox" => stcox::parse(body),
     "spregress" => parse_spregress_command(body),
     "lasso" => parse_lasso_command(body),
     "postlasso" => parse_postlasso_command(body),

@@ -1,9 +1,11 @@
 # WIP: original Table17.8 Cox/Breslow duration column
 
-**Status: pure Rust Cox/Breslow kernel and eight numerical controls pass. Native
-stcox parser/runtime/state/reporting and original native script are NOT installed.
-Independent kernel review and the complete end-to-end workflow are still required;
-keep draft PR #334 open, do not merge a kernel-only slice.**
+**WIP status: native parser/runtime/owned fit and baseline/prediction/text/JSON/help
+and the original source script are implemented. Focused numerical, runtime and
+actual-script controls plus the full original source audit pass. Independent
+statistical source review found a DECIMAL event-code rounding defect; original
+code validation now fixes it with a focused joint-eligibility regression.
+Affected/reverse-consumer regression checks and final capability docs are pending. Keep draft PR #334 open until those gates and capability docs finish.**
 
 ## Exact analysis and independent reference
 
@@ -22,12 +24,12 @@ information and martingale score residual reconstruction matches R full matrices
 within3.6e-13 and2.2e-13 respectively; corrected Wald≈540.9797 matches author540.98.
 Uncorrected R SE≈.5710844 does NOT match the author; correction is explicit, not
 residual-DF HC1. Original source max raw score≈1.5e-11. The existing400-row full-
-design control also admits a regular40-coefficient Cox fit. These are R-only
-feasibility facts, NOT native execution/source validation.
+design control also admits a regular40-coefficient Cox fit. These were independent
+reference feasibility checks; native/source evidence is recorded below.
 
 ## Bounded native behavior
 
-Proposed installed syntax: `stcox time [xvars], failure(event) [robust]`.
+Native syntax: `stcox time [xvars], failure(event) [robust]`.
 Unweighted single-spell entry-zero right censoring, numeric time/exact binary
 event. Joint finite time/event/X rows enter before positive-time support checks;
 at least one failure. No explicit/implicit intercept, no factor expansion. An owned CoxProblem carries
@@ -123,6 +125,63 @@ execution. Stats all-target Clippy -D warnings and changed Rust formatting/diff
 checks pass; shared Newton algorithm is unchanged (only its family-support module
 description now accommodates unrestricted Cox coefficients). Full affected/
 reverse regression remains pending until the application workflow is complete.
+
+## Application/source milestone (merge gates pending)
+
+Native `stcox` now executes the bounded contract above. Two parser tests, six
+runtime controls and three actual-script/CLI controls pass across their focused
+runs. Runtime tests check all4233 model-based/robust R gates, original retained
+positions under four joint-missingness exclusions, all3600 original/coupled-UI
+point values, state/label/order preservation, no-event/rank/support failures,
+parse-vs-executed fit invalidation, typed NULLs, time0/step-tail behavior,
+requested-H overflow versus valid survival0, no event/time for xb and baseline-
+only NA consistency. Script controls run `cox.td` in JSON/text, verify identical
+CSV bytes, output no-replacement and guard failures, help/schema, baseline-only
+JSON and rejected instantaneous hazard; checker corruption tests detect changed
+covariance, baseline and current UI predictions.
+
+The original3343-spell native script passes2084 independent R gates/all1600
+covariance entries, all24 baseline knots/means,187208 source/design/projection
+cells,147092 exact source cells and254 printed author quantities (including12
+compact Table17.8 cells). The independent Python audit reconstructs risk-set
+information, ALL efficient row scores (including censor contributions), the full
+sandwich, reference baseline, zero-beta null, Wald and every current point. It is
+a development-only check, not a production Python dependency. The shared strict
+Newton algorithm is unchanged. A serde_json dev-dependency reuses the existing
+locked package to compare typed runtime results to the existing JSON-pointer R
+fixtures; no production dependency is added.
+
+Reproduce in a fresh directory with `duration.csv` from the companion
+[explicit original-DTA conversion](weibull.md#reproduce). Original assets are
+not redistributed; the source checker enforces the same four SHA256 pins.
+
+```sh
+repo=/absolute/path/to/tabdat-explore-rs
+# Acquire original author.do/author.txt/ema1996.dta/ema1996.asc as in weibull.md.
+# Convert DTA with prepare.R; it preserves promoted numeric values, not DTA labels/types.
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma17p4duration/cox.td" > native.json
+Rscript "$repo/examples/mma17p4duration/cox_reference.R" duration.csv reference ema1996.dta
+python3 "$repo/examples/mma17p4duration/check_cox_source.py" \
+  author.do author.txt ema1996.dta ema1996.asc . reference
+```
+
+The56-column export retains44 source/ordinal columns, three helpers and nine
+observed/UI0/UI1 point columns; coupled UI changes are restored before export.
+`--text` in a second fresh directory containing duration.csv produces identical
+CSV bytes. The final UI-group score balances are score identities, not adequacy
+tests. Original R references read DTA directly to avoid R4.6.1's possible1ULP
+CSV reread drift; exact native/Python source hex checks remain unchanged.
+
+A bounded independent read-only statistical source review confirmed the Breslow
+derivatives, full censor-inclusive efficient scores, adaptive risk scaling,
+reference baseline/current points and independently computed R null. Its one
+blocking finding was DECIMAL near-one event codes rounding to1 before support
+validation. Runtime now uses the existing original-cell exact-integer helper only
+AFTER joint finite eligibility, accepting solely0/1. A regression covers valid
+DECIMAL zeros/ones, invalid1.000000000000000001 and0.999999999999999999, and both
+invalid codes on excluded rows. No tolerances changed. Affected application
+packages pass all-target Clippy with warnings denied. Broader regressions remain
+pending; no merge readiness is claimed yet.
 
 ## Scope and delivery order
 

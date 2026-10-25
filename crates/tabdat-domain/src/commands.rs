@@ -258,6 +258,8 @@ pub enum Command {
   Nl { command: NlCommand },
   /// Fit bounded entry-zero Weibull PH regression; other parsed variants remain unsupported.
   Streg { command: StregCommand },
+  /// Fit entry-zero Cox proportional hazards with Breslow ties and no intercept.
+  Stcox { command: StcoxCommand },
   /// Fit a spatial autoregressive regression model (execution is deferred).
   Spregress { command: SpregressCommand },
   /// Fit a lasso regularized regression model (execution is deferred).
@@ -753,6 +755,15 @@ pub struct NlCommand {
   pub include_intercept: bool,
 }
 
+/// Entry-zero single-spell Cox PH with Breslow ties and independent-spell inference.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StcoxCommand {
+  pub time_variable: String,
+  pub failure_variable: String,
+  pub predictors: Vec<String>,
+  pub robust: bool,
+}
+
 /// Parsed distributions; only entry-zero Weibull has native execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1016,9 +1027,9 @@ pub enum PredictKind {
   CountCdfVariable,
   /// Current-time cause-specific Weibull hazard (not a probability).
   Hazard,
-  /// Current-time integrated cause-specific Weibull hazard.
+  /// Current-time integrated cause-specific Weibull or Cox/Breslow hazard.
   CumulativeHazard,
-  /// Weibull net survival exp(-H), not competing-risk incidence.
+  /// Weibull or Cox net survival exp(-H), not competing-risk incidence.
   Survival,
   /// Predicted spatial lag for spatial models.
   SpatialLag,

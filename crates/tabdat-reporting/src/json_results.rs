@@ -115,6 +115,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
     | Command::Streg { .. }
+    | Command::Stcox { .. }
     | Command::Truncreg { .. }
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
@@ -711,6 +712,57 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count":result.observation_count,"effects":result.effects}),
       "TruncatedGaussianMarginalEffectsResult",
     ),
+    ExecutionResult::Cox(result) => {
+      let mut data = serde_json::to_value(result).expect("finite Cox result");
+      let object = data.as_object_mut().expect("Cox result object");
+      for key in [
+        "fitted_xb",
+        "fitted_cumulative_hazard",
+        "fitted_survival",
+        "fitted_martingale",
+        "predictor_names",
+      ] {
+        object.remove(key);
+      }
+      data["estimator"] = json!("stcox_breslow");
+      data["predictors"] = json!(result.predictor_names);
+      data["ties"] = json!("breslow");
+      data["include_intercept"] = json!(false);
+      data["support"] = json!(
+        "entry_zero_single_spell_joint_finite_then_positive_time_exact_binary_event_or_error"
+      );
+      data["covariance"] = json!(if result.robust {
+        "full_efficient_martingale_score_sandwich"
+      } else {
+        "inverse_partial_likelihood_observed_information"
+      });
+      data["covariance_parameter_names"] = json!(result.predictor_names);
+      data["reference_distribution"] = json!("asymptotic_standard_normal");
+      data["confidence_level"] = json!(95.0);
+      data["log_likelihood_convention"] =
+        json!("breslow_tied_partial_likelihood_not_duration_density");
+      data["null_model"] = json!("all_beta_zero_same_sample");
+      data["likelihood_ratio_reference_distribution"] = json!(
+        result
+          .likelihood_ratio_p_value
+          .map(|_| "asymptotic_chi_square")
+      );
+      data["omnibus_wald_reference_distribution"] =
+        json!(result.omnibus_wald.p_value.map(|_| "asymptotic_chi_square"));
+      data["baseline_reference"] =
+        json!("all_retained_predictor_means_in_predictor_order_including_dummy_means");
+      data["baseline_uncertainty"] = json!("unavailable");
+      data["prediction_time_convention"] =
+        json!("right_continuous_step_including_ties_zero_before_first_hold_after_last");
+      data["survival_interpretation"] =
+        json!("net_cause_specific_not_all_cause_survival_or_competing_risk_cumulative_incidence");
+      data["converged"] = json!(true);
+      data["convergence_coordinate_system"] = json!("centered_rms_predictors");
+      data["convergence_score_normalization"] = json!("per_observation_mean");
+      data["convergence_step_normalization"] = json!("1_plus_abs_parameter");
+      data["convergence_tolerance"] = json!(1e-10);
+      (data, "CoxResult")
+    }
     ExecutionResult::Weibull(result) => {
       let mut data = serde_json::to_value(result).expect("finite Weibull result");
       let object = data.as_object_mut().expect("Weibull result object");

@@ -1879,6 +1879,84 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::Cox(r) => {
+      let mut table = String::from(
+        "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+      );
+      for c in &r.coefficients {
+        writeln!(
+          table,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          c.name.escape_debug(),
+          c.value,
+          c.standard_error,
+          optional_number(c.statistic),
+          optional_number(c.p_value),
+          optional_number(c.confidence_lower),
+          optional_number(c.confidence_upper)
+        )
+        .unwrap();
+      }
+      let mut baseline =
+        String::from("Baseline reference (all retained covariate means, including dummy means):\n");
+      for (name, value) in r.predictor_names.iter().zip(&r.baseline_reference_values) {
+        writeln!(baseline, "{}\t{}", name.escape_debug(), value).unwrap();
+      }
+      baseline.push_str("Failure time\tAt risk\tFailures\tlog increment\tIncrement\tlog cumulative H\tCumulative H\tNet survival\n");
+      for b in &r.baseline {
+        writeln!(
+          baseline,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          b.time,
+          b.risk_count,
+          b.event_count,
+          b.log_increment,
+          optional_number(b.increment),
+          b.log_cumulative_hazard,
+          optional_number(b.cumulative_hazard),
+          b.survival
+        )
+        .unwrap();
+      }
+      format!(
+        "Cox proportional hazards (Breslow ties; entry-zero, single spell; no intercept)\nTime: {}; event: {}; N = {}; failures = {}; non-events = {}\nCandidate rows = {}; excluded joint missing/nonfinite = {}; Newton iterations = {}\nPartial log likelihood = {}; same-sample zero-beta null = {}\nSlope LR chi2({}) = {}; p-value = {}{}\nSlope Wald chi2({}) = {}; p-value = {}; availability = {}\nCovariance: {}; multiplier = {}; asymptotic normal95, not Student t.\n{}{}Baseline uncertainty unavailable. NA = unavailable or unrepresentable natural scale; finite log baseline is retained.\nxb uses current X; cumhaz/survival use current X/time with right-continuous baseline steps, H0/S1 before first failure and last-step hold after final failure, not validated tail extrapolation.\nBreslow jumps do not identify instantaneous hazard. Net cause-specific survival is NOT all-cause survival or competing-risk incidence; associations are NOT causal effects. PH adequacy is not tested.\n",
+        r.time_variable.escape_debug(),
+        r.failure_variable.escape_debug(),
+        r.observation_count,
+        r.failure_count,
+        r.censored_count,
+        r.sample
+          .as_ref()
+          .map_or(r.observation_count, |s| s.total_observations),
+        r.sample.as_ref().map_or(0, |s| s.dropped_observations),
+        r.iterations,
+        r.log_likelihood,
+        r.null_log_likelihood,
+        r.likelihood_ratio_df,
+        r.likelihood_ratio,
+        optional_number(r.likelihood_ratio_p_value),
+        if r.robust {
+          " (robust LR reference withheld)"
+        } else {
+          ""
+        },
+        r.omnibus_wald.degrees_of_freedom,
+        optional_number(r.omnibus_wald.statistic),
+        optional_number(r.omnibus_wald.p_value),
+        r.omnibus_wald
+          .unavailable_reason
+          .as_deref()
+          .unwrap_or("available"),
+        if r.robust {
+          "full efficient martingale-score sandwich N/(N-1), independent spells"
+        } else {
+          "inverse partial-likelihood observed information"
+        },
+        r.covariance_correction,
+        table,
+        baseline
+      )
+    }
     ExecutionResult::Weibull(r) => {
       let mut coefficients = String::from(
         "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",

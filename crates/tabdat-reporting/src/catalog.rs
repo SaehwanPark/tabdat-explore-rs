@@ -76,6 +76,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "sql",
   "status",
   "streg",
+  "stcox",
   "summarize",
   "tabulate",
   "tail",
@@ -417,6 +418,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "streg".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "stcox".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1801,6 +1806,13 @@ fn get_command_schema(
       name: "status".to_string(),
       options: vec![],
       syntax: "status".to_string(),
+    }),
+    "stcox" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor { name: "time_variable".to_string(), required: true }, ArgumentDescriptor { name: "variables".to_string(), required: false }],
+      help_topic,
+      name: "stcox".to_string(),
+      options: vec![OptionDescriptor { name: "failure".to_string(), required: true }, OptionDescriptor { name: "robust".to_string(), required: false }],
+      syntax: "stcox time [vars], failure(event) [robust]".to_string(),
     }),
     "streg" => Ok(CommandSchemaResult {
       arguments: vec![
