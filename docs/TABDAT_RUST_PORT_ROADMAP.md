@@ -138,11 +138,16 @@ Extend the same workflow/validation standard to:
 - **Survival:** the [original566-strike nonparametric workflow](../examples/mma17p1km/README.md)
   now composes existing SQL/table/export/SVG commands for tied-time Kaplan–Meier,
   Greenwood SE/pointwise log-log95% bounds and Nelson–Aalen/SE. Independent R,
-  source-pinned author-output and actual SVG geometry audits pass. This is the
-  uncensored single-spell/entry-zero example, not general survival declarations,
-  censoring/truncation, Cox-baseline equivalence or a complete chapter. Those
-  declarations plus parametric/Cox models, baseline/survival/hazard outputs,
-  diagnostics and remaining illustrations stay required.
+  source-pinned author-output and actual SVG geometry audits pass. A separate
+  [80-spell artificial right-censoring workflow](../examples/mma17p2kmextra/README.md)
+  now validates event/censor ties, carried-forward censor-only times, KM intervals
+  and NA log-Wald95% bands against R and both author tables. Exact executable
+  40-failure/40-censor input takes precedence over mistaken prose labels; the
+  source is artificial, not an empirical-regression substitute. These are bounded
+  single-spell/entry-zero scripts, not general survival declarations, delayed
+  entry/other censoring/truncation, Cox-baseline equivalence or a complete chapter.
+  Those declarations plus empirical parametric/Cox models, baseline/survival/hazard
+  outputs, diagnostics and remaining illustrations stay required.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
   one-/two-step covariance, convergence, overidentification and serial-correlation
   diagnostics; control instrument proliferation rather than silently expanding it.
