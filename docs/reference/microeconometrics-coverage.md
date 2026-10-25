@@ -32,7 +32,7 @@ not by implementing every estimator mentioned in a chapter.
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit and corrected Heckman two-step author-program workflows, full declared covariance and current predictions; Tobit retained continuous effects | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
-| 17–19: Survival, heterogeneity, multiple hazards | Validated composed uncensored566-strike and artificial80-spell right-censoring KM/Greenwood pointwise bands and Nelson–Aalen/uncertainty tables/step plots | General event/censoring/truncation semantics, parametric/Cox, mixture/frailty and multiple-event analyses; not general survival estimator support |
+| 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential cause-specific regression/full robust inference and net-survival points | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival estimator API or competing-risk incidence support |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow, the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
@@ -69,7 +69,8 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | §17.2 pp.574–575/§17.5.1 pp.581–583, strikes; `mma17p1km.do` / `strkdur.asc` | Partial — validated native composed all566 uncensored-strike KM/Greenwood/log-log pointwise95% and Nelson–Aalen/SE table/step-plot workflow | Original141 distinct times/24,691 days;1,269 R cells/1,128 author printed facts/1,130 actual SVG vertices pass. Table17.2/17.3 source-comment numbering discrepancy explicit; Cox-baseline comparison/NA confidence graph/general censored survival remain required |
 | MMA-DURATION-CENSOR | §17.5.1 pp.581–582, Table17.2-associated artificial illustration; `mma17p2kmextra.do` explicit input | Validated bounded author-program workflow — original80 spells/40 failures/40 right-censored exits, KM/Greenwood/log-log95 and NA/SE/log-Wald95 tables/native step plots | Exact input overrides inconsistent prose labels.108 R cells/144 printed facts/six manual gates/112 SVG vertices and actual-script failure controls pass; artificial data, not empirical-regression or general survival-command support |
-| MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
+| MMA-DURATION-EXP | §17.11 pp.603–608, Table17.8 exponential coefficient column; `mma17p4duration.do` / `ema1996.dta` | Validated bounded native composition — original3343 spells/1073 full-time events,40 covariates+intercept, full N/(N-1) robust/normal inference, exact likelihood mapping and conditional point projections |1936 R gates/all1681 covariance entries/207266 native cells/147092 exact source cells/262 printed quantities pass. ASCII omits stateur;102 all-zero statuses retained. Net cause-specific survival is not all-cause survival/incidence or causal UI effect; no full Table17.9/HR uncertainty claim |
+| MMA-HAZARDS | pp.603–608,632–636,658–662, displaced workers; `ema1996` | Partial — bounded original exponential full-time cause-specific regression validated separately | Remaining Weibull/Gompertz/Cox/heterogeneity/competing-risk analyses, event/censoring assumptions and exact additional samples remain required |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns, plus model-based Poisson-boundary NB2 LR test, validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,191 quantities/all source/design/mean/index records; native person-Poisson551/NB2 599-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated; current-row PMF/CDF above99 additionally checked against20 base-R values, printed Table20.6 NB2 row unresolved; remaining tables and richer counts remain required |
 | MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS, unbalanced RE-GLS sensitivity, interior ML coefficient/likelihood, positive-interior variance-component uncertainty, the one-sided zero-unit-variance LR test and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); individual unit-intercept uncertainty, remaining illustrated ML inference, cluster-robust unit-effects testing, Hausman and other panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison and synthetic R/plm unit-effects F references are validated below |
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
@@ -177,6 +178,78 @@ survival declarations/retained fits, delayed entry/left/interval censoring/
 truncation, weights/groups/regression/Cox/parametric models or simultaneous bands.
 This validates the exact artificial author-program workflow, not separate printed
 book-page transcription or complete survival-family/empirical coverage.
+
+### MMA-DURATION-EXP bounded empirical exponential regression evidence
+
+**Exact source/design.** March2005 `mma17p4duration.do`, §17.11 pp.603–608,
+Table17.8 exponential column, original `ema1996.dta`:3343 complete single-record
+spells,1073 full-time events,20887 two-week intervals at risk, recorded times1..28
+modeled as exact continuous times. All40 author regressors plus intercept,
+including UI×replacement/disregard interactions and stateur. The author's42-field
+ASCII export omits stateur and rounds values: do NOT silently fit that reduced
+model. DTA developmental conversion preserves43 raw numeric fields/ordinals;
+all102 rows whose four status flags are zero remain censor1=0, not dropped or
+assigned an invented status. Original source/log/DTA/ASCII SHA256 pinned.
+
+**Native workflow.** [Commands/reference/source caveats](../../examples/mma17p4duration/README.md)
+load guarded numeric CSV, fit existing `poisson censor1 xvars,
+offset(log_spell) robust`, project observed integrated hazard/log H plus coupled
+UI0/UI1 points, restore all original fields, export62 columns and report grouped
+score balances. Exponential cause-specific density is sum[d Xbeta - t exp(Xbeta)];
+adding the fixed sum[d log t] yields native Poisson/Stata-normalized LL for binary
+d. This is exact likelihood algebra, NOT an assumed Poisson count DGP. Full
+observed-information independent-spell sandwich uses N/(N-1), normal95 and40-df
+robust slope Wald. R exponential AFT beta maps by global negation, covariance
+unchanged; no nuisance scale fit. Robust LR reference p-values remain withheld.
+Native Pearson/deviance/count-probability/margins labels are not survival adequacy
+or interaction-effect methods. No new production dependency, syntax or estimator
+state family; source DTA IO is a development bridge, not native application IO.
+
+**Interpretation.** censor1=1 full-time re-employment; other exits, including
+part-time/unknown-status jobs and all-zero statuses, are non-events for this cause.
+Net exp(-hazard*t)/mean1/hazard are not observed all-cause joblessness survival,
+full-time cumulative incidence or mean return time under competing exits. No
+latent-competing-risk independence is asserted; independent external censoring,
+independent spells and constant-hazard assumptions still matter. UI filing
+associations/conditional projections are not causal; UI and both interactions
+must change together. Horizon10 is20 calendar weeks. Source labels/types are
+not advertised as native DTA metadata.
+
+**Independent evidence.** R4.6.1/survival3.8.6 exponential robust `survreg`,
+foreign0.8.91 original DTA read, explicit covariance correction/sign and
+likelihood conventions:1936 gates including all1681 full covariance entries,
+207266 source/design/projection cells,147092 EXACT original hex-valued cells/
+ordinals, all140406 rounded ASCII fields and262 author printed quantities
+including14 compact Table17.8 coefficient/z cells pass. Ordinary numerical
+checks1e-9 absolute+1e-8 relative; positive tails1e-300+1e-8 relative; exact source
+hex has no tolerance, printed values only half a last unit. Standard-library
+self-check reconstructs information/inverse/sandwich, normal CIs/tails, full-rank
+Wald/even-df gamma tail, full/null density/normalized LL and every point. Source
+score bound1e-9/inverse identity1e-8; no comparison-only covariance or zero-tail
+acceptance. Native normalized LL−2700.6902704985096 vs density LL−3946.5806305218698;
+Wald565.2369454886683(df40,p≈6.0003899929e-94). JSON/text exports byte-identical.
+
+**Failure and regression evidence.** Four actual-script tests in
+`mma17_exponential_duration_workflow` use a separate400-row/full-design R control
+(1936 gates/24800 cells), both CLI modes, all-zero statuses/source restoration,
+duration-unit rescaling, invalid/missing/absent-stateur/overlap/zero-event/rank
+failures and file collision. Shared wrong native/R covariance, normal/Wald zero
+tails and projections are rejected by independent algebra. Four original-DTA
+conversion failure cases preserve file hashes and publish no partial output.
+Initial guard incorrectly demanded exhaustive status membership; source inspection
+resolved this, and all-zero acceptance is now permanent. R decimal parsing can
+shift1ULP; exact17-digit output/source-hex audits resolve that IO artifact without
+weakening numerical tolerances. Full current root scope376 tests/88 artifacts
+reconciles86 unchanged passing hashes plus two current focused targets. Root
+all-target Clippy, changed Rust format/diff pass; unaffected non-root/doctests
+not rerun, no hosted Actions/platform/release certification claimed.
+
+**Remaining.** Exact author-program exponential column, not separate printed-book
+layout/transcription or whole Table17.8/17.9/chapter. No native general survival
+declaration, Weibull/Gompertz/Cox, nonconstant hazard, hazard-ratio/prediction
+uncertainty, survey/cluster/weights, causal UI identification or formal exponential
+adequacy test. Score balances are model equations, not a specification test.
+Remaining empirical survival models and broader family/book inventory stay required.
 
 ### MMA-CHOICE bounded MNL contract and evidence
 

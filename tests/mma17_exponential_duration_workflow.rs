@@ -145,7 +145,7 @@ fn independent_audit_rejects_shared_wrong_covariance_normal_and_wald_tails_and_p
   for (pointer, path) in [
     ("/coefficients/0/p_value", "/coefficients/0/p_value"),
     ("/omnibus_wald/p_value", "/omnibus_wald/p_value"),
-    ("/covariance_matrix/0/0", "/covariance_matrix/0/0"),
+    ("/covariance_matrix/0/1", "/covariance_matrix/0/1"),
   ] {
     let mut events: Vec<Value> = baseline
       .lines()
@@ -163,6 +163,14 @@ fn independent_audit_rejects_shared_wrong_covariance_normal_and_wald_tails_and_p
       0.0
     };
     *data.pointer_mut(pointer).unwrap() = Value::from(wrong);
+    let mut forged_reference = reference_change(&reference, path, wrong);
+    if path.contains("covariance_matrix") {
+      // Symmetric intercept/slope corruption leaves all marginal normal
+      // inference and the slope-only Wald unchanged: only full covariance
+      // reconstruction can catch this shared native/reference forgery.
+      data["covariance_matrix"][1][0] = Value::from(wrong);
+      forged_reference = reference_change(&forged_reference, "/covariance_matrix/1/0", wrong);
+    }
     let forged = events
       .iter()
       .map(|e| serde_json::to_string(e).unwrap())
@@ -170,7 +178,7 @@ fn independent_audit_rejects_shared_wrong_covariance_normal_and_wald_tails_and_p
       .join("\n")
       + "\n";
     fs::write(d.path().join("native.json"), forged).unwrap();
-    fs::write(&reference_path, reference_change(&reference, path, wrong)).unwrap();
+    fs::write(&reference_path, forged_reference).unwrap();
     assert!(!audit(&d).status.success(), "shared wrong {path} accepted");
   }
   fs::write(d.path().join("native.json"), baseline).unwrap();
