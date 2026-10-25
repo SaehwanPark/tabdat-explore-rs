@@ -5139,7 +5139,10 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
   }
   if kinds_present.len() > 1 {
     return Err(ParseError::new(
-      if kinds_present.iter().any(|k| matches!(*k,"hazard"|"cumhaz"|"survival")) {
+      if kinds_present
+        .iter()
+        .any(|k| matches!(*k, "hazard" | "cumhaz" | "survival"))
+      {
         "predict hazard, cumhaz and survival cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"xbu") || kinds_present.contains(&"u") {
         "predict cannot combine xbu or u with another prediction kind"
