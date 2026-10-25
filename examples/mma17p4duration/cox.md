@@ -1,7 +1,9 @@
 # WIP: original Table17.8 Cox/Breslow duration column
 
-**Status: independent R/source feasibility only. No native stcox parser, kernel,
-state, prediction or reporting is installed yet. Do not merge a partial slice.**
+**Status: pure Rust Cox/Breslow kernel and eight numerical controls pass. Native
+stcox parser/runtime/state/reporting and original native script are NOT installed.
+Independent kernel review and the complete end-to-end workflow are still required;
+keep draft PR #334 open, do not merge a kernel-only slice.**
 
 ## Exact analysis and independent reference
 
@@ -28,7 +30,10 @@ feasibility facts, NOT native execution/source validation.
 Proposed installed syntax: `stcox time [xvars], failure(event) [robust]`.
 Unweighted single-spell entry-zero right censoring, numeric time/exact binary
 event. Joint finite time/event/X rows enter before positive-time support checks;
-at least one failure. No explicit/implicit intercept, no factor expansion.
+at least one failure. No explicit/implicit intercept, no factor expansion. An owned CoxProblem carries
+time/event/design/sample: the generic location-model EstimationProblem rejects
+zero predictors without an intercept. Do not fake a fitted intercept or weaken
+that shared invariant to accommodate a Cox baseline-only problem.
 Centered design rank must exclude constant directions, not merely raw-X rank.
 N<=10000, K<=64, N>K, N*K*K<=20000000; robust additionally N>=2. Baseline-only
 K0 has no coefficient tests/inference, not a fitted fake intercept.
@@ -46,8 +51,9 @@ martingale/efficient-score sandwich times N/(N-1), asymptotic normal95. NOT the
 outer product of failure-only scores or naive X*(event-fitted_H). For risk mean
 mu_j and Breslow increment a_j=d_j/S0_j, the row score is
 u_i=d_i*(X_i-mu_at_exit) - exp(eta_i)*sum_{j:t_j<=t_i}a_j*(X_i-mu_j).
-Cumulative log-hazard and hazard-weighted risk means permit O(N*K*K+N*K), not an
-unbounded N*failure_knots*K residual loop; adaptive risk maxima prevent global-
+After time sorting/knot lookup, cumulative log-hazard and hazard-weighted risk
+means permit O(N*K*K+N*K) moment work, not an unbounded N*failure_knots*K
+residual loop; adaptive risk maxima prevent global-
 max underflow in late risk sets. Full robust covariance/normal intervals/zero-
 variance and rank-aware slope Wald rules are explicit. Null fixes all beta0 on
 the SAME sample; LR p/reference withheld for robust fits, Wald separate.
@@ -92,6 +98,31 @@ inference only; parse failures are not executed fit attempts.
 5. Complete parser→runtime→owned state→prediction→text/JSON/help/source reporting;
    focused then affected/reverse-consumer tests, quality checks, source/evidence
    docs/review and confirmed PR merge/cleanup before any next slice.
+
+## Pure-kernel milestone (not application/source certification)
+
+Eight focused tests pass. Independent R4.6.1/survival3.8.6 controls compare4233
+model-based/robust numeric gates (including both1600-entry covariance matrices,
+all28 control baseline knots/means/inference/null/LR/Wald), ALL16000 raw efficient
+row-score cells and3600 unique original/UI0/UI1 point predictions exercised in
+both covariance modes. Other controls cover finite-difference score/information,
+adaptive late-risk scaling, baseline-only NA (not KM), tied censor/failure risk
+sets, permutation/sample identity, time/affine-X units, negative last coefficient,
+invalid support/weights/cluster/rank/separation/resource limits, current point
+support and represented S0 despite H overflow. Unrepresentable natural baseline
+summaries retain finite log values and can still give finite fitted H.
+
+`cox_reference.R` is development-only. R hot-start polishing uses only its own
+solution. Crucially, coxph(init=...) reports the INITIAL likelihood in loglik[1],
+not the zero-beta null; the reference computes that null independently from tied
+risk counts. Both original and control reference generators pass separate full
+information/efficient-score/sandwich/baseline/point certificates. Adding score-
+residual output preserves all earlier six artifacts byte-identically. Polished
+original R raw score is below1e-12. Original R evidence is NOT original native
+execution. Stats all-target Clippy -D warnings and changed Rust formatting/diff
+checks pass; shared Newton algorithm is unchanged (only its family-support module
+description now accommodates unrestricted Cox coefficients). Full affected/
+reverse regression remains pending until the application workflow is complete.
 
 ## Scope and delivery order
 

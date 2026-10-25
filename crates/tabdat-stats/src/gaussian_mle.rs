@@ -1,6 +1,7 @@
-//! Shared guarded Newton solve for concave positive-coordinate parameterizations.
-//! The final coordinate is positive; neither damping nor a pseudoinverse enters
-//! the returned information. Model-specific likelihoods enforce their own range.
+//! Shared guarded Newton solve for concave parameterizations.
+//! Model-specific likelihoods enforce their own support (positive final scale in
+//! Gaussian/Weibull families, unrestricted Cox coefficients). Neither damping
+//! nor a pseudoinverse enters the returned information.
 use crate::StatsError;
 use crate::matrix::choice_information_inverse;
 
