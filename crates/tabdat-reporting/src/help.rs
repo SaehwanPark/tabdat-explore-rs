@@ -195,7 +195,8 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 87);
+    assert_eq!(available_help_topics().len(), 88);
+    assert!(available_help_topics().contains(&"truncreg"));
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");
       assert!(!text.is_empty(), "topic {topic} must not be empty");
