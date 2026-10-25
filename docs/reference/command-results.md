@@ -541,6 +541,62 @@ tests. This is not other-platform/release certification. See the
 [source-intended workflow/reference](../../examples/mma16p1tobit/truncreg.md),
 not a historical coefficient/table or whole-Chapter16 certification.
 
+## Bounded Weibull proportional hazards
+
+`streg time xvars, failure(event) dist(weibull) [robust noconstant]` fits
+unweighted entry-zero/single-spell Weibull ML. Joint finite time/event/X defines
+the retained original-position sample; missing/nonfinite rows are excluded
+BEFORE requiring positive times/exact binary events. At least one failure,
+full-rank regular information, N<=10000, P=K+shape<=64, N>P and
+N*P*P<=20000000 are required. No shape clipping, ridge or pseudoinverse.
+
+PH eta=X beta, H(t)=exp(eta)*t^a, h(t)=a*exp(eta)*t^(a-1), S(t)=exp(-H), a>0.
+The CLI-v1 **WeibullResult** envelope has `estimator: streg_weibull`, distribution
+`weibull_proportional_hazards_entry_zero_single_spell`, time/failure names,
+ordered `predictors`, intercept/robust flags, N/failure/non-event counts and
+original-position `sample`. Ordered normal95 coefficients use PH beta, NOT AFT.
+`shape` includes value/log_value, delta SE, log_standard_error/log_statistic/
+log_p_value and exponentiated-log-Wald95 bounds; the test is shape=1 (logshape=0),
+not shape=0. Nullable/unrepresentable inference does not imply exact certainty.
+
+`covariance_matrix` is the FULL joint beta/lnshape covariance, including every
+cross-shape entry; `covariance_parameter_names` appends `lnshape` and
+`covariance_parameter_order` is `ph_coefficients_then_lnshape`. `covariance` is
+`model_based_full_joint_observed_information` with correction1 or
+`robust_full_joint_observed_information_score_sandwich` with N/(N-1). The latter
+uses full independent-spell scores/bread, NOT residual-DF HC1 or clustering.
+`reference_distribution` is `asymptotic_standard_normal`, confidence95, not t.
+Shape=1 tests constant hazard within this family, not general model adequacy.
+
+`log_likelihood` is event log-density plus non-event log-survival. The
+`normalized_log_likelihood` adds fixed sum(event*log(time)), matching the author's
+Stata convention. Both same-sample null conventions and numerical LR/df are
+reported. With an intercept, null refits intercept+shape; without one, PH index
+is fixed0 and only shape is refitted. LR p/reference are withheld for robust
+fits. The separate rank-guarded `omnibus_wald` tests PH slopes only, never shape;
+its asymptotic chi-square reference appears only when available. No pseudo-R2.
+Convergence identifies RMS-X/positive-rescaled-natural-shape coordinates,
+per-observation mean score and step/(1+abs(parameter)), both1e-10. Fitted vectors
+are omitted from the CLI envelope. No-intercept fits are not generally invariant
+to duration-unit changes; do not silently introduce a null intercept.
+
+Owned state tag `weibull_fit` belongs to existing `survival` family. Current
+**PredictionResult** envelopes contain ordinary dataset metadata, not vectors:
+xb (also bare default) uses current X only; hazard/cumhaz/survival use current X
+and the fitted time name, NEVER event. Any required missing/nonfinite cell gives
+NULL. Complete finite inputs with nonpositive time or unrepresentable requested
+calculations fail BEFORE publishing; a represented survival0 is valid even when
+H is unrepresentable. At most10000 current rows; DOUBLE/NULL output preserves
+order, labels and fit. Missing schema/unsupported options/existing targets fail
+atomically. Failed new runtime fits clear stale inference, not data/labels.
+
+Native exponential/cluster variants still parse but fail explicitly. Weights,
+other entry/censoring/truncation, frailty/Cox, prediction uncertainty, mean/pr/n/
+residual semantics, generic tests/margins and named-model storage are not installed.
+Net cause-specific survival is NOT all-cause survival or competing-risk incidence;
+conditional UI projections are observational, not causal. See the
+[exact Table17.8 workflow/evidence](../../examples/mma17p4duration/weibull.md).
+
 ## Bounded lower-censored Gaussian Tobit
 
 `tobit y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic

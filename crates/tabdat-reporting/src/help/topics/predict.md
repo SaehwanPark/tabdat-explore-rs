@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Quantile regression: xb (fitted conditional quantile) or residuals.
@@ -31,6 +31,13 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   Numerical/Mills-range failures abort atomically. At most10000 current rows;
   point-only, no margins or auxiliary options. Not Tobit mean/count n or causal
   effects; see help heckman for formulas and identification limits.
+- Native Weibull streg: xb (PH X beta), hazard (instantaneous hazard), cumhaz
+  (cumulative hazard), survival (net exp(-H)). Timed modes require current X and
+  the original time name, never event; xb requires current X only. Missing/nonfinite
+  required inputs give NULL; complete finite nonpositive time or unrepresentable
+  requested results fail atomically. Genuine survival0 is allowed. At most10000
+  rows, points only, no auxiliaries; no count n/binary pr/mean/residual semantics.
+  Net survival is not all-cause survival or competing-risk incidence. See help streg.
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
 - NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
 

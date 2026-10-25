@@ -10,8 +10,9 @@ Exact Stata/Python syntax parity and implementation of every theoretical derivat
 are not required; statistically equivalent, reproducible workflows are.
 
 [SPEC.md](../SPEC.md) describes the installed baseline: bounded local CSV/Parquet,
-EDA/preparation, scripts, terminal/JSON output and linear analysis. Most other
-estimator families remain parser-only. The [coverage ledger](reference/microeconometrics-coverage.md)
+EDA/preparation, scripts, terminal/JSON output and bounded linear/nonlinear
+analyses. Advanced required workflows remain incomplete; catalog/parser breadth
+is not executable coverage. The [coverage ledger](reference/microeconometrics-coverage.md)
 maps required analytical work and textbook replication status. Completed-slice
 history stays in the [archived delivery ledger](archive/delivered-workflows.md).
 
@@ -154,8 +155,16 @@ Extend the same workflow/validation standard to:
   Original DTA acquisition is explicit: ASCII omits stateur;102 all-zero status
   rows are retained. Competing exits do not turn net survival into all-cause
   joblessness survival/cumulative incidence, and UI projections are not causal.
-  Those declarations plus remaining empirical parametric/Cox models, baseline/
-  survival/hazard outputs, diagnostics and illustrations stay required.
+  The [native Table17.8 Weibull column](../examples/mma17p4duration/weibull.md)
+  now adds full joint PH beta/lnshape ML/model-based or independent-spell robust
+  inference, same-sample null/LR, shape-one/slope diagnostics and owned current
+  xb/hazard/cumhaz/net-survival points. Original2031 R gates/all1764 covariance
+  entries,197237 native cells/147092 exact source cells and276 author quantities
+  pass, including14 compact table cells; source-preserving JSON/text exports are
+  byte-identical. Native exponential/cluster remain unsupported; no blanket streg
+  parity. Those declarations plus remaining empirical parametric/Cox models,
+  richer baseline/survival/hazard outputs, diagnostics and illustrations remain
+  required, not optional breadth.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
   one-/two-step covariance, convergence, overidentification and serial-correlation
   diagnostics; control instrument proliferation rather than silently expanding it.
