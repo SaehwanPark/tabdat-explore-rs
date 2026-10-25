@@ -146,8 +146,16 @@ Extend the same workflow/validation standard to:
   source is artificial, not an empirical-regression substitute. These are bounded
   single-spell/entry-zero scripts, not general survival declarations, delayed
   entry/other censoring/truncation, Cox-baseline equivalence or a complete chapter.
-  Those declarations plus empirical parametric/Cox models, baseline/survival/hazard
-  outputs, diagnostics and remaining illustrations stay required.
+  The [original3343-spell Table17.8 exponential column](../examples/mma17p4duration/README.md)
+  now composes native robust offset-Poisson for exact event/exposure likelihood,
+  all40 covariates+intercept/full sandwich/normal95 and conditional hazard/net-
+  survival points. R survival validates1936 gates/1681 covariance entries and
+  all207266 source/design/projection cells;262 author printed quantities pass.
+  Original DTA acquisition is explicit: ASCII omits stateur;102 all-zero status
+  rows are retained. Competing exits do not turn net survival into all-cause
+  joblessness survival/cumulative incidence, and UI projections are not causal.
+  Those declarations plus remaining empirical parametric/Cox models, baseline/
+  survival/hazard outputs, diagnostics and illustrations stay required.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
   one-/two-step covariance, convergence, overidentification and serial-correlation
   diagnostics; control instrument proliferation rather than silently expanding it.
