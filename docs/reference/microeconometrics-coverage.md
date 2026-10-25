@@ -64,7 +64,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-CHOICE | §15.2.1–3 pp. 491–495, fishing modes; `Nldata.asc` / `mma15p1mnl.do`; later `mma15p4gev.asc` | Partial — principal Table15.2 MNL/CL/combined coefficient workflows under explicit float64/inference conventions; separate analytic MNL continuous-AME extension | [Original1,182-person workflows/audits](../../examples/mma15p1mnl/README.md):107/61/218 R quantities, exact source/design and predictions; remaining program/table effects, diagnostics and other illustrations required |
 | MMA-NESTED | §15.6.3 p511; `Nldata.asc` / `mma15p2gev.do` sections2A–C | Partial — earlier non-normalized two-nest likelihood, joint observed inference, identified λ=1 restriction and current point contrasts | [Source-bound native workflow/audit](../../examples/mma15p1mnl/README.md#non-normalized-nested-choice):149 R quantities including52 covariance entries/23,640 probabilities; preferred RUM normalization remains required; historical stationary-point discrepancy explicit |
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
-| MMA-TRUNC | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A commented intended truncated MLE | WIP — source-bound lower-truncated Gaussian likelihood extension on original130 positive observations | Author did NOT execute a correct truncated MLE and explicitly warned that censoring Tobit on ytrunc gives truncated OLS. No historical coefficient/table parity claim. Independent truncreg/base-R reference, native inference/effects/current prediction and state/failure validation required |
+| MMA-TRUNC | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A commented intended truncated MLE | Validated native extension — lower-truncated Gaussian likelihood on original130 positive observations | Author did NOT execute a correct truncated MLE and explicitly warned that censoring Tobit on ytrunc gives truncated OLS. No historical coefficient/table parity claim. Independent truncreg/base-R reference, native inference/effects/current prediction, state/failure controls, source reviews and local workspace gates pass; fixed lower IID scope only |
 | MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | Validated bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates/1000 native predictions plus98 synthetic quantities/3600 predictions and49 closed-form actual-script gates/120 predictions; separate covariance blocks/no exclusion restriction; owned state/atomic five-mode prediction, failure controls, reverse checks and independent source reviews; distinct from RAND below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | pp. 574–575, 582, strikes; `strkdur.asc` | Planned | Specify spells, censoring, parameterization and survival/hazard references |
@@ -548,7 +548,7 @@ whole-illustration claim. Theoretical Figure16.1 curves, truncated regression,
 Other selection/two-part/CLAD analyses and the rest of Chapter16 remain required;
 the bounded corrected Heckman comparison below is separate, not whole coverage.
 
-### MMA-TRUNC bounded lower-truncated Gaussian contract (WIP)
+### MMA-TRUNC bounded lower-truncated Gaussian contract and evidence
 
 **Exact source and honest scope.** March2005 `mma16p1tobit.do` §2A, using the
 same six-field `mma16p1tobit.asc`/converter as MMA-TOBIT and MMA-SELECT. The program
@@ -604,11 +604,10 @@ prediction/file/overflow failure controls. Do not widen tolerances for an
 unexplained difference or substitute generated control data for the author data.
 High risk: novel estimator/inference and public data/model/script contracts.
 Before merge require affected/reverse-consumer checks and independent read-only
-statistical/integration review. Native integration is now implemented and focused
-checks pass; independent integration review and remaining regression gates are
-still pending, so this entry remains WIP.
+statistical/integration review. Native integration and these gates now pass;
+final evidence is below. This bounded outcome does not complete Chapter16.
 
-**Reference milestone (native still WIP).** R4.6.1/truncreg0.2-5/maxLik1.5-2.2,
+**Reference and kernel milestone.** R4.6.1/truncreg0.2-5/maxLik1.5-2.2,
 source/archive-pinned installed function bodies, analytic package information
 plus independent symbolic full/null observed-Newton and three-step full-joint
 AME-gradient checks. Source130-row LL=-1012.605957391; beta=(-1682.93983040031,
@@ -647,8 +646,19 @@ native estimates and tolerances. A separate affine
 certified-R control validates actual script49 gates/nine covariance entries/726
 projections and file-failure preservation; it is not substitute author data.
 Default-package endpoint error5.884176e-8 was resolved by actual-density symbolic
-full/null refinement, not a widened gate. Independent integration review and
-remaining affected/reverse-consumer validation remain before merge.
+full/null refinement, not a widened gate. Frozen a2a5708 independent integration/
+source-math review found no issues, without reviewer execution. The earlier
+quota-failed request gave no approval; the same-profile retry followed a verified
+session reset. Final parent local validation reconciles1515 passed/0 failed/two
+pre-existing ignored across264 all-fresh inventoried, current-hash-checked
+artifacts, plus workspace all-target Clippy/doctests/format/diff. Test-only count
+and native-extension assertions were corrected while preserving the immutable
+Python oracle. Diagnosed loader-incomplete/unstarted work and a stopped
+preflight-helper failure remain separate from passing evidence. A fresh current-
+binary original JSON/text replay and all12 audit corruptions pass, with identical
+exports and six fingerprints preserved. Full provenance and limits are in the
+[source notes](../../examples/mma16p1tobit/truncreg.md#final-slice-acceptance-pr329);
+this is not other-platform/release or whole-Chapter16/book certification.
 
 ### MMA-SELECT bounded Heckman two-step contract and evidence
 

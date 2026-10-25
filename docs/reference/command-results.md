@@ -490,7 +490,7 @@ The original-source and closed-form actual-script audits, reverse-consumer
 checks and independent frozen-source integration review validate this bounded
 workflow, not default ML, whole-Chapter16 coverage or platform certification.
 
-## Bounded lower-truncated Gaussian regression (PR329 WIP)
+## Bounded lower-truncated Gaussian regression
 
 `truncreg y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic
 Gaussian density CONDITIONAL on Y*>known fixed lower. Select joint finite y/X
@@ -534,8 +534,10 @@ intact and publish no column. Failed new supported fits clear stale estimation,
 not data. Owned state tag is `truncated_gaussian_fit`, family
 `truncated_gaussian`, distinct from preserved legacy/owned Tobit tags.
 
-Focused/original-source/script checks pass; independent integration review and
-remaining affected/reverse-consumer evidence precede merge. See the
+Focused/original-source/script checks, independent kernel/integration source
+reviews and local workspace gates pass:1515 tests/two pre-existing ignored across
+264 current artifacts, all-target Clippy and doctests. Reviewers did not execute
+tests. This is not other-platform/release certification. See the
 [source-intended workflow/reference](../../examples/mma16p1tobit/truncreg.md),
 not a historical coefficient/table or whole-Chapter16 certification.
 

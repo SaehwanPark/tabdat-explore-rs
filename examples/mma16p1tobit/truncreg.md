@@ -1,4 +1,4 @@
-# Lower-truncated Gaussian regression — native workflow WIP
+# Lower-truncated Gaussian regression — validated native workflow
 
 ## Exact source and distinction
 
@@ -13,12 +13,13 @@ in [README](README.md); do not substitute a new random stream.
 Use `ytrunc ~ lnwage` plus intercept, fixed lower limit0. Exactly130 original
 positive observations contribute conditional densities;70 missing truncated
 outcomes contribute **nothing**, not censoring/Bernoulli masses. Retain original
-row identities and raw cells. The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-trunc-bounded-lower-truncated-gaussian-contract-wip)
+row identities and raw cells. The [ledger contract](../../docs/reference/microeconometrics-coverage.md#mma-trunc-bounded-lower-truncated-gaussian-contract-and-evidence)
 defines support/missingness, inference, effects, prediction, failure and resource
 semantics. Native kernel, owned terminal/script execution, full inference,
 retained effects and atomic current-X predictions are implemented and pass
-focused/source/script checks. This draft slice still needs independent
-integration review and remaining affected/reverse-consumer validation.
+focused/source/script and complete local workspace gates. Independent kernel
+and integration source/math reviews found no issues; reviewer execution was
+not part of either review. Final acceptance and retained failures are below.
 
 ## Independent development reference
 
@@ -77,7 +78,7 @@ This conditional130-row likelihood cannot be compared to the200-row Tobit or
 selection likelihood as a joint LR test. The AME is not the latent slope, Tobit
 censored-mean derivative, Heckman mean or causal effect.
 
-## Current validation and next implementation
+## Independent reference and kernel validation
 
 The reference emits49 exact-inventory quantities (45 numeric values plus four
 separately bounded full/null certificates), all9 beta/lnsigma covariance entries,
@@ -109,7 +110,8 @@ rank/name/resource/weight/identity failures, a positive exponential precision0
 closure and current-mode-specific tail behavior. The canonical sufficient-statistic
 score/information passes a private finite-difference test. A native original-source
 probe passes45 numerical quantities/nine covariance entries/600 projections and
-two separately bounded native certificates; it does not establish terminal support.
+two separately bounded native certificates; this probe alone does not establish
+terminal support.
 
 The existing guarded Gaussian Newton loop is shared with Tobit without changing
 its initialization, positive-information check, tolerances,60 backtracks or
@@ -121,7 +123,7 @@ its declared independent-original-row contract. The initial duplicate-ID test
 failure and test-literal compile error remain recorded; no tolerance widening.
 
 Frozen118a9d3 independent read-only kernel/math review found no issues; it did
-not execute tests or approve the pending frontend. Affected stats validation
+not execute tests or approve the then-pending frontend. Affected stats validation
 reconciles199 passed/one pre-existing ignored across46 all-fresh hash-checked
 artifacts. Stats doctests and eight reverse-consumer runtime/actual Tobit script
 tests pass. The original nextest discovery timeout remains incomplete; a bounded
@@ -179,11 +181,46 @@ Newton refinement resolved it without widening any gate. A u64/usize row-cap
 compile error was corrected before the four runtime tests passed.
 
 Discovery/help/schema/explain are implemented; their focused contract passes.
-Earlier changed-library all-target and current focused runtime/script/discovery
-Clippy pass; the later broader all-target attempt timed out after checking the
-root package and remains incomplete.
-Independent integration review and remaining affected/reverse checks still
-precede merge; this is not whole-Chapter16/book/platform/release certification. Scope is fixed-left-truncated IID homoskedastic
+Earlier changed-library/focused Clippy checks pass. The first broader attempt
+timed out after checking the root package and remains an incomplete attempt;
+final workspace all-target Clippy subsequently passed with warnings denied.
+
+## Final slice acceptance (PR329)
+
+Independent frozen a2a5708 integration/source-math review found no issues. It
+explicitly did not execute commands/tests and was conditional on the parent's
+remaining regression gate. An earlier same-profile reviewer request failed on
+the provider quota limit and gave no approval; the successful retry occurred
+after an authoritative session reset, with no route substitution.
+
+Parent local macOS validation now reconciles **1515 passed,0 failed,two
+pre-existing ignored** across **264 current artifacts**. All were inventoried
+all-fresh and SHA256-checked; the current main executable hash was stable.
+Forty-five unchanged non-root artifacts were reused from observed exit0 runs
+with identical current hashes and no root-binary dependency. Subsequent passing
+records were retained only with exact current artifact hashes; root consumers
+also bind the unchanged current main hash. The final two targeted discovery/
+compatibility binaries passed31 tests after test-only assertion fixes; all
+remaining diagnosed loader-incomplete or unstarted work then passed. Workspace
+all-target Clippy with `-D warnings`, workspace doctests, formatting and diff
+checks pass. A fresh current-binary original-source JSON/text replay exits0 with
+byte-identical exports; the49 reference gates/nine covariance entries/600
+predictions/1400 cells/exact130 membership and all12 corruption guards pass.
+
+Initial bounded workspace builds/discovery/runner timeouts remain incomplete,
+not passes. A parent runner preflight initially required obsolete hashes for
+the two deliberately rebuilt test targets; it stopped before executing tests,
+was corrected to compare those targets against the current inventory, and its
+failure record remains separate. Actual regression failures exposed stale
+command/help counts and the Rust-only extension list; assertions now explicitly
+pin `truncreg` help/read effects while preserving the immutable Python oracle.
+These test/audit corrections did not change native estimates, covariance or
+numerical tolerances. Sampled dyld preparation/fixup stalls, unstarted work and
+all earlier diagnostics remain recorded; only diagnosed incomplete/unstarted
+work was resumed, not silently reclassified.
+
+This is not whole-Chapter16/book/platform/release certification. Scope is
+fixed-left-truncated IID homoskedastic
 Gaussian ML; no upper/variable truncation, robust/cluster/weights, factors, named
 storage, generic tests or fabricated sigma0 test. No numerical tolerances have
 been broadened to conceal a discrepancy.

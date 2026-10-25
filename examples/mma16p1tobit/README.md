@@ -7,8 +7,8 @@ selection and CLAD analyses are separate outcomes, not this fit. The distinct
 [corrected Heckman two-step comparison](heckman.md) now has its own native script,
 source/reference audit and inference/identification limits. The distinct
 [fixed-lower truncated Gaussian workflow](truncreg.md) is now implemented with
-original130-row R/independent audits and actual-script/failure checks, but still
-awaits integration review and final regression gates in draft PR329. It fills
+original130-row R/independent audits, actual-script/failure checks, independent
+kernel/integration source reviews and passing local workspace gates (PR329). It fills
 the author's described but unexecuted truncated-MLE gap, not historical/table
 parity. CLAD, richer limited outcomes and remaining Chapter16 work stay required.
 
