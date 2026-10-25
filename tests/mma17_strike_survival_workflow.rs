@@ -93,6 +93,40 @@ fn actual_tied_strike_workflow_matches_r_and_svg_geometry_in_both_cli_modes() {
     assert!(!audit(&d).status.success(), "corrupted {file} accepted");
     fs::write(&path, before).unwrap();
   }
+  let forged = REFERENCE.replace("0.75", "0.74");
+  fs::write(d.path().join("reference.csv"), &forged).unwrap();
+  fs::write(d.path().join("strikes_survival.csv"), &forged).unwrap();
+  assert!(
+    !audit(&d).status.success(),
+    "shared wrong native/R survival accepted"
+  );
+}
+
+#[test]
+fn all_failures_at_one_tied_time_have_no_invented_endpoint_uncertainty() {
+  let d = TestDir::new();
+  fs::write(
+    d.path().join("strikes.csv"),
+    "source_row,dur,gdp\n1,5,0\n2,5,0\n3,5,0\n",
+  )
+  .unwrap();
+  let o = run(&d, "--json");
+  assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+  // Direct closed form: d=n=3, KM=0, NA=1, NA variance=1/3.
+  let table = fs::read_to_string(d.path().join("strikes_survival.csv")).unwrap();
+  let values: Vec<_> = table.lines().nth(1).unwrap().split(',').collect();
+  assert_eq!(&values[..3], &["5", "3", "3"]);
+  assert_eq!(values[3].parse::<f64>().unwrap(), 0.0);
+  assert_eq!(&values[4..7], &["", "", ""]);
+  assert_eq!(values[7].parse::<f64>().unwrap(), 1.0);
+  assert!((values[8].parse::<f64>().unwrap() - (1.0_f64 / 3.0).sqrt()).abs() < 1e-14);
+  assert_eq!(
+    fs::read_to_string(d.path().join("strikes_steps.csv"))
+      .unwrap()
+      .lines()
+      .count(),
+    4
+  );
 }
 
 #[test]

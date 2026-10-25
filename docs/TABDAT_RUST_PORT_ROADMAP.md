@@ -135,8 +135,14 @@ Extend the same workflow/validation standard to:
   author's documented but unexecuted truncated-MLE gap,
   not historical/table parity. Richer truncation/censoring/inference, remaining
   selection/two-part workflows and illustrations stay required.
-- **Survival:** event/censoring/truncation declaration, Kaplan–Meier, parametric
-  and Cox models, with baseline/survival/hazard outputs and diagnostics.
+- **Survival:** the [original566-strike nonparametric workflow](../examples/mma17p1km/README.md)
+  now composes existing SQL/table/export/SVG commands for tied-time Kaplan–Meier,
+  Greenwood SE/pointwise log-log95% bounds and Nelson–Aalen/SE. Independent R,
+  source-pinned author-output and actual SVG geometry audits pass. This is the
+  uncensored single-spell/entry-zero example, not general survival declarations,
+  censoring/truncation, Cox-baseline equivalence or a complete chapter. Those
+  declarations plus parametric/Cox models, baseline/survival/hazard outputs,
+  diagnostics and remaining illustrations stay required.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
   one-/two-step covariance, convergence, overidentification and serial-correlation
   diagnostics; control instrument proliferation rather than silently expanding it.
