@@ -114,22 +114,28 @@ Observed original-source audit probe (no native fit claim):
    data/labels/files/model state as declared. Test prior-fit replacement/failure
    and legacy estimator/prediction consumers; reject unsupported options explicitly.
 
-Current kernel milestone: five `weibull` library tests pass. The400-row full
+Current kernel milestone: seven `weibull` library tests pass. The400-row full
 41-beta control checks2032 model-based and2031 robust R gates, all1764 covariance
 cells per mode and4800 unique current/UI0/UI1 point predictions (both modes).
 Independent score/Hessian finite differences, Weibull time-unit joint covariance
 Jacobian (intercept/shape covariance is NOT invariant), invalid supports/rank/
 sample/weights/cluster/options and exponential/probability limits pass. Stats
-all-target Clippy `-D warnings` passes. The original3343-spell independent R
+all-target Clippy `-D warnings` passes. No-intercept full joint R controls add1943
+model-based/1942 robust gates, including an independently bracketed scalar shape-
+only null (not a fake intercept or fixed shape), and reversed-row covariance/
+owned-sample identity passes. Original intercept-reference artifacts remain byte-
+identical after extending the reference generator. The original3343-spell R
 reference passes its separate full observed/sandwich reconstruction, but original
-native execution is NOT yet checked. No-intercept reference, permutation, shared
-runtime/reporting/prediction and whole affected-crate checks remain pending.
+native execution is NOT yet checked. Shared runtime/reporting/prediction and
+whole affected-crate checks remain pending. With noconstant the PH scale is fixed;
+unlike a free intercept, this specification is not generally time-unit invariant.
 
 Reference reproduction (development only):
 
 ```sh
 Rscript examples/mma17p4duration/weibull_reference.R /path/duration.csv /tmp/new-weibull-original /path/ema1996.dta
 Rscript examples/mma17p4duration/weibull_reference.R tests/fixtures/duration_exponential/input.csv /tmp/new-weibull-control
+Rscript examples/mma17p4duration/weibull_reference.R tests/fixtures/duration_exponential/input.csv /tmp/new-weibull-no-intercept - noconstant
 cargo nextest run --locked -p tabdat-stats --lib weibull --no-tests fail
 ```
 

@@ -69,7 +69,11 @@ fn check_gates(result: &WeibullResult, reference: &str) {
     close(actual, value.parse().unwrap(), path);
     count += 1;
   }
-  assert!(count >= 2031);
+  let k = result.coefficients.len();
+  assert_eq!(
+    count,
+    6 * k + (k + 1) * (k + 1) + 8 + if result.robust { 13 } else { 14 }
+  );
 }
 
 #[test]
@@ -277,6 +281,76 @@ fn weibull_invalid_support_rank_bounds_options_and_sample_are_rejected() {
   bad.design_matrix.truncate(42);
   bad.sample = None;
   assert!(fit_weibull(&bad, "event", &d[..42], &options).is_err());
+}
+
+#[test]
+fn weibull_no_intercept_joint_inference_and_shape_only_null_match_independent_r() {
+  const MODEL: &str =
+    include_str!("../../../../tests/fixtures/weibull/no_intercept/model_based.csv");
+  const ROBUST: &str = include_str!("../../../../tests/fixtures/weibull/no_intercept/robust.csv");
+  let (p, d) = fixture();
+  let p = p.with_intercept(false);
+  for robust in [false, true] {
+    let result = fit_weibull(
+      &p,
+      "censor1",
+      &d,
+      &WeibullOptions {
+        robust,
+        ..Default::default()
+      },
+    )
+    .unwrap();
+    check_gates(&result, if robust { ROBUST } else { MODEL });
+    assert!(!result.include_intercept);
+    assert_eq!(result.coefficients.len(), 40);
+    assert_eq!(result.coefficients[0].name, "reprate");
+    assert_eq!(result.likelihood_ratio_df, 40);
+    assert_eq!(result.omnibus_wald.degrees_of_freedom, 40);
+  }
+}
+
+#[test]
+fn weibull_permuted_rows_preserve_joint_inference_and_owned_sample_identity() {
+  let (p, mut d) = fixture();
+  let options = WeibullOptions {
+    robust: true,
+    ..Default::default()
+  };
+  let a = fit_weibull(&p, "censor1", &d, &options).unwrap();
+  let mut changed = p.clone();
+  changed.response.reverse();
+  changed.design_matrix.reverse();
+  d.reverse();
+  changed.sample.as_mut().unwrap().retained_indices.reverse();
+  let b = fit_weibull(&changed, "censor1", &d, &options).unwrap();
+  close(b.shape.value, a.shape.value, "permuted shape");
+  close(b.log_likelihood, a.log_likelihood, "permuted likelihood");
+  for i in 0..41 {
+    close(
+      b.coefficients[i].value,
+      a.coefficients[i].value,
+      "permuted beta",
+    );
+  }
+  for i in 0..42 {
+    for j in 0..42 {
+      close(
+        b.covariance_matrix[i][j],
+        a.covariance_matrix[i][j],
+        "permuted joint covariance",
+      );
+    }
+  }
+  assert_eq!(b.sample, changed.sample);
+  assert_eq!(b.sample.as_ref().unwrap().retained_indices[0], 399);
+  for i in 0..400 {
+    close(
+      b.fitted_cumulative_hazard[i],
+      a.fitted_cumulative_hazard[399 - i],
+      "permuted H",
+    );
+  }
 }
 
 #[test]

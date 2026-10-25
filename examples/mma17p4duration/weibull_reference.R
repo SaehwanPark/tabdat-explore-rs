@@ -1,9 +1,11 @@
 # Development-only independent reference; no native/runtime dependency.
-# Rscript weibull_reference.R duration.csv NEW_DIRECTORY [original_ema1996.dta]
+# Rscript weibull_reference.R duration.csv NEW_DIRECTORY [original_DTA_or_-] [noconstant]
 args<-commandArgs(TRUE)
-stopifnot(length(args)%in%c(2,3),!file.exists(args[2]))
+stopifnot(length(args)%in%2:4,!file.exists(args[2]))
+no_intercept<-length(args)==4
+if(no_intercept)stopifnot(args[4]=="noconstant")
 library(survival)
-if(length(args)==3) {
+if(length(args)>=3 && args[3]!="-") {
   library(foreign)
   raw<-read.dta(args[3],convert.factors=FALSE)
   raw<-data.frame(source_row=seq_len(nrow(raw)),raw,check.names=FALSE)
@@ -15,13 +17,11 @@ stopifnot(nrow(d)>42,all(is.finite(as.matrix(d))),all(d$spell>0),
   all(as.matrix(d[paste0("censor",1:4)])%in%c(0,1)),
   all(rowSums(d[paste0("censor",1:4)])<=1),sum(d$censor1)>0,
   all(d$ui%in%c(0,1)),!anyDuplicated(d$source_row))
-f<-as.formula(paste("Surv(spell,censor1)~",paste(x,collapse="+")))
+f<-as.formula(paste("Surv(spell,censor1)~",paste(x,collapse="+"),if(no_intercept)"-1"else""))
 s<-survreg(f,d,dist="weibull",robust=TRUE,
   control=survreg.control(maxiter=100,rel.tolerance=1e-12))
-null<-survreg(Surv(spell,censor1)~1,d,dist="weibull",
-  control=survreg.control(maxiter=100,rel.tolerance=1e-12))
 n<-nrow(d);k<-length(coef(s));a<-1/s$scale;beta<- -coef(s)*a
-names(beta)[1]<-"intercept"
+if(!no_intercept)names(beta)[1]<-"intercept"
 q<-log(a);z95<-qnorm(.975);lnt<-log(d$spell);D<-d$censor1
 X<-model.matrix(f,d);eta<-drop(X%*%beta);H<-exp(eta+a*lnt)
 h<-exp(log(a)+eta+(a-1)*lnt);S<-exp(-H)
@@ -46,6 +46,23 @@ package_survival<-1-psurvreg(d$spell,mean=aft,scale=s$scale,
   distribution="weibull")
 stopifnot(max(abs(package_survival-S))<1e-12)
 constant<-sum(D*lnt)
+if(no_intercept) {
+  # R survreg has no zero-location/shape-only model interface. Independently
+  # solve the strictly decreasing NATURAL-shape null score by scalar bracketing,
+  # not the native joint Newton algorithm or an arbitrary fixed shape.
+  null_score<-function(a)sum(D)/a+sum(D*lnt)-sum(exp(a*lnt)*lnt)
+  lo<-.Machine$double.eps;hi<-1
+  stopifnot(null_score(lo)>0)
+  while(null_score(hi)>0) { hi<-2*hi;stopifnot(is.finite(hi)) }
+  null_shape<-uniroot(null_score,c(lo,hi),tol=1e-13,maxiter=1000)$root
+  null_ll<-sum(D*(log(null_shape)+(null_shape-1)*lnt)-exp(null_shape*lnt))
+} else {
+  null<-survreg(Surv(spell,censor1)~1,d,dist="weibull",
+    control=survreg.control(maxiter=100,rel.tolerance=1e-12))
+  null_ll<-as.numeric(logLik(null))
+}
+slope<-if(no_intercept)seq_len(k)else 2:k
+df<-length(slope)
 gates_for<-function(V,robust) {
   gates<-data.frame(path=character(),value=numeric())
   add<-function(path,value) { gates[nrow(gates)+1,]<<-list(path,unname(value)) }
@@ -54,14 +71,14 @@ gates_for<-function(V,robust) {
   add("/covariance_correction",if(robust)n/(n-1) else 1)
   add("/log_likelihood",as.numeric(logLik(s)))
   add("/normalized_log_likelihood",as.numeric(logLik(s))+constant)
-  add("/null_log_likelihood",as.numeric(logLik(null)))
-  add("/null_normalized_log_likelihood",as.numeric(logLik(null))+constant)
-  lr<-2*(as.numeric(logLik(s))-as.numeric(logLik(null)))
-  add("/likelihood_ratio",lr);add("/likelihood_ratio_df",k-1)
-  if(!robust)add("/likelihood_ratio_p_value",pchisq(lr,k-1,lower.tail=FALSE))
-  wald<-drop(crossprod(beta[-1],solve(V[2:k,2:k],beta[-1])))
-  add("/omnibus_wald/statistic",wald);add("/omnibus_wald/degrees_of_freedom",k-1)
-  add("/omnibus_wald/p_value",pchisq(wald,k-1,lower.tail=FALSE))
+  add("/null_log_likelihood",null_ll)
+  add("/null_normalized_log_likelihood",null_ll+constant)
+  lr<-2*(as.numeric(logLik(s))-null_ll)
+  add("/likelihood_ratio",lr);add("/likelihood_ratio_df",df)
+  if(!robust)add("/likelihood_ratio_p_value",pchisq(lr,df,lower.tail=FALSE))
+  wald<-drop(crossprod(beta[slope],solve(V[slope,slope],beta[slope])))
+  add("/omnibus_wald/statistic",wald);add("/omnibus_wald/degrees_of_freedom",df)
+  add("/omnibus_wald/p_value",pchisq(wald,df,lower.tail=FALSE))
   for(i in seq_len(k)) {
     values<-c(value=beta[i],standard_error=se[i],statistic=z[i],
       p_value=2*pnorm(-abs(z[i])),confidence_lower=beta[i]-z95*se[i],confidence_upper=beta[i]+z95*se[i])
