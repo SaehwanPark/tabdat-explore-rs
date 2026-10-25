@@ -32,7 +32,7 @@ not by implementing every estimator mentioned in a chapter.
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit and corrected Heckman two-step author-program workflows, full declared covariance and current predictions; Tobit retained continuous effects | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
-| 17–19: Survival, heterogeneity, multiple hazards | Validated composed uncensored566-strike KM/Greenwood pointwise bands and Nelson–Aalen/SE tables/step plots | General event/censoring/truncation semantics, parametric/Cox, mixture/frailty and multiple-event analyses; not general survival estimator support |
+| 17–19: Survival, heterogeneity, multiple hazards | Validated composed uncensored566-strike and artificial80-spell right-censoring KM/Greenwood pointwise bands and Nelson–Aalen/uncertainty tables/step plots | General event/censoring/truncation semantics, parametric/Cox, mixture/frailty and multiple-event analyses; not general survival estimator support |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow, the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Relevant parser forms only | Dynamic GMM and nonlinear panels with instrument controls and appropriate inference |
@@ -68,6 +68,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | Validated bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates/1000 native predictions plus98 synthetic quantities/3600 predictions and49 closed-form actual-script gates/120 predictions; separate covariance blocks/no exclusion restriction; owned state/atomic five-mode prediction, failure controls, reverse checks and independent source reviews; distinct from RAND below |
 | MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
 | MMA-DURATION | §17.2 pp.574–575/§17.5.1 pp.581–583, strikes; `mma17p1km.do` / `strkdur.asc` | Partial — validated native composed all566 uncensored-strike KM/Greenwood/log-log pointwise95% and Nelson–Aalen/SE table/step-plot workflow | Original141 distinct times/24,691 days;1,269 R cells/1,128 author printed facts/1,130 actual SVG vertices pass. Table17.2/17.3 source-comment numbering discrepancy explicit; Cox-baseline comparison/NA confidence graph/general censored survival remain required |
+| MMA-DURATION-CENSOR | §17.5.1 pp.581–582, Table17.2-associated artificial illustration; `mma17p2kmextra.do` explicit input | Validated bounded author-program workflow — original80 spells/40 failures/40 right-censored exits, KM/Greenwood/log-log95 and NA/SE/log-Wald95 tables/native step plots | Exact input overrides inconsistent prose labels.108 R cells/144 printed facts/six manual gates/112 SVG vertices and actual-script failure controls pass; artificial data, not empirical-regression or general survival-command support |
 | MMA-HAZARDS | pp. 603–608, 632–636, 658–662, displaced workers; `ema1996` | Planned | Identify event types, repeated-spell/heterogeneity requirements and samples |
 | MMA-COUNT | §20.3 pp. 671–674, Table20.5 p. 673; later p. 692, RAND; `mma20p1count.asc` / `randdata.dta` | Partial — Poisson/NB2 coefficients and model-based/independent-row robust statistic columns, plus model-based Poisson-boundary NB2 LR test, validated | 20,186 all-year prepared person-years; [native workflows/source audit/R references](../../examples/mma20p1count/README.md), Poisson1,095/NB2 1,191 quantities/all source/design/mean/index records; native person-Poisson551/NB2 599-quantity extensions/5,908 original people; native/November2006 author-program frequency analysis95 quantities/444092 individual probabilities validated; current-row PMF/CDF above99 additionally checked against20 base-R values, printed Table20.6 NB2 row unresolved; remaining tables and richer counts remain required |
 | MMA-PANEL | §21.3 pp.709–714, Table21.2 p.710, PSID; `MOM.dat` / `mma21p1panfeandre.do` | Partial — POLS/FD, Between/RE-GLS, unbalanced RE-GLS sensitivity, interior ML coefficient/likelihood, positive-interior variance-component uncertainty, the one-sided zero-unit-variance LR test and Within slope/conditional-prediction portions validated | [Guarded keys/annual pairs, native explicit-key FE, inference/effects/prediction and R evidence](../../examples/mma21p1panel/README.md); individual unit-intercept uncertainty, remaining illustrated ML inference, cluster-robust unit-effects testing, Hausman and other panel diagnostics/bootstrap, lowess/figures and remaining table outputs required; bounded p719 robust auxiliary comparison and synthetic R/plm unit-effects F references are validated below |
@@ -118,10 +119,64 @@ apply to this script/test-only slice, not full workspace/platform certification.
 
 **Remaining.** Figure17.1 is a native step/scatter-with-line equivalent, not
 literal WMF/style parity. The NA graph has point estimates; NA SE is exported,
-not its extra author confidence-band graph. Cox-baseline equivalence, artificial
-censoring example, general survival declarations/censoring/truncation/delayed
-entry, parametric/Cox models and remaining Chapters17–19 illustrations remain
-required. This closes neither the survival family nor the full book inventory.
+not its extra author confidence-band graph. Cox-baseline equivalence, general survival declarations/other censoring/
+truncation/delayed entry, parametric/Cox models and remaining Chapters17–19
+illustrations remain required. The separately scoped artificial right-censoring
+example is validated below. This closes neither the survival family nor the full book inventory.
+
+### MMA-DURATION-CENSOR bounded artificial right-censoring evidence
+
+**Exact source/sample.** March2005 `mma17p2kmextra.do`, §17.5.1 pp.581–582,
+Table17.2-associated author-program KM/NA portions. Explicit `input duration
+failed`:80 original spells,40 failures/40 censored exits,3170 days at risk,
+entry zero,9 distinct exit times10..50. Program prose calls32 exits at45 failures
+and26 at50 censored; executable flags and printed output unambiguously specify
+32 censored then26 failures. Follow that executed sample, not the prose. Source
+is artificial, not an empirical-regression substitute or replacement RNG.
+
+**Delivered workflow.** [Source/commands/reference notes](../../examples/mma17p2kmextra/README.md)
+extract/validate the original input, guard positive complete times/exact0/1 flags/
+keys/nonzero failure count, compute simultaneous tied failure risk sets including
+same-time censored exits, and carry estimates across censor-only times. Native
+CSV/table/step-SVG outputs include KM product(1-d/n), Greenwood SE/log-log95%
+pointwise bounds, NA sum(d/n)/SE from sum(d/n²) and positive log-Wald95% bounds.
+Initial S1/bounds1 and H0/bounds0 follow computational conventions; final S0 has
+undefined KM SE/CI per author table while NA stays finite. Independent,
+noninformative right-censoring and independent spells are interpretation
+assumptions, not causal guarantees. A last censored observation does not force
+S0 or identify a follow-up tail. No production code/dependency/new syntax/state.
+Native step graphs are added reporting: author's graph calls were commented out.
+
+**Independent evidence.** R4.6.1/survival3.8.6 explicit stype1/ctype1/log-log95
+and all-time summary supplies KM/NA/SE; base-R qnorm and package NA/SE independently
+supply log-Wald NA intervals. All108 numerical table cells,240 source cells/ordinals,
+144 printed facts across both author tables, six manual first-three-time gates,
+19 step records and112 finite actual SVG line vertices/pixel coordinates pass.
+Pinned raw program/log SHA256 ensures exact original asset identity. JSON/text
+original artifacts are byte-identical. R tolerance1e-11 absolute+1e-10 relative;
+printed values use only half a four-decimal unit; integers/NULLs exact. At45:
+S=.817132703272671;26 failures at50 yield S0 and H1.195635788487073.
+
+**Permanent acceptance/checks.** Four `mma17_censored_survival_workflow` tests run
+the actual script against a separate6-spell/5-time R control with an initial
+censor, an event/censor tie and nonzero censored tail (60 cells/66 vertices),
+plus terminal all-fail closed-form inference. They cover invalid/empty/missing/
+nonbinary/no-failure/oversized inputs, every output collision, atomic strict
+CRLF/repeated-block extraction, source/steps/table/actual-geometry corruption
+and shared wrong native/R survival. Reused SVG audit extraction is protected by
+all four original strike tests and the original566-row source audit.8 focused
+tests pass; current root coverage372 tests/87 artifacts is reconciled from85
+unchanged passing hashes and two current focused targets. Root all-target Clippy,
+changed Rust formatting and diff checks pass; no unaffected non-root workspace/
+doctest rerun, hosted Actions or cross-platform/release certification is claimed.
+
+**Limits.** At most4999 distinct times to fit existing SVG bounds; zero observed
+failures rejected rather than silently accepted as an identified hazard analysis.
+Ordered no-overwrite script effects are not a multi-file transaction. No general
+survival declarations/retained fits, delayed entry/left/interval censoring/
+truncation, weights/groups/regression/Cox/parametric models or simultaneous bands.
+This validates the exact artificial author-program workflow, not separate printed
+book-page transcription or complete survival-family/empirical coverage.
 
 ### MMA-CHOICE bounded MNL contract and evidence
 

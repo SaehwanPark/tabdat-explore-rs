@@ -136,5 +136,7 @@ other-platform or release certification. No production crates changed, so the
 unaffected non-root workspace and Rust doctests were not rerun.
 
 No source uncertainty discrepancy is hidden by tolerance changes. General
-right-censored survival, Cox/parametric models, author artificial-censoring
-example, Cox-baseline equivalence and remaining illustrations stay required.
+survival declarations, Cox/parametric models, Cox-baseline equivalence and
+remaining illustrations stay required. A separate [bounded artificial
+right-censoring workflow](../mma17p2kmextra/README.md) now validates the author's
+80-spell example; it does not install general survival-estimation syntax.
