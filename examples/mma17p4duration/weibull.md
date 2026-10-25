@@ -1,6 +1,6 @@
 # WIP: original Table17.8 Weibull duration regression
 
-**Status: source/reference audit only. Native `streg` execution is NOT installed.**
+**Status: pure stats kernel/reference controls pass. Native `streg` execution is NOT installed.**
 This is one ongoing vertical slice; do not merge parser/kernel-only work or start
 another slice before the complete workflow passes its checks.
 
@@ -83,7 +83,7 @@ the beta block omits shape uncertainty/cross terms and is WRONG.
 Independent natural (beta,a) score: s_beta=X(d-H), s_a=d/a+(d-H)log t.
 Observed information is sum H*[X,log t]*[X,log t]' plus sum(d)/a² in the final
 shape diagonal. It is jointly concave for a>0; use the existing guarded positive-
-coordinate Newton utility if suitable, with explicit unit-column scaling and
+coordinate Newton utility if suitable, with explicit RMS-unit-column scaling and
 canonical score/step diagnostics. Preserve its existing Gaussian consumers.
 Transform natural shape to q after fitting for covariance/reporting. Full robust
 sandwich must agree with the separate R AFT Jacobian route.
@@ -113,6 +113,33 @@ Observed original-source audit probe (no native fit claim):
    bounds and current-prediction schema/support/target/overflow errors protect
    data/labels/files/model state as declared. Test prior-fit replacement/failure
    and legacy estimator/prediction consumers; reject unsupported options explicitly.
+
+Current kernel milestone: five `weibull` library tests pass. The400-row full
+41-beta control checks2032 model-based and2031 robust R gates, all1764 covariance
+cells per mode and4800 unique current/UI0/UI1 point predictions (both modes).
+Independent score/Hessian finite differences, Weibull time-unit joint covariance
+Jacobian (intercept/shape covariance is NOT invariant), invalid supports/rank/
+sample/weights/cluster/options and exponential/probability limits pass. Stats
+all-target Clippy `-D warnings` passes. The original3343-spell independent R
+reference passes its separate full observed/sandwich reconstruction, but original
+native execution is NOT yet checked. No-intercept reference, permutation, shared
+runtime/reporting/prediction and whole affected-crate checks remain pending.
+
+Reference reproduction (development only):
+
+```sh
+Rscript examples/mma17p4duration/weibull_reference.R /path/duration.csv /tmp/new-weibull-original /path/ema1996.dta
+Rscript examples/mma17p4duration/weibull_reference.R tests/fixtures/duration_exponential/input.csv /tmp/new-weibull-control
+cargo nextest run --locked -p tabdat-stats --lib weibull --no-tests fail
+```
+
+Stats optimization uses the Stata-normalized objective to avoid time-unit constants
+in Newton line-search precision/LR, then explicitly restores density LL. Reported
+beta/logshape curvature includes the actual finite-score chain-rule term, not
+merely a zero-score Jacobian approximation. Positive shape CIs/inference are NULL
+when unrepresentable, never spuriously exact or zero-tailed. Prediction survival
+can round to0 for huge integrated hazard even when H cannot itself be represented;
+hazard/H overflow fails, while a genuine probability endpoint is preserved.
 
 Finish gates: focused numerical/runtime/new script tests first, then stats and
 reverse-dependent packages/root consumers proportional to new shared result/state/

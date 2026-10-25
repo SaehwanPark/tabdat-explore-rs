@@ -1,4 +1,4 @@
-//! Shared guarded Newton solve for the two concave Gaussian parameterizations.
+//! Shared guarded Newton solve for concave positive-coordinate parameterizations.
 //! The final coordinate is positive; neither damping nor a pseudoinverse enters
 //! the returned information. Model-specific likelihoods enforce their own range.
 use crate::StatsError;
