@@ -159,6 +159,46 @@ fn legacy_negative_binomial_and_owned_nb2_fit_remain_distinct_on_wire() {
 }
 
 #[test]
+fn legacy_nonlinear_and_owned_nls_keep_distinct_roundtrippable_tags() {
+  use tabdat_stats::{EstimationProblem, EstimationSample, NlsExpression, NlsModel};
+  let response = vec![1.0, 2.0, 3.0, 4.0];
+  let sample = EstimationSample::all_retained(4);
+  let problem = EstimationProblem::new("y", vec![], response.clone(), vec![vec![]; 4]).unwrap();
+  let linear = tabdat_stats::fit_least_squares(&problem).unwrap();
+  let legacy = EstimationState::Nonlinear(ModelState {
+    model: tabdat_stats::PostEstimationModel::from_least_squares(&linear),
+    sample: sample.clone(),
+    outcome: "y".into(),
+    predictors: vec![],
+  });
+  let model = NlsModel {
+    outcome: "y".into(),
+    parameter_names: vec!["a".into()],
+    predictor_names: vec![],
+    expression: NlsExpression::Parameter(0),
+  };
+  let result =
+    tabdat_stats::fit_nls(&model, &response, &vec![vec![]; 4], &[1.0], &sample, false).unwrap();
+  let owned = EstimationState::NonlinearFit(Box::new(result.clone()));
+  for (state, tag) in [(legacy, "nonlinear"), (owned, "nonlinear_fit")] {
+    assert_eq!(state.family(), EstimationFamily::Nonlinear);
+    assert!(state.linear().is_none());
+    let wire = serde_json::to_value(&state).unwrap();
+    assert_eq!(wire["family"], tag);
+    assert_eq!(
+      serde_json::from_value::<EstimationState>(wire).unwrap(),
+      state
+    );
+  }
+  let wire = serde_json::to_value(ExecutionResult::Nl(Box::new(result))).unwrap();
+  assert_eq!(wire["kind"], "nl");
+  assert!(matches!(
+    serde_json::from_value::<ExecutionResult>(wire).unwrap(),
+    ExecutionResult::Nl(_)
+  ));
+}
+
+#[test]
 fn state_has_one_optional_model_and_panel_contract() {
   let mut state = ExecutionState::default();
   assert!(state.estimation.is_none());

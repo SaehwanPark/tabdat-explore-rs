@@ -255,7 +255,10 @@ pub enum EstimationState {
   CoxFit(Box<tabdat_stats::CoxResult>),
   Heckman(ModelState),
   HeckmanTwoStepFit(Box<tabdat_stats::HeckmanTwoStepResult>),
+  /// Legacy nonlinear placeholder, retained for serialized-state compatibility.
   Nonlinear(ModelState),
+  /// Owned explicit-formula NLS fit/sample; no automatic intercept or likelihood.
+  NonlinearFit(Box<tabdat_stats::NlsResult>),
   /// Legacy normalized placeholder, retained for old serialized state reads.
   Poisson(ModelState),
   PoissonFit(Box<PoissonFitState>),
@@ -327,7 +330,7 @@ impl EstimationState {
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,
       Self::TruncatedGaussianFit(..) => EstimationFamily::TruncatedGaussian,
       Self::Heckman(..) | Self::HeckmanTwoStepFit(..) => EstimationFamily::Heckman,
-      Self::Nonlinear(..) => EstimationFamily::Nonlinear,
+      Self::Nonlinear(..) | Self::NonlinearFit(..) => EstimationFamily::Nonlinear,
       Self::Poisson(..) | Self::PoissonFit(..) => EstimationFamily::Poisson,
       Self::NegativeBinomial(..) | Self::NegativeBinomialFit(..) => {
         EstimationFamily::NegativeBinomial

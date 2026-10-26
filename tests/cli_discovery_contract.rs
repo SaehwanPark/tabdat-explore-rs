@@ -532,6 +532,51 @@ fn tobit_discovery_requires_predictors_and_separates_kernel_only_intercept_suppo
 }
 
 #[test]
+fn nls_discovery_advertises_explicit_roles_covariance_and_bounded_mean_prediction() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "NL"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let v: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(v["schema_version"], 1);
+  assert_eq!(v["data"]["help_topic"], "nl");
+  assert_eq!(
+    v["data"]["syntax"],
+    "nl y = expression, params(names) start(values) [robust noconstant]"
+  );
+  assert_eq!(
+    v["data"]["options"],
+    serde_json::json!([
+      {"name":"params","required":true}, {"name":"start","required":true},
+      {"name":"robust","required":false}, {"name":"noconstant","required":false}
+    ])
+  );
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "nl"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  assert!(output.stderr.is_empty());
+  let v: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = v["data"]["text"].as_str().unwrap();
+  for expected in [
+    "explicit mean formula",
+    "No automatic intercept",
+    "Student-t(N-P)",
+    "correctly specified conditional mean",
+    "Gauss–Newton",
+    "not a latent linear index",
+    "Failed fits do not mutate",
+    "10000",
+    "feasible generalized NLS",
+  ] {
+    assert!(text.contains(expected), "missing {expected}");
+  }
+}
+
+#[test]
 fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "PREDICT"])

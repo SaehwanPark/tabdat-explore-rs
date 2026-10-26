@@ -3,8 +3,8 @@ pub use tabdat_stats::UnitEffectsFTest;
 pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
   MAX_COUNT_POINT_CUTOFF, MultinomialEstimate, Nb2Cluster, Nb2Dispersion, Nb2Estimate,
-  Nb2MarginalEffects, Nb2Result, PoissonCluster, PoissonEstimate, PoissonMarginalEffects,
-  PoissonOmnibusWald, PoissonResult, TobitEstimate,
+  Nb2MarginalEffects, Nb2Result, NlsExpression, NlsModel, NlsResult, PoissonCluster,
+  PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult, TobitEstimate,
 };
 pub use tabdat_stats::{
   BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileBootstrapResult, QuantileResult,
@@ -819,6 +819,8 @@ pub enum ExecutionResult {
   Gompertz(Box<tabdat_stats::GompertzResult>),
   /// Cox/Breslow fit and reference-vector baseline, without baseline uncertainty.
   Cox(Box<tabdat_stats::CoxResult>),
+  /// Explicit-formula NLS with working/HC1 Gauss–Newton covariance and approximate t inference.
+  Nl(Box<tabdat_stats::NlsResult>),
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.
   Tobit(Box<tabdat_stats::TobitResult>),
   TruncatedGaussian(Box<tabdat_stats::TruncatedGaussianResult>),

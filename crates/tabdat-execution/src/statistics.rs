@@ -1147,6 +1147,9 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::NonlinearFit(_))) {
+      return self.execute_nls_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::CoxFit(_))) {
       return self.execute_cox_prediction(command);
     }

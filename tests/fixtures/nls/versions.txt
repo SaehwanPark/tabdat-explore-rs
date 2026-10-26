@@ -1,0 +1,4 @@
+R version 4.6.1 (2026-06-24)
+stats 4.6.1
+Independent analytic/OLS/profiled-score references; no nls convergence claim.
+GN covariance is under correct conditional mean, not observed-loss bread.
