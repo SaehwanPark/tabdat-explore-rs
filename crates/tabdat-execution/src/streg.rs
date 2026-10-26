@@ -78,11 +78,23 @@ impl Session {
               "at most10000 complete finite estimation rows are supported".into(),
             ));
           }
-          // Support validation belongs to the JOINT finite sample, not a separate
-          // univariate scan that changes eligibility depending on column order.
+          // Validate original event identity AFTER joint finite eligibility:
+          // near-one DECIMAL codes must not become binary by f64 rounding.
+          let event_cell = row
+            .cell(1)
+            .map_err(|_| streg_error("could not read failure code".into()))?;
+          let event = match exact_integer_code(event_cell) {
+            Some(0) => 0.0,
+            Some(1) => 1.0,
+            _ => {
+              return Err(streg_error(
+                "retained failure codes must be exactly0 or1".into(),
+              ));
+            }
+          };
           retained.push(index);
           time.push(values[0]);
-          events.push(values[1]);
+          events.push(event);
           design.push(values[2..].to_vec());
           Ok(())
         },
