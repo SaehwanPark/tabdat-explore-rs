@@ -1,4 +1,4 @@
-# WIP: PSID Epanechnikov bandwidth-sensitivity workflow
+# PSID Epanechnikov bandwidth-sensitivity workflow
 
 ## Bounded outcome and source
 
@@ -30,7 +30,12 @@ Stata's variance-normalized `epan`; bandwidths differ by sqrt(5).
 Use sample SD (N−1), type7 linear quartiles and
 s=min(SD,(q75−q25)/1.349), h=1.3643*1.7188*s/N^.2, then h/2,h,2h.
 For original177 rows the quartiles also equal Stata's order statistics45/133.
-No weights, conditional regression, uncertainty or density-model test is implied.
+The author's rule is a normal-reference robust-scale plugin, not cross-validation
+or a universally optimal bandwidth. h uses log-hourly-wage units; the curve is
+density per unit LOG wage, not a probability or a density in wage levels. Half h
+reveals more local variation; twice h smooths more. These are alternative smoothing
+choices, NOT confidence bounds. No weights, conditional regression, uncertainty
+or density-model test is implied.
 Reject insufficient/degenerate samples and nonpositive/nonfinite selected hours
 or derived quantities before exports. Bound raw input10000 rows and fixed512
 common grid points. Grid covers [min(x)−2h,max(x)+2h], the full three-curve support;
@@ -45,7 +50,7 @@ Do not widen tolerances or force float32 into production to hide this known
 generated-storage difference. Audit both paths separately and preserve source
 integers exactly; source data itself needs no DTA conversion.
 
-## Acceptance and independent reference (before implementation)
+## Acceptance and independent reference
 
 1. Actual JSON/text script produces identical selected-source/bandwidth/density
    CSVs and three-line SVG; original177 membership/source ordinals are exact.
@@ -66,7 +71,7 @@ integers exactly; source data itself needs no DTA conversion.
    ordinals/existing output fail with input files unchanged; script is ordered,
    not transactionally rolling back earlier commands or already-written outputs.
 
-## Reproduce / current checkpoint
+## Reproduce and evidence
 
 Build `cargo build --locked` at the repository root. In a fresh analysis directory,
 acquire the three pinned assets from the authors' mmabook directory, then run:
@@ -100,11 +105,14 @@ are1 within1e-12, never renormalized to pass.
 
 Four new actual-script/conversion tests, eight adjacent SQL/plot-workflow tests
 and16 runtime SQL/scatter contracts pass (28 distinct passes, no ignored tests).
-Changed-target Clippy passes. Independent source review/final diff checks remain
-before merge; keep PR draft until complete. No production Rust/API/dependency changed.
+Changed-target Clippy passes. Independent read-only source/statistical review
+found no issues; it inspected implementation/artifacts, not fresh executions.
+No production Rust/API/dependency changed. Full workspace/other-platform/release
+validation was not rerun. GitHub Actions is disabled: local evidence, not CI success.
 
 ## Exclusions
- No new
+
+No new
 native command/parser claim, general KDE API, weights, automatic bandwidth
 selection beyond the declared rule, confidence bands, Figure9.1 histogram,
 Figure9.3 LOWESS/Figure9.4 other kernels, Figures9.5–9.7/generated-data derivatives,

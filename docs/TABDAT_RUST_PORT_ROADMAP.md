@@ -200,7 +200,15 @@ backend choices. Do not advertise a broad family based on one narrow estimator.
 
 Use the coverage ledger to close remaining illustration-specific gaps:
 
-- Nonparametric/semiparametric methods and quantile extensions.
+- Nonparametric/semiparametric methods and quantile extensions. The bounded
+  [PSID Figure9.2 bandwidth-sensitivity workflow](../examples/mma09p1np/README.md)
+  now composes native Epanechnikov density at h/2,h,2h for177 original women;
+  strict direct-R/source/normalization/actual-SVG audits pass4870 reference cells,
+  all1536 ordinates/vertices,48560 raw source fields and103 historical-float facts.
+  Double versus historical generated-float bandwidths are separately audited,
+  never hidden by tolerance widening. No general KDE command/uncertainty is
+  implied; histogram/other kernels/local regression, remaining figures and
+  semiparametric methods remain required, not covered by one composition.
 - General ML/NLS, numerical optimization and systems/GMM cases not covered above.
 - Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
   competing-risk and multiple-spell survival models.
