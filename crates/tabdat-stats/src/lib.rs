@@ -26,6 +26,7 @@ mod iv_endogenous;
 mod iv_overid;
 mod iv_overid_score;
 pub mod least_squares;
+mod lowess;
 pub mod matrix;
 mod multinomial;
 mod nb2;
@@ -118,6 +119,7 @@ pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
   fit_least_squares_with_options, predict_linear_response,
 };
+pub use lowess::{LowessSmoothing, MAX_LOWESS_OBSERVATIONS, MAX_LOWESS_WORK, smooth_lowess};
 pub use matrix::{
   covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
   sample_covariance, sample_variance, scale, student_t_pvalue, student_t_quantile, transpose,
