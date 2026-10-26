@@ -32,8 +32,13 @@ conditioning, strict mean-score AND relative-step convergence; report full
 beta/lnshape covariance. No shape clipping, ridge or pseudoinverse. Bounds:
 N<=10000, P=K+shape<=64, N>P, N*P*P<=20000000, regular full-rank information.
 All unweighted joint-finite time/event/X rows enter before positive-time/exact
-binary-event validation; require at least one failure. Original script uses a
-stronger complete full-source guard and never silently drops an original spell.
+binary-event validation; require at least one failure. Original DECIMAL event
+identity is checked before f64 rounding, after joint finite eligibility: near-one
+codes error on eligible rows but do not reject already-excluded rows. The focused
+runtime/CLI regression preserves valid DECIMAL0/1 R-reference results and checks
+failed-fit stale-inference clearing, labels/data preservation and script stopping.
+Original script uses a stronger complete full-source guard and never silently
+drops an original spell.
 
 Model-based inverse observed information or independent-spell robust full
 observed-information/score sandwich times N/(N-1), NOT residual-DF HC1. PH beta
@@ -122,10 +127,10 @@ information-inverse identity1e-8; no comparison-only covariance acceptance.
 Permanent controls:7 kernel tests/7948 R gates span model-based/robust and
 intercept/no-intercept, full covariance,4800 unique point predictions, finite-
 difference score/cross-Hessian, unit covariance Jacobian, row permutations,
-invalid support/rank/options and exponential/probability limits. Four runtime
+invalid support/rank/options and exponential/probability limits. Five runtime
 tests cover retained positions/missingness, all inference modes/current edits,
 unnecessary time/event columns, atomic target/schema/support/overflow failures,
-labels/owned fit and stale-state clearing. Two parser and three actual-script
+labels/owned fit and stale-state clearing. Two parser and four actual-script
 root tests include both CLI modes/23600 control cells/source-file guards and
 coherent shared-wrong native/R beta-shape cross covariance, normal/shape/Wald
 tails and survival mutations. The existing count parser regression also passes.

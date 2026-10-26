@@ -7,7 +7,9 @@ Native unweighted entry-zero/single-spell Weibull proportional-hazards ML:
 H(t|X)=exp(X beta)*t^a, h(t|X)=a*exp(X beta)*t^(a-1), S(t|X)=exp(-H), a>0.
 Time and X/event must be numeric. Joint missing/nonfinite rows are excluded
 before support checks; remaining times must be positive and events exact0/1,
-with at least one failure. No silent support deletion or shape clipping.
+with at least one failure. Original numeric event values are checked before f64
+rounding: near-one DECIMAL codes are invalid on eligible rows, but do not reject
+rows already excluded by joint missingness. No silent support deletion or shape clipping.
 
 Full joint beta/lnshape observed covariance (model-based) or independent-spell
 score sandwich with N/(N-1) (robust, NOT residual-DF HC1). Normal coefficient95
@@ -39,7 +41,8 @@ survival is NOT all-cause survival or competing-risk incidence. Conditional UI
 points are not causal effects; independent-spell/model/censoring assumptions apply.
 
 Native exponential/cluster still parse but explicitly fail. No weights, delayed
-entry/left/interval censoring, frailty/Cox, generic tests/margins/named storage.
+entry/left/interval censoring, frailty or generic tests/margins/named storage.
+Native Cox/Breslow is a separate `stcox` workflow, not a streg distribution.
 The exponential source workflow uses a separate existing offset-Poisson composition.
 See examples/mma17p4duration/weibull.md for the original Table17.8 full-design
 workflow, independent full-covariance/source audit and limitations. R/Python are

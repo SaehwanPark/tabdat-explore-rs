@@ -203,6 +203,52 @@ fn weibull_shared_wrong_shape_cross_covariance_tails_and_survival_cannot_pass_by
 }
 
 #[test]
+fn weibull_cli_rejects_original_nonbinary_decimals_and_stops_before_prediction_export() {
+  let names = include_str!("fixtures/weibull/parameter_names.txt")
+    .lines()
+    .skip(1)
+    .filter(|name| *name != "lnshape")
+    .collect::<Vec<_>>()
+    .join(" ");
+  for mode in ["--json", "--text"] {
+    for value in ["1.000000000000000001", "0.999999999999999999"] {
+      let d = setup();
+      let script = format!(
+        "use duration.csv\nsql \"\"\"SELECT *,reprate*ui AS rr_ui,disrate*ui AS dr_ui,CASE WHEN censor1=1 THEN CAST('{value}' AS DECIMAL(38,18)) ELSE CAST(censor1 AS DECIMAL(38,18)) END AS event_decimal FROM active\"\"\" into decimal_events\nstreg spell {names}, failure(event_decimal) dist(weibull) robust\npredict unreachable, survival\nexport must_not_exist.csv\n"
+      );
+      fs::write(d.path().join("decimal.td"), script).unwrap();
+      let output = tabdat_bin()
+        .current_dir(d.path())
+        .args([mode, "-f", "decimal.td"])
+        .output()
+        .unwrap();
+      assert_eq!(output.status.code(), Some(1), "{mode}, {value}");
+      let stdout = String::from_utf8_lossy(&output.stdout);
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      assert!(stderr.contains("exactly0 or1"), "{stderr}");
+      assert!(!stdout.contains("\"result_type\":\"WeibullResult\""));
+      assert!(!stdout.contains("Weibull proportional-hazards maximum likelihood"));
+      assert!(!d.path().join("must_not_exist.csv").exists());
+      assert_eq!(
+        fs::read_to_string(d.path().join("duration.csv")).unwrap(),
+        INPUT
+      );
+      if mode == "--json" {
+        let events: Vec<Value> = stdout
+          .lines()
+          .map(|line| serde_json::from_str(line).unwrap())
+          .collect();
+        assert!(events.iter().any(|e| {
+          e["error"]["message"]
+            .as_str()
+            .is_some_and(|s| s.contains("exactly0 or1"))
+        }));
+      }
+    }
+  }
+}
+
+#[test]
 fn weibull_script_guard_and_export_failure_preserve_inputs_and_existing_files() {
   for (column, value) in [
     ("spell", "0"),

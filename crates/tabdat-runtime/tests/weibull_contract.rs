@@ -340,6 +340,73 @@ fn weibull_prediction_failures_are_atomic_and_probability_overflow_is_not_count_
 }
 
 #[test]
+fn weibull_original_decimal_failure_codes_are_checked_after_joint_eligibility() {
+  let f = Fixture::new();
+  for (value, eligible, valid) in [
+    ("1", true, true),
+    ("1.000000000000000001", true, false),
+    ("0.999999999999999999", true, false),
+    ("1.000000000000000001", false, true),
+    ("0.999999999999999999", false, true),
+  ] {
+    let mut s = f.load();
+    let condition = if eligible {
+      "censor1=1"
+    } else {
+      "source_row=0"
+    };
+    run(
+      &mut s,
+      &format!(
+        "sql \"\"\"SELECT * EXCLUDE(censor1),CASE WHEN {condition} THEN CAST('{value}' AS DECIMAL(38,18)) ELSE CAST(censor1 AS DECIMAL(38,18)) END AS censor1 FROM active\"\"\" into decimal_events"
+      ),
+    );
+    run(&mut s, "label variable reprate \"replacement rate\"");
+    // An invalid new fit must not leave earlier linear inference available.
+    run(&mut s, "regress logwage reprate");
+    let before = s.state();
+    let signature = run(&mut s, "datasignature");
+    let result = s.execute(parse_command(&fit_command(true, false)).unwrap());
+    assert_eq!(
+      result.is_ok(),
+      valid,
+      "value={value}, eligible={eligible}, error={:?}",
+      result.as_ref().err()
+    );
+    if valid {
+      let ExecutionResult::Weibull(r) = result.unwrap() else {
+        panic!("Weibull")
+      };
+      assert_eq!(r.observation_count, 400);
+      assert_eq!(r.failure_count, 120);
+      assert_eq!(
+        r.sample.as_ref().unwrap().retained_indices,
+        (1..=400).collect::<Vec<_>>()
+      );
+      let expected = gold(ROBUST);
+      close(r.log_likelihood, expected["/log_likelihood"]);
+      close(r.shape.value, expected["/shape/value"]);
+      for (i, c) in r.coefficients.iter().enumerate() {
+        close(
+          c.value,
+          expected[format!("/coefficients/{i}/value").as_str()],
+        );
+        close(
+          c.standard_error,
+          expected[format!("/coefficients/{i}/standard_error").as_str()],
+        );
+      }
+    } else {
+      assert!(result.unwrap_err().to_string().contains("exactly0 or1"));
+      assert!(s.state().estimation.is_none());
+    }
+    assert_eq!(s.state().active_dataset, before.active_dataset);
+    assert_eq!(s.state().labels, before.labels);
+    assert_eq!(run(&mut s, "datasignature"), signature);
+  }
+}
+
+#[test]
 fn weibull_failed_fit_clears_only_inference_and_new_modes_never_score_another_family() {
   let f = Fixture::new();
   let mut s = f.load();
