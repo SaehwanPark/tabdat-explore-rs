@@ -230,16 +230,29 @@ fn native_global_weight_rescaling_preserves_coefficients_and_both_covariances() 
     .collect();
   assert_eq!(fits.len(), 4);
   for mode in 0..2 {
-    for i in 0..2 {
+    let baseline = fits[mode];
+    let scaled = fits[mode + 2];
+    let coefficients = baseline["coefficients"].as_array().unwrap();
+    let scaled_coefficients = scaled["coefficients"].as_array().unwrap();
+    assert_eq!(coefficients.len(), 2);
+    assert_eq!(scaled_coefficients.len(), 2);
+    for (left, right) in coefficients.iter().zip(scaled_coefficients) {
       close(
-        fits[mode]["coefficients"][i]["value"].as_f64().unwrap(),
-        fits[mode + 2]["coefficients"][i]["value"].as_f64().unwrap(),
+        left["value"].as_f64().unwrap(),
+        right["value"].as_f64().unwrap(),
       );
-      for j in 0..2 {
-        close(
-          fits[mode]["covariance_matrix"][i][j].as_f64().unwrap(),
-          fits[mode + 2]["covariance_matrix"][i][j].as_f64().unwrap(),
-        );
+    }
+    let covariance = baseline["covariance_matrix"].as_array().unwrap();
+    let scaled_covariance = scaled["covariance_matrix"].as_array().unwrap();
+    assert_eq!(covariance.len(), 2);
+    assert_eq!(scaled_covariance.len(), 2);
+    for (left, right) in covariance.iter().zip(scaled_covariance) {
+      let left = left.as_array().unwrap();
+      let right = right.as_array().unwrap();
+      assert_eq!(left.len(), 2);
+      assert_eq!(right.len(), 2);
+      for (a, b) in left.iter().zip(right) {
+        close(a.as_f64().unwrap(), b.as_f64().unwrap());
       }
     }
     close(
