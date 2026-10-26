@@ -1,4 +1,4 @@
-# Exponential-mean NLS: preimplementation contract
+# Exponential-mean NLS: contract and WIP evidence
 
 **Status: planned/in progress, not installed execution. Risk: high.**
 Deliver one complete native `nl` → predict/diagnose → report workflow for the
@@ -230,5 +230,34 @@ scoped Clippy/lib/tests-Dwarnings and rebuilt original-data API replay:40044 gat
 unchanged tolerance, max coefficient1.69e-12/covariance6.05e-14/mean2.08e-11 versus
 R. Computing the raw residual before scaling changes ordinary exported numeric
 values by at most8.53e-14 versus the earlier probe, not a statistical or tolerance
-change. Focused independent review follow-up remains required before closing the
-P1. Runtime/CLI and the complete slice remain WIP.
+change. Focused independent follow-up3bb75ba1-ba61-4042-85eb-93e32f2ba80c inspected
+the repair and artifacts (no independent test execution), withdrew the original
+P1 BLOCK and found no new issues in this bounded repair. This is not whole-PR or
+integration approval.
+
+### Native runtime integration checkpoint
+
+The native adapter now compiles the bounded Domain AST with explicit parameter
+roles/order, fits the joint-finite original-order sample, installs additive
+`NonlinearFit` and returns `Nl` without touching legacy nonlinear wire payloads.
+Current default/xb/mean/residual prediction publishes typed DOUBLE/NULL atomically
+through the existing backend, preserves the owned fit and original typed data,
+and updates an active named table's schema normally. Failure clears stale
+estimation only for fit attempts, not predictions. Six reference formulas/both
+covariances cross the real parser/runtime and every coefficient/inference/full
+covariance/projection comparison at the unchanged tolerance.
+
+Nine Domain state-wire cases (including old nonlinear/new owned tag), nine
+focused runtime cases, three reporting cases and one root CLI discovery case pass. The runtime cases include
+explicit order/noconstant, missingness/original indices, direct-AST failures,
+current-X/missing-y mean versus residual eligibility, parameter-only means,
+collisions/arithmetic failure atomicity, all four frozen nonregular rejections,
+AST depth/arity rejection and wide-ID/DECIMAL/label/named-table preservation. Successful named-table column append is an expected schema update,
+not a requirement to freeze the active table's old metadata. Scoped four-crate
+Clippy lib/tests-Dwarnings passes. Earlier failed development test runs corrected
+unsupported test syntax (`==`, not `=`; direct AST for restricted prediction
+flags) and the expected active-table schema, not numerical tolerances or native
+algorithms. These are focused boundary checks, not final affected/reverse-consumer
+validation. Original10000-row CLI/script/source export/atomic IO audits, independent
+integration/source review and complete-slice closing checks remain WIP; no merge,
+whole-table/method/chapter, platform or release claim.

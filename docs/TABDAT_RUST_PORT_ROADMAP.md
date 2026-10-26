@@ -215,6 +215,12 @@ Use the coverage ledger to close remaining illustration-specific gaps:
   Histogram/other kernels/kNN and remaining local/semiparametric regression,
   figures and methods remain required, not covered by these bounded workflows.
 - General ML/NLS, numerical optimization and systems/GMM cases not covered above.
+  The bounded [explicit-formula NLS slice](../examples/mma05p2nls/README.md) now has
+  an owned native fit/current mean-residual prediction and text/CLI-v1 interface,
+  six independent-R control formulas and original10000-row pure-API validation.
+  Its original-source CLI/export workflow remains WIP; unweighted Table5.7 NLS
+  does not close weighted/FGNLS, exponential ML, known-variance covariance,
+  marginal effects or the broader optimization/system requirements.
 - Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
   competing-risk and multiple-spell survival models.
 - Nonlinear panel models and remaining dynamic-panel analyses.

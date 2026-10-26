@@ -26,6 +26,15 @@ Changing a tag/field/value encoding requires an explicitly reviewed migration.
 | EstimationState | `{"family":"linear", "state":...}` or another finite family tag | one optional most-recent model, not nullable per-family slots |
 | Diagnostic | finite category, message, optional path/line | located typed-error conversion and envelope roundtrip |
 
+The NLS slice adds `EstimationState::NonlinearFit` (`family: nonlinear_fit`) and
+`ExecutionResult::Nl` (`kind: nl`) with the owned finite `NlsResult` payload. The
+legacy `Nonlinear(ModelState)` retains its unchanged `nonlinear` tag and payload;
+these are not aliases and both map to the nonlinear family without granting
+linear-model post-estimation. The distinct encoding follows the reviewed additive
+Poisson/NB2 precedent; the high-risk NLS plan review specifically required retaining
+the old tag. `state_wire::legacy_nonlinear_and_owned_nls_keep_distinct_roundtrippable_tags`
+checks old/new roundtrips and the new result tag. Other v1 encodings are unchanged.
+
 Sample command:
 
 ```json

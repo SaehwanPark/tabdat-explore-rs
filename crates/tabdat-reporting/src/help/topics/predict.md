@@ -4,6 +4,10 @@ Installed syntax:
 `predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | cdf(k) | pmf(cutoff_variable) | cdf(cutoff_variable)]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
+- Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
+  X, not a latent linear index; residuals additionally require current y. Missing
+  required inputs give NULL, arithmetic failure is atomic. Parameter-only means
+  need no X. No auxiliaries or uncertainty; see help nl.
 - Quantile regression: xb (fitted conditional quantile) or residuals.
 - Supported regress/2SLS: xb (default) or residuals (outcome minus xb).
 - Within FE: xb (normalized common intercept + current X beta), xbu (retained

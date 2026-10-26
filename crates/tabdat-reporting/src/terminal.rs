@@ -2,6 +2,77 @@ use std::fmt::Write;
 
 use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow};
 
+fn nls_expression(model: &tabdat_domain::NlsModel, node: &tabdat_domain::NlsExpression) -> String {
+  use tabdat_domain::NlsExpression::*;
+  match node {
+    Constant(v) => v.to_string(),
+    Predictor(i) => model.predictor_names[*i].escape_debug().to_string(),
+    Parameter(i) => model.parameter_names[*i].escape_debug().to_string(),
+    Negate(a) => format!("(-{})", nls_expression(model, a)),
+    Exp(a) => format!("exp({})", nls_expression(model, a)),
+    Add(a, b) | Subtract(a, b) | Multiply(a, b) | Divide(a, b) => {
+      let operator = match node {
+        Add(..) => "+",
+        Subtract(..) => "-",
+        Multiply(..) => "*",
+        Divide(..) => "/",
+        _ => unreachable!(),
+      };
+      format!(
+        "({} {operator} {})",
+        nls_expression(model, a),
+        nls_expression(model, b)
+      )
+    }
+  }
+}
+
+fn nls_report(r: &tabdat_domain::NlsResult) -> String {
+  let mut output = format!(
+    "Nonlinear least squares (regular local solution, not a global optimum guarantee)\nOutcome: {}; mean = {}\nExplicit parameters: {}; no automatic intercept.\nN = {}; candidate rows = {}; excluded joint missing/nonfinite = {}; residual df = {}\nRSS = {}; residual variance = {}; RMSE = {}; centred R-squared = {}\nCovariance: {}; multiplier = {}. Independent rows and correctly specified conditional mean.\nApproximate Student t({}), two-sided95% intervals; zero SE has unavailable inference.\nParameter\tEstimate\tStd. error\tt\tP(two-sided)\tCI lower\tCI upper\n",
+    r.model.outcome.escape_debug(),
+    nls_expression(&r.model, &r.model.expression),
+    r.model
+      .parameter_names
+      .iter()
+      .map(|n| n.escape_debug().to_string())
+      .collect::<Vec<_>>()
+      .join(", "),
+    r.observation_count,
+    r.sample.total_observations,
+    r.sample.dropped_observations,
+    r.residual_degrees_of_freedom,
+    inference_number(r.residual_sum_of_squares),
+    inference_number(r.residual_variance),
+    inference_number(r.root_mean_squared_error),
+    optional_number(r.centered_r_squared),
+    if r.robust {
+      "HC1 Gauss-Newton sandwich N/(N-P)"
+    } else {
+      "working homoskedastic RSS/(N-P) inverse Gauss-Newton information"
+    },
+    r.covariance_correction,
+    r.residual_degrees_of_freedom
+  );
+  for c in &r.coefficients {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+      c.name.escape_debug(),
+      inference_number(c.value),
+      inference_number(c.standard_error),
+      optional_number(c.statistic),
+      optional_number(c.p_value),
+      optional_number(c.confidence_lower),
+      optional_number(c.confidence_upper)
+    )
+    .unwrap();
+  }
+  writeln!(output, "Accepted Gauss-Newton steps = {}; normalized score = {}; relative full undamped step = {}; work = {}\nFull-rank Jacobian and positive observed-loss curvature checked; nonrepresentable arithmetic fails closed.\nNo likelihood, LR, omnibus F, weights, clusters or prediction intervals. Default/xb/mean predicts the nonlinear formula mean using current X; residuals additionally require current y. NA = unavailable.",
+    r.iterations, r.normalized_score, r.relative_full_gauss_newton_step, r.evaluation_work).unwrap();
+  output
+}
+
 fn binary_inference_note(robust: bool, clustered: bool) -> &'static str {
   if clustered {
     "Independent clusters; asymptotic standard-normal coefficient inference, not G-1 Student t. LR p-value unavailable under robust inference."
@@ -2204,6 +2275,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::Nl(result) => nls_report(result),
     ExecutionResult::Regression(result) => regression(result),
     ExecutionResult::FixedEffects(result) => fixed_effects(result),
     ExecutionResult::RandomEffects(result) => random_effects(result),

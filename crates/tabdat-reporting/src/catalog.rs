@@ -1336,8 +1336,10 @@ fn get_command_schema(
           name: "start".to_string(),
           required: true,
         },
+        OptionDescriptor { name: "robust".to_string(), required: false },
+        OptionDescriptor { name: "noconstant".to_string(), required: false },
       ],
-      syntax: "nl formula, params(vars) start(vals)".to_string(),
+      syntax: "nl y = expression, params(names) start(values) [robust noconstant]".to_string(),
     }),
     "panel" => Ok(CommandSchemaResult {
       arguments: vec![

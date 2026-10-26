@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -120,6 +120,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
+    | Command::Nl { .. }
     | Command::Lowess { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
@@ -730,6 +731,24 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count":result.observation_count,"effects":result.effects}),
       "TruncatedGaussianMarginalEffectsResult",
     ),
+    ExecutionResult::Nl(result) => {
+      let mut data = serde_json::to_value(result).expect("finite NLS result");
+      data["method"] = json!("nonlinear_least_squares");
+      data["covariance"] = json!(if result.robust {
+        "hc1_gauss_newton"
+      } else {
+        "working_homoskedastic_gauss_newton"
+      });
+      data["covariance_bread"] = json!("inverse_jacobian_cross_product");
+      data["covariance_assumptions"] = json!("independent_rows_correct_conditional_mean");
+      data["inference"] = json!({"reference_distribution":"approximate_student_t", "degrees_of_freedom":result.residual_degrees_of_freedom, "confidence_level":0.95, "null_hypothesis":"parameter_equals_zero", "zero_standard_error":"inference_unavailable"});
+      data["mean_definition"] = json!("explicit_formula_no_automatic_intercept");
+      data["solution_scope"] = json!("regular_local_full_rank_positive_observed_loss_curvature");
+      data["log_likelihood"] = Value::Null;
+      data["likelihood_ratio"] = Value::Null;
+      data["omnibus_f"] = Value::Null;
+      (data, "NlsResult")
+    }
     ExecutionResult::Cox(result) => {
       let mut data = serde_json::to_value(result).expect("finite Cox result");
       let object = data.as_object_mut().expect("Cox result object");

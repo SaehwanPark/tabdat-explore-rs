@@ -737,21 +737,21 @@ pub struct HeckmanCommand {
   pub include_intercept: bool,
 }
 
-/// The parser-only `nl` form retained for a later statistical runtime
-/// slice.
+/// Explicit-formula NLS syntax. The runtime supports bounded numeric arithmetic
+/// and exp, explicit parameters/starts, and classical or HC1 GN covariance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NlCommand {
   /// The dependent variable.
   pub outcome: String,
   /// The nonlinear mathematical expression.
   pub expression: GenerateExpression,
-  /// Ordered parameter names.
+  /// Ordered parameter names; no implicit intercept is added.
   pub parameter_names: Vec<String>,
   /// Starting values for the parameters.
   pub start_values: Vec<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Request HC1 Gauss–Newton covariance under a correctly specified mean.
   pub robust: bool,
-  /// Whether the eventual runtime should include an intercept.
+  /// Legacy syntax flag only: neither default nor noconstant changes the formula.
   pub include_intercept: bool,
 }
 
@@ -1004,8 +1004,8 @@ pub enum PredictKind {
   FixedEffect,
   /// Family-defined probabilities: binary/choice, Tobit uncensoring or selection.
   Pr,
-  /// Family-defined Gaussian mean (`mean`): E[max(lower,Y*)|X] for Tobit,
-  /// E[Y*|Y*>lower,X] for truncated regression. Retains its legacy wire tag.
+  /// Family-defined response mean (`mean`): censored/truncated Gaussian means
+  /// or the explicit NLS fitted mean. Retains its legacy wire tag.
   TobitMean,
   /// Selection inverse Mills ratio phi(Z gamma)/Phi(Z gamma).
   SelectionMills,

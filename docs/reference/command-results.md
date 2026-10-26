@@ -1114,6 +1114,33 @@ SE, p-value or confidence band is implied. See `help lowess`,
 [method/source evidence](../../examples/mma09p1np/lowess.md) and MIG-0023 for the
 intentional distinction from Python/R nearest-neighbour/robust defaults.
 
+## Explicit-formula nonlinear least squares
+
+`nl y = expression, params(names) start(values) [robust noconstant]` returns
+additive CLI-v1 `NlsResult`. It owns the indexed mathematical mean AST, ordered
+parameter/data roles, starts, coefficients/SE/approximate-t95 inference, full GN
+covariance/correction, RSS/variance/RMSE/nullable centred R², original-position
+joint-finite sample, fitted means/residuals and score/full-step/work diagnostics.
+`covariance` distinguishes `working_homoskedastic_gauss_newton` from
+`hc1_gauss_newton`; `covariance_bread` is `inverse_jacobian_cross_product`, not the
+observed loss Hessian. Independent rows/correct conditional mean are explicit
+assumptions; inference is approximate Student-t(N-P). Genuine zero SE has null
+t/p/CI. Log likelihood, LR and omnibus F are null, not invented nonlinear tests.
+
+The formula defines all parameters; there is no implicit intercept, and
+`noconstant` does not alter it. The owned state uses additive `nonlinear_fit`,
+retaining legacy `nonlinear` wire payload/tag. Default/xb/mean predictions evaluate
+the nonlinear mean on current X; residuals additionally require current y.
+Missing required inputs give NULL; complete-row arithmetic/collision failures
+publish no column and preserve fit/data. An attempted fit clears stale estimation
+but leaves data/labels/files unchanged on failure. Numeric +,-,*,/, unary minus,
+exp and N<=10000/P1..32/node128/depth32/work bounds are explicit; zero residual
+variance, rank deficiency, nonregular curvature, nonrepresentable arithmetic and
+nonconvergence are errors, without pseudoinverse/ridge/approximate-success fallback.
+No weights/FGNLS/ML/general post-estimation/intervals. See `help nl`, MIG-0024 and
+[contract/current evidence](../../examples/mma05p2nls/README.md); the source CLI
+workflow remains WIP, not whole-method/table coverage.
+
 ## Expressions and recoding
 
 `generate` and `replace` return additive `GenerateResult`/`ReplaceResult`
