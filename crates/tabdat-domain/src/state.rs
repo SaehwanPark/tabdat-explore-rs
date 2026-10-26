@@ -249,6 +249,8 @@ pub enum EstimationState {
   TruncatedGaussianFit(Box<tabdat_stats::TruncatedGaussianResult>),
   /// Owned entry-zero Weibull PH fit with full joint shape inference.
   WeibullFit(Box<tabdat_stats::WeibullResult>),
+  /// Owned Cox coefficients and reference-vector Breslow baseline.
+  CoxFit(Box<tabdat_stats::CoxResult>),
   Heckman(ModelState),
   HeckmanTwoStepFit(Box<tabdat_stats::HeckmanTwoStepResult>),
   Nonlinear(ModelState),
@@ -330,7 +332,7 @@ impl EstimationState {
       }
       Self::ZeroInflatedPoisson(..) => EstimationFamily::ZeroInflatedPoisson,
       Self::ZeroInflatedNegativeBinomial(..) => EstimationFamily::ZeroInflatedNegativeBinomial,
-      Self::Survival(..) | Self::WeibullFit(..) => EstimationFamily::Survival,
+      Self::Survival(..) | Self::WeibullFit(..) | Self::CoxFit(..) => EstimationFamily::Survival,
       Self::InstrumentalVariables(..) => EstimationFamily::InstrumentalVariables,
       Self::PanelLinear(..) | Self::FixedEffects(..) | Self::RandomEffects(..) => {
         EstimationFamily::PanelLinear

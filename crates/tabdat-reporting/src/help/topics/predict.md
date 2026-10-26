@@ -38,6 +38,14 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   requested results fail atomically. Genuine survival0 is allowed. At most10000
   rows, points only, no auxiliaries; no count n/binary pr/mean/residual semantics.
   Net survival is not all-cause survival or competing-risk incidence. See help streg.
+- Native Cox stcox: xb (raw PH X beta), cumhaz (Breslow cumulative hazard),
+  survival (net exp(-H)); no instantaneous hazard from baseline jumps. Timed
+  modes use current X/time, never event; xb needs only X. Time0/before-first
+  gives H0/S1; after-last holds its last step, not a validated tail extrapolation.
+  Negative finite time/schema/numerical failures publish nothing; required
+  missing/nonfinite inputs yield NULL. Baseline reference is all retained
+  predictor means, including dummy means. No baseline/prediction uncertainty,
+  count/binary/mean/residual meanings or auxiliaries. See help stcox.
 - Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
 - NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
 

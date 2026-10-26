@@ -141,7 +141,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
     .filter(|entry| {
       matches!(
         entry["name"].as_str(),
-        Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit" | "truncreg")
+        Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit" | "stcox" | "truncreg")
       )
     })
     .collect();
@@ -153,6 +153,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
       &serde_json::json!({"name":"estimates","effects":["read","control"]}),
       &serde_json::json!({"name":"mlogit","effects":["read"]}),
       &serde_json::json!({"name":"nlogit","effects":["read"]}),
+      &serde_json::json!({"name":"stcox","effects":["read"]}),
       &serde_json::json!({"name":"truncreg","effects":["read"]})
     ]
   );
@@ -160,7 +161,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
   entries.retain(|entry| {
     !matches!(
       entry["name"].as_str(),
-      Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit" | "truncreg")
+      Some("estimates" | "bootstrap" | "clogit" | "mlogit" | "nlogit" | "stcox" | "truncreg")
     )
   });
   assert_eq!(actual, oracle["data"]);

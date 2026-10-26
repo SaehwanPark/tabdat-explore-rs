@@ -85,6 +85,7 @@ impl Command {
       | Self::Heckman { .. }
       | Self::Nl { .. }
       | Self::Streg { .. }
+      | Self::Stcox { .. }
       | Self::Lasso { .. }
       | Self::Postlasso { .. }
       | Self::Ridge { .. }

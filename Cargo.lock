@@ -1520,6 +1520,7 @@ name = "tabdat-runtime"
 version = "0.1.0"
 dependencies = [
  "duckdb",
+ "serde_json",
  "tabdat-domain",
  "tabdat-execution",
  "tabdat-language",

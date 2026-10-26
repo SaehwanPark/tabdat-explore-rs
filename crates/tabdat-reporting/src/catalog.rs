@@ -75,6 +75,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "spregress",
   "sql",
   "status",
+  "stcox",
   "streg",
   "summarize",
   "tabulate",
@@ -413,6 +414,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "status".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "stcox".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1802,6 +1807,13 @@ fn get_command_schema(
       options: vec![],
       syntax: "status".to_string(),
     }),
+    "stcox" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor { name: "time_variable".to_string(), required: true }, ArgumentDescriptor { name: "variables".to_string(), required: false }],
+      help_topic,
+      name: "stcox".to_string(),
+      options: vec![OptionDescriptor { name: "failure".to_string(), required: true }, OptionDescriptor { name: "robust".to_string(), required: false }],
+      syntax: "stcox time [vars], failure(event) [robust]".to_string(),
+    }),
     "streg" => Ok(CommandSchemaResult {
       arguments: vec![
         ArgumentDescriptor {
@@ -2203,7 +2215,17 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 87);
+    assert_eq!(catalog.commands.len(), 88);
+    assert_eq!(
+      catalog
+        .commands
+        .iter()
+        .find(|e| e.name == "stcox")
+        .unwrap()
+        .help_topic
+        .as_deref(),
+      Some("stcox")
+    );
     assert_eq!(
       catalog
         .commands
@@ -2256,7 +2278,16 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 87);
+    assert_eq!(effects.commands.len(), 88);
+    assert_eq!(
+      effects
+        .commands
+        .iter()
+        .find(|e| e.name == "stcox")
+        .unwrap()
+        .effects,
+      vec![CommandEffect::Read]
+    );
     assert_eq!(
       effects
         .commands

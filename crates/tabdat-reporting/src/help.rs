@@ -74,6 +74,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "spregress",
   "sql",
   "status",
+  "stcox",
   "streg",
   "summarize",
   "tabulate",
@@ -171,6 +172,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "sql" => Some(include_str!("help/topics/sql.md")),
     "status" => Some(include_str!("help/topics/status.md")),
     "streg" => Some(include_str!("help/topics/streg.md")),
+    "stcox" => Some(include_str!("help/topics/stcox.md")),
     "summarize" => Some(include_str!("help/topics/summarize.md")),
     "tabulate" => Some(include_str!("help/topics/tabulate.md")),
     "tail" => Some(include_str!("help/topics/tail.md")),
@@ -195,7 +197,8 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 88);
+    assert_eq!(available_help_topics().len(), 89);
+    assert!(available_help_topics().contains(&"stcox"));
     assert!(available_help_topics().contains(&"truncreg"));
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");

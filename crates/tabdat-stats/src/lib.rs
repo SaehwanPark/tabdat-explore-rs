@@ -11,6 +11,7 @@ mod binary;
 mod bootstrap;
 mod conditional_logit;
 mod count_probabilities;
+mod cox;
 pub mod diagnostics;
 mod distributions;
 pub mod error;
@@ -42,6 +43,11 @@ mod tobit;
 pub mod traits;
 mod truncated_gaussian;
 mod weibull;
+
+pub use cox::{
+  CoxBaselineStep, CoxEstimate, CoxOptions, CoxPredictionKind, CoxProblem, CoxResult,
+  MAX_COX_OBSERVATIONS, MAX_COX_PARAMETERS, MAX_COX_WORK, cox_predict_row, fit_cox,
+};
 
 pub use weibull::{
   MAX_WEIBULL_OBSERVATIONS, MAX_WEIBULL_PARAMETERS, MAX_WEIBULL_WORK, WeibullEstimate,

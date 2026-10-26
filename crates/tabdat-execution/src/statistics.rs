@@ -1147,6 +1147,9 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::CoxFit(_))) {
+      return self.execute_cox_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::WeibullFit(_))) {
       return self.execute_weibull_prediction(command);
     }
@@ -1155,7 +1158,7 @@ impl Session {
       PredictKind::Hazard | PredictKind::CumulativeHazard | PredictKind::Survival
     ) {
       return Err(RuntimeError::StregFailed(
-        "predict hazard/cumhaz/survival requires a prior successful Weibull streg fit".into(),
+        "predict hazard requires a prior Weibull streg fit; cumhaz/survival require a prior Weibull streg or Cox stcox fit".into(),
       ));
     }
     if matches!(
