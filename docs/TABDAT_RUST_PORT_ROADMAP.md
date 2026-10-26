@@ -456,6 +456,8 @@ Subset forms, robust score/GMM C variants and few-cluster guarantees remain
 unsupported; these conventional tests assume valid instruments and do not
 establish exogeneity or instrument validity by failing to reject.
 
+The [Table 5.7 OLS/exponential comparison](../examples/mma05p1mle/README.md) now covers the original generated 10,000-row sample and both classical/robust fits with independent R, complete source-row projections and distinct exponential-density versus offset-Poisson likelihoods. This is a bounded source composition, not a general estimator or whole-table completion.
+
 The [Chapter 5.9.4 exponential point-effect workflow](../examples/mma05p4margeffects/README.md) now uses an all-one offset-Poisson fit with the same exponential-density score and information. Independent R profile likelihood verifies all 10,000 generated rows and four point summaries; the historical forward numerical derivative remains discrepant. Separate model-based conditional-x delta intervals now cover the analytical average derivative, one-unit difference and derivative at mean x, with independent R numerical-gradient checks; robust/cluster or random-design effect uncertainty, a general exponential estimator and the rest of Table 5.7 remain required.
 
 Implement the selected bounded plan without broadening scope. If it conflicts
