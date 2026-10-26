@@ -7,6 +7,8 @@ unweighted NLS column of Cameron–Trivedi(2005) Table5.7, §5.9.2–3 pp.159–
 This is the author's **generated**10,000-row example, not an empirical sample or
 whole-table/chapter coverage. Weighted NLS/FGNLS, exponential MLE, known-variance
 sandwich and§5.9.4 marginal effects remain required separate work.
+The next [fixed-first-fit WNLS/FGNLS contract](weighted.md) is planning/reference
+feasibility only, not an implemented weighted CLI workflow.
 
 ## Exact source, model and evidence selected before implementation
 
