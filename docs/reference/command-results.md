@@ -1095,6 +1095,25 @@ Coefficients, inference, VIF and predictions are checked against a
 development-only statsmodels selected-row reference with exact sample/cluster/
 weight membership (no production Python dependency).
 
+## Ordered-row LOWESS smoothing
+
+`lowess y x, gen(newvar) [bandwidth=span]` returns additive `LowessResult` with
+post-publication `dataset`, variable roles/target, bandwidth, joint-finite
+`sample` (original0-based retained indices/total/dropped), `observation_count`,
+`half_window` and `local_constant_windows`. Explicit method metadata identifies
+centred-rank endpoint-shrinking tricube/local-linear windows, endpoint factor1.0001,
+stable numeric-X/eligible-input-order sensitive ties, exact-zero-radius local
+means, zero robust iterations and no interpolation/inference/out-of-sample model.
+`estimation_state` is `unchanged`: a subsequent `predict` or `test` still uses the
+previous retained model, not the smoother. Excluded rows get NULL in a new DOUBLE
+column; source storage/order/labels remain. Validation/numerical/collision failures
+publish nothing. Default2/3 and finite0<span<1 are unchanged parser semantics;
+2<=retained N<=10000, N*span>=.5 and N*min(N,2k+1)<=20million are runtime bounds.
+Equal X can have different fits; permuting within ties can change them. No slope,
+SE, p-value or confidence band is implied. See `help lowess`,
+[method/source evidence](../../examples/mma09p1np/lowess.md) and MIG-0023 for the
+intentional distinction from Python/R nearest-neighbour/robust defaults.
+
 ## Expressions and recoding
 
 `generate` and `replace` return additive `GenerateResult`/`ReplaceResult`

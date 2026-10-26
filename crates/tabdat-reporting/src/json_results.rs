@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -120,6 +120,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Poisson { .. }
     | Command::Nbreg { .. }
     | Command::Qreg { .. }
+    | Command::Lowess { .. }
     | Command::Predict { .. }
     | Command::Lincom { .. }
     | Command::Test { .. }
@@ -348,6 +349,23 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::Generate(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
       "GenerateResult",
+    ),
+    ExecutionResult::Lowess(result) => (
+      json!({
+        "dataset": dataset_info_data(&result.dataset),
+        "outcome": result.outcome, "predictor": result.predictor,
+        "target_variable": result.target_variable, "bandwidth": result.bandwidth,
+        "observation_count": result.sample.retained_indices.len(), "sample": result.sample,
+        "half_window": result.half_window, "local_constant_windows": result.local_constant_windows,
+        "algorithm": "centered_rank_local_linear_tricube",
+        "kernel_endpoint_inflation": 1.0001, "robust_iterations": 0, "interpolation": "none",
+        "neighborhood": "rank_centered_shrinking_at_endpoints",
+        "ties": "stable_numeric_predictor_then_eligible_input_order_sensitive",
+        "fallback": "exact_zero_radius_window_local_mean",
+        "inference": "none_training_row_smoother", "out_of_sample_prediction": false,
+        "estimation_state": "unchanged",
+      }),
+      "LowessResult",
     ),
     ExecutionResult::Replace(result) => (
       json!({"dataset": dataset_info_data(&result.dataset)}),
