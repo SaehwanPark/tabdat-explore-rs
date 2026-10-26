@@ -115,8 +115,39 @@ and numerical certificates. It verifies the pinned source hash and table's
 four-decimal coefficients/SEs; the synthetic control is frozen in
 `tests/fixtures/weighted_nls`. Two original-source generations and a separate
 control generation reproduced their outputs byte-for-byte on R 4.6.1. The
-original-source output remains external. This checkpoint is reference evidence
-only: independent plan review and native implementation are still outstanding.
+original-source output remains external. This checkpoint is reference evidence,
+not native validation.
+The generator consumes and verifies only the data asset; the native audit must
+separately verify the pinned author script and log. The last-digit differences
+from the feasibility values above reflect independent root-bracketing roundoff.
+
+Independent preimplementation review found no mathematical blocker under the
+stated assumptions. Its accepted checks require actual native convergence from
+`start(1 0)`, exact retained ordinals after each staged SQL replacement,
+preflight of all scale/weight/response values, and a native positive global
+weight-rescaling control for both covariance modes. The review executed the R
+generator on the pinned original source; it did not validate native behavior.
+
+### Native replay stop: original-level residual tolerance
+
+The WIP `weighted.td` runs on the three-row control and all 10000 source rows,
+but `check_weighted.py` fails the predeclared primary tolerance for FGNLS at
+source row 9435: native level residual -0.010469076059472116 versus reference
+-0.010469076071997208, absolute difference 1.2525092e-11 versus allowed
+1.1046908e-11. Exactly one of the 10000 FGNLS level-residual comparisons fails;
+maximum absolute residual difference over all rows is 9.935341e-11. The native
+final fit reports normalized score 8.8881e-13 and relative full step 6.5664e-13,
+both within the installed 1e-12 convergence rule. Reprofiling in R using native
+preliminary means shifts a and b only 1.55e-14 and 1.47e-14 from the R-weight
+solution; the final native coefficients differ by roughly 1.4e-12. This isolates
+the final converged iterate as the dominant difference, not a weight refresh or
+source-order discrepancy. It does not establish a safe correction.
+
+Per the stop rule below, implementation and validation are paused. The script
+and audit are incomplete WIP: no successful original-source audit, forged-input
+replays, text/JSON equivalence, offline Rust tests, native rescaling check or
+final review is claimed. Do not widen the primary tolerance, merge, or describe
+the weighted workflow as supported on this evidence.
 
 Supplemental source-log exponential-density-at-point is **not an NLS likelihood**
 and is outside these two coefficient/SE columns. The precise WNLS root gives
