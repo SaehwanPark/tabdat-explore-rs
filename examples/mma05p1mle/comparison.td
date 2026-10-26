@@ -13,6 +13,7 @@ SELECT CASE WHEN COUNT(*)<=2 OR COUNT(*)>10000
 THEN error('Table 5.7 workflow requires 3..10000 unique dense rows, positive finite nonconstant y and finite nonconstant x')
 ELSE COUNT(*) END AS observations FROM active
 """
+sql """SELECT 'Poisson results represent exponential rate fits; their reported log likelihood includes the log(y) offset' AS analysis_note FROM active LIMIT 1"""
 regress y x
 predict ols_classical, xb
 regress y x, robust
