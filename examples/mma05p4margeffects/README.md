@@ -71,3 +71,49 @@ JSON/text CSVs were byte-identical. Invalid response, duplicate/missing source
 identity and constant design each fail before export. This evidence is scoped
 to the original sample and the documented calculations; it does not establish
 precision or convergence on arbitrary designs.
+
+## Conditional-design uncertainty
+
+`uncertainty.td` separately refits the same exponential-density model and
+reports conditional-on-observed-x delta standard errors and asymptotic normal
+95% Wald intervals for the average analytical derivative, average one-unit
+finite difference, and derivative at mean x. It does not give a standard error
+for the cancellation-sensitive forward numerical derivative. Under independent,
+correctly specified exponential observations, the covariance is the inverse
+observed information `I = sum(y_i*lambda_i*[1,x_i]'[1,x_i])`, with no HC or
+small-sample correction. It is not robust to a misspecified density or clustered
+observations. Treating x and its empirical mean as fixed excludes uncertainty
+from sampling the covariate distribution; intervals are not prediction intervals
+or causal inference.
+
+For `M=mean(mu_i)`, `MX=mean(x_i*mu_i)`, `m=mu(mean(x))` and `c=exp(-b)-1`,
+the respective gradients in parameter order (a,b) are
+`(b*M, -M+b*MX)`, `(-c*M, -exp(-b)*M-c*MX)` and
+`(b*m, (-1+b*mean(x))*m)`. The script checks sample, finite positive
+predictions and delta variances, and rejects information determinants at or below
+`1e-12*I00*I11` rather than returning a numerically singular inverse. It uses
+existing sequential no-clobber export behavior. The three original-source
+estimates, standard errors and intervals are:
+
+| Effect | Estimate | SE | Normal 95% interval |
+| --- | ---: | ---: | ---: |
+| Average analytical derivative | 0.6097659753 | 0.0135669534 | [0.5831752353, 0.6363567153] |
+| Average one-unit difference | 1.0414485376 | 0.0286337486 | [0.9853274215, 1.0975696536] |
+| Derivative at mean x | 0.3717419999 | 0.0052500515 | [0.3614520880, 0.3820319119] |
+
+R 4.6.1 independently profiles the density likelihood, numerically differentiates
+effects with central differences and checks refinement from step `1e-5` to
+`5e-6` (maximum gradient discrepancy `6e-10`). The pinned 10,000-row fit
+sample and 12 estimate/SE/interval values pass absolute-plus-relative tolerances
+`2e-11*(1+abs(reference))` for estimates and `1e-9*(1+abs(reference))` for
+uncertainty. A separate six-row profile/gradient reference tests the CLI and
+input failures. The original workflow's historical forward-derivative
+comparison remains unresolved; these delta intervals do not resolve it.
+
+From a fresh directory with the same prepared `nls.csv`:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma05p4margeffects/uncertainty.td > result.jsonl
+Rscript /path/to/repo/examples/mma05p4margeffects/reference_uncertainty.R /path/to/mma05data.asc reference.csv
+python3 /path/to/repo/examples/mma05p4margeffects/check_uncertainty.py /path/to/mma05data.asc result.jsonl effects_uncertainty.csv reference.csv
+```
