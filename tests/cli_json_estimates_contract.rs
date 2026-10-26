@@ -289,6 +289,7 @@ fn nls_named_report_has_formula_covariance_and_visible_standard_errors() {
   assert_eq!(models[0]["covariance"], "robust_hc1_gauss_newton");
   assert!(models[0]["log_likelihood"].is_null());
   assert!(models[1].get("nls_model").is_none());
+  assert!(models[1].get("nls_centered_r_squared").is_none());
   let output = fixture.run(&["--text", "-f", "nls_report.td"]);
   assert!(
     output.status.success(),
@@ -298,5 +299,6 @@ fn nls_named_report_has_formula_covariance_and_visible_standard_errors() {
   let text = String::from_utf8(output.stdout).unwrap();
   assert!(text.contains("NLS mean\t(a+(b*x))\tNA"), "{text}");
   assert!(text.contains("a standard error\t"), "{text}");
+  assert!(text.contains("NLS centered R-squared\t"), "{text}");
   assert!(text.contains("approximate_student_t(8)"), "{text}");
 }

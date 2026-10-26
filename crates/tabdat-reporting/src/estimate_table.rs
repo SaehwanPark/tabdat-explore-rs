@@ -23,6 +23,19 @@ fn row(
   output.push('\n');
 }
 
+fn nls_identifier(name: &str) -> String {
+  let mut bytes = name.bytes();
+  let bare = bytes
+    .next()
+    .is_some_and(|c| c.is_ascii_alphabetic() || c == b'_')
+    && bytes.all(|c| c.is_ascii_alphanumeric() || c == b'_');
+  if bare {
+    name.into()
+  } else {
+    format!("`{}`", name.replace('`', "``"))
+  }
+}
+
 fn nls_expression(
   expression: &tabdat_stats::NlsExpression,
   model: &tabdat_stats::NlsModel,
@@ -34,12 +47,12 @@ fn nls_expression(
     E::Predictor(i) => model
       .predictor_names
       .get(*i)
-      .cloned()
+      .map(|name| nls_identifier(name))
       .unwrap_or_else(|| "?".into()),
     E::Parameter(i) => model
       .parameter_names
       .get(*i)
-      .cloned()
+      .map(|name| nls_identifier(name))
       .unwrap_or_else(|| "?".into()),
     E::Negate(e) => format!("(-{})", render(e)),
     E::Add(a, b) => format!("({}+{})", render(a), render(b)),
@@ -126,6 +139,11 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "OLS R-squared", models, |m| {
     number(m.r_squared)
   });
+  if models.iter().any(|m| m.nls_model.is_some()) {
+    row(&mut output, "NLS centered R-squared", models, |m| {
+      number(m.nls_centered_r_squared)
+    });
+  }
   row(
     &mut output,
     "Binary McFadden pseudo-R-squared",
@@ -134,4 +152,21 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   );
   output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
   output
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn nls_formula_distinguishes_non_bare_names() {
+    use tabdat_stats::{NlsExpression as E, NlsModel};
+    let model = NlsModel {
+      outcome: "y".into(),
+      predictor_names: vec!["x plus".into()],
+      parameter_names: vec!["a".into()],
+      expression: E::Add(Box::new(E::Parameter(0)), Box::new(E::Predictor(0))),
+    };
+    assert_eq!(nls_expression(&model.expression, &model), "(a+`x plus`)");
+  }
 }

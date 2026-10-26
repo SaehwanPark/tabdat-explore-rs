@@ -49,6 +49,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         estimator: "ols".into(),
         outcome: state.outcome.clone(),
         nls_model: None,
+        nls_centered_r_squared: None,
         predictors: state.predictors.clone(),
         include_intercept: state.include_intercept,
         cluster_variable: match &result.covariance.covariance_type {
@@ -99,6 +100,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         estimator: estimator.into(),
         outcome: result.outcome.clone(),
         nls_model: None,
+        nls_centered_r_squared: None,
         predictors: result.predictor_names.clone(),
         include_intercept: result.include_intercept,
         covariance: covariance.into(),
@@ -139,6 +141,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         estimator: "nls".into(),
         outcome: result.model.outcome.clone(),
         nls_model: Some(result.model.clone()),
+        nls_centered_r_squared: result.centered_r_squared.filter(|v| v.is_finite()),
         predictors: result.model.predictor_names.clone(),
         // NLS has no implicit intercept; the formula alone defines its parameters.
         include_intercept: false,

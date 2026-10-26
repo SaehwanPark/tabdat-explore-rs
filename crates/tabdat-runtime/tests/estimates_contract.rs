@@ -77,6 +77,13 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
     Some("gaussian_working_model_ml_variance_rss_over_n")
   );
   assert!(saved.mcfadden_r_squared.is_none());
+  let legacy = serde_json::to_value(&saved).unwrap();
+  assert!(legacy.get("nls_model").is_none());
+  assert!(legacy.get("nls_centered_r_squared").is_none());
+  assert_eq!(
+    serde_json::from_value::<tabdat_domain::EstimateSnapshot>(legacy).unwrap(),
+    saved
+  );
   assert_eq!(run(&mut session, "head 20"), rows);
   assert_eq!(session.state().estimation, before.estimation);
   run(&mut session, "predict predicted");
@@ -284,6 +291,12 @@ fn nls_snapshots_preserve_explicit_formula_covariance_and_state_across_refits() 
     assert_eq!(after, before);
     let saved = table(&mut session, name).models.remove(0);
     assert_eq!(saved.nls_model.as_ref(), Some(&fit.model));
+    assert_eq!(saved.nls_centered_r_squared, fit.centered_r_squared);
+    let json = serde_json::to_value(&saved).unwrap();
+    assert_eq!(
+      serde_json::from_value::<tabdat_domain::EstimateSnapshot>(json).unwrap(),
+      saved
+    );
     assert_eq!(saved.sample, fit.sample);
     assert_eq!(saved.covariance, covariance);
     assert_eq!(saved.covariance_matrix, fit.covariance_matrix);
