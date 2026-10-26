@@ -305,6 +305,114 @@ fn stationary_maximum_zero_variance_rank_and_unattained_infimum_are_rejected() {
 }
 
 #[test]
+fn curvature_rescaling_must_not_erase_a_scaled_stationary_maximum_or_ban_zero_hc1() {
+  let model = NlsModel {
+    outcome: "y".into(),
+    predictor_names: vec!["x".into()],
+    parameter_names: vec!["a".into()],
+    expression: plus(
+      product(
+        NlsExpression::Constant(1e-250),
+        product(parameter(0), parameter(0)),
+      ),
+      product(parameter(0), predictor()),
+    ),
+  };
+  let y = [0.0, 1e100];
+  let x = vec![vec![1e-100], vec![0.0]];
+  let sample = EstimationSample::all_retained(2);
+  let evaluation = model.evaluate(&[0.0], &x[1]).unwrap();
+  assert_eq!(evaluation.hessian[0][0] / 2e-250, 1.0);
+  // Raw half-loss curvature=1e-200-2e-150<0. Early h/response_scale
+  // underflows, but the correctly scaled average curvature is about -1e50.
+  let error = fit_nls(&model, &y, &x, &[0.0], &sample, true).unwrap_err();
+  assert!(error.to_string().contains("curvature"), "{error}");
+
+  let regular = NlsModel {
+    expression: product(parameter(0), predictor()),
+    ..model
+  };
+  let fit = fit_nls(
+    &regular,
+    &[1.0, 2.0],
+    &[vec![1.0], vec![0.0]],
+    &[1.0],
+    &sample,
+    true,
+  )
+  .unwrap();
+  assert_eq!(fit.covariance_matrix, vec![vec![0.0]]);
+  assert_eq!(fit.coefficients[0].standard_error, 0.0);
+  assert_eq!(fit.coefficients[0].statistic, None);
+  assert_eq!(fit.coefficients[0].confidence_lower, None);
+}
+
+#[test]
+fn erased_nonzero_derivative_and_covariance_terms_fail_closed() {
+  let model = NlsModel {
+    outcome: "y".into(),
+    predictor_names: vec!["x".into()],
+    parameter_names: vec!["a".into()],
+    expression: plus(
+      product(
+        NlsExpression::Constant(1e-200),
+        product(
+          NlsExpression::Constant(1e-200),
+          product(parameter(0), parameter(0)),
+        ),
+      ),
+      product(parameter(0), predictor()),
+    ),
+  };
+  // The ideal mean Hessian2e-400 cannot be stored: do not turn it into a
+  // fake zero before a large residual could restore negative loss curvature.
+  assert!(
+    model
+      .evaluate(&[0.0], &[1e-150])
+      .unwrap_err()
+      .to_string()
+      .contains("underflow")
+  );
+  assert!(
+    fit_nls(
+      &model,
+      &[0.0, 1e150],
+      &[vec![1e-150], vec![0.0]],
+      &[0.0],
+      &EstimationSample::all_retained(2),
+      true
+    )
+    .is_err()
+  );
+
+  let regular = NlsModel {
+    expression: product(parameter(0), predictor()),
+    ..model
+  };
+  let mut x = vec![vec![1e-200]; 10000];
+  x[9999][0] = 0.0;
+  let mut y = vec![0.0; 10000];
+  y[0] = 1e-223;
+  y[1] = -1e-223;
+  y[9999] = 1e100;
+  // Exact stationary minimum, but HC1 is NONZERO: each of the two informative
+  // residual influences is +/-1e-223/(9999*1e-200), giving about2e-54 variance.
+  // Multiplication before column rescaling must not silently publish zero HC1.
+  let influence = 1e-223 / (9999.0 * 1e-200);
+  assert!(2.0 * influence * influence > 1e-54);
+  let error = fit_nls(
+    &regular,
+    &y,
+    &x,
+    &[0.0],
+    &EstimationSample::all_retained(10000),
+    true,
+  )
+  .unwrap_err();
+  assert!(error.to_string().contains("underflow"), "{error}");
+}
+
+#[test]
 fn original_sample_indices_are_owned_ordered_and_unweighted() {
   let meta = rows(METADATA).remove(0);
   let (y, x, start) = data(&meta);

@@ -1,4 +1,6 @@
-use super::{MAX_NLS_DEPTH, MAX_NLS_NODES, MAX_NLS_PARAMETERS, failed, invalid};
+use super::{
+  MAX_NLS_DEPTH, MAX_NLS_NODES, MAX_NLS_PARAMETERS, failed, finite_product, finite_ratio, invalid,
+};
 use crate::StatsError;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -62,16 +64,15 @@ impl Jet {
   }
   fn unary(self, mean: f64, first: f64, second: f64) -> Result<Self, StatsError> {
     let p = self.gradient.len();
-    let hessian = (0..p)
-      .flat_map(|i| (0..p).map(move |j| (i, j)))
-      .map(|(i, j)| first * self.hessian[i * p + j] + second * self.gradient[i] * self.gradient[j])
-      .collect();
-    Self {
-      mean,
-      gradient: self.gradient.iter().map(|g| first * g).collect(),
-      hessian,
+    let mut result = Self::constant(mean, p);
+    for i in 0..p {
+      result.gradient[i] = finite_product(first, self.gradient[i])?;
+      for j in 0..p {
+        result.hessian[i * p + j] = finite_product(first, self.hessian[i * p + j])?
+          + finite_product(finite_product(second, self.gradient[i])?, self.gradient[j])?;
+      }
     }
-    .finite()
+    result.finite()
   }
   fn sum(self, other: Self, sign: f64) -> Result<Self, StatsError> {
     Self {
@@ -93,51 +94,37 @@ impl Jet {
   }
   fn product(self, other: Self) -> Result<Self, StatsError> {
     let p = self.gradient.len();
-    let hessian = (0..p)
-      .flat_map(|i| (0..p).map(move |j| (i, j)))
-      .map(|(i, j)| {
-        self.hessian[i * p + j] * other.mean
-          + self.mean * other.hessian[i * p + j]
-          + self.gradient[i] * other.gradient[j]
-          + other.gradient[i] * self.gradient[j]
-      })
-      .collect();
-    Self {
-      mean: self.mean * other.mean,
-      gradient: self
-        .gradient
-        .iter()
-        .zip(&other.gradient)
-        .map(|(a, b)| a * other.mean + self.mean * b)
-        .collect(),
-      hessian,
+    let mut result = Self::constant(finite_product(self.mean, other.mean)?, p);
+    for i in 0..p {
+      result.gradient[i] = finite_product(self.gradient[i], other.mean)?
+        + finite_product(self.mean, other.gradient[i])?;
+      for j in 0..p {
+        result.hessian[i * p + j] = finite_product(self.hessian[i * p + j], other.mean)?
+          + finite_product(self.mean, other.hessian[i * p + j])?
+          + finite_product(self.gradient[i], other.gradient[j])?
+          + finite_product(other.gradient[i], self.gradient[j])?;
+      }
     }
-    .finite()
+    result.finite()
   }
   fn reciprocal(self) -> Result<Self, StatsError> {
     if self.mean == 0.0 {
       return Err(failed("division by zero"));
     }
-    let inverse = 1.0 / self.mean;
+    let inverse = finite_ratio(1.0, self.mean)?;
     let p = self.gradient.len();
-    let hessian = (0..p)
-      .flat_map(|i| (0..p).map(move |j| (i, j)))
-      .map(|(i, j)| {
-        (2.0 * (self.gradient[i] * inverse) * (self.gradient[j] * inverse)
-          - self.hessian[i * p + j] * inverse)
-          * inverse
-      })
-      .collect();
-    Self {
-      mean: inverse,
-      gradient: self
-        .gradient
-        .iter()
-        .map(|g| -(g * inverse) * inverse)
-        .collect(),
-      hessian,
+    let mut result = Self::constant(inverse, p);
+    for i in 0..p {
+      let first = finite_product(self.gradient[i], inverse)?;
+      result.gradient[i] = finite_product(-first, inverse)?;
+      for j in 0..p {
+        let second = finite_product(self.gradient[j], inverse)?;
+        let cross = finite_product(finite_product(2.0, first)?, second)?;
+        let value = cross - finite_product(self.hessian[i * p + j], inverse)?;
+        result.hessian[i * p + j] = finite_product(value, inverse)?;
+      }
     }
-    .finite()
+    result.finite()
   }
 }
 
@@ -304,13 +291,13 @@ pub(super) fn value(
     Exp(a) => exponential(value(a, parameters, row)?)?,
     Add(a, b) => value(a, parameters, row)? + value(b, parameters, row)?,
     Subtract(a, b) => value(a, parameters, row)? - value(b, parameters, row)?,
-    Multiply(a, b) => value(a, parameters, row)? * value(b, parameters, row)?,
+    Multiply(a, b) => finite_product(value(a, parameters, row)?, value(b, parameters, row)?)?,
     Divide(a, b) => {
       let denominator = value(b, parameters, row)?;
       if denominator == 0.0 {
         return Err(failed("division by zero"));
       }
-      value(a, parameters, row)? / denominator
+      finite_ratio(value(a, parameters, row)?, denominator)?
     }
   };
   if result.is_finite() {

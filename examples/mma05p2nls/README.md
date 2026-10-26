@@ -197,3 +197,34 @@ cwd, one test thread and two concurrent artifacts. This is a documented fallback
 not nextest success. Scoped stats Clippy/lib/tests with-Dwarnings and fmt/diff pass.
 Other crates/runtime, final review, source script/atomic IO and platforms remain
 unverified at this checkpoint.
+
+### Kernel-review P1: fail closed on curvature rescaling loss
+
+Independent code review dfa4593b-ec31-49a4-8d80-caf0d49929a8 identified a P1:
+mean1e-250*a*a+a*x, starta0, x=(1e-100,0),y=(0,1e100) has full-rank J,
+zero score/full GN step and finite positive RSS1e200, but raw observed half-loss
+curvature1e-200-2e-150<0. Dividing representable mean Hessian2e-250 by response
+scale1e100 prematurely rounded it to zero; later column divisions should restore
+a negative scaled-average curvature about-1e50, not the incorrectly checked+.5.
+HC1 covariance is genuinely0 here, so covariance rejection is not the solution.
+
+Parent reproduced the false successful fit with a failing focused regression;
+independent base-R arithmetic confirms raw-2e-150/correct-scaled-1e50 versus
+unsafe+.5. The curvature guard now rejects any nonzero correction erased or made
+nonfinite at an intermediate division/product. Exact zero residual/Hessian terms
+remain0. This is a bounded representability error, not extended-precision recovery
+or a claim to accept every regular extreme-scale problem. The same regression
+confirms a truly regular a*x fit with x=(1,0),y=(1,2),a1 and zero HC1 covariance
+still succeeds with unavailable t/p/CI. No threshold or reference tolerance changed.
+
+The initial curvature guard passed eight focused tests/Clippy; its rebuilt
+original API probe passed40044 gates with byte-identical40052-row CSV. Follow-on
+fail-closed checks also protect nonzero arithmetic/derivative, residual scaling
+and covariance intermediates from erasure. A ninth test covers an unrepresentable
+mean Hessian and an extreme-scale positive HC1 variance incorrectly rounded to0;
+these fail rather than publish false regularity/inference. Exact-zero terms still
+remain allowed. All nine focused tests pass. Earlier235 non-NLS stats passes and
+one ignored are unaffected; nine replace the previous seven, giving244 distinct
+passing stats cases, not a new full nextest claim. The latest expanded checks still
+need Clippy/original-data replay and independent focused review follow-up before
+closing the P1. Runtime/CLI and the complete slice remain WIP.

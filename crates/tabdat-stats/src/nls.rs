@@ -65,6 +65,26 @@ fn invalid(message: &str) -> StatsError {
 fn failed(message: &str) -> StatsError {
   StatsError::EstimationFailed(format!("nl: {message}"))
 }
+fn finite_product(a: f64, b: f64) -> Result<f64, StatsError> {
+  let value = a * b;
+  if value.is_finite() && (value != 0.0 || a == 0.0 || b == 0.0) {
+    Ok(value)
+  } else {
+    Err(failed(
+      "nonrepresentable product (overflow or erased nonzero underflow)",
+    ))
+  }
+}
+fn finite_ratio(a: f64, b: f64) -> Result<f64, StatsError> {
+  let value = a / b;
+  if value.is_finite() && (value != 0.0 || a == 0.0) {
+    Ok(value)
+  } else {
+    Err(failed(
+      "nonrepresentable division (zero, overflow or erased nonzero underflow)",
+    ))
+  }
+}
 fn sum(values: impl Iterator<Item = f64>) -> f64 {
   let (mut value, mut correction) = (0.0, 0.0);
   for next in values {
@@ -131,8 +151,8 @@ fn evaluate(
   let residuals: Vec<_> = response
     .iter()
     .zip(&jets)
-    .map(|(y, jet)| y / response_scale - jet.mean / response_scale)
-    .collect();
+    .map(|(y, jet)| finite_ratio(y - jet.mean, response_scale))
+    .collect::<Result<_, _>>()?;
   let rss = sum(residuals.iter().map(|r| r * r));
   if !rss.is_finite() || rss <= 0.0 {
     return Err(failed("zero or nonrepresentable residual variance"));
@@ -175,7 +195,7 @@ fn loss(
   let mut residuals = Vec::with_capacity(response.len());
   for (row, y) in data.iter().zip(response) {
     let mu = expression::value(&model.expression, theta, row)?;
-    residuals.push(y / response_scale - mu / response_scale);
+    residuals.push(finite_ratio(y - mu, response_scale)?);
   }
   let rss = sum(residuals.iter().map(|r| r * r));
   if rss.is_finite() {
@@ -188,21 +208,41 @@ fn loss(
 fn check_curvature(evaluation: &Evaluation, response_scale: f64) -> Result<(), StatsError> {
   let p = evaluation.column_scale.len();
   let n = evaluation.jets.len() as f64;
-  let hessian: Vec<Vec<f64>> = (0..p)
-    .map(|i| {
-      (0..p)
-        .map(|j| {
-          sum(evaluation.jets.iter().enumerate().map(|(r, jet)| {
-            evaluation.z[r][i] * evaluation.z[r][j]
-              - ((evaluation.residuals[r] * (jet.hessian[i * p + j] / response_scale))
-                / evaluation.column_scale[i])
-                / evaluation.column_scale[j]
-          }))
-            / n
-        })
-        .collect()
-    })
-    .collect();
+  let mut hessian = vec![vec![0.0; p]; p];
+  for i in 0..p {
+    for j in 0..p {
+      let (mut total, mut correction) = (0.0, 0.0);
+      for (r, jet) in evaluation.jets.iter().enumerate() {
+        let residual = evaluation.residuals[r];
+        let mean_hessian = jet.hessian[i * p + j];
+        let adjustment = if residual == 0.0 || mean_hessian == 0.0 {
+          0.0
+        } else {
+          // Later column divisions can restore a term erased by an earlier
+          // response division/product. Never substitute GN curvature in that
+          // case: this bounded evaluator fails closed rather than claiming a
+          // regular minimum from a rounded-away observed-curvature term.
+          let checked = |v: f64| {
+            if v.is_finite() && v != 0.0 {
+              Ok(v)
+            } else {
+              Err(failed("observed curvature rescaling overflow or underflow"))
+            }
+          };
+          let value = checked(mean_hessian / response_scale)?;
+          let value = checked(residual * value)?;
+          let value = checked(value / evaluation.column_scale[i])?;
+          checked(value / evaluation.column_scale[j])?
+        };
+        let value = evaluation.z[r][i] * evaluation.z[r][j] - adjustment;
+        if !value.is_finite() {
+          return Err(failed("nonrepresentable observed curvature"));
+        }
+        add_compensated(&mut total, &mut correction, value);
+      }
+      hessian[i][j] = (total + correction) / n;
+    }
+  }
   // GN curvature is positive even at some stationary maxima. The observed
   // half-loss Hessian must independently pass the existing scaled SPD guard.
   choice_information_inverse(&hessian)
@@ -264,44 +304,48 @@ fn finish(
   let p = solution.theta.len();
   let df = n - p;
   let evaluation = solution.evaluation;
-  let rss = (evaluation.rss * response_scale) * response_scale;
+  let rss = finite_product(
+    finite_product(evaluation.rss, response_scale)?,
+    response_scale,
+  )?;
   let variance = rss / df as f64;
   if !rss.is_finite() || !variance.is_finite() || variance <= 0.0 {
     return Err(failed("zero or nonrepresentable raw residual variance"));
   }
   let correction = if robust { n as f64 / df as f64 } else { 1.0 };
-  let covariance_matrix = if robust {
-    let influences: Vec<Vec<f64>> = evaluation
-      .z
-      .iter()
-      .zip(&evaluation.residuals)
-      .map(|(z, r)| {
-        (0..p)
-          .map(|i| {
-            sum((0..p).map(|j| solution.inverse_z[i][j] * z[j] * r)) / evaluation.column_scale[i]
-          })
-          .collect()
-      })
-      .collect();
-    (0..p)
-      .map(|i| {
-        (0..p)
-          .map(|j| correction * sum(influences.iter().map(|u| u[i] * u[j])))
-          .collect()
-      })
-      .collect::<Vec<Vec<f64>>>()
+  let mut covariance_matrix = vec![vec![0.0; p]; p];
+  if robust {
+    let mut influences = Vec::with_capacity(n);
+    for (z, r) in evaluation.z.iter().zip(&evaluation.residuals) {
+      let mut influence = vec![0.0; p];
+      for i in 0..p {
+        let terms = (0..p)
+          .map(|j| finite_product(finite_product(solution.inverse_z[i][j], z[j])?, *r))
+          .collect::<Result<Vec<_>, _>>()?;
+        influence[i] = finite_ratio(sum(terms.into_iter()), evaluation.column_scale[i])?;
+      }
+      influences.push(influence);
+    }
+    for i in 0..p {
+      for j in 0..p {
+        let terms = influences
+          .iter()
+          .map(|u| finite_product(u[i], u[j]))
+          .collect::<Result<Vec<_>, _>>()?;
+        covariance_matrix[i][j] = finite_product(correction, sum(terms.into_iter()))?;
+      }
+    }
   } else {
-    (0..p)
-      .map(|i| {
-        (0..p)
-          .map(|j| {
-            ((evaluation.rss / df as f64 * solution.inverse_z[i][j]) / evaluation.column_scale[i])
-              / evaluation.column_scale[j]
-          })
-          .collect()
-      })
-      .collect()
-  };
+    for i in 0..p {
+      for j in 0..p {
+        let value = finite_product(evaluation.rss / df as f64, solution.inverse_z[i][j])?;
+        covariance_matrix[i][j] = finite_ratio(
+          finite_ratio(value, evaluation.column_scale[i])?,
+          evaluation.column_scale[j],
+        )?;
+      }
+    }
+  }
   if covariance_matrix.iter().flatten().any(|v| !v.is_finite()) {
     return Err(failed("nonrepresentable covariance"));
   }
