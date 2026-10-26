@@ -1822,7 +1822,7 @@ fn get_command_schema(
         },
         ArgumentDescriptor {
           name: "variables".to_string(),
-          required: false,
+          required: true,
         },
       ],
       help_topic,

@@ -1957,6 +1957,70 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         baseline
       )
     }
+    ExecutionResult::Gompertz(r) => {
+      let mut coefficients = String::from(
+        "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
+      );
+      for c in &r.coefficients {
+        writeln!(
+          coefficients,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          c.name.escape_debug(),
+          c.value,
+          c.standard_error,
+          optional_number(c.statistic),
+          optional_number(c.p_value),
+          optional_number(c.confidence_lower),
+          optional_number(c.confidence_upper)
+        )
+        .unwrap();
+      }
+      format!(
+        "Gompertz proportional-hazards maximum likelihood (entry-zero, single spell)\nTime: {}; event: {}; N = {}; failures = {}; non-events = {}\nCandidate rows = {}; excluded joint missing/nonfinite = {}; Newton iterations = {}\nDensity log likelihood = {}; Stata-normalized log likelihood = {}\nSame-sample refitted null density log likelihood = {}; normalized = {}\nSlope LR chi2({}) = {}; p-value = {}{}\nSlope Wald chi2({}) = {}; p-value = {}; availability = {}\nFull joint PH beta/natural-gamma covariance: {}; multiplier = {}; asymptotic normal95, not Student t.\n{}Gamma = {}; SE = {}; z(gamma=0) = {}; p-value = {}; natural normal95 interval = [{}, {}]\nGamma=0 tests exponential within this family, not overall model adequacy. Negative gamma implies positive survival mass at infinity, not identified causal cure.\nNA = unavailable or unrepresentable; zero SE does not imply exact inference.\nxb is X beta (not X beta+gamma*time); hazard/cumhaz/survival use current time and X, including time0 h=exp(xb), H0/S1. Net survival is NOT all-cause joblessness survival or competing-risk incidence; associations are NOT causal effects.\n",
+        r.time_variable.escape_debug(),
+        r.failure_variable.escape_debug(),
+        r.observation_count,
+        r.failure_count,
+        r.censored_count,
+        r.sample
+          .as_ref()
+          .map_or(r.observation_count, |s| s.total_observations),
+        r.sample.as_ref().map_or(0, |s| s.dropped_observations),
+        r.iterations,
+        inference_number(r.log_likelihood),
+        inference_number(r.normalized_log_likelihood),
+        inference_number(r.null_log_likelihood),
+        inference_number(r.null_normalized_log_likelihood),
+        r.likelihood_ratio_df,
+        inference_number(r.likelihood_ratio),
+        optional_number(r.likelihood_ratio_p_value),
+        if r.robust {
+          " (robust LR reference withheld)"
+        } else {
+          ""
+        },
+        r.omnibus_wald.degrees_of_freedom,
+        optional_number(r.omnibus_wald.statistic),
+        optional_number(r.omnibus_wald.p_value),
+        r.omnibus_wald
+          .unavailable_reason
+          .as_deref()
+          .unwrap_or("available"),
+        if r.robust {
+          "independent-spell full score sandwich N/(N-1), not OLS HC1"
+        } else {
+          "inverse observed information, no N-K scaling"
+        },
+        r.covariance_correction,
+        coefficients,
+        inference_number(r.shape.value),
+        inference_number(r.shape.standard_error),
+        optional_number(r.shape.statistic),
+        optional_number(r.shape.p_value),
+        optional_number(r.shape.confidence_lower),
+        optional_number(r.shape.confidence_upper)
+      )
+    }
     ExecutionResult::Weibull(r) => {
       let mut coefficients = String::from(
         "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",

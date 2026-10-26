@@ -461,7 +461,7 @@ pub enum RuntimeError {
   PredictBinaryUnsupported,
   /// Invalid/unsupported Gaussian Tobit request or failed regular numerical fit.
   TobitFailed(String),
-  /// Invalid/unsupported duration request or failed regular Weibull fit.
+  /// Invalid/unsupported duration request or failed regular Weibull/Gompertz fit.
   StregFailed(String),
   /// Invalid Cox request or failed regular partial-likelihood fit.
   StcoxFailed(String),

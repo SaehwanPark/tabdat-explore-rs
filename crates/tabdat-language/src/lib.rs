@@ -4047,10 +4047,11 @@ fn parse_streg_command(body: &str) -> Result<Command, ParseError> {
       }
       match values[0].to_ascii_lowercase().as_str() {
         "weibull" => StregDistribution::Weibull,
+        "gompertz" => StregDistribution::Gompertz,
         "exponential" => StregDistribution::Exponential,
         _ => {
           return Err(ParseError::new(
-            "streg option dist must be weibull or exponential",
+            "streg option dist must be weibull, gompertz or exponential",
           ));
         }
       }
@@ -13648,7 +13649,7 @@ mod tests {
       ),
       (
         "streg time age, failure(event) dist(loglogistic)",
-        "streg option dist must be weibull or exponential",
+        "streg option dist must be weibull, gompertz or exponential",
       ),
       (
         "streg time age, failure(event) dist(weibull) robust cluster(group)",

@@ -799,6 +799,8 @@ pub enum ExecutionResult {
   MultinomialMarginalEffects(Box<tabdat_stats::MultinomialMarginalEffects>),
   /// Entry-zero Weibull PH fit with full beta/lnshape joint inference.
   Weibull(Box<tabdat_stats::WeibullResult>),
+  /// Entry-zero Gompertz PH fit with full beta/natural-gamma joint inference.
+  Gompertz(Box<tabdat_stats::GompertzResult>),
   /// Cox/Breslow fit and reference-vector baseline, without baseline uncertainty.
   Cox(Box<tabdat_stats::CoxResult>),
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.

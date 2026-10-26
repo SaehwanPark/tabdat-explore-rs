@@ -18,6 +18,7 @@ pub mod error;
 pub mod estimates;
 mod fixed_effects;
 mod gaussian_mle;
+mod gompertz;
 mod heckman;
 pub mod iv;
 mod iv_confidence;
@@ -47,6 +48,12 @@ mod weibull;
 pub use cox::{
   CoxBaselineStep, CoxEstimate, CoxOptions, CoxPredictionKind, CoxProblem, CoxResult,
   MAX_COX_OBSERVATIONS, MAX_COX_PARAMETERS, MAX_COX_WORK, cox_predict_row, fit_cox,
+};
+
+pub use gompertz::{
+  GompertzEstimate, GompertzOmnibusWald, GompertzOptions, GompertzPredictionKind, GompertzResult,
+  GompertzShape, MAX_GOMPERTZ_OBSERVATIONS, MAX_GOMPERTZ_PARAMETERS, MAX_GOMPERTZ_WORK,
+  fit_gompertz, gompertz_predict_row,
 };
 
 pub use weibull::{

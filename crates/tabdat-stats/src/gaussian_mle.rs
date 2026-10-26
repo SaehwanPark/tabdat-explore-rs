@@ -1,6 +1,6 @@
 //! Shared guarded Newton solve for concave parameterizations.
 //! Model-specific likelihoods enforce their own support (positive final scale in
-//! Gaussian/Weibull families, unrestricted Cox coefficients). Neither damping
+//! Gaussian/Weibull families, unrestricted Cox coefficients/Gompertz gamma). Neither damping
 //! nor a pseudoinverse enters the returned information.
 use crate::StatsError;
 use crate::matrix::choice_information_inverse;
@@ -77,7 +77,7 @@ pub(crate) fn maximize(
       }
       alpha *= 0.5;
     }
-    theta = accepted.ok_or_else(|| failed("positive-scale Newton line search failed"))?;
+    theta = accepted.ok_or_else(|| failed("Newton line search failed"))?;
   }
   Err(failed(
     "iteration limit reached without score/step convergence; no finite regular fit established",

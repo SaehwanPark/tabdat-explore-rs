@@ -162,7 +162,16 @@ Extend the same workflow/validation standard to:
   entries,197237 native cells/147092 exact source cells and276 author quantities
   pass, including14 compact table cells; source-preserving JSON/text exports are
   byte-identical. Native exponential/cluster remain unsupported; no blanket streg
-  parity. The [native Table17.8 Cox/Breslow coefficient column](../examples/mma17p4duration/cox.md)
+  parity. The [native Table17.8 Gompertz column](../examples/mma17p4duration/gompertz.md)
+  now adds unrestricted natural-gamma PH ML/full joint observed or independent-
+  spell sandwich inference, refitted null/slope Wald and atomic current points.
+  Original2029 R gates/all1764 covariance entries,197237 native cells/147092 exact
+  source cells and268 printed quantities pass, including14 compact table cells;
+  JSON/text exports are byte-identical. Gamma0 nests exponential; negative gamma
+  implies positive net-survival tail mass, not causal cure. Two independent source
+  reviews and1231 local regression passes/two pre-existing ignored support this
+  bounded workflow, not full streg/survival/chapter/platform completion.
+  The [native Table17.8 Cox/Breslow coefficient column](../examples/mma17p4duration/cox.md)
   now validates the same3343 spells/1073 events/40 covariates without intercept,
   full efficient-score N/(N-1) inference, owned all-X-means reference baseline
   and current step-H/net-survival/xb points. Independent R/source audits pass2084

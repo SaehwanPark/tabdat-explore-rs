@@ -763,6 +763,69 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["convergence_tolerance"] = json!(1e-10);
       (data, "CoxResult")
     }
+    ExecutionResult::Gompertz(result) => {
+      let mut data = serde_json::to_value(result).expect("finite Gompertz result");
+      let object = data.as_object_mut().expect("Gompertz result object");
+      for key in [
+        "fitted_xb",
+        "fitted_hazard",
+        "fitted_cumulative_hazard",
+        "fitted_survival",
+        "predictor_names",
+      ] {
+        object.remove(key);
+      }
+      data["estimator"] = json!("streg_gompertz");
+      data["distribution"] = json!("gompertz_proportional_hazards_entry_zero_single_spell");
+      data["predictors"] = json!(result.predictor_names);
+      data["support"] = json!("joint_finite_sample_then_positive_time_exact_binary_event_or_error");
+      data["covariance"] = json!(if result.robust {
+        "robust_full_joint_observed_information_score_sandwich"
+      } else {
+        "model_based_full_joint_observed_information"
+      });
+      data["covariance_parameter_names"] = json!(
+        result
+          .coefficients
+          .iter()
+          .map(|c| c.name.as_str())
+          .chain(std::iter::once("gamma"))
+          .collect::<Vec<_>>()
+      );
+      data["covariance_parameter_order"] = json!("ph_coefficients_then_natural_gamma");
+      data["reference_distribution"] = json!("asymptotic_standard_normal");
+      data["confidence_level"] = json!(95.0);
+      data["shape_interval"] =
+        json!("natural_gamma_normal_wald_95_zero_tests_exponential_within_family");
+      data["shape_units"] = json!("inverse_recorded_time_unit");
+      data["negative_gamma_implies_positive_survival_mass_at_infinity"] =
+        json!(result.shape.value < 0.0);
+      data["log_likelihood_convention"] =
+        json!("event_log_gompertz_density_and_nonevent_log_survival");
+      data["normalized_log_likelihood_convention"] =
+        json!("duration_density_plus_fixed_sum_event_log_time");
+      data["null_model"] = json!(if result.include_intercept {
+        "intercept_and_gamma_refitted_same_sample"
+      } else {
+        "zero_ph_index_gamma_refitted_same_sample"
+      });
+      data["likelihood_ratio_reference_distribution"] = json!(
+        result
+          .likelihood_ratio_p_value
+          .map(|_| "asymptotic_chi_square")
+      );
+      data["omnibus_wald_reference_distribution"] =
+        json!(result.omnibus_wald.p_value.map(|_| "asymptotic_chi_square"));
+      data["survival_interpretation"] =
+        json!("net_cause_specific_not_all_cause_survival_or_competing_risk_cumulative_incidence");
+      data["converged"] = json!(true);
+      data["convergence_coordinate_system"] =
+        json!("rms_predictors_duration_rescaled_unrestricted_natural_gamma");
+      data["convergence_score_normalization"] = json!("per_observation_mean");
+      data["convergence_step_normalization"] = json!("1_plus_abs_parameter");
+      data["convergence_tolerance"] = json!(1e-10);
+      (data, "GompertzResult")
+    }
     ExecutionResult::Weibull(result) => {
       let mut data = serde_json::to_value(result).expect("finite Weibull result");
       let object = data.as_object_mut().expect("Weibull result object");

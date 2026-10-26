@@ -17,6 +17,15 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
     let result = parse_command(input);
     // Keep the pinned corpus unchanged while checking the intentional local
     // extensions and clearer IV syntax diagnostics below.
+    // MIG-0022: list the newly executable Gompertz alternative without
+    // rewriting the pinned Python diagnostic or accepting loglogistic.
+    if input == "streg time age, failure(event) dist(loglogistic)" {
+      assert_eq!(
+        result.unwrap_err().message(),
+        "streg option dist must be weibull, gompertz or exponential"
+      );
+      continue;
+    }
     if input == "count if age > 18" {
       assert!(matches!(
         result,

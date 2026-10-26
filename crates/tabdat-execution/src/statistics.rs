@@ -1150,15 +1150,18 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::CoxFit(_))) {
       return self.execute_cox_prediction(command);
     }
-    if matches!(self.estimation, Some(EstimationState::WeibullFit(_))) {
-      return self.execute_weibull_prediction(command);
+    if matches!(
+      self.estimation,
+      Some(EstimationState::WeibullFit(_) | EstimationState::GompertzFit(_))
+    ) {
+      return self.execute_streg_prediction(command);
     }
     if matches!(
       command.kind,
       PredictKind::Hazard | PredictKind::CumulativeHazard | PredictKind::Survival
     ) {
       return Err(RuntimeError::StregFailed(
-        "predict hazard requires a prior Weibull streg fit; cumhaz/survival require a prior Weibull streg or Cox stcox fit".into(),
+        "predict hazard requires a prior Weibull/Gompertz streg fit; cumhaz/survival require a prior Weibull/Gompertz streg or Cox stcox fit".into(),
       ));
     }
     if matches!(

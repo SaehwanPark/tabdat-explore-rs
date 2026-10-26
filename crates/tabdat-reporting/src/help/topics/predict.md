@@ -31,11 +31,14 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   Numerical/Mills-range failures abort atomically. At most10000 current rows;
   point-only, no margins or auxiliary options. Not Tobit mean/count n or causal
   effects; see help heckman for formulas and identification limits.
-- Native Weibull streg: xb (PH X beta), hazard (instantaneous hazard), cumhaz
+- Native Weibull/Gompertz streg: xb (PH X beta), hazard (instantaneous hazard), cumhaz
   (cumulative hazard), survival (net exp(-H)). Timed modes require current X and
   the original time name, never event; xb requires current X only. Missing/nonfinite
-  required inputs give NULL; complete finite nonpositive time or unrepresentable
-  requested results fail atomically. Genuine survival0 is allowed. At most10000
+  required inputs give NULL; complete finite negative time (or zero for Weibull)
+  or unrepresentable requested results fail atomically. Gompertz time0 gives
+  h=exp(xb), H0/S1; its xb excludes gamma*time, and negative gamma retains a
+  positive infinite-tail survival mass, not identified causal cure. Genuine
+  survival0 is allowed. At most10000
   rows, points only, no auxiliaries; no count n/binary pr/mean/residual semantics.
   Net survival is not all-cause survival or competing-risk incidence. See help streg.
 - Native Cox stcox: xb (raw PH X beta), cumhaz (Breslow cumulative hazard),
