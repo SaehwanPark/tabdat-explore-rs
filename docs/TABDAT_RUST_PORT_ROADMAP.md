@@ -456,6 +456,8 @@ Subset forms, robust score/GMM C variants and few-cluster guarantees remain
 unsupported; these conventional tests assume valid instruments and do not
 establish exogeneity or instrument validity by failing to reject.
 
+The [Chapter 5.9.4 exponential point-effect workflow](../examples/mma05p4margeffects/README.md) now uses an all-one offset-Poisson fit with the same exponential-density score and information. Independent R profile likelihood verifies all 10,000 generated rows and four point summaries; the historical forward numerical derivative remains discrepant. Effect uncertainty, a general exponential estimator and the rest of Table 5.7 remain required.
+
 Implement the selected bounded plan without broadening scope. If it conflicts
 with the codebase or reference semantics, stop and report the conflict rather than
 improvising. Report changed files, tests, deviations and unresolved limitations.
