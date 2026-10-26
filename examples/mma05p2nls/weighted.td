@@ -1,6 +1,7 @@
 # Fixed weights use the first unweighted fit; transformed diagnostics are not level diagnostics.
 use nls.csv
 isid source_row
+# DuckDB's empty window preserves the scan order; the backend enables insertion order.
 sql """
 SELECT CASE WHEN COUNT(*)<=2 OR COUNT(*)>10000
   OR MIN(source_row)<>1 OR MAX(source_row)<>COUNT(*)
@@ -29,7 +30,7 @@ sql """
 SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(
   isfinite(wnls_scale) AND wnls_scale>0 AND isfinite(fgnls_scale) AND fgnls_scale>0
   AND isfinite(wnls_weight) AND wnls_weight>0 AND isfinite(fgnls_weight) AND fgnls_weight>0
-  AND isfinite(wnls_y) AND isfinite(fgnls_y)
+  AND isfinite(wnls_y) AND wnls_y>0 AND isfinite(fgnls_y) AND fgnls_y>0
   AND isfinite(exp(-1)/wnls_scale) AND exp(-1)/wnls_scale>0
   AND isfinite(exp(-1)/fgnls_scale) AND exp(-1)/fgnls_scale>0,FALSE))>0
 THEN error('weighted NLS requires positive finite weights, scales and transformed starting means and finite responses')

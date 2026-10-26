@@ -34,7 +34,7 @@ fit <- function(x, y, weights) {
   normalized_score <- max(abs(crossprod(j, r)) / (sqrt(colSums(j^2)) * sqrt(rss)))
   full_step <- max(abs(qr.coef(qrj, r)) / (1 + abs(theta)))
   stopifnot(is.finite(rss), rss > 0, qrj$rank == 2, curvature > 0,
-            abs(score(d)) < 1e-13, normalized_score < 1e-12, full_step < 1e-12)
+            abs(score(d)) < 1e-13, normalized_score < 1e-13, full_step < 1e-13)
   bread <- chol2inv(qr.R(qrj))
   list(theta = theta, mu = mu, scale = scale, z = z, m = m, residual = r,
        classical = rss / (n - 2) * bread,
@@ -63,21 +63,21 @@ for (name in names(cases)) {
   preliminary <- fit(data$x, data$y, rep(1, n))
   mu0 <- preliminary$mu
   if (name == "control") stopifnot(max(abs(preliminary$theta - c(-log(2), 0))) < 1e-12)
-  for (method in c("wnls", "fgnls")) {
-    w <- if (method == "wnls") 1 / mu0 else 1 / mu0^2
+  for (method in c("preliminary", "wnls", "fgnls")) {
+    w <- if (method == "preliminary") rep(1, n) else if (method == "wnls") 1 / mu0 else 1 / mu0^2
     result <- fit(data$x, data$y, w)
     normalized <- fit(data$x, data$y, w * n / sum(w))
     stopifnot(max(abs(result$theta - normalized$theta)) < 1e-12,
               max(abs(result$classical - normalized$classical)) < 1e-12,
               max(abs(result$hc1 - normalized$hc1)) < 1e-12)
-    if (name == "control") {
+    if (name == "control" && method != "preliminary") {
       expected_rss <- if (method == "wnls") .12 else .06
       stopifnot(max(abs(result$theta - c(-log(2), 0))) < 1e-12,
                 max(abs(result$classical - diag(c(.02, .03)))) < 1e-12,
                 max(abs(result$hc1 - diag(c(.02, .015)))) < 1e-12,
                 abs(result$diagnostics["scaled_rss"] - expected_rss) < 1e-12,
                 abs(result$diagnostics["level_rss"] - .24) < 1e-12)
-    } else {
+    } else if (name == "original" && method != "preliminary") {
       # Printed Table 5.7 quantities are separate, coarser checks than the oracle.
       expected <- if (method == "wnls") c(1.9906, -.9961, .0225, .0098, .0359, .0224) else
         c(1.9840, -.9907, .0148, .0100, .0146, .0101)
@@ -90,7 +90,7 @@ for (name in names(cases)) {
       transformed_response = result$z, transformed_mean = result$m,
       transformed_residual = result$residual, level_mean = result$mu,
       level_residual = data$y - result$mu, rate = 1 / result$mu)
-    for (mode in c("classical", "hc1")) {
+    for (mode in if (method == "preliminary") "classical" else c("classical", "hc1")) {
       v <- result[[mode]]; se <- sqrt(diag(v)); t <- result$theta / se
       critical <- qt(.975, n - 2)
       parameters[[length(parameters) + 1]] <- data.frame(

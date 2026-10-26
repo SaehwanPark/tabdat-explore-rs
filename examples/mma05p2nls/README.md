@@ -179,7 +179,7 @@ both covariance modes, four rejected controls and522 analytic value/derivative r
 all eight generated reference outputs reproduced byte-for-byte. The original
 external-data reference is certified separately, not redistributed as a fixture.
 
-Native pure-stats API source probe checks40044 native/R scalar/projection gates,
+The original PR340 pure-stats API source probe checked40044 native/R scalar/projection gates,
 20000 exact R/source fields and20000 native retained-index assertions, plus9
 compact author printed-unit facts. Max differences: coefficients1.69e-12,
 covariance6.04e-14, SE2.13e-13, mean/residual2.08e-11; no tolerance change. Both
@@ -293,7 +293,7 @@ the fixed scale-relative contract. Diagnostic RSS error5.28e-11. Ten actual-sour
 coefficient/covariance/tiny-tail/projection/binding/sample/diagnostic/source-identity/
 ordinal/CSV-projection forgeries fail without receipt.
 
-Native a1.8875622977095359,b-.9574683112978039, RSS10149.863227274845;
+At the original PR340 checkpoint: native a1.8875622977095359,b-.9574683112978039, RSS10149.863227274845;
 classical SE.030681916435664428/.00974185303447341, HC1
 .14207932958772906/.06119685266594117. Both use11 accepted steps, score2.046e-13,
 full step6.376e-13 and work6720000. Ordinary mean residual-.0161230529764893 need
@@ -358,8 +358,13 @@ Ignored cases are existing random_effects_ml_original_source and reshape_contrac
 
 Workspace all-target Clippy-Dwarnings, fmt and diff checks pass. A prior all-target
 Clippy attempt timed out with no result; the final incremental invocation finished
-successfully. No numerical code/tolerances changed after the reviewed source replay;
-its evidence remains current. MIG-0024 records intentional admission/deferred-error
+successfully at that checkpoint. The later weighted-workflow slice tightened the
+shared solver threshold to 1e-13 and reran the original unweighted CLI audit:
+120055 numerical gates and two additional nonzero-tail gates pass at the same
+reference tolerances. The new fit uses 12 accepted steps, score 1.786e-14,
+full step 5.505e-14 and 7280000 work units; a=1.8875622977113768 and
+b=-.9574683112984215. The earlier numerical details above are historical.
+MIG-0024 records intentional admission/deferred-error
 and inference differences; old result/wire formats and pinned parser corpus remain.
 No doctest run was needed for the new text/shell examples; none is claimed. GitHub
 Actions are disabled; other platforms, packaging/performance and release readiness

@@ -192,6 +192,27 @@ fn invalid_sources_and_output_collision_leave_inputs_and_outputs_intact() {
   assert_eq!(fs::read_dir(&f.0).unwrap().count(), 2);
 }
 #[test]
+fn transformed_positive_response_cannot_underflow_to_zero() {
+  let input = "source_row,y,x\n1,5,-1\n2,4.9406564584124654e-324,0\n3,5,1\n";
+  let f = Fixture::new(input);
+  let output = f.run("--json");
+  assert_eq!(output.status.code(), Some(1));
+  let leaves: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert_eq!(
+    leaves
+      .iter()
+      .filter(|v| v["result_type"] == "NlsResult")
+      .count(),
+    1
+  );
+  assert!(!f.0.join("weighted_predictions.csv").exists());
+  assert_eq!(fs::read_to_string(f.0.join("nls.csv")).unwrap(), input);
+}
+#[test]
 fn native_global_weight_rescaling_preserves_coefficients_and_both_covariances() {
   let f = Fixture::new(CONTROL);
   let result = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))

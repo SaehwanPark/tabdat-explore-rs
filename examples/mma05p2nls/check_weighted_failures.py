@@ -21,6 +21,8 @@ def check_failures(native_json, native_csv, reference, source):
     leaves = [json.loads(line) for line in Path(native_json).read_text().splitlines()]
     indices = [i for i, value in enumerate(leaves) if value.get('result_type') == 'NlsResult']
     edits = {
+      'initial_coefficient': lambda data: data[indices[0]]['data']['coefficients'][0].__setitem__('value', 2),
+      'initial_covariance': lambda data: data[indices[0]]['data']['covariance_matrix'][0].__setitem__(1, .1),
       'coefficient': lambda data: data[indices[1]]['data']['coefficients'][0].__setitem__('value', 2),
       'covariance': lambda data: data[indices[2]]['data']['covariance_matrix'][0].__setitem__(1, .1),
       'initial_binding': lambda data: data[indices[0]]['data']['model'].__setitem__('expression', {'kind': 'parameter', 'arguments': 0}),

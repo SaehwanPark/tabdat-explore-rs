@@ -146,10 +146,10 @@ source-order discrepancy. It does not establish a safe correction.
 The user authorized investigating the shared NLS solver. Its score and full-step
 thresholds are now 1e-13, tighter than the former 1e-12; this can reject fits
 that previously stopped near numerical precision. The updated source replay
-passes 340090 numerical gates at the unchanged primary tolerance; its maximum
+passes 340111 numerical gates at the unchanged primary tolerance; its maximum
 level residual difference is 1.82e-12. All source rows and both full covariance
 matrices are checked, as are the printed coefficient and SE facts. Text and JSON
-export identical CSVs. Thirteen source-audit forgeries, receipt write failure
+export identical CSVs. Fifteen source-audit forgeries, receipt write failure
 and receipt no-clobber are rejected. This does not guarantee convergence or
 comparable projection accuracy on every dataset.
 
@@ -220,7 +220,10 @@ remain required separate work; no whole-Table5.7/family or platform claim.
 
 Acquire the three pinned author assets described in the [unweighted workflow](README.md),
 and use new directories and paths. The source CSV must have ordered dense ordinals;
-the script rejects invalid input and never clobbers its output. It is an ordered
+the script rejects invalid input and never clobbers its output. The preflight
+uses DuckDB's [empty-window order preservation](https://duckdb.org/docs/1.5/sql/dialect/order_preservation)
+on the single active table; the backend explicitly enables insertion-order
+preservation. Later SQL replacements order by the unique source ordinal. It is an ordered
 script, not a transaction across all commands.
 
 ```sh

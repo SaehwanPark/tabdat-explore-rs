@@ -1,4 +1,8 @@
 "case","method","mode","row_parameter","column_parameter","value"
+"control","preliminary","classical","a","a","0.020000000000000011"
+"control","preliminary","classical","a","b","-2.0296772888280311e-18"
+"control","preliminary","classical","b","a","-2.0296772888280311e-18"
+"control","preliminary","classical","b","b","0.030000000000000013"
 "control","wnls","classical","a","a","0.02"
 "control","wnls","classical","a","b","-9.4478954903781282e-19"
 "control","wnls","classical","b","a","-9.4478954903781282e-19"

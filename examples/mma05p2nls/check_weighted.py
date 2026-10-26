@@ -80,7 +80,8 @@ def audit(native_json, native_csv, reference, source, receipt):
   index = {'a': 0, 'b': 1}
   for ref in rows(reference/'parameters.csv'):
     if ref['case'] != 'original': continue
-    coefficient = selected[ref['method'], ref['mode']]['coefficients'][index[ref['parameter']]]
+    fit = initial if ref['method'] == 'preliminary' else selected[ref['method'], ref['mode']]
+    coefficient = fit['coefficients'][index[ref['parameter']]]
     for native, rfield in [('value', 'estimate'), ('standard_error', 'standard_error'),
         ('statistic', 't'), ('p_value', 'p_value'), ('confidence_lower', 'ci_lower'), ('confidence_upper', 'ci_upper')]:
       check(rfield, coefficient[native], ref[rfield])
@@ -88,7 +89,7 @@ def audit(native_json, native_csv, reference, source, receipt):
         assert coefficient[native] == 0
   for ref in rows(reference/'covariance.csv'):
     if ref['case'] == 'original':
-      fit = selected[ref['method'], ref['mode']]
+      fit = initial if ref['method'] == 'preliminary' else selected[ref['method'], ref['mode']]
       check('covariance', fit['covariance_matrix'][index[ref['row_parameter']]][index[ref['column_parameter']]], ref['value'])
   for method, expected in [('wnls', (1.9906, -.9961, .0225, .0098, .0359, .0224)),
                            ('fgnls', (1.9840, -.9907, .0148, .0100, .0146, .0101))]:
@@ -117,7 +118,7 @@ def audit(native_json, native_csv, reference, source, receipt):
           check('csv_'+rfield, actual[column], ref[rfield])
   for ref in rows(reference/'summaries.csv'):
     if ref['case'] != 'original': continue
-    fit = selected[ref['method'], ref['mode']]
+    fit = initial if ref['method'] == 'preliminary' else selected[ref['method'], ref['mode']]
     for field, expected in [('residual_sum_of_squares', 'scaled_rss'),
         ('root_mean_squared_error', 'scaled_rmse'), ('centered_r_squared', 'scaled_r_squared')]:
       check(field, fit[field], ref[expected])
