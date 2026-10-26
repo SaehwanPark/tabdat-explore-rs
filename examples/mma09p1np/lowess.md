@@ -117,8 +117,34 @@ to window-local scaling in native and QR; nonzero/relative tiny-response regress
 pass and all references were regenerated without changing tolerances. Installed
 parser default2/3 is preserved; initial.8 planning assumption corrected before
 publication. See MIG-0023 for deliberate method differences from Python statsmodels.
-Standalone source-script/SVG/forgery audits, broader affected-crate/reverse-consumer
-checks and final integration review remain unfinished; draft PR must not merge. No mean/noweight/robust/adjust/logit/
+Standalone `lowess.td` and shared native `prepare.td` now execute in both modes:
+all 2832 exported R cells/531 fitted values (same max6.67e-15), 531 actual SVG line
+vertices/177 raw observations, and the14-row/70-cell within-X diagnostic agree in
+a manual source probe; CSV and SVG bytes are identical across modes. Four density
+workflow regression tests pass after sharing preparation; every original density
+CSV/SVG is byte-identical to merged PR338, with its48560 raw-field/4870 R-cell/
+103 author-fact audit also passing. Dedicated independent LOWESS audit tooling,
+synthetic actual-script failure/forgery tests, broader affected-crate/reverse-consumer
+checks and final integration review remain unfinished; draft PR must not merge.
+
+Current reproduction: follow [source acquisition/conversion](README.md) to create
+`psid.csv` in a fresh analysis directory, then run the compiled binary with
+`--json -f /path/to/repo/examples/mma09p1np/lowess.td` (or `--text`). The script
+exports `psid_lowess.csv` and `psid_lowess.svg`, refusing existing destinations.
+Three explicit spans require at least5 selected rows; a smaller valid cohort can
+fail at the third command because N*0.1<.5, without writing exports. Like other
+scripts this is ordered/nontransactional: earlier columns/labels or already-written
+outputs are not rolled back after later failures. Preparation deliberately loads
+new data; the individual smoother's preservation of a prior model is not a promise
+that an entire load/prepare script retains a previous dataset's model.
+
+Interpretation: raw points are observed log hourly wages, X is years of schooling,
+and span is a rank fraction, not years or a confidence level. The printed within-X
+MIN/MAX for span.1 are ranges across ordered row fits, NOT confidence bounds.
+Tight spans can vary materially within education ties; neither the shape nor the
+three smoothing choices establish an optimal span, uncertainty, or causal schooling
+returns. Historical tied-curve parity remains unresolved; no scope exclusion or
+whole-Figure9.3/chapter completion is declared. No mean/noweight/robust/adjust/logit/
 weights options, interpolation/delta acceleration, uncertainty, out-of-sample
 predict/margins/estimator state, histogram/other kernels/general nonparametric
 family, historical tied-sort/pixel parity, whole-book or platform/release claim.
