@@ -220,8 +220,10 @@ Use the coverage ledger to close remaining illustration-specific gaps:
   six independent-R control formulas and original10000-row pure-API validation.
   Its original-source CLI/export replay now passes120055 numerical/two stricter
   tail gates plus source/forgery/IO/JSON-text checks and closed-form offline controls;
-  final affected checks/integration-source review remain pending. Unweighted
-  Table5.7 NLS does not close weighted/FGNLS, exponential ML, known-variance covariance,
+  independent kernel/integration-source reviews,1645 distinct local passing cases
+  (two pre-existing ignored; documented loader fallback/composite scope) and
+  workspace all-target Clippy pass. This unweighted Table5.7 NLS column does not
+  close weighted/FGNLS, exponential ML, known-variance covariance,
   marginal effects or the broader optimization/system requirements.
 - Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
   competing-risk and multiple-spell survival models.

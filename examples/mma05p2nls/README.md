@@ -1,7 +1,7 @@
 # Exponential-mean NLS: contract and WIP evidence
 
-**Status: native fit/predict/report installed; original-source CLI replay/audit
-passes, closing regression/review work still in progress. Risk: high.**
+**Status: bounded native unweighted NLS workflow implemented and validated for the
+selected Table5.7 column. Risk: high; no whole-table/method-family claim.**
 Deliver one complete native `nl` → predict/diagnose → report workflow for the
 unweighted NLS column of Cameron–Trivedi(2005) Table5.7, §5.9.2–3 pp.159–163.
 This is the author's **generated**10,000-row example, not an empirical sample or
@@ -327,5 +327,40 @@ export no-clobber/no-staging and unpinned preparation failure. Source-file contr
 are synthetic, not redistributed author data. The persistent `check_failures.py`
 passes the ten real-original forgeries plus injected prepare/audit write failure
 and existing-target/receipt no-clobber/cleanup, without changing external inputs.
-Root scoped Clippy passes. Final affected/reverse-consumer checks and independent
-integration/source review remain required before ready/merge.
+Root scoped Clippy passes. Final affected/reverse-consumer and independent-review
+results are recorded below.
+
+### Closing verification and reviewed limits
+
+Independent integration/source reviewer890364ad-ab89-424f-a6f5-fdeb60ae6eae found
+no issues in immutable761fe41..ff08 integration/source scope. It inspected the
+supplied committed diff, code and artifacts; it did not execute commands/tests/R,
+independently reconstruct Git, hash files or repeat full CSV comparison. This
+complements the independent kernel/P1 follow-up reviews, not a claim of separately
+executed full-workspace testing by reviewers.
+
+Current local unit/integration scope passes **1645 distinct tests/two pre-existing
+ignored**, including affected crates and reverse consumers. Cargo successfully
+inventoried282 current artifacts. Initial broad nextest timed out during build
+without results. After a successful inventory/build, nextest discovery stalled
+before tests; sampling current cli_json_append_contract --list showed solely
+`_dyld_start`. The documented fresh-copy standard Rust harness fallback verified
+SHA256 identity/package manifest cwd, used one test thread/two concurrent artifacts
+and recorded282 artifacts (four zero-test artifacts, not passing regression
+selections). It initially yielded1642 passes/three genuine failures: two old exact
+JSON-admission diagnostics omitted newly supported nl, and the old nl test still
+expected deferred execution. Corrected only those contract assertions, retaining
+their rejection/state checks and adding explicit unsupported-math rejection;
+all three reran successfully on current artifacts. This is composite1645-case
+evidence, **not one clean full nextest run** or a claim that nextest is faulty.
+Ignored cases are existing random_effects_ml_original_source and reshape_contract.
+
+Workspace all-target Clippy-Dwarnings, fmt and diff checks pass. A prior all-target
+Clippy attempt timed out with no result; the final incremental invocation finished
+successfully. No numerical code/tolerances changed after the reviewed source replay;
+its evidence remains current. MIG-0024 records intentional admission/deferred-error
+and inference differences; old result/wire formats and pinned parser corpus remain.
+No doctest run was needed for the new text/shell examples; none is claimed. GitHub
+Actions are disabled; other platforms, packaging/performance and release readiness
+remain unverified. The full roadmap/illustration inventory and weighted/FGNLS,
+exponential ML, known-variance covariance and marginal effects remain required.

@@ -1139,7 +1139,8 @@ variance, rank deficiency, nonregular curvature, nonrepresentable arithmetic and
 nonconvergence are errors, without pseudoinverse/ridge/approximate-success fallback.
 No weights/FGNLS/ML/general post-estimation/intervals. See `help nl`, MIG-0024 and
 [contract/current evidence](../../examples/mma05p2nls/README.md); original-source
-CLI replay passes but closing checks/review remain WIP, not whole-method/table coverage.
+CLI replay, independent integration/source review and affected/reverse-consumer
+checks pass; this is bounded-column evidence, not whole-method/table coverage.
 
 ## Expressions and recoding
 
