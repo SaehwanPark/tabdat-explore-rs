@@ -37,6 +37,8 @@ def audit(native_json, native_csv, reference, source, receipt):
       assert fit['covariance'] == ('hc1_gauss_newton' if mode == 'hc1' else 'working_homoskedastic_gauss_newton')
   assert initial['model']['outcome'] == 'y'
   assert initial['model']['predictor_names'] == ['x']
+  assert initial['model']['expression'] == selected['wnls', 'classical']['model']['expression']['arguments'][0]
+  assert initial['robust'] is False
   for fit in fits:
     assert fit['model']['parameter_names'] == ['a', 'b']
     assert fit['start_values'] == [1, 0]
@@ -50,7 +52,7 @@ def audit(native_json, native_csv, reference, source, receipt):
     assert fit['inference']['degrees_of_freedom'] == 9998 and fit['inference']['confidence_level'] == .95
     assert fit['covariance_bread'] == 'inverse_jacobian_cross_product'
     assert all(fit[k] is None for k in ['log_likelihood', 'likelihood_ratio', 'omnibus_f'])
-    assert 0 <= fit['normalized_score'] <= 1e-12 and 0 <= fit['relative_full_gauss_newton_step'] <= 1e-12
+    assert 0 <= fit['normalized_score'] <= 1e-13 and 0 <= fit['relative_full_gauss_newton_step'] <= 1e-13
     assert 0 < fit['iterations'] <= 200 and 0 < fit['evaluation_work'] <= 500000000
     assert [c['name'] for c in fit['coefficients']] == ['a', 'b']
     assert len(fit['covariance_matrix']) == 2 and all(len(row) == 2 for row in fit['covariance_matrix'])
@@ -88,6 +90,12 @@ def audit(native_json, native_csv, reference, source, receipt):
     if ref['case'] == 'original':
       fit = selected[ref['method'], ref['mode']]
       check('covariance', fit['covariance_matrix'][index[ref['row_parameter']]][index[ref['column_parameter']]], ref['value'])
+  for method, expected in [('wnls', (1.9906, -.9961, .0225, .0098, .0359, .0224)),
+                           ('fgnls', (1.9840, -.9907, .0148, .0100, .0146, .0101))]:
+    classical = selected[method, 'classical']['coefficients']
+    robust = selected[method, 'hc1']['coefficients']
+    actual = [c['value'] for c in classical] + [c['standard_error'] for c in classical] + [c['standard_error'] for c in robust]
+    assert all(abs(a - b) <= .00005 for a, b in zip(actual, expected))
   for method in ['wnls', 'fgnls']:
     refs = [r for r in projections if r['case'] == 'original' and r['method'] == method]
     assert len(refs) == len(original) == 10000

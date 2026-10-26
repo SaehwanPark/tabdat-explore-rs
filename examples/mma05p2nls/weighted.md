@@ -1,8 +1,8 @@
 # Table5.7 WNLS and FGNLS: bounded native-composition contract
 
-Status: **planning/reference feasibility only; not implemented or validated as a
-CLI workflow**. Starts from merged unweighted NLS (`1aa5060`, PR340); do not repeat
-that slice or claim the remaining table/method family is complete.
+Status: **bounded source workflow implemented and independently checked**, using
+native unweighted NLS on fixed transformed responses. The remaining table and
+method family are not complete.
 
 ## Exact outcome and source
 
@@ -137,17 +137,21 @@ source row 9435: native level residual -0.010469076059472116 versus reference
 1.1046908e-11. Exactly one of the 10000 FGNLS level-residual comparisons fails;
 maximum absolute residual difference over all rows is 9.935341e-11. The native
 final fit reports normalized score 8.8881e-13 and relative full step 6.5664e-13,
-both within the installed 1e-12 convergence rule. Reprofiling in R using native
+both within the former 1e-12 convergence rule. Reprofiling in R using native
 preliminary means shifts a and b only 1.55e-14 and 1.47e-14 from the R-weight
 solution; the final native coefficients differ by roughly 1.4e-12. This isolates
 the final converged iterate as the dominant difference, not a weight refresh or
 source-order discrepancy. It does not establish a safe correction.
 
-Per the stop rule below, implementation and validation are paused. The script
-and audit are incomplete WIP: no successful original-source audit, forged-input
-replays, text/JSON equivalence, offline Rust tests, native rescaling check or
-final review is claimed. Do not widen the primary tolerance, merge, or describe
-the weighted workflow as supported on this evidence.
+The user authorized investigating the shared NLS solver. Its score and full-step
+thresholds are now 1e-13, tighter than the former 1e-12; this can reject fits
+that previously stopped near numerical precision. The updated source replay
+passes 340090 numerical gates at the unchanged primary tolerance; its maximum
+level residual difference is 1.82e-12. All source rows and both full covariance
+matrices are checked, as are the printed coefficient and SE facts. Text and JSON
+export identical CSVs. Thirteen source-audit forgeries, receipt write failure
+and receipt no-clobber are rejected. This does not guarantee convergence or
+comparable projection accuracy on every dataset.
 
 Supplemental source-log exponential-density-at-point is **not an NLS likelihood**
 and is outside these two coefficient/SE columns. The precise WNLS root gives
@@ -201,18 +205,33 @@ kernel.
 6. Update README, SPEC, roadmap and ledger with only actually implemented/tested
    scope and remaining work, plus PR evidence and all unverified areas.
 
-Likely files: this contract, `weighted_reference.R`, `weighted.td`,
-`check_weighted.py`, `check_weighted_failures.py`, the new root test, README/SPEC/
-roadmap/ledger. Existing source preparation and unweighted reference/scripts
-should remain unchanged. No Rust production files are planned.
+Existing source preparation and unweighted reference/scripts remain unchanged.
+The subsequent shared solver convergence change is described above.
 
 Stop and report if rescaling is not equivalent to the frozen source objective,
-reference certificates fail, a primary tolerance fails, or a public API/kernel/
-parser/dependency change is needed. Do not improvise broader weight support.
+reference certificates fail, or a primary tolerance fails. The user expressly
+authorized the shared kernel convergence adjustment after the initial failure;
+it does not introduce broader weight support.
 Known-variance covariance, OLS/exponential ML, marginal effects, constraints,
 iterative FGNLS, uncertainty for predictions and the full illustration inventory
 remain required separate work; no whole-Table5.7/family or platform claim.
 
-Implement exactly this plan. Do not broaden scope. If the plan conflicts with the
-codebase, stop and report the conflict instead of improvising. Report files
-changed, tests run, deviations and unresolved risks.
+## Running the source workflow
+
+Acquire the three pinned author assets described in the [unweighted workflow](README.md),
+and use new directories and paths. The source CSV must have ordered dense ordinals;
+the script rejects invalid input and never clobbers its output. It is an ordered
+script, not a transaction across all commands.
+
+```sh
+mkdir /new/weighted-run
+python3 examples/mma05p2nls/prepare.py /path/to/mma05data.asc /new/weighted-run/nls.csv
+(cd /new/weighted-run && /path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma05p2nls/weighted.td > results.jsonl)
+Rscript examples/mma05p2nls/weighted_reference.R /new/weighted-reference /path/to/mma05data.asc
+python3 examples/mma05p2nls/check_weighted.py /new/weighted-run/results.jsonl /new/weighted-run/weighted_predictions.csv /new/weighted-reference /path/to/source-assets /new/receipt.json
+python3 examples/mma05p2nls/check_weighted_failures.py /new/weighted-run/results.jsonl /new/weighted-run/weighted_predictions.csv /new/weighted-reference /path/to/source-assets
+```
+
+R and Python are development and audit tools; the prepared-CSV native script
+does not depend on them. Check each command's exit status. The receipt is only
+published after a successful audit and does not overwrite an existing file.

@@ -4,11 +4,12 @@ isid source_row
 sql """
 SELECT CASE WHEN COUNT(*)<=2 OR COUNT(*)>10000
   OR MIN(source_row)<>1 OR MAX(source_row)<>COUNT(*)
+  OR COUNT(*) FILTER (WHERE source_row<>input_position)>0
   OR COUNT(*) FILTER (WHERE NOT coalesce(
     isfinite(source_row) AND source_row=floor(source_row) AND source_row>0
     AND isfinite(x) AND isfinite(y) AND y>0,FALSE))>0
-THEN error('weighted NLS requires 3..10000 complete finite rows, positive y and unique dense source_row1..N')
-ELSE COUNT(*) END AS observations FROM active
+THEN error('weighted NLS requires 3..10000 complete finite rows, positive y and ordered unique dense source_row1..N')
+ELSE COUNT(*) END AS observations FROM (SELECT *,row_number() OVER () AS input_position FROM active)
 """
 nl y = exp(-a-b*x), params(a b) start(1 0)
 predict preliminary_mean, mean

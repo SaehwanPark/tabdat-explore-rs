@@ -267,6 +267,30 @@ fn all_six_frozen_fits_match_full_covariance_inference_and_ordered_projections()
 }
 
 #[test]
+fn near_stationary_start_is_refined_to_the_closed_form_mean() {
+  let model = NlsModel {
+    outcome: "y".into(),
+    predictor_names: vec![],
+    parameter_names: vec!["a".into()],
+    expression: parameter(0),
+  };
+  let y = [1.0, 2.0, 3.0];
+  let fit = fit_nls(
+    &model,
+    &y,
+    &[vec![], vec![], vec![]],
+    &[2.0 + 4e-13],
+    &EstimationSample::all_retained(3),
+    false,
+  )
+  .unwrap();
+  assert!(fit.iterations > 0);
+  assert!((fit.coefficients[0].value - 2.0).abs() < 1e-14);
+  assert!(fit.normalized_score <= CONVERGENCE);
+  assert!(fit.relative_full_gauss_newton_step <= CONVERGENCE);
+}
+
+#[test]
 fn stationary_maximum_zero_variance_rank_and_unattained_infimum_are_rejected() {
   let expected = [
     (
