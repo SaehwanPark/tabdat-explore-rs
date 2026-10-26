@@ -109,6 +109,15 @@ computed level R-squared .3901799592060249/.3905660528871318 matches source prin
 .39017996/.39056605. Logs/scripts are development feasibility, not frozen reference
 artifacts or native execution evidence yet.
 
+The development-only `weighted_reference.R` now generates the profiled fits,
+both covariance matrices and inference, every source and transformed projection,
+and numerical certificates. It verifies the pinned source hash and table's
+four-decimal coefficients/SEs; the synthetic control is frozen in
+`tests/fixtures/weighted_nls`. Two original-source generations and a separate
+control generation reproduced their outputs byte-for-byte on R 4.6.1. The
+original-source output remains external. This checkpoint is reference evidence
+only: independent plan review and native implementation are still outstanding.
+
 Supplemental source-log exponential-density-at-point is **not an NLS likelihood**
 and is outside these two coefficient/SE columns. The precise WNLS root gives
 -208.93382391129 versus historical printed -208.93381 (difference1.39e-5); do not
