@@ -1,167 +1,130 @@
-# WIP: original Table17.8 Gompertz full-time re-employment column
+# Original Table17.8 Gompertz full-time re-employment column
 
-**Status: independent R original/control references and native kernel/parser/
-runtime/owned-state/current-point/text/JSON/help controls pass on this WIP branch.
-The original-data native script/source audit and broader affected/reverse-consumer
-verification remain pending. Keep this slice WIP; do not merge this milestone
-as a completed original Table17.8 workflow.**
+## Bounded native analysis
 
-## Exact illustration and independent reference
+Cameron–Trivedi (2005), §17.11 pp.603–608, March2005 `mma17p4duration.do`,
+Gompertz coefficient column. Original3343 one-record spells/1073 full-time events/
+20887 recorded two-week intervals, all40 author covariates+intercept. Other
+causes and102 all-zero status rows remain non-events. ASCII omits stateur and
+rounds source values; do not substitute a reduced design. All44 source/ordinal
+columns are preserved numerically, not as original DTA storage/label metadata.
+Recorded durations are exact continuous times here, not an interval-censor model.
 
-Cameron–Trivedi (2005), §17.11 pp.603–608, Table17.8 Gompertz coefficient column;
-March2005 `mma17p4duration.do`, original `ema1996.dta`. Same3343 spells/1073
-full-time events/20887 recorded two-week intervals and40 author covariates plus
-intercept as the validated [Weibull](weibull.md)/[exponential](README.md) columns.
-Keep all102 all-zero status rows as non-events and stateur from original DTA;
-ASCII omits stateur and is not a full-design substitute. Recorded durations are
-exact continuous times here, not an interval-censored likelihood.
+```text
+streg time xvars, failure(event) dist(gompertz) [robust noconstant]
+predict index, xb
+predict current_hazard, hazard
+predict integrated_hazard, cumhaz
+predict net_survival, survival
+```
 
-Author command is `streg $xlist, nohr robust dist(gompertz)`. Model is
-h(t|X)=exp(X beta+gamma*t), H(t|X)=exp(X beta)*t*exprel(gamma*t),
-S(t|X)=exp(-H), exprel(z)=expm1(z)/z with exprel(0)=1. Gamma is unrestricted,
-including zero and negative values: not log gamma or a positive scale.
-[Established distribution documentation](https://chjackson.github.io/flexsurv/reference/Gompertz.html)
-uses the same shape/rate parameterization and Stata-compatible unrestricted sign.
-For gamma<0, H(infinity)=exp(X beta)/(-gamma) and S(infinity)>0. Do not silently
-force a proper zero-survival tail or interpret the mass as identified causal cure.
+At least one explicit predictor is required; intercept-only is additionally a
+kernel/API control. PH eta=X beta, h=exp(eta+gamma*t),
+H=exp(eta)*t*exprel(gamma*t), S=exp(-H), exprel(z)=expm1(z)/z, exprel(0)=1.
+Gamma is unrestricted, including zero/negative: NOT log gamma or positive scale.
+[Established Gompertz documentation](https://chjackson.github.io/flexsurv/reference/Gompertz.html)
+uses the same Stata-compatible parameterization. Gamma0 is exponential within
+this family, not overall adequacy. Gamma<0 implies H(infinity)=exp(eta)/(-gamma)
+and positive survival mass at infinity: do not force a proper tail or claim
+identified causal cure. Gamma/hazard units are inverse recorded time units.
 
-R4.6.1/foreign0.8.91 feasibility uses a different estimation path: fixed-gamma
-Poisson GLM solves conditional beta with offset log(integral exp(gamma*s) ds),
-then a bracketed scalar profile-score root estimates gamma. Numerical integration
-supplies independent zeroth/first/second time moments; full joint scores and
-observed information, N/(N-1) sandwich and `stats::optimHess` finite-difference
-certificates are reconstructed without native initial values or a Gompertz package.
-Original gamma=.0026580345401342183, robust SE=.0067759139606453, density
-LL=-3946.4953351777945, Stata-normalized LL=-2700.6049751544342, slope
-Wald529.75029546002418. ALL252 printed original beta/gamma coefficient/SE/z/p/CI
-quantities match exact printed rounding. Max raw score2.3e-10; independent numeric
-information relative discrepancy3.0e-8. Existing400-row full-design control is
-also regular: gamma=.08247225857748143. These are R-only, not native evidence.
+Joint finite time/event/X eligibility precedes positive-time/original-cell exact
+binary-event checks. Eligible near-one DECIMAL codes error, excluded rows do not;
+require a failure. N<=10000, P=location coefficients+gamma<=64, N>P,
+N*P*P<=20000000, full-rank regular information. Shared guarded concave Newton on
+RMS X and linearly rescaled natural gamma requires mean-score AND relative-step
+bounds1e-10, undamped regular information and bounded iterations. No sign/shape
+clipping, ridge, pseudoinverse or nonconverged publication.
 
-Reproduce with `Rscript gompertz_reference.R duration.csv NEW_DIR
-[original_DTA_or_-] [noconstant]` (no-intercept uses both optional arguments).
-The [committed generator](gompertz_reference.R) now passes original/default400/
-no-intercept400 runs. Original detailed/scalar/compact author gates total268,
-all matching printed rounding. [Frozen synthetic references](../../tests/fixtures/gompertz/README.md)
-contain2030/2029 model/robust gates (all1764 joint covariance entries each),
-1941/1940 no-intercept gates, observed/UI0/UI1 points and independently integrated
-zero/both-sign/tail moment fixtures. Original source/reference outputs remain
-outside the repository. Native kernel/API passes all11 focused controls and225
-unique affected-stats tests (one pre-existing ignored original REML probe),
-including every reference covariance entry/current point. All-target stats
-Clippy `-D warnings` and formatting pass. Broad stats execution used current Cargo
-inventory/46 SHA256-identical fresh-copy standard-harness artifacts under the
-previously diagnosed host dyld-start workaround, not a broad nextest pass. Focused
-nextest itself passed; focused replays are not additional distinct tests. An
-independent read-only statistical kernel/oracle source review found no issues;
-it did not rerun tests or audit the original native/runtime/CLI. The separate
-native boundary controls below now pass; original native/source audit is pending. Eight Clippy literal spellings were shortened to identical f64 bits;
-no numerical reference or tolerance changed, and that one test was replayed.
+Full beta/natural-gamma observed inverse or independent-spell FULL row-score
+sandwich N/(N-1), including cross terms, fixed normal95. Gamma z/CI test gamma0;
+CIs may cross zero. Zero/unrepresentable inference is unavailable, not exact.
+The same-sample null refits intercept+gamma, or gamma only at index0 for
+noconstant. Slope Wald is rank-aware; robust LR p/reference is withheld.
+Density LL=sum[d*(eta+gamma*t)-H]; Stata-normalized LL adds fixed sum(d*log t).
 
-Native boundary milestone:25 distinct focused tests pass (6 parser,12 runtime,
-7 root CLI/workflow, including5 unchanged Weibull runtime and4 Weibull script
-regressions). Full2030/2029 model/robust and1941/1940 no-intercept R gates pass
-through runtime AND CLI-v1, including all1764/1681 covariance entries, normal
-tails/gamma inference and sample identity. Current points, typed NULLs/no event,
-current-X edits, negative gamma/positive tail, time0, atomic/schema/overflow and
-stale-inference/DECIMAL failures pass. JSON/text exports are byte-identical for
-all four inference/design combinations; the12-point coupled-UI original script
-is still pending. Native all-target Clippy across domain/language/execution/
-runtime/reporting/root passes; its initial180s invocation timed out without
-failure diagnostics, resumed successfully in111s. Workspace formatting/diff pass.
+Current xb (also bare default) needs only current X; timed modes need current
+X/time, never event. Required missing/nonfinite cells give NULL. Time0 gives
+h=exp(eta), H0/S1; negative finite time/unrepresentable required calculations fail
+before publication. Represented survival0 remains valid when H overflows but
+log H is represented. At most10000 current rows, atomic DOUBLE/NULL columns,
+no replacement/auxiliaries/uncertainty. Failure preserves data/order/labels/fit;
+executed new-fit failures clear stale inference only. Parse failures do not execute.
 
-Deliberate metadata correction: `--describe-command streg` now marks `variables`
-required, matching its PRE-EXISTING at-least-one-explicit-predictor parser rule;
-no intercept-only command grammar expansion. CLI discovery uses `--help-topic`
-and `--describe-command`, not unsupported `-c help/schema` runtime requests.
-An initial time0 test's h_zero/H_zero names collided case-insensitively in
-DuckDB; distinct names fixed the fixture, not the model/data adapter. Only the
-failed tests were replayed; passing counts are distinct, not replay sums.
+## Reproduce original source
 
-## Native contract
+Acquire the same four assets as the [exponential](README.md)/[Weibull](weibull.md)
+companions from `https://cameron.econ.ucdavis.edu/mmabook`: `mma17p4duration.do`,
+`mma17p4duration.txt`, `ema1996.dta`, `ema1996.asc`. No originals are redistributed.
+Build `cargo build --locked` at repository root; in a FRESH analysis directory:
 
-`streg time xvars, failure(event) dist(gompertz) [robust noconstant]`.
-Preserve the current streg requirement for at least one explicit predictor;
-intercept-only is a kernel/API control, not a parser expansion. Unweighted,
-entry-zero single-spell independent observations; no cluster/weights/survey,
-delayed/left/interval entry/censoring/truncation or frailty. Joint finite
-eligibility precedes positive-time/original-value exact-binary event checks;
-require a failure. Reuse the original-cell check fixed for Weibull/Cox, never
-round invalid DECIMAL near-one codes into an event. Full-rank numeric design,
-N<=10000, P=location coefficients+gamma<=64, N>P, N*P*P<=20000000. Preserve
-other streg distributions/errors; no native exponential implementation is implied.
+```sh
+repo=/absolute/path/to/tabdat-explore-rs
+Rscript "$repo/examples/mma17p4duration/prepare.R" ema1996.dta duration.csv
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma17p4duration/gompertz.td" > native.json
+Rscript "$repo/examples/mma17p4duration/gompertz_reference.R" duration.csv reference ema1996.dta
+python3 "$repo/examples/mma17p4duration/check_gompertz_source.py" \
+  mma17p4duration.do mma17p4duration.txt ema1996.dta ema1996.asc . reference
+```
 
-Reuse shared strict concave Newton on RMS X and duration-scaled natural gamma,
-not an artificially positive final coordinate. Joint concavity follows because
-H is an integral of exp(affine(beta,gamma)); event log hazard is affine. Require
-per-N mean-score AND relative-step bounds1e-10, regular undamped full information,
-finite represented estimates/covariance and bounded iterations. No ridge,
-pseudoinverse, clipping, forced gamma sign or nonconverged fit publication.
-Compute log exprel and time-moment ratios continuously at gamma0, stably for both
-signs; avoid exp(z) overflow and cancellation near zero. Native moment formulas
-must be checked against independent numerical quadrature, not a copied formula.
+`gompertz.td` guards complete original input, fits/reports robust inference,
+scores observed/UI0/UI1 xb/h/H/S at SAME times, changes UI and BOTH interactions
+together, restores all source values and exports `gompertz_predictions.csv`.
+59 columns:44 source/ordinal,three helpers,twelve points. Existing files are not
+replaced. Final UI score balances are included-regressor equations, not adequacy
+or censoring tests. Use `--text` in another fresh directory for readable output;
+ordered script execution does not roll back earlier in-memory commands.
+Original SHA256 pins are enforced by the source checker. R reference reads DTA
+for exact promoted source doubles: do not loosen hex equality for CSV-parser drift.
 
-Density LL=sum[d*(X beta+gamma*t)-H]; expose the separate Stata normalization
-adding fixed sum(d*log t). Null refits intercept+gamma on the same sample (or
-only gamma with index fixed0 for noconstant). LR tests slopes, not a cross-family
-Weibull comparison; robust LR p/reference is withheld. Selected-covariance,
-rank-aware slope Wald is separate. Model-based FULL beta/gamma inverse observed
-information or independent-spell FULL row-score sandwich times N/(N-1), normal95.
-Include all beta/gamma cross terms; no conditional-beta covariance substitution.
-Gamma SE/z/p/natural normal95 interval test gamma0 (exponential within this family),
-not a positive-scale boundary or overall adequacy. Zero/unrepresentable or
-rank-limited inference is explicitly unavailable. Negative gamma and CIs crossing
-zero are valid. No finite-sample/cluster guarantee.
+## Independent evidence
 
-Owned result/sample/model supports current `predict ..., xb/hazard/cumhaz/survival`.
-xb is raw X beta, not X beta+gamma*time, and needs only current X. Timed modes
-require current X/time, never event. Time0 is meaningful: h0=exp(X beta), H0/S1;
-negative finite time errors. Relevant missing/nonfinite values give NULL.
-No auxiliaries/uncertainty; at most10000 current rows, typed DOUBLE/NULL, atomic
-publication. Schema/support/existing-target/numerical errors preserve data,
-labels/order and owned fit. Genuine survival0 is allowed if H overflows but its
-log remains represented; unrepresentable required intermediate/log values error
-rather than inventing a result. Gamma<0 finite-time survival approaches a positive
-limit; do not force it to0. Predictions are model-based extrapolations, not
-validated infinite-tail claims, competing-risk incidence or causal UI effects.
-Executed fit attempts clear stale inference only; parse failures do not execute.
+R4.6.1/foreign0.8.91: numerical time-moment integration, conditional Poisson-GLM
+beta optimization and bracketed scalar gamma profile-score root, NOT native joint
+Newton/closed moments. Conditional GLM is an optimization identity, not a Poisson
+duration DGP. Full observed curvature, row-score sandwich and `optimHess` numerical
+certificates are checked; no Gompertz package/production R/Python dependency.
+[Controls/reproduction](../../tests/fixtures/gompertz/README.md) include400-row
+full design/model/robust/no-intercept and direct-integral negative-gamma matrices.
 
-## Acceptance / important failures
+Original native gamma=.002658034540134388, robust SE=.006775913960645321,
+density LL=-3946.4953351777904, normalized LL=-2700.60497515443,
+refitted-null normalized LL=-3002.026000460346, Wald529.7502954600209.
+Mean-score/relative-step bounds1.58e-16/7.33e-16. Audits pass:
+- 2029 R gates, ALL1764 joint covariance entries, normal/gamma/null/LR/Wald;
+- 197237 source/design/current-projection cells,147092 exact source/ordinal cells;
+- 268 detailed/scalar/compact author quantities, including14 Table17.8 cells,
+  plus140406 rounded ASCII fields/stateur omission;
+- original JSON/text exports byte-identical, coupled UI source values restored.
 
-1. Full original sample/design, all41 beta+gamma/full42x42 covariance/normal
-   inference/null/slope Wald and all author printed coefficient/shape/compact
-   column facts against independently integrated/profiled R. Retain the exact
-   original source/ordinal cells and the all-zero statuses/stateur.
-2. Complete source script/JSON/text reporting and observed/UI0/UI1 xb/h/H/S at
-   SAME current times, coupled UI/interactions/restoration and export identity;
-   model-based/robust controls and noconstant reference exercise non-author options.
-3. Quadrature moment controls across both gamma signs/zero, derivative/Hessian
-   checks, gamma0 exponential likelihood/hazard/information equivalence,
-   regular negative-gamma fit and positive survival tail, time-unit/affine-X
-   covariance transforms. Strict convergence/final full curvature are observable.
-4. Joint eligibility/original DECIMAL codes, no-event/rank/convergence/support/
-   resource/unsupported-option failures, stale-state/labels/order preservation,
-   current edits/drop event/time0, schema/target/overflow and no partial columns.
-5. Parser→runtime→owned state→text/CLI-v1/help/source execution complete, focused
-   then affected/reverse-consumer regressions and risk-proportionate source review,
-   honest SPEC/ledger updates, ready PR merge/sync and branch cleanup before any
-   new analysis. Ordinary reference1e-9 absolute+1e-8 relative; positive tails
-   1e-300+1e-8 relative; source hex exact/printed half-last-unit. Do not widen
-   tolerances for unexplained differences. Quadrature/finite-difference numerical
-   certificates have separately justified approximation bounds.
+The standard-library Python audit independently uses segmented Gauss–Legendre16
+quadrature, all natural information/score/sandwich blocks, erfc/df40 tails and a
+scalar conditional-baseline null. Its offline |gamma*time|<=1024 bound is NOT a
+production constraint. Quadrature agrees with all15 independent R controls through
+zero/both signs/±1000; shared-native/R wrong tail/cross-covariance/survival forgeries
+are rejected. Ordinary tolerance1e-9 absolute+1e-8 relative; positive tails
+1e-300+1e-8 relative; original hex exact; printed half-last-unit. Independent score
+bound1e-9/inverse identity1e-8; no unexplained differences/tolerance widening.
 
-## Scope and delivery order
+Eleven kernel,seven runtime,two parser,three CLI andthree actual-script controls
+cover full references, derivatives, gamma0 full-information exponential and
+negative-tail fits, time/X covariance transformations, identities, invalid support/
+resource/convergence, DECIMAL eligibility, current edits, time0, NULLs, state/
+label/data atomicity and no-clobber export. Independent read-only kernel/oracle
+and integration/source-audit reviews found no issues. Broader local evidence:
+1231 distinct passes/two pre-existing ignored; affected134-artifact regression
+uses current Cargo inventory/SHA256-identical fresh-copy standard harness for the
+previously diagnosed host dyld-start issue, not a broad nextest claim. The one
+pinned Python diagnostic-list extension is explicit MIG-0022; original corpus
+unchanged. streg schema required predictors now matches its pre-existing parser.
 
-Existing Rust crates/shared guarded solver/typed transactional data adapter;
-no new production dependency/native/unsafe code or general estimator framework.
-No margins/general restrictions/named-model storage, new graphics, automatic
-panel/survival declarations, formal model adequacy, prediction uncertainty, full
-Table17.9 hazard-ratio uncertainty or whole chapter/family coverage. This closes
-one bounded column; heterogeneity/multiple hazards and other required work remain.
+## Limits
 
-Order: early WIP contract → reproducible independent R/control artifacts → safe
-kernel/moment and inference tests → runtime/current points/reporting → original
-native script/source audit → affected/reverse checks and bounded statistical
-source review → capability docs → ready/merge/sync/safe branch cleanup. Stop for
-substantive source/statistical/scope conflicts rather than changing the target
-or merging a parser/kernel-only milestone.
+Unweighted independent entry-zero/single-spell right censoring only: no cluster/
+survey/weights, other entry/censoring/truncation, frailty, margins/general tests,
+named survival storage, formal adequacy or point uncertainty. Net cause-specific
+survival is not all-cause joblessness survival/competing-risk incidence; UI points
+are observational, not causal. Native exponential remains unsupported; use its
+separate composition. No full Table17.9/HR uncertainty, joint table layout,
+whole survival/chapter/book completion or platform/release certification. GitHub
+Actions is disabled; local evidence is not CI success. Required gaps remain.

@@ -597,6 +597,47 @@ Net cause-specific survival is NOT all-cause survival or competing-risk incidenc
 conditional UI projections are observational, not causal. See the
 [exact Table17.8 workflow/evidence](../../examples/mma17p4duration/weibull.md).
 
+## Bounded Gompertz proportional hazards
+
+`streg time xvars, failure(event) dist(gompertz) [robust noconstant]` uses
+unweighted entry-zero/single-spell right censoring and the same joint eligibility/
+original-cell validation and resource bounds as Weibull above. At least one
+explicit predictor remains required. With eta=X beta, unrestricted natural gamma,
+h(t)=exp(eta+gamma*t), H(t)=exp(eta)*t*exprel(gamma*t), S(t)=exp(-H).
+Exprel(0)=1 gives the exponential limit. Gamma<0 permits positive survival mass
+at infinity, not a forced proper distribution or identified causal cure.
+
+CLI-v1 **GompertzResult** has `estimator: streg_gompertz`, distribution
+`gompertz_proportional_hazards_entry_zero_single_spell`, time/failure/predictors,
+intercept/robust flags, N/failure/censor counts and original-position `sample`.
+`coefficients` and `shape` contain natural normal95 inference; shape.value is
+GAMMA, not log gamma, with inverse-recorded-time units. Gamma0 tests exponential
+within this family, not adequacy; its normal interval may cross zero. Full
+`covariance_matrix`/`covariance_parameter_names` order is
+`ph_coefficients_then_natural_gamma`, including all cross terms. Model-based full
+observed inverse has correction1; robust full observed-information/row-score
+sandwich has N/(N-1), NOT residual-DF HC1 or clustering. Unrepresentable/zero
+inference is unavailable, never an exact confidence statement.
+
+Density and normalized LL differ by fixed sum(event*log time). Same-sample null
+refits intercept+gamma, or gamma alone at fixed PH index0 without intercept;
+`null_model` labels this distinction. Robust LR p/reference is withheld; rank-aware
+slope Wald is separate. Convergence records guarded joint Newton in RMS-X/duration-
+rescaled unrestricted natural gamma, per-observation score and1+abs(parameter)
+step normalizations with1e-10 gates and final regular undamped information. Do not
+equate coordinate diagnostics with those from an independent solver. Internal
+fitted vectors are omitted from the report.
+
+Owned `gompertz_fit` uses the existing survival family. Current prediction shares
+Weibull's required-column, NULL and atomic publication contract, except Gompertz
+time0 is valid: h=exp(xb),H0/S1. Negative complete finite time errors. `xb` is
+X beta only, not X beta+gamma*time; event is never needed for scoring. A finite
+represented log H can yield valid survival0 even if H itself overflows. No new
+exponential/cluster execution, weights/other entry/censoring, frailty, prediction
+uncertainty, generic tests/margins or named survival storage. Net survival and
+conditional UI projections are not all-cause incidence/causal effects. See the
+[exact Table17.8 workflow/evidence](../../examples/mma17p4duration/gompertz.md).
+
 ## Bounded lower-censored Gaussian Tobit
 
 `tobit y xvars, ll(number) [noconstant]` fits unweighted IID homoskedastic
