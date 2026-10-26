@@ -87,8 +87,12 @@ No invented Gaussian/exponential likelihood, F/LR or general nonlinear restricti
 A migration note must explain stricter rank/convergence/variance checks and t
 rather than legacy Python normal-reference inference; no pseudoinverse parity.
 
-Owned fit replaces the unused Nonlinear(ModelState) placeholder; only its family
-mapping currently consumes that variant. A new fit attempt clears stale inference
+Retain serialized Nonlinear(ModelState)/family tag nonlinear unchanged; derived
+serde is a consumer even without an installed runtime. Add a distinct owned
+NonlinearFit variant/tag nonlinear_fit with the same Nonlinear family, following
+PoissonFit/TobitFit precedent. Test old-placeholder and owned-fit encoding/decoding
+roundtrips with distinct tags; do not silently replace the internal-v1 payload.
+A new fit attempt clears stale inference
 on failure like other native estimators; data/schema/order/labels remain unchanged.
 Default/legacy xb prediction evaluates the nonlinear fitted mean (NOT a latent
 linear index); explicit mean also accepted, residuals=y-µ. Re-evaluate current
@@ -135,6 +139,9 @@ Five observable acceptance groups:
   versus residual sample, model replacement and atomic failure/prediction behavior.
 - Bad start/domain/unsupported AST/unused or duplicate parameters, rank deficiency,
   zero variance, infimum-at-infinity and iteration/work bounds explicitly fail.
+  Freeze stationary-nonminimum control BEFORE kernel: formula a*a+a*x, x=-1/1,
+  y=1/1, start a=0. J=(-1,1), RSS2, score/full GN step0 and rank1 pass, but observed
+  half-RSS Hessian2-4=-2: MUST reject, not substitute positive GN curvature.
 - Actual source script JSON/text outputs/projections byte-identical and source-
   preserving; independent checks reject shared-wrong native/R parameters, covariance,
   sample/design/mean/residual values; existing output no-clobber/failure paths.
@@ -147,3 +154,15 @@ proportional Clippy/fmt/diff; independent kernel/integration review before merge
 Implement exactly this plan. Do not broaden scope. If it conflicts with codebase
 reality, stop/report rather than improvise. Report files/tests/deviations and
 unresolved risk. No whole-nl, weighted-column, chapter, book or platform claim.
+
+### Independent preimplementation review disposition
+
+Read-only review08245ad4-426b-4485-bad8-967dbfdc5086 found no source-case scientific
+blocker and two P2 plan omissions. Both accepted before implementation:
+(1) preserve legacy nonlinear serialized state and add a distinct owned tag/focused
+wire roundtrip, rather than replacing its payload; (2) freeze the exact stationary
+local-maximum rejection above. Reviewer inspected committed diff/source and supplied
+R evidence; did not execute tests/R. Parent verified existing domain-json-v1 contract,
+state serde and analogous Poisson wire test before choosing additive compatibility.
+Reference/control implementation may proceed; native implementation must retain
+these dispositions. This review is not numerical validation of unimplemented code.
