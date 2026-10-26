@@ -11,11 +11,23 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     // A new fit attempt invalidates stale inference, never its source data/labels.
     self.estimation = None;
-    if command.distribution != StregDistribution::Weibull || command.cluster_variable.is_some() {
-      return Err(streg_error("only entry-zero single-spell Weibull PH with model-based or independent-spell robust inference is implemented; native exponential and cluster are unavailable".into()));
+    if command.distribution == StregDistribution::Exponential || command.cluster_variable.is_some()
+    {
+      return Err(streg_error("only entry-zero single-spell Weibull/Gompertz PH with model-based or independent-spell robust inference is implemented; native exponential and cluster are unavailable".into()));
     }
+    let (max_rows, max_parameters) = match command.distribution {
+      StregDistribution::Weibull => (
+        tabdat_stats::MAX_WEIBULL_OBSERVATIONS,
+        tabdat_stats::MAX_WEIBULL_PARAMETERS,
+      ),
+      StregDistribution::Gompertz => (
+        tabdat_stats::MAX_GOMPERTZ_OBSERVATIONS,
+        tabdat_stats::MAX_GOMPERTZ_PARAMETERS,
+      ),
+      StregDistribution::Exponential => unreachable!("unsupported distribution checked above"),
+    };
     let p = command.predictors.len() + usize::from(command.include_intercept) + 1;
-    if p > tabdat_stats::MAX_WEIBULL_PARAMETERS {
+    if p > max_parameters {
       return Err(streg_error(
         "at most64 joint parameters including shape and any intercept are supported".into(),
       ));
@@ -73,7 +85,7 @@ impl Session {
             };
             values.push(value);
           }
-          if retained.len() >= tabdat_stats::MAX_WEIBULL_OBSERVATIONS {
+          if retained.len() >= max_rows {
             return Err(streg_error(
               "at most10000 complete finite estimation rows are supported".into(),
             ));
@@ -115,30 +127,70 @@ impl Session {
     .map_err(|e| streg_error(e.to_string()))?
     .with_intercept(command.include_intercept)
     .with_sample(sample);
-    let result = tabdat_stats::fit_weibull(
-      &problem,
-      &command.failure_variable,
-      &events,
-      &tabdat_stats::WeibullOptions {
-        robust: command.robust,
-        ..Default::default()
-      },
-    )
-    .map_err(|e| streg_error(e.to_string()))?;
-    self.estimation = Some(EstimationState::WeibullFit(Box::new(result.clone())));
-    Ok(ExecutionResult::Weibull(Box::new(result)))
+    match command.distribution {
+      StregDistribution::Weibull => {
+        let result = tabdat_stats::fit_weibull(
+          &problem,
+          &command.failure_variable,
+          &events,
+          &tabdat_stats::WeibullOptions {
+            robust: command.robust,
+            ..Default::default()
+          },
+        )
+        .map_err(|e| streg_error(e.to_string()))?;
+        self.estimation = Some(EstimationState::WeibullFit(Box::new(result.clone())));
+        Ok(ExecutionResult::Weibull(Box::new(result)))
+      }
+      StregDistribution::Gompertz => {
+        let result = tabdat_stats::fit_gompertz(
+          &problem,
+          &command.failure_variable,
+          &events,
+          &tabdat_stats::GompertzOptions {
+            robust: command.robust,
+            ..Default::default()
+          },
+        )
+        .map_err(|e| streg_error(e.to_string()))?;
+        self.estimation = Some(EstimationState::GompertzFit(Box::new(result.clone())));
+        Ok(ExecutionResult::Gompertz(Box::new(result)))
+      }
+      StregDistribution::Exponential => unreachable!("unsupported distribution checked above"),
+    }
   }
 
-  pub(crate) fn execute_weibull_prediction(
+  pub(crate) fn execute_streg_prediction(
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let kind = match command.kind {
-      PredictKind::Xb => tabdat_stats::WeibullPredictionKind::Xb,
-      PredictKind::Hazard => tabdat_stats::WeibullPredictionKind::Hazard,
-      PredictKind::CumulativeHazard => tabdat_stats::WeibullPredictionKind::CumulativeHazard,
-      PredictKind::Survival => tabdat_stats::WeibullPredictionKind::Survival,
-      _ => return Err(streg_error("prediction supports only xb (PH index), hazard, cumhaz or survival; no count/mean/residual/effect interpretation".into())),
+    if !matches!(
+      command.kind,
+      PredictKind::Xb | PredictKind::Hazard | PredictKind::CumulativeHazard | PredictKind::Survival
+    ) {
+      return Err(streg_error("prediction supports only xb (PH index), hazard, cumhaz or survival; no count/mean/residual/effect interpretation".into()));
+    }
+    let state = self.estimation.as_ref().ok_or_else(|| {
+      streg_error("prediction requires a successful Weibull/Gompertz streg fit".into())
+    })?;
+    let (predictors, time_variable, max_rows, family) = match state {
+      EstimationState::WeibullFit(s) => (
+        &s.predictor_names,
+        &s.time_variable,
+        tabdat_stats::MAX_WEIBULL_OBSERVATIONS,
+        "Weibull",
+      ),
+      EstimationState::GompertzFit(s) => (
+        &s.predictor_names,
+        &s.time_variable,
+        tabdat_stats::MAX_GOMPERTZ_OBSERVATIONS,
+        "Gompertz",
+      ),
+      _ => {
+        return Err(streg_error(
+          "prediction requires a successful Weibull/Gompertz streg fit".into(),
+        ));
+      }
     };
     if command.interval
       || command.std
@@ -146,16 +198,10 @@ impl Session {
       || command.count_cutoff_variable.is_some()
       || command.level.parse::<f64>().ok() != Some(95.0)
     {
-      return Err(streg_error(
-        "Weibull point prediction does not support auxiliary options or uncertainty intervals"
-          .into(),
-      ));
+      return Err(streg_error(format!(
+        "{family} point prediction does not support auxiliary options or uncertainty intervals"
+      )));
     }
-    let Some(EstimationState::WeibullFit(state)) = &self.estimation else {
-      return Err(streg_error(
-        "prediction requires a successful Weibull streg fit".into(),
-      ));
-    };
     let dataset = self
       .active_dataset
       .as_ref()
@@ -170,14 +216,14 @@ impl Session {
         variable: command.target_variable.clone(),
       });
     }
-    if dataset.row_count > tabdat_stats::MAX_WEIBULL_OBSERVATIONS as u64 {
+    if dataset.row_count > max_rows as u64 {
       return Err(streg_error(
         "prediction supports at most10000 current rows".into(),
       ));
     }
-    let mut names = state.predictor_names.clone();
+    let mut names = predictors.clone();
     if command.kind != PredictKind::Xb {
-      names.push(state.time_variable.clone());
+      names.push(time_variable.clone());
     }
     let missing: Vec<String> = names
       .iter()
@@ -232,8 +278,34 @@ impl Session {
           } else {
             values.pop()
           };
-          let value = tabdat_stats::weibull_predict_row(state, &values, time, kind)
-            .map_err(|e| streg_error(e.to_string()))?;
+          let value = match state {
+            EstimationState::WeibullFit(s) => {
+              let kind = match command.kind {
+                PredictKind::Xb => tabdat_stats::WeibullPredictionKind::Xb,
+                PredictKind::Hazard => tabdat_stats::WeibullPredictionKind::Hazard,
+                PredictKind::CumulativeHazard => {
+                  tabdat_stats::WeibullPredictionKind::CumulativeHazard
+                }
+                PredictKind::Survival => tabdat_stats::WeibullPredictionKind::Survival,
+                _ => unreachable!("supported point kind checked above"),
+              };
+              tabdat_stats::weibull_predict_row(s, &values, time, kind)
+            }
+            EstimationState::GompertzFit(s) => {
+              let kind = match command.kind {
+                PredictKind::Xb => tabdat_stats::GompertzPredictionKind::Xb,
+                PredictKind::Hazard => tabdat_stats::GompertzPredictionKind::Hazard,
+                PredictKind::CumulativeHazard => {
+                  tabdat_stats::GompertzPredictionKind::CumulativeHazard
+                }
+                PredictKind::Survival => tabdat_stats::GompertzPredictionKind::Survival,
+                _ => unreachable!("supported point kind checked above"),
+              };
+              tabdat_stats::gompertz_predict_row(s, &values, time, kind)
+            }
+            _ => unreachable!("duration state checked above"),
+          }
+          .map_err(|e| streg_error(e.to_string()))?;
           output.push(Some(value));
           Ok(())
         },

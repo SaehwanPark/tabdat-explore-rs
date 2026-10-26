@@ -256,7 +256,7 @@ pub enum Command {
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
   Nl { command: NlCommand },
-  /// Fit bounded entry-zero Weibull PH regression; other parsed variants remain unsupported.
+  /// Fit bounded entry-zero Weibull/Gompertz PH; other parsed variants remain unsupported.
   Streg { command: StregCommand },
   /// Fit entry-zero Cox proportional hazards with Breslow ties and no intercept.
   Stcox { command: StcoxCommand },
@@ -764,18 +764,20 @@ pub struct StcoxCommand {
   pub robust: bool,
 }
 
-/// Parsed distributions; only entry-zero Weibull has native execution.
+/// Parsed distributions; entry-zero Weibull and Gompertz have native execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StregDistribution {
   /// Weibull proportional hazards / accelerated failure time model.
   Weibull,
+  /// Gompertz PH with unrestricted natural gamma.
+  Gompertz,
   /// Exponential survival model.
   Exponential,
 }
 
 /// Parametric survival specification. Native execution currently supports
-/// entry-zero single-spell Weibull, model-based or independent-spell robust;
+/// entry-zero single-spell Weibull/Gompertz, model-based or independent-spell robust;
 /// exponential and cluster variants are parsed but remain unsupported.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StregCommand {
@@ -1025,11 +1027,11 @@ pub enum PredictKind {
   CountPmfVariable,
   /// Distributional P(Y<=k) after Poisson/NB2 using a current-row cutoff variable.
   CountCdfVariable,
-  /// Current-time cause-specific Weibull hazard (not a probability).
+  /// Current-time cause-specific Weibull/Gompertz hazard (not a probability).
   Hazard,
-  /// Current-time integrated cause-specific Weibull or Cox/Breslow hazard.
+  /// Current-time integrated cause-specific Weibull/Gompertz or Cox/Breslow hazard.
   CumulativeHazard,
-  /// Weibull or Cox net survival exp(-H), not competing-risk incidence.
+  /// Weibull/Gompertz or Cox net survival exp(-H), not competing-risk incidence.
   Survival,
   /// Predicted spatial lag for spatial models.
   SpatialLag,

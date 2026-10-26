@@ -1,9 +1,10 @@
 # WIP: original Table17.8 Gompertz full-time re-employment column
 
-**Status: independent R original/control references and native kernel/API
-controls pass on this WIP branch. Native command parsing/execution/owned state/
-reporting is NOT installed. Keep this slice WIP until its complete native
-workflow and verification pass; the original native audit remains pending.**
+**Status: independent R original/control references and native kernel/parser/
+runtime/owned-state/current-point/text/JSON/help controls pass on this WIP branch.
+The original-data native script/source audit and broader affected/reverse-consumer
+verification remain pending. Keep this slice WIP; do not merge this milestone
+as a completed original Table17.8 workflow.**
 
 ## Exact illustration and independent reference
 
@@ -53,11 +54,31 @@ inventory/46 SHA256-identical fresh-copy standard-harness artifacts under the
 previously diagnosed host dyld-start workaround, not a broad nextest pass. Focused
 nextest itself passed; focused replays are not additional distinct tests. An
 independent read-only statistical kernel/oracle source review found no issues;
-it did not rerun tests or audit the original native/runtime/CLI, which remain
-pending. Eight Clippy literal spellings were shortened to identical f64 bits;
+it did not rerun tests or audit the original native/runtime/CLI. The separate
+native boundary controls below now pass; original native/source audit is pending. Eight Clippy literal spellings were shortened to identical f64 bits;
 no numerical reference or tolerance changed, and that one test was replayed.
 
-## Proposed native contract
+Native boundary milestone:25 distinct focused tests pass (6 parser,12 runtime,
+7 root CLI/workflow, including5 unchanged Weibull runtime and4 Weibull script
+regressions). Full2030/2029 model/robust and1941/1940 no-intercept R gates pass
+through runtime AND CLI-v1, including all1764/1681 covariance entries, normal
+tails/gamma inference and sample identity. Current points, typed NULLs/no event,
+current-X edits, negative gamma/positive tail, time0, atomic/schema/overflow and
+stale-inference/DECIMAL failures pass. JSON/text exports are byte-identical for
+all four inference/design combinations; the12-point coupled-UI original script
+is still pending. Native all-target Clippy across domain/language/execution/
+runtime/reporting/root passes; its initial180s invocation timed out without
+failure diagnostics, resumed successfully in111s. Workspace formatting/diff pass.
+
+Deliberate metadata correction: `--describe-command streg` now marks `variables`
+required, matching its PRE-EXISTING at-least-one-explicit-predictor parser rule;
+no intercept-only command grammar expansion. CLI discovery uses `--help-topic`
+and `--describe-command`, not unsupported `-c help/schema` runtime requests.
+An initial time0 test's h_zero/H_zero names collided case-insensitively in
+DuckDB; distinct names fixed the fixture, not the model/data adapter. Only the
+failed tests were replayed; passing counts are distinct, not replay sums.
+
+## Native contract
 
 `streg time xvars, failure(event) dist(gompertz) [robust noconstant]`.
 Preserve the current streg requirement for at least one explicit predictor;
