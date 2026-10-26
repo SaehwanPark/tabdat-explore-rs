@@ -8,7 +8,7 @@ use "analysis.csv"
 nl y = exp(-a-b*x), params(a b) start(1 0)
 predict fitted, mean
 predict residual, residuals
-export csv "nls_predictions.csv"
+export "nls_predictions.csv"
 ```
 
 Syntax:

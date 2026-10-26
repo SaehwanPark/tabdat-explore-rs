@@ -1,6 +1,7 @@
 # Exponential-mean NLS: contract and WIP evidence
 
-**Status: planned/in progress, not installed execution. Risk: high.**
+**Status: native fit/predict/report installed; original-source CLI replay/audit
+passes, closing regression/review work still in progress. Risk: high.**
 Deliver one complete native `nl` → predict/diagnose → report workflow for the
 unweighted NLS column of Cameron–Trivedi(2005) Table5.7, §5.9.2–3 pp.159–163.
 This is the author's **generated**10,000-row example, not an empirical sample or
@@ -261,3 +262,70 @@ algorithms. These are focused boundary checks, not final affected/reverse-consum
 validation. Original10000-row CLI/script/source export/atomic IO audits, independent
 integration/source review and complete-slice closing checks remain WIP; no merge,
 whole-table/method/chapter, platform or release claim.
+
+### Original-source CLI replay checkpoint
+
+The development-only `prepare.py` verifies the pinned original ASCII hash/all10000
+rows, retains source ordinals and exact y/x tokens, and publishes a new CSV by
+same-directory staging/hard-link without clobber. Validation, injected write
+failure and existing-target rejection publish nothing/leave no staging file;
+this is not crash-durability or platform certification.
+
+`nls.td` loads/preflights prepared data, fits both covariance modes, predicts means
+and residuals, derives the source-law reciprocal rate and squared residual,
+reports descriptive residual summaries and exports source-preserving CSV. Both
+actual current CLI JSON/text executions exit0/stderr empty. The1419817-byte CSVs
+are byte-identical, SHA256
+`38d1108e9dbe0f0278d17f743f35d4bbce1e3df068b3eeb9c0dae7612f45056a`.
+
+`check_reference.py` verifies source hashes, model bindings, exact samples/source
+identity/order, every fitted JSON/CSV mean/residual, both full covariances and all
+coefficient inference, diagnostics, rates and squared residuals against independent
+R. It passes120055 numerical gates at unchanged1e-11 absolute+1e-10 relative,
+30000 exact exported source fields,20000 reference/source fields and9 compact
+author facts. Two ADDITIONAL relative1e-9 gates prevent bogus zero substitution
+for nonzero~1e-40/1e-51 Student-t tails; max relative difference1.12e-10 reflects
+the accepted converged-t difference. This is stricter than the primary absolute
+rule, not tolerance widening. Max beta1.69e-12/SE2.13e-13/covariance6.05e-14,
+mean/residual2.08e-11, reciprocal-rate3.52e-10/squared-residual4.47e-10; all within
+the fixed scale-relative contract. Diagnostic RSS error5.28e-11. Ten actual-source
+coefficient/covariance/tiny-tail/projection/binding/sample/diagnostic/source-identity/
+ordinal/CSV-projection forgeries fail without receipt.
+
+Native a1.8875622977095359,b-.9574683112978039, RSS10149.863227274845;
+classical SE.030681916435664428/.00974185303447341, HC1
+.14207932958772906/.06119685266594117. Both use11 accepted steps, score2.046e-13,
+full step6.376e-13 and work6720000. Ordinary mean residual-.0161230529764893 need
+NOT equal0: the a score weights residuals by the exponential mean, not a constant
+Jacobian column. Residual summaries do not establish adequacy, the full exponential
+law or causality. Classical covariance is a working homoskedastic convention for
+this heteroskedastic generated DGP; HC1 assumes the correct conditional mean.
+
+Reproduce with explicitly acquired external assets; use NEW output paths/directories,
+check every exit code (e.g. shell `set -e`), and never reuse an old CSV after failure:
+
+```sh
+mkdir -p /new/json-run
+python3 examples/mma05p2nls/prepare.py /path/to/mma05data.asc /new/json-run/nls.csv
+(cd /new/json-run && /path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma05p2nls/nls.td > results.jsonl)
+Rscript examples/mma05p2nls/reference.R /new/r-reference /path/to/mma05data.asc
+python3 examples/mma05p2nls/check_reference.py /new/json-run/results.jsonl /new/json-run/nls_predictions.csv /new/r-reference /path/to/source-assets /new/receipt.json
+python3 examples/mma05p2nls/check_failures.py /new/json-run/results.jsonl /new/json-run/nls_predictions.csv /new/r-reference /path/to/source-assets
+```
+
+The source-assets directory contains all three pinned author assets above. Run
+text in a separate new directory with its own prepared nls.csv. R/Python are
+explicit development/reference tools only; the native prepared-CSV fit/report
+workflow needs neither. Scripts are ordered, not whole-script transactions;
+earlier in-memory steps can succeed before a later export fails.
+
+Four offline root end-to-end cases pass: a closed-form a=b=0 control with
+mu1/residuals(.1,-.2,.1), full classical/HC1 covariance and closed-form Cauchy
+t(1)95 reference quantile (NLS intervals still approximate), actual JSON/text/CSV
+identity, bad/nonregular/10001-row preflight failures,
+export no-clobber/no-staging and unpinned preparation failure. Source-file controls
+are synthetic, not redistributed author data. The persistent `check_failures.py`
+passes the ten real-original forgeries plus injected prepare/audit write failure
+and existing-target/receipt no-clobber/cleanup, without changing external inputs.
+Root scoped Clippy passes. Final affected/reverse-consumer checks and independent
+integration/source review remain required before ready/merge.
