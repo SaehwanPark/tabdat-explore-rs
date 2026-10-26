@@ -225,6 +225,10 @@ mean Hessian and an extreme-scale positive HC1 variance incorrectly rounded to0;
 these fail rather than publish false regularity/inference. Exact-zero terms still
 remain allowed. All nine focused tests pass. Earlier235 non-NLS stats passes and
 one ignored are unaffected; nine replace the previous seven, giving244 distinct
-passing stats cases, not a new full nextest claim. The latest expanded checks still
-need Clippy/original-data replay and independent focused review follow-up before
-closing the P1. Runtime/CLI and the complete slice remain WIP.
+passing stats cases, not a new full nextest claim. The latest expanded checks pass
+scoped Clippy/lib/tests-Dwarnings and rebuilt original-data API replay:40044 gates,
+unchanged tolerance, max coefficient1.69e-12/covariance6.05e-14/mean2.08e-11 versus
+R. Computing the raw residual before scaling changes ordinary exported numeric
+values by at most8.53e-14 versus the earlier probe, not a statistical or tolerance
+change. Focused independent review follow-up remains required before closing the
+P1. Runtime/CLI and the complete slice remain WIP.
