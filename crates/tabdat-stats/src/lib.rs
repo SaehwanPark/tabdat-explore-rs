@@ -31,6 +31,7 @@ pub mod matrix;
 mod multinomial;
 mod nb2;
 mod nested_logit;
+mod nls;
 mod normalized_common_nested_logit;
 mod poisson;
 pub mod post_estimation;
@@ -138,6 +139,10 @@ pub use nested_logit::{
   NestedChoiceProblem, NestedLogitOptions, NestedScaleEstimate, NonNormalizedNestedLogitProblem,
   NonNormalizedNestedLogitResult, fit_non_normalized_nested_logit,
   non_normalized_nested_predict_set,
+};
+pub use nls::{
+  MAX_NLS_DEPTH, MAX_NLS_NODES, MAX_NLS_OBSERVATIONS, MAX_NLS_PARAMETERS, MAX_NLS_TOTAL_WORK,
+  MAX_NLS_WORK, NlsEstimate, NlsExpression, NlsModel, NlsResult, NlsRowEvaluation, fit_nls,
 };
 pub use normalized_common_nested_logit::{
   NormalizedCommonNestedLogitResult, fit_normalized_common_nested_logit,

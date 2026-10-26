@@ -61,7 +61,10 @@ not add/remove an explicit parameter (same substantive Python behavior).
 
 Joint-finite outcome/referenced-data sample in original order; unrelated missing
 columns do not exclude rows. Formula domain/overflow/derivative failures on a
-complete row error rather than silently dropping it. Candidate rows<=10000,
+complete row error rather than silently dropping it. Nonrepresentable exp (including
+underflow to zero) fails: a clipped zero can erase nonzero tail derivatives and
+falsely pass score/curvature checks; no log-tail/extended-precision evaluator is
+claimed. Candidate rows<=10000,
 1<=P<=32,N>P, expression<=128 nodes/depth32,
 N*P²*nodes<=20million; up to200 iterations/60 step halvings, cumulative evaluation
 budget500million units (value evaluation N*nodes; derivatives N*nodes*(1+P+P²)).
@@ -164,5 +167,33 @@ wire roundtrip, rather than replacing its payload; (2) freeze the exact stationa
 local-maximum rejection above. Reviewer inspected committed diff/source and supplied
 R evidence; did not execute tests/R. Parent verified existing domain-json-v1 contract,
 state serde and analogous Poisson wire test before choosing additive compatibility.
-Reference/control implementation may proceed; native implementation must retain
-these dispositions. This review is not numerical validation of unimplemented code.
+Native implementation must retain these dispositions. This plan review is not
+numerical validation of the subsequent implementation.
+
+### Pure-kernel checkpoint (runtime/CLI still deferred)
+
+Independent references were committed before the native kernel: six fitted cases,
+both covariance modes, four rejected controls and522 analytic value/derivative rows;
+all eight generated reference outputs reproduced byte-for-byte. The original
+external-data reference is certified separately, not redistributed as a fixture.
+
+Native pure-stats API source probe checks40044 native/R scalar/projection gates,
+20000 exact R/source fields and20000 native retained-index assertions, plus9
+compact author printed-unit facts. Max differences: coefficients1.69e-12,
+covariance6.04e-14, SE2.13e-13, mean/residual2.08e-11; no tolerance change. Both
+covariances share bit-identical fitted parameters/projections. Native11 accepted
+steps (12 linearizations) give score2.05e-13/full step6.38e-13, RSS10149.863227274845,
+RMSE1.007566057685353, centredR².3913446206193423, work6.72million units.
+This is NOT an installed CLI/script workflow or whole-slice completion.
+
+Seven new focused stats tests pass, covering all frozen derivatives, complete
+covariance/inference/projections, rejected stationary maximum, zero variance/rank/
+unattained infimum, sample/order, tiny/huge response units and resource/arithmetic
+bounds. Affected stats crate:242 distinct passes/one pre-existing ignored across46
+current Cargo-inventoried artifacts (the seven are INCLUDED, not added twice).
+Broad nextest timed out before tests; current truncated_gaussian --list sampled in
+_dyld_start. SHA256-identical fresh copies ran the standard harness with package
+cwd, one test thread and two concurrent artifacts. This is a documented fallback,
+not nextest success. Scoped stats Clippy/lib/tests with-Dwarnings and fmt/diff pass.
+Other crates/runtime, final review, source script/atomic IO and platforms remain
+unverified at this checkpoint.
