@@ -6,8 +6,11 @@ Deliver one complete native `nl` → predict/diagnose → report workflow for th
 unweighted NLS column of Cameron–Trivedi(2005) Table5.7, §5.9.2–3 pp.159–163.
 This is the author's **generated**10,000-row example, not an empirical sample or
 whole-table/chapter coverage. A separate [fixed-first-fit WNLS/FGNLS workflow](weighted.md)
-uses transformed responses and fixed preliminary weights. Exponential MLE,
-known-variance sandwich and§5.9.4 marginal effects remain required separate work.
+uses transformed responses and fixed preliminary weights. A separate
+[model-variance sandwich](model_variance.md),
+[OLS/exponential comparison](../mma05p1mle/README.md), and bounded
+[§5.9.4 marginal-effects workflow](../mma05p4margeffects/README.md) are also
+available; remaining methods still require work.
 
 ## Exact source, model and evidence selected before implementation
 
@@ -368,5 +371,6 @@ MIG-0024 records intentional admission/deferred-error
 and inference differences; old result/wire formats and pinned parser corpus remain.
 No doctest run was needed for the new text/shell examples; none is claimed. GitHub
 Actions are disabled; other platforms, packaging/performance and release readiness
-remain unverified. The full roadmap/illustration inventory, exponential ML,
-known-variance covariance and marginal effects remain required.
+remain unverified. The full roadmap/illustration inventory and further NLS
+covariance and marginal-effect methods remain required; the bounded source
+model-variance sandwich is documented [separately](model_variance.md).
