@@ -89,6 +89,18 @@ Cargo's compilation profile, test concurrency or statistical tolerances. Use
 runs tests in separate processes; use Cargo to investigate runner-specific
 behavior, and do not silently accept a difference.
 
+On macOS, test discovery has occasionally stalled before the test harness starts:
+`sample <pid> 1` showed only `_dyld_start`, while a SHA256-identical executable
+copied to a fresh temporary path ran normally. This is a diagnosed loader-start
+stall, not a test pass or proof that nextest is faulty. Preserve the sample and
+failed attempt; if using this fallback, select executables from a successful
+current Cargo `--no-run --message-format json` inventory (never a stale filename
+glob), verify copy hashes, use each package's manifest working directory and
+record complete standard-harness results/counts, including ignored/zero-test
+artifacts. Do not repeatedly retry real assertion failures. Large accumulated
+build outputs can also exhaust disk space; `cargo clean -p <package>` removes
+only disposable generated artifacts but requires rebuilding that package.
+
 ### Select from the diff, not just test names
 
 Before testing, inspect both committed branch work and uncommitted/new files:

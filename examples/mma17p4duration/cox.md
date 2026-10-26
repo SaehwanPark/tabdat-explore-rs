@@ -1,201 +1,160 @@
-# WIP: original Table17.8 Cox/Breslow duration column
+# Original Table17.8 Cox/Breslow full-time re-employment column
 
-**WIP status: native parser/runtime/owned fit and baseline/prediction/text/JSON/help
-and the original source script are implemented. Focused numerical, runtime and
-actual-script controls plus the full original source audit pass. Independent
-statistical source review found a DECIMAL event-code rounding defect; original
-code validation now fixes it with a focused joint-eligibility regression.
-Affected/reverse-consumer regression checks and final capability docs are pending. Keep draft PR #334 open until those gates and capability docs finish.**
-
-## Exact analysis and independent reference
+## Exact analysis and native contract
 
 Cameron–Trivedi (2005), §17.11 pp.603–608, Table17.8 Cox coefficient column;
-March2005 mma17p4duration.do, original ema1996.dta. Same3343 spells/1073 full-time
-events/20887 two-week intervals and40 regressors as the validated exponential/
-Weibull columns, but NO intercept: the baseline absorbs any PH location. Keep
-all102 all-zero status rows as censor1=0 and stateur from original DTA; ASCII is
-not an equivalent full design. The source comment says Weibull before stcox;
-executed stcox and output explicitly identify Cox/BRESLOW, not Efron/exact ties.
+March2005 `mma17p4duration.do`, original `ema1996.dta`. Same3343 spells/1073
+full-time events/20887 recorded two-week intervals and40 covariates as the
+[exponential](README.md)/[Weibull](weibull.md) columns, but **no intercept**:
+the unspecified baseline absorbs every constant design direction. Keep all102
+all-zero status rows as censor1=0 and stateur from original DTA. ASCII omits
+stateur and rounds floats; it is not an equivalent full design. The author's
+comment says Weibull before stcox; executed command/output identify Cox/Breslow.
 
-Development-only R4.6.1/survival3.8.6 coxph(ties='breslow',robust=TRUE) reproduces
-original partial LL−7717.2334329144514/null−7981.9304249926163,24 failure knots,
-reprate beta≈.5222796 and robust SE≈.5711698 after N/(N-1). Independent risk-set
-information and martingale score residual reconstruction matches R full matrices
-within3.6e-13 and2.2e-13 respectively; corrected Wald≈540.9797 matches author540.98.
-Uncorrected R SE≈.5710844 does NOT match the author; correction is explicit, not
-residual-DF HC1. Original source max raw score≈1.5e-11. The existing400-row full-
-design control also admits a regular40-coefficient Cox fit. These were independent
-reference feasibility checks; native/source evidence is recorded below.
+```text
+stcox time [xvars], failure(event) [robust]
+predict index, xb
+predict integrated_hazard, cumhaz
+predict net_survival, survival
+```
 
-## Bounded native behavior
-
-Native syntax: `stcox time [xvars], failure(event) [robust]`.
-Unweighted single-spell entry-zero right censoring, numeric time/exact binary
-event. Joint finite time/event/X rows enter before positive-time support checks;
-at least one failure. No explicit/implicit intercept, no factor expansion. An owned CoxProblem carries
-time/event/design/sample: the generic location-model EstimationProblem rejects
-zero predictors without an intercept. Do not fake a fitted intercept or weaken
-that shared invariant to accommodate a Cox baseline-only problem.
-Centered design rank must exclude constant directions, not merely raw-X rank.
-N<=10000, K<=64, N>K, N*K*K<=20000000; robust additionally N>=2. Baseline-only
-K0 has no coefficient tests/inference, not a fitted fake intercept.
+Unweighted single-spell entry-zero right censoring. Joint finite time/event/X
+rows enter before positive-time and original-value exact-binary event checks;
+invalid retained support errors rather than silently dropping rows. Original
+DECIMAL event identity is checked after joint eligibility, before f64 rounding
+can admit near-one codes. At least one failure, full centered-design rank,
+N<=10000, K<=64, N>K, N*K*K<=20000000; robust also N>=2. No intercept/factors;
+baseline-only K0 is supported without a fake coefficient. Its H equals
+Nelson–Aalen; exp(-H) is NOT Kaplan–Meier product survival.
 
 Partial LL=sum_events X beta - sum_j d_j log(sum_{i:t_i>=t_j}exp(X_i beta)).
-At a tied time, all failures AND censors stay in its risk set. This is the
-Breslow tied approximation, not exact discrete-time conditional likelihood.
-No duration-density/Stata-Weibull normalization, shape or cross-family AIC claim.
-Use existing strict guarded concave Newton with centered/RMS X, per-N mean score
-AND relative-step gates1e-10, undamped regular information, no ridge/pseudoinverse.
-Time rankings/ties, not physical duration units, determine coefficient likelihood.
+Same-time failures AND censors enter each risk set: Breslow tied approximation,
+not Efron/exact discrete conditional likelihood. No duration-density/Stata-Weibull
+normalization or cross-family AIC claim. Centered/RMS coordinates and adaptive
+per-risk-set maxima avoid late-risk underflow. Shared strict guarded concave
+Newton requires per-N mean-score AND relative-step bounds1e-10 and regular final
+undamped information; no ridge, pseudoinverse or clipping. Time rankings/ties,
+not physical duration units, determine coefficient likelihood.
 
-Model-based inverse partial-likelihood information or independent-spell FULL
-martingale/efficient-score sandwich times N/(N-1), asymptotic normal95. NOT the
-outer product of failure-only scores or naive X*(event-fitted_H). For risk mean
-mu_j and Breslow increment a_j=d_j/S0_j, the row score is
-u_i=d_i*(X_i-mu_at_exit) - exp(eta_i)*sum_{j:t_j<=t_i}a_j*(X_i-mu_j).
-After time sorting/knot lookup, cumulative log-hazard and hazard-weighted risk
-means permit O(N*K*K+N*K) moment work, not an unbounded N*failure_knots*K
-residual loop; adaptive risk maxima prevent global-
-max underflow in late risk sets. Full robust covariance/normal intervals/zero-
-variance and rank-aware slope Wald rules are explicit. Null fixes all beta0 on
-the SAME sample; LR p/reference withheld for robust fits, Wald separate.
+Model-based inverse partial-likelihood observed information or independent-spell
+FULL efficient martingale-score sandwich times N/(N-1), asymptotic normal95.
+For risk mean mu_j and increment a_j=d_j/S0_j, row score is
+u_i=d_i*(X_i-mu_at_exit)-exp(eta_i)*sum_{j:t_j<=t_i}a_j*(X_i-mu_j).
+Failure-only scores or X*(event-fitted_H) give the WRONG meat. Sorted risk moments
+and cumulative weighted means use O(N*K*K+N*K) work, not N*failure_knots*K.
+Zero-SE/rank-limited coefficient/Wald references are unavailable. Same-sample
+null fixes every beta0; robust fits withhold LR p/reference, not the separate
+selected-covariance Wald. Baseline-only fits have no coefficient tests.
 
-Own baseline failure-time knots/risk counts/tied events/log increments/log H,
-with baseline at the retained covariate-mean REFERENCE VECTOR (including dummy
-means), not silently R's different default dummy-zero reference. Expose that
-reference and nullable unrepresentable natural-scale baseline summaries; keep
-finite log values for stable predictions. Baseline uncertainty is NOT installed.
-No-covariate baseline cumulative hazard equals Nelson–Aalen, while exp(-NA) is
-NOT Kaplan–Meier product survival. Pure baseline support is part of this same
-baseline algorithm, not a second estimator family.
+## Owned baseline and current predictions
 
-Current predict xb (bare default) uses current X only and is raw PH X beta.
-Current cumhaz/survival use current X/time, never event; evaluate the owned
-Breslow baseline step through t (right-continuous). Time0 is valid H0/S1; finite
-negative time errors. Beyond the last failure the estimate holds its last step,
-not a validated tail extrapolation. Missing/nonfinite required inputs yield NULL;
-complete support/schema/target/numerical failures publish nothing and preserve
-labels/order/model. Genuine survival0 allowed even if H cannot be represented.
-At most10000 current rows, DOUBLE/NULL, no auxiliaries or uncertainty. No hazard
-mode: baseline jumps do NOT identify an instantaneous continuous hazard. No
-mean/count/binary/residual/margins meanings. New runtime fit attempts clear stale
-inference only; parse failures are not executed fit attempts.
+Baseline failure knots retain risk/tied-event counts, log increments/log H,
+nullable unrepresentable natural values and exp(-H). Reference is ALL retained
+predictor means, including dummy means, in predictor order—not silently R's
+dummy-zero reference. Finite log baseline can still yield finite fitted H when
+its natural reference value cannot be represented. Baseline uncertainty is absent.
 
-## Acceptance / failure cases
+Bare/default xb is raw current X beta and requires no time/event. Current
+cumhaz/survival require X/time, NEVER event; use the right-continuous retained
+Breslow step through t, including ties. Time0/before-first gives H0/S1. Beyond
+the last failure holds the final step, not a validated tail extrapolation.
+Required missing/nonfinite inputs yield NULL. Negative finite time, schema,
+existing-target or numerical failure publishes nothing and preserves data,
+labels, order and owned fit. Genuine survival0 is allowed even if requested H
+would overflow. At most10000 current rows, typed DOUBLE/NULL, points only.
 
-1. Full original sample/design/40 beta/all1600 covariance entries/complete normal
-   and joint inference/partial full+null LL and all author coefficient/z/table
-   facts against R and independently reconstructed risk/score/information.
-2. Owned baseline all24 failure knots/risk/event counts/log and natural H, current
-   baseline-indexed H/S/xb including coupled UI0/UI1 at observed times; every
-   source/design/point cell, source restoration and JSON/text export identity.
-3. Model-based/robust controls, baseline-only NA consistency, tied event/censor
-   risk membership, permutation/time-unit invariance, late-risk dynamic scaling,
-   finite-difference derivatives and full efficient-score covariance, not shared-
-   wrong R/native agreement alone. Reference ordinary1e-9 absolute+1e-8 relative,
-   positive tails1e-300+1e-8 relative; printed half final unit/source exact hex.
-4. Actual script/CLI modes plus sample/missingness, current edits/drop event,
-   time0/after-last points, rank/separation/no-event/unsupported-option failures,
-   prediction support/overflow/schema/existing-target atomicity and stale state.
-5. Complete parser→runtime→owned state→prediction→text/JSON/help/source reporting;
-   focused then affected/reverse-consumer tests, quality checks, source/evidence
-   docs/review and confirmed PR merge/cleanup before any next slice.
+No instantaneous hazard from baseline jumps, residual/count/mean/binary/margins
+meaning, uncertainty, weights/cluster/survey/strata, delayed entry, other
+censoring/truncation, frailty, PH-adequacy test, general stset/sts, named storage,
+full Table17.9 or whole chapter. Net cause-specific survival is NOT all-cause
+joblessness survival, competing-risk incidence or causal UI effects. Independent-
+spell/external-censoring and PH assumptions apply, not a latent-cause independence
+assertion. Failed executed fits clear stale inference only; parse failures do not
+execute or invalidate a fit. Gompertz/heterogeneity/multiple hazards remain required.
 
-## Pure-kernel milestone (not application/source certification)
+## Reproduce
 
-Eight focused tests pass. Independent R4.6.1/survival3.8.6 controls compare4233
-model-based/robust numeric gates (including both1600-entry covariance matrices,
-all28 control baseline knots/means/inference/null/LR/Wald), ALL16000 raw efficient
-row-score cells and3600 unique original/UI0/UI1 point predictions exercised in
-both covariance modes. Other controls cover finite-difference score/information,
-adaptive late-risk scaling, baseline-only NA (not KM), tied censor/failure risk
-sets, permutation/sample identity, time/affine-X units, negative last coefficient,
-invalid support/weights/cluster/rank/separation/resource limits, current point
-support and represented S0 despite H overflow. Unrepresentable natural baseline
-summaries retain finite log values and can still give finite fitted H.
-
-`cox_reference.R` is development-only. R hot-start polishing uses only its own
-solution. Crucially, coxph(init=...) reports the INITIAL likelihood in loglik[1],
-not the zero-beta null; the reference computes that null independently from tied
-risk counts. Both original and control reference generators pass separate full
-information/efficient-score/sandwich/baseline/point certificates. Adding score-
-residual output preserves all earlier six artifacts byte-identically. Polished
-original R raw score is below1e-12. Original R evidence is NOT original native
-execution. Stats all-target Clippy -D warnings and changed Rust formatting/diff
-checks pass; shared Newton algorithm is unchanged (only its family-support module
-description now accommodates unrestricted Cox coefficients). Full affected/
-reverse regression remains pending until the application workflow is complete.
-
-## Application/source milestone (merge gates pending)
-
-Native `stcox` now executes the bounded contract above. Two parser tests, six
-runtime controls and three actual-script/CLI controls pass across their focused
-runs. Runtime tests check all4233 model-based/robust R gates, original retained
-positions under four joint-missingness exclusions, all3600 original/coupled-UI
-point values, state/label/order preservation, no-event/rank/support failures,
-parse-vs-executed fit invalidation, typed NULLs, time0/step-tail behavior,
-requested-H overflow versus valid survival0, no event/time for xb and baseline-
-only NA consistency. Script controls run `cox.td` in JSON/text, verify identical
-CSV bytes, output no-replacement and guard failures, help/schema, baseline-only
-JSON and rejected instantaneous hazard; checker corruption tests detect changed
-covariance, baseline and current UI predictions.
-
-The original3343-spell native script passes2084 independent R gates/all1600
-covariance entries, all24 baseline knots/means,187208 source/design/projection
-cells,147092 exact source cells and254 printed author quantities (including12
-compact Table17.8 cells). The independent Python audit reconstructs risk-set
-information, ALL efficient row scores (including censor contributions), the full
-sandwich, reference baseline, zero-beta null, Wald and every current point. It is
-a development-only check, not a production Python dependency. The shared strict
-Newton algorithm is unchanged. A serde_json dev-dependency reuses the existing
-locked package to compare typed runtime results to the existing JSON-pointer R
-fixtures; no production dependency is added.
-
-Reproduce in a fresh directory with `duration.csv` from the companion
-[explicit original-DTA conversion](weibull.md#reproduce). Original assets are
-not redistributed; the source checker enforces the same four SHA256 pins.
+Build `cargo build --locked` at the repository root. Source acquisition and
+R/foreign conversion are explicit development-only steps, never production
+requirements. Original assets are not redistributed. Numeric promoted-DTA values
+are preserved; CSV does not preserve DTA storage types/value-label metadata.
+Use a fresh directory (neither script nor reference producer replaces files):
 
 ```sh
 repo=/absolute/path/to/tabdat-explore-rs
-# Acquire original author.do/author.txt/ema1996.dta/ema1996.asc as in weibull.md.
-# Convert DTA with prepare.R; it preserves promoted numeric values, not DTA labels/types.
+mkdir cox-analysis && cd cox-analysis
+base=https://cameron.econ.ucdavis.edu/mmabook
+curl -fsSL "$base/mma17p4duration.do" -o author.do
+curl -fsSL "$base/mma17p4duration.txt" -o author.txt
+curl -fsSLO "$base/ema1996.dta"
+curl -fsSLO "$base/ema1996.asc"
+Rscript "$repo/examples/mma17p4duration/prepare.R" ema1996.dta duration.csv
 "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma17p4duration/cox.td" > native.json
 Rscript "$repo/examples/mma17p4duration/cox_reference.R" duration.csv reference ema1996.dta
 python3 "$repo/examples/mma17p4duration/check_cox_source.py" \
   author.do author.txt ema1996.dta ema1996.asc . reference
 ```
 
-The56-column export retains44 source/ordinal columns, three helpers and nine
-observed/UI0/UI1 point columns; coupled UI changes are restored before export.
-`--text` in a second fresh directory containing duration.csv produces identical
-CSV bytes. The final UI-group score balances are score identities, not adequacy
-tests. Original R references read DTA directly to avoid R4.6.1's possible1ULP
-CSV reread drift; exact native/Python source hex checks remain unchanged.
+The script guards the complete full source design, sorts source ordinals, fits
+robust Cox, reports full coefficients/covariance/inference and reference baseline,
+and exports observed/UI0/UI1 xb/H/S points at SAME times. Coupled UI and its two
+interactions are restored before `cox_predictions.csv`:56 columns,44 source/
+ordinal,three helpers,nine points. Final UI score balances are identities, not
+adequacy tests. `--text` in another fresh directory containing duration.csv gives
+byte-identical exports. Earlier successful script effects remain on later failure;
+this is ordered execution, not whole-script rollback.
 
-A bounded independent read-only statistical source review confirmed the Breslow
-derivatives, full censor-inclusive efficient scores, adaptive risk scaling,
-reference baseline/current points and independently computed R null. Its one
-blocking finding was DECIMAL near-one event codes rounding to1 before support
-validation. Runtime now uses the existing original-cell exact-integer helper only
-AFTER joint finite eligibility, accepting solely0/1. A regression covers valid
-DECIMAL zeros/ones, invalid1.000000000000000001 and0.999999999999999999, and both
-invalid codes on excluded rows. No tolerances changed. Affected application
-packages pass all-target Clippy with warnings denied. Broader regressions remain
-pending; no merge readiness is claimed yet.
+`check_cox_source.py` enforces the four original SHA256 pins, all140406 rounded
+ASCII fields, full author design and printed facts. R4.6.1 can reread correct
+17-digit CSV text with1ULP drift; original references read DTA directly and
+native/Python source hex checks remain exact. No tolerance widening.
 
-## Scope and delivery order
+## Independent evidence and limits
 
-Reuse existing crates, typed atomic column adapter, independent source acquisition
-and full-design fixture; no production R/Python or new native/unsafe dependency.
-Net cause-specific survival is NOT all-cause joblessness survival, competing-risk
-incidence or causal UI effects. Independent-spell/model/external-censoring and PH
-assumptions apply; no latent-cause independence assertion. No strata, cluster/
-weights/survey, delayed/left/interval entry/censoring, frailty, PH-adequacy test,
-baseline/prediction uncertainty, generic stset/sts, full Table17.9 or whole chapter.
-Gompertz/heterogeneity/multiple-hazard workflows remain REQUIRED deferred work.
+R4.6.1/survival3.8.6 `coxph(ties='breslow',robust=TRUE)` plus independently
+reconstructed information/full row scores/baseline validates both model-based and
+corrected robust inference. Original partial LL−7717.2334329144514/null
+−7981.9304249926163,24 failure knots; reprate beta≈.5222796, corrected robust
+SE≈.5711698 and Wald≈540.9797 match the author. Uncorrected R SE≈.5710844 does
+NOT match; N/(N-1) is explicit, not residual-DF HC1. R's own hot-start polishing
+never uses native estimates. Crucially, coxph(init=...) loglik[1] is its INITIAL
+likelihood, not the zero-beta null: compute the null independently from tied
+risk counts. toler.chol<eps avoids an exploratory R warning.
 
-Order: early draft contract → independent R artifacts/kernel tests → runtime/
-state/point/reporting → actual full original script/source audit → affected/
-reverse tests and source review → honest capability docs/evidence → ready/merge/
-synchronize/delete only this branch. Stop for substantive reference/statistical/
-scope blockers rather than widening tolerances or merging parser/kernel only.
+- Eight pure-kernel controls:4233 model-based/robust R gates (including both1600-
+  entry covariances/all28 control baseline knots/means), all16000 efficient row
+  scores,3600 unique observed/UI0/UI1 point values in both covariance modes;
+  finite-difference derivatives, late-risk scaling, baseline-only/ties, identity/
+  permutation/time/affine invariance, negative last coefficient, rank/separation/
+  support/resource failures and represented survival0 versus H overflow.
+- Two parser, six runtime and three actual-script/CLI controls. Runtime checks
+  all R gates/current points, original positions under four joint exclusions,
+  original DECIMAL codes, owned state/labels/order/NULLs, parse-vs-executed
+  invalidation, target/schema/support failures and time0/tail holds. Actual
+  cox.td JSON/text exports match; guards, no-replacement, discovery, baseline-only
+  JSON/rejected hazard and corrupted-reference/projection detection pass.
+- Original native audit:2084 R gates/all1600 covariance entries,187208 source/
+  design/projection cells,147092 exact source cells and254 printed quantities,
+  including12 compact Table17.8 cells. Independent Python reconstructs risk
+  information, ALL efficient scores, sandwich, baseline/null/Wald and every point.
+  Final original JSON/text CSV bytes match. Only400-row synthetic controls are
+  redistributed; no new production dependency. Runtime serde_json is test-only.
+- One bounded independent source review confirmed the derivations and found
+  near-one DECIMAL event rounding. Existing exact-integer helper fixes it AFTER
+  joint eligibility; focused valid/invalid/excluded-row regression passes. No
+  additional actionable issues were found in that review; reviewer did not rerun
+  the supplied numerical audits.
+- Local reverse-consumer regression totals1562 unique passing tests/two pre-existing
+  ignored. The initial272-artifact direct run exposed six discovery expectations;
+  corrected counts/sorting/native-extension checks then pass all72 affected tests.
+  Prior unaffected passes are retained, not repeatedly rerun. Four zero-test
+  artifacts do not count as test passes. All-target affected application and root
+  Clippy with warnings denied, workspace formatting and diff checks pass.
+  Broad nextest discovery timed out; a sampled original test executable stalled
+  at dyld start before tests. Exact Cargo-inventory/SHA-identical fresh-copy
+  standard-harness execution supplies regression evidence, not a claimed green
+  nextest run. The interrupted run is not counted passing. CI is disabled;
+  other platforms/release readiness are unverified.
+
+This validates the bounded coefficient-column/source-program workflow—not the
+entire survival family, Table17.9 hazard-ratio uncertainty or textbook coverage.

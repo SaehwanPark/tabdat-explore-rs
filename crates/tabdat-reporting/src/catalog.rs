@@ -75,8 +75,8 @@ pub const COMMAND_NAMES: &[&str] = &[
   "spregress",
   "sql",
   "status",
-  "streg",
   "stcox",
+  "streg",
   "summarize",
   "tabulate",
   "tail",
@@ -417,11 +417,11 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
-      name: "streg".to_string(),
+      name: "stcox".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
-      name: "stcox".to_string(),
+      name: "streg".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -2215,7 +2215,17 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 87);
+    assert_eq!(catalog.commands.len(), 88);
+    assert_eq!(
+      catalog
+        .commands
+        .iter()
+        .find(|e| e.name == "stcox")
+        .unwrap()
+        .help_topic
+        .as_deref(),
+      Some("stcox")
+    );
     assert_eq!(
       catalog
         .commands
@@ -2268,7 +2278,16 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 87);
+    assert_eq!(effects.commands.len(), 88);
+    assert_eq!(
+      effects
+        .commands
+        .iter()
+        .find(|e| e.name == "stcox")
+        .unwrap()
+        .effects,
+      vec![CommandEffect::Read]
+    );
     assert_eq!(
       effects
         .commands

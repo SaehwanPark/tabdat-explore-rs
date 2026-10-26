@@ -74,8 +74,8 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "spregress",
   "sql",
   "status",
-  "streg",
   "stcox",
+  "streg",
   "summarize",
   "tabulate",
   "tail",
@@ -197,7 +197,8 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 88);
+    assert_eq!(available_help_topics().len(), 89);
+    assert!(available_help_topics().contains(&"stcox"));
     assert!(available_help_topics().contains(&"truncreg"));
     for topic in available_help_topics() {
       let text = load_help_topic_text(topic).expect("topic must load");

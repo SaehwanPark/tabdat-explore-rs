@@ -162,9 +162,16 @@ Extend the same workflow/validation standard to:
   entries,197237 native cells/147092 exact source cells and276 author quantities
   pass, including14 compact table cells; source-preserving JSON/text exports are
   byte-identical. Native exponential/cluster remain unsupported; no blanket streg
-  parity. Those declarations plus remaining empirical parametric/Cox models,
-  richer baseline/survival/hazard outputs, diagnostics and illustrations remain
-  required, not optional breadth.
+  parity. The [native Table17.8 Cox/Breslow coefficient column](../examples/mma17p4duration/cox.md)
+  now validates the same3343 spells/1073 events/40 covariates without intercept,
+  full efficient-score N/(N-1) inference, owned all-X-means reference baseline
+  and current step-H/net-survival/xb points. Independent R/source audits pass2084
+  gates/all1600 covariance entries,187208 native cells/147092 exact source cells
+  and254 author quantities; original JSON/text CSV bytes match. No instantaneous
+  hazard from jumps, baseline/prediction uncertainty, strata/cluster/other entry
+  or PH-adequacy claim. Those declarations plus remaining empirical parametric/
+  richer Cox models, baseline/survival/hazard outputs, diagnostics and illustrations
+  remain required, not optional breadth.
 - **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
   one-/two-step covariance, convergence, overidentification and serial-correlation
   diagnostics; control instrument proliferation rather than silently expanding it.

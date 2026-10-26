@@ -23,7 +23,9 @@ fn cli_json_lists_commands() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 87);
+  assert_eq!(commands.len(), 88);
+  let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
+  assert_eq!(stcox["help_topic"], "stcox");
   let truncreg = commands.iter().find(|c| c["name"] == "truncreg").unwrap();
   assert_eq!(truncreg["help_topic"], "truncreg");
   let nlogit = commands.iter().find(|c| c["name"] == "nlogit").unwrap();
@@ -96,7 +98,9 @@ fn cli_json_lists_command_effects() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 87);
+  assert_eq!(commands.len(), 88);
+  let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
+  assert_eq!(stcox["effects"], serde_json::json!(["read"]));
   let truncreg = commands.iter().find(|c| c["name"] == "truncreg").unwrap();
   assert_eq!(truncreg["effects"], serde_json::json!(["read"]));
   let nlogit = commands.iter().find(|c| c["name"] == "nlogit").unwrap();
