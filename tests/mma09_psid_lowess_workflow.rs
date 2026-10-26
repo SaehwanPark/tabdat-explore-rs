@@ -247,6 +247,21 @@ fn actual_svg_path_and_marker_and_axis_forgeries_fail_with_correct_raw_metadata(
   success(&audit(&d));
   let path = d.path().join("psid_lowess.svg");
   let original = fs::read_to_string(&path).unwrap();
+  let class = original.find("class=\"line-series\"").unwrap();
+  let start = class + original[class..].find(" d=\"M").unwrap() + " d=\"".len();
+  let stop = start + original[start..].find('"').unwrap();
+  for wrong in [
+    original[start..stop].replace('L', "M"),
+    format!("{}Z", &original[start..stop]),
+  ] {
+    let mut forged = original.clone();
+    forged.replace_range(start..stop, &wrong);
+    fs::write(&path, forged).unwrap();
+    assert!(
+      !audit(&d).status.success(),
+      "accepted altered path connectivity"
+    );
+  }
   let mut forged = original.clone();
   let class = forged.find("class=\"line-series\"").unwrap();
   let start = class + forged[class..].find(" d=\"M").unwrap() + " d=\"M".len();

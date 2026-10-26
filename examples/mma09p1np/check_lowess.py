@@ -86,7 +86,11 @@ def check_svg(path,table):
   for node,name in zip(lines,SERIES):
     a=node.attrib;assert list(map(int,a['data-row-indices'].split(',')))==order
     xx=a['data-x-values'].split(',');yy=a['data-y-values'].split(',')
-    points=re.findall(r'[ML]([\d.eE+\-]+)[ ,]([\d.eE+\-]+)',a['d'])
+    number=r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?'
+    # Every selected row is finite: one M and exactly N-1 connected L segments.
+    # Matching only coordinate pairs would also accept move-only or closed paths.
+    assert re.fullmatch(f'M{number} {number}(?:L{number} {number}){{{n-1}}}',a['d'])
+    points=re.findall(f'[ML]({number}) ({number})',a['d'])
     assert len(xx)==len(yy)==len(points)==n
     for i,px,py,point in zip(order,xx,yy,points):
       y=float(table[i][name]);close(float(px),xs[i]);close(float(py),y)

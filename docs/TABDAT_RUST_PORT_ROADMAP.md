@@ -207,8 +207,13 @@ Use the coverage ledger to close remaining illustration-specific gaps:
   all1536 ordinates/vertices,48560 raw source fields and103 historical-float facts.
   Double versus historical generated-float bandwidths are separately audited,
   never hidden by tolerance widening. No general KDE command/uncertainty is
-  implied; histogram/other kernels/local regression, remaining figures and
-  semiparametric methods remain required, not covered by one composition.
+  implied. Native [centred-rank LOWESS](../examples/mma09p1np/lowess.md) adds a
+  bounded Figure9.3 source-data adaptation:177 rows, spans.8/.4/.1,531 independent
+  R-QR fits/actual SVG vertices,177 raw points, within-X diagnostics and48560 exact
+  source fields. Stable input-sensitive tied windows deliberately do not claim
+  historical Stata tied-curve parity; that unresolved entry is not completed.
+  Histogram/other kernels/kNN and remaining local/semiparametric regression,
+  figures and methods remain required, not covered by these bounded workflows.
 - General ML/NLS, numerical optimization and systems/GMM cases not covered above.
 - Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
   competing-risk and multiple-spell survival models.

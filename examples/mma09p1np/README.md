@@ -1,4 +1,4 @@
-# PSID Epanechnikov bandwidth-sensitivity workflow
+# PSID density and centred-rank LOWESS workflows
 
 ## Bounded outcome and source
 
@@ -7,7 +7,9 @@ Cameron–Trivedi (2005), §9.2.1 pp.295–297, Figure9.2; March2005
 This required Chapter9 illustration opens a missing analytical family. Reuse
 native SQL/table/export and SVG line composition rather than introduce a new
 estimator API, command or production dependency for a fixed descriptive analysis.
-This is not installed `kdensity`, LOWESS, histogram or whole-Chapter9 support.
+This density composition is not installed `kdensity`, histogram or whole-Chapter9
+support. The separate [native LOWESS source-data adaptation](lowess.md) below
+shares preparation but has an explicit ordered-row smoothing contract.
 
 Sources: https://cameron.econ.ucdavis.edu/mmabook/mmaprograms.html and
 https://cameron.econ.ucdavis.edu/mmabook/mmadata.html. Original assets remain
@@ -107,14 +109,66 @@ Four new actual-script/conversion tests, eight adjacent SQL/plot-workflow tests
 and16 runtime SQL/scatter contracts pass (28 distinct passes, no ignored tests).
 Changed-target Clippy passes. Independent read-only source/statistical review
 found no issues; it inspected implementation/artifacts, not fresh executions.
-No production Rust/API/dependency changed. Full workspace/other-platform/release
-validation was not rerun. GitHub Actions is disabled: local evidence, not CI success.
+For the density-only PR338, no production Rust/API/dependency changed and full
+workspace/other-platform/release validation was not rerun. GitHub Actions is
+disabled: local evidence, not CI success.
 
-## Exclusions
+## Native centred-rank LOWESS: Figure9.3 source-data adaptation
 
-No new
-native command/parser claim, general KDE API, weights, automatic bandwidth
+The [method/limits/evidence](lowess.md) specify deterministic numeric-X/input-order
+centred rank windows, nonrobust tricube local-linear fits and exactly coincident-X
+local means. The author program labels Figure9.3 as§9.4.3. This is NOT R's
+nearest-neighbour/default-robust LOWESS or certified historical Stata tied-curve
+geometry; the unresolved historical entry remains required, not completed.
+
+In a fresh directory with the same pinned assets and converted `psid.csv`:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma09p1np/lowess.td" > lowess.json
+Rscript "$repo/examples/mma09p1np/lowess_reference.R" psid.csv lowess_reference psidf3050.dat
+python3 "$repo/examples/mma09p1np/check_lowess.py" . psid.csv lowess_reference \
+  mma09p1np.do mma09p1np.txt psidf3050.dat
+```
+
+The three spans.8/.4/.1 are explicit; the generic command's parser default remains
+2/3. Shared `prepare.td` selects the same177 source observations. The native script
+prints within-schooling counts/observed means/span.1 row-fit MIN/MAX and exports
+`psid_lowess.csv` (all source/derived columns+three fits) and `psid_lowess.svg`
+(177 raw observations/three curves). Both formats have identical CSV/SVG bytes.
+All2832 exported R cells/531 per-window QR fits and actual SVG vertices/528
+connected segments/177 raw markers/48560 source fields pass independent audit;
+maximum fitted difference6.67e-15. The14-row/70-cell diagnostic is also checked.
+Independent native centred moments, R Householder QR and Python2x2 normal equations
+agree under1e-11 absolute+1e-10 relative (source integers/counts/order exact).
+The audit checks complete M/L path grammar, not just coordinate substrings.
+
+Within-X MIN/MAX are row-fit ranges, NOT confidence bounds. Tight spans can vary
+within ties, so these are not a unique function for new X. Neither plot shape nor
+span comparison establishes optimality, uncertainty or causal schooling returns.
+New DOUBLE columns leave prior model state untouched; subsequent predict/test
+refer to that model. The whole example deliberately loads new data and is ordered,
+nontransactional/no-clobber, not a dataset/model/output rollback transaction.
+All three spans require selected N>=5 and the documented per-command work bound.
+Constant Y/X are supported (unlike degenerate KDE bandwidths).
+
+Kernel and integration/source reviews identified two P2s, both fixed: global Y
+normalization could erase tiny unrelated local values (now window-local scaling
+with nonzero/relative regressions), and coordinate-only SVG matching could accept
+disconnected/closed curves (now complete grammar plus both forgeries). Reviews
+inspected code/supplied evidence, not independently rerun tests. Local scope:
+1618 distinct passes/two pre-existing ignored across279 current Cargo test artifacts,
+including corrected admission-message expectation replays. A workspace nextest
+attempt timed out before test startup; current original stats discovery stalled in
+`_dyld_start` while its SHA-identical fresh copy discovered55 tests immediately.
+The documented fresh-copy standard harness (package cwd/two concurrent artifacts)
+completed broad checks; this is NOT a nextest pass. Workspace/all-target Clippy
+passes with one job after a parallel timeout. No platform/release/CI claim.
+
+## Density-specific exclusions and remaining work
+
+No new density
+command/parser claim, general KDE API, weights, automatic bandwidth
 selection beyond the declared rule, confidence bands, Figure9.1 histogram,
-Figure9.3 LOWESS/Figure9.4 other kernels, Figures9.5–9.7/generated-data derivatives,
+historical Figure9.3 tied-curve parity/Figure9.4 other kernels, Figures9.5–9.7/generated-data derivatives,
 kNN/kernel regression or whole-Chapter9/book/platform completion. Those required
 analyses remain separate; the full empirical inventory is still incomplete.

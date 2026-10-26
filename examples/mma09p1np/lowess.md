@@ -97,20 +97,19 @@ source integers exact, no reference replacement/tolerance widening to hide gaps.
    proportional Clippy/fmt/diff checks and bounded independent review. Update SPEC/
    roadmap/ledger honestly, then ready/merge/sync and safely remove branches.
 
-Implement exactly this plan. Do not broaden scope. If the plan conflicts with the
-codebase, stop and report the conflict instead of improvising. Report changed
+This defines the supported method. Do not broaden claims beyond it. If the plan
+conflicts with the codebase, stop and report the conflict instead of improvising. Report changed
 files/tests/deviations/unresolved risks. Stop if independent QR/reference or typed
 publication cannot support these semantics; do not disguise a fallback algorithm.
 
-## Exclusions / status
+## Validation and supported limits
 
-Implementation checkpoint: pure kernel, current-column runtime, text/CLI-v1/help
+Implementation evidence: pure kernel, current-column runtime, text/CLI-v1/help
 are implemented.10 kernel+9 runtime+3 reporting distinct focused tests pass;
 changed targets' Clippy passes. An original177-row native column-engine probe
 matches all531 independent QR fits (maximum6.67e-15), with JSON/text CSV bytes
-identical; this reuses the earlier selected source CSV, not the pending standalone
-source script/SVG audit. Initial identity test compared raw integer and required
-new DOUBLE cells incorrectly; exact NUMERIC identity plus DOUBLE schema is now
+identical in the initial engine-only probe; standalone validation follows below.
+Initial identity test compared raw integer and required new DOUBLE cells incorrectly; exact NUMERIC identity plus DOUBLE schema is now
 tested and passes, not a widened numerical tolerance. Kernel review's one P2
 (global response normalization erased tiny unrelated local values) was corrected
 to window-local scaling in native and QR; nonzero/relative tiny-response regressions
@@ -131,9 +130,18 @@ author's three spans. Four actual-script tests pass (30 distinct focused tests t
 QR/metadata/tie diagnostics, numeric-only shared-wrong native/R fits and cohort
 (no SVG mismatch can accidentally supply the rejection), wrong window/fallback
 metadata, actual ML/circle/domain forgeries, source failure/no-clobber cases and
-supported constant Y/X. Broad affected-crate/reverse-consumer checks and final
-integration review remain unfinished; draft PR must not merge. The author program
-identifies this illustration as§9.4.3; the earlier§9.2.1 planning citation was wrong.
+supported constant Y/X. Final local scope is1618 distinct passes/two pre-existing
+ignored across279 current Cargo-inventoried artifacts, including two corrected
+admission-diagnostic expectation replays. Workspace nextest timed out before test
+startup; current original stats --list also stalled in _dyld_start, while its
+SHA256-identical fresh copy immediately discovered55 tests. The documented
+fresh-copy standard harness/package cwd completed broad validation, NOT nextest.
+Workspace/all-target Clippy passes with one job after a parallel timeout.
+Independent integration/source review found one P2: coordinate-only matching
+accepted disconnected/closed paths. Complete one-M/N-1-L grammar and L-to-M/Z
+forgeries now pass rejection tests and original audits; no other findings were
+established. Reviewers inspected supplied evidence, not fresh test executions.
+The author program identifies this illustration as§9.4.3; the earlier§9.2.1 planning citation was wrong.
 
 Current reproduction: follow [source acquisition/conversion](README.md) to create
 `psid.csv` in a fresh analysis directory, then run the compiled binary with
