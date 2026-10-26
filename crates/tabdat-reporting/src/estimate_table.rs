@@ -23,6 +23,33 @@ fn row(
   output.push('\n');
 }
 
+fn nls_expression(
+  expression: &tabdat_stats::NlsExpression,
+  model: &tabdat_stats::NlsModel,
+) -> String {
+  use tabdat_stats::NlsExpression as E;
+  let render = |e: &E| nls_expression(e, model);
+  match expression {
+    E::Constant(v) => v.to_string(),
+    E::Predictor(i) => model
+      .predictor_names
+      .get(*i)
+      .cloned()
+      .unwrap_or_else(|| "?".into()),
+    E::Parameter(i) => model
+      .parameter_names
+      .get(*i)
+      .cloned()
+      .unwrap_or_else(|| "?".into()),
+    E::Negate(e) => format!("(-{})", render(e)),
+    E::Add(a, b) => format!("({}+{})", render(a), render(b)),
+    E::Subtract(a, b) => format!("({}-{})", render(a), render(b)),
+    E::Multiply(a, b) => format!("({}*{})", render(a), render(b)),
+    E::Divide(a, b) => format!("({}/{})", render(a), render(b)),
+    E::Exp(e) => format!("exp({})", render(e)),
+  }
+}
+
 pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   let models = &table.models;
   let mut output = String::from("Stored fit comparison (reporting snapshots, no refits)\n");
@@ -30,6 +57,14 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "Estimator", models, |m| m.estimator.clone());
   row(&mut output, "Outcome", models, |m| m.outcome.clone());
   row(&mut output, "Covariance", models, |m| m.covariance.clone());
+  if models.iter().any(|m| m.nls_model.is_some()) {
+    row(&mut output, "NLS mean", models, |m| {
+      m.nls_model
+        .as_ref()
+        .map(|model| nls_expression(&model.expression, model))
+        .unwrap_or_else(|| "NA".into())
+    });
+  }
   row(&mut output, "Cluster variable", models, |m| {
     m.cluster_variable.clone().unwrap_or("NA".into())
   });
@@ -51,6 +86,19 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
           .map(|c| c.value),
       )
     });
+    row(
+      &mut output,
+      &format!("{name} standard error"),
+      models,
+      |m| {
+        number(
+          m.coefficients
+            .iter()
+            .find(|c| c.name == *name)
+            .and_then(|c| c.standard_error),
+        )
+      },
+    );
     row(&mut output, &format!("{name} statistic"), models, |m| {
       number(
         m.coefficients
@@ -84,6 +132,6 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
     models,
     |m| number(m.mcfadden_r_squared),
   );
-  output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1). NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
   output
 }

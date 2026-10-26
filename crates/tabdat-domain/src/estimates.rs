@@ -59,6 +59,9 @@ pub struct EstimateSnapshot {
   pub name: String,
   pub estimator: String,
   pub outcome: String,
+  /// The explicit NLS formula and ordered bindings; absent for other estimators.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub nls_model: Option<tabdat_stats::NlsModel>,
   pub predictors: Vec<String>,
   pub include_intercept: bool,
   pub covariance: String,

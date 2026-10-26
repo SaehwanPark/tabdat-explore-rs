@@ -262,3 +262,51 @@ fn ambiguous_parameter_names_and_overwide_reports_or_unions_are_rejected() {
   assert!(error(&mut session, "estimates table left right").contains("union exceeds"));
   assert_eq!(session.state(), before);
 }
+
+#[test]
+fn nls_snapshots_preserve_explicit_formula_covariance_and_state_across_refits() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  for (name, suffix, covariance) in [
+    ("classical", "", "working_homoskedastic_gauss_newton"),
+    ("robust", " robust", "robust_hc1_gauss_newton"),
+  ] {
+    let ExecutionResult::Nl(fit) = run(
+      &mut session,
+      &format!("nl y = a+b*x, params(a b) start(1 0){suffix}"),
+    ) else {
+      panic!()
+    };
+    let before = session.state();
+    run(&mut session, &format!("estimates store {name}"));
+    let mut after = session.state();
+    after.stored_estimates = before.stored_estimates.clone();
+    assert_eq!(after, before);
+    let saved = table(&mut session, name).models.remove(0);
+    assert_eq!(saved.nls_model.as_ref(), Some(&fit.model));
+    assert_eq!(saved.sample, fit.sample);
+    assert_eq!(saved.covariance, covariance);
+    assert_eq!(saved.covariance_matrix, fit.covariance_matrix);
+    assert_eq!(saved.covariance_parameter_names, ["a", "b"]);
+    assert_eq!(saved.reference_distribution, "approximate_student_t");
+    assert_eq!(saved.inference_degrees_of_freedom, Some(8));
+    assert!(saved.log_likelihood.is_none() && saved.r_squared.is_none());
+    assert!(!saved.include_intercept);
+    for (copy, original) in saved.coefficients.iter().zip(fit.coefficients.iter()) {
+      assert_eq!(copy.value, original.value);
+      assert_eq!(copy.standard_error, Some(original.standard_error));
+      assert_eq!(copy.statistic, original.statistic);
+      assert_eq!(copy.p_value, original.p_value);
+    }
+  }
+  let saved = table(&mut session, "classical robust");
+  assert_eq!(saved.parameter_names, ["a", "b"]);
+  run(&mut session, "replace x = x*2");
+  run(&mut session, "regress y x");
+  assert_eq!(table(&mut session, "classical robust"), saved);
+  let before = session.state();
+  assert!(error(&mut session, "estimates store classical").contains("already stored"));
+  assert_eq!(session.state(), before);
+  assert!(error(&mut session, "nl y = a+b*missing, params(a b) start(1 0)").contains("unknown"));
+  assert_eq!(table(&mut session, "classical robust"), saved);
+}
