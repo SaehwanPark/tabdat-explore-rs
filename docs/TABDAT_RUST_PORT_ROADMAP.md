@@ -222,8 +222,9 @@ Use the coverage ledger to close remaining illustration-specific gaps:
   tail gates plus source/forgery/IO/JSON-text checks and closed-form offline controls;
   independent kernel/integration-source reviews,1645 distinct local passing cases
   (two pre-existing ignored; documented loader fallback/composite scope) and
-  workspace all-target Clippy pass. This unweighted Table5.7 NLS column does not
-  close weighted/FGNLS, exponential ML, known-variance covariance,
+  workspace all-target Clippy pass. The [fixed-first-fit WNLS/FGNLS composition](../examples/mma05p2nls/weighted.md)
+  also validates both covariance modes and source projections. These bounded
+  Table5.7 NLS columns do not close exponential ML, known-variance covariance,
   marginal effects or the broader optimization/system requirements.
 - Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
   competing-risk and multiple-spell survival models.

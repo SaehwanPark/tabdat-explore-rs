@@ -21,7 +21,7 @@ pub const MAX_NLS_WORK: usize = 20_000_000;
 pub const MAX_NLS_TOTAL_WORK: usize = 500_000_000;
 const MAX_ITERATIONS: usize = 200;
 const MAX_HALVINGS: usize = 60;
-const CONVERGENCE: f64 = 1e-12;
+const CONVERGENCE: f64 = 1e-13;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NlsEstimate {
