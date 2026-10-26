@@ -1,0 +1,149 @@
+# Exponential-mean NLS: preimplementation contract
+
+**Status: planned/in progress, not installed execution. Risk: high.**
+Deliver one complete native `nl` → predict/diagnose → report workflow for the
+unweighted NLS column of Cameron–Trivedi(2005) Table5.7, §5.9.2–3 pp.159–163.
+This is the author's **generated**10,000-row example, not an empirical sample or
+whole-table/chapter coverage. Weighted NLS/FGNLS, exponential MLE, known-variance
+sandwich and§5.9.4 marginal effects remain required separate work.
+
+## Exact source, model and evidence selected before implementation
+
+Author index: https://cameron.econ.ucdavis.edu/mmabook/mmaprograms.html.
+Original assets stay external, explicitly acquired:
+
+| Asset | SHA256 |
+| --- | --- |
+| mma05p2nls.do | 61a47826604f21594c2c2c96e44ef7233caa7b82df2b63566f49eecf0586554d |
+| mma05p2nls.txt | ca79b44886ee861f16a5e617f9e5f88c79fa5ad0fdb3276261010e9708a1d557 |
+| mma05data.asc | 460f5d731f1848c8695d78a1fbf0db348d0daced4b8b5b0c2734bffa20b3e31c |
+
+Original two-column ASCII y,x,10,000 rows; preserve source ordinal/tokens, no RNG
+replay or float32 conversion in production. Model mean **µ=exp(-a-b*x)**,
+parameters ordered a,b, explicit start1,0. True source rate is λ=exp(a+b*x),
+mean1/λ, variance1/λ²=µ². The author's comment equating exp(-a-b*x) with µ² is
+incorrect; executable covariance code uses µ². NLS is NOT exponential MLE.
+
+Strict R `nls` (even analytic derivatives,500 iterations,tol1e-12) stalls near the
+minimum: reported convergence FALSE, a differs from a certified optimum by3e-8.
+Do not freeze that failed iterate as an exact oracle or widen result tolerances.
+Independent primary source oracle profiles amplitude c at fixed slope d in
+µ=c*exp(d*x): c=sum(y*exp(d*x))/sum(exp(2*d*x)); base-R Brent `uniroot` solves the
+profile score on[0,2], then a=-log(c),b=-d. R4.6.1 root residual1.78e-15 gives
+(a,b)=(1.8875622977112052,-0.9574683112983651),
+RSS10149.86322727484, RMSE1.007566057685353,
+centredR².391344620619342. Independent guarded Gauss–Newton/QR reaches this in
+12 iterations (normalized score2.05e-13, relative full step6.38e-13).
+Initial observed half-RSS Hessian is indefinite (eigenvalues921.4,-6645.2), so the
+existing concave Newton solver cannot be used unchanged. Final eigenvalues are
+positive113012.1,1065.3. These are feasibility evidence, NOT native execution.
+
+The original compact NLS table gives a1.8876,b-.9575, classical SE.0307/.0097,
+robust SE.1421/.0612. Native optimum will be compared at those printed units;
+verbose coefficient rounding beyond them differs slightly from the old optimizer.
+Input float32 alone shifts a/b only about1e-9; do not blame all optimizer differences
+on storage. Source LL at NLS is an exponential-density evaluation, not a Gaussian
+NLS likelihood/LR test. Author derivative-OLS coefficients are zero updates, NOT
+the fitted a,b; only its covariance/SEs represent the NLS comparison.
+
+## Supported interface and statistical meaning
+
+Execute existing AST, without grammar/starting-value defaults changing:
+`nl y = exp(-a-b*x), params(a b) start(1 0) [robust]`.
+General bounded arithmetic expressions may use finite numeric literals, data and
+parameter identifiers, unary minus,+,-,*,/, and one-argument exp only. Unsupported
+functions/comparisons/strings/NULL expressions error, not reinterpretation. Every
+declared parameter must occur, params/start are finite/unique/matching and outcome
+cannot be a parameter. Parameter identifiers take their explicit params role;
+remaining identifiers are numeric data variables in first-use order. No automatic
+intercept: formula controls all parameters; legacy noconstant/default flag does
+not add/remove an explicit parameter (same substantive Python behavior).
+
+Joint-finite outcome/referenced-data sample in original order; unrelated missing
+columns do not exclude rows. Formula domain/overflow/derivative failures on a
+complete row error rather than silently dropping it. Candidate rows<=10000,
+1<=P<=32,N>P, expression<=128 nodes/depth32,
+N*P²*nodes<=20million; up to200 iterations/60 step halvings, cumulative evaluation
+budget500million units (value evaluation N*nodes; derivatives N*nodes*(1+P+P²)).
+Check budget before each evaluation; line search needs values only. Initial invalid domain,
+rank failure, zero/nonfinite residual variance, nonregular final minimum or failure
+to meet BOTH normalized score<=1e-12 and relative **full undamped** GN step<=1e-12
+errors. Do not declare convergence from objective change or a shrunken line step.
+
+Use scaled Householder QR Gauss–Newton, objective-decreasing backtracking with a
+32eps*(1+scaledRSS) arithmetic allowance (not comparison-tolerance widening).
+Global outcome scaling protects the SAME full-sample loss; restore raw units and
+reject nonrepresentable summaries. Final Jacobian full rank and observed half-loss
+Hessian positive definite are mandatory; no ridge/pseudoinverse/returned damping.
+Only a regular local minimum is established, not global uniqueness.
+
+Classical covariance: RSS/(N-P)*(J'J)^-1, a **homoskedastic working** covariance,
+not valid for the source's heteroskedastic exponential DGP. Robust: HC1
+N/(N-P)*(J'J)^-1*sum(r_i²*j_i*j_i')*(J'J)^-1. This is explicitly **Gauss–Newton
+bread, conditional mean correctly specified**, not misspecified-mean observed-loss
+sandwich. Full covariance/parameter order, SE, approximate Student-t(N-P) statistic/
+p-value/95% CI, RSS/RMSE/centredR² (NULL if TSS0), sample and convergence metadata.
+No invented Gaussian/exponential likelihood, F/LR or general nonlinear restrictions.
+A migration note must explain stricter rank/convergence/variance checks and t
+rather than legacy Python normal-reference inference; no pseudoinverse parity.
+
+Owned fit replaces the unused Nonlinear(ModelState) placeholder; only its family
+mapping currently consumes that variant. A new fit attempt clears stale inference
+on failure like other native estimators; data/schema/order/labels remain unchanged.
+Default/legacy xb prediction evaluates the nonlinear fitted mean (NOT a latent
+linear index); explicit mean also accepted, residuals=y-µ. Re-evaluate current
+referenced X with retained parameters; missing X -> NULL; residuals also need y.
+Complete-row invalid arithmetic and target collisions fail atomically using the
+existing typed DOUBLE publication; current candidate rows<=10000/work bounds.
+No intervals/std/other modes or new test/lincom/margins/named-estimates support.
+
+## First changes, acceptance and stop rules
+
+1. Commit independent R profiled source oracle/full GN covariance and small frozen
+   controls BEFORE native kernel. Check score, final curvature and all projections;
+   keep failed strict-nls feasibility evidence explicit, not a success certificate.
+2. Add pure stats nls module/typed mathematical expression (no Domain dependency),
+   first/second derivatives and QR/backtracking/strict checks. Reuse existing matrix/
+   distribution utilities, no crate/dependency/generic optimizer framework.
+3. Adapt existing Domain expression to that bounded model; install owned state,
+   current-row prediction, additive NlsResult/text/CLI-v1/help/catalog and direct-AST
+   validation. Add development-only source converter/reference/audits and actual
+   native script; update capability/status only when executable/validated.
+
+Likely seams: `crates/tabdat-stats/src/nls.rs` (+expression/tests submodules),
+`crates/tabdat-execution/src/nls.rs`/dispatch/prediction, Domain commands/state/
+results/errors, reporting JSON/text/help/catalog; runtime/reporting `nls_contract`
+and root `tests/mma05_exponential_nls_workflow.rs`. Development reference/converter/
+audits live here; frozen controls in `tests/fixtures/nls`. Preserve the existing
+parser AST/grammar, all other estimator results and meaningful errors. A bounded
+independent plan review is required before native implementation (new optimizer,
+derivatives, covariance and owned/public state make this high risk).
+
+Focused commands once those targets exist:
+`cargo nextest run --locked -p tabdat-stats --lib --no-tests fail -E 'test(~nls::tests)'`,
+then runtime/reporting `--test nls_contract`, then root
+`--test mma05_exponential_nls_workflow`. Select every new test explicitly and finish
+with affected-crate/reverse-consumer checks; never count an empty selection.
+
+Five observable acceptance groups:
+- Original10,000 rows, both covariances/all matrix entries/SE/t/p/CI/diagnostics and
+  every fitted mean/residual against certified R profile/Jacobian references;
+  compact author gates separate from stricter native/R numeric comparisons.
+- Noisy linear formula reduces to independent R lm; additional nonlinear/parameter-
+  only/negative-response controls validate derivatives, parameter order and sample.
+- Joint missingness, wide original storage/labels/named tables, current-only mean
+  versus residual sample, model replacement and atomic failure/prediction behavior.
+- Bad start/domain/unsupported AST/unused or duplicate parameters, rank deficiency,
+  zero variance, infimum-at-infinity and iteration/work bounds explicitly fail.
+- Actual source script JSON/text outputs/projections byte-identical and source-
+  preserving; independent checks reject shared-wrong native/R parameters, covariance,
+  sample/design/mean/residual values; existing output no-clobber/failure paths.
+
+Primary numerical tolerance1e-11 absolute+1e-10 relative; source/sample/order/counts
+exact, printed quantities half-last-unit. Investigate differences, never widen to
+hide them. Focused new tests first, then affected crates/reverse consumers and
+proportional Clippy/fmt/diff; independent kernel/integration review before merge.
+
+Implement exactly this plan. Do not broaden scope. If it conflicts with codebase
+reality, stop/report rather than improvise. Report files/tests/deviations and
+unresolved risk. No whole-nl, weighted-column, chapter, book or platform claim.
