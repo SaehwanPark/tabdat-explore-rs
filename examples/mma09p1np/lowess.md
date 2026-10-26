@@ -7,7 +7,7 @@ retain the installed parser default2/3 (the initial.8 assumption was incorrect);
 all three source spans are specified explicitly, with no parser/default change.
 load/prepare → specify nonrobust row smoother → publish current smoothed column →
 compare bandwidths/interpret/plot → export/report/reproduce. Source-data example:
-MMA2005 §9.2.1 p297 Figure9.3's PSID177-row cohort and spans.8/.4/.1, prepared
+MMA2005 §9.4.3 p297 Figure9.3's PSID177-row cohort and spans.8/.4/.1, prepared
 as in the [density workflow](README.md). This delivers an explicitly defined
 native smoothing method and source-data adaptation, NOT an unexplained promise
 of historical Stata tied-point geometry or whole-figure/chapter completion.
@@ -123,9 +123,17 @@ vertices/177 raw observations, and the14-row/70-cell within-X diagnostic agree i
 a manual source probe; CSV and SVG bytes are identical across modes. Four density
 workflow regression tests pass after sharing preparation; every original density
 CSV/SVG is byte-identical to merged PR338, with its48560 raw-field/4870 R-cell/
-103 author-fact audit also passing. Dedicated independent LOWESS audit tooling,
-synthetic actual-script failure/forgery tests, broader affected-crate/reverse-consumer
-checks and final integration review remain unfinished; draft PR must not merge.
+103 author-fact audit also passing. The independent `check_lowess.py` now validates preparation/exact source integers,
+per-window 2x2 normal-equation fits (distinct from native centred moments and R QR),
+metadata/certificates, padded axes and actual line/marker geometry. Full original
+source audits pass in both modes, including48560 exact original/R fields and the
+author's three spans. Four actual-script tests pass (30 distinct focused tests total):
+QR/metadata/tie diagnostics, numeric-only shared-wrong native/R fits and cohort
+(no SVG mismatch can accidentally supply the rejection), wrong window/fallback
+metadata, actual ML/circle/domain forgeries, source failure/no-clobber cases and
+supported constant Y/X. Broad affected-crate/reverse-consumer checks and final
+integration review remain unfinished; draft PR must not merge. The author program
+identifies this illustration as§9.4.3; the earlier§9.2.1 planning citation was wrong.
 
 Current reproduction: follow [source acquisition/conversion](README.md) to create
 `psid.csv` in a fresh analysis directory, then run the compiled binary with
