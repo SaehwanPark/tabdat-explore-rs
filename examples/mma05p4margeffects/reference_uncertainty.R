@@ -35,6 +35,7 @@ estimate <- effects(theta)
 out <- data.frame(n=n, effect=c('average analytical derivative',
   'average one-unit difference', 'derivative at mean x'), estimate=estimate,
   standard_error=se, ci_lower=estimate-qnorm(.975)*se,
-  ci_upper=estimate+qnorm(.975)*se)
+  ci_upper=estimate+qnorm(.975)*se,
+  inference='normal95, conditional x, exponential model-based')
 write.csv(out,args[2],row.names=FALSE,quote=TRUE)
 cat(sprintf('profile a=%.17g b=%.17g; gradient step discrepancy %.3g\n',a,b,max(abs(G-G2))))

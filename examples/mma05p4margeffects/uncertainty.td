@@ -76,11 +76,21 @@ ELSE COUNT(*) END AS valid_inference FROM active
 """
 sql """
 SELECT n, 'average analytical derivative' AS effect, ame AS estimate, sqrt(ame_v) AS standard_error,
-  ame-1.959963984540054*sqrt(ame_v) AS ci_lower, ame+1.959963984540054*sqrt(ame_v) AS ci_upper FROM active
+  ame-1.959963984540054*sqrt(ame_v) AS ci_lower, ame+1.959963984540054*sqrt(ame_v) AS ci_upper,
+  'normal95, conditional x, exponential model-based' AS inference FROM active
 UNION ALL SELECT n, 'average one-unit difference', fd, sqrt(fd_v),
-  fd-1.959963984540054*sqrt(fd_v), fd+1.959963984540054*sqrt(fd_v) FROM active
+  fd-1.959963984540054*sqrt(fd_v), fd+1.959963984540054*sqrt(fd_v),
+  'normal95, conditional x, exponential model-based' FROM active
 UNION ALL SELECT n, 'derivative at mean x', mem, sqrt(mem_v),
-  mem-1.959963984540054*sqrt(mem_v), mem+1.959963984540054*sqrt(mem_v) FROM active
+  mem-1.959963984540054*sqrt(mem_v), mem+1.959963984540054*sqrt(mem_v),
+  'normal95, conditional x, exponential model-based' FROM active
 """ into effects_uncertainty
+sql """
+SELECT CASE WHEN COUNT(*)<>3 OR COUNT(*) FILTER (WHERE NOT coalesce(
+  isfinite(estimate) AND isfinite(standard_error) AND standard_error>0
+  AND isfinite(ci_lower) AND isfinite(ci_upper),FALSE))>0
+THEN error('Exponential effect intervals are not finite and representable')
+ELSE COUNT(*) END AS valid_intervals FROM active
+"""
 sql """SELECT * FROM active"""
 export effects_uncertainty.csv
