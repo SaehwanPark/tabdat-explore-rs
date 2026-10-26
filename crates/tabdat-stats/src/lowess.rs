@@ -76,8 +76,6 @@ pub fn smooth_lowess(
       .partial_cmp(&predictor[*b])
       .expect("finite X validated")
   });
-  let y_scale = outcome.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
-  let y_scale = if y_scale == 0.0 { 1.0 } else { y_scale };
   let mut values = vec![0.0; n];
   let mut local_constant_windows = 0;
   for i in 0..n {
@@ -93,6 +91,13 @@ pub fn smooth_lowess(
       ));
     }
     let indices = &order[left..=right];
+    // Scaling is local: a huge response OUTSIDE this window must not erase
+    // representable small local values by underflow before their fit is solved.
+    let y_scale = indices
+      .iter()
+      .map(|j| outcome[*j].abs())
+      .fold(0.0_f64, f64::max);
+    let y_scale = if y_scale == 0.0 { 1.0 } else { y_scale };
     let value = if radius == 0.0 {
       local_constant_windows += 1;
       compensated_sum(indices.iter().map(|j| outcome[*j] / y_scale)) / indices.len() as f64

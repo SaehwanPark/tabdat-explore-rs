@@ -131,6 +131,23 @@ fn normalized_coordinates_avoid_raw_square_and_response_sum_overflow() {
   }
 }
 #[test]
+fn distant_response_scale_cannot_erase_small_coincident_or_linear_window_values() {
+  let tiny = 1e-100;
+  let x: Vec<_> = (0..7).map(|i| i as f64).collect();
+  for predictor in [vec![0.0; 7], x] {
+    let mut y = vec![tiny; 7];
+    let baseline = smooth_lowess(&predictor, &y, 0.4).unwrap();
+    y[6] = 1e308;
+    let distant = smooth_lowess(&predictor, &y, 0.4).unwrap();
+    for i in 0..5 {
+      assert_ne!(distant.values[i], 0.0);
+      assert!((distant.values[i] / tiny - 1.0).abs() < 1e-12);
+      assert_eq!(distant.values[i], baseline.values[i]);
+    }
+  }
+}
+
+#[test]
 fn validates_shape_finite_pairs_options_and_nonnegative_rank_window() {
   for n in [0, 1] {
     assert!(smooth_lowess(&vec![0.; n], &vec![0.; n], 0.8).is_err());

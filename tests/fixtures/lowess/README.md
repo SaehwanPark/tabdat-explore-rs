@@ -26,7 +26,11 @@ Rscript examples/mma09p1np/lowess_reference.R tests/fixtures/psid_density/input.
 ```
 
 The R generator independently applies the published centred-rank window/tricube
-method and solves normalized weighted designs by QR; exact zero radius uses an
+method and solves normalized weighted designs by QR. Response normalization is
+window-local: unrelated huge distant outcomes cannot erase small local responses.
+Every generation also executes coincident-X and positive-radius `1e-100`/distant
+`1e308` locality regressions with nonzero/relative checks (no absolute error floor).
+Exact zero radius uses an
 intercept-only design. Radius-normalized tol1e-12 does not drop a nonzero slope,
 and isn't regularization. Primary native tolerance is1e-11 absolute+1e-10 relative;
 integers/row ordering/fallback counts are exact. The original external4856-record

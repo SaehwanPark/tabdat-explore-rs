@@ -32,10 +32,11 @@ centered <- function(x,y,span) {
   order<-order(x,seq_len(n));xx<-x[order];yy<-y[order]
   k<-floor((n*span-.5)/2)
   stopifnot(n*min(n,2*k+1)<=20000000)
-  scale<-max(abs(y));if(scale==0)scale<-1
   fitted<-numeric(n);constant<-0;score<-0
   for(i in seq_len(n)) {
     at<-seq.int(max(1,i-k),min(n,i+k))
+    # An unrelated distant response cannot determine this window's numeric scale.
+    scale<-max(abs(yy[at]));if(scale==0)scale<-1
     d<-max(abs(xx[at]-xx[i]));stopifnot(is.finite(d))
     z<-if(d==0)rep(0,length(at))else(xx[at]-xx[i])/d
     w<-(1-(abs(z)/1.0001)^3)^3
@@ -53,6 +54,12 @@ centered <- function(x,y,span) {
   result<-numeric(n);result[order]<-fitted
   stopifnot(all(is.finite(result)),score<1e-12)
   list(values=result,half_window=k,local_constant_windows=constant,max_scaled_score=score)
+}
+# Scale-relative locality regression: an absolute tolerance would accept zero
+# after a shared erroneous global normalization in both native and QR paths.
+for (x in list(rep(0,7),0:6)) {
+  control<-centered(x,c(rep(1e-100,6),1e308),.4)$values[1:5]
+  stopifnot(all(control!=0),all(abs(control/1e-100-1)<1e-12))
 }
 spans<-c(.8,.4,.1);names<-c('lowess_08','lowess_04','lowess_01')
 fits<-lapply(spans,function(span)centered(input$x,input$y,span))
