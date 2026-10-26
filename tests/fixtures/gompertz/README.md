@@ -37,3 +37,31 @@ E[u],E[u²] for z=gamma*time across zero, both signs and ±1000; these are
 quadrature controls, not copied native formulas. `parameter_names.txt` gives
 full matrix order. Values use17 significant digits; no original-source data,
 predictions or hex cells are redistributed.
+
+## Small regular negative-gamma control
+
+Kernel tests additionally use time1:4, events1/0/0/0, intercept only. Reproduce
+independently with direct time integrals and an analytic conditional intercept:
+
+```r
+t<-1:4;d<-c(1,0,0,0)
+a<-function(g,j)vapply(t,function(t)integrate(function(s)s^j*exp(g*s),
+  0,t,rel.tol=1e-13)$value,numeric(1))
+score<-function(g)sum(d*t)-sum(d)/sum(a(g,0))*sum(a(g,1))
+g<-uniroot(score,c(-10,0),tol=1e-13)$root
+rate<-sum(d)/sum(a(g,0))
+I<-rate*matrix(c(sum(a(g,0)),sum(a(g,1)),sum(a(g,1)),sum(a(g,2))),2)
+B<-solve(I);U<-cbind(d-rate*a(g,0),d*t-rate*a(g,1))
+V<-B%*%crossprod(U)%*%B*4/3
+options(digits=17)
+print(c(intercept=log(rate),gamma=g,
+  log_likelihood=sum(d)*log(rate)+g*sum(d*t)-rate*sum(a(g,0))))
+print(B);print(V)
+```
+
+Gamma−.55943052800207316, intercept−1.61345797507466737, density
+LL−3.17288850307674064; both FULL2x2 model/robust covariance matrices are gated
+in the kernel test. This is not the original chapter sample. A separate exact
+exponential control uses events1/1/0/0: rate1/5, gamma0,
+I=[[2,3],[3,20/3]], inverse=[[20/13,−9/13],[−9/13,6/13]]. Estimating gamma
+makes beta variance20/13, not the conditional fixed-shape Poisson1/2.

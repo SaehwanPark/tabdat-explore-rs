@@ -1,8 +1,9 @@
 # WIP: original Table17.8 Gompertz full-time re-employment column
 
-**Status: independent R-only feasibility passes on original and control data.
-Native Gompertz parsing/execution/kernel/state/reporting is NOT installed. Keep
-this slice WIP until its complete native workflow and verification pass.**
+**Status: independent R original/control references and native kernel/API
+controls pass on this WIP branch. Native command parsing/execution/owned state/
+reporting is NOT installed. Keep this slice WIP until its complete native
+workflow and verification pass; the original native audit remains pending.**
 
 ## Exact illustration and independent reference
 
@@ -44,7 +45,17 @@ all matching printed rounding. [Frozen synthetic references](../../tests/fixture
 contain2030/2029 model/robust gates (all1764 joint covariance entries each),
 1941/1940 no-intercept gates, observed/UI0/UI1 points and independently integrated
 zero/both-sign/tail moment fixtures. Original source/reference outputs remain
-outside the repository; no native kernel or workflow evidence yet.
+outside the repository. Native kernel/API passes all11 focused controls and225
+unique affected-stats tests (one pre-existing ignored original REML probe),
+including every reference covariance entry/current point. All-target stats
+Clippy `-D warnings` and formatting pass. Broad stats execution used current Cargo
+inventory/46 SHA256-identical fresh-copy standard-harness artifacts under the
+previously diagnosed host dyld-start workaround, not a broad nextest pass. Focused
+nextest itself passed; focused replays are not additional distinct tests. An
+independent read-only statistical kernel/oracle source review found no issues;
+it did not rerun tests or audit the original native/runtime/CLI, which remain
+pending. Eight Clippy literal spellings were shortened to identical f64 bits;
+no numerical reference or tolerance changed, and that one test was replayed.
 
 ## Proposed native contract
 
