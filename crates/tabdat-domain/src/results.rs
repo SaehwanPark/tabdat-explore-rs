@@ -686,6 +686,20 @@ pub struct PredictionResult {
   pub dataset: DatasetInfo,
 }
 
+/// Current-row smoother provenance; values live in the appended dataset column.
+/// No inferential model is installed and any prior estimation state is unchanged.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LowessResult {
+  pub dataset: DatasetInfo,
+  pub outcome: String,
+  pub predictor: String,
+  pub target_variable: String,
+  pub bandwidth: f64,
+  pub sample: tabdat_stats::EstimationSample,
+  pub half_window: usize,
+  pub local_constant_windows: usize,
+}
+
 /// Distributional plug-in frequencies on the original retained count sample.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CountProbabilityResult {
@@ -727,6 +741,8 @@ pub enum ExecutionResult {
   Assert(AssertResult),
   /// Appends a generated numeric column to the active dataset.
   Generate(GenerateResult),
+  /// Appends a nonrobust centred-rank current-row smoother, not an inference model.
+  Lowess(Box<LowessResult>),
   /// Replaces values in an existing column in the active dataset.
   Replace(ReplaceResult),
   /// Renames one column in the active dataset.

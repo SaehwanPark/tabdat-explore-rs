@@ -465,6 +465,8 @@ pub enum RuntimeError {
   StregFailed(String),
   /// Invalid Cox request or failed regular partial-likelihood fit.
   StcoxFailed(String),
+  /// Unsupported current-row LOWESS request, numeric failure or publication failure.
+  LowessFailed(String),
   /// Unsupported or numerically unavailable fixed-lower Gaussian truncation fit.
   TruncregFailed(String),
   /// Invalid/unsupported sample-selection request or failed regular two-step fit.
@@ -1132,6 +1134,7 @@ impl fmt::Display for RuntimeError {
       Self::TobitFailed(message) => write!(formatter, "tobit: {message}"),
       Self::StregFailed(message) => write!(formatter, "streg: {message}"),
       Self::StcoxFailed(message) => write!(formatter, "stcox: {message}"),
+      Self::LowessFailed(message) => write!(formatter, "lowess: {message}"),
       Self::TruncregFailed(message) => write!(formatter, "truncreg: {message}"),
       Self::HeckmanFailed(message) => write!(formatter, "heckman: {message}"),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),

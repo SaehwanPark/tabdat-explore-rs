@@ -2,7 +2,9 @@
 
 ## Exact bounded outcome
 
-Make existing `lowess y x, gen(newvar) [bandwidth=0.8]` executable end-to-end:
+Make existing `lowess y x, gen(newvar) [bandwidth=<0,1>]` executable end-to-end:
+retain the installed parser default2/3 (the initial.8 assumption was incorrect);
+all three source spans are specified explicitly, with no parser/default change.
 load/prepare → specify nonrobust row smoother → publish current smoothed column →
 compare bandwidths/interpret/plot → export/report/reproduce. Source-data example:
 MMA2005 §9.2.1 p297 Figure9.3's PSID177-row cohort and spans.8/.4/.1, prepared
@@ -102,8 +104,21 @@ publication cannot support these semantics; do not disguise a fallback algorithm
 
 ## Exclusions / status
 
-Contract/reference feasibility only: native LOWESS remains parser-only until the
-complete workflow is implemented/verified. No mean/noweight/robust/adjust/logit/
+Implementation checkpoint: pure kernel, current-column runtime, text/CLI-v1/help
+are implemented.10 kernel+9 runtime+3 reporting distinct focused tests pass;
+changed targets' Clippy passes. An original177-row native column-engine probe
+matches all531 independent QR fits (maximum6.67e-15), with JSON/text CSV bytes
+identical; this reuses the earlier selected source CSV, not the pending standalone
+source script/SVG audit. Initial identity test compared raw integer and required
+new DOUBLE cells incorrectly; exact NUMERIC identity plus DOUBLE schema is now
+tested and passes, not a widened numerical tolerance. Kernel review's one P2
+(global response normalization erased tiny unrelated local values) was corrected
+to window-local scaling in native and QR; nonzero/relative tiny-response regressions
+pass and all references were regenerated without changing tolerances. Installed
+parser default2/3 is preserved; initial.8 planning assumption corrected before
+publication. See MIG-0023 for deliberate method differences from Python statsmodels.
+Standalone source-script/SVG/forgery audits, broader affected-crate/reverse-consumer
+checks and final integration review remain unfinished; draft PR must not merge. No mean/noweight/robust/adjust/logit/
 weights options, interpolation/delta acceleration, uncertainty, out-of-sample
 predict/margins/estimator state, histogram/other kernels/general nonparametric
 family, historical tied-sort/pixel parity, whole-book or platform/release claim.

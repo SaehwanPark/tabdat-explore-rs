@@ -1271,8 +1271,11 @@ fn get_command_schema(
       options: vec![OptionDescriptor {
         name: "gen".to_string(),
         required: true,
+      }, OptionDescriptor {
+        name: "bandwidth".to_string(),
+        required: false,
       }],
-      syntax: "lowess y x, gen(newvar)".to_string(),
+      syntax: "lowess y x, gen(newvar) [bandwidth=<0,1>]".to_string(),
     }),
     "missing" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

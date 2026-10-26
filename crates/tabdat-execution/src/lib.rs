@@ -26,6 +26,7 @@ mod count;
 mod heckman;
 mod inspection;
 mod labels;
+mod lowess;
 mod nb2;
 mod plotting;
 mod poisson;
@@ -170,6 +171,7 @@ impl Session {
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
+      Command::Lowess { command } => self.execute_lowess(&command),
       Command::Predict { command } => self.execute_predict(&command),
       Command::Lincom { command } => self.execute_lincom(&command),
       Command::Test { command } => self.execute_test(&command),

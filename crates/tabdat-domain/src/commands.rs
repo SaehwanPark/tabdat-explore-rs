@@ -1152,8 +1152,8 @@ pub struct XtLogitCommand {
   pub robust: bool,
 }
 
-/// The parser-only `lowess` locally weighted regression smoother form retained for a later
-/// statistical runtime slice.
+/// Nonrobust centred-rank tricube row smoothing with explicit generated-column target.
+/// Stable tied-X row order matters; no inferential or out-of-sample model is installed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LowessCommand {
   /// The dependent variable.
