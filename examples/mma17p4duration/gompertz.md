@@ -36,6 +36,16 @@ quantities match exact printed rounding. Max raw score2.3e-10; independent numer
 information relative discrepancy3.0e-8. Existing400-row full-design control is
 also regular: gamma=.08247225857748143. These are R-only, not native evidence.
 
+Reproduce with `Rscript gompertz_reference.R duration.csv NEW_DIR
+[original_DTA_or_-] [noconstant]` (no-intercept uses both optional arguments).
+The [committed generator](gompertz_reference.R) now passes original/default400/
+no-intercept400 runs. Original detailed/scalar/compact author gates total268,
+all matching printed rounding. [Frozen synthetic references](../../tests/fixtures/gompertz/README.md)
+contain2030/2029 model/robust gates (all1764 joint covariance entries each),
+1941/1940 no-intercept gates, observed/UI0/UI1 points and independently integrated
+zero/both-sign/tail moment fixtures. Original source/reference outputs remain
+outside the repository; no native kernel or workflow evidence yet.
+
 ## Proposed native contract
 
 `streg time xvars, failure(event) dist(gompertz) [robust noconstant]`.
