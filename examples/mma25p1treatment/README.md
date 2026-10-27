@@ -207,3 +207,63 @@ propensity gradient. A separate 500-person synthetic fixture checks the
 estimated-score sandwich against R. This is a source-specific composition, not
 a general treatment-effects or matching command; the author's stratified
 outcome model, overlap alternatives and additional analyses remain open.
+
+## Overlap-weighted effect
+
+[`overlap_effect.td`](overlap_effect.td) uses the same 2,675-person assignment
+logit, but weights treated observations by `1-p` and controls by `p`. Its
+point estimate is the difference of the two separately normalized weighted 1978
+earnings means. Under consistency, conditional exchangeability, positivity and a
+correct score model, the target is the average effect in the covariate
+population tilted by `p(x)*(1-p(x))`. This overlap-population estimand is not
+the ATT above: changing the weights changes the population and potentially the
+effect when effects differ across people. The method is an additional sensitivity
+analysis, not an author Table 25.4 replication. See [Li, Morgan and Zaslavsky
+(2018)](https://doi.org/10.1080/01621459.2016.1260466).
+
+On this source sample the weighted contrast is -656.710 with an estimated-score
+sandwich SE of 928.826 and normal 95% interval [-2,477.176, 1,163.756]. The
+weighted treated and control effective sample sizes are 93.59 and 154.85,
+respectively. These numbers and the untrimmed ATT describe different targets;
+their difference alone is not evidence of treatment-effect heterogeneity.
+Weights are bounded by one, but that does not prove overlap or remove model
+misspecification, unmeasured confounding, uncertainty in sample selection or
+finite-sample limitations. The PSID comparison remains observational and a
+causal interpretation requires the assumptions above. No trimming or clipping
+is used.
+
+Write `a_i=T_i*(1-p_i)`, `b_i=(1-T_i)*p_i`, `W1=sum(a_i)`,
+`W0=sum(b_i)` and `mu1,mu0` for the normalized group means. The script reports
+independent-person, no-small-sample-correction sandwich contributions
+`a_i*(y_i-mu1)/W1 - b_i*(y_i-mu0)/W0 + g'*H^-1*X_i*(T_i-p_i)`, with
+`H=sum(p_i*(1-p_i)*X_i*X_i')` and
+`g=-sum(p_i*(1-p_i)*X_i*(T_i*(y_i-mu1)/W1+(1-T_i)*(y_i-mu0)/W0))`.
+The variance is the sum of squared contributions and the interval uses a normal
+reference. The estimated-score term includes how the fitted score changes the
+weights and target. The weighted regression printed during the script is an
+internal information solve; its coefficients and inference are not treatment
+effects. All person-level weights and contributions are exported for audit.
+
+The report also shows weighted means of all fitted design columns by group.
+Their near equality follows from the in-sample logit score equations, rather
+than providing an independent test of the assignment model or unmeasured balance.
+The script enforces the same ordered keys, valid inputs and nondegenerate outcome
+as the ATT example, plus finite positive group weights, finite balance means,
+positive finite variance and representable effective sample sizes. It rejects
+rank/convergence and nonfinite failures and does not overwrite an export; earlier
+script effects are not rolled back. From a fresh prepared directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/overlap_effect.td > overlap_effect_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/overlap_effect_reference.R /path/to/nswpsid.da1 overlap-effect-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_overlap_effect.py /path/to/nswpsid.da1 overlap_effect_result.jsonl overlap_effect_rows.csv overlap-effect-reference
+```
+
+Independent R 4.6.1 `glm`, direct matrix inversion, and a central numerical
+propensity-gradient check validate all 2,675 original scores, weights and
+influence terms, the full design balance, estimate, interval and weight
+summaries at `1e-8 + 1e-9*abs(reference)`, with `1e-7` relative agreement for
+tiny scores. A separate 500-person fixture validates the estimate, sandwich
+and both effective sample sizes against R. This is a bounded source composition,
+not a general overlap-weighting or matching command; the author's stratified
+analysis and additional treatment illustrations remain open.

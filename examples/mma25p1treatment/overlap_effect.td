@@ -95,6 +95,23 @@ SELECT count(*) AS observations,sum(treat) AS treated_people,max(mu1) AS weighte
 FROM active
 """
 sql """
+WITH means AS (SELECT sum(overlap_weight*age_s)/sum(overlap_weight) AS age_s,
+  sum(overlap_weight*age_s2)/sum(overlap_weight) AS age_s2,
+  sum(overlap_weight*educ_s)/sum(overlap_weight) AS educ_s,
+  sum(overlap_weight*educ_s2)/sum(overlap_weight) AS educ_s2,
+  sum(overlap_weight*marr)/sum(overlap_weight) AS marr,
+  sum(overlap_weight*nodegree)/sum(overlap_weight) AS nodegree,
+  sum(overlap_weight*black)/sum(overlap_weight) AS black,
+  sum(overlap_weight*hisp)/sum(overlap_weight) AS hisp,
+  sum(overlap_weight*re74_s)/sum(overlap_weight) AS re74_s,
+  sum(overlap_weight*re75_s)/sum(overlap_weight) AS re75_s,
+  sum(overlap_weight*re74_s2)/sum(overlap_weight) AS re74_s2,
+  sum(overlap_weight*re75_s2)/sum(overlap_weight) AS re75_s2,
+  sum(overlap_weight*u74black)/sum(overlap_weight) AS u74black FROM active GROUP BY treat)
+SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(age_s) AND isfinite(age_s2) AND isfinite(educ_s) AND isfinite(educ_s2) AND isfinite(marr) AND isfinite(nodegree) AND isfinite(black) AND isfinite(hisp) AND isfinite(re74_s) AND isfinite(re75_s) AND isfinite(re74_s2) AND isfinite(re75_s2) AND isfinite(u74black),FALSE))>0
+THEN error('overlap weighting requires finite balance means') ELSE COUNT(*) END AS valid_balance FROM means
+"""
+sql """
 SELECT treat,count(*) AS people,sum(overlap_weight) AS weight_sum,
   sum(overlap_weight*age_s)/sum(overlap_weight) AS age_s,
   sum(overlap_weight*age_s2)/sum(overlap_weight) AS age_s2,
