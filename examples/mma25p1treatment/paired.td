@@ -19,6 +19,11 @@ ORDER BY source_row,post
 """ into paired_earnings
 isid source_row post
 sql """
+SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(group_mean),FALSE))>0
+THEN error('paired comparisons require finite group means') ELSE COUNT(*) END AS valid_groups
+FROM (SELECT avg(earnings) AS group_mean FROM active GROUP BY treat,post)
+"""
+sql """
 SELECT treat,post,count(*) AS observations,avg(earnings) AS mean_earnings,
   'NSW treated versus PSID controls; person-clustered uncertainty, observational comparisons' AS interpretation
 FROM active GROUP BY treat,post ORDER BY treat,post
@@ -31,5 +36,7 @@ lincom interaction
 estimates store diff_in_diff
 predict fitted_earnings, xb
 estimates table before_after diff_in_diff
+sql """SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(fitted_earnings),FALSE))>0
+THEN error('paired comparisons require finite fitted earnings') ELSE COUNT(*) END AS valid_predictions FROM active"""
 sql """SELECT source_row,treat,post,earnings,interaction,fitted_earnings FROM active ORDER BY source_row,post""" into paired_predictions
 export paired_predictions.csv
