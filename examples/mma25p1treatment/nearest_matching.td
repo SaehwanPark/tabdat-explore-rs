@@ -65,8 +65,13 @@ FROM active ORDER BY treated_id,control_id
 """ into nearest_pairs
 sql """
 SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(distance) AND isfinite(matched_outcome)
-  AND tied_controls>0,FALSE))>0 THEN error('nearest matching requires finite distances and matched outcomes')
+  AND isfinite(treated_outcome-matched_outcome) AND tied_controls>0,FALSE))>0 THEN error('nearest matching requires finite distances and matched outcomes')
 ELSE COUNT(*) END AS valid_matches FROM active
+"""
+sql """
+WITH treated AS (SELECT treated_id,first(treated_outcome-matched_outcome) AS difference FROM active GROUP BY treated_id)
+SELECT CASE WHEN NOT coalesce(isfinite(avg(difference ORDER BY treated_id)),FALSE)
+THEN error('nearest matching requires a finite aggregate contrast') ELSE COUNT(*) END AS valid_contrasts FROM treated
 """
 sql """
 WITH treated AS (SELECT treated_id,first(treated_outcome) AS treated_outcome,first(matched_outcome) AS matched_outcome,
