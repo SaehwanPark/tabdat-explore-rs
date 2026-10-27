@@ -57,3 +57,13 @@ not claimed to match the present double-precision input exactly. Focused CLI
 tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
+
+## WIP: stacked instruments
+
+The next bounded column uses the same sample and five differenced regressors,
+but stacks the nine base instruments by each of eight years, yielding 72
+excluded instruments. The author program uses this design in its second 2SLS
+column. The intended implementation must check the full stacked design and
+classical/person-clustered covariance against independent R and the author
+output; two-step GMM remains separate. This paragraph is a work contract, not a
+claim of an installed workflow.
