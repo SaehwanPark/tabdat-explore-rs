@@ -104,7 +104,8 @@ python3 /path/to/repo/examples/mma05p1mle/check_named_reports.py /path/to/mma05d
 
 The original 10,000-row replay checked every source identity, all four stored
 fits against their live coefficient/covariance results and the independent R
-reference, including the fixed offset and Poisson likelihood convention. The
-reports preserve fit-time samples, coefficients and covariance but cannot
+reference, including the fixed offset and Poisson likelihood convention. An
+independent intercept-only likelihood calculation also checks the same-offset
+null and Poisson McFadden value. The reports preserve fit-time samples, coefficients and covariance but cannot
 restore fits or establish current-data identity. The remaining NLS and weighted
 columns are not part of this comparison.

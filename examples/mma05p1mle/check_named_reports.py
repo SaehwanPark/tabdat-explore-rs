@@ -15,6 +15,9 @@ raw = [line.split() for line in source.read_text().splitlines()]
 with (output.parent/'nls.csv').open(newline='') as stream:
   prepared = list(csv.DictReader(stream))
 assert len(raw)==len(prepared)==10000
+# Independent profile of the intercept-only exponential null, plus the fixed offset constant.
+y_values = [float(row[0]) for row in raw]
+null_count_ll = len(y_values)*(math.log(len(y_values)/sum(y_values))-1)+sum(map(math.log,y_values))
 for i,(tokens,row) in enumerate(zip(raw,prepared),1):
   assert len(tokens)==2 and int(row['source_row'])==i
   assert float(row['y'])==float(tokens[0]) and float(row['x'])==float(tokens[1])
@@ -50,6 +53,8 @@ for fit,copy,name in zip(fits,table['models'],('ols_classical','ols_robust','exp
     assert copy['poisson_offset_coefficient']==1.0
     assert copy['poisson_null_model']=='intercept_only_with_same_fixed_offset'
     assert copy['poisson_null_log_likelihood']==fit['null_log_likelihood']
+    near(copy['poisson_null_log_likelihood'],null_count_ll,name+'.null_ll')
+    near(copy['poisson_mcfadden_r_squared'],1-ref['poisson_log_likelihood']/null_count_ll,name+'.mcfadden')
     assert copy['log_likelihood_convention']=='poisson_count_pmf'
     near(copy['log_likelihood'],ref['poisson_log_likelihood'],name+'.ll')
     assert copy['poisson_covariance_correction']==(1.0 if name=='exp_classical' else 10000/9999)
