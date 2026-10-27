@@ -6,7 +6,7 @@ SELECT CASE WHEN COUNT(*)<=10 OR COUNT(*)>10000
   OR MIN(source_row)<>1 OR MAX(source_row)<>COUNT(*)
   OR COUNT(*) FILTER (WHERE source_row<>input_position)>0
   OR COUNT(*) FILTER (WHERE NOT coalesce(isfinite(source_row) AND source_row=floor(source_row)
-    AND treat IN (0,1) AND isfinite(age) AND isfinite(educ)
+    AND treat IN (0,1) AND isfinite(age) AND isfinite(age*age) AND isfinite(educ)
     AND black IN (0,1) AND hisp IN (0,1) AND marr IN (0,1)
     AND isfinite(re74) AND isfinite(re75) AND isfinite(re78),FALSE))>0
   OR COUNT(*) FILTER (WHERE treat=0)<2 OR COUNT(*) FILTER (WHERE treat=1)<2
@@ -22,10 +22,13 @@ SELECT treat,count(*) AS observations,avg(age) AS age,avg(educ) AS educ,
   'NSW treated versus PSID controls; descriptive group means' AS interpretation
 FROM active GROUP BY treat ORDER BY treat
 """
+sql """SELECT 'Observational NSW/PSID comparisons; causal interpretation requires assumptions including overlap and no unmeasured confounding' AS interpretation FROM active LIMIT 1"""
 regress re78 treat, robust
+lincom treat
 estimates store unadjusted
 predict unadjusted_mean, xb
 regress re78 treat age age_sq educ nodegree black hisp re74 re75, robust
+lincom treat
 estimates store adjusted
 predict adjusted_mean, xb
 estimates table unadjusted adjusted

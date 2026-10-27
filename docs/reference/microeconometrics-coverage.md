@@ -88,7 +88,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-DYNAMIC | pp. 754–756, PSID; `MOMprecise.dat` | Planned | Specify moments, instruments, weighting and diagnostic references |
 | MMA-NLPANEL | pp. 792–795, patents/R&D; `patr7079.asc` | Planned | Identify nonlinear panel estimators and heterogeneity assumptions |
 | MMA-SURVEY | pp. 848–853, Vietnam; `vietnam_ex1` / `vietnam_ex2` | Planned | Determine design/weight/cluster semantics, not just regression clustering |
-| MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Planned | Fix ATE/ATT, sample/control group, propensity/matching choices and inference |
+| MMA-TREATMENT | pp. 889–895, NSW/PSID; `nswpsid` | Partial — first two Table 25.4 rows | [Workflow](../../examples/mma25p1treatment/README.md): 2,675 source people, unadjusted and linear-adjusted HC1 comparisons, group means and source-row predictions independently checked against R; observational interpretation explicit. Before/after, difference-in-differences, propensity/matching and their assumptions and inference remain required |
 
 ### MMA-DURATION bounded uncensored strike-survival contract and evidence
 
