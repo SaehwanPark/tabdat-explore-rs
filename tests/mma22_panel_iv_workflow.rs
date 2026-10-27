@@ -177,4 +177,24 @@ fn stacked_instruments_fit_and_preserve_panel_keys() {
   assert_eq!(first[column("z1y2")].parse::<f64>().unwrap(), 0.0);
   assert!(!run_stacked().status.success());
   assert_eq!(fs::read_to_string(path).unwrap(), data);
+
+  let bad_dir = TestDir::new();
+  let fixture = fixture();
+  let missing = fixture
+    .lines()
+    .enumerate()
+    .filter(|(i, _)| *i != 3)
+    .map(|(_, line)| line)
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
+  fs::write(bad_dir.path().join("MOMprecise.csv"), missing).unwrap();
+  let bad = tabdat_bin()
+    .current_dir(bad_dir.path())
+    .args(["--json", "-f"])
+    .arg(&script)
+    .output()
+    .unwrap();
+  assert!(!bad.status.success());
+  assert!(!bad_dir.path().join("stacked_iv_design.csv").exists());
 }
