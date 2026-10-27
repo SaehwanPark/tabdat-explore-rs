@@ -94,3 +94,52 @@ stricter `1e-7` relative check on tiny nonzero p-values. The historical points
 are reproduced to displayed precision; person-clustered SEs are a deliberately
 different inferential extension. This is not a general panel or treatment-effects
 command, propensity matching, overlap assessment or causal identification proof.
+
+## Propensity-score overlap diagnostics
+
+[`overlap.td`](overlap.td) fits the author program's §25.8.1–4 treatment
+assignment logit on all 2,675 original people, then reports empirical common
+score-range membership and pre-treatment means by treatment group and fixed
+score interval. Its design includes age and education and their squares,
+marital status, less-than-high-school indicator, Black and Hispanic indicators,
+1974/1975 earnings and their squares, and the product of Black and the corrected
+1974 zero-earnings indicator. The source U74/U75 columns are miscoded and are
+not used. Age and education are divided by 10 and earnings by 10,000 before
+squaring; these are invertible changes of scale in the same logit design, not
+changes to fitted probabilities. The fit uses model-based logit covariance and
+normal coefficient inference, not inference for any treatment effect.
+
+The common range is the intersection of the observed treated and control score
+ranges, with endpoints included. On the original data it is approximately
+[0.000652575, 0.973525517]: 179 treated and 1,146 controls remain, while 6 and
+1,344 respectively are excluded. For retained observations the bins are
+`(0,.1]`, `(.1,.2]`, …, `(.9,1]`; the report includes all 20 bin/group cells,
+zero counts and null means for empty cells. In particular bin 9 has 13 treated
+people and no controls. Balance means are descriptive, do not prove covariate
+balance, and do not test or establish positivity, no unmeasured confounding,
+or a causal effect. The sample selection is based on fitted scores, and its
+uncertainty is not quantified. The workflow deliberately produces **no treatment
+effect or confidence interval**. The author's stratified outcome-regression
+point estimate and valid treatment-effect uncertainty remain separate work.
+
+The script rejects missing/nonfinite inputs, invalid binary indicators,
+negative pretreatment earnings, duplicate or unordered keys, nonconverged or
+rank-deficient fits, scores outside the open unit interval, empty range
+intersection, and nonfinite stratum means. It exports all ordered source rows,
+including excluded rows and their bounds; existing exports are not overwritten.
+Earlier script effects are not rolled back on a later error. With the same
+prepared `nswpsid.csv`, from a fresh directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/overlap.td > overlap_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/overlap_reference.R /path/to/nswpsid.da1 overlap-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_overlap.py /path/to/nswpsid.da1 overlap_result.jsonl propensity_scores.csv overlap-reference
+```
+
+The independent base-R 4.6.1 `glm` fit and direct information calculation check the
+14 coefficients and complete model covariance, all 2,675 scores and source
+rows, bounds, inclusion and stratum assignments, and all group counts/means.
+The tolerance is `1e-10 + 1e-9*abs(reference)`, with a stricter `1e-7` relative
+check for tiny nonzero probabilities and p-values. The empirical-range rule is a
+sample diagnostic rather than a general support guarantee; matching, effect
+estimation, score-estimation uncertainty and the historical plot remain open.
