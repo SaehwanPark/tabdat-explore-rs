@@ -35,8 +35,7 @@ workflow before export. The export refuses to overwrite an existing file; prior
 session effects are not rolled back. The converter below verifies the source
 hash and publishes without clobbering an existing file. Python and R are needed
 only for source conversion and reference checking, not the application. This
-is a bounded source workflow, not a general panel-GMM command. Stacked
-instruments, two-step GMM and dynamic-panel methods remain unimplemented here.
+is a bounded source workflow, not a general panel-GMM command. Two-step GMM and dynamic-panel methods remain unimplemented here.
 
 From a fresh directory:
 
@@ -57,3 +56,32 @@ not claimed to match the present double-precision input exactly. Focused CLI
 tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
+
+## Year-stacked instruments
+
+[`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
+regressors, but puts the nine base instruments into separate year blocks for
+1981–1988, giving 72 excluded instruments. Other year blocks are zero for each
+observation. It reports classical and person-clustered covariance and exports
+the full stacked design and predictions. The log-wage coefficient is 0.542827,
+with classical SE 0.169135 and clustered SE 0.208522. The conventional wage
+first-stage F is approximately 1.30; many instruments and multiple endogenous
+regressors complicate interpretation, and this does not provide weak-IV robust
+inference. The same complete-panel and no-clobber rules apply.
+
+After creating `MOMprecise.csv` and the base R `reference` directory as above,
+run in a fresh directory or after removing the earlier stacked export:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/stacked_2sls.td > stacked_result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/stacked_reference.R reference/design.csv stacked-reference
+python3 /path/to/repo/examples/mma22p1panel/check_reference.py --stacked /path/to/MOMprecise.dat stacked_result.jsonl stacked_iv_design.csv stacked-reference
+```
+
+Independent R constructs each of the 72 instrument columns from the independently
+prepared base design and uses QR projection for the two covariance estimators.
+The check compares every design, fitted and residual value, coefficients,
+p-values and both covariance matrices at `1e-9 + 1e-9*abs(reference)`, plus
+the author coefficient and SE values at table precision. Focused tests cover
+block placement, missing years, the two fits and no-clobber export. This adds
+one stacked 2SLS column; it does not implement two-step GMM.

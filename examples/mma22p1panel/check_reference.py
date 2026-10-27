@@ -7,9 +7,13 @@ import math
 from pathlib import Path
 import sys
 
-if len(sys.argv) != 5:
-  raise SystemExit('usage: check_reference.py MOMprecise.dat result.jsonl panel_iv_design.csv reference-directory')
-source, output, design, reference = map(Path, sys.argv[1:])
+args = sys.argv[1:]
+stacked = bool(args and args[0] == '--stacked')
+if stacked:
+  args = args[1:]
+if len(args) != 4:
+  raise SystemExit('usage: check_reference.py [--stacked] MOMprecise.dat result.jsonl design.csv reference-directory')
+source, output, design, reference = map(Path, args)
 assert hashlib.sha256(source.read_bytes()).hexdigest() == '332c875eaa00ecc08a16c75424e4c56aa3fcf13c6ee5049768ed3d08a2bfef9c'
 
 def read(path):
@@ -45,6 +49,12 @@ for fit, mode in zip(fits, ('classical', 'cluster')):
       near(fit['covariance_matrix'][i][j], ref[key], f'{mode}.cov[{i},{j}]')
 # Table 22.2 displays three decimal places; the old Stata log uses float storage.
 author = [
+  (0.5428270, 0.1691348, 0.2085225),
+  (-0.0482932, 0.0393723, 0.0245011),
+  (0.0268935, 0.0288808, 0.0149934),
+  (-0.0003511, 0.0003671, 0.0001866),
+  (0.0079759, 0.0397995, 0.0624423),
+] if stacked else [
   (0.2091087, 0.3886332, 0.3741705),
   (-0.0296864, 0.0437001, 0.0293678),
   (0.0263880, 0.0289908, 0.0153921),
