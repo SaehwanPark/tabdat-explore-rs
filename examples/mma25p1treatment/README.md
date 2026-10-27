@@ -376,7 +376,7 @@ pairs. It rejects nonfinite pair weights, matches, influence values or positive
 variance failures, and refuses to overwrite its export; earlier session effects
 are not rolled back. Pair and influence reductions are ordered for reproducible
 exports. This is a bounded composition, not a general matching command. It does
-not implement nearest-neighbor, radius or author-program matching; the ordinary
+not implement radius or author-program matching; the ordinary
 bootstrap is not assumed valid for fixed-neighbor matching (see [Abadie and
 Imbens (2008)](https://doi.org/10.3982/ECTA6474)).
 
@@ -398,3 +398,12 @@ by reducing the step rather than widening the comparison tolerance. A separate
 500-person R control validates the contrast, SE and effective match counts;
 CLI tests cover invalid inputs, degenerate outcomes, pair-work bounds and
 JSON/text no-clobber exports.
+
+
+## Descriptive nearest-score comparison
+
+A separate [nearest-score workflow](nearest_matching.md) matches within the
+empirical common score range, averages exact ties, and reports outcome and
+covariate means with control reuse. It explicitly withholds uncertainty; it is
+a selected-sample descriptive comparison, not general nearest-neighbor
+inference or a reproduction of the author's matching program.

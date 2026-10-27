@@ -1,4 +1,4 @@
-# WIP: nearest-score matching with estimated-score inference not yet implemented.
+# Descriptive nearest-score matching; no estimated uncertainty.
 use nswpsid.csv
 isid source_row
 sql """
@@ -96,7 +96,7 @@ summary AS (SELECT count(*) AS matched_treated,avg(treated_outcome-matched_outco
 reuse AS (SELECT count(*) AS distinct_controls,max(reuse_weight) AS max_reuse FROM controls)
 SELECT matched_treated,distinct_controls,contrast,max_distance,tied_treated,max_reuse,
   CAST(NULL AS DOUBLE) AS standard_error,
-  'WIP: no valid estimated-score matching uncertainty yet; common-range selected sample and exact-tie averaging' AS interpretation
+  'Descriptive contrast; no standard error; empirical common range and exact-tie averaging' AS interpretation
 FROM summary CROSS JOIN reuse
 """
 sql """

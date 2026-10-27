@@ -1,220 +1,64 @@
-# WIP: nearest-neighbor matching
+# Descriptive nearest-score comparison
 
-This draft slice is not ready for release or merge. It fits the Chapter 25 DW99
-assignment score, selects the inclusive empirical common score range, matches
-retained treated people to all exactly equidistant nearest controls, averages
-exact ties, and reports weighted control reuse and a descriptive point contrast.
-Its normal uncertainty field is deliberately null: no valid estimated-score
-matching variance or confidence interval has yet been implemented.
+[`nearest_matching.td`](nearest_matching.td) fits the DW99 assignment logit
+used in the [NSW/PSID treatment examples](README.md), selects the inclusive
+empirical intersection of the treated and control score ranges, and matches
+each retained treated person to their closest retained control score. Controls
+can be reused; exactly equidistant nearest controls are averaged. This is a
+bounded, descriptive illustration related to Table 25.6, not a reproduction
+of the author's random tie handling, historical support rule or reported
+result. The author's logged DW02 and DW99 variants use different specifications.
 
-The original 2,675-person source replay and independent base-R brute-force
-reference agree on all nearest pairs. The empirical common range retains 179
-treated people; 57 distinct controls are used, 3 treated people have exact ties,
-and the descriptive contrast is 515.906. This is **not** a reproduction of the
-author program's random tie handling or its historical support rule; the author's
-logged DW02 and DW99 variants also use different score specifications. The
-workflow also reports descriptive treated and matched-control means for age,
-education, Black indicator, and 1974 and 1975 earnings. A pair contributes
-`1 / tied_controls` on both sides; hence each treated person has total weight
-one and controls accumulate weight when reused. These unstandardized differences
-describe the matched sample, not all covariates or the change from before
-matching, and they do not establish exchangeability. On the source, the treated
-and matched-control Black shares are 0.838 and 0.922 respectively, illustrating
-remaining imbalance in this measured variable. The 13
-predictors, source SHA256 and unverified observational assumptions are documented
-in [README.md](README.md). No causal identification follows from this point value.
+The output reports the mean treated-minus-matched 1978 earnings contrast,
+nearest-score gaps, exact ties, distinct matched controls and maximum reuse. It
+also reports treated and matched-control means of age, education, Black
+indicator, and earnings in 1974 and 1975. A pair contributes `1/tied_controls`
+to each side, so each treated person has total weight one and reused controls
+accumulate weight. These unstandardized means describe five variables in the
+matched sample; they do not measure all aspects of balance or show changes from
+before matching. Pair-level outcomes, scores, covariates and tie counts are
+exported for audit.
 
-Inference needs an explicit statistical decision before this draft can be marked
-ready. Abadie and Imbens (2016), [Matching on the Estimated Propensity
-Score](https://doi.org/10.3982/ECTA11293), show that the first-stage adjustment
-for ATT can increase or decrease variance; treating estimated scores as known is
-not guaranteed conservative. Their proposed estimators require covariate-space
-and propensity-space local matching for conditional variances, covariances and
-the derivative of the ATT target. Ordinary bootstrap inference for a fixed
-number of nearest neighbors is not generally valid (Abadie and Imbens, 2008,
-[On the Failure of the Bootstrap for Matching Estimators](https://doi.org/10.3982/ECTA6474)).
+On the original 2,675-person sample, 179 treated people remain in the empirical
+range; they use 57 distinct controls, and three treated people have tied nearest
+controls. The descriptive contrast is 515.906, the largest score gap is about
+0.087, and the maximum fractional control reuse is 27. The treated and matched
+control Black shares are 0.838 and 0.922 respectively, illustrating remaining
+imbalance. These diagnostics do not establish positivity, exchangeability or
+causality; the target is the selected sample's observed contrast, not an
+identified population ATT.
 
-Their continuous-score regularity conditions and fixed-number matching do not
-straightforwardly establish inference for this draft's empirical min/max support
-selection and exact-tie averaging. The source sample has 351 people sharing an
-exact fitted score with another person and 271 people with zero earnings in both
-pretreatment years. This is evidence that ties and possible score atoms must be
-studied; it does not by itself prove the population distribution has atoms.
-The largest selected treated-to-control score gap is about 0.087 and the maximum
-fractional control reuse is 27, so even a theoretically appropriate asymptotic
-approximation needs careful support diagnostics. Do not label a conditional or
-known-score standard error as full ATT uncertainty.
+**No standard error or confidence interval is estimated.** Fixed-neighbor
+matching has nonstandard uncertainty: the ordinary bootstrap is not generally
+valid ([Abadie and Imbens, 2008](https://doi.org/10.3982/ECTA6474)), and the
+estimated-score adjustment can raise or lower ATT variance ([Abadie and Imbens,
+2016](https://doi.org/10.3982/ECTA11293)). The empirical min/max selection and
+exact-score ties require additional justification beyond that paper's
+continuous-score conditions. The separate [fixed-bandwidth kernel
+comparison](README.md#fixed-bandwidth-kernel-matching) reports uncertainty for
+a different, smoothed target; it is not an interval for this contrast.
 
-Next: derive a tie-aware method with an explicit population target and support
-rule, including the estimated-score adjustment and treatment of data-dependent
-selection; establish assumptions under mixed/discrete scores; independently
-validate all variance components against a trusted numerical implementation;
-then add appropriate failure and state tests. If those conditions cannot be
-justified for the original sample, retain the point-only result as explicitly
-partial and choose a separately justified analysis rather than inventing an SE.
+The script requires finite ordered dense IDs, binary treatment and indicators,
+nonnegative finite pretreatment earnings, a nondegenerate assignment fit, at
+least two retained people per arm and no more than 2,000,000 treated-control
+candidate pairs. Scores rounded to zero or one are accepted only outside the
+selected range and are never used in a distance. It rejects nonfinite matched
+outcomes and aggregate contrasts and will not overwrite the pair export;
+earlier session effects are not rolled back. This is a script composition, not
+a general matching command.
 
-## Feasibility probe for full-pipeline subsampling
-
-A development-only probe draws 20 simple random subsamples without replacement
-at each of sizes 700, 1,000 and 1,400, refits the logit and repeats empirical
-range selection and matching. It keeps every success and failure in its JSON
-output; it does **not** compute a standard error, confidence interval or coverage
-estimate. These few draws are a numerical feasibility check, not a justification
-of subsampling or its asymptotic target. Run it with the pinned original source:
+From a fresh prepared directory:
 
 ```sh
-python3 /path/to/repo/examples/mma25p1treatment/nearest_subsample_probe.py /path/to/nswpsid.da1 /path/to/tabdat-explore-rs --verify-r > probe.json
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/nearest_matching.td > nearest_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/nearest_matching_reference.R /path/to/nswpsid.da1 nearest-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_nearest_matching.py /path/to/nswpsid.da1 nearest_result.jsonl nearest_pairs.csv nearest-reference
 ```
 
-With seed 3982, the initial strict-open-score version failed five of the 20
-size-700 fits at the score guard. Separate inspection showed one to 18 scores
-rounded to zero in each failure, all outside that replicate's empirical common
-range. The draft now admits finite scores rounded to zero or one **only when
-they are outside the selected range**; it rejects any boundary score inside the
-range, and reports the total rounded and excluded counts. No saturated score is
-used in a distance, no value is clipped, and this does not assert statistical
-positivity. For the five affected samples, independent R also emitted numerical
-boundary-score warnings and agreed on every selected nearest pair and outcome;
-the retained treated counts were 18, 43, 35, 42 and 10. The full source sample
-has no rounded boundary scores and its source-reference audit is unchanged.
-After the change all 20 draws at each tested size completed; among the size-700
-draws, the selected treated count ranged from 10 to 53. With `--verify-r`, the
-probe reruns an independent R fit for every successful sample containing rounded
-boundary scores, checks every retained pair, and records all R warnings. This
-replay used Python 3.15.0 and R 4.6.1. Completion of these 60 fits is not a
-proof that other subsamples will fit or that the sampling limit is valid.
-
-This adjustment solves only a representational rejection of rows already
-outside the comparison. It does not validate the fitted assignment model or an
-inference procedure; several tiny retained samples and numerical warnings are
-additional reasons to avoid presenting a generic resampling interval as reliable.
-
-## Controlled subsampling pilot
-
-[`nearest_subsampling_simulation.R`](nearest_subsampling_simulation.R) is a
-**development-only** check of a candidate without-replacement subsampling
-interval; it does not add inference to the workflow. The toy population has
-`X` uniform on [-1,1], with either no atom or a 40% atom at zero;
-`T|X ~ Bernoulli(logit^-1(-0.4+0.9X))`; and
-`Y=1.5T+2X+0.5X^2+epsilon`, with independent standard-normal errors. The true
-treatment effect is 1.5 at every X, including after support selection. The
-score model is correctly specified and true scores lie well inside (0,1).
-This is a favorable, one-covariate illustration, not the NSW data-generating
-process. Each full and subsample fit re-estimates the logit, selects the empirical
-common score range and averages exact nearest ties. A separate scalar brute-force
-calculation checks the matching implementation on a small tied fixture.
-
-For each interval the pilot takes 100 without-replacement subsamples, each of
-size `m=floor(n^a)`, and uses type-1 empirical 2.5% and 97.5% quantiles of
-`sqrt(m)*(estimate_m-estimate_n)` scaled by `1/sqrt(n)`. With R 4.6.1, seed
-356011, 200 independently generated full samples per setting, the observed
-nominal-95% coverage was:
-
-| Atom probability | n | m | Completed | Coverage | Monte Carlo SE |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 0 | 300 | 40 | 200 | 0.835 | 0.026 |
-| 0 | 300 | 95 | 200 | 0.840 | 0.026 |
-| 0 | 600 | 63 | 200 | 0.880 | 0.023 |
-| 0 | 600 | 166 | 200 | 0.900 | 0.021 |
-| 0.4 | 300 | 40 | 199 | unavailable | unavailable |
-| 0.4 | 300 | 95 | 200 | 0.885 | 0.023 |
-| 0.4 | 600 | 63 | 200 | 0.890 | 0.022 |
-| 0.4 | 600 | 166 | 200 | 0.835 | 0.026 |
-
-The incomplete setting had one subsample warning that its fitted probabilities
-were numerically zero or one; no coverage is reported after that failure. The
-pilot also prints an exploratory division by `sqrt(1-m/n)`, a finite-population
-factor exact for the subsampled **sample mean**. It is not established for this
-non-smooth matching statistic and is not applied in the product. This limited
-pilot suggests poor finite-sample calibration in these settings; Monte Carlo
-uncertainty and the small number of inner draws remain material. It does not
-prove subsampling invalid in general or determine coverage for NSW. General
-subsampling results require an appropriate known rate and limiting law; see
-[Politis, Romano and Wolf (2001)](https://www3.stat.sinica.edu.tw/statistica/j11n4/j11n49/j11n49.htm).
-Neither those conditions nor a correct finite-sample adjustment are established
-for the current source workflow.
-
-Reproduce the pilot with:
-
-```sh
-Rscript /path/to/repo/examples/mma25p1treatment/nearest_subsampling_simulation.R 200 100
-```
-
-The draft must continue to withhold an interval until the selected estimator's
-population target, mixed-score and support-selection asymptotics, numerical
-failure policy, and independent inference validation are resolved. The pilot
-is risk-focused research, not a release or coverage gate.
-
-## Untrimmed continuous-score variance prototype
-
-[`nearest_variance_prototype.R`](nearest_variance_prototype.R) is a separate,
-base-R implementation of the proposed ATET variance components in section 4
-of Abadie and Imbens (2016). It is a development calculation, not the NSW
-workflow or production inference. It fits a logit using `x1`, `x2` and an
-intercept, matches each treated person to one control with replacement, and
-uses the full sample without empirical-range selection. It rejects duplicate
-scores, distance ties at a selection boundary, noninterior scores and invalid
-input; these checks cannot establish the paper's population assumptions.
-
-The calculation uses two same-arm observations including the focal person for
-local variances and two same- or opposite-arm observations for conditional
-covariances. It uses two same-arm neighbors excluding the focal person and two
-opposite-arm neighbors for the propensity-space conditional means. For the
-covariate-space matching used in the target derivative, distance is Euclidean
-on the raw `x1` and `x2` covariates. The script
-prints the known-score variance, the estimated-score subtraction and target
-adjustment separately. A smoke check exercises permutation invariance, finite
-components and rejection of duplicate scores and invalid data:
-
-```sh
-python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_prototype.py
-```
-
-As an external comparison, the University of Wisconsin's [propensity-score
-matching example](https://ssc.wisc.edu/sscc/pubs/stata_psmatch.htm) publishes
-both [its input data](https://ssc.wisc.edu/sscc/pubs/files/psm.dta) and Stata
-`teffects psmatch (y) (t x1 x2), atet` output. The data file used here has
-SHA256 `5e02c85e9f0fb56afded6b8696bd7b46644e740a785e41c2e352e1971f97d4c1`.
-Converting that file to CSV with pandas `read_stata` and running this prototype
-with R 4.6.1 gives effect 0.9603507171 and standard error 0.1204747831. The
-published Stata output gives effect 0.9603507 and AI robust standard error
-0.1204748; both agree at the published precision. The variance components are
-0.0146314305 (known-score base), 0.0001226086 (estimated-score subtraction),
-and 0.0000053515 (target adjustment). An earlier prototype used one neighbor
-for the conditional means and standardized covariate distance, giving SE
-0.1203081854. Using two neighbors and raw covariate distance resolves the
-numerical discrepancy on this example. These conventions are supported by
-[Stata's methods](https://www.stata.com/manuals15/teteffectsnnmatch.pdf) and
-an independent [StatsPAI implementation](https://github.com/brycewang-stanford/StatsPAI/blob/main/src/statspai/matching/_ai2016.py);
-the latter identifies raw Euclidean distance numerically. The paper allows
-multiple neighbor choices, and this single example does not validate every
-component or establish validity for NSW's ties and empirical support selection.
-
-To repeat the external comparison, download the data above, verify its SHA256,
-convert it to CSV using `pandas.read_stata(...).to_csv(..., index=False)`, then
-pass the CSV to the smoke check:
-
-```sh
-python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_prototype.py /path/to/psm.csv
-```
-
-Python and pandas are used only to prepare this development reference; they are
-not production dependencies. The optional check tests the two published values
-at their displayed precision rather than treating the unrounded Stata values as
-known.
-
-An additional [development check](check_nearest_variance_components.py) fits
-an independent NumPy logit and compares the point estimate and all three
-variance terms to StatsPAI's independent implementation, to the precision
-printed by the R prototype. It passed on the Wisconsin data and on a separate
-450-row simulated dataset with heterogeneous treatment effects. The checked
-reference is [_ai2016.py at commit 2e7a5bf](https://github.com/brycewang-stanford/StatsPAI/blob/2e7a5bf04313ccfe5b7ddf7a82180de17302fe6e/src/statspai/matching/_ai2016.py),
-with SHA256 `2f278d2700585a1de87e79de883e1e90c4d7a4dcef8aa6cb5e348865435099cc`;
-the check verifies the hash before importing the supplied source file:
-
-```sh
-python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_components.py /path/to/psm.csv /path/to/_ai2016.py
-```
-
-This is a numerical cross-check, not evidence that continuous-score
-assumptions or empirical support selection hold for NSW.
+An independent base-R fit and brute-force search check all source rows and
+nearest pairs, outcomes, exact ties, reuse, contrast and five matched means.
+The tolerance is `1e-8 + 1e-9*abs(reference)`, with `1e-7` relative agreement
+for tiny scores. Focused CLI tests cover matching, duplicated-control ties,
+weighted means, rounded-score boundaries, invalid inputs and no-clobber
+exports. These checks do not validate nearest-neighbor inference or a causal
+interpretation.
