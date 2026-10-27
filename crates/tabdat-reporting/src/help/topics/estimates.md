@@ -6,7 +6,7 @@ Installed syntax:
 - `estimates drop NAME [NAME ...]`
 
 Keep immutable reporting snapshots of successful current unweighted OLS, logit,
-probit, or explicit-formula NLS fits, and compare them without refitting. Example:
+probit, Poisson, or explicit-formula NLS fits, and compare them without refitting. Example:
 
 ```
 regress outcome score
@@ -36,19 +36,25 @@ an intercept-like term may still appear in the explicit formula. Transformed
 responses and scale columns remain named as fitted, not relabeled as weighted
 original-scale estimates. WLS/GLS/IV and unknown estimator provenance are
 rejected, not guessed as OLS.
+Poisson reports retain the fixed offset variable (coefficient one), count-likelihood
+convention, zero/total counts, McFadden pseudo-R-squared and selected covariance
+correction. Independent-row robust uses N/(N−1); clustered uses G/(G−1).
+Both use asymptotic normal inference, not G−1 t or a few-cluster guarantee.
+The offset remains fixed in the null model. Count likelihood is descriptive
+under QMLE and its LR reference is not robust.
 Old serialized linear states without estimator metadata remain readable but must
 be refitted before storing. Ambiguous duplicate parameter names are rejected;
 rename a predictor that conflicts with the intercept name and refit.
 
 Tables preserve requested model order and align coefficients by exact name in
 first-seen order. Missing terms/statistics are NA/null, never zero. Binary
-statistics are normal z; OLS statistics use Student t with residual df, or G−1
+and Poisson statistics are normal z; OLS statistics use Student t with residual df, or G−1
 for one-way clustered OLS; NLS uses its approximate Student t with N−P df.
 Selected covariance and reference are disclosed per column. No coefficient inference is recomputed, and no cross-model test is made.
-OLS R-squared, NLS centered response-scale R-squared and binary McFadden
-pseudo-R-squared are different measures; transformed NLS R-squared refers to
+OLS R-squared, NLS centered response-scale R-squared and binary/Poisson
+McFadden pseudo-R-squared are different measures; transformed NLS R-squared refers to
 the transformed response.
-Gaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a
+Gaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a
 cross-family or robust likelihood-ratio test. Zero/nonfinite OLS variance has
 no reported likelihood or convention.
 

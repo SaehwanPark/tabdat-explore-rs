@@ -456,7 +456,7 @@ Subset forms, robust score/GMM C variants and few-cluster guarantees remain
 unsupported; these conventional tests assume valid instruments and do not
 establish exogeneity or instrument validity by failing to reject.
 
-Immutable named estimate reports now include explicit-formula NLS with its typed mean model, covariance, sample and approximate-t inference; the terminal comparison also shows standard errors. These snapshots do not restore fits. Named Poisson reports and a native combined Table 5.7 comparison remain required.
+Immutable named estimate reports now include explicit-formula NLS with its typed mean model, covariance, sample and approximate-t inference; the terminal comparison also shows standard errors. Named Poisson reports additionally retain offset identity, selected covariance correction and count-likelihood conventions. These snapshots do not restore fits. Named NB2 reports and a native combined Table 5.7 comparison remain required.
 
 The [unweighted NLS model-variance calculation](../examples/mma05p2nls/model_variance.md) now supplies the source plug-in sandwich using fitted mean², independently checked against R on all original rows. It is conditional on the specified mean/variance and is not generic robust or weighted covariance; historical eight-decimal SE differences remain explicit.
 

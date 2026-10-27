@@ -336,6 +336,13 @@ fn noconstant_intercept_only_and_zero_variance_inference_have_explicit_semantics
   assert!(fit.coefficients[0].p_value.is_none());
   assert!(fit.coefficients[0].confidence_lower.is_none());
   assert!(fit.omnibus_wald.unwrap().statistic.is_none());
+  execute(&mut s, "estimates store constant");
+  let ExecutionResult::EstimateTable(saved) = execute(&mut s, "estimates table constant") else {
+    panic!("table")
+  };
+  assert_eq!(saved.models[0].coefficients[0].standard_error, Some(0.0));
+  assert!(saved.models[0].coefficients[0].statistic.is_none());
+  assert!(saved.models[0].coefficients[0].p_value.is_none());
   execute(&mut s, "regress y x");
   let before = s.state();
   assert_eq!(

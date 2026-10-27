@@ -81,6 +81,11 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
   assert!(legacy.get("nls_model").is_none());
   assert!(legacy.get("nls_centered_r_squared").is_none());
   assert!(legacy.get("nls_covariance_correction").is_none());
+  assert!(legacy.get("poisson_offset_variable").is_none());
+  assert!(legacy.get("poisson_covariance_correction").is_none());
+  assert!(legacy.get("poisson_mcfadden_r_squared").is_none());
+  assert!(legacy.get("poisson_zero_count").is_none());
+  assert!(legacy.get("poisson_count_sum").is_none());
   assert_eq!(
     serde_json::from_value::<tabdat_domain::EstimateSnapshot>(legacy).unwrap(),
     saved
@@ -428,6 +433,17 @@ fn poisson_snapshots_preserve_offsets_covariance_sample_and_active_fit() {
   assert_eq!(session.state(), active);
   assert_eq!(run(&mut session, "estat margins"), before);
   run(&mut session, "predict expected, n");
+  run(&mut session, "poisson y x");
+  run(&mut session, "estimates store no_offset");
+  let no_offset = table(&mut session, "no_offset").models.remove(0);
+  assert_eq!(no_offset.poisson_offset_variable, None);
+  assert_eq!(no_offset.poisson_covariance_correction, Some(1.0));
+  assert!(
+    serde_json::to_value(&no_offset)
+      .unwrap()
+      .get("poisson_offset_variable")
+      .is_none()
+  );
   run(&mut session, "replace w = w+1");
   run(&mut session, "regress y x");
   assert_eq!(table(&mut session, "model robust_count clustered"), saved);
@@ -437,4 +453,24 @@ fn poisson_snapshots_preserve_offsets_covariance_sample_and_active_fit() {
   assert!(error(&mut session, "poisson absent x").contains("unknown"));
   assert!(session.state().estimation.is_none());
   assert_eq!(table(&mut session, "model robust_count clustered"), saved);
+}
+
+#[test]
+fn poisson_named_snapshot_preserves_missing_offset_and_cluster_sample() {
+  let fixture = Fixture::new();
+  let path = fixture.0.join("missing_offset.csv");
+  fs::write(&path, "y,x,w,g\n0,-2,0,a\n1,-1,1,a\n0,0,,b\n1,1,0,b\n0,2,1,c\n1,3,0,c\n1,0.5,1,d\n0,1.5,0,d\n0,-0.5,1,e\n1,2.5,0,e\n").unwrap();
+  let mut session = Session::new();
+  run(&mut session, &format!("use \"{}\"", path.display()));
+  let ExecutionResult::Poisson(fit) = run(&mut session, "poisson y x, offset(w) cluster(g)") else {
+    panic!()
+  };
+  run(&mut session, "estimates store incomplete");
+  let saved = table(&mut session, "incomplete").models.remove(0);
+  assert_eq!(saved.sample, fit.sample.unwrap());
+  assert_eq!(saved.sample.retained_indices, [0, 1, 3, 4, 5, 6, 7, 8, 9]);
+  assert_eq!(saved.sample.dropped_observations, 1);
+  assert_eq!(saved.sample.cluster_groups.as_ref().unwrap().len(), 9);
+  assert_eq!(saved.cluster_count, Some(5));
+  assert_eq!(saved.poisson_offset_variable.as_deref(), Some("w"));
 }

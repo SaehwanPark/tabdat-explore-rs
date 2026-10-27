@@ -87,7 +87,8 @@ formal goodness-of-fit test is supplied; see `help estat`.
 
 Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
 cutoff-variable values above99, factors/discrete changes, general count test/lincom,
-interval prediction, few-cluster bootstrap or named Poisson `estimates store`.
+interval prediction or few-cluster bootstrap. Immutable `estimates store/table`
+reports are supported; they cannot restore fits or establish current-data identity.
 Clustered covariance is not FE/RE/random-effects or the full panel family.
 
 NB2 is separately installed by `nbreg`; see `help nbreg` for its distinct

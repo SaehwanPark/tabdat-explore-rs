@@ -79,3 +79,32 @@ The result is a bounded workflow composition, not a general exponential
 estimator, factor or weights API, clustered inference, fit restoration, or
 whole-table/chapter completion. Other method columns and the historical
 forward-difference discrepancy in the marginal-effects example remain separate.
+
+## Named OLS/exponential comparison
+
+[`named_reports.td`](named_reports.td) stores the OLS and offset-Poisson fits
+and compares all four reporting snapshots without refitting them. Each Poisson
+column explicitly names its fixed `log_exposure` offset and selected
+covariance correction. Its likelihood and McFadden value remain those of the
+Poisson count-pmf primitive, not the exponential density; use `comparison.td`
+for the separately calculated density likelihood. OLS and Poisson outcomes
+and likelihood conventions differ even though the source rows coincide.
+
+```sh
+/path/to/tabdat-explore-rs --text -f /path/to/repo/examples/mma05p1mle/named_reports.td
+```
+
+For source verification, generate the R reference described above in a fresh
+`reference` directory, run the named example in JSON mode to `named_result.jsonl`,
+and audit it with:
+
+```sh
+python3 /path/to/repo/examples/mma05p1mle/check_named_reports.py /path/to/mma05data.asc named_result.jsonl reference
+```
+
+The original 10,000-row replay checked every source identity, all four stored
+fits against their live coefficient/covariance results and the independent R
+reference, including the fixed offset and Poisson likelihood convention. The
+reports preserve fit-time samples, coefficients and covariance but cannot
+restore fits or establish current-data identity. The remaining NLS and weighted
+columns are not part of this comparison.
