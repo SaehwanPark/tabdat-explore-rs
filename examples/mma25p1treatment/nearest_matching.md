@@ -80,3 +80,59 @@ This adjustment solves only a representational rejection of rows already
 outside the comparison. It does not validate the fitted assignment model or an
 inference procedure; several tiny retained samples and numerical warnings are
 additional reasons to avoid presenting a generic resampling interval as reliable.
+
+## Controlled subsampling pilot
+
+[`nearest_subsampling_simulation.R`](nearest_subsampling_simulation.R) is a
+**development-only** check of a candidate without-replacement subsampling
+interval; it does not add inference to the workflow. The toy population has
+`X` uniform on [-1,1], with either no atom or a 40% atom at zero;
+`T|X ~ Bernoulli(logit^-1(-0.4+0.9X))`; and
+`Y=1.5T+2X+0.5X^2+epsilon`, with independent standard-normal errors. The true
+treatment effect is 1.5 at every X, including after support selection. The
+score model is correctly specified and true scores lie well inside (0,1).
+This is a favorable, one-covariate illustration, not the NSW data-generating
+process. Each full and subsample fit re-estimates the logit, selects the empirical
+common score range and averages exact nearest ties. A separate scalar brute-force
+calculation checks the matching implementation on a small tied fixture.
+
+For each interval the pilot takes 100 without-replacement subsamples, each of
+size `m=floor(n^a)`, and uses type-1 empirical 2.5% and 97.5% quantiles of
+`sqrt(m)*(estimate_m-estimate_n)` scaled by `1/sqrt(n)`. With R 4.6.1, seed
+356011, 200 independently generated full samples per setting, the observed
+nominal-95% coverage was:
+
+| Atom probability | n | m | Completed | Coverage | Monte Carlo SE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0 | 300 | 40 | 200 | 0.835 | 0.026 |
+| 0 | 300 | 95 | 200 | 0.840 | 0.026 |
+| 0 | 600 | 63 | 200 | 0.880 | 0.023 |
+| 0 | 600 | 166 | 200 | 0.900 | 0.021 |
+| 0.4 | 300 | 40 | 199 | unavailable | unavailable |
+| 0.4 | 300 | 95 | 200 | 0.885 | 0.023 |
+| 0.4 | 600 | 63 | 200 | 0.890 | 0.022 |
+| 0.4 | 600 | 166 | 200 | 0.835 | 0.026 |
+
+The incomplete setting had one subsample warning that its fitted probabilities
+were numerically zero or one; no coverage is reported after that failure. The
+pilot also prints an exploratory division by `sqrt(1-m/n)`, a finite-population
+factor exact for the subsampled **sample mean**. It is not established for this
+non-smooth matching statistic and is not applied in the product. This limited
+pilot suggests poor finite-sample calibration in these settings; Monte Carlo
+uncertainty and the small number of inner draws remain material. It does not
+prove subsampling invalid in general or determine coverage for NSW. General
+subsampling results require an appropriate known rate and limiting law; see
+[Politis, Romano and Wolf (2001)](https://www3.stat.sinica.edu.tw/statistica/j11n4/j11n49/j11n49.htm).
+Neither those conditions nor a correct finite-sample adjustment are established
+for the current source workflow.
+
+Reproduce the pilot with:
+
+```sh
+Rscript /path/to/repo/examples/mma25p1treatment/nearest_subsampling_simulation.R 200 100
+```
+
+The draft must continue to withhold an interval until the selected estimator's
+population target, mixed-score and support-selection asymptotics, numerical
+failure policy, and independent inference validation are resolved. The pilot
+is risk-focused research, not a release or coverage gate.
