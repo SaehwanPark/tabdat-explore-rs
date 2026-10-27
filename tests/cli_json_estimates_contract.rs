@@ -286,7 +286,7 @@ fn nls_named_report_has_formula_covariance_and_visible_standard_errors() {
     serde_json::json!(["x"])
   );
   assert_eq!(models[0]["reference_distribution"], "approximate_student_t");
-  assert_eq!(models[0]["covariance"], "robust_hc1_gauss_newton");
+  assert_eq!(models[0]["covariance"], "hc1_gauss_newton");
   assert!(models[0]["log_likelihood"].is_null());
   assert!(models[1].get("nls_model").is_none());
   assert!(models[1].get("nls_centered_r_squared").is_none());

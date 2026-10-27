@@ -146,7 +146,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         // NLS has no implicit intercept; the formula alone defines its parameters.
         include_intercept: false,
         covariance: if result.robust {
-          "robust_hc1_gauss_newton"
+          "hc1_gauss_newton"
         } else {
           "working_homoskedastic_gauss_newton"
         }

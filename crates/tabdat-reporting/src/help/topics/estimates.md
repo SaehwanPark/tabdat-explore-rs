@@ -5,7 +5,7 @@ Installed syntax:
 - `estimates table NAME [NAME ...]`
 - `estimates drop NAME [NAME ...]`
 
-Keep immutable reporting snapshots of successful current unweighted OLS, logit
+Keep immutable reporting snapshots of successful current unweighted OLS, logit,
 probit, or explicit-formula NLS fits, and compare them without refitting. Example:
 
 ```
@@ -41,8 +41,7 @@ Tables preserve requested model order and align coefficients by exact name in
 first-seen order. Missing terms/statistics are NA/null, never zero. Binary
 statistics are normal z; OLS statistics use Student t with residual df, or G−1
 for one-way clustered OLS; NLS uses its approximate Student t with N−P df.
-Selected covariance and reference are disclosed per
-column. No coefficient inference is recomputed, and no cross-model test is made.
+Selected covariance and reference are disclosed per column. No coefficient inference is recomputed, and no cross-model test is made.
 OLS R-squared, NLS centered response-scale R-squared and binary McFadden
 pseudo-R-squared are different measures; transformed NLS R-squared refers to
 the transformed response.
