@@ -150,10 +150,10 @@ input; these checks cannot establish the paper's population assumptions.
 
 The calculation uses two same-arm observations including the focal person for
 local variances and two same- or opposite-arm observations for conditional
-covariances. It uses one same-arm neighbor excluding the focal person and one
-opposite-arm neighbor for the propensity-space conditional means. For the
+covariances. It uses two same-arm neighbors excluding the focal person and two
+opposite-arm neighbors for the propensity-space conditional means. For the
 covariate-space matching used in the target derivative, distance is Euclidean
-after dividing `x1` and `x2` by their sample standard deviations. The script
+on the raw `x1` and `x2` covariates. The script
 prints the known-score variance, the estimated-score subtraction and target
 adjustment separately. A smoke check exercises permutation invariance, finite
 components and rejection of duplicate scores and invalid data:
@@ -168,14 +168,29 @@ both [its input data](https://ssc.wisc.edu/sscc/pubs/files/psm.dta) and Stata
 `teffects psmatch (y) (t x1 x2), atet` output. The data file used here has
 SHA256 `5e02c85e9f0fb56afded6b8696bd7b46644e740a785e41c2e352e1971f97d4c1`.
 Converting that file to CSV with pandas `read_stata` and running this prototype
-with R 4.6.1 gives effect 0.9603507171 and standard error 0.1203081854. The
+with R 4.6.1 gives effect 0.9603507171 and standard error 0.1204747831. The
 published Stata output gives effect 0.9603507 and AI robust standard error
-0.1204748. The effect agrees at the published precision, but **the standard
-errors do not**. The [Stata manual](https://www.stata.com/manuals/causalteffectspsmatch.pdf)
-says its default robust calculation uses two matches to estimate standard
-errors; the paper permits different local-neighbor choices. The source of the
-difference has not been established and must not be explained away by widening
-a tolerance. Matching this independent result or independently justifying a
-different numerical reference remains necessary before any inferred interval
-can be released. Neither result establishes validity for NSW's ties and
-empirical support selection.
+0.1204748; both agree at the published precision. The variance components are
+0.0146314305 (known-score base), 0.0001226086 (estimated-score subtraction),
+and 0.0000053515 (target adjustment). An earlier prototype used one neighbor
+for the conditional means and standardized covariate distance, giving SE
+0.1203081854. Using two neighbors and raw covariate distance resolves the
+numerical discrepancy on this example. These conventions are supported by
+[Stata's methods](https://www.stata.com/manuals15/teteffectsnnmatch.pdf) and
+an independent [StatsPAI implementation](https://github.com/brycewang-stanford/StatsPAI/blob/main/src/statspai/matching/_ai2016.py);
+the latter identifies raw Euclidean distance numerically. The paper allows
+multiple neighbor choices, and this single example does not validate every
+component or establish validity for NSW's ties and empirical support selection.
+
+To repeat the external comparison, download the data above, verify its SHA256,
+convert it to CSV using `pandas.read_stata(...).to_csv(..., index=False)`, then
+pass the CSV to the smoke check:
+
+```sh
+python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_prototype.py /path/to/psm.csv
+```
+
+Python and pandas are used only to prepare this development reference; they are
+not production dependencies. The optional check tests the two published values
+at their displayed precision rather than treating the unrounded Stata values as
+known.

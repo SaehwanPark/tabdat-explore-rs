@@ -15,10 +15,8 @@ if (any(p <= 0 | p >= 1) || anyDuplicated(p)) stop("scores must be interior and 
 x <- model.matrix(fit)
 n <- nrow(d)
 n1 <- sum(d$t)
-# Diagonal standardization defines the covariate matching metric for d_t.
-sds <- apply(x[, -1, drop = FALSE], 2, sd)
-if (any(!is.finite(sds) | sds <= 0)) stop("invalid covariate scale")
-z <- sweep(x[, -1, drop = FALSE], 2, sds, "/")
+# Raw covariate distance follows the independently checked Stata convention.
+z <- x[, -1, drop = FALSE]
 score_distance <- abs(outer(p, p, "-"))
 cov_distance <- matrix(0, n, n)
 for (j in seq_len(ncol(z))) cov_distance <- cov_distance + outer(z[, j], z[, j], "-")^2
@@ -42,7 +40,7 @@ for (i in seq_len(n)) {
       candidates <- candidates[candidates != i]
     }
     one <- nearest(score_distance[i, ], candidates, 1)
-    mu[i, arm + 1] <- d$y[one]
+    mu[i, arm + 1] <- mean(d$y[nearest(score_distance[i, ], candidates, 2)])
     if (arm != d$t[i]) opp_score[i] <- one
   }
   opp_x[i] <- nearest(cov_distance[i, ], which(d$t != d$t[i]), 1)

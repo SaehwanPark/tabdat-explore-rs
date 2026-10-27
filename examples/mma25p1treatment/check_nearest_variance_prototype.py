@@ -4,6 +4,7 @@ import csv
 import math
 import random
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -52,3 +53,12 @@ bad[0][0] = float('nan')
 result = run(bad)
 assert result.returncode != 0 and 'invalid data' in result.stderr, result.stderr
 print('PASS: order invariance, finite variance components, score ties and invalid-data rejection')
+if len(sys.argv) > 2:
+  raise SystemExit('usage: check_nearest_variance_prototype.py [stata-example.csv]')
+if len(sys.argv) == 2:
+  result = subprocess.run(['Rscript', str(SCRIPT), sys.argv[1]], text=True, capture_output=True)
+  reference = values(result)
+  assert reference['n'] == 1000 and reference['treated'] == 333
+  assert abs(reference['effect'] - 0.9603507) < 0.00000005, reference
+  assert abs(reference['se'] - 0.1204748) < 0.00000005, reference
+  print('PASS: effect and SE agree with published Stata output at displayed precision')
