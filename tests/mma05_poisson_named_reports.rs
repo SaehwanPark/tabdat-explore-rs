@@ -63,6 +63,11 @@ fn source_comparison_preserves_live_four_fits_and_fixed_offset() {
   }
   for snapshot in &snapshots[2..] {
     assert_eq!(snapshot["poisson_offset_variable"], "log_exposure");
+    assert_eq!(snapshot["poisson_offset_coefficient"], 1.0);
+    assert_eq!(
+      snapshot["poisson_null_model"],
+      "intercept_only_with_same_fixed_offset"
+    );
     assert_eq!(snapshot["log_likelihood_convention"], "poisson_count_pmf");
     assert_eq!(
       snapshot["sample"]["retained_indices"],

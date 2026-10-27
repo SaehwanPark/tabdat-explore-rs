@@ -52,6 +52,9 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_centered_r_squared: None,
         nls_covariance_correction: None,
         poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
         poisson_covariance_correction: None,
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
@@ -109,6 +112,9 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_centered_r_squared: None,
         nls_covariance_correction: None,
         poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
         poisson_covariance_correction: None,
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
@@ -193,6 +199,17 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_centered_r_squared: None,
         nls_covariance_correction: None,
         poisson_offset_variable: result.offset_variable.clone(),
+        poisson_offset_coefficient: result.offset_variable.as_ref().map(|_| 1.0),
+        poisson_null_log_likelihood: Some(result.null_log_likelihood),
+        poisson_null_model: Some(
+          match (result.offset_variable.is_some(), result.include_intercept) {
+            (true, true) => "intercept_only_with_same_fixed_offset",
+            (true, false) => "all_coefficients_zero_with_same_fixed_offset",
+            (false, true) => "intercept_only_estimated_mean",
+            (false, false) => "unit_mean_all_coefficients_zero",
+          }
+          .into(),
+        ),
         poisson_covariance_correction: Some(correction),
         poisson_mcfadden_r_squared: result
           .mcfadden_r_squared
@@ -240,6 +257,9 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_centered_r_squared: result.centered_r_squared.filter(|v| v.is_finite()),
         nls_covariance_correction: Some(result.covariance_correction),
         poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
         poisson_covariance_correction: None,
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,

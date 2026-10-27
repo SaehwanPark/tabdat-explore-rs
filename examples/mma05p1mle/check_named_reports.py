@@ -47,6 +47,9 @@ for fit,copy,name in zip(fits,table['models'],('ols_classical','ols_robust','exp
     for j,value in enumerate(row,1): near(value,ref[f'{name}.cov.{i}.{j}'],f'{name}.cov.{i}.{j}')
   if name.startswith('exp_'):
     assert copy['poisson_offset_variable']=='log_exposure'
+    assert copy['poisson_offset_coefficient']==1.0
+    assert copy['poisson_null_model']=='intercept_only_with_same_fixed_offset'
+    assert copy['poisson_null_log_likelihood']==fit['null_log_likelihood']
     assert copy['log_likelihood_convention']=='poisson_count_pmf'
     near(copy['log_likelihood'],ref['poisson_log_likelihood'],name+'.ll')
     assert copy['poisson_covariance_correction']==(1.0 if name=='exp_classical' else 10000/9999)

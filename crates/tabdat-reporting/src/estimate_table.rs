@@ -91,6 +91,12 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
         "NA".into()
       }
     });
+    row(&mut output, "Poisson null model", models, |m| {
+      m.poisson_null_model.clone().unwrap_or_else(|| "NA".into())
+    });
+    row(&mut output, "Poisson null log likelihood", models, |m| {
+      number(m.poisson_null_log_likelihood)
+    });
     row(&mut output, "Poisson covariance correction", models, |m| {
       number(m.poisson_covariance_correction)
     });

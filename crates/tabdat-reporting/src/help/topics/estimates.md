@@ -37,7 +37,8 @@ responses and scale columns remain named as fitted, not relabeled as weighted
 original-scale estimates. WLS/GLS/IV and unknown estimator provenance are
 rejected, not guessed as OLS.
 Poisson reports retain the fixed offset variable (coefficient one), count-likelihood
-convention, zero/total counts, McFadden pseudo-R-squared and selected covariance
+coefficient, null-model likelihood/convention, zero/total counts, McFadden
+pseudo-R-squared and selected covariance
 correction. Independent-row robust uses N/(N−1); clustered uses G/(G−1).
 Both use asymptotic normal inference, not G−1 t or a few-cluster guarantee.
 The offset remains fixed in the null model. Count likelihood is descriptive

@@ -82,6 +82,9 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
   assert!(legacy.get("nls_centered_r_squared").is_none());
   assert!(legacy.get("nls_covariance_correction").is_none());
   assert!(legacy.get("poisson_offset_variable").is_none());
+  assert!(legacy.get("poisson_offset_coefficient").is_none());
+  assert!(legacy.get("poisson_null_log_likelihood").is_none());
+  assert!(legacy.get("poisson_null_model").is_none());
   assert!(legacy.get("poisson_covariance_correction").is_none());
   assert!(legacy.get("poisson_mcfadden_r_squared").is_none());
   assert!(legacy.get("poisson_zero_count").is_none());
@@ -393,6 +396,15 @@ fn poisson_snapshots_preserve_offsets_covariance_sample_and_active_fit() {
     let saved = table(&mut session, name).models.remove(0);
     assert_eq!(saved.estimator, "poisson");
     assert_eq!(saved.poisson_offset_variable.as_deref(), Some("w"));
+    assert_eq!(saved.poisson_offset_coefficient, Some(1.0));
+    assert_eq!(
+      saved.poisson_null_log_likelihood,
+      Some(fit.null_log_likelihood)
+    );
+    assert_eq!(
+      saved.poisson_null_model.as_deref(),
+      Some("intercept_only_with_same_fixed_offset")
+    );
     assert_eq!(saved.poisson_covariance_correction, Some(correction));
     assert_eq!(
       saved.poisson_mcfadden_r_squared,
@@ -437,12 +449,33 @@ fn poisson_snapshots_preserve_offsets_covariance_sample_and_active_fit() {
   run(&mut session, "estimates store no_offset");
   let no_offset = table(&mut session, "no_offset").models.remove(0);
   assert_eq!(no_offset.poisson_offset_variable, None);
+  assert_eq!(no_offset.poisson_offset_coefficient, None);
+  assert_eq!(
+    no_offset.poisson_null_model.as_deref(),
+    Some("intercept_only_estimated_mean")
+  );
   assert_eq!(no_offset.poisson_covariance_correction, Some(1.0));
   assert!(
     serde_json::to_value(&no_offset)
       .unwrap()
       .get("poisson_offset_variable")
       .is_none()
+  );
+  run(&mut session, "poisson y x, offset(w) noconstant");
+  run(&mut session, "estimates store no_constant");
+  assert_eq!(
+    table(&mut session, "no_constant").models[0]
+      .poisson_null_model
+      .as_deref(),
+    Some("all_coefficients_zero_with_same_fixed_offset")
+  );
+  run(&mut session, "poisson y x, noconstant");
+  run(&mut session, "estimates store no_constant_or_offset");
+  assert_eq!(
+    table(&mut session, "no_constant_or_offset").models[0]
+      .poisson_null_model
+      .as_deref(),
+    Some("unit_mean_all_coefficients_zero")
   );
   run(&mut session, "replace w = w+1");
   run(&mut session, "regress y x");

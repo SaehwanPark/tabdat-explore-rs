@@ -71,6 +71,14 @@ pub struct EstimateSnapshot {
   /// Fixed coefficient-one log offset for Poisson, when supplied.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub poisson_offset_variable: Option<String>,
+  /// Fixed offset coefficient, present only when an offset is supplied.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub poisson_offset_coefficient: Option<f64>,
+  /// Null-model count likelihood and the offset/intercept convention.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub poisson_null_log_likelihood: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub poisson_null_model: Option<String>,
   /// Applied Poisson covariance correction: 1, N/(N-1), or G/(G-1).
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub poisson_covariance_correction: Option<f64>,

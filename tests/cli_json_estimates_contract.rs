@@ -329,6 +329,12 @@ fn poisson_named_reports_show_offset_correction_and_preserve_active_fit() {
   for model in models {
     assert_eq!(model["estimator"], "poisson");
     assert_eq!(model["poisson_offset_variable"], "z");
+    assert_eq!(model["poisson_offset_coefficient"], 1.0);
+    assert_eq!(
+      model["poisson_null_model"],
+      "intercept_only_with_same_fixed_offset"
+    );
+    assert!(model["poisson_null_log_likelihood"].is_number());
     assert_eq!(model["log_likelihood_convention"], "poisson_count_pmf");
     assert_eq!(
       model["reference_distribution"],
