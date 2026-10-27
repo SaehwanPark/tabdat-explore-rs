@@ -125,3 +125,56 @@ fn duplicate_or_missing_years_and_rank_failure_do_not_export() {
     assert!(!dir.path().join("panel_iv_design.csv").exists());
   }
 }
+
+#[test]
+fn stacked_instruments_fit_and_preserve_panel_keys() {
+  let dir = TestDir::new();
+  fs::write(dir.path().join("MOMprecise.csv"), fixture()).unwrap();
+  let script =
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/stacked_2sls.td");
+  let run_stacked = || {
+    tabdat_bin()
+      .current_dir(dir.path())
+      .args(["--json", "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let output = run_stacked();
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let fits: Vec<_> = values
+    .iter()
+    .filter(|v| v["result_type"] == "RegressionResult")
+    .collect();
+  assert_eq!(fits.len(), 2);
+  for fit in fits {
+    assert_eq!(fit["data"]["observation_count"], 320);
+    assert_eq!(
+      fit["data"]["first_stage"]["rows"][0]["excluded_instruments"]
+        .as_array()
+        .unwrap()
+        .len(),
+      72
+    );
+  }
+  let path = dir.path().join("stacked_iv_design.csv");
+  let data = fs::read_to_string(&path).unwrap();
+  let mut lines = data.lines();
+  let header: Vec<_> = lines.next().unwrap().split(',').collect();
+  let first: Vec<_> = lines.next().unwrap().split(',').collect();
+  let column = |name: &str| header.iter().position(|c| *c == name).unwrap();
+  assert_eq!(first[column("year")].parse::<i32>().unwrap(), 1981);
+  assert_eq!(first[column("z1y1")], first[column("agehl1")]);
+  assert_eq!(first[column("z1y2")].parse::<f64>().unwrap(), 0.0);
+  assert!(!run_stacked().status.success());
+  assert_eq!(fs::read_to_string(path).unwrap(), data);
+}
