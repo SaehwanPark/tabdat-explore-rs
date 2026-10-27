@@ -27,7 +27,10 @@ Store copies selected coefficients, SEs, test statistics/p-values, full selected
 covariance/parameter order, fit-time sample positions/counts/groups and applicable
 fit statistics. It does not store predictor designs, fitted values or residuals.
 NLS reports additionally retain the explicit typed mean expression and its ordered
-parameter/predictor bindings, plus centered response-scale R-squared when defined.
+parameter/predictor bindings, its Gauss–Newton covariance correction, plus
+centered response-scale R-squared when defined. NLS inference assumes
+independent rows and the stated conditional mean; working covariance additionally
+assumes homoskedasticity, while HC1 permits heteroskedasticity.
 NLS `include_intercept` is false because no intercept is inserted implicitly;
 an intercept-like term may still appear in the explicit formula. Transformed
 responses and scale columns remain named as fitted, not relabeled as weighted

@@ -71,6 +71,9 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "Outcome", models, |m| m.outcome.clone());
   row(&mut output, "Covariance", models, |m| m.covariance.clone());
   if models.iter().any(|m| m.nls_model.is_some()) {
+    row(&mut output, "NLS covariance correction", models, |m| {
+      number(m.nls_covariance_correction)
+    });
     row(&mut output, "NLS mean", models, |m| {
       m.nls_model
         .as_ref()

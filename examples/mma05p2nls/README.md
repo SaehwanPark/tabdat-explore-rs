@@ -374,3 +374,24 @@ Actions are disabled; other platforms, packaging/performance and release readine
 remain unverified. The full roadmap/illustration inventory and further NLS
 covariance and marginal-effect methods remain required; the bounded source
 model-variance sandwich is documented [separately](model_variance.md).
+
+## Named NLS comparison
+
+[`named_reports.td`](named_reports.td) fits the unweighted source model with
+working and HC1 covariance and compares immutable named reports. Both columns
+retain the explicit mean expression, ordered parameter names, selected
+covariance, approximate-t reference and fit-time candidate indices. The
+centered R-squared applies to the fitted response. `estimates table` shows
+standard errors, and JSON includes the full covariance. These reports do not
+restore fits or prove current-data identity; active prediction still uses the
+most recent fit. Run with prepared `nls.csv` in the current directory:
+
+```sh
+/path/to/tabdat-explore-rs --text -f /path/to/repo/examples/mma05p2nls/named_reports.td
+```
+
+On the original 10,000-row source, both stored formulas, sample positions,
+coefficients, standard errors and covariance matrices were checked against
+their respective live NLS results. This compares the two unweighted fits;
+weighted transformations, other estimators and a combined Table 5.7 remain
+separate work.

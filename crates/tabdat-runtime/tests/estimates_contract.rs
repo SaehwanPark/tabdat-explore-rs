@@ -80,6 +80,7 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
   let legacy = serde_json::to_value(&saved).unwrap();
   assert!(legacy.get("nls_model").is_none());
   assert!(legacy.get("nls_centered_r_squared").is_none());
+  assert!(legacy.get("nls_covariance_correction").is_none());
   assert_eq!(
     serde_json::from_value::<tabdat_domain::EstimateSnapshot>(legacy).unwrap(),
     saved
@@ -292,6 +293,10 @@ fn nls_snapshots_preserve_explicit_formula_covariance_and_state_across_refits() 
     let saved = table(&mut session, name).models.remove(0);
     assert_eq!(saved.nls_model.as_ref(), Some(&fit.model));
     assert_eq!(saved.nls_centered_r_squared, fit.centered_r_squared);
+    assert_eq!(
+      saved.nls_covariance_correction,
+      Some(fit.covariance_correction)
+    );
     let json = serde_json::to_value(&saved).unwrap();
     assert_eq!(
       serde_json::from_value::<tabdat_domain::EstimateSnapshot>(json).unwrap(),
