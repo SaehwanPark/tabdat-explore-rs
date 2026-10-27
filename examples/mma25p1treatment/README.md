@@ -143,3 +143,67 @@ The tolerance is `1e-10 + 1e-9*abs(reference)`, with a stricter `1e-7` relative
 check for tiny nonzero probabilities and p-values. The empirical-range rule is a
 sample diagnostic rather than a general support guarantee; matching, effect
 estimation, score-estimation uncertainty and the historical plot remain open.
+
+## Untrimmed inverse-probability ATT
+
+[`ipw_att.td`](ipw_att.td) extends the same assignment model to a different,
+bounded analysis: an untrimmed normalized inverse-probability weighted estimate
+of the average treatment effect on the treated (ATT). It uses all 2,675 source
+people, rather than the empirical-range subset or the authors' stratified
+regressions. If `p_i` is the fitted logit probability and `w_i=p_i/(1-p_i)` for
+controls, the point estimate is the treated mean of `re78` minus the weighted
+control mean `sum(w_i*y_i)/sum(w_i)`. Normalization allows the two groups' total
+weights to differ. This is not the authors' Table 25.4 stratified estimator.
+
+The 95% normal interval uses an independent-person estimating-equation
+sandwich that includes the estimated logit, without a finite-sample correction.
+Let `X` include the intercept, `H=sum(p_i*(1-p_i)*X_i*X_i')`,
+`g=sum_control(w_i*(y_i-mu0)*X_i)/sum_control(w_i)`, and `s_i=X_i*(T_i-p_i)`.
+The individual contribution is
+`T_i*(y_i-mu1)/N1 - (1-T_i)*w_i*(y_i-mu0)/sum_control(w_i) - g'*H^-1*s_i`;
+the reported variance is the sum of squared contributions. A weighted regression
+with weights `p_i*(1-p_i)` solves the information-matrix system. Its displayed
+coefficients and standard errors are **internal computation**, not treatment
+effect estimates or their inference. The script exports each person's score,
+weight, nuisance multiplier and contribution to permit auditing.
+
+On the original source, the ATT is 3,027.875, estimated-score sandwich SE
+879.856 and normal interval [1,303.389, 4,752.362]. The control weight effective
+sample size `(sum w)^2/sum(w^2)` is only 14.08 out of 2,490 controls and the
+largest weight is 36.77. This concentration, sparse common support and other
+violations of asymptotic regularity can make the normal interval unreliable. No
+trimming, weight clipping, overlap correction or sensitivity analysis is applied.
+
+A causal ATT interpretation requires, among other conditions, consistency,
+independent people, conditional exchangeability given the included covariates,
+positivity for the treated target population and a correctly specified assignment
+model. Fitted probabilities and finite sample weights do not prove those
+conditions. The PSID controls are observational and the estimates need not have
+a causal interpretation. The reported sandwich accounts for estimation of the
+logit under regularity; it does not correct model misspecification, unobserved
+confounding or lack of overlap.
+
+The script admits 15–10,000 dense ordered people, finite outcomes and covariates,
+binary treatment/indicators, nonnegative pretreatment earnings, both groups and
+positive within-group outcome variation. It fails on rank or convergence errors,
+nonrepresentable probabilities, weights, internal solve, influence terms or
+variance, and refuses to overwrite its export. An exactly degenerate internal
+weighted solve may also fail. Prior script effects are not rolled back.
+
+With the same separately prepared `nswpsid.csv`, from a fresh directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/ipw_att.td > ipw_att_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/ipw_att_reference.R /path/to/nswpsid.da1 ipw-att-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_ipw_att.py /path/to/nswpsid.da1 ipw_att_result.jsonl ipw_att_rows.csv ipw-att-reference
+```
+
+Independent R 4.6.1 `glm`, direct information-matrix inversion and grouped
+estimating-equation sums validate all 2,675 source scores and influence terms,
+the point estimate, interval and weight diagnostics at `1e-8 +
+1e-9*abs(reference)`; tiny scores also require `1e-7` relative agreement. An
+independent central-difference check validates the weighted-control-mean
+propensity gradient. A separate 500-person synthetic fixture checks the
+estimated-score sandwich against R. This is a source-specific composition, not
+a general treatment-effects or matching command; the author's stratified
+outcome model, overlap alternatives and additional analyses remain open.
