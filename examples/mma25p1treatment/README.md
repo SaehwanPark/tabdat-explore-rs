@@ -324,3 +324,77 @@ thousandth, acknowledging historical float storage and display rather than
 claiming exact digits. A separate 500-person R control, supported-zero case and
 invalid-input and export checks cover the CLI. Propensity-stratified uncertainty,
 matching and the remaining Chapter 25 analyses are still required.
+
+## Fixed-bandwidth kernel matching
+
+[`kernel_matching.td`](kernel_matching.td) compares each NSW treated person's
+1978 earnings with a normalized Gaussian-kernel weighted mean of PSID control
+outcomes, using the DW99 assignment logit described above. Its fixed score
+bandwidth is `h=0.06`; all controls contribute with replacement, and no caliper,
+empirical-range restriction or trimming is applied. Equal scores receive equal
+kernel weights, so there is no arbitrary tie-breaking. The result is the mean
+treated-minus-matched outcome across all 185 treated people. The procedure is a
+bounded kernel-matching illustration related to Table 25.6, not literal
+reproduction of the author's kernel, bandwidth, support rule or reported number.
+
+On the source data the fixed-bandwidth contrast is 842.393, the estimated-score
+sandwich SE is 881.392 and the normal 95% interval is [-885.104, 2,569.890].
+The smallest per-treated effective number of controls `1/sum(q_ij^2)` is 6.99,
+the mean is 183.71, the largest nearest-control score distance is 0.08696, and
+the maximum summed reuse weight for a control is 13.31. These diagnostics show
+that some treated people have weak support and controls may be reused heavily;
+they do not establish positivity or remove unobserved confounding.
+
+The inferential target is the **fixed-bandwidth smoothed observed-data
+functional**, not automatically the causal ATT. With a nonzero fixed bandwidth,
+the weighted control mean generally differs from the conditional counterfactual
+mean at a treated score. A causal ATT interpretation requires the usual
+consistency, independent-person, conditional exchangeability and positivity
+assumptions, a suitable score model, and additional conditions making that
+smoothing discrepancy negligible. The reported interval does not include
+finite-bandwidth bias, specification uncertainty, or unobserved confounding.
+No bandwidth selection or sensitivity analysis is claimed.
+
+For treated person `i` and control `j`, let `q_ij` be the Gaussian weight
+normalized over controls, `m_i=sum_j(q_ij*y_j)`, `r_ij=y_j-m_i`,
+`d_ij=p_i-p_j`, and `theta=mean_i(y_i-m_i)`. The direct empirical-distribution
+influence contribution is `(y_i-m_i-theta)/N1` for treated people and
+`-sum_i(q_ij*r_ij)/N1` for controls; the latter accounts for reuse. The score
+term adds `g'*H^-1*X_k*(T_k-p_k)`, where
+`H=sum_k(p_k*(1-p_k)*X_k*X_k')` and
+`g=sum_ij(q_ij*r_ij*d_ij*(p_i*(1-p_i)*X_i-p_j*(1-p_j)*X_j))/(N1*h^2)`.
+The variance is the sum of squared contributions, without a small-sample
+correction, and the interval uses a normal reference. This sandwich treats the
+bandwidth as fixed and accounts for estimating the logit. The weighted
+regression printed by the script is an internal information-matrix solve; its
+coefficients and inference are not matching effects. Person-level matches,
+control reuse, score derivatives and influence terms are exported for audit.
+
+The script requires the same finite, ordered and nondegenerate inputs as the ATT
+example, strictly interior finite scores, and at most 2,000,000 treated–control
+pairs. It rejects nonfinite pair weights, matches, influence values or positive
+variance failures, and refuses to overwrite its export; earlier session effects
+are not rolled back. Pair and influence reductions are ordered for reproducible
+exports. This is a bounded composition, not a general matching command. It does
+not implement nearest-neighbor, radius or author-program matching; the ordinary
+bootstrap is not assumed valid for fixed-neighbor matching (see [Abadie and
+Imbens (2008)](https://doi.org/10.3982/ECTA6474)).
+
+From a fresh prepared directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/kernel_matching.td > kernel_matching_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/kernel_matching_reference.R /path/to/nswpsid.da1 kernel-matching-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_kernel_matching.py /path/to/nswpsid.da1 kernel_matching_result.jsonl kernel_matching_rows.csv kernel-matching-reference
+```
+
+Independent R 4.6.1 pair matrices and direct information inversion validate all
+2,675 source records, matched values, control reuse, score derivatives,
+influence terms, effect, interval and diagnostics at `1e-8 +
+1e-9*abs(reference)`, with `1e-7` relative agreement for tiny scores. A central
+numerical-gradient check uses a `1e-6` step: the larger `1e-5` step showed
+truncation error for the largest squared earnings regressor, which was resolved
+by reducing the step rather than widening the comparison tolerance. A separate
+500-person R control validates the contrast, SE and effective match counts;
+CLI tests cover invalid inputs, degenerate outcomes, pair-work bounds and
+JSON/text no-clobber exports.

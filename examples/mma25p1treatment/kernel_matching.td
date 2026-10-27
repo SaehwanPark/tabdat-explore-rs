@@ -42,8 +42,8 @@ WITH treated AS (SELECT source_row AS ti,pscore AS tp,re78 AS ty FROM active WHE
 controls AS (SELECT source_row AS ci,pscore AS cp,re78 AS cy FROM active WHERE treat=0),
 raw AS (SELECT ti,tp,ty,ci,cp,cy,tp-cp AS delta,
   exp(-0.5*((tp-cp)/0.06)*((tp-cp)/0.06)) AS kernel FROM treated CROSS JOIN controls),
-weighted AS (SELECT *,sum(kernel) OVER (PARTITION BY ti) AS denominator,
-  sum(kernel*cy) OVER (PARTITION BY ti) AS numerator,
+weighted AS (SELECT *,sum(kernel) OVER (PARTITION BY ti ORDER BY ci ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS denominator,
+  sum(kernel*cy) OVER (PARTITION BY ti ORDER BY ci ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS numerator,
   min(abs(delta)) OVER (PARTITION BY ti) AS nearest_distance FROM raw)
 SELECT ti,tp,ty,ci,cp,cy,delta,kernel/denominator AS pair_weight,
   numerator/denominator AS matched_mean,nearest_distance FROM weighted ORDER BY ti,ci
@@ -55,13 +55,13 @@ THEN error('kernel comparison requires finite positive pair weights and finite m
 """
 sql """
 WITH treated AS (SELECT ti,first(ty-matched_mean) AS contrast,first(matched_mean) AS matched_mean,
-  first(nearest_distance) AS nearest_distance,1/sum(pair_weight*pair_weight) AS match_ess,
-  sum(pair_weight*(cy-matched_mean)*delta)*first(tp*(1-tp))/(0.06*0.06) AS score_sum
+  first(nearest_distance) AS nearest_distance,1/sum(pair_weight*pair_weight ORDER BY ci) AS match_ess,
+  sum(pair_weight*(cy-matched_mean)*delta ORDER BY ci)*first(tp*(1-tp))/(0.06*0.06) AS score_sum
   FROM active GROUP BY ti),
-controls AS (SELECT ci,sum(pair_weight*(cy-matched_mean)) AS residual_sum,
-  -sum(pair_weight*(cy-matched_mean)*delta)*first(cp*(1-cp))/(0.06*0.06) AS score_sum,
-  sum(pair_weight) AS reuse_weight FROM active GROUP BY ci),
-summary AS (SELECT count(*) AS treated_n,avg(contrast) AS estimate FROM treated)
+controls AS (SELECT ci,sum(pair_weight*(cy-matched_mean) ORDER BY ti) AS residual_sum,
+  -sum(pair_weight*(cy-matched_mean)*delta ORDER BY ti)*first(cp*(1-cp))/(0.06*0.06) AS score_sum,
+  sum(pair_weight ORDER BY ti) AS reuse_weight FROM active GROUP BY ci),
+summary AS (SELECT count(*) AS treated_n,avg(contrast ORDER BY ti) AS estimate FROM treated)
 SELECT ti AS source_row,(contrast-estimate)/treated_n AS direct_influence,score_sum/treated_n AS score_numerator,
   matched_mean,nearest_distance,match_ess,CAST(NULL AS DOUBLE) AS reuse_weight FROM treated CROSS JOIN summary
 UNION ALL
@@ -92,8 +92,8 @@ SELECT *,direct_influence+nuisance_multiplier*(treat-pscore) AS influence
 FROM active ORDER BY source_row
 """ into kernel_influences
 sql """
-WITH totals AS (SELECT avg(re78-matched_mean) FILTER (WHERE treat=1) AS estimate,
-  sum(influence*influence) AS variance,
+WITH totals AS (SELECT avg(re78-matched_mean ORDER BY source_row) FILTER (WHERE treat=1) AS estimate,
+  sum(influence*influence ORDER BY source_row) AS variance,
   count(*) FILTER (WHERE NOT coalesce(isfinite(nuisance_multiplier) AND isfinite(influence),FALSE)) AS invalid FROM active)
 SELECT CASE WHEN invalid>0 OR NOT coalesce(isfinite(variance) AND variance>0 AND isfinite(estimate)
   AND isfinite(estimate-1.959963984540054*sqrt(variance))
@@ -102,10 +102,10 @@ THEN error('kernel comparison requires finite influence and positive finite vari
 """
 sql """
 SELECT count(*) AS observations,count(*) FILTER (WHERE treat=1) AS treated_people,
-  avg(re78-matched_mean) FILTER (WHERE treat=1) AS kernel_contrast,sqrt(sum(influence*influence)) AS sandwich_se,
-  avg(re78-matched_mean) FILTER (WHERE treat=1)-1.959963984540054*sqrt(sum(influence*influence)) AS normal_95_lower,
-  avg(re78-matched_mean) FILTER (WHERE treat=1)+1.959963984540054*sqrt(sum(influence*influence)) AS normal_95_upper,
-  min(match_ess) FILTER (WHERE treat=1) AS min_match_ess,avg(match_ess) FILTER (WHERE treat=1) AS mean_match_ess,
+  avg(re78-matched_mean ORDER BY source_row) FILTER (WHERE treat=1) AS kernel_contrast,sqrt(sum(influence*influence ORDER BY source_row)) AS sandwich_se,
+  avg(re78-matched_mean ORDER BY source_row) FILTER (WHERE treat=1)-1.959963984540054*sqrt(sum(influence*influence ORDER BY source_row)) AS normal_95_lower,
+  avg(re78-matched_mean ORDER BY source_row) FILTER (WHERE treat=1)+1.959963984540054*sqrt(sum(influence*influence ORDER BY source_row)) AS normal_95_upper,
+  min(match_ess) FILTER (WHERE treat=1) AS min_match_ess,avg(match_ess ORDER BY source_row) FILTER (WHERE treat=1) AS mean_match_ess,
   max(nearest_distance) FILTER (WHERE treat=1) AS max_nearest_distance,
   max(reuse_weight) FILTER (WHERE treat=0) AS max_control_reuse,
   'Fixed h=0.06 Gaussian kernel contrast; includes estimated logit; finite bandwidth is not automatically a causal ATT' AS interpretation
