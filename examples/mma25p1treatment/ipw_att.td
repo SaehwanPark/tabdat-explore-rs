@@ -12,7 +12,10 @@ SELECT CASE WHEN COUNT(*)<=14 OR COUNT(*)>10000
     AND isfinite(re74) AND re74>=0 AND isfinite(re75) AND re75>=0 AND isfinite(re78)
     AND isfinite((re74/10000)*(re74/10000)) AND isfinite((re75/10000)*(re75/10000)),FALSE))>0
   OR COUNT(*) FILTER (WHERE treat=0)<2 OR COUNT(*) FILTER (WHERE treat=1)<2
-THEN error('propensity diagnostics require ordered dense unique IDs, finite data, binary groups, nonnegative pretreatment earnings and both groups')
+  OR NOT coalesce(isfinite(var_samp(re78) FILTER (WHERE treat=0))
+    AND isfinite(var_samp(re78) FILTER (WHERE treat=1))
+    AND (var_samp(re78) FILTER (WHERE treat=0)+var_samp(re78) FILTER (WHERE treat=1))>0,FALSE)
+THEN error('propensity diagnostics require ordered dense unique IDs, finite data, binary groups, nonnegative pretreatment earnings, both groups and nonzero within-group outcome variation')
 ELSE COUNT(*) END AS observations FROM (SELECT *,row_number() OVER () AS input_position FROM active)
 """
 sql """
@@ -68,10 +71,15 @@ SELECT *,CASE WHEN treat=1 THEN (re78-treated_mean)/treated_n
 FROM active ORDER BY source_row
 """ into ipw_influences
 sql """
+SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(nuisance_multiplier) AND isfinite(influence),FALSE))>0
+THEN error('IPW ATT requires finite individual influence values') ELSE COUNT(*) END AS valid_influences FROM active
+"""
+sql """
 WITH totals AS (SELECT sum(influence*influence) AS variance,sum(control_weight*control_weight) AS weight_square_sum,
   max(control_weight_sum) AS weight_sum,max(treated_mean-weighted_control_mean) AS estimate FROM active)
 SELECT CASE WHEN NOT coalesce(isfinite(variance) AND variance>0 AND isfinite(weight_square_sum) AND weight_square_sum>0
-  AND isfinite(weight_sum*weight_sum) AND isfinite(estimate) AND isfinite(estimate-1.959963984540054*sqrt(variance))
+  AND isfinite(weight_sum*weight_sum) AND weight_sum*weight_sum>0
+  AND isfinite((weight_sum*weight_sum)/weight_square_sum) AND isfinite(estimate) AND isfinite(estimate-1.959963984540054*sqrt(variance))
   AND isfinite(estimate+1.959963984540054*sqrt(variance)),FALSE)
 THEN error('IPW ATT requires finite positive variance and effective sample size') ELSE 1 END AS valid_inference FROM totals
 """
@@ -83,7 +91,7 @@ SELECT count(*) AS observations,max(treated_n) AS treated_people,max(treated_mea
   max(treated_mean-weighted_control_mean)+1.959963984540054*sqrt(sum(influence*influence)) AS normal_95_upper,
   max(control_weight_sum)*max(control_weight_sum)/sum(control_weight*control_weight) AS control_weight_ess,
   max(control_weight) AS max_control_weight,min(pscore) AS min_score,max(pscore) AS max_score,
-  'Untrimmed normalized ATT; independent-person sandwich includes estimated logit; causal interpretation requires overlap and exchangeability' AS interpretation
+  'Untrimmed ATT; sandwich includes estimated logit; extreme weights or low effective sample size can invalidate normal approximations; causal claims require overlap and exchangeability' AS interpretation
 FROM active
 """
 sql """SELECT source_row,treat,re78,pscore,control_weight,treated_mean,weighted_control_mean,nuisance_multiplier,influence FROM active ORDER BY source_row""" into ipw_output
