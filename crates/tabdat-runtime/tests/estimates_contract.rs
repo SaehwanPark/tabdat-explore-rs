@@ -356,3 +356,85 @@ fn nls_snapshot_keeps_transformed_formula_and_excluded_rows() {
   assert!(saved.sample.weights.is_none());
   assert_eq!(saved.covariance, "hc1_gauss_newton");
 }
+
+#[test]
+fn poisson_snapshots_preserve_offsets_covariance_sample_and_active_fit() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  for (name, options, covariance, correction) in [
+    ("model", "offset(w)", "model_based_poisson_information", 1.0),
+    (
+      "robust_count",
+      "offset(w) robust",
+      "robust_sandwich_n_over_n_minus_1",
+      10.0 / 9.0,
+    ),
+    (
+      "clustered",
+      "offset(w) cluster(g)",
+      "cluster_sandwich_g_over_g_minus_1",
+      5.0 / 4.0,
+    ),
+  ] {
+    let ExecutionResult::Poisson(fit) = run(&mut session, &format!("poisson y x, {options}"))
+    else {
+      panic!()
+    };
+    let before = session.state();
+    run(&mut session, &format!("estimates store {name}"));
+    let mut after = session.state();
+    after.stored_estimates = before.stored_estimates.clone();
+    assert_eq!(after, before);
+    let saved = table(&mut session, name).models.remove(0);
+    assert_eq!(saved.estimator, "poisson");
+    assert_eq!(saved.poisson_offset_variable.as_deref(), Some("w"));
+    assert_eq!(saved.poisson_covariance_correction, Some(correction));
+    assert_eq!(
+      saved.poisson_mcfadden_r_squared,
+      Some(fit.mcfadden_r_squared)
+    );
+    assert_eq!(saved.poisson_zero_count, Some(fit.zero_count));
+    assert_eq!(saved.poisson_count_sum, Some(fit.count_sum));
+    assert_eq!(saved.covariance, covariance);
+    assert_eq!(saved.covariance_matrix, fit.covariance);
+    assert_eq!(saved.sample, fit.sample.clone().unwrap());
+    assert_eq!(saved.reference_distribution, "asymptotic_standard_normal");
+    assert_eq!(saved.inference_degrees_of_freedom, None);
+    assert_eq!(saved.log_likelihood, Some(fit.log_likelihood));
+    assert_eq!(
+      saved.log_likelihood_convention.as_deref(),
+      Some("poisson_count_pmf")
+    );
+    assert_eq!(saved.mcfadden_r_squared, None);
+    assert_eq!(
+      saved.cluster_count,
+      fit.cluster.as_ref().map(|c| c.group_count)
+    );
+    for (copy, original) in saved.coefficients.iter().zip(fit.coefficients.iter()) {
+      assert_eq!(copy.value, original.value);
+      assert_eq!(copy.standard_error, Some(original.standard_error));
+      assert_eq!(copy.statistic, original.statistic);
+      assert_eq!(copy.p_value, original.p_value);
+    }
+    let serialized = serde_json::to_value(&saved).unwrap();
+    assert_eq!(
+      serde_json::from_value::<tabdat_domain::EstimateSnapshot>(serialized).unwrap(),
+      saved
+    );
+  }
+  let saved = table(&mut session, "model robust_count clustered");
+  let active = session.state();
+  let before = run(&mut session, "estat margins");
+  assert_eq!(session.state(), active);
+  assert_eq!(run(&mut session, "estat margins"), before);
+  run(&mut session, "predict expected, n");
+  run(&mut session, "replace w = w+1");
+  run(&mut session, "regress y x");
+  assert_eq!(table(&mut session, "model robust_count clustered"), saved);
+  let state = session.state();
+  assert!(error(&mut session, "estimates store model").contains("already stored"));
+  assert_eq!(session.state(), state);
+  assert!(error(&mut session, "poisson absent x").contains("unknown"));
+  assert!(session.state().estimation.is_none());
+  assert_eq!(table(&mut session, "model robust_count clustered"), saved);
+}

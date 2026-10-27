@@ -11,7 +11,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
     EstimationState::Linear(state) => {
       if state.estimator.as_deref() != Some("ols") {
         return Err(failure(
-          "store supports unweighted OLS, logit, probit and NLS only; refit if estimator provenance is unavailable",
+          "store supports unweighted OLS, logit, probit, Poisson and NLS only; refit if estimator provenance is unavailable",
         ));
       }
       let result = &state.result;
@@ -51,6 +51,11 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_model: None,
         nls_centered_r_squared: None,
         nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
         predictors: state.predictors.clone(),
         include_intercept: state.include_intercept,
         cluster_variable: match &result.covariance.covariance_type {
@@ -103,6 +108,11 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_model: None,
         nls_centered_r_squared: None,
         nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
         predictors: result.predictor_names.clone(),
         include_intercept: result.include_intercept,
         covariance: covariance.into(),
@@ -137,6 +147,90 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         df_residual: None,
       }
     }
+    EstimationState::PoissonFit(state) => {
+      let result = &state.result;
+      let sample = result
+        .sample
+        .as_ref()
+        .ok_or_else(|| failure("fit sample is unavailable; refit before storing"))?;
+      if sample.weights.is_some() {
+        return Err(failure("weighted Poisson reports are not installed"));
+      }
+      let (covariance, correction) = if let Some(cluster) = &result.cluster {
+        let groups = sample
+          .cluster_groups
+          .as_ref()
+          .ok_or_else(|| failure("cluster provenance is unavailable"))?;
+        let count = groups.iter().collect::<BTreeSet<_>>().len();
+        if count != cluster.group_count || count < 2 {
+          return Err(failure(
+            "cluster provenance is inconsistent; refit before storing",
+          ));
+        }
+        (
+          "cluster_sandwich_g_over_g_minus_1",
+          count as f64 / (count - 1) as f64,
+        )
+      } else if result.robust {
+        let n = result.observation_count;
+        if n < 2 {
+          return Err(failure(
+            "robust covariance requires at least two observations",
+          ));
+        }
+        (
+          "robust_sandwich_n_over_n_minus_1",
+          n as f64 / (n - 1) as f64,
+        )
+      } else {
+        ("model_based_poisson_information", 1.0)
+      };
+      EstimateSnapshot {
+        name: name.into(),
+        estimator: "poisson".into(),
+        outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: result.offset_variable.clone(),
+        poisson_covariance_correction: Some(correction),
+        poisson_mcfadden_r_squared: result
+          .mcfadden_r_squared
+          .is_finite()
+          .then_some(result.mcfadden_r_squared),
+        poisson_zero_count: Some(result.zero_count),
+        poisson_count_sum: Some(result.count_sum),
+        predictors: result.predictor_names.clone(),
+        include_intercept: result.include_intercept,
+        covariance: covariance.into(),
+        cluster_variable: result.cluster.as_ref().map(|c| c.variable.clone()),
+        cluster_count: result.cluster.as_ref().map(|c| c.group_count),
+        covariance_parameter_names: result.coefficients.iter().map(|c| c.name.clone()).collect(),
+        covariance_matrix: result.covariance.clone(),
+        coefficients: result
+          .coefficients
+          .iter()
+          .map(|c| tabdat_stats::CoefficientEstimate {
+            name: c.name.clone(),
+            value: c.value,
+            standard_error: Some(c.standard_error),
+            statistic: c.statistic,
+            p_value: c.p_value,
+          })
+          .collect(),
+        observation_count: result.observation_count,
+        event_count: None,
+        sample: sample.clone(),
+        reference_distribution: "asymptotic_standard_normal".into(),
+        inference_degrees_of_freedom: None,
+        log_likelihood: Some(result.log_likelihood),
+        log_likelihood_convention: Some("poisson_count_pmf".into()),
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: Some(result.df_residual),
+      }
+    }
     EstimationState::NonlinearFit(result) => {
       EstimateSnapshot {
         name: name.into(),
@@ -145,6 +239,11 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         nls_model: Some(result.model.clone()),
         nls_centered_r_squared: result.centered_r_squared.filter(|v| v.is_finite()),
         nls_covariance_correction: Some(result.covariance_correction),
+        poisson_offset_variable: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
         predictors: result.model.predictor_names.clone(),
         // NLS has no implicit intercept; the formula alone defines its parameters.
         include_intercept: false,
@@ -185,7 +284,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
     }
     _ => {
       return Err(failure(
-        "store supports unweighted OLS, logit, probit and NLS only",
+        "store supports unweighted OLS, logit, probit, Poisson and NLS only",
       ));
     }
   };
@@ -231,7 +330,7 @@ impl Session {
           ));
         }
         let state = self.estimation.as_ref().ok_or_else(|| {
-          failure("store requires a successful current OLS, logit, probit or NLS fit")
+          failure("store requires a successful current OLS, logit, probit, Poisson or NLS fit")
         })?;
         let report = snapshot(name, state)?;
         let estimator = report.estimator.clone();

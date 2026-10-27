@@ -141,7 +141,6 @@ fn retained_cluster_effects_survive_edits_and_current_predictions_do_not_need_id
     "lincom x",
     "test x",
     "estat vif",
-    "estimates store counts",
   ] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");

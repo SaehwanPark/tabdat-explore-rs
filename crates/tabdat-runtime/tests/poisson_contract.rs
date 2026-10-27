@@ -237,7 +237,6 @@ fn predictions_and_unsupported_postestimation_fail_without_any_mutation() {
     "lincom x",
     "test x",
     "estat vif",
-    "estimates store count",
   ] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
