@@ -136,3 +136,46 @@ The draft must continue to withhold an interval until the selected estimator's
 population target, mixed-score and support-selection asymptotics, numerical
 failure policy, and independent inference validation are resolved. The pilot
 is risk-focused research, not a release or coverage gate.
+
+## Untrimmed continuous-score variance prototype
+
+[`nearest_variance_prototype.R`](nearest_variance_prototype.R) is a separate,
+base-R implementation of the proposed ATET variance components in section 4
+of Abadie and Imbens (2016). It is a development calculation, not the NSW
+workflow or production inference. It fits a logit using `x1`, `x2` and an
+intercept, matches each treated person to one control with replacement, and
+uses the full sample without empirical-range selection. It rejects duplicate
+scores, distance ties at a selection boundary, noninterior scores and invalid
+input; these checks cannot establish the paper's population assumptions.
+
+The calculation uses two same-arm observations including the focal person for
+local variances and two same- or opposite-arm observations for conditional
+covariances. It uses one same-arm neighbor excluding the focal person and one
+opposite-arm neighbor for the propensity-space conditional means. For the
+covariate-space matching used in the target derivative, distance is Euclidean
+after dividing `x1` and `x2` by their sample standard deviations. The script
+prints the known-score variance, the estimated-score subtraction and target
+adjustment separately. A smoke check exercises permutation invariance, finite
+components and rejection of duplicate scores and invalid data:
+
+```sh
+python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_prototype.py
+```
+
+As an external comparison, the University of Wisconsin's [propensity-score
+matching example](https://ssc.wisc.edu/sscc/pubs/stata_psmatch.htm) publishes
+both [its input data](https://ssc.wisc.edu/sscc/pubs/files/psm.dta) and Stata
+`teffects psmatch (y) (t x1 x2), atet` output. The data file used here has
+SHA256 `5e02c85e9f0fb56afded6b8696bd7b46644e740a785e41c2e352e1971f97d4c1`.
+Converting that file to CSV with pandas `read_stata` and running this prototype
+with R 4.6.1 gives effect 0.9603507171 and standard error 0.1203081854. The
+published Stata output gives effect 0.9603507 and AI robust standard error
+0.1204748. The effect agrees at the published precision, but **the standard
+errors do not**. The [Stata manual](https://www.stata.com/manuals/causalteffectspsmatch.pdf)
+says its default robust calculation uses two matches to estimate standard
+errors; the paper permits different local-neighbor choices. The source of the
+difference has not been established and must not be explained away by widening
+a tolerance. Matching this independent result or independently justifying a
+different numerical reference remains necessary before any inferred interval
+can be released. Neither result establishes validity for NSW's ties and
+empirical support selection.
