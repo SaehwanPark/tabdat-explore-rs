@@ -56,15 +56,25 @@ THEN error('nearest matching requires interior common-range scores, at least two
 ELSE COUNT(*) END AS valid_candidates FROM active
 """
 sql """
-WITH treated AS (SELECT source_row AS treated_id,pscore AS treated_score,re78 AS treated_outcome FROM active WHERE treat=1 AND in_overlap),
-controls AS (SELECT source_row AS control_id,pscore AS control_score,re78 AS control_outcome FROM active WHERE treat=0 AND in_overlap),
+WITH treated AS (SELECT source_row AS treated_id,pscore AS treated_score,re78 AS treated_outcome,
+  age AS treated_age,educ AS treated_educ,black AS treated_black,re74 AS treated_re74,re75 AS treated_re75
+  FROM active WHERE treat=1 AND in_overlap),
+controls AS (SELECT source_row AS control_id,pscore AS control_score,re78 AS control_outcome,
+  age AS control_age,educ AS control_educ,black AS control_black,re74 AS control_re74,re75 AS control_re75
+  FROM active WHERE treat=0 AND in_overlap),
 pairs AS (SELECT *,abs(treated_score-control_score) AS distance FROM treated CROSS JOIN controls),
 ranked AS (SELECT *,min(distance) OVER (PARTITION BY treated_id) AS nearest_distance FROM pairs)
-SELECT * FROM ranked WHERE distance=nearest_distance ORDER BY treated_id,control_id
+SELECT treated_id,treated_score,treated_outcome,control_id,control_score,control_outcome,distance,nearest_distance,
+  treated_age,control_age,treated_educ,control_educ,treated_black,control_black,
+  treated_re74,control_re74,treated_re75,control_re75
+FROM ranked WHERE distance=nearest_distance ORDER BY treated_id,control_id
 """ into nearest_raw_pairs
 sql """
-SELECT *,count(*) OVER (PARTITION BY treated_id) AS tied_controls,
-  avg(control_outcome ORDER BY control_id) OVER (PARTITION BY treated_id) AS matched_outcome
+SELECT treated_id,treated_score,treated_outcome,control_id,control_score,control_outcome,distance,nearest_distance,
+  count(*) OVER (PARTITION BY treated_id) AS tied_controls,
+  avg(control_outcome ORDER BY control_id) OVER (PARTITION BY treated_id) AS matched_outcome,
+  treated_age,control_age,treated_educ,control_educ,treated_black,control_black,
+  treated_re74,control_re74,treated_re75,control_re75
 FROM active ORDER BY treated_id,control_id
 """ into nearest_pairs
 sql """
@@ -88,5 +98,21 @@ SELECT matched_treated,distinct_controls,contrast,max_distance,tied_treated,max_
   CAST(NULL AS DOUBLE) AS standard_error,
   'WIP: no valid estimated-score matching uncertainty yet; common-range selected sample and exact-tie averaging' AS interpretation
 FROM summary CROSS JOIN reuse
+"""
+sql """
+WITH covariates AS (
+  SELECT 'age' AS covariate,treated_age AS treated_value,control_age AS control_value,tied_controls FROM active
+  UNION ALL SELECT 'education',treated_educ,control_educ,tied_controls FROM active
+  UNION ALL SELECT 'black',treated_black,control_black,tied_controls FROM active
+  UNION ALL SELECT 're74',treated_re74,control_re74,tied_controls FROM active
+  UNION ALL SELECT 're75',treated_re75,control_re75,tied_controls FROM active
+), means AS (
+  SELECT covariate,sum(treated_value/tied_controls)/sum(1.0/tied_controls) AS treated_mean,
+    sum(control_value/tied_controls)/sum(1.0/tied_controls) AS matched_control_mean
+  FROM covariates GROUP BY covariate
+)
+SELECT covariate,treated_mean,matched_control_mean,treated_mean-matched_control_mean AS difference,
+  'Matched descriptive means; controls are weighted by reuse and exact-tie shares' AS interpretation
+FROM means ORDER BY covariate
 """
 export nearest_pairs.csv

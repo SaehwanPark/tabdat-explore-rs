@@ -12,7 +12,15 @@ reference agree on all nearest pairs. The empirical common range retains 179
 treated people; 57 distinct controls are used, 3 treated people have exact ties,
 and the descriptive contrast is 515.906. This is **not** a reproduction of the
 author program's random tie handling or its historical support rule; the author's
-logged DW02 and DW99 variants also use different score specifications. The 13
+logged DW02 and DW99 variants also use different score specifications. The
+workflow also reports descriptive treated and matched-control means for age,
+education, Black indicator, and 1974 and 1975 earnings. A pair contributes
+`1 / tied_controls` on both sides; hence each treated person has total weight
+one and controls accumulate weight when reused. These unstandardized differences
+describe the matched sample, not all covariates or the change from before
+matching, and they do not establish exchangeability. On the source, the treated
+and matched-control Black shares are 0.838 and 0.922 respectively, illustrating
+remaining imbalance in this measured variable. The 13
 predictors, source SHA256 and unverified observational assumptions are documented
 in [README.md](README.md). No causal identification follows from this point value.
 

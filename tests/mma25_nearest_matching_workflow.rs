@@ -46,6 +46,61 @@ fn input() -> String {
   text
 }
 
+fn assert_matched_means(rows: &[Value], pairs: &str) {
+  let table = rows
+    .iter()
+    .find(|v| {
+      v["result_type"] == "TableResult"
+        && v["data"]["headers"]
+          .as_array()
+          .unwrap()
+          .iter()
+          .any(|h| h == "matched_control_mean")
+    })
+    .unwrap();
+  let records: Vec<Vec<&str>> = pairs
+    .lines()
+    .skip(1)
+    .map(|line| line.split(',').collect())
+    .collect();
+  for (name, treated_col, control_col) in [
+    ("age", 10, 11),
+    ("education", 12, 13),
+    ("black", 14, 15),
+    ("re74", 16, 17),
+    ("re75", 18, 19),
+  ] {
+    let row = table["data"]["rows"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .find(|row| row[0] == name)
+      .unwrap();
+    let mut totals = [0.0; 3];
+    for record in &records {
+      let weight = 1.0 / record[8].parse::<f64>().unwrap();
+      totals[0] += weight;
+      totals[1] += weight * record[treated_col].parse::<f64>().unwrap();
+      totals[2] += weight * record[control_col].parse::<f64>().unwrap();
+    }
+    let expected_treated = totals[1] / totals[0];
+    let expected_control = totals[2] / totals[0];
+    for (value, expected) in [
+      (row[1].as_f64().unwrap(), expected_treated),
+      (row[2].as_f64().unwrap(), expected_control),
+      (
+        row[3].as_f64().unwrap(),
+        expected_treated - expected_control,
+      ),
+    ] {
+      assert!(
+        (value - expected).abs() < 1e-8,
+        "{name}: {value} != {expected}"
+      );
+    }
+  }
+}
+
 #[test]
 fn nearest_matches_independent_reference_and_preserves_export() {
   let dir = TestDir::new();
@@ -81,6 +136,7 @@ fn nearest_matches_independent_reference_and_preserves_export() {
   assert!(values[6].is_null());
   let path = dir.path().join("nearest_pairs.csv");
   let original = fs::read(&path).unwrap();
+  assert_matched_means(&rows, std::str::from_utf8(&original).unwrap());
   assert!(!run(&dir, "--text").status.success());
   assert_eq!(fs::read(&path).unwrap(), original);
   fs::remove_file(&path).unwrap();
@@ -137,6 +193,7 @@ fn exact_ties_average_all_controls_and_preserve_reuse() {
   let values = table["data"]["rows"][0].as_array().unwrap();
   assert_eq!(values[0], values[4]);
   let csv = fs::read_to_string(dir.path().join("nearest_pairs.csv")).unwrap();
+  assert_matched_means(&rows, &csv);
   let lines: Vec<Vec<&str>> = csv
     .lines()
     .skip(1)
@@ -200,6 +257,17 @@ fn rounded_probabilities_are_allowed_only_when_outside_common_range() {
   let invalid_high = "source_row,treat,pscore,re78\n1,1,0.2,10\n2,1,0.4,20\n3,1,1,30\n4,0,0.1,2\n5,0,0.3,3\n6,0,0.4,4\n7,0,1,7\n";
   for (input, succeeds) in [(valid, true), (invalid, false), (invalid_high, false)] {
     let dir = TestDir::new();
+    let input = input
+      .lines()
+      .enumerate()
+      .map(|(i, line)| {
+        if i == 0 {
+          format!("{line},age,educ,black,re74,re75\n")
+        } else {
+          format!("{line},30,12,0,10,20\n")
+        }
+      })
+      .collect::<String>();
     fs::write(dir.path().join("scores.csv"), input).unwrap();
     fs::write(
       dir.path().join("boundary.td"),

@@ -39,6 +39,13 @@ assert boundary['rows'][0][:2]==[0,0]
 summary,=[v['data'] for v in leaves if v['result_type']=='TableResult' and 'matched_treated' in v['data']['headers']]
 row=dict(zip(summary['headers'],summary['rows'][0])); ref,=rows(reference/'summary.csv')
 for key in ref: near(row[key],ref[key],key)
+balance,=[v['data'] for v in leaves if v['result_type']=='TableResult' and 'matched_control_mean' in v['data']['headers']]
+reference_balance={r['covariate']:r for r in rows(reference/'balance.csv')}
+assert len(balance['rows'])==len(reference_balance)==5
+for values in balance['rows']:
+  actual_balance=dict(zip(balance['headers'],values)); expected_balance=reference_balance[actual_balance['covariate']]
+  for key in ('treated_mean','matched_control_mean','difference'):
+    near(actual_balance[key],expected_balance[key],f"balance.{actual_balance['covariate']}.{key}")
 assert row['standard_error'] is None
 assert row['matched_treated']==179 and row['distinct_controls']==57 and row['tied_treated']==3
-print('PASS: all original source rows and nearest pairs, exact ties, matched outcomes, reuse and point comparison')
+print('PASS: all original source rows and nearest pairs, exact ties, matched outcomes, reuse and point comparison and matched covariate means')

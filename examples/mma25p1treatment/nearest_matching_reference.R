@@ -31,3 +31,13 @@ summary <- data.frame(matched_treated=nrow(treated),distinct_controls=length(reu
 dir.create(output)
 write.csv(pairs,file.path(output,'pairs.csv'),row.names=FALSE)
 write.csv(summary,file.path(output,'summary.csv'),row.names=FALSE)
+# Pair rows carry weight 1/tied_controls, accounting for ties and reuse.
+balance_fields <- c(age='age',education='educ',black='black',re74='re74',re75='re75')
+w <- 1/pairs$tied_controls
+balance <- do.call(rbind,lapply(names(balance_fields),function(name) {
+  v <- x[[balance_fields[[name]]]]
+  tm <- weighted.mean(v[pairs$treated_id],w)
+  cm <- weighted.mean(v[pairs$control_id],w)
+  data.frame(covariate=name,treated_mean=tm,matched_control_mean=cm,difference=tm-cm)
+}))
+write.csv(balance,file.path(output,'balance.csv'),row.names=FALSE)
