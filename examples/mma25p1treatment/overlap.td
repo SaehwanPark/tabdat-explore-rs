@@ -52,6 +52,16 @@ SELECT treat,count(*) AS people,count(*) FILTER (WHERE in_overlap) AS in_overlap
 FROM active GROUP BY treat ORDER BY treat
 """
 sql """
+WITH cells AS (SELECT avg(age) AS age,avg(educ) AS educ,avg(nodegree) AS nodegree,
+  avg(black) AS black,avg(hisp) AS hisp,avg(marr) AS married,
+  avg(re74) AS re74,avg(re75) AS re75,avg(u74black) AS u74black
+FROM active WHERE in_overlap GROUP BY stratum,treat)
+SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(age) AND isfinite(educ) AND isfinite(nodegree)
+  AND isfinite(black) AND isfinite(hisp) AND isfinite(married) AND isfinite(re74)
+  AND isfinite(re75) AND isfinite(u74black),FALSE))>0
+THEN error('propensity diagnostics require finite stratum means') ELSE COUNT(*) END AS valid_cells FROM cells
+"""
+sql """
 WITH cells AS (SELECT stratum,treat,count(*) AS people,avg(age) AS age,avg(educ) AS educ,
   avg(nodegree) AS nodegree,avg(black) AS black,avg(hisp) AS hisp,avg(marr) AS married,
   avg(re74) AS re74,avg(re75) AS re75,avg(u74black) AS u74black
