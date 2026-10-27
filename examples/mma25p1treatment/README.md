@@ -51,3 +51,46 @@ and stored sample/report contents. Numerical tolerance is `1e-8 +
 p-values. R and Python are not runtime dependencies. This slice does not include
 the before/after, difference-in-differences, propensity-score matching or other
 Chapter 25 analyses, nor a general treatment-effects command.
+
+## Paired before/after and difference-in-differences
+
+[`paired.td`](paired.td) completes the two time-comparison point estimates in
+Table 25.4 using two records per person, ordered by source ordinal and 1975
+then 1978. The 185-person before/after coefficient is the treated group's mean
+change. The 2,675-person difference-in-differences coefficient is the treated
+mean change minus the PSID-control mean change; it is the interaction in a
+saturated group-by-period regression. The respective estimates are 4,817.090
+and 2,326.505. The author program's historical row-level HC1 standard errors
+assume independent person-period observations and do not allow within-person
+correlation; these are **not** the uncertainty convention used here.
+
+Both fits cluster by person. For N stacked observations, K coefficients and G
+persons, the score-sandwich correction is `G/(G-1)*(N-1)/(N-K)` and coefficient
+inference uses Student-t `G-1`. The before/after fit uses 370 observations,
+185 clusters and SE 609.246; the difference-in-differences fit uses 5,350
+observations, 2,675 clusters and SE 644.752. Clustering assumes independent
+people and enough clusters; the sample is still observational. Before/after
+alone mixes treatment with other changes over time. A causal interpretation of
+the difference-in-differences requires, among other assumptions, no anticipation,
+comparable groups and an appropriate untreated parallel-trends assumption; the
+two observed periods and descriptive group means cannot establish these.
+
+The script checks ordered, dense, unique person keys, finite earnings, binary
+treatment, at least two people in each group and finite group means/predictions;
+it exports all ordered fitted person-period rows without overwriting an existing
+file. A failed script is not a transaction. From a fresh directory with the
+same prepared `nswpsid.csv` described above:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/paired.td > paired_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/paired_reference.R /path/to/nswpsid.da1 paired-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_paired.py /path/to/nswpsid.da1 paired_result.jsonl paired_predictions.csv paired-reference
+```
+
+Independent base-R QR and grouped-score CR1 calculations check both full
+covariance matrices, coefficient inference, intervals, every retained person and
+all 5,350 ordered exported predictions, at `1e-8 + 1e-9*abs(reference)` with a
+stricter `1e-7` relative check on tiny nonzero p-values. The historical points
+are reproduced to displayed precision; person-clustered SEs are a deliberately
+different inferential extension. This is not a general panel or treatment-effects
+command, propensity matching, overlap assessment or causal identification proof.
