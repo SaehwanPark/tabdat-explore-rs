@@ -194,3 +194,19 @@ Python and pandas are used only to prepare this development reference; they are
 not production dependencies. The optional check tests the two published values
 at their displayed precision rather than treating the unrounded Stata values as
 known.
+
+An additional [development check](check_nearest_variance_components.py) fits
+an independent NumPy logit and compares the point estimate and all three
+variance terms to StatsPAI's independent implementation, to the precision
+printed by the R prototype. It passed on the Wisconsin data and on a separate
+450-row simulated dataset with heterogeneous treatment effects. The checked
+reference is [_ai2016.py at commit 2e7a5bf](https://github.com/brycewang-stanford/StatsPAI/blob/2e7a5bf04313ccfe5b7ddf7a82180de17302fe6e/src/statspai/matching/_ai2016.py),
+with SHA256 `2f278d2700585a1de87e79de883e1e90c4d7a4dcef8aa6cb5e348865435099cc`;
+the check verifies the hash before importing the supplied source file:
+
+```sh
+python3 /path/to/repo/examples/mma25p1treatment/check_nearest_variance_components.py /path/to/psm.csv /path/to/_ai2016.py
+```
+
+This is a numerical cross-check, not evidence that continuous-score
+assumptions or empirical support selection hold for NSW.
