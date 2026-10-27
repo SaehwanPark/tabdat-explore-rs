@@ -77,11 +77,23 @@ sql """SELECT stratum,treated_n,control_n,treated_mean,control_mean,difference,s
 sql """
 SELECT sum(treated_n) AS common_range_treated,
   sum(treated_n) FILTER (WHERE status='supported') AS supported_treated,
-  sum(treated_n) FILTER (WHERE status<>'supported') AS unsupported_treated,
+  coalesce(sum(treated_n) FILTER (WHERE status<>'supported'),0) AS unsupported_treated,
   count(*) FILTER (WHERE status='supported') AS supported_strata,
   sum(treated_n*difference) FILTER (WHERE status='supported')/sum(treated_n) FILTER (WHERE status='supported') AS treated_weighted_difference,
   CAST(NULL AS DOUBLE) AS standard_error,
   'Observed outcome contrast; no overall uncertainty estimated; fitted scores and empirical range are data-dependent' AS interpretation
 FROM active
 """
-export stratified_results.csv
+use propensity_scores
+sql """
+WITH cells AS (SELECT stratum,count(*) FILTER (WHERE treat=1) AS treated_n,
+  count(*) FILTER (WHERE treat=0) AS control_n,avg(re78) FILTER (WHERE treat=1) AS treated_mean,
+  avg(re78) FILTER (WHERE treat=0) AS control_mean FROM active WHERE in_overlap GROUP BY stratum)
+SELECT p.source_row,p.treat,p.re78,p.pscore,p.lower_bound,p.upper_bound,p.in_overlap,p.stratum,
+  c.treated_n,c.control_n,c.treated_mean,c.control_mean,
+  CASE WHEN c.treated_n>0 AND c.control_n>0 THEN c.treated_mean-c.control_mean ELSE NULL END AS difference,
+  CASE WHEN c.stratum IS NULL THEN NULL WHEN c.treated_n=0 THEN 'no_treated'
+    WHEN c.control_n=0 THEN 'no_control' ELSE 'supported' END AS status
+FROM active p LEFT JOIN cells c ON p.stratum=c.stratum ORDER BY p.source_row
+""" into stratified_records
+export stratified_records.csv

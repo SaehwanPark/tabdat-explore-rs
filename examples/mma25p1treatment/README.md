@@ -267,3 +267,60 @@ tiny scores. A separate 500-person fixture validates the estimate, sandwich
 and both effective sample sizes against R. This is a bounded source composition,
 not a general overlap-weighting or matching command; the author's stratified
 analysis and additional treatment illustrations remain open.
+
+## Historical propensity-stratified comparison
+
+[`stratified.td`](stratified.td) reproduces the **observed printed calculation**
+from the author program's last Table 25.4 row, not a general matching or
+covariate-adjusted treatment estimator. It fits the same assignment model,
+intersects the two observed score ranges, and divides retained people into ten
+fixed score intervals. Within each bin containing both groups it takes the
+unadjusted 1978 earnings mean of treated people minus the control mean. It then
+averages those bin differences using each bin's treated count. The report and
+CSV include counts, group means and explicit status for every bin or source row.
+Bins missing either group are excluded, rather than filled with zero.
+
+The original sample has 179 treated people in the common range. Of these, 13
+are in bin 9, which has no control observations; the reported average therefore
+uses 166 treated people in nine supported bins and equals 1,562.7274. It is a
+coarsened, selected-sample descriptive comparison, not automatically an ATT for
+all 185 treated people. Within-bin remaining imbalance and unmeasured
+confounding can be substantial; the empirical range and binning depend on fitted
+scores and do not establish positivity or identification. Several supported
+bins have very few controls. The author output reports **no standard error**;
+the script explicitly returns a null standard error and no interval. A naive
+fixed-bin variance would not account for estimated scores, data-dependent range
+selection or sparse cells. Valid uncertainty for this procedure remains open.
+
+The author program text says it adds age, age squared, education, no-degree,
+Black, Hispanic and earnings controls within bins, but its recorded log shows
+the `XLIST` assignment as a continued comment and its nine printed coefficients
+match unadjusted group differences. Independent R regressions on the source data
+show, for example, that adding those controls changes bin 1 from -4,410.947 to
+-4,102.242 and bin 5 from 1,899.984 to 14,596.769. The log establishes the
+observed calculation, not an inference that either approach identifies a causal
+effect. Historical zero coefficients were skipped by the author loop; this
+workflow retains a supported zero difference, since zero is a valid result.
+The original source results are unaffected by that deliberate divergence.
+
+The script checks the same ordered finite assignment-model inputs and score
+range as the overlap diagnostic, rejects nonfinite bin/aggregate means and a
+lack of supported bins, and refuses to overwrite its export. A failed script is
+not transactional. From a fresh directory prepared as above:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma25p1treatment/stratified.td > stratified_result.jsonl
+Rscript /path/to/repo/examples/mma25p1treatment/stratified_reference.R /path/to/nswpsid.da1 stratified-reference
+python3 /path/to/repo/examples/mma25p1treatment/check_stratified.py /path/to/nswpsid.da1 /path/to/mma25p1treatment.txt stratified_result.jsonl stratified_records.csv stratified-reference
+```
+
+R 4.6.1 independently fits the score model and ten bin calculations, verifies
+unadjusted differences using separate within-bin regressions, and checks two
+nominal covariate-adjusted regressions. The audit verifies the hash-pinned source
+and author output, all 2,675 scores and assignments, ten cells and the overall
+contrast at `1e-8 + 1e-9*abs(reference)`, with `1e-7` relative agreement for
+tiny scores. It compares all nine supported printed coefficients to half of a
+thousandth, acknowledging historical float storage and display rather than
+claiming exact digits. A separate 500-person R control, supported-zero case and
+invalid-input and export checks cover the CLI. Propensity-stratified uncertainty,
+matching and the remaining Chapter 25 analyses are still required.
