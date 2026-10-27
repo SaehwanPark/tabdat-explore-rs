@@ -43,5 +43,17 @@ for fit, mode in zip(fits, ('classical', 'cluster')):
   for i, ref in enumerate(matrix):
     for j, key in enumerate(ref):
       near(fit['covariance_matrix'][i][j], ref[key], f'{mode}.cov[{i},{j}]')
+# Table 22.2 displays three decimal places; the old Stata log uses float storage.
+author = [
+  (0.2091087, 0.3886332, 0.3741705),
+  (-0.0296864, 0.0437001, 0.0293678),
+  (0.0263880, 0.0289908, 0.0153921),
+  (-0.0003411, 0.0003688, 0.0001837),
+  (0.0004020, 0.0429076, 0.0667719),
+]
+for i, (beta, classical, cluster) in enumerate(author):
+  assert abs(fits[0]['coefficients'][i]['value'] - beta) < 0.0005
+  assert abs(fits[0]['coefficients'][i]['standard_error'] - classical) < 0.0005
+  assert abs(fits[1]['coefficients'][i]['standard_error'] - cluster) < 0.0005
 assert len(fits[0]['first_stage']['rows']) == 5
 print('PASS: source sample, 4,256 designs and predictions, both fits and covariance matrices')

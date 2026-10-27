@@ -69,6 +69,24 @@ fn complete_panels_fit_both_covariances_and_export_design() {
   assert_eq!(String::from_utf8_lossy(&original).lines().count(), 321);
   assert!(!run(&dir).status.success());
   assert_eq!(fs::read(&path).unwrap(), original);
+
+  let shuffled_dir = TestDir::new();
+  let fixture = fixture();
+  let mut rows: Vec<_> = fixture.lines().collect();
+  let header = rows.remove(0);
+  rows.reverse();
+  let shuffled = format!("{header}\n{}\n", rows.join("\n"));
+  fs::write(shuffled_dir.path().join("MOMprecise.csv"), shuffled).unwrap();
+  let shuffled_output = run(&shuffled_dir);
+  assert!(
+    shuffled_output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&shuffled_output.stderr)
+  );
+  assert_eq!(
+    fs::read(shuffled_dir.path().join("panel_iv_design.csv")).unwrap(),
+    original
+  );
 }
 
 #[test]
