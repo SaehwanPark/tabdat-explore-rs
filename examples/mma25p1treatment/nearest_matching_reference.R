@@ -1,9 +1,15 @@
 # Independent base-R score fit and exact-tie nearest-control comparisons.
 args <- commandArgs(trailingOnly=TRUE)
-if(length(args)!=2) stop('usage: Rscript nearest_matching_reference.R nswpsid.da1 output-directory')
-if(dir.exists(args[2])) stop('output directory exists')
-x <- read.table(args[1],col.names=c('treat','age','educ','black','hisp','marr','re74','re75','re78','u74','u75'))
-stopifnot(nrow(x)==2675,sum(x$treat)==185,all(x$treat %in% c(0,1)))
+if(length(args)==3 && args[1]=='--prepared') {
+  x <- read.csv(args[2]); output <- args[3]
+  stopifnot(nrow(x)>14,sum(x$treat)>1,sum(1-x$treat)>1,all(x$treat %in% c(0,1)))
+} else {
+  if(length(args)!=2) stop('usage: Rscript nearest_matching_reference.R [--prepared] input output-directory')
+  x <- read.table(args[1],col.names=c('treat','age','educ','black','hisp','marr','re74','re75','re78','u74','u75'))
+  output <- args[2]
+  stopifnot(nrow(x)==2675,sum(x$treat)==185,all(x$treat %in% c(0,1)))
+}
+if(dir.exists(output)) stop('output directory exists')
 x <- transform(x,age_s=age/10,age_s2=(age/10)^2,educ_s=educ/10,educ_s2=(educ/10)^2,
  nodegree=as.numeric(educ<12),re74_s=re74/10000,re75_s=re75/10000,
  re74_s2=(re74/10000)^2,re75_s2=(re75/10000)^2,u74black=as.numeric(re74==0)*black)
@@ -22,6 +28,6 @@ reuse <- tapply(1/pairs$tied_controls,pairs$control_id,sum)
 summary <- data.frame(matched_treated=nrow(treated),distinct_controls=length(reuse),
  contrast=mean(treated$treated_outcome-treated$matched_outcome),max_distance=max(treated$distance),
  tied_treated=sum(treated$tied_controls>1),max_reuse=max(reuse))
-dir.create(args[2])
-write.csv(pairs,file.path(args[2],'pairs.csv'),row.names=FALSE)
-write.csv(summary,file.path(args[2],'summary.csv'),row.names=FALSE)
+dir.create(output)
+write.csv(pairs,file.path(output,'pairs.csv'),row.names=FALSE)
+write.csv(summary,file.path(output,'summary.csv'),row.names=FALSE)

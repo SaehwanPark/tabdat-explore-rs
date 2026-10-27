@@ -28,8 +28,8 @@ logit treat age_s age_s2 educ_s educ_s2 marr nodegree black hisp re74_s re75_s r
 estimates store propensity
 predict pscore, pr
 sql """
-SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(pscore) AND pscore>0 AND pscore<1,FALSE))>0
-THEN error('propensity diagnostics require finite scores strictly between zero and one') ELSE COUNT(*) END AS valid_scores FROM active
+SELECT CASE WHEN COUNT(*) FILTER (WHERE NOT coalesce(isfinite(pscore) AND pscore>=0 AND pscore<=1,FALSE))>0
+THEN error('nearest matching requires finite scores between zero and one') ELSE COUNT(*) END AS valid_scores FROM active
 """
 sql """
 WITH bounds AS (SELECT greatest(min(pscore) FILTER (WHERE treat=0),min(pscore) FILTER (WHERE treat=1)) AS lower_bound,
@@ -44,11 +44,15 @@ SELECT active.*, lower_bound,upper_bound,pscore>=lower_bound AND pscore<=upper_b
   CASE WHEN pscore>=lower_bound AND pscore<=upper_bound THEN CAST(ceil(10*pscore) AS INTEGER) ELSE NULL END AS stratum
 FROM active CROSS JOIN bounds ORDER BY source_row
 """ into propensity_scores
+sql """SELECT count(*) FILTER (WHERE pscore IN (0,1)) AS rounded_boundary_scores,
+  count(*) FILTER (WHERE pscore IN (0,1) AND NOT in_overlap) AS rounded_boundary_excluded,
+  'Scores rounded to zero or one are allowed only outside the common range' AS interpretation FROM active"""
 sql """
-SELECT CASE WHEN COUNT(*) FILTER (WHERE in_overlap AND treat=1)<2
+SELECT CASE WHEN COUNT(*) FILTER (WHERE in_overlap AND NOT coalesce(pscore>0 AND pscore<1,FALSE))>0
+  OR COUNT(*) FILTER (WHERE in_overlap AND treat=1)<2
   OR COUNT(*) FILTER (WHERE in_overlap AND treat=0)<2
   OR COUNT(*) FILTER (WHERE in_overlap AND treat=1)*COUNT(*) FILTER (WHERE in_overlap AND treat=0)>2000000
-THEN error('nearest matching requires at least two common-range people per group and at most 2000000 candidate pairs')
+THEN error('nearest matching requires interior common-range scores, at least two people per group and at most 2000000 candidate pairs')
 ELSE COUNT(*) END AS valid_candidates FROM active
 """
 sql """

@@ -34,6 +34,8 @@ for a,e in zip(actual,expected):
 leaves=[json.loads(line) for line in result.read_text().splitlines()]
 fit,=[v['data'] for v in leaves if v['result_type']=='BinaryLogitResult']
 assert fit['converged'] and fit['observation_count']==2675 and fit['sample']['retained_indices']==list(range(2675))
+boundary,=[v['data'] for v in leaves if v['result_type']=='TableResult' and 'rounded_boundary_scores' in v['data']['headers']]
+assert boundary['rows'][0][:2]==[0,0]
 summary,=[v['data'] for v in leaves if v['result_type']=='TableResult' and 'matched_treated' in v['data']['headers']]
 row=dict(zip(summary['headers'],summary['rows'][0])); ref,=rows(reference/'summary.csv')
 for key in ref: near(row[key],ref[key],key)

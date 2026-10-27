@@ -44,3 +44,39 @@ validate all variance components against a trusted numerical implementation;
 then add appropriate failure and state tests. If those conditions cannot be
 justified for the original sample, retain the point-only result as explicitly
 partial and choose a separately justified analysis rather than inventing an SE.
+
+## Feasibility probe for full-pipeline subsampling
+
+A development-only probe draws 20 simple random subsamples without replacement
+at each of sizes 700, 1,000 and 1,400, refits the logit and repeats empirical
+range selection and matching. It keeps every success and failure in its JSON
+output; it does **not** compute a standard error, confidence interval or coverage
+estimate. These few draws are a numerical feasibility check, not a justification
+of subsampling or its asymptotic target. Run it with the pinned original source:
+
+```sh
+python3 /path/to/repo/examples/mma25p1treatment/nearest_subsample_probe.py /path/to/nswpsid.da1 /path/to/tabdat-explore-rs --verify-r > probe.json
+```
+
+With seed 3982, the initial strict-open-score version failed five of the 20
+size-700 fits at the score guard. Separate inspection showed one to 18 scores
+rounded to zero in each failure, all outside that replicate's empirical common
+range. The draft now admits finite scores rounded to zero or one **only when
+they are outside the selected range**; it rejects any boundary score inside the
+range, and reports the total rounded and excluded counts. No saturated score is
+used in a distance, no value is clipped, and this does not assert statistical
+positivity. For the five affected samples, independent R also emitted numerical
+boundary-score warnings and agreed on every selected nearest pair and outcome;
+the retained treated counts were 18, 43, 35, 42 and 10. The full source sample
+has no rounded boundary scores and its source-reference audit is unchanged.
+After the change all 20 draws at each tested size completed; among the size-700
+draws, the selected treated count ranged from 10 to 53. With `--verify-r`, the
+probe reruns an independent R fit for every successful sample containing rounded
+boundary scores, checks every retained pair, and records all R warnings. This
+replay used Python 3.15.0 and R 4.6.1. Completion of these 60 fits is not a
+proof that other subsamples will fit or that the sampling limit is valid.
+
+This adjustment solves only a representational rejection of rows already
+outside the comparison. It does not validate the fitted assignment model or an
+inference procedure; several tiny retained samples and numerical warnings are
+additional reasons to avoid presenting a generic resampling interval as reliable.

@@ -187,3 +187,57 @@ fn invalid_identity_treatment_and_rank_fail_before_export() {
     assert!(!dir.path().join("nearest_pairs.csv").exists());
   }
 }
+
+#[test]
+fn rounded_probabilities_are_allowed_only_when_outside_common_range() {
+  let script = fs::read_to_string(
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma25p1treatment/nearest_matching.td"),
+  )
+  .unwrap();
+  let (_, after_score) = script.split_once("predict pscore, pr\n").unwrap();
+  let valid = "source_row,treat,pscore,re78\n1,1,0.2,10\n2,1,0.3,20\n3,1,0.8,30\n4,0,0,2\n5,0,0.1,3\n6,0,0.4,4\n7,0,0.7,7\n8,0,1,9\n";
+  let invalid = "source_row,treat,pscore,re78\n1,1,0,10\n2,1,0.3,20\n3,1,0.8,30\n4,0,0,2\n5,0,0.2,3\n6,0,0.4,4\n7,0,0.9,7\n";
+  let invalid_high = "source_row,treat,pscore,re78\n1,1,0.2,10\n2,1,0.4,20\n3,1,1,30\n4,0,0.1,2\n5,0,0.3,3\n6,0,0.4,4\n7,0,1,7\n";
+  for (input, succeeds) in [(valid, true), (invalid, false), (invalid_high, false)] {
+    let dir = TestDir::new();
+    fs::write(dir.path().join("scores.csv"), input).unwrap();
+    fs::write(
+      dir.path().join("boundary.td"),
+      format!("use scores.csv\n{after_score}"),
+    )
+    .unwrap();
+    let output = tabdat_bin()
+      .current_dir(dir.path())
+      .args(["--json", "-f", "boundary.td"])
+      .output()
+      .unwrap();
+    assert_eq!(
+      output.status.success(),
+      succeeds,
+      "{}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+    if succeeds {
+      let rows: Vec<Value> = String::from_utf8(output.stdout)
+        .unwrap()
+        .lines()
+        .map(|s| serde_json::from_str(s).unwrap())
+        .collect();
+      let boundary = rows
+        .iter()
+        .find(|v| {
+          v["result_type"] == "TableResult"
+            && v["data"]["headers"]
+              .as_array()
+              .unwrap()
+              .iter()
+              .any(|h| h == "rounded_boundary_scores")
+        })
+        .unwrap();
+      assert_eq!(boundary["data"]["rows"][0][0], 2);
+      assert_eq!(boundary["data"]["rows"][0][1], 2);
+    } else {
+      assert!(!dir.path().join("nearest_pairs.csv").exists());
+    }
+  }
+}
