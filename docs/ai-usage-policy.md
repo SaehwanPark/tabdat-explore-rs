@@ -24,7 +24,7 @@ codexbar --provider codex
 
 Default policy:
 
-- Session (5-hour window): When 12% or less is left, wait until session limits reset
+- Session (5-hour window): When 10% or less is left, wait until session limits reset
   (you may use `sleep`); allow a two-minute buffer. For example, if the limit
   resets in 15 minutes, wait 17 minutes.
 - Weekly (7-day window): When 3% or less is left, wrap up ongoing tasks safely,
@@ -32,3 +32,5 @@ Default policy:
   all required checks are satisfied. Otherwise leave a focused WIP handoff.
 - Weekly wrap-up takes precedence over waiting for a session reset. Record what
   remains when work cannot continue; do not promise an unattended weekly restart.
+
+Note the policies above can be overriden by any subsequent user-provided steering prompts or requests.
