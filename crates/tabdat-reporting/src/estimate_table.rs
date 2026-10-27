@@ -81,6 +81,26 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
         .unwrap_or_else(|| "NA".into())
     });
   }
+  if models.iter().any(|m| m.estimator == "poisson") {
+    row(&mut output, "Poisson offset (coefficient 1)", models, |m| {
+      if m.estimator == "poisson" {
+        m.poisson_offset_variable
+          .clone()
+          .unwrap_or_else(|| "none".into())
+      } else {
+        "NA".into()
+      }
+    });
+    row(&mut output, "Poisson null model", models, |m| {
+      m.poisson_null_model.clone().unwrap_or_else(|| "NA".into())
+    });
+    row(&mut output, "Poisson null log likelihood", models, |m| {
+      number(m.poisson_null_log_likelihood)
+    });
+    row(&mut output, "Poisson covariance correction", models, |m| {
+      number(m.poisson_covariance_correction)
+    });
+  }
   row(&mut output, "Cluster variable", models, |m| {
     m.cluster_variable.clone().unwrap_or("NA".into())
   });
@@ -147,13 +167,21 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
       number(m.nls_centered_r_squared)
     });
   }
+  if models.iter().any(|m| m.estimator == "poisson") {
+    row(
+      &mut output,
+      "Poisson McFadden pseudo-R-squared",
+      models,
+      |m| number(m.poisson_mcfadden_r_squared),
+    );
+  }
   row(
     &mut output,
     "Binary McFadden pseudo-R-squared",
     models,
     |m| number(m.mcfadden_r_squared),
   );
-  output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  output.push_str("Statistics use each model's selected covariance/reference: binary/Poisson normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
   output
 }
 

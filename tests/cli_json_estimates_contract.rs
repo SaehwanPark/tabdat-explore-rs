@@ -308,3 +308,66 @@ fn nls_named_report_has_formula_covariance_and_visible_standard_errors() {
   );
   assert!(text.contains("approximate_student_t(8)"), "{text}");
 }
+
+#[test]
+fn poisson_named_reports_show_offset_correction_and_preserve_active_fit() {
+  let fixture = Fixture::new();
+  fs::write(fixture.0.join("poisson_report.td"), "use data.csv\npoisson y x, offset(z)\nestimates store model\npoisson y x, offset(z) robust\nestimates store hc\npoisson y x, offset(z) cluster(z)\nestimates store clustered\nestimates table model hc clustered\nestat margins\npredict predicted, n\n").unwrap();
+  let output = fixture.run(&["--json", "-f", "poisson_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let rows = envelopes(&output.stdout);
+  let table = rows
+    .iter()
+    .find(|v| v["result_type"] == "EstimateTableResult")
+    .unwrap();
+  let models = table["data"]["models"].as_array().unwrap();
+  assert_eq!(models.len(), 3);
+  for model in models {
+    assert_eq!(model["estimator"], "poisson");
+    assert_eq!(model["poisson_offset_variable"], "z");
+    assert_eq!(model["poisson_offset_coefficient"], 1.0);
+    assert_eq!(
+      model["poisson_null_model"],
+      "intercept_only_with_same_fixed_offset"
+    );
+    assert!(model["poisson_null_log_likelihood"].is_number());
+    assert_eq!(model["log_likelihood_convention"], "poisson_count_pmf");
+    assert_eq!(
+      model["reference_distribution"],
+      "asymptotic_standard_normal"
+    );
+    assert!(model["mcfadden_r_squared"].is_null());
+    assert!(model["poisson_mcfadden_r_squared"].is_number());
+  }
+  assert_eq!(models[0]["poisson_covariance_correction"], 1.0);
+  assert_eq!(models[1]["poisson_covariance_correction"], 10.0 / 9.0);
+  assert_eq!(models[2]["poisson_covariance_correction"], 2.0);
+  assert_eq!(models[2]["cluster_variable"], "z");
+  assert_eq!(models[2]["cluster_count"], 2);
+  assert!(
+    rows
+      .iter()
+      .any(|r| r["result_type"] == "PoissonMarginalEffectsResult")
+  );
+  assert!(rows.iter().any(|r| r["result_type"] == "PredictionResult"));
+  let output = fixture.run(&["--text", "-f", "poisson_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let text = String::from_utf8(output.stdout).unwrap();
+  assert!(
+    text.contains("Poisson offset (coefficient 1)\tz\tz\tz"),
+    "{text}"
+  );
+  assert!(
+    text.contains("Poisson covariance correction\t1.000000\t1.111111\t2.000000"),
+    "{text}"
+  );
+  assert!(text.contains("Poisson McFadden pseudo-R-squared"), "{text}");
+}

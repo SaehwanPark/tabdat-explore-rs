@@ -103,7 +103,7 @@ descriptive report without uncertainty/formal goodness-of-fit test; see `help es
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
 exposure shorthand, NB1, cutoff-variable values above99, factors/discrete changes,
 general count test/lincom, interval prediction, other formal specification tests
-or named count reports. Independent-row robust is **NOT panel-robust**; choose
+or named NB2 reports. Independent-row robust is **NOT panel-robust**; choose
 actual cluster IDs and defend independence across the selected groups.
 
 See `help poisson`, `help predict`, `help estat`, and
