@@ -59,6 +59,15 @@ pub struct EstimateSnapshot {
   pub name: String,
   pub estimator: String,
   pub outcome: String,
+  /// The explicit NLS formula and ordered bindings; absent for other estimators.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub nls_model: Option<tabdat_stats::NlsModel>,
+  /// Centered response-scale R-squared for NLS, when defined.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub nls_centered_r_squared: Option<f64>,
+  /// Applied Gauss–Newton covariance multiplier, including HC1 when selected.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub nls_covariance_correction: Option<f64>,
   pub predictors: Vec<String>,
   pub include_intercept: bool,
   pub covariance: String,

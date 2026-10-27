@@ -77,6 +77,14 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
     Some("gaussian_working_model_ml_variance_rss_over_n")
   );
   assert!(saved.mcfadden_r_squared.is_none());
+  let legacy = serde_json::to_value(&saved).unwrap();
+  assert!(legacy.get("nls_model").is_none());
+  assert!(legacy.get("nls_centered_r_squared").is_none());
+  assert!(legacy.get("nls_covariance_correction").is_none());
+  assert_eq!(
+    serde_json::from_value::<tabdat_domain::EstimateSnapshot>(legacy).unwrap(),
+    saved
+  );
   assert_eq!(run(&mut session, "head 20"), rows);
   assert_eq!(session.state().estimation, before.estimation);
   run(&mut session, "predict predicted");
@@ -261,4 +269,90 @@ fn ambiguous_parameter_names_and_overwide_reports_or_unions_are_rejected() {
   let before = session.state();
   assert!(error(&mut session, "estimates table left right").contains("union exceeds"));
   assert_eq!(session.state(), before);
+}
+
+#[test]
+fn nls_snapshots_preserve_explicit_formula_covariance_and_state_across_refits() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  for (name, suffix, covariance) in [
+    ("classical", "", "working_homoskedastic_gauss_newton"),
+    ("robust", " robust", "hc1_gauss_newton"),
+  ] {
+    let ExecutionResult::Nl(fit) = run(
+      &mut session,
+      &format!("nl y = a+b*x, params(a b) start(1 0){suffix}"),
+    ) else {
+      panic!()
+    };
+    let before = session.state();
+    run(&mut session, &format!("estimates store {name}"));
+    let mut after = session.state();
+    after.stored_estimates = before.stored_estimates.clone();
+    assert_eq!(after, before);
+    let saved = table(&mut session, name).models.remove(0);
+    assert_eq!(saved.nls_model.as_ref(), Some(&fit.model));
+    assert_eq!(saved.nls_centered_r_squared, fit.centered_r_squared);
+    assert_eq!(
+      saved.nls_covariance_correction,
+      Some(fit.covariance_correction)
+    );
+    let json = serde_json::to_value(&saved).unwrap();
+    assert_eq!(
+      serde_json::from_value::<tabdat_domain::EstimateSnapshot>(json).unwrap(),
+      saved
+    );
+    assert_eq!(saved.sample, fit.sample);
+    assert_eq!(saved.covariance, covariance);
+    assert_eq!(saved.covariance_matrix, fit.covariance_matrix);
+    assert_eq!(saved.covariance_parameter_names, ["a", "b"]);
+    assert_eq!(saved.reference_distribution, "approximate_student_t");
+    assert_eq!(saved.inference_degrees_of_freedom, Some(8));
+    assert!(saved.log_likelihood.is_none() && saved.r_squared.is_none());
+    assert!(!saved.include_intercept);
+    for (copy, original) in saved.coefficients.iter().zip(fit.coefficients.iter()) {
+      assert_eq!(copy.value, original.value);
+      assert_eq!(copy.standard_error, Some(original.standard_error));
+      assert_eq!(copy.statistic, original.statistic);
+      assert_eq!(copy.p_value, original.p_value);
+    }
+  }
+  let saved = table(&mut session, "classical robust");
+  assert_eq!(saved.parameter_names, ["a", "b"]);
+  run(&mut session, "replace x = x*2");
+  run(&mut session, "regress y x");
+  assert_eq!(table(&mut session, "classical robust"), saved);
+  let before = session.state();
+  assert!(error(&mut session, "estimates store classical").contains("already stored"));
+  assert_eq!(session.state(), before);
+  assert!(error(&mut session, "nl y = a+b*missing, params(a b) start(1 0)").contains("unknown"));
+  assert_eq!(table(&mut session, "classical robust"), saved);
+}
+
+#[test]
+fn nls_snapshot_keeps_transformed_formula_and_excluded_rows() {
+  let fixture = Fixture::new();
+  let path = fixture.0.join("transformed.csv");
+  fs::write(
+    &path,
+    "y,x,scale\n0.5,0,1\n1.2,1,2\n0.9,2,1\n1.3,,2\n1.7,3,1\n1.1,4,2\n2.4,5,1\n",
+  )
+  .unwrap();
+  let mut session = Session::new();
+  run(&mut session, &format!("use \"{}\"", path.display()));
+  let ExecutionResult::Nl(fit) = run(
+    &mut session,
+    "nl y = (a+b*x)/scale, params(a b) start(1 0) robust",
+  ) else {
+    panic!()
+  };
+  run(&mut session, "estimates store transformed");
+  let saved = table(&mut session, "transformed").models.remove(0);
+  assert_eq!(saved.nls_model.as_ref(), Some(&fit.model));
+  assert_eq!(saved.predictors, ["x", "scale"]);
+  assert_eq!(saved.outcome, "y");
+  assert_eq!(saved.sample.retained_indices, [0, 1, 2, 4, 5, 6]);
+  assert_eq!(saved.sample.dropped_observations, 1);
+  assert!(saved.sample.weights.is_none());
+  assert_eq!(saved.covariance, "hc1_gauss_newton");
 }

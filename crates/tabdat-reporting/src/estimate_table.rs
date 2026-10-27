@@ -23,6 +23,46 @@ fn row(
   output.push('\n');
 }
 
+fn nls_identifier(name: &str) -> String {
+  let mut bytes = name.bytes();
+  let bare = bytes
+    .next()
+    .is_some_and(|c| c.is_ascii_alphabetic() || c == b'_')
+    && bytes.all(|c| c.is_ascii_alphanumeric() || c == b'_');
+  if bare {
+    name.into()
+  } else {
+    format!("`{}`", name.replace('`', "``"))
+  }
+}
+
+fn nls_expression(
+  expression: &tabdat_stats::NlsExpression,
+  model: &tabdat_stats::NlsModel,
+) -> String {
+  use tabdat_stats::NlsExpression as E;
+  let render = |e: &E| nls_expression(e, model);
+  match expression {
+    E::Constant(v) => v.to_string(),
+    E::Predictor(i) => model
+      .predictor_names
+      .get(*i)
+      .map(|name| nls_identifier(name))
+      .unwrap_or_else(|| "?".into()),
+    E::Parameter(i) => model
+      .parameter_names
+      .get(*i)
+      .map(|name| nls_identifier(name))
+      .unwrap_or_else(|| "?".into()),
+    E::Negate(e) => format!("(-{})", render(e)),
+    E::Add(a, b) => format!("({}+{})", render(a), render(b)),
+    E::Subtract(a, b) => format!("({}-{})", render(a), render(b)),
+    E::Multiply(a, b) => format!("({}*{})", render(a), render(b)),
+    E::Divide(a, b) => format!("({}/{})", render(a), render(b)),
+    E::Exp(e) => format!("exp({})", render(e)),
+  }
+}
+
 pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   let models = &table.models;
   let mut output = String::from("Stored fit comparison (reporting snapshots, no refits)\n");
@@ -30,6 +70,17 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "Estimator", models, |m| m.estimator.clone());
   row(&mut output, "Outcome", models, |m| m.outcome.clone());
   row(&mut output, "Covariance", models, |m| m.covariance.clone());
+  if models.iter().any(|m| m.nls_model.is_some()) {
+    row(&mut output, "NLS covariance correction", models, |m| {
+      number(m.nls_covariance_correction)
+    });
+    row(&mut output, "NLS mean", models, |m| {
+      m.nls_model
+        .as_ref()
+        .map(|model| nls_expression(&model.expression, model))
+        .unwrap_or_else(|| "NA".into())
+    });
+  }
   row(&mut output, "Cluster variable", models, |m| {
     m.cluster_variable.clone().unwrap_or("NA".into())
   });
@@ -51,6 +102,19 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
           .map(|c| c.value),
       )
     });
+    row(
+      &mut output,
+      &format!("{name} standard error"),
+      models,
+      |m| {
+        number(
+          m.coefficients
+            .iter()
+            .find(|c| c.name == *name)
+            .and_then(|c| c.standard_error),
+        )
+      },
+    );
     row(&mut output, &format!("{name} statistic"), models, |m| {
       number(
         m.coefficients
@@ -78,12 +142,34 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "OLS R-squared", models, |m| {
     number(m.r_squared)
   });
+  if models.iter().any(|m| m.nls_model.is_some()) {
+    row(&mut output, "NLS centered R-squared", models, |m| {
+      number(m.nls_centered_r_squared)
+    });
+  }
   row(
     &mut output,
     "Binary McFadden pseudo-R-squared",
     models,
     |m| number(m.mcfadden_r_squared),
   );
-  output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1). NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  output.push_str("Statistics use each model's selected covariance/reference: binary normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N and Bernoulli likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
   output
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn nls_formula_distinguishes_non_bare_names() {
+    use tabdat_stats::{NlsExpression as E, NlsModel};
+    let model = NlsModel {
+      outcome: "y".into(),
+      predictor_names: vec!["x plus".into()],
+      parameter_names: vec!["a".into()],
+      expression: E::Add(Box::new(E::Parameter(0)), Box::new(E::Predictor(0))),
+    };
+    assert_eq!(nls_expression(&model.expression, &model), "(a+`x plus`)");
+  }
 }

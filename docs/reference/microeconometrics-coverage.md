@@ -1450,8 +1450,8 @@ extensions below recover audited DTA IDs separately. Household/site/multiway,
 Remaining exposure workflows (Poisson/NB2 fixed offsets are separately validated method evidence), current-row probabilities/unresolved printed Table20.6 NB2 row,
 other formal NB specification tests and robust/clustered NB boundary-LR reference,
 complete Tables20.3–20.6 and other
-count illustrations remain required. `estimates store` remains OLS/logit/probit
-only; no count fit restoration/persistence or general count test/lincom is claimed.
+count illustrations remain required. `estimates store` does not yet support count fits; no count fit restoration/persistence
+or general count test/lincom is claimed.
 
 [PR #281](https://github.com/SaehwanPark/tabdat-explore-rs/pull/281) adds
 [`nb2.td`](../../examples/mma20p1count/nb2.td) on the identical prepared sample:

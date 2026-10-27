@@ -258,3 +258,53 @@ fn discovery_advertises_exact_actions_and_located_registry_errors_stop_scripts()
       .contains("already stored")
   );
 }
+
+#[test]
+fn nls_named_report_has_formula_covariance_and_visible_standard_errors() {
+  let fixture = Fixture::new();
+  fs::write(fixture.0.join("nls_report.td"), "use data.csv\nnl y = a+b*x, params(a b) start(1 0) robust\nestimates store nlsfit\nregress y x\nestimates store olsfit\nestimates table nlsfit olsfit\n").unwrap();
+  let output = fixture.run(&["--json", "-f", "nls_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let rows = envelopes(&output.stdout);
+  let table = rows
+    .iter()
+    .find(|v| v["result_type"] == "EstimateTableResult")
+    .unwrap();
+  let models = table["data"]["models"].as_array().unwrap();
+  assert_eq!(models.len(), 2);
+  assert_eq!(models[0]["estimator"], "nls");
+  assert_eq!(
+    models[0]["nls_model"]["parameter_names"],
+    serde_json::json!(["a", "b"])
+  );
+  assert_eq!(
+    models[0]["nls_model"]["predictor_names"],
+    serde_json::json!(["x"])
+  );
+  assert_eq!(models[0]["reference_distribution"], "approximate_student_t");
+  assert_eq!(models[0]["covariance"], "hc1_gauss_newton");
+  assert!(models[0]["log_likelihood"].is_null());
+  assert!(models[1].get("nls_model").is_none());
+  assert!(models[1].get("nls_centered_r_squared").is_none());
+  assert!(models[1].get("nls_covariance_correction").is_none());
+  assert_eq!(models[0]["nls_covariance_correction"], 1.25);
+  let output = fixture.run(&["--text", "-f", "nls_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let text = String::from_utf8(output.stdout).unwrap();
+  assert!(text.contains("NLS mean\t(a+(b*x))\tNA"), "{text}");
+  assert!(text.contains("a standard error\t"), "{text}");
+  assert!(text.contains("NLS centered R-squared\t"), "{text}");
+  assert!(
+    text.contains("NLS covariance correction\t1.250000\tNA"),
+    "{text}"
+  );
+  assert!(text.contains("approximate_student_t(8)"), "{text}");
+}

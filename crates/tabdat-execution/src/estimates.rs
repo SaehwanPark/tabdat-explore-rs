@@ -11,7 +11,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
     EstimationState::Linear(state) => {
       if state.estimator.as_deref() != Some("ols") {
         return Err(failure(
-          "store supports unweighted OLS, logit and probit only; refit if estimator provenance is unavailable",
+          "store supports unweighted OLS, logit, probit and NLS only; refit if estimator provenance is unavailable",
         ));
       }
       let result = &state.result;
@@ -48,6 +48,9 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         name: name.into(),
         estimator: "ols".into(),
         outcome: state.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
         predictors: state.predictors.clone(),
         include_intercept: state.include_intercept,
         cluster_variable: match &result.covariance.covariance_type {
@@ -97,6 +100,9 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         name: name.into(),
         estimator: estimator.into(),
         outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
         predictors: result.predictor_names.clone(),
         include_intercept: result.include_intercept,
         covariance: covariance.into(),
@@ -131,9 +137,55 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         df_residual: None,
       }
     }
+    EstimationState::NonlinearFit(result) => {
+      EstimateSnapshot {
+        name: name.into(),
+        estimator: "nls".into(),
+        outcome: result.model.outcome.clone(),
+        nls_model: Some(result.model.clone()),
+        nls_centered_r_squared: result.centered_r_squared.filter(|v| v.is_finite()),
+        nls_covariance_correction: Some(result.covariance_correction),
+        predictors: result.model.predictor_names.clone(),
+        // NLS has no implicit intercept; the formula alone defines its parameters.
+        include_intercept: false,
+        covariance: if result.robust {
+          "hc1_gauss_newton"
+        } else {
+          "working_homoskedastic_gauss_newton"
+        }
+        .into(),
+        cluster_variable: None,
+        cluster_count: None,
+        covariance_parameter_names: result.model.parameter_names.clone(),
+        covariance_matrix: result.covariance_matrix.clone(),
+        coefficients: result
+          .coefficients
+          .iter()
+          .map(|c| tabdat_stats::CoefficientEstimate {
+            name: c.name.clone(),
+            value: c.value,
+            standard_error: Some(c.standard_error),
+            statistic: c.statistic,
+            p_value: c.p_value,
+          })
+          .collect(),
+        observation_count: result.observation_count,
+        event_count: None,
+        sample: result.sample.clone(),
+        reference_distribution: "approximate_student_t".into(),
+        inference_degrees_of_freedom: Some(result.residual_degrees_of_freedom),
+        log_likelihood: None,
+        log_likelihood_convention: None,
+        // The existing table labels this field as OLS R-squared.
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: Some(result.root_mean_squared_error),
+        df_residual: Some(result.residual_degrees_of_freedom),
+      }
+    }
     _ => {
       return Err(failure(
-        "store supports unweighted OLS, logit and probit only",
+        "store supports unweighted OLS, logit, probit and NLS only",
       ));
     }
   };
@@ -178,10 +230,9 @@ impl Session {
             "at most 32 reports can be stored; drop an unneeded name first",
           ));
         }
-        let state = self
-          .estimation
-          .as_ref()
-          .ok_or_else(|| failure("store requires a successful current OLS, logit or probit fit"))?;
+        let state = self.estimation.as_ref().ok_or_else(|| {
+          failure("store requires a successful current OLS, logit, probit or NLS fit")
+        })?;
         let report = snapshot(name, state)?;
         let estimator = report.estimator.clone();
         self.stored_estimates.insert(name.clone(), report);
