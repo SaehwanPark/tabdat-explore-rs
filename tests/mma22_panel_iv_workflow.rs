@@ -82,7 +82,8 @@ fn shea_diagnostic_script_reports_and_guards_panel_and_output() {
           == serde_json::json!([
             "observations",
             "residual_correlation",
-            "shea_partial_r_squared"
+            "shea_partial_r_squared",
+            "interpretation"
           ])
     })
     .unwrap();
@@ -92,6 +93,10 @@ fn shea_diagnostic_script_reports_and_guards_panel_and_output() {
   // Independent R QR/correlation reference: shea_synthetic_reference.R.
   assert!((rho - 0.15265692612205664).abs() < 1e-12);
   assert!((row[2].as_f64().unwrap() - 0.023304137093035058).abs() < 1e-12);
+  assert_eq!(
+    row[3],
+    "Descriptive relevance only; not a joint weak-IV test or evidence of instrument validity"
+  );
   let path = dir.path().join("shea_design.csv");
   let original = fs::read(&path).unwrap();
   assert_eq!(String::from_utf8_lossy(&original).lines().count(), 321);
@@ -145,6 +150,39 @@ fn shea_diagnostic_script_reports_and_guards_panel_and_output() {
     assert!(!run(&bad_dir, "--json").status.success());
     assert!(!bad_dir.path().join("shea_design.csv").exists());
   }
+  // Vary wage across people but not across years: instruments remain nonconstant,
+  // while both wage residual vectors have exactly zero variance.
+  let zero_variation = input
+    .lines()
+    .enumerate()
+    .map(|(i, line)| {
+      if i == 0 {
+        format!("{line}\n")
+      } else {
+        let mut row = line.split(',').collect::<Vec<_>>();
+        row[1] = row[6];
+        format!("{}\n", row.join(","))
+      }
+    })
+    .collect::<String>();
+  let bad_dir = TestDir::new();
+  fs::write(bad_dir.path().join("MOMprecise.csv"), zero_variation).unwrap();
+  let failure = run(&bad_dir, "--json");
+  assert!(!failure.status.success());
+  let leaves: Vec<Value> = String::from_utf8(failure.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert_eq!(
+    leaves
+      .iter()
+      .filter(|v| v["result_type"] == "RegressionResult")
+      .count(),
+    7
+  );
+  assert_eq!(leaves.last().unwrap()["error"]["message"], "sql failed");
+  assert!(!bad_dir.path().join("shea_design.csv").exists());
 }
 
 #[test]

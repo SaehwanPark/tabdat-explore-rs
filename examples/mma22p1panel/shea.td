@@ -47,7 +47,8 @@ WITH diagnostic AS (
 )
 SELECT observations,
  CASE WHEN rho IS NULL OR NOT isfinite(rho) THEN error('Shea relevance requires finite nonzero residual variation') ELSE rho END AS residual_correlation,
- CASE WHEN rho IS NULL OR NOT isfinite(rho) THEN error('Shea relevance requires finite nonzero residual variation') ELSE rho*rho END AS shea_partial_r_squared
+ CASE WHEN rho IS NULL OR NOT isfinite(rho) THEN error('Shea relevance requires finite nonzero residual variation') ELSE rho*rho END AS shea_partial_r_squared,
+ 'Descriptive relevance only; not a joint weak-IV test or evidence of instrument validity' AS interpretation
 FROM diagnostic
 """
 export shea_design.csv

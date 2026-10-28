@@ -45,9 +45,10 @@ for i,fit in enumerate(fits,1):
   for j,row in enumerate(matrix):
     for k,v in enumerate(row.values()): near(native[j][k],v,f'fit {i} covariance {j},{k}')
 tables = [v['data'] for v in leaves if v['result_type']=='TableResult' and
-          v['data']['headers']==['observations','residual_correlation','shea_partial_r_squared']]
+          v['data']['headers']==['observations','residual_correlation','shea_partial_r_squared','interpretation']]
 assert len(tables)==1 and len(tables[0]['rows'])==1
-n,rho,shea=tables[0]['rows'][0]
+n,rho,shea,interpretation=tables[0]['rows'][0]
+assert interpretation=='Descriptive relevance only; not a joint weak-IV test or evidence of instrument validity'
 ref=read(reference/'diagnostic.csv')[0]
 assert n==int(ref['n'])==4256 and int(ref['groups'])==532
 near(rho,ref['rho'],'correlation'); near(shea,ref['shea'],'Shea R2')

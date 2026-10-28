@@ -161,6 +161,16 @@ storage. Original JSON/text exports are byte-identical. The complete-panel and
 no-clobber rules above apply; the focused test exercises reversed input, missing
 years, rank failure and existing export. Scripts are not transactional.
 
+## Author-program wage Shea diagnostic
+
+The separate [wage Shea workflow](shea.md) reproduces the author's §22.3
+intercept-including auxiliary regressions and squared residual correlation on
+4,256 person-years. Independent R gives rho 0.0603937911 and squared correlation
+0.0036474100; the author log prints 0.00364741. All design/prediction rows and
+seven classical regression results are audited. This descriptive relevance measure
+is not a joint weak-IV test or evidence of instrument validity. It differs in
+intercept convention from the no-intercept structural 2SLS diagnostics above.
+
 ## Year-stacked wage diagnostic
 
 [`stacked_first_stage.td`](stacked_first_stage.td) fits differenced log wages on
