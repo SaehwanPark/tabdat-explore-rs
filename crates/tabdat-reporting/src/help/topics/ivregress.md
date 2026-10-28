@@ -50,7 +50,7 @@ Clustered two-step GMM:
 The bounded `gmm` form requires `cluster(id) noconstant`, with no included
 exogenous variables and no weights. It jointly excludes missing/non-finite
 outcome, endogenous, instrument and cluster values. Up to 10,000 retained rows,
-8 endogenous regressors and 16 instruments are supported; the design and both
+8 endogenous regressors and 72 instruments are supported; the design and both
 cluster moment covariance matrices must have full numerical rank and there must
 be more clusters than instruments. Perfect/near-perfect fit is rejected. No
 pseudoinverse, cluster finite-sample correction or iterative GMM is used.

@@ -36,7 +36,7 @@ session effects are not rolled back. The converter below verifies the source
 hash and publishes without clobbering an existing file. Python and R are needed
 only for source conversion and reference checking, not the application. This
 is a bounded source workflow, not a general panel-GMM command. The separate
-base-instrument GMM workflow below does not implement dynamic-panel methods.
+base- and stacked-instrument GMM workflows do not implement dynamic-panel methods.
 
 From a fresh directory:
 
@@ -247,8 +247,8 @@ and 2e-7 respectively, while native-covariance F is checked at the standard
 tolerance. R separately evaluates the F survival function at each *native* F,
 including the subnormal age-squared p-value, to 1e-10 relative plus 1e-320.
 Original JSON/text exports are byte-identical. Incomplete panels, insufficient
-cluster rank and existing exports fail; scripts are not transactional. GMM
-and other chapter requirements remain.
+cluster rank and existing exports fail; scripts are not transactional. Other
+chapter requirements remain.
 
 ## Year-stacked instruments
 
@@ -276,5 +276,7 @@ prepared base design and uses QR projection for the two covariance estimators.
 The check compares every design, fitted and residual value, coefficients,
 p-values and both covariance matrices at `1e-9 + 1e-9*abs(reference)`, plus
 the author coefficient and SE values at table precision. Focused tests cover
-block placement, missing years, the two fits and no-clobber export. This adds
-one stacked 2SLS column; it does not implement two-step GMM.
+block placement, missing years, the two fits and no-clobber export. The separate
+[stacked GMM workflow](stacked_gmm.md) validates the two-step GMM column using
+these same 72 instruments, distinguishing the standard fixed-weight and author's
+updated covariance and objective. This does not implement dynamic-panel GMM.
