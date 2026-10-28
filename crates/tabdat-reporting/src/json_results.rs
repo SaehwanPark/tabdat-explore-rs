@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/hausman/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/hausman/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -140,6 +140,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::AndersonRubinConfidenceSet { .. }
             | EstatSubcommand::AndersonRubinProjectedConfidenceSet { .. }
             | EstatSubcommand::Overid
+            | EstatSubcommand::Hausman
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
             | EstatSubcommand::CountProbabilities { .. },
@@ -236,6 +237,15 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "valid_instruments_maintained_linear_model_strong_identification_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"
       );
       (data, "RobustEndogeneityResult")
+    }
+    ExecutionResult::ClassicalPanelHausman(result) => {
+      let mut data = serde_json::to_value(result).expect("finite classical panel Hausman result");
+      data["test"] = json!("classical_panel_fe_re_covariance_difference");
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["covariance"] = json!("model_based_nonrobust");
+      data["assumptions"] =
+        json!("re_efficiency_under_null_and_independent_units; not_cluster_robust");
+      (data, "ClassicalPanelHausmanResult")
     }
     ExecutionResult::WuHausman(result) => {
       let mut data = serde_json::to_value(result).expect("finite Wu-Hausman result");
@@ -1596,6 +1606,7 @@ mod tests {
       time_variable: "time".into(),
       entity_data_type: "BIGINT".into(),
       result,
+      hausman_problem: None,
     };
     let result = ExecutionResult::RandomEffects(Box::new(state));
     let envelope: Value =

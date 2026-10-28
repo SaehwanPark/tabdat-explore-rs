@@ -6,6 +6,7 @@ How to invoke:
 `estat ar, ci [level(95)]`
 `estat ar, ci coefficient(name) [level(95)]`
 `estat overid`
+`estat hausman` (after bounded balanced nonclustered RE-GLS)
 `estat endogenous`
 `estat margins` (after logit, probit, Poisson, NB2, Gaussian Tobit or truncreg)
 `estat countprob [, max(10)]` (after Poisson or NB2)
@@ -28,7 +29,27 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+
+## Classical panel FE–RE Hausman comparison
+
+After `xtreg y x, re id(person) time(year)`, run `estat hausman`. This is a
+model-based covariance-difference test of the same-sample FE and RE slope, not
+`estat endogenous`'s IV Wu–Hausman test. The fit must be balanced, nonclustered
+Swamy–Arora GLS with an intercept and exactly one slope. It refits FE and RE on
+the owned joint-finite design; current dataset edits do not change the test.
+Older retained states without that design require refitting RE. Unsupported
+unbalanced, ML, robust/clustered or multiple-slope fits fail without changing
+state. Nonpositive or cancellation-dominated V_FE−V_RE is an error, not repaired
+by taking an absolute value or a generalized inverse.
+
+Text and `ClassicalPanelHausmanResult` CLI-v1 JSON report both slopes and
+variances, difference, group/sample counts, chi-square(1), asymptotic p-value
+and model-based assumptions. Inference requires RE efficiency under the null;
+remaining within-person correlation can invalidate it. It is not cluster robust,
+a generic model selection tool, or evidence that exogeneity holds after failure
+to reject. See the separately composed robust comparison in the Chapter 21
+example and `help xtreg` for fit and sample rules.
 
 ## Observed versus fitted count frequencies
 

@@ -269,7 +269,12 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
    OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
    printed facts, with F(1,G-1) reference and explicit covariance assumptions.
-   This does not install general native `estat hausman` or automatic model selection.
+   Separately, bounded native `estat hausman` compares a balanced nonclustered
+   one-slope RE-GLS fit with same-sample FE using classical covariance subtraction;
+   original MOM R/plm validates12 quantities and58,520 exported cells. It rejects
+   nonpositive/cancellation-dominated differences and unsupported ML, clustered,
+   unbalanced or multivariate fits. Neither method supplies general model selection
+   or makes the classical test robust to within-unit dependence.
    Conventional nonclustered FE now also reports the pooled-versus-within
    unit-effects F test; independent R/plm comparisons cover balanced, unbalanced
    and interleaved synthetic fixtures, while clustered FE withholds the classical

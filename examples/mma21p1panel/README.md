@@ -596,6 +596,18 @@ uses retained-sample range methods, with no new required result-struct fields.
 The bounded profile, covariance assumptions, boundary LR withholding and original
 printed-Stata8 uncertainty discrepancy remain as documented above.
 
+### Classical FE–RE Hausman comparison — §21.4.3 p.719
+
+[`classical_hausman.td`](classical_hausman.td) and its
+[contract and reference audit](classical_hausman.md) implement the separate
+model-based balanced one-slope FE–RE covariance-difference test. On the original
+5,320 observations, chi-square(1)=13.7259113889, p=0.0002115161044; independent
+R/plm checks12 quantities and58,520 export cells. `estat hausman` uses the
+retained RE sample and rejects invalid covariance differences. This classical
+comparison requires RE efficiency under the null and is **not cluster robust**;
+the robust auxiliary workflow below is distinct. General multivariate,
+unbalanced, clustered and ML native comparisons remain unsupported.
+
 ### Robust auxiliary Hausman comparison — §21.4.3 p.719
 
 [`robust_hausman.td`](robust_hausman.td) implements block7 of the authors'

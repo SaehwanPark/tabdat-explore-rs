@@ -513,6 +513,8 @@ pub enum RuntimeError {
   EstatEndogenousRequiresPriorIv,
   /// Unsupported covariance or an undefined auxiliary endogeneity test.
   EstatEndogenousFailed(String),
+  /// Classical panel Hausman requires a supported retained RE design.
+  EstatHausmanFailed(String),
   /// `lincom` requires a preceding supported linear regression.
   LincomRequiresPriorEstimation,
   /// An expression or inference error while evaluating `lincom`.
@@ -1187,6 +1189,7 @@ impl fmt::Display for RuntimeError {
         formatter.write_str("estat endogenous requires a prior 2SLS fit")
       }
       Self::EstatEndogenousFailed(message) => write!(formatter, "estat endogenous: {message}"),
+      Self::EstatHausmanFailed(message) => write!(formatter, "estat hausman: {message}"),
       Self::LincomRequiresPriorEstimation => {
         formatter.write_str("no active estimation results found")
       }

@@ -1,0 +1,13 @@
+field,value
+fe_coefficient,0.812829907095675
+re_coefficient,0.907444031021973
+fe_variance,0.00244472078729983
+re_variance,0.00176520116935997
+difference,-0.0946141239262979
+variance_difference,0.000679519617939856
+statistic,13.1737660105836
+df,1
+p_value,0.000283895614237295
+observation_count,200
+group_count,40
+group_size,5

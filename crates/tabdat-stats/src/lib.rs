@@ -160,8 +160,9 @@ pub use post_estimation::{
 };
 pub use problem::EstimationProblem;
 pub use random_effects::{
-  RandomEffectsResult, fit_random_effects, fit_random_effects_clustered,
-  fit_random_effects_unbalanced, fit_random_effects_unbalanced_clustered,
+  ClassicalPanelHausmanResult, RandomEffectsResult, classical_panel_hausman, fit_random_effects,
+  fit_random_effects_clustered, fit_random_effects_unbalanced,
+  fit_random_effects_unbalanced_clustered,
 };
 pub use random_effects_ml::{
   RandomEffectsMlClusterInference, RandomEffectsMlInference, RandomEffectsMlInterior,
