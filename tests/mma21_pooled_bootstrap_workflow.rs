@@ -46,6 +46,8 @@ fn pooled_whole_person_bootstrap_matches_r_and_text_json_exports() {
     serde_json::json!({"total_observations":24,"dropped_observations":0})
   );
   assert_eq!(fit["seed"], "10001");
+  assert_eq!(fit["rng"], "xoshiro256++/splitmix64/u64-rejection-v1");
+  assert_eq!(fit["interval_method"], "percentile_r_type7");
   assert_eq!(fit["cluster_count"], 6);
   assert_eq!(fit["cluster_sizes"], serde_json::json!(vec![4; 6]));
   assert_eq!(
@@ -86,7 +88,18 @@ fn pooled_whole_person_bootstrap_matches_r_and_text_json_exports() {
       assert!((a - b).abs() <= 1e-9, "{a} != {b}");
     }
   }
-  assert!(!run(&d, "--json").status.success());
+  let repeated = run(&d, "--json");
+  assert!(!repeated.status.success());
+  let repeated_events: Vec<Value> = String::from_utf8(repeated.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let repeated_fit = &repeated_events
+    .iter()
+    .find(|e| e["result_type"] == "ClusterBootstrapOlsResult")
+    .unwrap()["data"];
+  assert_eq!(repeated_fit, fit);
   assert_eq!(fs::read(&path).unwrap(), csv);
   fs::remove_file(&path).unwrap();
   let text = run(&d, "--text");
