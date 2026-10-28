@@ -29,6 +29,7 @@ leaves = [json.loads(line) for line in output.read_text().splitlines()]
 fits = [v['data'] for v in leaves if v['result_type'] == 'RegressionResult']
 assert len(fits) == 3
 coefficients = read(reference/'coefficients.csv')
+assert len(coefficients) == 5
 author = [
   (0.1115114, 0.0230566, 0.0791674, 0.0960926),
   (-0.0062887, 0.0116719, 0.0110570, 0.0109558),
@@ -48,7 +49,10 @@ for m, (fit, mode) in enumerate(zip(fits, ('classical','hc1','cluster'))):
     near(row['p_value'], ref[mode+'_p'], f"{mode}.{row['name']}.p")
     assert abs(row['value']-author[i][0]) < 0.0005
     assert abs(row['standard_error']-author[i][m+1]) < 0.0005
-  for i, ref in enumerate(read(reference/f'{mode}.csv')):
+  matrix = read(reference/f'{mode}.csv')
+  assert len(matrix) == 5 and all(len(row) == 5 for row in matrix)
+  assert len(fit['covariance_matrix']) == 5 and all(len(row) == 5 for row in fit['covariance_matrix'])
+  for i, ref in enumerate(matrix):
     for j, key in enumerate(ref):
       near(fit['covariance_matrix'][i][j], ref[key], f'{mode}.cov[{i},{j}]')
 print('PASS: 4,256 source designs/predictions, three OLS fits and full covariances')
