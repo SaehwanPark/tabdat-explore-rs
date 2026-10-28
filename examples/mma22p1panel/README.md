@@ -57,15 +57,38 @@ tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
 
-## Planned bounded extension: first-difference OLS
+## First-difference OLS
 
-Reproduce Table 22.2's no-intercept OLS column on the same 4,256 person-years
-and five differenced regressors, with classical, HC1 and person-clustered
-covariance. Acceptance requires independently reconstructed source rows and
-predictions, all coefficients and covariance entries versus R, and agreement
-with the author's printed precision; incomplete panels and export collisions
-must fail. This does not add an estimator, establish exogeneity, implement GMM,
-or complete the table.
+[`first_difference_ols.td`](first_difference_ols.td) reproduces the Table 22.2
+no-intercept OLS column on the same 4,256 person-years and five differenced
+regressors. It reports classical, HC1 and person-clustered covariances and exports
+all design rows, fitted values and residuals. The log-wage coefficient is
+0.1115114; its three SEs are 0.0230566, 0.0791673 and 0.0960926. Classical
+uses RSS/(N-K), HC1 uses N/(N-K), and cluster uses
+G/(G-1)*(N-1)/(N-K); the t reference has N-K, N-K and G-1 degrees of
+freedom respectively. Person clustering allows within-person dependence, not
+cross-person dependence. This is an associational OLS fit, not evidence of
+exogeneity or a causal effect. It does not implement GMM or complete the table.
+
+Run the base R reference above first, then in a fresh directory containing
+`MOMprecise.csv`:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/first_difference_ols.td > ols-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/ols_reference.R reference/design.csv ols-reference
+python3 /path/to/repo/examples/mma22p1panel/check_ols.py /path/to/MOMprecise.dat ols-result.jsonl fd_ols_design.csv ols-reference
+```
+
+R 4.6.1 independently reconstructs the source design in `reference.R` and
+uses QR OLS and independently formed covariance matrices. The checker compares
+all 4,256 exported rows and predictions, coefficients, standard errors,
+p-values and all three full covariance matrices at `1e-9 + 1e-9*abs(reference)`,
+plus the 20 author coefficient/SE facts at three-decimal table precision. The
+historical Stata log used float storage; longer printed digits are not claimed
+as identical. JSON and text exports are byte-identical on the original data.
+The same complete-panel, finite-data and no-clobber rules apply; prior session
+changes are not rolled back. Focused CLI controls cover reversed input, missing
+or duplicate years, singular design and an existing export.
 
 ## Year-stacked instruments
 

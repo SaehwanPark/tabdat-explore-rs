@@ -127,6 +127,97 @@ fn duplicate_or_missing_years_and_rank_failure_do_not_export() {
 }
 
 #[test]
+fn first_difference_ols_reports_three_covariances_and_protects_export() {
+  let script =
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/first_difference_ols.td");
+  let run_ols = |dir: &TestDir, mode: &str| {
+    tabdat_bin()
+      .current_dir(dir.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let dir = TestDir::new();
+  fs::write(dir.path().join("MOMprecise.csv"), fixture()).unwrap();
+  let output = run_ols(&dir, "--json");
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let fits: Vec<_> = values
+    .iter()
+    .filter(|v| v["result_type"] == "RegressionResult")
+    .collect();
+  assert_eq!(fits.len(), 3);
+  for fit in fits {
+    assert_eq!(fit["data"]["observation_count"], 320);
+    assert_eq!(fit["data"]["sample"]["dropped_observations"], 0);
+    assert_eq!(fit["data"]["include_intercept"], false);
+    assert_eq!(fit["data"]["coefficients"].as_array().unwrap().len(), 5);
+  }
+  let path = dir.path().join("fd_ols_design.csv");
+  let original = fs::read(&path).unwrap();
+  assert_eq!(String::from_utf8_lossy(&original).lines().count(), 321);
+  assert!(!run_ols(&dir, "--json").status.success());
+  assert_eq!(fs::read(&path).unwrap(), original);
+
+  let text_dir = TestDir::new();
+  let input = fixture();
+  let mut rows: Vec<_> = input.lines().collect();
+  let header = rows.remove(0);
+  rows.reverse();
+  let reversed = format!("{header}\n{}\n", rows.join("\n"));
+  fs::write(text_dir.path().join("MOMprecise.csv"), reversed).unwrap();
+  let text = run_ols(&text_dir, "--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  assert_eq!(
+    fs::read(text_dir.path().join("fd_ols_design.csv")).unwrap(),
+    original
+  );
+
+  let data = fixture();
+  let missing = data
+    .lines()
+    .enumerate()
+    .filter(|(i, _)| *i != 3)
+    .map(|(_, line)| line)
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
+  let duplicate = format!("{}{}\n", data, data.lines().nth(1).unwrap());
+  let singular = data
+    .lines()
+    .enumerate()
+    .map(|(i, line)| {
+      if i == 0 {
+        format!("{line}\n")
+      } else {
+        let mut row: Vec<_> = line.split(',').collect();
+        row[1] = "0";
+        format!("{}\n", row.join(","))
+      }
+    })
+    .collect::<String>();
+  for bad in [missing, duplicate, singular] {
+    let bad_dir = TestDir::new();
+    fs::write(bad_dir.path().join("MOMprecise.csv"), bad).unwrap();
+    assert!(!run_ols(&bad_dir, "--json").status.success());
+    assert!(!bad_dir.path().join("fd_ols_design.csv").exists());
+  }
+}
+
+#[test]
 fn stacked_instruments_fit_and_preserve_panel_keys() {
   let dir = TestDir::new();
   fs::write(dir.path().join("MOMprecise.csv"), fixture()).unwrap();
