@@ -14,6 +14,10 @@ fn run(dir: &TestDir) -> Output {
 }
 
 fn fixture() -> String {
+  fixture_n(40)
+}
+
+fn fixture_n(people: usize) -> String {
   let mut state = 0x22f1_9a34_u64;
   let mut draw = || {
     state ^= state << 13;
@@ -22,7 +26,7 @@ fn fixture() -> String {
     (state % 10000) as f64 / 10000.0
   };
   let mut data = String::from("lnhr,lnwg,kids,ageh,agesq,disab,id,year\n");
-  for id in 1..=40 {
+  for id in 1..=people {
     for year in 1979..=1988 {
       let lnhr = draw();
       let lnwg = draw();
@@ -316,6 +320,104 @@ fn base_first_stage_tests_joint_instruments_and_guards_output() {
     fs::write(bad_dir.path().join("MOMprecise.csv"), bad).unwrap();
     assert!(!run(&bad_dir, "--json").status.success());
     assert!(!bad_dir.path().join("first_stage_design.csv").exists());
+  }
+}
+
+#[test]
+fn stacked_wage_relevance_tests_large_joint_restriction() {
+  let script =
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/stacked_first_stage.td");
+  let run = |dir: &TestDir, mode: &str| {
+    tabdat_bin()
+      .current_dir(dir.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let dir = TestDir::new();
+  let input = fixture_n(100);
+  fs::write(dir.path().join("MOMprecise.csv"), &input).unwrap();
+  let output = run(&dir, "--json");
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let fits: Vec<_> = values
+    .iter()
+    .filter(|v| v["result_type"] == "RegressionResult")
+    .collect();
+  let tests: Vec<_> = values
+    .iter()
+    .filter(|v| v["result_type"] == "TestResult")
+    .collect();
+  assert_eq!(fits.len(), 2);
+  assert_eq!(tests.len(), 2);
+  for (fit, covariance) in fits.iter().zip(["cluster(id)", "nonrobust"]) {
+    assert_eq!(fit["data"]["observation_count"], 800);
+    assert_eq!(fit["data"]["include_intercept"], true);
+    assert_eq!(fit["data"]["covariance"], covariance);
+    assert_eq!(fit["data"]["coefficients"].as_array().unwrap().len(), 73);
+  }
+  for (test, df) in tests.iter().zip([99, 727]) {
+    assert_eq!(test["data"]["df"], 72);
+    assert_eq!(test["data"]["df_residual"], df);
+    assert_eq!(test["data"]["constraints"].as_array().unwrap().len(), 72);
+  }
+  let path = dir.path().join("stacked_stage_design.csv");
+  let original = fs::read(&path).unwrap();
+  assert_eq!(String::from_utf8_lossy(&original).lines().count(), 801);
+  assert!(!run(&dir, "--json").status.success());
+  assert_eq!(fs::read(&path).unwrap(), original);
+
+  let text_dir = TestDir::new();
+  let mut rows: Vec<_> = input.lines().collect();
+  let header = rows.remove(0);
+  rows.reverse();
+  fs::write(
+    text_dir.path().join("MOMprecise.csv"),
+    format!("{header}\n{}\n", rows.join("\n")),
+  )
+  .unwrap();
+  let text = run(&text_dir, "--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  assert_eq!(
+    fs::read(text_dir.path().join("stacked_stage_design.csv")).unwrap(),
+    original
+  );
+
+  let missing = input
+    .lines()
+    .enumerate()
+    .filter(|(i, _)| *i != 3)
+    .map(|(_, line)| line)
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
+  for (bad, expected_error) in [
+    (missing, "sql failed"),
+    (fixture(), "constraints are collinear or singular"),
+  ] {
+    let bad_dir = TestDir::new();
+    fs::write(bad_dir.path().join("MOMprecise.csv"), bad).unwrap();
+    let output = run(&bad_dir, "--json");
+    assert!(!output.status.success());
+    assert!(
+      String::from_utf8_lossy(&output.stderr).contains(expected_error),
+      "expected {expected_error}: {}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!bad_dir.path().join("stacked_stage_design.csv").exists());
   }
 }
 

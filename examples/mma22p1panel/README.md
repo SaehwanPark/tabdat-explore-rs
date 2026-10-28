@@ -126,14 +126,49 @@ storage. Original JSON/text exports are byte-identical. The complete-panel and
 no-clobber rules above apply; the focused test exercises reversed input, missing
 years, rank failure and existing export. Scripts are not transactional.
 
-## Planned year-stacked wage diagnostic
+## Year-stacked wage diagnostic
 
-Use the original 4,256 person-years and 72 year-block instruments, with an
-intercept, for classical and person-clustered joint relevance tests. Validate
-source/design/predictions, full covariances and F statistics against independent
-R, investigate differences from the historical float log, and test rank/panel
-and no-clobber failures. This tests one first-stage equation; it is not a
-weak-IV-robust structural test or a general panel-GMM feature.
+[`stacked_first_stage.td`](stacked_first_stage.td) fits differenced log wages on
+an intercept and 72 year-block instruments for the same 4,256 person-years.
+The clustered joint test is F(72,531)=1.90009427 (p=0.000038076); the
+classical test is F(72,4183)=1.34141287 (p=0.02961836), with centered
+R²=0.02256803. The cluster correction is G/(G-1)*(N-1)/(N-K). Unlike the
+no-intercept 2SLS first-stage output, this follows the author's separate
+intercept-including diagnostic. Many instruments and multiple endogenous
+regressors complicate interpretation; these tests do not establish instrument
+validity or identification strength, nor are they weak-IV-robust structural tests.
+
+After creating `MOMprecise.csv` and the base R `reference` directory as above:
+
+```sh
+Rscript /path/to/repo/examples/mma22p1panel/stacked_reference.R reference/design.csv stacked-reference
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/stacked_first_stage.td > stacked-stage-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/stacked_stage_reference.R stacked-reference/design.csv stacked-stage-reference
+python3 /path/to/repo/examples/mma22p1panel/check_stacked_stage.py /path/to/MOMprecise.dat stacked-stage-result.jsonl stacked_stage_design.csv stacked-stage-reference
+```
+
+R 4.6.1 independently reconstructs the 72 blocks and uses QR and separately
+formed covariances and joint tests. All 4,256 source/design/prediction rows,
+coefficients, p-values, both full 73×73 matrices and F p-values use
+`1e-9 + 1e-9*abs(reference)`; classical F uses that same tolerance. The
+clustered F is additionally checked against a 60-digit Decimal solve of the
+native covariance at that tolerance and against R within **absolute 2e-8**.
+The observed native/R F difference is 1.17e-8: their maximum full covariance
+entry difference is 1.38e-11, amplified by the restriction correlation matrix's
+condition number approximately 2.75e7. Substituting native coefficients into
+R's covariance yields F=1.90009428519; substituting R coefficients into native
+covariance yields F=1.90009427355, isolating the difference to covariance
+accumulation rather than the Wald solver. The checker limits that full matrix
+entry difference to 2e-11 and separately verifies the native-covariance solve.
+
+The author log's clustered F=1.9000813 differs by 1.30e-5. An independent
+[`stacked_float_probe.R`](stacked_float_probe.R) rounds source values and
+differences to float32, yielding F=1.90009438; float storage alone does not
+explain the old log. Its precise numerical cause remains unresolved, so literal
+historical clustered-F parity is not claimed. Original JSON/text exports are
+byte-identical; incomplete panels, rank-deficient joint tests and existing
+exports fail, with prior session changes not rolled back. This is not GMM or
+coverage of the other stacked first-stage equations.
 
 ## Year-stacked instruments
 
