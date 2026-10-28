@@ -407,7 +407,7 @@ script outputs remain on later failure, not whole-script rollback. Reporting for
 future estimator families remains required. This completes that bounded native
 analytical contract, not the binary milestone, IV illustration or full book.
 
-Keep GMM/Hansen J, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
+Keep general GMM/Hansen J beyond the bounded clustered/no-intercept slice, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
 any further endogeneity inference required by exact illustrations explicit as
 remaining required work.
 Conventional Wald results, Sargan/Wu diagnostics and first-stage relevance tests
@@ -444,7 +444,14 @@ Wooldridge score, with uncorrected score OPG, retained structural residuals and
 asymptotic chi-square(L-K). Independent R SVD/lm.fit matches the exact 48-state
 source/design/score/tail and five synthetic q1/q2 designs; see the same example.
 This is additional method evidence, not new textbook coverage or Hansen J.
-Clustered overidentification and GMM remain required work.
+Clustered overidentification after 2SLS and general GMM remain required work.
+A bounded [Chapter 22 base-instrument workflow](../examples/mma22p1panel/README.md)
+now implements clustered two-step linear IV GMM with no intercept/included
+exogenous variables and nine instruments on 4,256 person-years. Independent R
+checks all source design/prediction rows, coefficients, full fixed-weight and
+author-updated covariance matrices, and both J objectives/p-values; selected
+author-log facts are checked with explicit float-precision caveats. This is not
+stacked-instrument or dynamic-panel GMM and does not resolve weak identification.
 The same specified sample additionally validates joint homoskedastic
 `estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
 using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all

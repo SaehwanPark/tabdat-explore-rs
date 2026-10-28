@@ -1,7 +1,7 @@
-# Planned Table 22.2 base-instrument panel GMM slice
+# Table 22.2 base-instrument clustered two-step GMM
 
-**Status: preimplementation; not an installed or validated command.** Reproduce
-§22.3's base-instrument column on 4,256 person-years/532 people, using the
+The bounded executable workflow reproduces §22.3's base-instrument column on
+4,256 person-years/532 people, using the
 existing complete-panel source preparation, five differenced endogenous
 regressors, nine lagged-level instruments and no intercept. The author program
 `mma22p1pangmm.do` specifies 2SLS pilot residuals u₁ and uncentered cluster sums
@@ -11,7 +11,7 @@ regressors, nine lagged-level instruments and no intercept. The author program
 fixed-weight sandwich and objective used by standard two-step GMM. Do not call
 them those quantities or silently replace the author's conventions.
 
-Proposed bounded executable slice: explicit `ivregress gmm` with required one-way
+Bounded executable slice: explicit `ivregress gmm` with required one-way
 cluster, no intercept and no included exogenous variables, complete joint-finite
 sample, full-rank design and moment covariance, at most 10,000 rows, 8 regressors
 and 16 instruments. Retain an owned GMM state distinct from 2SLS; current-data xb
@@ -24,8 +24,9 @@ clusters; no pseudoinverse, weights, GMM iterations, clustered finite-sample
 correction or stacked 72-instrument claim. The pilot and updated fits reject
 maximum absolute residual at or below 128 machine epsilons times the larger
 maximum absolute response or fitted value, rather than treating floating-point
-noise from an exact fit as an invertible moment covariance. Exact result and post-estimation
-contracts must be checked against current state/JSON behavior before implementation.
+noise from an exact fit as an invertible moment covariance. GMM fits retain a
+distinct owned state: 2SLS-only post-estimation is rejected rather than reusing
+the wrong covariance or sample convention.
 
 Acceptance: (1) source design, coefficients, both full covariance matrices,
 both objective statistics and all predictions against independent R and selected
@@ -37,7 +38,7 @@ Stata float precision, weak instruments, asymptotic assumptions and the lack of
 causal or entire-table guarantees remain explicit. Do not merge a kernel-only
 milestone as this workflow.
 
-## Preliminary independent reference
+## Independent reference and source audit
 
 R 4.6.1 [`gmm_reference.R`](gmm_reference.R) uses the independently generated
 base design from `reference.R`, scales X and Z columns, obtains the pilot by QR,
@@ -48,5 +49,5 @@ J=5.4503865499 (four overidentifying degrees of freedom). The author log
 reports β=0.54679602, updated SE=0.32762396 and updated J=5.4503878; the
 small differences are not evidence for digit-level historical parity. The
 standard and author-updated quantities are materially distinct, not alternative
-labels for the same finite-sample computation. This reference run is preliminary;
-it does not validate a native implementation.
+labels for the same finite-sample computation. The checked-in source audit and
+reproduction commands are documented in the [example README](README.md).

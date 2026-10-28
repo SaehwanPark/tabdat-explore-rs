@@ -127,6 +127,24 @@ fn clustered_gmm_preserves_owned_state_predictions_and_failure_contracts() {
       .execute(parse_command("predict stale, xb").unwrap())
       .is_err()
   );
+  session
+    .execute(
+      parse_command("ivregress gmm y, endog(x1) iv(z1 z2) noconstant cluster(group_id)").unwrap(),
+    )
+    .unwrap();
+  assert!(
+    session
+      .execute(
+        parse_command("ivregress gmm y, endog(x1) iv(z1 z1) noconstant cluster(group_id)").unwrap()
+      )
+      .is_err()
+  );
+  assert!(session.state().estimation.is_none());
+  assert!(
+    session
+      .execute(parse_command("predict stale, xb").unwrap())
+      .is_err()
+  );
 }
 
 #[test]

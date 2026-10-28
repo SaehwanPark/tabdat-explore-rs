@@ -35,7 +35,8 @@ workflow before export. The export refuses to overwrite an existing file; prior
 session effects are not rolled back. The converter below verifies the source
 hash and publishes without clobbering an existing file. Python and R are needed
 only for source conversion and reference checking, not the application. This
-is a bounded source workflow, not a general panel-GMM command. Two-step GMM and dynamic-panel methods remain unimplemented here.
+is a bounded source workflow, not a general panel-GMM command. The separate
+base-instrument GMM workflow below does not implement dynamic-panel methods.
 
 From a fresh directory:
 
@@ -56,6 +57,40 @@ not claimed to match the present double-precision input exactly. Focused CLI
 tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
+
+## Base-instrument clustered two-step GMM
+
+[`base_gmm.td`](base_gmm.td) uses the same complete 4,256-row, 532-person
+sample, five endogenous differences and nine lagged-level instruments without an
+intercept. Wage coefficient is 0.54679608. The uncorrected fixed-pilot-weight
+cluster sandwich SE is 0.32975788 and its J is 5.32649145. Separately, the
+author's updated-residual inverse-information SE is 0.32762393 and its updated
+J is 5.45038655, both distinct finite-sample quantities. Both J tests use four
+asymptotic chi-square degrees of freedom. Normal coefficient inference assumes
+independent people and valid instruments; it is not weak-IV-robust or causal.
+The implementation does not provide dynamic-panel GMM, stacked 72-instrument
+GMM, iterative GMM, finite-sample cluster corrections, or GMM post-estimation
+beyond current-data `xb` and residual prediction. See [gmm.md](gmm.md) for
+numerical limits and both covariance definitions.
+
+After preparing `MOMprecise.csv` and the independent base `reference` directory
+as above, in a fresh output directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/base_gmm.td > gmm-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/gmm_reference.R reference/design.csv gmm-reference
+python3 /path/to/repo/examples/mma22p1panel/check_gmm.py /path/to/MOMprecise.dat gmm-result.jsonl panel_gmm_design.csv gmm-reference
+```
+
+R 4.6.1 independently forms the scaled QR pilot, moment covariances, second-step
+fit, both full covariance matrices and objectives. The audit checks every source
+row and prediction, sample/group provenance, coefficients, SEs, p-values,
+intervals, matrices, and both J statistics and p-values at
+`1e-9 + 1e-9*abs(reference)`. Selected author-log wage and J values use absolute
+`1e-6` and `1e-5` respectively; historical float storage prevents a claim of
+exact digit parity. Original text and JSON exports were byte-identical. Focused
+script tests cover reversed input, missing/duplicate years, singular design and
+no-clobber export. Earlier script effects are not rolled back on failure.
 
 ## First-difference OLS
 

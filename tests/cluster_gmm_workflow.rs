@@ -5,6 +5,50 @@ use serde_json::Value;
 use std::fs;
 
 #[test]
+fn exactly_identified_json_does_not_claim_an_overidentification_test() {
+  let dir = TestDir::new();
+  fs::write(
+    dir.path().join("data.csv"),
+    include_str!("../crates/tabdat-stats/tests/fixtures/cluster_gmm/data.csv"),
+  )
+  .unwrap();
+  let output = tabdat_bin()
+    .current_dir(dir.path())
+    .args([
+      "--json",
+      "-c",
+      "use data.csv",
+      "-c",
+      "ivregress gmm y, endog(x) iv(z1) noconstant cluster(id)",
+    ])
+    .output()
+    .unwrap();
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let data = &values
+    .iter()
+    .find(|v| v["result_type"] == "ClusterGmmResult")
+    .unwrap()["data"];
+  assert_eq!(data["overidentification_df"], 0);
+  for key in [
+    "fixed_weight_j",
+    "fixed_weight_j_p_value",
+    "author_updated_j",
+    "author_updated_j_p_value",
+  ] {
+    assert!(data[key].is_null(), "{key}");
+  }
+}
+
+#[test]
 fn clustered_gmm_script_json_text_and_failure_paths() {
   let dir = TestDir::new();
   let data = include_str!("../crates/tabdat-stats/tests/fixtures/cluster_gmm/data.csv");

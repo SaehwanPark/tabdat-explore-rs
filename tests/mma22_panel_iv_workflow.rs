@@ -43,6 +43,95 @@ fn fixture_n(people: usize) -> String {
 }
 
 #[test]
+fn base_gmm_panel_script_runs_and_guards_input_and_export() {
+  let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/base_gmm.td");
+  let run = |dir: &TestDir, mode: &str| {
+    tabdat_bin()
+      .current_dir(dir.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let dir = TestDir::new();
+  let input = fixture();
+  fs::write(dir.path().join("MOMprecise.csv"), &input).unwrap();
+  let output = run(&dir, "--json");
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let fits: Vec<_> = values
+    .iter()
+    .filter(|v| v["result_type"] == "ClusterGmmResult")
+    .collect();
+  assert_eq!(fits.len(), 1);
+  assert_eq!(fits[0]["data"]["observation_count"], 320);
+  assert_eq!(fits[0]["data"]["cluster_count"], 40);
+  assert_eq!(fits[0]["data"]["overidentification_df"], 4);
+  assert_eq!(fits[0]["data"]["coefficients"].as_array().unwrap().len(), 5);
+  let path = dir.path().join("panel_gmm_design.csv");
+  let original = fs::read(&path).unwrap();
+  assert_eq!(String::from_utf8_lossy(&original).lines().count(), 321);
+  assert!(!run(&dir, "--json").status.success());
+  assert_eq!(fs::read(&path).unwrap(), original);
+  let text_dir = TestDir::new();
+  let mut rows: Vec<_> = input.lines().collect();
+  let header = rows.remove(0);
+  rows.reverse();
+  fs::write(
+    text_dir.path().join("MOMprecise.csv"),
+    format!("{header}\n{}\n", rows.join("\n")),
+  )
+  .unwrap();
+  let text = run(&text_dir, "--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  assert!(String::from_utf8_lossy(&text.stdout).contains("Clustered two-step linear IV GMM"));
+  assert_eq!(
+    fs::read(text_dir.path().join("panel_gmm_design.csv")).unwrap(),
+    original
+  );
+  let duplicate = format!("{}{}\n", input, input.lines().nth(1).unwrap());
+  let missing = input
+    .lines()
+    .enumerate()
+    .filter(|(i, _)| *i != 3)
+    .map(|(_, s)| s)
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
+  let singular = input
+    .lines()
+    .enumerate()
+    .map(|(i, line)| {
+      if i == 0 {
+        format!("{line}\n")
+      } else {
+        let mut row = line.split(',').collect::<Vec<_>>();
+        row[1] = "0";
+        format!("{}\n", row.join(","))
+      }
+    })
+    .collect::<String>();
+  for bad in [duplicate, missing, singular] {
+    let bad_dir = TestDir::new();
+    fs::write(bad_dir.path().join("MOMprecise.csv"), bad).unwrap();
+    assert!(!run(&bad_dir, "--json").status.success());
+    assert!(!bad_dir.path().join("panel_gmm_design.csv").exists());
+  }
+}
+
+#[test]
 fn complete_panels_fit_both_covariances_and_export_design() {
   let dir = TestDir::new();
   fs::write(dir.path().join("MOMprecise.csv"), fixture()).unwrap();
