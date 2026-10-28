@@ -25,7 +25,8 @@ This is an unobserved-effects-ignoring pooled mean model, not FE, RE or GEE.
    author log's rounded pooled slope .6929337 and model/row/cluster SEs .0022454,
    .0198092 and .0430441, investigating rather than hiding correction or historic
    float-storage differences.
-3. Preparation rejects empty/malformed/incomplete/nonfinite source, invalid or
+3. Preparation preserves the 10 source `.` missing ARDSSIC metadata values as
+   missing and rejects malformed/incomplete/nonfinite required fields, invalid or
    duplicate derived keys and invalid counts before publication, without clobber;
    synthetic small data exercise ordering and negative/failure cases. Fit,
    export and rerun failures preserve promised dataset and file state.
