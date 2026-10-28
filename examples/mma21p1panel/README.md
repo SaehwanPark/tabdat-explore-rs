@@ -364,6 +364,16 @@ Hausman and other panel diagnostics, bootstrap and remaining table/figure output
 This bounded balanced classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
 
+## Pooled whole-person bootstrap
+
+The separate [pooled bootstrap workflow](pooled_bootstrap.md) uses the original
+5,320 person-years and 532 people, with 500 seeded whole-person pairs draws and
+an explicitly distinct native RNG from the author's Stata run. R independently
+validates all bootstrap summary/covariance quantities and every exported
+prediction row; the wage bootstrap SE is 0.02881286627. The current OLS fit
+remains available for prediction. This is not a few-cluster guarantee or an
+automatic FE/RE bootstrap.
+
 ## Unit-cluster RE extension
 
 `random_effects_cluster.td` supplies both explicit `cluster(id)` and equivalent
