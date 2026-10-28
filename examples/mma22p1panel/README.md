@@ -170,6 +170,51 @@ byte-identical; incomplete panels, rank-deficient joint tests and existing
 exports fail, with prior session changes not rolled back. This is not GMM or
 coverage of the other stacked first-stage equations.
 
+## Remaining year-stacked first-stage diagnostics
+
+[`stacked_other_stages.td`](stacked_other_stages.td) fits the author program's
+four remaining separate, intercept-including clustered stacked-instrument
+relevance equations on the same 4,256 rows. Each jointly tests the 72 instrument
+slopes with F(72,531):
+
+| Dependent variable | F | p | Centered R² |
+| --- | ---: | ---: | ---: |
+| `dkids` | 8.41459202 | 3.34857e-52 | 0.16281613 |
+| `dageh` | 24.00250866 | 6.29920e-126 | 0.22076423 |
+| `dagesq` | 150.79906608 | 4.10096e-309 | 0.36856999 |
+| `ddisab` | 25.78635384 | 4.69405e-132 | 0.28591864 |
+
+Each is a distinct individual-equation relevance test, not a joint-identification
+statistic, proof of valid instruments or weak-IV-robust structural inference.
+Clustering assumes independent people. The author log's corresponding F values
+are 8.4145744, 24.002499, 150.79951 and 25.786283; as for the wage test above,
+literal historical values differ and their cause is unresolved.
+
+After creating `MOMprecise.csv`, the base R `reference` and `stacked-reference`
+directories as above, run in a fresh directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/stacked_other_stages.td > stacked-other-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/stacked_other_reference.R stacked-reference/design.csv stacked-other-reference
+python3 /path/to/repo/examples/mma22p1panel/check_stacked_other.py /path/to/MOMprecise.dat stacked-other-result.jsonl stacked_other_stages.csv stacked-other-reference
+```
+
+R 4.6.1 independently reconstructs the 72 blocks, QR fits, clustered covariances
+and F tests. The checker compares all 4,256 design/prediction rows, coefficients,
+SEs and p-values using `1e-9 + 1e-9*abs(reference)`. Each of 21,316 covariance
+entries is bounded by 3e-9 times the corresponding reference standard-deviation
+product; this scale-aware check accommodates the much larger age-squared
+response, while additional case-specific absolute bounds are in the checker.
+Restriction-correlation condition numbers range from 8.3e6 to 6.1e7. Cross-
+substitution into 60-digit Decimal Wald solves isolates the R/native F differences
+to covariance accumulation; reference-F absolute gates are 3e-8, 1e-8, 3e-6
+and 2e-7 respectively, while native-covariance F is checked at the standard
+tolerance. R separately evaluates the F survival function at each *native* F,
+including the subnormal age-squared p-value, to 1e-10 relative plus 1e-320.
+Original JSON/text exports are byte-identical. Incomplete panels, insufficient
+cluster rank and existing exports fail; scripts are not transactional. GMM
+and other chapter requirements remain.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
