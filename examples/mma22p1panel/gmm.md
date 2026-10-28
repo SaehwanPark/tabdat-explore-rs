@@ -21,7 +21,10 @@ sandwich/objective and explicitly labelled author-updated approximations, with
 normal and chi-square asymptotics as applicable and no finite-sample correction.
 Reject unsupported combinations, singular or unidentified designs and too few
 clusters; no pseudoinverse, weights, GMM iterations, clustered finite-sample
-correction or stacked 72-instrument claim. Exact result and post-estimation
+correction or stacked 72-instrument claim. The pilot and updated fits reject
+maximum absolute residual at or below 128 machine epsilons times the larger
+maximum absolute response or fitted value, rather than treating floating-point
+noise from an exact fit as an invertible moment covariance. Exact result and post-estimation
 contracts must be checked against current state/JSON behavior before implementation.
 
 Acceptance: (1) source design, coefficients, both full covariance matrices,
