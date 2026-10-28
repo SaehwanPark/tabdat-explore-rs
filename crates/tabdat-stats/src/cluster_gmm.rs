@@ -134,9 +134,9 @@ pub fn fit_cluster_two_step_gmm(
       "cluster GMM requires noconstant and no included exogenous variables".into(),
     ));
   }
-  if n > 10_000 || k > 8 || l > 16 {
+  if n > 10_000 || k > 8 || l > 72 {
     return Err(StatsError::IncompatibleHypothesis(
-      "cluster GMM supports at most 10000 rows, 8 regressors and 16 instruments".into(),
+      "cluster GMM supports at most 10000 rows, 8 regressors and 72 instruments".into(),
     ));
   }
   let groups = problem
