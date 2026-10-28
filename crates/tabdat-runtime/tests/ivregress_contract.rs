@@ -80,6 +80,96 @@ fn load(fixture: &Fixture) -> Session {
 }
 
 #[test]
+fn clustered_gmm_preserves_owned_state_predictions_and_failure_contracts() {
+  let fixture = Fixture::school_like_sample();
+  let mut session = load(&fixture);
+  let command =
+    parse_command("ivregress gmm y, endog(x1) iv(z1 z2) noconstant cluster(group_id)").unwrap();
+  let ExecutionResult::ClusterGmm(fit) = session.execute(command).unwrap() else {
+    panic!("expected clustered GMM result");
+  };
+  assert_eq!(fit.result.cluster_count, 12);
+  assert_eq!(fit.sample.total_observations, 60);
+  assert_eq!(fit.sample.dropped_observations, 3);
+  assert_eq!(fit.result.parameter_names, ["x1"]);
+  assert!(fit.result.fixed_j.unwrap().is_finite());
+  assert!(matches!(
+    session.state().estimation,
+    Some(tabdat_domain::EstimationState::ClusterGmm(_))
+  ));
+  for command in ["predict fitted, xb", "predict residual, residuals"] {
+    let ExecutionResult::Prediction(result) =
+      session.execute(parse_command(command).unwrap()).unwrap()
+    else {
+      panic!("expected prediction")
+    };
+    assert_eq!(result.dataset.row_count, 60);
+  }
+  assert!(session.execute(parse_command("test x1").unwrap()).is_err());
+  assert!(
+    session
+      .execute(parse_command("estat overid").unwrap())
+      .is_err()
+  );
+  assert!(matches!(
+    session.state().estimation,
+    Some(tabdat_domain::EstimationState::ClusterGmm(_))
+  ));
+  let error = session
+    .execute(
+      parse_command("ivregress gmm y w, endog(x1) iv(z1 z2) noconstant cluster(group_id)").unwrap(),
+    )
+    .unwrap_err();
+  assert!(error.to_string().contains("no included exogenous"));
+  assert!(session.state().estimation.is_none());
+  assert!(
+    session
+      .execute(parse_command("predict stale, xb").unwrap())
+      .is_err()
+  );
+  session
+    .execute(
+      parse_command("ivregress gmm y, endog(x1) iv(z1 z2) noconstant cluster(group_id)").unwrap(),
+    )
+    .unwrap();
+  assert!(
+    session
+      .execute(
+        parse_command("ivregress gmm y, endog(x1) iv(z1 z1) noconstant cluster(group_id)").unwrap()
+      )
+      .is_err()
+  );
+  assert!(session.state().estimation.is_none());
+  assert!(
+    session
+      .execute(parse_command("predict stale, xb").unwrap())
+      .is_err()
+  );
+}
+
+#[test]
+fn clustered_gmm_jointly_excludes_nonfinite_numeric_cluster_keys() {
+  let fixture = Fixture::new_with_sql(
+    "WITH base AS (SELECT i, sin(i / 7.0) + i / 90.0 AS z1, \
+       cos(i / 5.0) + i / 70.0 AS z2, sin(i / 3.0) AS noise FROM range(1,61) t(i)) \
+     SELECT z1 + z2 + noise AS x, 2 * (z1 + z2 + noise) + cos(i / 4.0) AS y, z1, z2, \
+       CASE WHEN i=1 THEN 'NaN'::DOUBLE WHEN i=2 THEN 'Infinity'::DOUBLE \
+         WHEN i=3 THEN '-0.0'::DOUBLE WHEN i=4 THEN 0.0 ELSE (i % 12)::DOUBLE END AS grp FROM base",
+  );
+  let mut session = load(&fixture);
+  let ExecutionResult::ClusterGmm(fit) = session
+    .execute(parse_command("ivregress gmm y, endog(x) iv(z1 z2) noconstant cluster(grp)").unwrap())
+    .unwrap()
+  else {
+    panic!("expected clustered GMM result")
+  };
+  assert_eq!(fit.sample.dropped_observations, 2);
+  assert_eq!(fit.sample.retained_indices.first(), Some(&2));
+  assert_eq!(fit.sample.cluster_groups.as_ref().unwrap()[..2], ["0", "0"]);
+  assert_eq!(fit.result.cluster_count, 12);
+}
+
+#[test]
 fn ivregress_2sls_fits_multiple_endogenous_regressors_and_reports_sample() {
   let fixture = Fixture::school_like_sample();
   let mut session = load(&fixture);

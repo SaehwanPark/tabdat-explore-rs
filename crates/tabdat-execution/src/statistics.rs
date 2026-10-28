@@ -359,9 +359,18 @@ impl Session {
     command: &IvRegressCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
-    if command.estimator != IvEstimator::TwoStageLeastSquares {
+    if command.estimator == IvEstimator::GeneralizedMethodOfMoments
+      && command.cluster_variable.is_none()
+    {
       return Err(RuntimeError::IvRegressUnsupportedEstimator {
         estimator: "gmm".to_owned(),
+      });
+    }
+    if command.estimator == IvEstimator::GeneralizedMethodOfMoments
+      && (command.include_intercept || !command.exogenous.is_empty())
+    {
+      return Err(RuntimeError::IvRegressFailed {
+        message: "clustered GMM requires noconstant and no included exogenous regressors".into(),
       });
     }
     if command.robust && command.cluster_variable.is_some() {
@@ -498,7 +507,14 @@ impl Session {
         }
         let cluster_group = if command.cluster_variable.is_some() {
           let value = read_owned_cell(row, cluster_index, true, "could not read IV cluster")?;
-          let Some(value) = cell_to_string(value) else {
+          let key = if command.estimator == IvEstimator::GeneralizedMethodOfMoments {
+            bootstrap_cluster_key(value).map_err(|_| RuntimeError::IvRegressFailed {
+              message: "cluster keys must be numeric, text or boolean".into(),
+            })?
+          } else {
+            cell_to_string(value)
+          };
+          let Some(value) = key else {
             return Ok(());
           };
           Some(value)
@@ -557,6 +573,25 @@ impl Session {
       include_intercept: command.include_intercept,
       sample: Some(sample),
     };
+    if command.estimator == IvEstimator::GeneralizedMethodOfMoments {
+      let result = tabdat_stats::fit_cluster_two_step_gmm(&problem).map_err(|error| {
+        RuntimeError::IvRegressFailed {
+          message: error.to_string(),
+        }
+      })?;
+      let fit = ClusterGmmFit {
+        outcome: command.outcome.clone(),
+        instruments: command.instruments.clone(),
+        cluster_variable: command
+          .cluster_variable
+          .clone()
+          .expect("GMM cluster checked above"),
+        sample: problem.sample.clone().expect("sample constructed above"),
+        result,
+      };
+      self.estimation = Some(EstimationState::ClusterGmm(Box::new(fit.clone())));
+      return Ok(ExecutionResult::ClusterGmm(Box::new(fit)));
+    }
     let covariance_type = if let Some(cluster) = &command.cluster_variable {
       tabdat_stats::CovarianceType::Cluster(cluster.clone())
     } else if command.robust {
@@ -1249,56 +1284,63 @@ impl Session {
       return Err(RuntimeError::UnsupportedCommand { name: "predict" });
     }
 
-    let (outcome, predictors, intercept, coefficients) = {
-      let model = self
-        .linear_state()
-        .ok_or(RuntimeError::PredictRequiresPriorRegression)?;
-      if dataset
-        .columns
-        .iter()
-        .any(|column| column.name == command.target_variable)
-      {
-        return Err(RuntimeError::PredictTargetExists {
-          variable: command.target_variable.clone(),
-        });
-      }
-
-      let mut required = model.predictors.clone();
-      if command.kind == PredictKind::Residuals {
-        required.push(model.outcome.clone());
-      }
-      let missing = required
-        .iter()
-        .filter(|variable| {
-          !dataset
-            .columns
-            .iter()
-            .any(|column| column.name == **variable)
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-      if !missing.is_empty() {
-        return Err(RuntimeError::PredictUnknownVariable { variables: missing });
-      }
-
-      let coefficient_offset = usize::from(model.include_intercept);
-      if model.result.coefficients.len() != model.predictors.len() + coefficient_offset {
-        return Err(RuntimeError::PredictFailed);
-      }
-      let intercept = model
-        .include_intercept
-        .then(|| model.result.coefficients[0].value);
-      let coefficients = model.result.coefficients[coefficient_offset..]
-        .iter()
-        .map(|coefficient| coefficient.value)
-        .collect::<Vec<_>>();
-      (
+    let (outcome, predictors, intercept, coefficients) = match &self.estimation {
+      Some(EstimationState::ClusterGmm(model)) => (
         model.outcome.clone(),
-        model.predictors.clone(),
-        intercept,
-        coefficients,
-      )
+        model.result.parameter_names.clone(),
+        None,
+        model.result.coefficients.clone(),
+      ),
+      _ => {
+        let model = self
+          .linear_state()
+          .ok_or(RuntimeError::PredictRequiresPriorRegression)?;
+        let offset = usize::from(model.include_intercept);
+        if model.result.coefficients.len() != model.predictors.len() + offset {
+          return Err(RuntimeError::PredictFailed);
+        }
+        (
+          model.outcome.clone(),
+          model.predictors.clone(),
+          model
+            .include_intercept
+            .then(|| model.result.coefficients[0].value),
+          model.result.coefficients[offset..]
+            .iter()
+            .map(|c| c.value)
+            .collect(),
+        )
+      }
     };
+    if coefficients.len() != predictors.len() {
+      return Err(RuntimeError::PredictFailed);
+    }
+    if dataset
+      .columns
+      .iter()
+      .any(|column| column.name == command.target_variable)
+    {
+      return Err(RuntimeError::PredictTargetExists {
+        variable: command.target_variable.clone(),
+      });
+    }
+    let mut required = predictors.clone();
+    if command.kind == PredictKind::Residuals {
+      required.push(outcome.clone());
+    }
+    let missing = required
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == **variable)
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::PredictUnknownVariable { variables: missing });
+    }
 
     let prediction = LinearPrediction {
       target_variable: &command.target_variable,

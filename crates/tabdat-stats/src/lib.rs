@@ -9,6 +9,7 @@
 
 mod binary;
 mod bootstrap;
+mod cluster_gmm;
 mod conditional_logit;
 mod count_probabilities;
 mod cox;
@@ -82,6 +83,7 @@ pub use bootstrap::{
   BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, ClusterBootstrapOlsResult,
   MAX_BOOTSTRAP_REPLICATIONS, MAX_BOOTSTRAP_WORK, bootstrap_ols, bootstrap_ols_clustered,
 };
+pub use cluster_gmm::{ClusterGmmResult, fit_cluster_two_step_gmm};
 pub use conditional_logit::{
   ConditionalLogitOptions, ConditionalLogitProblem, ConditionalLogitResult,
   conditional_logit_predict_set, fit_conditional_logit,

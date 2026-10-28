@@ -1153,7 +1153,7 @@ impl fmt::Display for RuntimeError {
       ),
       Self::IvRegressUnsupportedEstimator { estimator } => write!(
         formatter,
-        "ivregress estimator '{estimator}' is not implemented; use 2sls"
+        "ivregress estimator '{estimator}' requires cluster(var), noconstant and no included exogenous regressors; otherwise use 2sls"
       ),
       Self::IvRegressUnknownVariable { variables } => write!(
         formatter,

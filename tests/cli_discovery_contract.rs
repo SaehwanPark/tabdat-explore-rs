@@ -375,7 +375,7 @@ fn ttest_discovery_describes_the_installed_comparisons_and_variance_flags() {
 }
 
 #[test]
-fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
+fn ivregress_discovery_describes_executable_2sls_and_clustered_gmm_limits() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "IVREGRESS"])
     .output()
@@ -386,7 +386,7 @@ fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
   assert_eq!(envelope["data"]["help_topic"], "ivregress");
   assert_eq!(
     envelope["data"]["syntax"],
-    "ivregress 2sls y [exog...], endog(endog_vars) iv(excluded_instruments) [robust|cluster(var)|noconstant]"
+    "ivregress 2sls y [exog...], endog(endog_vars) iv(excluded_instruments) [robust|cluster(var)|noconstant] | ivregress gmm y, endog(endog_vars) iv(excluded_instruments) noconstant cluster(var)"
   );
   assert_eq!(
     envelope["data"]["options"],
@@ -407,7 +407,9 @@ fn ivregress_discovery_describes_the_executable_2sls_slice_and_limits() {
   let help: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   let text = help["data"]["text"].as_str().unwrap();
   assert!(text.contains("not weak-instrument-robust inference"));
-  assert!(text.contains("`gmm` is parsed but execution reports it as unsupported"));
+  assert!(text.contains("full\nfixed-pilot-weight cluster sandwich"));
+  assert!(text.contains("instruments minus regressors degrees of freedom"));
+  assert!(text.contains("2SLS post-estimation commands and stored estimates do not support GMM"));
 }
 
 #[test]

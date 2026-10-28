@@ -269,6 +269,7 @@ pub enum EstimationState {
   ZeroInflatedNegativeBinomial(ModelState),
   Survival(ModelState),
   InstrumentalVariables(Box<InstrumentalVariablesState>),
+  ClusterGmm(Box<crate::ClusterGmmFit>),
   PanelLinear(ModelState),
   FixedEffects(Box<FixedEffectsState>),
   RandomEffects(Box<RandomEffectsState>),
@@ -340,7 +341,9 @@ impl EstimationState {
       Self::Survival(..) | Self::WeibullFit(..) | Self::GompertzFit(..) | Self::CoxFit(..) => {
         EstimationFamily::Survival
       }
-      Self::InstrumentalVariables(..) => EstimationFamily::InstrumentalVariables,
+      Self::InstrumentalVariables(..) | Self::ClusterGmm(..) => {
+        EstimationFamily::InstrumentalVariables
+      }
       Self::PanelLinear(..) | Self::FixedEffects(..) | Self::RandomEffects(..) => {
         EstimationFamily::PanelLinear
       }

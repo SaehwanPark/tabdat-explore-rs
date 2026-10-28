@@ -3,6 +3,8 @@
 How to invoke:
 `ivregress 2sls y [exog...], endog(x1 x2) iv(z1 z2) [robust|cluster(id)|noconstant]`
 
+`ivregress gmm y, endog(x1 x2) iv(z1 z2 z3) noconstant cluster(id)`
+
 The options belong after one comma, for example:
 `ivregress 2sls y exog..., endog(x1 x2) iv(z1 z2) robust`
 
@@ -41,10 +43,31 @@ robust/cluster or endogenous-subset test. Robust/cluster parent fits instead
 support a distinct augmented-OLS joint innovation Wald test with asymptotic
 chi-square(m) inference and auxiliary HC1/CR1 corrections (Kaux=K+m), not an
 exact F or weak-IV-robust test. See `help estat` for assumptions/numerical limits.
-Subset/robust-score endogeneity, clustered overid, multi-endogenous confidence regions,
-robust/cluster confidence sets and GMM are not implemented;
-`gmm` is parsed but execution reports it as unsupported.
+Subset/robust-score endogeneity, clustered 2SLS overid, multi-endogenous
+confidence regions and robust/cluster confidence sets are not implemented.
+
+Clustered two-step GMM:
+The bounded `gmm` form requires `cluster(id) noconstant`, with no included
+exogenous variables and no weights. It jointly excludes missing/non-finite
+outcome, endogenous, instrument and cluster values. Up to 10,000 retained rows,
+8 endogenous regressors and 16 instruments are supported; the design and both
+cluster moment covariance matrices must have full numerical rank and there must
+be more clusters than instruments. Perfect/near-perfect fit is rejected. No
+pseudoinverse, cluster finite-sample correction or iterative GMM is used.
+
+The main standard errors, z tests and normal 95% intervals use the full
+fixed-pilot-weight cluster sandwich. The fixed-weight J uses the same pilot
+weight and is the conventional objective. Separately, the result reports the
+source author's inverse-information standard errors and J computed using a
+cluster moment covariance updated at the second-step residuals. These are not
+the fixed-weight sandwich or its objective. Both J references are asymptotic
+chi-square with instruments minus regressors degrees of freedom and are absent
+when exactly identified. Results assume independent clusters and valid moments;
+none of these tests verifies instrument validity or provides weak-IV-robust
+inference. Use `predict ..., xb` or `predict ..., residuals` on current data;
+2SLS post-estimation commands and stored estimates do not support GMM.
 
 Examples:
+- `ivregress gmm y, endog(x1 x2) iv(z1 z2 z3) noconstant cluster(id)`
 - `ivregress 2sls wage age, endog(educ) iv(distance)`
 - `ivregress 2sls wage76 black south76, endog(grade76 exp76 expsq76) iv(col4 age76 agesq76) robust`

@@ -1070,7 +1070,7 @@ pub enum IvEstimator {
   GeneralizedMethodOfMoments,
 }
 
-/// Bounded `ivregress` syntax; the runtime currently executes 2SLS only.
+/// Bounded `ivregress` syntax for 2SLS and clustered, no-intercept GMM.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IvRegressCommand {
   /// The dependent variable.
@@ -1089,7 +1089,7 @@ pub struct IvRegressCommand {
   pub cluster_variable: Option<String>,
   /// Whether the fitted model includes an intercept.
   pub include_intercept: bool,
-  /// The requested IV estimator; only 2SLS is currently executed.
+  /// The requested IV estimator; GMM has stricter option and sample limits.
   pub estimator: IvEstimator,
 }
 

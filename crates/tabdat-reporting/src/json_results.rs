@@ -11,8 +11,8 @@ use tabdat_language::{Command, EstatCommand, EstatSubcommand, ExecutionMode, Laz
 
 use crate::catalog::ResultEnvelope;
 
-pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
-pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
+pub const BATCH_UNSUPPORTED_MESSAGE: &str = "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()";
+pub const SCRIPT_UNSUPPORTED_MESSAGE: &str = "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()";
 
 fn binary_wald_json(test: Option<&tabdat_domain::BinaryOmnibusWald>) -> Value {
   test.map_or(Value::Null, |test| {
@@ -65,6 +65,11 @@ pub fn supports_batch_command(command: &Command) -> bool {
     ),
     Command::IvRegress { command } => {
       command.estimator == tabdat_domain::IvEstimator::TwoStageLeastSquares
+        || (command.estimator == tabdat_domain::IvEstimator::GeneralizedMethodOfMoments
+          && command.cluster_variable.is_some()
+          && !command.include_intercept
+          && command.exogenous.is_empty()
+          && !command.robust)
     }
     Command::XtReg { .. } => true,
     Command::Status
@@ -748,6 +753,40 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["likelihood_ratio"] = Value::Null;
       data["omnibus_f"] = Value::Null;
       (data, "NlsResult")
+    }
+    ExecutionResult::ClusterGmm(fit) => {
+      let r = &fit.result;
+      let coefficients: Vec<_> = r
+        .parameter_names
+        .iter()
+        .zip(&r.coefficients)
+        .enumerate()
+        .map(|(i, (name, value))| {
+          let se = r.fixed_covariance[i][i].sqrt();
+          let z = value / se;
+          json!({"name": name, "value": value, "standard_error": se,
+          "statistic": z, "p_value": 2.0 * tabdat_stats::normal_cdf(-z.abs()),
+          "confidence_lower": value - 1.959963984540054 * se,
+          "confidence_upper": value + 1.959963984540054 * se,
+          "author_updated_standard_error": r.updated_covariance[i][i].sqrt()})
+        })
+        .collect();
+      (
+        json!({"estimator":"cluster_two_step_gmm", "outcome":fit.outcome,
+        "predictors":r.parameter_names, "instruments":fit.instruments,
+        "cluster_variable":fit.cluster_variable, "cluster_count":r.cluster_count,
+        "observation_count":fit.sample.retained_count(), "sample":fit.sample,
+        "include_intercept":false, "coefficients":coefficients,
+        "covariance_parameter_names":r.parameter_names,
+        "fixed_weight_sandwich_covariance":r.fixed_covariance,
+        "author_updated_inverse_information_covariance":r.updated_covariance,
+        "covariance_correction":1.0, "reference_distribution":"asymptotic_standard_normal",
+        "overidentification_df":fit.instruments.len().saturating_sub(r.parameter_names.len()),
+        "fixed_weight_j":r.fixed_j, "fixed_weight_j_p_value":r.fixed_j_p_value,
+        "author_updated_j":r.updated_j, "author_updated_j_p_value":r.updated_j_p_value,
+        "overidentification_reference_distribution":"asymptotic_chi_square"}),
+        "ClusterGmmResult",
+      )
     }
     ExecutionResult::Cox(result) => {
       let mut data = serde_json::to_value(result).expect("finite Cox result");
