@@ -14,14 +14,15 @@ them those quantities or silently replace the author's conventions.
 Bounded executable slice: explicit `ivregress gmm` with required one-way
 cluster, no intercept and no included exogenous variables, complete joint-finite
 sample, full-rank design and moment covariance, at most 10,000 rows, 8 regressors
-and 16 instruments. Retain an owned GMM state distinct from 2SLS; current-data xb
+and 72 instruments. Retain an owned GMM state distinct from 2SLS; current-data xb
 and residual predictions, clearly identified covariance and overidentification
 results, text/script/CLI-v1 JSON. Report both standard fixed-weight two-step
 sandwich/objective and explicitly labelled author-updated approximations, with
 normal and chi-square asymptotics as applicable and no finite-sample correction.
 Reject unsupported combinations, singular or unidentified designs and too few
 clusters; no pseudoinverse, weights, GMM iterations, clustered finite-sample
-correction or stacked 72-instrument claim. The pilot and updated fits reject
+correction. The separately validated [stacked workflow](stacked_gmm.md) uses
+72 instruments. The pilot and updated fits reject
 maximum absolute residual at or below 128 machine epsilons times the larger
 maximum absolute response or fitted value, rather than treating floating-point
 noise from an exact fit as an invertible moment covariance. GMM fits retain a

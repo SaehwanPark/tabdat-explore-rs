@@ -148,6 +148,37 @@ fn clustered_gmm_preserves_owned_state_predictions_and_failure_contracts() {
 }
 
 #[test]
+fn clustered_gmm_instrument_limit_failure_clears_previous_fit() {
+  let columns = (1..=73)
+    .map(|i| format!("sin(n / {}.0) + n / {}.0 AS z{i}", i + 2, i + 100))
+    .collect::<Vec<_>>()
+    .join(", ");
+  let sql = format!(
+    "SELECT n AS y, n + sin(n) AS x, (n % 20)::VARCHAR AS grp, {columns} FROM range(1,101) t(n)"
+  );
+  let fixture = Fixture::new_with_sql(&sql);
+  let mut session = load(&fixture);
+  session
+    .execute(parse_command("ivregress gmm y, endog(x) iv(z1 z2) noconstant cluster(grp)").unwrap())
+    .unwrap();
+  let instruments = (1..=73)
+    .map(|i| format!("z{i}"))
+    .collect::<Vec<_>>()
+    .join(" ");
+  let command = format!("ivregress gmm y, endog(x) iv({instruments}) noconstant cluster(grp)");
+  let error = session
+    .execute(parse_command(&command).unwrap())
+    .unwrap_err();
+  assert!(error.to_string().contains("72 instruments"), "{error}");
+  assert!(session.state().estimation.is_none());
+  assert!(
+    session
+      .execute(parse_command("predict stale, xb").unwrap())
+      .is_err()
+  );
+}
+
+#[test]
 fn clustered_gmm_jointly_excludes_nonfinite_numeric_cluster_keys() {
   let fixture = Fixture::new_with_sql(
     "WITH base AS (SELECT i, sin(i / 7.0) + i / 90.0 AS z1, \
