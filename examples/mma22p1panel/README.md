@@ -90,6 +90,16 @@ The same complete-panel, finite-data and no-clobber rules apply; prior session
 changes are not rolled back. Focused CLI controls cover reversed input, missing
 or duplicate years, singular design and an existing export.
 
+## Planned base-instrument first-stage diagnostic
+
+On the same 4,256 person-years, fit differenced log wages on an intercept and
+nine base instruments, then jointly test the nine slopes using classical and
+person-clustered covariance. Independently reconstruct the source sample and
+compare fitted rows, coefficients, covariance and F references to R and the
+author log. Incomplete panels, singular designs and existing exports must fail
+without clobbering. The intercept follows the author's diagnostic, unlike the
+no-intercept 2SLS fit; this is not a weak-IV-robust structural test or GMM.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
