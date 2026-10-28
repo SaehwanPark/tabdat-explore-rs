@@ -532,6 +532,16 @@ pub struct ActivateResult {
   pub dataset: DatasetInfo,
 }
 
+/// Owned clustered two-step IV GMM fit and complete-sample provenance.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ClusterGmmFit {
+  pub outcome: String,
+  pub instruments: Vec<String>,
+  pub cluster_variable: String,
+  pub sample: tabdat_stats::EstimationSample,
+  pub result: tabdat_stats::ClusterGmmResult,
+}
+
 /// The typed result of executing a linear regression command.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegressionResult {
@@ -819,6 +829,7 @@ pub enum ExecutionResult {
   Gompertz(Box<tabdat_stats::GompertzResult>),
   /// Cox/Breslow fit and reference-vector baseline, without baseline uncertainty.
   Cox(Box<tabdat_stats::CoxResult>),
+  ClusterGmm(Box<ClusterGmmFit>),
   /// Explicit-formula NLS with working/HC1 Gauss–Newton covariance and approximate t inference.
   Nl(Box<tabdat_stats::NlsResult>),
   /// Lower-censored IID Gaussian fit with full beta/lnsigma observed covariance.

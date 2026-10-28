@@ -207,6 +207,16 @@ pub fn fit_cluster_two_step_gmm(
   };
   let fixed_covariance = rescale(&fixed_scaled);
   let updated_covariance = rescale(&updated_scaled);
+  if (0..k).any(|i| {
+    !fixed_covariance[i][i].is_finite()
+      || fixed_covariance[i][i] <= 0.0
+      || !updated_covariance[i][i].is_finite()
+      || updated_covariance[i][i] <= 0.0
+  }) {
+    return Err(StatsError::EstimationFailed(
+      "GMM coefficient covariance has nonpositive or non-finite variance".into(),
+    ));
+  }
   let m = multiply_vector(&zt, &residuals)?;
   let objective = |w: &[Vec<f64>]| -> Result<f64, StatsError> {
     let wm = multiply_vector(w, &m)?;
@@ -230,6 +240,15 @@ pub fn fit_cluster_two_step_gmm(
   } else {
     (None, None, None, None)
   };
+  if fixed_j_p_value
+    .iter()
+    .chain(updated_j_p_value.iter())
+    .any(|p| !p.is_finite())
+  {
+    return Err(StatsError::EstimationFailed(
+      "GMM overidentification probability is non-finite".into(),
+    ));
+  }
   if coefficients
     .iter()
     .chain(&fitted_values)

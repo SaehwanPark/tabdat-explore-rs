@@ -25,7 +25,10 @@ d$panel_iv_fitted <- NULL; d$panel_iv_residual <- NULL
 d$gmm_fitted <- drop(x%*%beta); d$gmm_residual <- u2
 if (dir.exists(args[2])) stop('output directory exists')
 dir.create(args[2]); write.csv(d,file.path(args[2],'design.csv'),row.names=FALSE)
-write.csv(data.frame(name=xnames,beta=beta,fixed_se=sqrt(diag(fixed)),updated_se=sqrt(diag(updated))),file.path(args[2],'coefficients.csv'),row.names=FALSE)
+se <- sqrt(diag(fixed))
+write.csv(data.frame(name=xnames,beta=beta,fixed_se=se,updated_se=sqrt(diag(updated)),
+ p_value=2*pnorm(-abs(beta/se)),confidence_lower=beta-qnorm(.975)*se,
+ confidence_upper=beta+qnorm(.975)*se),file.path(args[2],'coefficients.csv'),row.names=FALSE)
 write.csv(fixed,file.path(args[2],'fixed_covariance.csv'),row.names=FALSE)
 write.csv(updated,file.path(args[2],'updated_covariance.csv'),row.names=FALSE)
 write.csv(data.frame(n=n,groups=g,parameters=k,instruments=l,fixed_j=j_fixed,updated_j=j_updated,
