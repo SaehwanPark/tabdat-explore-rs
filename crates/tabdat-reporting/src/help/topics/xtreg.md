@@ -119,8 +119,10 @@ Random-effects GLS (balanced and unbalanced):
   missing/non-numeric required columns or unsupported modes fail atomically.
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
-  Unit effects/conditional predictions, named RE reports and Hausman remain
-  uninstalled.
+  Unit effects/conditional predictions and named RE reports remain uninstalled.
+  `estat hausman` supports only balanced, nonclustered RE-GLS with one slope;
+  it refits FE on the original retained sample and is not cluster robust. See
+  `help estat` for numerical failure conditions and assumptions.
 
 RE unit-cluster inference:
 - `xtreg y xvars, re id(unit) time(year) cluster(unit)` or `robust` uses the same

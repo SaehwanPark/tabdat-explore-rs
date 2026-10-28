@@ -80,6 +80,67 @@ fn retained_design_survives_data_changes_and_legacy_state_deserializes() {
 }
 
 #[test]
+fn joint_finite_sample_includes_only_original_matched_rows() {
+  let mut csv =
+    include_str!("../../tabdat-stats/tests/fixtures/panel_classical_hausman/data.csv").to_owned();
+  for id in 1..=40 {
+    csv.push_str(&format!("{id},6,,1\n"));
+  }
+  csv.push_str("41,1,,1\n");
+  let fixture = Fixture::new(&csv);
+  let mut session = fixture.load();
+  let ExecutionResult::RandomEffects(state) =
+    execute(&mut session, "xtreg y x, re id(id) time(year)")
+  else {
+    panic!()
+  };
+  let sample = state
+    .hausman_problem
+    .as_ref()
+    .unwrap()
+    .sample
+    .as_ref()
+    .unwrap();
+  assert_eq!(sample.total_observations, 241);
+  assert_eq!(sample.dropped_observations, 41);
+  assert_eq!(sample.retained_indices, (0..200).collect::<Vec<_>>());
+  let ExecutionResult::ClassicalPanelHausman(result) = execute(&mut session, "estat hausman")
+  else {
+    panic!()
+  };
+  assert_eq!(result.observation_count, 200);
+  assert_eq!(result.group_count, 40);
+  assert!((result.statistic - 13.1737660105836).abs() < 1e-9);
+}
+
+#[test]
+fn unsupported_multiple_slopes_and_unbalanced_panels_fail_atomically() {
+  let fixture = Fixture::new(include_str!(
+    "../../tabdat-stats/tests/fixtures/panel_classical_hausman/data.csv"
+  ));
+  let mut session = fixture.load();
+  execute(&mut session, "generate z = year * id");
+  execute(&mut session, "xtreg y x z, re id(id) time(year)");
+  let before = session.state();
+  assert!(
+    session
+      .execute(parse_command("estat hausman").unwrap())
+      .is_err()
+  );
+  assert_eq!(session.state(), before);
+  execute(&mut session, "drop if id * 10 + year == 11");
+  execute(&mut session, "xtreg y x, re id(id) time(year)");
+  let before = session.state();
+  let error = session
+    .execute(parse_command("estat hausman").unwrap())
+    .unwrap_err();
+  assert!(error.to_string().contains("balanced"), "{error}");
+  assert_eq!(session.state(), before);
+  assert!(parse_command("estat hausman, robust").is_err());
+  assert_eq!(session.state(), before);
+}
+
+#[test]
 fn unsupported_covariance_and_negative_difference_fail_without_state_mutation() {
   let fixture = Fixture::new(include_str!(
     "../../tabdat-stats/tests/fixtures/panel_classical_hausman/data.csv"

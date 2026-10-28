@@ -55,6 +55,29 @@ fn balanced_scalar_comparison_matches_independent_plm() {
 }
 
 #[test]
+fn zero_unit_variance_boundary_never_forces_a_positive_difference() {
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  let mut groups = Vec::new();
+  for id in 1..=6 {
+    for t in 0..4 {
+      let predictor = 0.3 * f64::from(id) + 0.2 * f64::from(t) + 0.07 * f64::from((id * t + 2) % 5);
+      x.push(vec![predictor]);
+      y.push(1.0 + 0.7 * predictor + 0.5 * (-1.0_f64).powi(t) * (1.0 + 0.02 * f64::from(id)));
+      groups.push(id.to_string());
+    }
+  }
+  let sample = EstimationSample::new((0..24).collect(), 24, 0, None, Some(groups)).unwrap();
+  let p = EstimationProblem::new("y", vec!["x".into()], y, x)
+    .unwrap()
+    .with_sample(sample);
+  let re = tabdat_stats::fit_random_effects(&p, "id").unwrap();
+  assert_eq!(re.sigma_u_squared, 0.0);
+  let result = classical_panel_hausman(&p, "id").unwrap();
+  assert!(result.variance_difference > 0.0 && result.statistic.is_finite());
+}
+
+#[test]
 fn rejects_indefinite_covariance_and_unsupported_designs() {
   // plm's unconstrained phtest prints a positive statistic even for this negative
   // variance difference; do not silently take its absolute value.
