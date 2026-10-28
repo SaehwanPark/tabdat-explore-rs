@@ -57,6 +57,16 @@ tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
 
+## Planned bounded extension: first-difference OLS
+
+Reproduce Table 22.2's no-intercept OLS column on the same 4,256 person-years
+and five differenced regressors, with classical, HC1 and person-clustered
+covariance. Acceptance requires independently reconstructed source rows and
+predictions, all coefficients and covariance entries versus R, and agreement
+with the author's printed precision; incomplete panels and export collisions
+must fail. This does not add an estimator, establish exogeneity, implement GMM,
+or complete the table.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
