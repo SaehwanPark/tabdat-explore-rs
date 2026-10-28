@@ -374,6 +374,17 @@ prediction row; the wage bootstrap SE is 0.02881286627. The current OLS fit
 remains available for prediction. This is not a few-cluster guarantee or an
 automatic FE/RE bootstrap.
 
+## First-difference whole-person bootstrap
+
+The separate [first-difference bootstrap workflow](fd_bootstrap.md) forms
+consecutive-year differences before finite-pair filtering and resamples the
+532 people in whole blocks for 500 seeded draws. Independent R validates the
+4,788 original annual pairs, full bootstrap covariance and predictions; wage
+bootstrap SE is 0.08284363321. The native RNG differs from Stata's historical
+run. Missing levels and year gaps are not bridged; bootstrap metadata describes
+the retained pair frame, with candidate/excluded counts reported separately.
+This is not automatic FE/RE refitting or a finite-sample coverage guarantee.
+
 ## Unit-cluster RE extension
 
 `random_effects_cluster.td` supplies both explicit `cluster(id)` and equivalent
