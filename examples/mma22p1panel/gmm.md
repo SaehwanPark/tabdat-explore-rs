@@ -33,3 +33,17 @@ and output invariants; (4) executable text and JSON script workflow. Historical
 Stata float precision, weak instruments, asymptotic assumptions and the lack of
 causal or entire-table guarantees remain explicit. Do not merge a kernel-only
 milestone as this workflow.
+
+## Preliminary independent reference
+
+R 4.6.1 [`gmm_reference.R`](gmm_reference.R) uses the independently generated
+base design from `reference.R`, scales X and Z columns, obtains the pilot by QR,
+and calculates both covariances and objectives by direct solves. On the pinned
+original data it yields wage β=0.5467960797, fixed-weight SE=0.3297578764,
+author-updated SE=0.3276239308, fixed-weight J=5.3264914492 and updated
+J=5.4503865499 (four overidentifying degrees of freedom). The author log
+reports β=0.54679602, updated SE=0.32762396 and updated J=5.4503878; the
+small differences are not evidence for digit-level historical parity. The
+standard and author-updated quantities are materially distinct, not alternative
+labels for the same finite-sample computation. This reference run is preliminary;
+it does not validate a native implementation.
