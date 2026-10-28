@@ -126,6 +126,15 @@ storage. Original JSON/text exports are byte-identical. The complete-panel and
 no-clobber rules above apply; the focused test exercises reversed input, missing
 years, rank failure and existing export. Scripts are not transactional.
 
+## Planned year-stacked wage diagnostic
+
+Use the original 4,256 person-years and 72 year-block instruments, with an
+intercept, for classical and person-clustered joint relevance tests. Validate
+source/design/predictions, full covariances and F statistics against independent
+R, investigate differences from the historical float log, and test rank/panel
+and no-clobber failures. This tests one first-stage equation; it is not a
+weak-IV-robust structural test or a general panel-GMM feature.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
