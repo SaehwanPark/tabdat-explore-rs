@@ -43,6 +43,149 @@ fn fixture_n(people: usize) -> String {
 }
 
 #[test]
+fn shea_diagnostic_script_reports_and_guards_panel_and_output() {
+  let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/shea.td");
+  let run = |dir: &TestDir, mode: &str| {
+    tabdat_bin()
+      .current_dir(dir.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+  let input = fixture();
+  let dir = TestDir::new();
+  fs::write(dir.path().join("MOMprecise.csv"), &input).unwrap();
+  let output = run(&dir, "--json");
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let values: Vec<Value> = String::from_utf8(output.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert_eq!(
+    values
+      .iter()
+      .filter(|v| v["result_type"] == "RegressionResult")
+      .count(),
+    7
+  );
+  let table = values
+    .iter()
+    .find(|v| {
+      v["result_type"] == "TableResult"
+        && v["data"]["headers"]
+          == serde_json::json!([
+            "observations",
+            "residual_correlation",
+            "shea_partial_r_squared",
+            "interpretation"
+          ])
+    })
+    .unwrap();
+  let row = &table["data"]["rows"][0];
+  assert_eq!(row[0], 320);
+  let rho = row[1].as_f64().unwrap();
+  // Independent R QR/correlation reference: shea_synthetic_reference.R.
+  assert!((rho - 0.15265692612205664).abs() < 1e-12);
+  assert!((row[2].as_f64().unwrap() - 0.023304137093035058).abs() < 1e-12);
+  assert_eq!(
+    row[3],
+    "Descriptive relevance only; not a joint weak-IV test or evidence of instrument validity"
+  );
+  let path = dir.path().join("shea_design.csv");
+  let original = fs::read(&path).unwrap();
+  assert_eq!(String::from_utf8_lossy(&original).lines().count(), 321);
+  assert!(!run(&dir, "--json").status.success());
+  assert_eq!(fs::read(&path).unwrap(), original);
+  let text_dir = TestDir::new();
+  let mut rows: Vec<_> = input.lines().collect();
+  let header = rows.remove(0);
+  rows.reverse();
+  fs::write(
+    text_dir.path().join("MOMprecise.csv"),
+    format!("{header}\n{}\n", rows.join("\n")),
+  )
+  .unwrap();
+  let text = run(&text_dir, "--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  assert!(String::from_utf8_lossy(&text.stdout).contains("shea_partial_r_squared"));
+  assert_eq!(
+    fs::read(text_dir.path().join("shea_design.csv")).unwrap(),
+    original
+  );
+  let duplicate = format!("{}{}\n", input, input.lines().nth(1).unwrap());
+  let missing = input
+    .lines()
+    .enumerate()
+    .filter(|(i, _)| *i != 3)
+    .map(|(_, s)| s)
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
+  let zero_wage = input
+    .lines()
+    .enumerate()
+    .map(|(i, line)| {
+      if i == 0 {
+        format!("{line}\n")
+      } else {
+        let mut row = line.split(',').collect::<Vec<_>>();
+        row[1] = "0";
+        format!("{}\n", row.join(","))
+      }
+    })
+    .collect::<String>();
+  for bad in [duplicate, missing, zero_wage] {
+    let bad_dir = TestDir::new();
+    fs::write(bad_dir.path().join("MOMprecise.csv"), bad).unwrap();
+    assert!(!run(&bad_dir, "--json").status.success());
+    assert!(!bad_dir.path().join("shea_design.csv").exists());
+  }
+  // Vary wage across people but not across years: instruments remain nonconstant,
+  // while both wage residual vectors have exactly zero variance.
+  let zero_variation = input
+    .lines()
+    .enumerate()
+    .map(|(i, line)| {
+      if i == 0 {
+        format!("{line}\n")
+      } else {
+        let mut row = line.split(',').collect::<Vec<_>>();
+        row[1] = row[6];
+        format!("{}\n", row.join(","))
+      }
+    })
+    .collect::<String>();
+  let bad_dir = TestDir::new();
+  fs::write(bad_dir.path().join("MOMprecise.csv"), zero_variation).unwrap();
+  let failure = run(&bad_dir, "--json");
+  assert!(!failure.status.success());
+  let leaves: Vec<Value> = String::from_utf8(failure.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert_eq!(
+    leaves
+      .iter()
+      .filter(|v| v["result_type"] == "RegressionResult")
+      .count(),
+    7
+  );
+  assert_eq!(leaves.last().unwrap()["error"]["message"], "sql failed");
+  assert!(!bad_dir.path().join("shea_design.csv").exists());
+}
+
+#[test]
 fn stacked_gmm_panel_script_runs_and_guards_input_and_export() {
   let script =
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/mma22p1panel/stacked_gmm.td");

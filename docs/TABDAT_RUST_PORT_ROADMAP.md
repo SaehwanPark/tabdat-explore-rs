@@ -455,7 +455,10 @@ author-log facts are checked with explicit float-precision caveats. A separate
 72-instrument column against independent R with both covariance/objective
 conventions; the highly conditioned cluster moments and small historical-log
 differences are documented. Neither workflow implements dynamic-panel GMM or
-resolves weak identification.
+resolves weak identification. The separate [Chapter 22 author wage Shea
+workflow](../examples/mma22p1panel/shea.md) reproduces the intercept-including
+auxiliary residual correlation on the original panel against independent R;
+it is a descriptive relevance measure, not a joint weak-IV test.
 The same specified sample additionally validates joint homoskedastic
 `estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
 using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all
