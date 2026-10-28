@@ -97,9 +97,21 @@ failed attempt; if using this fallback, select executables from a successful
 current Cargo `--no-run --message-format json` inventory (never a stale filename
 glob), verify copy hashes, use each package's manifest working directory and
 record complete standard-harness results/counts, including ignored/zero-test
-artifacts. Do not repeatedly retry real assertion failures. Large accumulated
-build outputs can also exhaust disk space; `cargo clean -p <package>` removes
-only disposable generated artifacts but requires rebuilding that package.
+artifacts. Do not repeatedly retry real assertion failures.
+
+The dev profile and its test-profile derivative disable debug information and
+incremental compilation to limit build output, especially the bundled DuckDB
+objects and the many integration test executables. This trades debugging detail
+and potentially slower rebuilds for disk space; release builds are unchanged.
+The bundled C/C++ build also defines `NDEBUG` with this profile, disabling native
+assertions; Rust debug assertions remain enabled.
+For a debugging session, opt in with `CARGO_PROFILE_DEV_DEBUG=2` and, if needed,
+`CARGO_PROFILE_DEV_INCREMENTAL=true` (use `CARGO_PROFILE_TEST_DEBUG` and
+`CARGO_PROFILE_TEST_INCREMENTAL` for tests). Overrides and changes to toolchains
+or features can leave additional artifacts behind. Check `du -sh target` and
+run `cargo clean` when necessary; it deletes generated build artifacts and the
+next build will recompile them. Do not clean while a build is running. Each
+worktree normally has its own target directory; clean the intended worktree.
 
 ### Select from the diff, not just test names
 
