@@ -90,6 +90,42 @@ The same complete-panel, finite-data and no-clobber rules apply; prior session
 changes are not rolled back. Focused CLI controls cover reversed input, missing
 or duplicate years, singular design and an existing export.
 
+## Base-instrument wage first-stage diagnostic
+
+[`base_first_stage.td`](base_first_stage.td) reproduces the author program's
+wage relevance diagnostics on the same 4,256 person-years: regress differenced
+log wages on an intercept and nine base instruments, then jointly test the nine
+slopes. Person-clustered F(9,531) is 2.379005 (p=0.012093); classical
+F(9,4246) is 2.800243 (p=0.002811), with centered R²=0.00590049. Cluster
+covariance uses G/(G-1)*(N-1)/(N-K) and requires independent people. The author
+program explicitly notes that the classical F was mistakenly reported in the
+book text in place of the clustered F.
+
+The diagnostic's intercept follows the author program, unlike the no-intercept
+2SLS fit above. Its clustered F is numerically close to, but **not** the same as,
+the no-intercept 2SLS first-stage classical F (2.375352, F(9,4247)). These
+individual-equation relevance tests do not resolve identification strength with
+five endogenous regressors, establish instrument validity, or provide weak-IV
+robust structural inference. They do not implement GMM or the stacked diagnostics.
+
+After creating `MOMprecise.csv` and the independent base R `reference` directory
+as above, run in a fresh directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/base_first_stage.td > first-stage-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/first_stage_reference.R reference/design.csv first-stage-reference
+python3 /path/to/repo/examples/mma22p1panel/check_first_stage.py /path/to/MOMprecise.dat first-stage-result.jsonl first_stage_design.csv first-stage-reference
+```
+
+R 4.6.1 reconstructs the source design separately and uses QR, independently
+formed covariance and joint Wald calculations. The checker compares all 4,256
+exported design/prediction rows, both sets of coefficients/SE/p-values and full
+10×10 covariance matrices, R², F and p-values at `1e-9 + 1e-9*abs(reference)`;
+it also checks the author-log R² and F values at `1e-5` to account for its float
+storage. Original JSON/text exports are byte-identical. The complete-panel and
+no-clobber rules above apply; the focused test exercises reversed input, missing
+years, rank failure and existing export. Scripts are not transactional.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
