@@ -170,6 +170,17 @@ byte-identical; incomplete panels, rank-deficient joint tests and existing
 exports fail, with prior session changes not rolled back. This is not GMM or
 coverage of the other stacked first-stage equations.
 
+## Planned remaining stacked first stages
+
+On the same source sample, reproduce the author program's separate clustered
+72-instrument joint tests for differenced children, age, age squared and
+disability, each including an intercept. Validate each design, fitted values,
+full covariance and F/p against independent R; diagnose ill-conditioned Wald
+systems with high-precision cross-substitution and document historical numeric
+differences. Incomplete panels, singular restrictions and export collisions
+must fail. These individual-equation tests do not resolve joint identification,
+prove instrument validity, or implement GMM.
+
 ## Year-stacked instruments
 
 [`stacked_2sls.td`](stacked_2sls.td) uses the same 4,256 observations and five
