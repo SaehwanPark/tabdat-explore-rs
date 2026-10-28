@@ -153,6 +153,10 @@ pub struct RandomEffectsState {
   pub time_variable: String,
   pub entity_data_type: String,
   pub result: tabdat_stats::RandomEffectsResult,
+  /// Original joint-finite design for the bounded classical comparison.
+  /// Older snapshots and unsupported fit variants do not retain this design.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub hausman_problem: Option<tabdat_stats::EstimationProblem>,
 }
 
 /// Owned binary logit design and maximum likelihood fit, independent of current data.

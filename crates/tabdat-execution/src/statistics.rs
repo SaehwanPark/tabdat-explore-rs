@@ -1072,6 +1072,55 @@ impl Session {
         _ => unreachable!("AR command checked above"),
       };
     }
+    if command.subcommand == EstatSubcommand::Hausman {
+      let Some(EstimationState::RandomEffects(state)) = &self.estimation else {
+        return Err(RuntimeError::EstatHausmanFailed(
+          "requires a prior balanced model-based one-slope RE-GLS fit".into(),
+        ));
+      };
+      if state.result.ml.is_some()
+        || state.result.group_size == 0
+        || state.result.predictor_names.len() != 1
+        || state.result.gls.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust
+      {
+        return Err(RuntimeError::EstatHausmanFailed(
+          "requires balanced nonclustered one-slope Swamy–Arora RE-GLS; ML and robust/cluster fits are unsupported".into(),
+        ));
+      }
+      let problem = state.hausman_problem.as_ref().ok_or_else(|| {
+        RuntimeError::EstatHausmanFailed(
+          "retained original design unavailable; refit the supported RE model".into(),
+        )
+      })?;
+      if problem.outcome != state.result.outcome
+        || problem.predictor_names != state.result.predictor_names
+        || problem.sample != state.result.gls.sample
+      {
+        return Err(RuntimeError::EstatHausmanFailed(
+          "retained RE design does not match its sample or model".into(),
+        ));
+      }
+      let comparison =
+        tabdat_stats::classical_panel_hausman(problem, &state.result.entity_variable)
+          .map_err(|error| RuntimeError::EstatHausmanFailed(error.to_string()))?;
+      let stored_beta = state.result.gls.coefficients.get(1).map(|c| c.value);
+      let stored_variance = state
+        .result
+        .gls
+        .covariance
+        .matrix
+        .get(1)
+        .and_then(|row| row.get(1))
+        .copied();
+      if stored_beta != Some(comparison.re_coefficient)
+        || stored_variance != Some(comparison.re_variance)
+      {
+        return Err(RuntimeError::EstatHausmanFailed(
+          "retained RE fit does not match the refitted original design".into(),
+        ));
+      }
+      return Ok(ExecutionResult::ClassicalPanelHausman(comparison));
+    }
     if command.subcommand == EstatSubcommand::Overid {
       let Some(EstimationState::InstrumentalVariables(state)) = &self.estimation else {
         return Err(RuntimeError::EstatOveridRequiresPriorIv);

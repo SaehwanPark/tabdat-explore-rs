@@ -866,6 +866,8 @@ pub enum ExecutionResult {
   WuHausman(tabdat_stats::WuHausmanResult),
   /// HC1/CR1 joint innovation-inclusion Wald test with asymptotic chi-square inference.
   RobustEndogeneity(tabdat_stats::RobustEndogeneityResult),
+  /// Conventional scalar same-sample FE versus RE covariance-difference test.
+  ClassicalPanelHausman(tabdat_stats::ClassicalPanelHausmanResult),
   Quantile(Box<tabdat_stats::QuantileResult>),
   Bootstrap(Box<tabdat_stats::BootstrapOlsResult>),
   QuantileBootstrap(Box<tabdat_stats::QuantileBootstrapResult>),

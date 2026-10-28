@@ -140,6 +140,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::AndersonRubinConfidenceSet { .. }
             | EstatSubcommand::AndersonRubinProjectedConfidenceSet { .. }
             | EstatSubcommand::Overid
+            | EstatSubcommand::Hausman
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
             | EstatSubcommand::CountProbabilities { .. },
@@ -236,6 +237,15 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "valid_instruments_maintained_linear_model_strong_identification_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"
       );
       (data, "RobustEndogeneityResult")
+    }
+    ExecutionResult::ClassicalPanelHausman(result) => {
+      let mut data = serde_json::to_value(result).expect("finite classical panel Hausman result");
+      data["test"] = json!("classical_panel_fe_re_covariance_difference");
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["covariance"] = json!("model_based_nonrobust");
+      data["assumptions"] =
+        json!("re_efficiency_under_null_and_independent_units; not_cluster_robust");
+      (data, "ClassicalPanelHausmanResult")
     }
     ExecutionResult::WuHausman(result) => {
       let mut data = serde_json::to_value(result).expect("finite Wu-Hausman result");
@@ -1596,6 +1606,7 @@ mod tests {
       time_variable: "time".into(),
       entity_data_type: "BIGINT".into(),
       result,
+      hausman_problem: None,
     };
     let result = ExecutionResult::RandomEffects(Box::new(state));
     let envelope: Value =

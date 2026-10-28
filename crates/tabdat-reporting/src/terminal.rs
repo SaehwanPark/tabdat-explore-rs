@@ -1274,6 +1274,24 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       inference_number(result.covariance_correction),
       result.cluster_group_count,
     ),
+    ExecutionResult::ClassicalPanelHausman(result) => format!(
+      "Classical panel FE–RE Hausman covariance-difference test\nOutcome: {}; slope: {}; groups({}) = {}; N = {}; T = {}\nFE = {}; RE = {}; FE variance = {}; RE variance = {}; difference = {}; variance difference = {}\nChi-square({}) = {}; asymptotic p = {}\nRequires RE efficiency under the null; not cluster robust. Failure to reject does not establish exogeneity.\n",
+      result.outcome.escape_debug(),
+      result.predictor.escape_debug(),
+      result.entity_variable.escape_debug(),
+      result.group_count,
+      result.observation_count,
+      result.group_size,
+      result.fe_coefficient,
+      result.re_coefficient,
+      result.fe_variance,
+      result.re_variance,
+      result.difference,
+      result.variance_difference,
+      result.df,
+      result.statistic,
+      result.p_value
+    ),
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,
@@ -2438,6 +2456,7 @@ mod tests {
       time_variable: "time".into(),
       entity_data_type: "BIGINT".into(),
       result,
+      hausman_problem: None,
     });
     assert!(output.contains("Unbalanced one-way random-effects GLS"));
     assert!(output.contains("theta@minimum T"));

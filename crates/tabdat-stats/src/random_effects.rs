@@ -34,6 +34,90 @@ pub struct RandomEffectsResult {
   pub ml: Option<crate::RandomEffectsMlInference>,
 }
 
+/// Conventional scalar FE–RE covariance-difference comparison.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ClassicalPanelHausmanResult {
+  pub outcome: String,
+  pub predictor: String,
+  pub entity_variable: String,
+  pub observation_count: usize,
+  pub group_count: usize,
+  pub group_size: usize,
+  pub fe_coefficient: f64,
+  pub re_coefficient: f64,
+  pub fe_variance: f64,
+  pub re_variance: f64,
+  pub difference: f64,
+  pub variance_difference: f64,
+  pub statistic: f64,
+  pub df: usize,
+  pub p_value: f64,
+}
+
+fn scalar_hausman(bf: f64, br: f64, vf: f64, vr: f64) -> Result<(f64, f64, f64, f64), StatsError> {
+  let variance_difference = vf - vr;
+  let scale = vf.abs().max(vr.abs());
+  if !vf.is_finite()
+    || !vr.is_finite()
+    || vf <= 0.0
+    || vr <= 0.0
+    || !scale.is_finite()
+    || !variance_difference.is_finite()
+    || variance_difference <= 128.0 * f64::EPSILON * scale
+  {
+    return Err(StatsError::InvalidEstimation(
+      "FE minus RE covariance is nonpositive or numerically indistinguishable from zero".into(),
+    ));
+  }
+  let difference = bf - br;
+  let statistic = difference * difference / variance_difference;
+  let p_value = crate::distributions::chi_square_tail(statistic, 1);
+  if !difference.is_finite() || !statistic.is_finite() || !p_value.is_finite() {
+    return Err(StatsError::InvalidEstimation(
+      "classical panel Hausman statistic or probability is not finite".into(),
+    ));
+  }
+  Ok((difference, variance_difference, statistic, p_value))
+}
+
+/// Refit scalar FE and balanced model-based Swamy–Arora RE on the same problem.
+/// The asymptotic covariance-difference reference requires RE efficiency under H0;
+/// it is not robust to residual within-unit dependence.
+pub fn classical_panel_hausman(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+) -> Result<ClassicalPanelHausmanResult, StatsError> {
+  if problem.predictor_names.len() != 1 || !problem.include_intercept {
+    return Err(StatsError::InvalidEstimation(
+      "classical panel Hausman requires one slope and an intercept".into(),
+    ));
+  }
+  let re = fit_random_effects(problem, entity_variable)?;
+  let fe = fit_fixed_effects(problem, entity_variable, false)?;
+  let bf = fe.within.coefficients[0].value;
+  let br = re.gls.coefficients[1].value;
+  let vf = fe.within.covariance.matrix[0][0];
+  let vr = re.gls.covariance.matrix[1][1];
+  let (difference, variance_difference, statistic, p_value) = scalar_hausman(bf, br, vf, vr)?;
+  Ok(ClassicalPanelHausmanResult {
+    outcome: problem.outcome.clone(),
+    predictor: problem.predictor_names[0].clone(),
+    entity_variable: entity_variable.to_owned(),
+    observation_count: problem.response.len(),
+    group_count: re.group_count,
+    group_size: re.group_size,
+    fe_coefficient: bf,
+    re_coefficient: br,
+    fe_variance: vf,
+    re_variance: vr,
+    difference,
+    variance_difference,
+    statistic,
+    df: 1,
+    p_value,
+  })
+}
+
 impl RandomEffectsResult {
   /// Retained-model counts, independent of any subsequent active-data changes.
   pub fn group_size_range(&self) -> Option<(usize, usize)> {
@@ -361,4 +445,19 @@ fn fit_random_effects_impl(
     wald_p_value: wald.p_value,
     wald_unavailable_reason: wald.unavailable_reason,
   })
+}
+
+#[cfg(test)]
+mod hausman_tests {
+  use super::scalar_hausman;
+
+  #[test]
+  fn rejects_nonpositive_and_cancellation_dominated_covariance_difference() {
+    assert!(scalar_hausman(1.0, 0.0, 1.0, 2.0).is_err());
+    assert!(scalar_hausman(1.0, 0.0, 1.0, 1.0).is_err());
+    assert!(scalar_hausman(1.0, 0.0, 1.0, 1.0 - 64.0 * f64::EPSILON).is_err());
+    assert!(scalar_hausman(1.0, 0.0, -1.0, -2.0).is_err());
+    assert!(scalar_hausman(f64::MAX, -f64::MAX, 2.0, 1.0).is_err());
+    assert!(scalar_hausman(1.0, 1.0, 2.0, 1.0).is_ok());
+  }
 }
