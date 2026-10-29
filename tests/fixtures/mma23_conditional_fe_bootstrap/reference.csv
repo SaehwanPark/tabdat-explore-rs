@@ -1,0 +1,12 @@
+field,value
+candidate_rows,60
+candidate_firms,12
+retained_rows,50
+firms_per_draw,10
+replications,500
+estimate,-0.0258006695219587
+bootstrap_mean,-0.0479707695527255
+bias,-0.0221701000307669
+bootstrap_se,0.366999585088485
+ci_lower,-0.754484513365197
+ci_upper,0.630437278895221
