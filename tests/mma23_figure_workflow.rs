@@ -263,6 +263,14 @@ fn lowess_and_plot_preserve_pooled_estimation_state() {
   exec(&mut s, "summarize figure_linear figure_lowess");
   exec(
     &mut s,
+    &format!("export \"{}\"", d.path().join("state.csv").display()),
+  );
+  exec(&mut s, "label variable logr \"Log R&D spending\"");
+  exec(&mut s, "label variable lpat \"Log patents\"");
+  exec(&mut s, "label variable figure_lowess \"Nonparametric fit\"");
+  exec(&mut s, "label variable figure_linear \"Pooled linear fit\"");
+  exec(
+    &mut s,
     &format!(
       "scatter lpat logr, lines(figure_lowess figure_linear) saving(\"{}\") noopen",
       d.path().join("state.svg").display()

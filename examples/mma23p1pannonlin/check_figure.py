@@ -57,7 +57,9 @@ def audit(work, reference, result, original=None):
     for name, calculated in [('lpat', y[i]), ('figure_lowess', fit[i])]:
       close(row[name], calculated, (key, name, 'equation'))
       close(expected[name], calculated, (key, name, 'R'))
-    close(row['figure_linear'], expected['figure_linear'], (key, 'linear'))
+    linear_value = float(meta['intercept']) + float(meta['slope']) * x[i]
+    close(row['figure_linear'], linear_value, (key, 'linear equation'))
+    close(expected['figure_linear'], linear_value, (key, 'linear R'))
   events = list(map(json.loads, Path(result).read_text().splitlines()))
   def one(kind):
     found = [e['data'] for e in events if e.get('result_type') == kind]
