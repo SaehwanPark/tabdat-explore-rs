@@ -350,8 +350,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    and48,440 export cells; this model-based one-slope test is not cluster robust
    or a general native panel estimator. Its [whole-firm bootstrap](../examples/mma23p1pannonlin/conditional_fe_bootstrap.md)
    separately validates 500 R refits and 162,000 ordered independent-oracle draws;
-   the explicit RNG differs from Stata. General conditional FE, RE Poisson, GEE,
-   NLS, their other firm bootstraps and Figure23.1 remain separate required work.
+   the explicit RNG differs from Stata. The separate [exponential-mean NLS](../examples/mma23p1pannonlin/exponential_nls.md)
+   uses native `nl` and a firm-score SQL sandwich; R validates all1,730 source
+   rows, 346 firm scores and both author working/cluster covariance conventions.
+   General conditional FE, RE Poisson, exchangeable GEE, other firm bootstraps
+   and Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
