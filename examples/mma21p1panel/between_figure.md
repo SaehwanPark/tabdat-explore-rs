@@ -42,19 +42,22 @@ side effects documented; (5) reject forged shared-wrong values and SVG geometry.
 Require no production R/Python. No exact historical tie/pixel parity, general
 between/graph API, full chapter or other Figures21.1/21.3/21.4 claim.
 
-## WIP finding — numerical tie order requires an explicit decision
+## WIP finding — deterministic source-precision means
 
-The initial native script executes on the original 5,320 rows and R builds 532
-person means/QR fits, but the independent audit **fails**: native ordered DuckDB
-floating AVG and R's mean differ by up to `8.89e-16`. These tiny differences
-change 44 sorted rank positions around mathematically tied wage means; one
-LOWESS fit differs by about `0.000136`, well beyond the fixed tolerance. This
-is not a tolerance problem: centred-rank LOWESS depends on the exact tie order.
-The implementation is unfinished and must not be merged. Investigate a bounded,
-explicit source-precision rule (the original log values have two decimal
-places), a deterministic ordering/equality rule and compatibility with native
-smoother semantics. Independently check both mean values and ordering on the
-original and synthetic samples, explain any precision/data-domain restrictions,
-and retain the full unfixed audit as a regression target. Do not claim exact
-historical tie order or silently round general inputs. The draft currently has
-no fixture, workflow tests, final documentation or affected-suite verification.
+The initial floating AVG and R mean differed by up to `8.89e-16`. These tiny
+differences changed 44 rank positions around mathematically tied wage means;
+one LOWESS fit differed by about `0.000136`, well beyond the fixed tolerance.
+This is not a tolerance problem: centred-rank LOWESS depends on exact ordering.
+
+All original finite model values have two decimal places. The revised bounded
+workflow rejects eligible values beyond ±1,000,000 or with more than two decimal
+places (rather than silently rounding), computes sums exactly as fixed-scale
+decimals and divides once in float64. Independent R and Python sum integer
+hundredths and apply the same division; reference exports retain 17 significant
+digits. The revised original-source audit passes all 5,320 exact source rows,
+532 person means, ranks and QR/normal-equation fits, 532 SVG points and 1,064
+vertices. Native and R person means and X rank order match **exactly**; maximum
+LOWESS difference is about `2.0e-14`. This source-specific domain is not a
+claim about general arbitrary-precision panel means or historical Stata tied
+ordering. Synthetic/missingness/failure controls, regression tests and complete
+documentation remain WIP.

@@ -47,10 +47,19 @@ def audit(work, reference, result, original=None):
   for row,expected in zip(data,ref):
     assert list(row)==list(expected)==['id','model_rows','first_year','last_year','mean_lnhr','mean_lnwg','figure_linear','figure_lowess']
     group=grouped[int(float(row['id']))];assert int(float(expected['id']))==int(float(row['id']))
-    for field,val in [('model_rows',len(group)),('first_year',min(v[0] for v in group)),('last_year',max(v[0] for v in group)),('mean_lnwg',math.fsum(v[1] for v in group)/len(group)),('mean_lnhr',math.fsum(v[2] for v in group)/len(group))]:
-      close(row[field],val,field);close(expected[field],val,field+' R')
+    for field,val in [('model_rows',len(group)),('first_year',min(v[0] for v in group)),('last_year',max(v[0] for v in group))]:
+      assert float(row[field])==float(expected[field])==val
+    for field,index in [('mean_lnwg',1),('mean_lnhr',2)]:
+      values=[v[index] for v in group]
+      assert all(abs(v)<=1e6 and round(v,2)==v for v in values)
+      exact=(sum(round(100*v) for v in values)/100)/len(values)
+      assert float(row[field])==float(expected[field])==exact,(field,row[field],expected[field],exact)
     x.append(float(row['mean_lnwg']));y.append(float(row['mean_lnhr']))
-  n=len(data);f,k,constant=smooth(x,y,.8)
+  n=len(data)
+  native_rank=sorted(range(n),key=lambda i:(x[i],i))
+  r_rank=sorted(range(n),key=lambda i:(float(ref[i]['mean_lnwg']),i))
+  assert native_rank==r_rank, 'source-key stable rank/tie order differs from R'
+  f,k,constant=smooth(x,y,.8)
   assert k==int(meta['half_window']) and constant==int(meta['constant_windows']) and 0<=float(meta['max_scaled_score'])<1e-12
   for i,(row,expected) in enumerate(zip(data,ref)):
     for name,value in [('figure_lowess',f[i]),('figure_linear',float(meta['intercept'])+float(meta['slope'])*x[i])]:
