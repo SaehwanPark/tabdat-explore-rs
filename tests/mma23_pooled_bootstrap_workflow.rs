@@ -300,6 +300,19 @@ fn invalid_and_failed_replicate_leave_files_unchanged() {
   fs::remove_file(&export).unwrap();
   // The original fit has a finite interior slope; replicate 54 draws only
   // zero-total firms 7..12, so its Poisson intercept does not exist.
+  let replicate_54 = include_str!("fixtures/mma23_pooled_bootstrap/draws.csv")
+    .lines()
+    .nth(54)
+    .unwrap()
+    .split_once(',')
+    .unwrap();
+  assert_eq!(replicate_54.0, "54");
+  assert!(
+    replicate_54
+      .1
+      .split(':')
+      .all(|i| i.parse::<usize>().unwrap() >= 6)
+  );
   let separated = rewrite(&input, |r| {
     r[8] = if r[0].parse::<usize>().unwrap() <= 6 {
       "1"
