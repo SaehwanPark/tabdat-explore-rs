@@ -240,6 +240,16 @@ fn failures_do_not_publish_and_extreme_tail_is_explicitly_withheld() {
       }
     }),
     changed_csv(&original, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[0] = "".into();
+      }
+    }),
+    changed_csv(&original, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[1] = "1980".into();
+      }
+    }),
+    changed_csv(&original, |r| {
       if r[1] == "1975" {
         r[8] = "-1".into();
       }
