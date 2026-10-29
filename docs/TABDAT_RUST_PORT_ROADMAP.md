@@ -358,8 +358,8 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    rows, 346 firm scores and both author working/cluster covariance conventions.
    The bounded [exchangeable Poisson GEE composition](../examples/mma23p1pannonlin/exchangeable_gee.md)
    independently validates both full covariance matrices, all1,730 predictions
-   and346 firm scores against legacy R `gee` and base-R equations. Historical
-   a nine-step float32 probe supports storage/stopping as contributors to the
+   and346 firm scores against legacy R `gee` and base-R equations. A nine-step
+   float32 probe supports storage/stopping as contributors to the
    disclosed seven-decimal slope difference; native pooled Poisson, not GEE,
    remains the retained state.
    General conditional FE, RE Poisson, general GEE, other firm bootstraps and
