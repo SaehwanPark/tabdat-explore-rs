@@ -356,10 +356,14 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    the explicit RNG differs from Stata. The separate [exponential-mean NLS](../examples/mma23p1pannonlin/exponential_nls.md)
    uses native `nl` and a firm-score SQL sandwich; R validates all1,730 source
    rows, 346 firm scores and both author working/cluster covariance conventions.
+   Its [whole-firm bootstrap](../examples/mma23p1pannonlin/exponential_nls_bootstrap.md)
+   validates 500 two-parameter R refits and173,000 ordered RNG-oracle draws;
+   its bounded profiled score can be nonmonotone, and final observed-curvature
+   checks establish a local minimum without a global-uniqueness claim.
    The bounded [exchangeable Poisson GEE composition](../examples/mma23p1pannonlin/exchangeable_gee.md)
    independently validates both full covariance matrices, all1,730 predictions
-   and346 firm scores against legacy R `gee` and base-R equations. Historical
-   a nine-step float32 probe supports storage/stopping as contributors to the
+   and346 firm scores against legacy R `gee` and base-R equations. A nine-step
+   float32 probe supports storage/stopping as contributors to the
    disclosed seven-decimal slope difference; native pooled Poisson, not GEE,
    remains the retained state.
    General conditional FE, RE Poisson, general GEE, other firm bootstraps and
