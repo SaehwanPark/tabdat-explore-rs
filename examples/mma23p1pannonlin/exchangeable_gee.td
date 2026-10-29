@@ -8,8 +8,14 @@ poisson pat logr
 predict pooled_xb, xb
 sql """
 WITH RECURSIVE
-start AS (
+start_regression AS (
  SELECT REGR_INTERCEPT(pooled_xb,logr) AS a,REGR_SLOPE(pooled_xb,logr) AS b FROM active
+), start AS (
+ SELECT CASE WHEN a IS NULL OR b IS NULL OR NOT isfinite(a) OR NOT isfinite(b)
+   OR COUNT(*) FILTER (WHERE pooled_xb IS NULL OR NOT isfinite(pooled_xb))>0
+   OR MAX(ABS(pooled_xb-(a+b*logr)))>1e-12*(1+MAX(ABS(pooled_xb)))
+   THEN error('GEE pooled-Poisson start cannot be reconstructed') ELSE a END AS a,b
+ FROM active CROSS JOIN start_regression GROUP BY a,b
 ), search(iter,a,b,last_step) AS (
  SELECT 0::BIGINT,a,b,1e100::DOUBLE FROM start
  UNION ALL

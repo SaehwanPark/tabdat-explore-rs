@@ -107,7 +107,8 @@ absolute. R/Python are development-only; author data/program are not bundled.
 
 The separate [whole-firm conditional-FE bootstrap](conditional_fe_bootstrap.md)
 validates 500 refits against independent R with an explicit non-Stata RNG.
-Random-effects Poisson, GEE, NLS, their respective bootstraps, Figure23.1 and
-remaining Table23.1 outputs remain separate required work. Neither this bounded
+[Exponential NLS](exponential_nls.md) and bounded [exchangeable Poisson GEE](exchangeable_gee.md)
+are also separate. Random-effects Poisson, general GEE, their other bootstraps,
+Figure23.1 and remaining Table23.1 outputs remain required. Neither this bounded
 composition nor the [pooled Poisson column](pooled_poisson.md) completes the
 nonlinear-panel chapter, graduate-method target or book inventory.

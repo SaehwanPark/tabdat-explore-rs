@@ -1,7 +1,8 @@
 # Development-only independent gee package and base-R GEE/covariance audit.
 options(digits=17)
 args <- commandArgs(trailingOnly=TRUE)
-stopifnot(length(args)==2L,!file.exists(args[2]),requireNamespace('gee',quietly=TRUE))
+stopifnot(length(args)==2L,!file.exists(args[2]),requireNamespace('gee',quietly=TRUE),
+  packageVersion('gee')==package_version('4.13.30'))
 dir.create(args[2])
 tokens <- scan(args[1],what=character(),quiet=TRUE)
 stopifnot(length(tokens)>0L,length(tokens)%%25L==0L)

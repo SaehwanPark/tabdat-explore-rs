@@ -162,6 +162,48 @@ fn check_predictions(actual: &str, expected: &str, scores: &str, r: &Value) {
   }
 }
 
+fn check_source_preserved(source: &str, actual: &str) {
+  let (source_headers, source_rows) = csv_rows(source);
+  let (out_headers, out_rows) = csv_rows(actual);
+  let index = |headers: &[&str], name| headers.iter().position(|h| *h == name).unwrap();
+  let source_id = index(&source_headers, "id");
+  let source_year = index(&source_headers, "year");
+  let out_id = index(&out_headers, "id");
+  let out_year = index(&out_headers, "year");
+  let mut rows: BTreeMap<_, _> = source_rows
+    .into_iter()
+    .map(|row| {
+      (
+        (
+          row[source_id].parse::<usize>().unwrap(),
+          row[source_year].parse::<usize>().unwrap(),
+        ),
+        row,
+      )
+    })
+    .collect();
+  for out in out_rows {
+    let key = (
+      out[out_id].parse::<usize>().unwrap(),
+      out[out_year].parse::<usize>().unwrap(),
+    );
+    let source = rows.remove(&key).unwrap();
+    for (i, field) in source_headers.iter().enumerate() {
+      let value = out[index(&out_headers, field)];
+      if source[i].is_empty() {
+        assert!(value.is_empty(), "{field}");
+      } else {
+        assert_eq!(
+          source[i].parse::<f64>().unwrap(),
+          value.parse::<f64>().unwrap(),
+          "{field}"
+        );
+      }
+    }
+  }
+  assert!(rows.is_empty());
+}
+
 #[test]
 fn positive_and_negative_rho_r_fits_predictions_and_order() {
   for negative in [false, true] {
@@ -199,6 +241,10 @@ fn positive_and_negative_rho_r_fits_predictions_and_order() {
       &r,
     );
     assert_eq!(fs::read(d.path().join("patents.csv")).unwrap(), original);
+    check_source_preserved(
+      std::str::from_utf8(&original).unwrap(),
+      std::str::from_utf8(&bytes).unwrap(),
+    );
     let fail = run(&d, "--json");
     assert!(!fail.status.success());
     assert!(String::from_utf8_lossy(&fail.stderr).contains("export target already exists"));
@@ -232,6 +278,22 @@ fn positive_and_negative_rho_r_fits_predictions_and_order() {
       scores,
       &r,
     );
+    check_source_preserved(&input, &fs::read_to_string(&export).unwrap());
+    if !negative {
+      fs::remove_file(&export).unwrap();
+      let with_missing_metadata = rewrite(&input, |row| {
+        if row[0] == "1" {
+          row[3].clear();
+        }
+      });
+      fs::write(d.path().join("patents.csv"), &with_missing_metadata).unwrap();
+      let r = report(&events(run(&d, "--json")));
+      check_report(&r, reference, false);
+      check_source_preserved(
+        &with_missing_metadata,
+        &fs::read_to_string(&export).unwrap(),
+      );
+    }
   }
 }
 fn rewrite<F: FnMut(&mut Vec<String>)>(input: &str, mut f: F) -> String {
@@ -316,6 +378,26 @@ fn invalid_inputs_and_late_failure_preserve_data_and_prior_fit() {
         r[8] = "-1".into();
       }
     }),
+    rewrite(&original, |r| {
+      if r[0] == "1" {
+        r[0] = "347".into();
+      }
+    }),
+    rewrite(&original, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[8] = "1001".into();
+      }
+    }),
+    rewrite(&original, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[8] = "1.5".into();
+      }
+    }),
+    rewrite(&original, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[7] = "21".into();
+      }
+    }),
     original.replacen(",1975,", ",1980,", 1),
   ];
   for case in cases {
@@ -373,6 +455,11 @@ fn numerical_guards_reject_boundaries_singular_bread_and_nonconvergence() {
   exec(&mut control, "poisson pat logr");
   exec(&mut control, "predict pooled_xb, xb");
   exec(&mut control, &gee_query());
+  exec(&mut control, "predict pooled_after, n");
+  exec(
+    &mut control,
+    "sql \"\"\"SELECT CASE WHEN MAX(ABS(pooled_after-EXP(pooled_xb)))>1e-10 OR MAX(ABS(pooled_after-gee_mu))<1e-6 THEN error('native prediction did not retain pooled fit') ELSE 1 END AS correct FROM active\"\"\"",
+  );
   // Fractional outcomes below are intentional isolated mathematical guard probes,
   // not accepted inputs to the public workflow's count-domain preflight.
   let probes = [
@@ -383,6 +470,7 @@ fn numerical_guards_reject_boundaries_singular_bread_and_nonconvergence() {
     "SELECT * EXCLUDE(pat),2.0 AS pat,LN(2.0) AS pooled_xb FROM active",
     "SELECT * EXCLUDE(logr),1.0+(year-1975)*1e-9 AS logr,0.0 AS pooled_xb FROM active",
     "SELECT *,50.0+logr AS pooled_xb FROM active",
+    "SELECT *,logr*logr AS pooled_xb FROM active",
   ];
   for probe in probes {
     let mut s = Session::new();

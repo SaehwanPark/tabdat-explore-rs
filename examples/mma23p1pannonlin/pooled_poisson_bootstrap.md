@@ -117,7 +117,8 @@ whose high-bit and forced-rejection controls are retained. R/Python and author
 data are development-only.
 
 The conditional-FE bootstrap is [separate](conditional_fe_bootstrap.md); RE,
-GEE and NLS bootstraps, exchangeable GEE, RE Poisson, Figure 23.1 and other
-Table 23.1 output remain required. Neither this composition nor the other
+GEE and NLS bootstraps, general GEE, RE Poisson, Figure 23.1 and other
+Table 23.1 output remain required. The bounded [exchangeable Poisson GEE](exchangeable_gee.md)
+is validated separately. Neither this composition nor the other
 bounded workflows completes the chapter, graduate-method core or full book
 inventory.
