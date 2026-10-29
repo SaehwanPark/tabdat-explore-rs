@@ -41,3 +41,20 @@ prior OLS state through smoothing/export/labels/plot, with script nontransaction
 side effects documented; (5) reject forged shared-wrong values and SVG geometry.
 Require no production R/Python. No exact historical tie/pixel parity, general
 between/graph API, full chapter or other Figures21.1/21.3/21.4 claim.
+
+## WIP finding — numerical tie order requires an explicit decision
+
+The initial native script executes on the original 5,320 rows and R builds 532
+person means/QR fits, but the independent audit **fails**: native ordered DuckDB
+floating AVG and R's mean differ by up to `8.89e-16`. These tiny differences
+change 44 sorted rank positions around mathematically tied wage means; one
+LOWESS fit differs by about `0.000136`, well beyond the fixed tolerance. This
+is not a tolerance problem: centred-rank LOWESS depends on the exact tie order.
+The implementation is unfinished and must not be merged. Investigate a bounded,
+explicit source-precision rule (the original log values have two decimal
+places), a deterministic ordering/equality rule and compatibility with native
+smoother semantics. Independently check both mean values and ordering on the
+original and synthetic samples, explain any precision/data-domain restrictions,
+and retain the full unfixed audit as a regression target. Do not claim exact
+historical tie order or silently round general inputs. The draft currently has
+no fixture, workflow tests, final documentation or affected-suite verification.
