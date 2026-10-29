@@ -5,6 +5,10 @@ replications,500
 estimate_intercept,1.47105429777235
 estimate_slope,0.211955636368614
 estimate_lnalpha,0.596366126357501
+original_mu_mean,4.96802062737236
+original_mu_min,4.41983846019495
+original_mu_max,5.60288422342558
+original_residual_mean,0.0269793726276361
 mean_intercept,1.45880862568122
 mean_slope,0.213102222730456
 mean_lnalpha,0.563600381585455

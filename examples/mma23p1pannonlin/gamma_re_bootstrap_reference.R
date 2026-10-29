@@ -58,15 +58,16 @@ original<-fit(rep(1,g),0)
 fits<-t(vapply(1:500,function(i)fit(tabulate(indices[i,],nbins=g),i),numeric(3)))
 colnames(fits)<-c('intercept','slope','lnalpha')
 V<-cov(fits);se<-sqrt(diag(V));means<-colMeans(fits);lower<-apply(fits,2,quantile,probs=.025,names=FALSE,type=7);upper<-apply(fits,2,quantile,probs=.975,names=FALSE,type=7)
+mu<-exp(original[1]+original[2]*x)
 fields<-c(candidate_rows=5*g,firms_per_draw=g,replications=500,
   estimate_intercept=original[1],estimate_slope=original[2],estimate_lnalpha=original[3],
+  original_mu_mean=mean(mu),original_mu_min=min(mu),original_mu_max=max(mu),original_residual_mean=mean(y-mu),
   mean_intercept=means[1],mean_slope=means[2],mean_lnalpha=means[3],
   bias_intercept=means[1]-original[1],bias_slope=means[2]-original[2],bias_lnalpha=means[3]-original[3],
   covariance_aa=V[1,1],covariance_ab=V[1,2],covariance_at=V[1,3],covariance_bb=V[2,2],covariance_bt=V[2,3],covariance_tt=V[3,3],
   se_intercept=se[1],se_slope=se[2],se_lnalpha=se[3],
   lower_intercept=lower[1],upper_intercept=upper[1],lower_slope=lower[2],upper_slope=upper[2],lower_lnalpha=lower[3],upper_lnalpha=upper[3])
 names(fields)<-sub('\\.(intercept|slope|lnalpha)$','',names(fields))
-mu<-exp(original[1]+original[2]*x)
 dir.create(args[3])
 write.csv(data.frame(field=names(fields),value=unname(fields)),file.path(args[3],'reference.csv'),row.names=FALSE,quote=FALSE)
 write.csv(data.frame(replicate=1:500,fits),file.path(args[3],'fits.csv'),row.names=FALSE,quote=FALSE)
