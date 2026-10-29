@@ -29,8 +29,12 @@ independent of Stata and of native TabDat's single-stream bootstrap.
 The author program prints only coefficient bootstrap SEs and uses
 `cluster(id)` without visibly specifying `idcluster()`. The historical
 handling of repeated `id` values is unresolved; grouping duplicate copies into
-one longer gamma panel is a different likelihood. This declared distinct-copy
-analysis does not establish historical ID or RNG parity. Inference assumes
+one longer gamma panel is a different likelihood. An independent R
+counterfactual on the same 500 prescribed draws gives slope bootstrap bias
+`-0.0040379957` with distinct copies versus `-0.1526529037` when repeated source
+IDs are merged; the author log prints `-0.1581585`. The closeness of the latter
+is suggestive, not proof of old-Stata behavior or RNG parity. This declared
+distinct-copy analysis does not establish historical ID or RNG parity. Inference assumes
 independent firms; it is neither causal identification nor a few-cluster
 guarantee. Normal-RE Poisson, Figure 23.1 and remaining book requirements are
 separate required work.
@@ -43,8 +47,10 @@ separate required work.
    firm contributions. Validate sample/design and original predictions; compare
    each floating result at justified fixed tolerances, investigate discrepancies
    without widening them, and retain unresolved author-output differences.
-2. Exercise a small inspectable fixture, all 6,000 draws and R refits, text and
-   JSON reports, reversed input and no-clobber. Include zero-total firms.
+2. Exercise a small inspectable 40-firm fixture, all 20,000 draws and R refits,
+   text and JSON reports, reversed input and no-clobber. Include zero-total
+   firms. The pre-existing 12-firm fixture reaches invalid information at
+   replicate 54 according to the R reference and is a candidate failure case.
 3. Verify malformed, missing, duplicated and out-of-range data, singular or
    cancellation-dominated information, dispersion boundary, nonconvergence,
    predictor and iteration/RNG limits and a genuine failed replicate. Test
