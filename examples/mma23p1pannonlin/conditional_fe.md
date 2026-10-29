@@ -105,7 +105,9 @@ bounded solver and p-value withholding against R. The actual
 SQL tail expression was checked against 61 independent R `pnorm` values over [−3,3] within 1e-13
 absolute. R/Python are development-only; author data/program are not bundled.
 
-The random-effects Poisson, GEE, NLS, whole-firm bootstrap, Figure23.1 and
+The separate [whole-firm conditional-FE bootstrap](conditional_fe_bootstrap.md)
+validates 500 refits against independent R with an explicit non-Stata RNG.
+Random-effects Poisson, GEE, NLS, their respective bootstraps, Figure23.1 and
 remaining Table23.1 outputs remain separate required work. Neither this bounded
 composition nor the [pooled Poisson column](pooled_poisson.md) completes the
 nonlinear-panel chapter, graduate-method target or book inventory.
