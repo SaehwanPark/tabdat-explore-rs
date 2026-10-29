@@ -135,7 +135,7 @@ invalid start/predictor, forced iteration and RNG-work limits, and file/state
 invariants. Fractional outcomes in isolated numerical probes do not bypass the
 public integer-count preflight. R, Python and author data are development-only.
 
-Random-effects Poisson and its bootstrap, general GEE, Figure 23.1 and other
+[Gamma-RE Poisson](gamma_re_poisson.md) is separately validated. Normal-RE Poisson, the RE bootstrap, general GEE, Figure 23.1 and other
 remaining Table 23.1 outputs are separate required work. Neither this bounded
 composition nor the other validated portions completes the chapter, graduate
 methods core or full book inventory.

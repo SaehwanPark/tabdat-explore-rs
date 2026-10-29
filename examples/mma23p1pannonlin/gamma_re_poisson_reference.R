@@ -50,14 +50,16 @@ stopifnot(abs(ll_decomposed-e$ll)<1e-8)
 pooled<-glm(y~x,family=poisson());ll0<-as.numeric(logLik(pooled));lr<-2*(e$ll-ll0)
 values<-c(candidate_rows=length(y),firms=g,zero_total_firms=sum(S==0),
   estimate_intercept=p[1],estimate_slope=p[2],estimate_lnalpha=p[3],alpha=exp(p[3]),
-  se_intercept=se[1],se_slope=se[2],se_lnalpha=se[3],
+  se_intercept=se[1],se_slope=se[2],se_lnalpha=se[3],se_alpha=exp(p[3])*se[3],
+  lower_alpha=exp(p[3]-qnorm(.975)*se[3]),upper_alpha=exp(p[3]+qnorm(.975)*se[3]),
   z_intercept=p[1]/se[1],z_slope=p[2]/se[2],z_lnalpha=p[3]/se[3],
+  p_intercept=2*pnorm(-abs(p[1]/se[1])),p_slope=2*pnorm(-abs(p[2]/se[2])),p_lnalpha=2*pnorm(-abs(p[3]/se[3])),
   lower_intercept=p[1]-qnorm(.975)*se[1],upper_intercept=p[1]+qnorm(.975)*se[1],
   lower_slope=p[2]-qnorm(.975)*se[2],upper_slope=p[2]+qnorm(.975)*se[2],
   lower_lnalpha=p[3]-qnorm(.975)*se[3],upper_lnalpha=p[3]+qnorm(.975)*se[3],
   covariance_aa=cov[1,1],covariance_ab=cov[1,2],covariance_at=cov[1,3],
   covariance_bb=cov[2,2],covariance_bt=cov[2,3],covariance_tt=cov[3,3],
-  log_likelihood=e$ll,poisson_log_likelihood=ll0,lr_alpha_zero=lr,
+  log_likelihood=e$ll,poisson_log_likelihood=ll0,lr_alpha_zero=lr,p_lr_alpha_zero=pchisq(lr,df=1,lower.tail=FALSE)/2,
   mean_prediction=mean(e$mu),mean_residual=mean(Y-e$mu))
 dir.create(args[2])
 write.csv(data.frame(field=names(values),value=unname(values)),file.path(args[2],'reference.csv'),row.names=FALSE,quote=FALSE)
