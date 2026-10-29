@@ -150,15 +150,16 @@ expansion AS (
 ), result AS (
  SELECT CASE WHEN replications!=500 OR se_a IS NULL OR NOT isfinite(se_a)
    OR se_b IS NULL OR NOT isfinite(se_b) OR cov_ab IS NULL OR NOT isfinite(cov_ab)
+   OR o.alpha IS NULL OR o.beta IS NULL OR NOT isfinite(o.alpha) OR NOT isfinite(o.beta)
    OR ABS(o.alpha-n.a)>1e-9+1e-10*ABS(n.a) OR ABS(o.beta-n.b)>1e-9+1e-10*ABS(n.b)
    THEN error('NLS bootstrap requires 500 valid replicates and matching native original fit')
    ELSE replications END AS replications,o.alpha AS estimate_a,o.beta AS estimate_b
- FROM summary CROSS JOIN (SELECT alpha,beta FROM fits WHERE rep=0) o CROSS JOIN native_checked n
+ FROM summary LEFT JOIN (SELECT alpha,beta FROM fits WHERE rep=0) o ON TRUE CROSS JOIN native_checked n
 )
 SELECT draws.rep AS replicate,draws.position,draws.step,draws.id AS firm_id,
   fits.alpha AS replicate_intercept,fits.beta AS replicate_slope,result.estimate_a,result.estimate_b,
   result.replications,(SELECT g FROM params) AS firms_per_draw,(SELECT COUNT(*) FROM source) AS candidate_rows
-FROM draws JOIN fits ON draws.rep=fits.rep CROSS JOIN result
+FROM draws LEFT JOIN fits ON draws.rep=fits.rep CROSS JOIN result
 ORDER BY replicate,position
 """ into exponential_nls_bootstrap_draws
 sql """WITH r AS (SELECT DISTINCT replicate,replicate_intercept AS a,replicate_slope AS b,estimate_a,estimate_b,replications,firms_per_draw,candidate_rows FROM active) SELECT MAX(candidate_rows) AS candidate_rows,MAX(firms_per_draw) AS firms_per_draw,COUNT(*) AS replications,MAX(estimate_a) AS estimate_intercept,MAX(estimate_b) AS estimate_slope,AVG(a ORDER BY replicate) AS mean_intercept,AVG(b ORDER BY replicate) AS mean_slope,AVG(a ORDER BY replicate)-MAX(estimate_a) AS bias_intercept,AVG(b ORDER BY replicate)-MAX(estimate_b) AS bias_slope,VAR_SAMP(a ORDER BY replicate) AS covariance_aa,COVAR_SAMP(a,b ORDER BY replicate) AS covariance_ab,VAR_SAMP(b ORDER BY replicate) AS covariance_bb,STDDEV_SAMP(a ORDER BY replicate) AS se_intercept,STDDEV_SAMP(b ORDER BY replicate) AS se_slope,QUANTILE_CONT(a,0.025 ORDER BY replicate) AS lower_intercept,QUANTILE_CONT(a,0.975 ORDER BY replicate) AS upper_intercept,QUANTILE_CONT(b,0.025 ORDER BY replicate) AS lower_slope,QUANTILE_CONT(b,0.975 ORDER BY replicate) AS upper_slope,10001 AS base_seed,'xoshiro256++/splitmix64/per_replicate_seed_plus_index/u64_rejection_v1' AS rng,'whole_firm_pairs' AS method,'type7_percentile_95' AS interval_method FROM r"""
