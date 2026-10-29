@@ -44,6 +44,6 @@ values <- c(observations=n,firms=g,intercept=a,slope=b,rho=rho,
   cluster_lo_intercept=a-z*sc[1],cluster_hi_intercept=a+z*sc[1],
   cluster_lo_slope=b-z*sc[2],cluster_hi_slope=b+z*sc[2])
 write.csv(data.frame(field=names(values),value=unname(values)),file.path(args[2],'reference.csv'),row.names=FALSE,quote=FALSE)
-write.csv(data.frame(id=id,year=year,logr=x,pat=y,gee_mu=mu,gee_residual=residual),file.path(args[2],'predictions.csv'),row.names=FALSE,quote=FALSE)
+write.csv(data.frame(id=id,year=year,logr=sprintf('%.17g',x),pat=y,gee_mu=mu,gee_residual=residual),file.path(args[2],'predictions.csv'),row.names=FALSE,quote=FALSE)
 write.csv(data.frame(id=seq_len(g),score_a=scores[,1],score_b=scores[,2]),file.path(args[2],'scores.csv'),row.names=FALSE,quote=FALSE)
 cat(R.version.string,'; gee',as.character(packageVersion('gee')),';',n,'source rows;',g,'firm scores; fixed scale1 legacy-moment exchangeable GEE\n')
