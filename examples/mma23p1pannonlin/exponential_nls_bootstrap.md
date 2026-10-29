@@ -143,6 +143,6 @@ conditioning guard now rejects it. The RNG SQL is byte-identical to the separate
 tested pooled-Poisson expression, whose high-bit/forced-rejection controls are
 retained. R, Python and author data are development-only.
 
-The separate [GEE firm bootstrap](exchangeable_gee_bootstrap.md) uses distinct copied IDs. Poisson RE, general GEE, RE firm bootstrap, Figure 23.1 and remaining
+The separate [GEE firm bootstrap](exchangeable_gee_bootstrap.md) uses distinct copied IDs. [Gamma-RE Poisson](gamma_re_poisson.md) is separately validated; normal-RE Poisson, general GEE, RE firm bootstrap, Figure 23.1 and remaining
 Table 23.1 outputs remain required. This workflow does not complete the
 chapter, graduate-method core or book inventory.

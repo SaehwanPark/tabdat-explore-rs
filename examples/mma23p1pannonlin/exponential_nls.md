@@ -108,6 +108,6 @@ and author data are development-only.
 
 The [NLS whole-firm bootstrap](exponential_nls_bootstrap.md) and bounded
 [exchangeable Poisson GEE](exchangeable_gee.md) are separate validated
-compositions. The [GEE firm bootstrap](exchangeable_gee_bootstrap.md) is also separate. Random-effects Poisson, general GEE, RE firm bootstrap,
+compositions. The [GEE firm bootstrap](exchangeable_gee_bootstrap.md) is also separate. [Gamma-RE Poisson](gamma_re_poisson.md) is separately validated; normal-RE Poisson, general GEE, RE firm bootstrap,
 Figure 23.1 and remaining Table 23.1 outputs remain required. This workflow
 does not complete the chapter, graduate-method core or full book inventory.

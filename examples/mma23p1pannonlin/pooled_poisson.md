@@ -95,6 +95,6 @@ Separate workflows now cover [conditional-FE Poisson](conditional_fe.md),
 [exponential-mean NLS](exponential_nls.md), and whole-firm bootstraps for
 [pooled](pooled_poisson_bootstrap.md), [conditional-FE](conditional_fe_bootstrap.md)
 Poisson and [exponential NLS](exponential_nls_bootstrap.md), without historical RNG parity. The bounded [exchangeable Poisson GEE](exchangeable_gee.md)
-is also separate. Random-effects Poisson, general GEE, other bootstraps and the
+is also separate. [Gamma-RE Poisson](gamma_re_poisson.md) is separately validated; normal-RE Poisson, general GEE, other bootstraps and the
 figure remain required. These bounded workflows
 do not complete Table 23.1, the empirical inventory or the chapter.
