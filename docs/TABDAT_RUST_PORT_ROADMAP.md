@@ -345,8 +345,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    The [§23.3 pooled patent Poisson illustration](../examples/mma23p1pannonlin/pooled_poisson.md)
    now validates all1,730 original firm-years, three covariance modes,103 R
    quantities and19,030 exported cells;22 all-zero firms remain in pooled data.
-   Conditional-FE/RE Poisson, GEE, NLS, firm bootstrap and Figure23.1 remain
-   separate required work, not implied by pooled or cluster-robust inference.
+   A separate [bounded conditional-FE Poisson SQL composition](../examples/mma23p1pannonlin/conditional_fe.md)
+   validates the 1,620-row/324-firm positive-total sample against14 R quantities
+   and48,440 export cells; this model-based one-slope test is not cluster robust
+   or a general native panel estimator. General conditional FE, RE Poisson, GEE,
+   NLS, firm bootstrap and Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
