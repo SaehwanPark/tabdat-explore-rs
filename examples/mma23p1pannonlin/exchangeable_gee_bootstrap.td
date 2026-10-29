@@ -133,6 +133,7 @@ expansion AS (
    SUM(centered_e*centered_e ORDER BY year) AS centered_e2,SUM(e_scale*e_scale ORDER BY year) AS e2_scale,
    SUM(root_mu ORDER BY year) AS h0,SUM(root_mu*logr ORDER BY year) AS h1,
    SUM((pat-mu) ORDER BY year) AS d0,SUM(logr*(pat-mu) ORDER BY year) AS d1,
+   SUM(ABS(pat-mu) ORDER BY year) AS d0_scale,SUM(ABS(logr*(pat-mu)) ORDER BY year) AS d1_scale,
    SUM(mu ORDER BY year) AS q00,SUM(mu*logr ORDER BY year) AS q01,SUM(mu*logr*logr ORDER BY year) AS q11
  FROM final_centered GROUP BY rep,id
 ), final_moment AS (
@@ -148,8 +149,8 @@ expansion AS (
  SELECT u.rep,MAX(p.a) AS a,MAX(p.b) AS b,MAX(p.iter) AS iterations,MAX(p.last_step) AS last_step,MAX(c.rho) AS rho,
    SUM(multiplicity*(d0-(c.rho/(1+4*c.rho))*h0*es)/(1-c.rho) ORDER BY id) AS u0,
    SUM(multiplicity*(d1-(c.rho/(1+4*c.rho))*h1*es)/(1-c.rho) ORDER BY id) AS u1,
-   SUM(multiplicity*(ABS(d0)+ABS((c.rho/(1+4*c.rho))*h0*es))/(1-c.rho) ORDER BY id) AS scale0,
-   SUM(multiplicity*(ABS(d1)+ABS((c.rho/(1+4*c.rho))*h1*es))/(1-c.rho) ORDER BY id) AS scale1,
+   SUM(multiplicity*(d0_scale+ABS((c.rho/(1+4*c.rho))*h0*es))/(1-c.rho) ORDER BY id) AS scale0,
+   SUM(multiplicity*(d1_scale+ABS((c.rho/(1+4*c.rho))*h1*es))/(1-c.rho) ORDER BY id) AS scale1,
    SUM(multiplicity*(q00-(c.rho/(1+4*c.rho))*h0*h0)/(1-c.rho) ORDER BY id) AS b00,
    SUM(multiplicity*(q01-(c.rho/(1+4*c.rho))*h0*h1)/(1-c.rho) ORDER BY id) AS b01,
    SUM(multiplicity*(q11-(c.rho/(1+4*c.rho))*h1*h1)/(1-c.rho) ORDER BY id) AS b11

@@ -36,7 +36,7 @@ base_eval <- function(beta,indices) {
   stopifnot(is.finite(b00),b00>0,is.finite(b01),is.finite(b11),
     is.finite(schur),schur>eps*(1+abs(b11)+abs(b01*b01/b00)))
   u<-k*c(sum(d0-c*h0*es),sum(d1-c*h1*es))
-  uscale<-k*c(sum(abs(d0)+abs(c*h0*es)),sum(abs(d1)+abs(c*h1*es)))
+  uscale<-k*c(sum(rowSums(abs(y-mu))+abs(c*h0*es)),sum(rowSums(abs(x*(y-mu)))+abs(c*h1*es)))
   delta<-c(u[1]/b00-(b01/b00)*(u[2]-(b01/b00)*u[1])/schur,(u[2]-(b01/b00)*u[1])/schur)
   stopifnot(all(is.finite(u)),all(is.finite(uscale)),all(is.finite(delta)))
   w00<-1/b00+(b01/b00)^2/schur;w01<-( -b01/b00)/schur;w11<-1/schur

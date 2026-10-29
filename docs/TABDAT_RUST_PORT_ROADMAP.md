@@ -365,7 +365,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    and346 firm scores against legacy R `gee` and base-R equations. A nine-step
    float32 probe supports storage/stopping as contributors to the
    disclosed seven-decimal slope difference; native pooled Poisson, not GEE,
-   remains the retained state.
+   remains the retained state. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/exchangeable_gee_bootstrap.md)
+   validates 500 R/base-R refits and173,000 independent ordered draws; the
+   author's materially different bootstrap SE and historical duplicate-ID
+   handling remain unresolved, not counted as historical parity.
    General conditional FE, RE Poisson, general GEE, other firm bootstraps and
    Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
