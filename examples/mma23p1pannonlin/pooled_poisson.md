@@ -91,7 +91,9 @@ key/panel guard and no-clobber failure paths; regenerate it with
 `synthetic_source.R` and `pooled_poisson_reference.R` in fresh directories.
 R/Python are not production dependencies.
 
-The author's fixed/random-effects Poisson, GEE, nonlinear least squares,
-whole-firm bootstraps and figure remain required separate work. This slice adds
-neither those estimators nor historical bootstrap RNG parity, and does not
-claim whole Table 23.1, the book's empirical inventory or chapter completion.
+Separate workflows now cover [conditional-FE Poisson](conditional_fe.md),
+[exponential-mean NLS](exponential_nls.md), and whole-firm bootstraps for
+[pooled](pooled_poisson_bootstrap.md) and [conditional-FE](conditional_fe_bootstrap.md)
+Poisson, without historical RNG parity. Random-effects Poisson, exchangeable GEE,
+their other bootstraps and the figure remain required. These bounded workflows
+do not complete Table 23.1, the empirical inventory or the chapter.
