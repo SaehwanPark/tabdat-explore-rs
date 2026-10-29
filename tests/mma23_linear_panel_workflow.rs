@@ -192,6 +192,7 @@ fn independent_panel_models_predictions_text_json_order_and_no_clobber() {
   );
   let text = String::from_utf8(out.stdout).unwrap();
   assert!(text.contains("fixed") || text.contains("Fixed"));
+  assert_eq!(fs::read(&path).unwrap(), bytes);
   check_predictions(&fs::read_to_string(&path).unwrap(), &input);
   fs::remove_file(&path).unwrap();
   let mut lines = input.lines();
@@ -246,6 +247,20 @@ fn malformed_input_model_failure_and_file_state() {
       .collect::<Vec<_>>()
       .join("\n")
       + "\n",
+    input
+      .lines()
+      .enumerate()
+      .map(|(i, line)| format!("{line},{}", if i == 0 { "LPAT" } else { "999" }))
+      .collect::<Vec<_>>()
+      .join("\n")
+      + "\n",
+    input
+      .lines()
+      .enumerate()
+      .map(|(i, line)| format!("{line},{}", if i == 0 { "RE_XB" } else { "999" }))
+      .collect::<Vec<_>>()
+      .join("\n")
+      + "\n",
     rewrite(&input, |r| r[7] = "1".into()),
     rewrite(&input, |r| {
       if r[0] == "1" && r[1] == "1975" {
@@ -289,6 +304,11 @@ fn malformed_input_model_failure_and_file_state() {
     let out = run(&d, "--json");
     assert!(!out.status.success());
     assert!(!String::from_utf8_lossy(&out.stderr).contains("export target already exists"));
+    assert!(
+      !events(&out)
+        .iter()
+        .any(|e| e["result_type"] == "RegressionResult")
+    );
     assert_eq!(fs::read_to_string(&path).unwrap(), case);
     assert_eq!(fs::read(&export).unwrap(), b"sentinel");
   }
@@ -320,6 +340,40 @@ fn malformed_input_model_failure_and_file_state() {
   );
   assert_eq!(exec(&mut s, "head 100"), rows);
   assert!(s.state().estimation.is_none());
+
+  // Identical panels identify pooled and within fits, but the RE between design is singular.
+  let between_singular = rewrite(&input, |r| {
+    let t = r[1].parse::<usize>().unwrap() - 1975;
+    r[7] = ((t as f64 - 2.0) * 0.2).to_string();
+    r[8] = [1, 2, 2, 3, 4][t].to_string();
+  });
+  fs::write(&path, &between_singular).unwrap();
+  let out = run(&d, "--json");
+  assert!(!out.status.success());
+  let ev = events(&out);
+  assert!(ev.iter().any(|e| e["result_type"] == "RegressionResult"));
+  assert!(ev.iter().any(|e| e["result_type"] == "FixedEffectsResult"));
+  assert!(!ev.iter().any(|e| e["result_type"] == "RandomEffectsResult"));
+  assert_eq!(fs::read_to_string(&path).unwrap(), between_singular);
+  assert_eq!(fs::read(&export).unwrap(), b"sentinel");
+  let mut s = Session::new();
+  exec(&mut s, &format!("use \"{}\"", path.display()));
+  exec(&mut s, "generate lpat = 0");
+  exec(
+    &mut s,
+    "sql \"\"\"SELECT * EXCLUDE(lpat),LN(CASE WHEN pat=0 THEN 0.5 ELSE pat END) AS lpat FROM active\"\"\" into panel",
+  );
+  exec(&mut s, "regress lpat logr, cluster(id)");
+  exec(&mut s, "predict pooled_xb, xb");
+  exec(&mut s, "xtreg lpat logr, fe id(id) time(year)");
+  exec(&mut s, "predict fe_xbu, xbu");
+  let rows = exec(&mut s, "head 100");
+  assert!(
+    s.execute(parse_command("xtreg lpat logr, re id(id) time(year)").unwrap())
+      .is_err()
+  );
+  assert_eq!(exec(&mut s, "head 100"), rows);
+  assert!(s.state().estimation.is_none());
 }
 #[test]
 fn successful_workflow_retains_re_fit_and_predictions() {
@@ -343,6 +397,8 @@ fn successful_workflow_retains_re_fit_and_predictions() {
   let fit = s.state().estimation;
   exec(&mut s, "predict re_xb, xb");
   exec(&mut s, "predict re_after, xb");
+  exec(&mut s, "summarize pooled_xb fe_xbu re_xb");
+  exec(&mut s, "sort id year");
   assert_eq!(s.state().estimation, fit);
   exec(
     &mut s,

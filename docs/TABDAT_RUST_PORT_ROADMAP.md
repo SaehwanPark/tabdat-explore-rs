@@ -342,6 +342,10 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    offset-fit/current-row probabilities validate the bounded
    [complete workflow](../examples/count-probability/README.md). Full laws remain
    assumptions; robust covariance does not establish distributional calibration.
+   The [§23.3 log-patents linear panel workflow](../examples/mma23p1pannonlin/linear_panel.md)
+   validates clustered pooled OLS, classical within FE and balanced RE-GLS on
+   all1,730 source rows and91 independent R/plm fit/test quantities;337 zeros
+   use the author's ad hoc ln(0.5), and FE intercept inference remains absent.
    The [§23.3 pooled patent Poisson illustration](../examples/mma23p1pannonlin/pooled_poisson.md)
    now validates all1,730 original firm-years, three covariance modes,103 R
    quantities and19,030 exported cells;22 all-zero firms remain in pooled data.
