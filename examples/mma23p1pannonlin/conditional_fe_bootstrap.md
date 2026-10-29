@@ -88,8 +88,9 @@ frequency-weighted dummy-variable Poisson GLMs. The checker verifies all 1,730
 source/design rows, all **162,000** ordered firm draws and corresponding slope
 cells, and 11 report quantities. Draw identities, steps, source values and
 membership are exact; slopes and summaries use absolute tolerance `1e-10`
-(float64 bisection versus R root finding). A 12-firm synthetic fixture checks
-all 5,000 draws and 500 R fits, text/JSON and no-clobber. Separate high-bit
+(float64 bisection versus R root finding); the largest original-source replicate
+slope difference was `2.39e-14`. A 12-firm synthetic fixture checks all 5,000
+draws and 500 R fits, text/JSON, input-order invariance and no-clobber. Separate high-bit
 streams with forced rejections check 24 values exactly; failure tests include a
 finite original fit with a separated bootstrap replicate, empty information,
 invalid keys and RNG work exhaustion. R/Python and author data are not

@@ -148,6 +148,19 @@ fn r_refits_all_draws_reporting_and_no_clobber() {
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("bootstrap_se") && text.contains("whole_firm_pairs"));
   assert_eq!(fs::read(&path).unwrap(), bytes);
+  fs::remove_file(&path).unwrap();
+  let input = String::from_utf8(input).unwrap();
+  let mut lines = input.lines();
+  let header = lines.next().unwrap();
+  let mut data: Vec<_> = lines.collect();
+  data.reverse();
+  fs::write(
+    d.path().join("patents.csv"),
+    format!("{header}\n{}\n", data.join("\n")),
+  )
+  .unwrap();
+  let _ = report(run(&d, "--json"));
+  assert_eq!(fs::read(&path).unwrap(), bytes);
 }
 
 #[test]
