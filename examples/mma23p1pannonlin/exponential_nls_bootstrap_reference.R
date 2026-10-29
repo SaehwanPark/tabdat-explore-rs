@@ -34,9 +34,10 @@ fit <- function(freq) {
   objective <- function(b) {e<-exp(b*x);amp<-sum(w*y*e)/sum(w*e*e);sum(w*(y-amp*e)^2)}
   minimum <- optimize(objective,c(-2,2),tol=1e-12)
   # Objective minimization is only a coarse independent cross-check, not the precision oracle.
+  rss <- objective(beta); rss_scale <- sum(w*(abs(y)+exp(eta))^2)
   stopifnot(abs(minimum$minimum-beta)<1e-7,
-    abs(minimum$objective-objective(beta))<1e-10*(1+objective(beta)),objective(beta)>0)
-  c(a=a,b=beta,rss=objective(beta),curvature=unname(p['curvature']))
+    abs(minimum$objective-rss)<1e-10*(1+rss),rss>eps^2*rss_scale)
+  c(a=a,b=beta,rss=rss,curvature=unname(p['curvature']))
 }
 base <- fit(rep(1,g)); fits <- matrix(NA_real_,500,4)
 for(rep in 1:500) fits[rep,] <- fit(tabulate(draws$index0[draws$replicate==rep]+1,g))
