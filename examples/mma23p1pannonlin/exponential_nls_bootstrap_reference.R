@@ -30,6 +30,7 @@ fit <- function(freq) {
   beta <- uniroot(function(b)unname(profile(w,b)['score']),c(-2,2),tol=1e-14)$root
   p <- profile(w,beta);a <- unname(p['intercept']);eta <- a+beta*x
   stopifnot(abs(p['score'])<=1e-10*p['scale'],p['curvature']>eps*p['curvature_scale'],
+    p['curvature']*(1e-9+1e-10*abs(beta))>eps*p['scale'],
     is.finite(a),abs(a)<=20,all(is.finite(eta)),all(abs(eta)<=40))
   objective <- function(b) {e<-exp(b*x);amp<-sum(w*y*e)/sum(w*e*e);sum(w*(y-amp*e)^2)}
   minimum <- optimize(objective,c(-2,2),tol=1e-12)

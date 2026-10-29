@@ -139,6 +139,7 @@ expansion AS (
    OR ABS(s.ymean-s.wmean)>1e-10*(1+s.yabs/s.y+s.wabs/s.w)
    OR NOT isfinite(m.vy) OR NOT isfinite(m.vw)
    OR 2*m.vw-m.vy<=2.842170943040401e-14*(1+2*ABS(m.vw)+ABS(m.vy))
+   OR (2*m.vw-m.vy)*(1e-9+1e-10*ABS(s.beta))<=2.842170943040401e-14*(1+s.yabs/s.y+s.wabs/s.w)
    OR NOT isfinite(m.rss) OR NOT isfinite(m.rss_scale) OR m.rss<=8.077935669463161e-28*m.rss_scale
    OR m.invalid_eta>0 THEN error('NLS bootstrap replicate failed score, curvature, residual or predictor bounds')
    ELSE s.beta END AS beta

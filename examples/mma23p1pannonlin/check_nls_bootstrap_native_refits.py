@@ -2,6 +2,7 @@
 """Development-only native NLS cross-check of representative bootstrap refits."""
 import csv
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -47,5 +48,5 @@ with tempfile.TemporaryDirectory(prefix='tabdat-nls-refits-') as name:
     if int(ref['replicate'])!=rep: raise AssertionError('reference ordering mismatch')
     for name,field in [('a','intercept'),('b','slope')]:
       error=abs(coefficients[name]-float(ref[field]));max_diff=max(max_diff,error)
-      if error>1e-9+1e-10*abs(float(ref[field])): raise AssertionError(f'native replicate {rep} {name} mismatch')
+      if not math.isfinite(error) or error>1e-9+1e-10*abs(float(ref[field])): raise AssertionError(f'native replicate {rep} {name} mismatch')
 print(f'PASS: {len(choices)} native repeated-row NLS refits {choices}; max coefficient difference {max_diff:.3g}')

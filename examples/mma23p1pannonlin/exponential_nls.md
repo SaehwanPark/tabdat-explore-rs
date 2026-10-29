@@ -106,7 +106,8 @@ input order, text/JSON, no-clobber, missing/invalid/rank-deficient data,
 too few firms, and exact-zero/cancellation-dominated cluster scores. R/Python
 and author data are development-only.
 
-The bounded [exchangeable Poisson GEE](exchangeable_gee.md) is a separate
-validated composition. Random-effects Poisson, general GEE, NLS and other firm
-bootstraps, Figure 23.1 and remaining Table 23.1 outputs remain required. This workflow does not complete the chapter, graduate-method
-core or full book inventory.
+The [NLS whole-firm bootstrap](exponential_nls_bootstrap.md) and bounded
+[exchangeable Poisson GEE](exchangeable_gee.md) are separate validated
+compositions. Random-effects Poisson, general GEE, GEE/RE firm bootstraps,
+Figure 23.1 and remaining Table 23.1 outputs remain required. This workflow
+does not complete the chapter, graduate-method core or full book inventory.

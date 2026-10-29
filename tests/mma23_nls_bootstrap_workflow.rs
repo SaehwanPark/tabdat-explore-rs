@@ -274,9 +274,17 @@ fn invalid_input_failed_replicates_and_prior_fit_state() {
   let mut dup: Vec<_> = source.lines().map(str::to_owned).collect();
   dup[2] = dup[1].clone();
   let one = source.lines().take(6).collect::<Vec<_>>().join("\n") + "\n";
+  let collision = source
+    .lines()
+    .enumerate()
+    .map(|(i, line)| format!("{line},{}", if i == 0 { "nls_mu" } else { "1" }))
+    .collect::<Vec<_>>()
+    .join("\n")
+    + "\n";
   let cases = [
     dup.join("\n") + "\n",
     one,
+    collision,
     rewrite(&source, |r| r[7] = "1".into()),
     rewrite(&source, |r| {
       if r[0] == "1" && r[1] == "1975" {
@@ -291,6 +299,26 @@ fn invalid_input_failed_replicates_and_prior_fit_state() {
     rewrite(&source, |r| {
       if r[0] == "1" && r[1] == "1975" {
         r[8] = "-1".into();
+      }
+    }),
+    rewrite(&source, |r| {
+      if r[0] == "1" {
+        r[0] = "347".into();
+      }
+    }),
+    rewrite(&source, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[8] = "1001".into();
+      }
+    }),
+    rewrite(&source, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[8] = "1.5".into();
+      }
+    }),
+    rewrite(&source, |r| {
+      if r[0] == "1" && r[1] == "1975" {
+        r[7] = "21".into();
       }
     }),
     source.replacen(",1975,", ",1980,", 1),
@@ -362,6 +390,33 @@ fn invalid_input_failed_replicates_and_prior_fit_state() {
     .collect();
   let n = &ev.iter().find(|e| e["result_type"] == "NlsResult").unwrap()["data"];
   assert!(n["residual_sum_of_squares"].as_f64().unwrap() > 0.);
+  // Replicate 2 draws the first firm twice. Its exact profile has a flat root
+  // at zero; rounding previously produced a false, apparently positive curvature.
+  let mixed = rewrite(&two, |r| {
+    let t = r[1].parse::<usize>().unwrap() - 1975;
+    r[7] = [-1, 0, 0, 0, 1][t].to_string();
+    r[8] = if r[0] == "1" {
+      [4, 1, 0, 1, 4][t]
+    } else {
+      [1, 2, 2, 1, 3][t]
+    }
+    .to_string();
+  });
+  let ev: Vec<Value> = String::from_utf8(fail(&d, &mixed).stdout)
+    .unwrap()
+    .lines()
+    .map(|s| serde_json::from_str(s).unwrap())
+    .collect();
+  let n = &ev.iter().find(|e| e["result_type"] == "NlsResult").unwrap()["data"];
+  let b = n["coefficients"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .find(|c| c["name"] == "b")
+    .unwrap()["value"]
+    .as_f64()
+    .unwrap();
+  assert!(b > 0.5 && b < 0.6);
   // Original native slope is outside the bounded bootstrap root interval.
   let outside = rewrite(&source, |r| {
     let t = r[1].parse::<usize>().unwrap() - 1975;
@@ -455,6 +510,42 @@ fn exact_and_near_profile_endpoint_guards() {
       assert!(outcome.is_err(), "endpoint {slope} unexpectedly accepted");
       assert_eq!(s.state(), before);
     }
+  }
+}
+
+#[test]
+fn cancellation_dominated_observed_curvature_is_rejected() {
+  let d = TestDir::new();
+  prepare(&d);
+  let path = d.path().join("patents.csv");
+  let source = fs::read_to_string(&path).unwrap();
+  // At b=0, the two profile means are zero, Var_y(x)=0.8 and Var_w(x)=0.4;
+  // hence the observed-loss curvature 2*Var_w-Var_y is exactly zero.
+  let flat = rewrite(&source, |row| {
+    let t = row[1].parse::<usize>().unwrap() - 1975;
+    row[7] = [-1, 0, 0, 0, 1][t].to_string();
+    row[8] = [4, 1, 0, 1, 4][t].to_string();
+  });
+  fs::write(&path, flat).unwrap();
+  for beta in ["0.0", "1e-8", "1e-7"] {
+    let mut s = Session::new();
+    exec(&mut s, &format!("use \"{}\"", path.display()));
+    exec(
+      &mut s,
+      "sql \"\"\"SELECT *,2.0 AS nls_mu FROM active\"\"\" into curvature_probe",
+    );
+    let before = s.state();
+    let original = "SELECT rep,(lo+hi)/2 AS beta FROM search WHERE iter=80";
+    assert!(query().contains(original));
+    let injected = query().replace(
+      original,
+      &format!("SELECT rep,{beta}::DOUBLE AS beta FROM search WHERE iter=80"),
+    );
+    assert!(
+      s.execute(parse_command(&injected).unwrap()).is_err(),
+      "flat curvature at {beta} accepted"
+    );
+    assert_eq!(s.state(), before);
   }
 }
 
