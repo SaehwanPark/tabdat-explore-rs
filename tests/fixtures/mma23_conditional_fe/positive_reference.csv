@@ -1,0 +1,15 @@
+field,value
+candidate_rows,60
+candidate_firms,12
+retained_rows,60
+retained_firms,12
+excluded_rows,0
+excluded_firms,0
+beta,0.61292510613121
+se,0.0633877742464724
+z,9.66945303597436
+p_value,4.06545026413976e-22
+ci_lower,0.488687351547969
+ci_upper,0.737162860714452
+conditional_ll,-56.6282520154511
+information,248.879425121966

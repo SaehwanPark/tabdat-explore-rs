@@ -23,11 +23,21 @@ endpoint_units AS (
    SUM(EXP(10*centered_x) ORDER BY year) AS hi_w,
    SUM(centered_x*EXP(10*centered_x) ORDER BY year) AS hi_x
  FROM positive GROUP BY id
+), endpoint_summary AS (
+ SELECT COUNT(*) AS n_groups,
+   SUM(observed-total*lo_x/lo_w ORDER BY id) AS lo_score,
+   SUM(observed-total*hi_x/hi_w ORDER BY id) AS hi_score,
+   SUM(ABS(observed)+total*ABS(lo_x/lo_w) ORDER BY id) AS lo_scale,
+   SUM(ABS(observed)+total*ABS(hi_x/hi_w) ORDER BY id) AS hi_scale
+ FROM endpoint_units
 ), bounds AS (
- SELECT CASE WHEN COUNT(*)<2 OR SUM(observed-total*lo_x/lo_w ORDER BY id)<=0
-   OR SUM(observed-total*hi_x/hi_w ORDER BY id)>=0
-   THEN error('conditional FE requires at least two positive-total firms and an interior score crossing in (-10,10)')
-   ELSE COUNT(*) END AS n_groups FROM endpoint_units
+ SELECT CASE WHEN n_groups<2 OR lo_score IS NULL OR hi_score IS NULL
+   OR NOT isfinite(lo_score) OR NOT isfinite(hi_score)
+   OR NOT isfinite(lo_scale) OR NOT isfinite(hi_scale)
+   OR lo_score<=2.842170943040401e-14*(1+lo_scale)
+   OR hi_score>=-2.842170943040401e-14*(1+hi_scale)
+   THEN error('conditional FE requires at least two positive-total firms and a numerically distinct interior score crossing in (-10,10)')
+   ELSE n_groups END AS n_groups FROM endpoint_summary
 ), search(iter,lo,hi) AS (
  SELECT 0, CAST(-10 AS DOUBLE), CAST(10 AS DOUBLE) FROM bounds WHERE n_groups>=2
  UNION ALL

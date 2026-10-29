@@ -116,7 +116,7 @@ fn synthetic_r_reference_exclusions_predictions_and_file_safety() {
   let expected_heads: Vec<_> = expected.next().unwrap().split(',').collect();
   let mut n = 0;
   let mut excluded = 0;
-  for (a, e) in actual.zip(expected) {
+  for (a, e) in actual.by_ref().zip(expected.by_ref()) {
     let a: Vec<_> = a.split(',').collect();
     let e: Vec<_> = e.split(',').collect();
     for (j, key) in expected_heads.iter().enumerate() {
@@ -135,6 +135,7 @@ fn synthetic_r_reference_exclusions_predictions_and_file_safety() {
     n += 1;
   }
   assert_eq!(n, 60);
+  assert!(actual.next().is_none() && expected.next().is_none());
   assert_eq!(excluded, 10);
   assert_eq!(fs::read(d.path().join("patents.csv")).unwrap(), input);
   assert!(!run(&d, "--json").status.success());
@@ -234,12 +235,33 @@ fn failures_do_not_publish_and_extreme_tail_is_explicitly_withheld() {
     changed_csv(&original, |r| r[8] = "0".into()),
     changed_csv(&original, |r| r[7] = r[0].clone()),
     changed_csv(&original, |r| {
+      if r[0] == "1" {
+        r[0] = "347".into();
+      }
+    }),
+    changed_csv(&original, |r| {
+      if r[1] == "1975" {
+        r[8] = "-1".into();
+      }
+    }),
+    changed_csv(&original, |r| {
+      if r[1] == "1975" {
+        r[8] = "0.5".into();
+      }
+    }),
+    original.lines().take(60).collect::<Vec<_>>().join("\n") + "\n",
+    changed_csv(&original, |r| {
       r[7] = (r[1].parse::<i32>().unwrap() - 1975).to_string();
       r[8] = if r[1] == "1979" {
         "10".into()
       } else {
         "0".into()
       };
+    }),
+    changed_csv(&original, |r| {
+      let t = r[1].parse::<i32>().unwrap() - 1975;
+      r[7] = (10 * t - 20).to_string();
+      r[8] = if t == 4 { "10".into() } else { "0".into() };
     }),
     changed_csv(&original, |r| {
       if r[1] == "1979" {
@@ -264,14 +286,51 @@ fn failures_do_not_publish_and_extreme_tail_is_explicitly_withheld() {
     assert!(!d.path().join("conditional_fe_predictions.csv").exists());
     assert_eq!(fs::read_to_string(&path).unwrap(), csv);
   }
-  let strong = changed_csv(&original, |r| {
-    let t = (r[1].parse::<usize>().unwrap() - 1975) as usize;
-    r[7] = t.to_string();
-    r[8] = [1, 1, 2, 4, 8][t].to_string();
-  });
-  fs::write(&path, strong).unwrap();
-  let (_, r) = report(run(&d, "--json"));
-  assert!(r["z"].as_f64().unwrap() > 3.0);
-  assert_eq!(r["p_reference"], "unavailable_abs_z_exceeds_3");
-  assert!(r["p_value"].is_null());
+  for (counts, predictors, reference, sign) in [
+    (
+      [1, 1, 2, 4, 8],
+      ["0", "1", "2", "3", "4"],
+      include_str!("fixtures/mma23_conditional_fe/positive_reference.csv"),
+      1.0,
+    ),
+    (
+      [8, 4, 2, 1, 1],
+      ["0", "1", "2", "3", "4"],
+      include_str!("fixtures/mma23_conditional_fe/negative_reference.csv"),
+      -1.0,
+    ),
+    (
+      [0, 0, 0, 1, 50],
+      ["0", "0.4", "0.8", "1.2", "1.6"],
+      include_str!("fixtures/mma23_conditional_fe/near_positive_reference.csv"),
+      1.0,
+    ),
+    (
+      [50, 1, 0, 0, 0],
+      ["0", "0.4", "0.8", "1.2", "1.6"],
+      include_str!("fixtures/mma23_conditional_fe/near_negative_reference.csv"),
+      -1.0,
+    ),
+  ] {
+    let strong = changed_csv(&original, |r| {
+      let t = r[1].parse::<usize>().unwrap() - 1975;
+      r[7] = predictors[t].into();
+      r[8] = counts[t].to_string();
+    });
+    fs::write(&path, strong).unwrap();
+    let (_, r) = report(run(&d, "--json"));
+    assert!(sign * r["z"].as_f64().unwrap() > 3.0);
+    assert_eq!(r["p_reference"], "unavailable_abs_z_exceeds_3");
+    assert!(r["p_value"].is_null());
+    let mut compared = 0;
+    for line in reference.lines().skip(1) {
+      let (field, expected) = line.split_once(',').unwrap();
+      if field != "p_value" {
+        close(r[field].as_f64().unwrap(), expected.parse().unwrap(), field);
+        compared += 1;
+      }
+    }
+    assert_eq!(compared, 13);
+    fs::remove_file(d.path().join("conditional_fe_predictions.csv")).unwrap();
+  }
 }
