@@ -373,9 +373,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    validates the shared-firm gamma likelihood, joint observed covariance, boundary
    LR and all1,730 marginal predictions against independent R; a float32 probe
    explains part of the historical ln(alpha) precision discrepancy without an
-   exact-parity claim. General conditional FE, normal RE Poisson, gamma-RE
-   bootstrap, general GEE, other firm bootstraps and Figure23.1 remain separate
-   required work.
+   exact-parity claim. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
+   validates 500 joint three-parameter R refits and173,000 independent ordered
+   draws; historical repeated-ID semantics remain unresolved despite a material
+   merged-ID counterfactual. General conditional FE, normal RE Poisson,
+   general GEE, other firm bootstraps and Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
