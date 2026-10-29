@@ -53,22 +53,28 @@ expansion AS (
  SELECT rep,id,COUNT(*) AS multiplicity FROM draws GROUP BY rep,id
  UNION ALL SELECT 0::BIGINT AS rep,id,1::BIGINT AS multiplicity FROM groups
 ), endpoint_units AS (
+ -- The pooled intercept is profiled globally, not separately by firm.
  SELECT id,SUM(pat ORDER BY year) AS total,SUM(pat*logr ORDER BY year) AS observed,
+   SUM(ABS(pat*logr) ORDER BY year) AS observed_abs,
    SUM(EXP(-10*logr) ORDER BY year) AS lo_w,SUM(logr*EXP(-10*logr) ORDER BY year) AS lo_x,
-   SUM(EXP(10*logr) ORDER BY year) AS hi_w,SUM(logr*EXP(10*logr) ORDER BY year) AS hi_x
+   SUM(ABS(logr)*EXP(-10*logr) ORDER BY year) AS lo_absx,
+   SUM(EXP(10*logr) ORDER BY year) AS hi_w,SUM(logr*EXP(10*logr) ORDER BY year) AS hi_x,
+   SUM(ABS(logr)*EXP(10*logr) ORDER BY year) AS hi_absx
  FROM source GROUP BY id
 ), endpoint_sums AS (
  SELECT f.rep,SUM(multiplicity*total ORDER BY id) AS total,
-   SUM(multiplicity*observed ORDER BY id) AS observed,
+   SUM(multiplicity*observed ORDER BY id) AS observed,SUM(multiplicity*observed_abs ORDER BY id) AS observed_abs,
    SUM(multiplicity*lo_w ORDER BY id) AS lo_w,SUM(multiplicity*lo_x ORDER BY id) AS lo_x,
-   SUM(multiplicity*hi_w ORDER BY id) AS hi_w,SUM(multiplicity*hi_x ORDER BY id) AS hi_x
+   SUM(multiplicity*lo_absx ORDER BY id) AS lo_absx,
+   SUM(multiplicity*hi_w ORDER BY id) AS hi_w,SUM(multiplicity*hi_x ORDER BY id) AS hi_x,
+   SUM(multiplicity*hi_absx ORDER BY id) AS hi_absx
  FROM frequencies f JOIN endpoint_units USING(id) GROUP BY f.rep
 ), bounds AS (
  SELECT rep,CASE WHEN total IS NULL OR total<=0 OR NOT isfinite(total)
-   OR NOT isfinite(observed) OR NOT isfinite(lo_w) OR lo_w<=0 OR NOT isfinite(lo_x)
-   OR NOT isfinite(hi_w) OR hi_w<=0 OR NOT isfinite(hi_x)
-   OR observed-total*lo_x/lo_w<=2.842170943040401e-14*(1+ABS(observed)+total*ABS(lo_x/lo_w))
-   OR observed-total*hi_x/hi_w>=-2.842170943040401e-14*(1+ABS(observed)+total*ABS(hi_x/hi_w))
+   OR NOT isfinite(observed) OR NOT isfinite(observed_abs) OR NOT isfinite(lo_w) OR lo_w<=0 OR NOT isfinite(lo_x)
+   OR NOT isfinite(lo_absx) OR NOT isfinite(hi_w) OR hi_w<=0 OR NOT isfinite(hi_x) OR NOT isfinite(hi_absx)
+   OR observed-total*lo_x/lo_w<=2.842170943040401e-14*(1+observed_abs+total*lo_absx/lo_w)
+   OR observed-total*hi_x/hi_w>=-2.842170943040401e-14*(1+observed_abs+total*hi_absx/hi_w)
    THEN error('pooled Poisson bootstrap replicate lacks a distinct interior score crossing') ELSE 1 END AS valid
  FROM endpoint_sums
 ), search(rep,iter,lo,hi) AS (
@@ -91,22 +97,26 @@ expansion AS (
 ), eval_units AS (
  SELECT p.rep,p.beta,f.id,MAX(f.multiplicity) AS multiplicity,
    SUM(q.pat ORDER BY q.year) AS total,SUM(q.pat*q.logr ORDER BY q.year) AS observed,
+   SUM(ABS(q.pat*q.logr) ORDER BY q.year) AS observed_abs,
    SUM(EXP(p.beta*q.logr) ORDER BY q.year) AS w,
-   SUM(q.logr*EXP(p.beta*q.logr) ORDER BY q.year) AS wx
+   SUM(q.logr*EXP(p.beta*q.logr) ORDER BY q.year) AS wx,
+   SUM(ABS(q.logr)*EXP(p.beta*q.logr) ORDER BY q.year) AS w_absx
  FROM parameters p JOIN frequencies f ON p.rep=f.rep JOIN source q USING(id)
  GROUP BY p.rep,p.beta,f.id
 ), fit_sums AS MATERIALIZED (
  SELECT rep,MAX(beta) AS beta,SUM(multiplicity*total ORDER BY id) AS total,
-   SUM(multiplicity*observed ORDER BY id) AS observed,
-   SUM(multiplicity*w ORDER BY id) AS w,SUM(multiplicity*wx ORDER BY id) AS wx
+   SUM(multiplicity*observed ORDER BY id) AS observed,SUM(multiplicity*observed_abs ORDER BY id) AS observed_abs,
+   SUM(multiplicity*w ORDER BY id) AS w,SUM(multiplicity*wx ORDER BY id) AS wx,
+   SUM(multiplicity*w_absx ORDER BY id) AS w_absx
  FROM eval_units GROUP BY rep
 ), fit_variance AS (
+ -- Center before squaring to avoid subtracting near-equal weighted moments.
  SELECT s.rep,SUM(f.multiplicity*EXP(s.beta*q.logr)*POWER(q.logr-s.wx/s.w,2) ORDER BY q.id,q.year)/MAX(s.w) AS variance
  FROM fit_sums s JOIN frequencies f ON s.rep=f.rep JOIN source q USING(id) GROUP BY s.rep
 ), checked_fit AS (
  SELECT s.rep,s.beta,LN(s.total/s.w) AS alpha,
    s.observed-s.total*s.wx/s.w AS score,
-   ABS(s.observed)+s.total*ABS(s.wx/s.w) AS score_scale,s.total*v.variance AS information
+   s.observed_abs+s.total*s.w_absx/s.w AS score_scale,s.total*v.variance AS information
  FROM fit_sums s JOIN fit_variance v USING(rep)
 ), fits AS MATERIALIZED (
  SELECT rep,alpha,CASE WHEN alpha IS NULL OR NOT isfinite(alpha) OR beta IS NULL OR NOT isfinite(beta)

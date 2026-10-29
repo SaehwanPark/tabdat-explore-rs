@@ -49,4 +49,8 @@ write.csv(data.frame(field=names(fields),value=unname(fields)),file.path(args[3]
 write.csv(data.frame(replicate=1:500,intercept=a,slope=b),file.path(args[3],'replicates.csv'),row.names=FALSE,quote=FALSE)
 write.csv(data.frame(index0=seq_len(g)-1L,firm_id=seq_len(g)),file.path(args[3],'groups.csv'),row.names=FALSE,quote=FALSE)
 write.csv(data.frame(id=rep(seq_len(g),each=5L),year=rep(1975:1979,g),logr=as.vector(t(x)),pat=as.vector(t(y))),file.path(args[3],'design.csv'),row.names=FALSE,quote=FALSE)
+xb <- as.vector(t(original[1]+original[2]*x)); mu <- exp(xb)
+write.csv(data.frame(variable=c('pooled_mu','pooled_xb'),count=5*g,
+  minimum=c(min(mu),min(xb)),maximum=c(max(mu),max(xb)),mean=c(mean(mu),mean(xb)),
+  std_dev=c(sd(mu),sd(xb))),file.path(args[3],'prediction_summary.csv'),row.names=FALSE,quote=FALSE)
 cat(R.version.string,';',g,'firms;',nrow(betas),'independent two-parameter refits and four GLM cross-checks\n')
