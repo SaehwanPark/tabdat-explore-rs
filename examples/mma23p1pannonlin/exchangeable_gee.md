@@ -126,8 +126,8 @@ nonconvergence. Fractional outcomes in isolated numerical-boundary probes do not
 bypass the public integer-count preflight. R, Python and author data are
 **development-only**; production does not depend on them.
 
-The separate [NLS firm bootstrap](exponential_nls_bootstrap.md) is validated.
-Random-effects Poisson, general GEE, GEE/RE firm bootstraps, Figure 23.1 and
+The separate [GEE firm bootstrap](exchangeable_gee_bootstrap.md) and [NLS firm bootstrap](exponential_nls_bootstrap.md) are validated under explicit conventions. Historical GEE bootstrap ID handling and its reported SE remain unresolved.
+Random-effects Poisson, general GEE, RE firm bootstraps, Figure 23.1 and
 remaining Table 23.1 outputs remain separate required work. This bounded
 composition does not complete the chapter, graduate-method core or book
 inventory.

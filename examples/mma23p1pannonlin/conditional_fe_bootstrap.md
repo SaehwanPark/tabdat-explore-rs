@@ -99,6 +99,6 @@ production dependencies.
 The separate [pooled bootstrap](pooled_poisson_bootstrap.md), [exponential NLS](exponential_nls.md)
 and bounded [exchangeable Poisson GEE](exchangeable_gee.md) are validated.
 The [NLS firm bootstrap](exponential_nls_bootstrap.md) is also validated.
-Poisson RE, RE/GEE firm bootstraps, general GEE and Figure 23.1 remain
+The separate [GEE bootstrap](exchangeable_gee_bootstrap.md) uses distinct copied IDs. Poisson RE, RE firm bootstrap, general GEE and Figure 23.1 remain
 required; this composition does not complete the nonlinear panel chapter,
 graduate-method target or full book inventory.
