@@ -376,8 +376,13 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    exact-parity claim. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
    validates 500 joint three-parameter R refits and173,000 independent ordered
    draws; historical repeated-ID semantics remain unresolved despite a material
-   merged-ID counterfactual. General conditional FE, normal RE Poisson,
-   general GEE, other firm bootstraps and Figure23.1 remain separate required work.
+   merged-ID counterfactual. The separate [normal random-intercept Poisson composition](../examples/mma23p1pannonlin/normal_re_poisson.md)
+   validates all1,730 source/prediction rows and42 report quantities against
+   independent direct R integration, with guarded quadrature and full joint
+   information. The historical normal-RE result has missing SEs and materially
+   differs from the integrated likelihood; it is not counted as exact parity.
+   General conditional FE, normal-RE bootstrap, general GEE, other firm
+   bootstraps and Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not

@@ -350,6 +350,31 @@ fn invalid_input_actual_boundary_and_retained_state() {
   exec(&mut s, "predict still_available, xb");
 }
 #[test]
+fn singular_design_and_start_reconstruction_preserve_state() {
+  let d = TestDir::new();
+  prepare(&d);
+  for probe in [
+    "SELECT * EXCLUDE(logr),1.0+(year-1975)*1e-9 AS logr,0.0 AS pooled_xb FROM active",
+    "SELECT *,50.0+logr AS pooled_xb FROM active",
+    "SELECT *,logr*logr AS pooled_xb FROM active",
+  ] {
+    let mut s = Session::new();
+    exec(
+      &mut s,
+      &format!("use \"{}\"", d.path().join("patents.csv").display()),
+    );
+    exec(&mut s, &format!("sql \"\"\"{probe}\"\"\" into probe"));
+    let before = s.state();
+    let rows = exec(&mut s, "head 100");
+    assert!(
+      s.execute(parse_command(&query()).unwrap()).is_err(),
+      "unexpected acceptance: {probe}"
+    );
+    assert_eq!(s.state(), before);
+    assert_eq!(exec(&mut s, "head 100"), rows);
+  }
+}
+#[test]
 fn successful_composition_retains_pooled_not_normal_re_fit() {
   let d = TestDir::new();
   prepare(&d);
@@ -405,6 +430,62 @@ fn quadrature_mode_iteration_information_and_sample_guards() {
     assert!(!d.path().join("normal_re_poisson_predictions.csv").exists());
     assert_eq!(fs::read(d.path().join("patents.csv")).unwrap(), input);
   }
+}
+#[test]
+fn quadrature_disagreement_on_high_variance_probe_is_rejected() {
+  let d = TestDir::new();
+  prepare(&d);
+  let start = "SELECT 0::BIGINT,a,b,0.0::DOUBLE";
+  assert!(script().contains(start));
+  let variant = script().replace(start, "SELECT 0::BIGINT,a,b,2.0::DOUBLE");
+  let out = run_variant(&d, &variant);
+  assert!(!out.status.success());
+  assert!(!d.path().join("normal_re_poisson_predictions.csv").exists());
+  // Inspect the actual 80-versus-96 discrepancy at this imposed start, before
+  // the quadrature guard aborts; this is not a fit or a public start option.
+  let body = variant
+    .split_once("sql \"\"\"\nWITH RECURSIVE\n")
+    .unwrap()
+    .1
+    .split_once("), final AS MATERIALIZED")
+    .unwrap()
+    .0
+    .replace("quad_diff>1e-9", "quad_diff>1")
+    .replace(
+      "WHERE iter<100 AND (iter=0 OR last_step>1e-12)",
+      "WHERE iter<1 AND (iter=0 OR last_step>1e-12)",
+    );
+  let mut s = Session::new();
+  exec(
+    &mut s,
+    &format!("use \"{}\"", d.path().join("patents.csv").display()),
+  );
+  exec(&mut s, "poisson pat logr");
+  exec(&mut s, "predict pooled_xb, xb");
+  let tabdat_domain::ExecutionResult::Table(t) = exec(
+    &mut s,
+    &format!("sql \"\"\"WITH RECURSIVE\n{body}) SELECT quad_diff FROM search WHERE iter=1\"\"\""),
+  ) else {
+    panic!("expected table")
+  };
+  let tabdat_domain::CellValue::Float(diff) = t.rows[0][0] else {
+    panic!("expected float")
+  };
+  assert!(diff > 1e-9 && diff < 1e-7, "quadrature discrepancy {diff}");
+}
+#[test]
+fn normal_tail_composition_matches_previously_r_checked_workflow() {
+  let gamma = include_str!("../examples/mma23p1pannonlin/gamma_re_poisson.td");
+  let tails = |s: &str| {
+    s.split_once("), small_tail(name,z,iter,term,partial) AS (")
+      .unwrap()
+      .1
+      .split_once("\nSELECT MAX(candidate_rows)")
+      .unwrap()
+      .0
+      .to_owned()
+  };
+  assert_eq!(tails(script()), tails(gamma));
 }
 #[test]
 fn quadrature_nodes_match_normal_moments() {

@@ -1,4 +1,4 @@
-# WIP: bounded shared normal random-intercept Poisson.
+# Bounded shared normal random-intercept Poisson.
 use patents.csv
 isid id year
 sql """SELECT CASE WHEN COUNT(*)=0 OR COUNT(DISTINCT id)<2 OR COUNT(*) FILTER (WHERE id IS NULL OR year IS NULL OR pat IS NULL OR logr IS NULL OR NOT isfinite(id) OR NOT isfinite(year) OR NOT isfinite(pat) OR NOT isfinite(logr) OR id!=floor(id) OR id<1 OR id>346 OR year!=floor(year) OR year<1975 OR year>1979 OR pat<0 OR pat!=floor(pat) OR pat>1000 OR ABS(logr)>20)>0 THEN error('invalid normal RE panel data') ELSE COUNT(*) END AS observations,COUNT(DISTINCT id) AS firms FROM active"""
@@ -215,6 +215,7 @@ search(iter,a,b,t,g,n,old_a,old_b,old_t,u0,u1,u2,s0,s1,s2,i00,i01,i02,i11,i12,i2
        SUM(mu ORDER BY year) AS m,SUM(mu*logr ORDER BY year) AS h,SUM(mu*logr*logr ORDER BY year) AS j,
        EXP(t) AS variance FROM observation GROUP BY id,t
    ), mode(id,k,lo,hi) AS (
+     -- The log posterior is strictly concave; bracket and check every firm's root.
      SELECT id,0::BIGINT,-60.0::DOUBLE,60.0::DOUBLE FROM panel
      UNION ALL
      SELECT m.id,k+1,CASE WHEN p.sy-p.m*EXP((lo+hi)/2)-(lo+hi)/(2*p.variance)>0 THEN (lo+hi)/2 ELSE lo END,
@@ -245,6 +246,8 @@ search(iter,a,b,t,g,n,old_a,old_b,old_t,u0,u1,u2,s0,s1,s2,i00,i01,i02,i11,i12,i2
      SELECT *,peak+LN(den)+LN(SQRT(2)*scale)-0.5*LN(2*PI()*variance) AS log_integral,
        sex/den AS ex,su2/den AS eu2 FROM moments
    ), centered AS (
+     -- Center before taking posterior covariances; raw second-moment subtraction
+     -- loses enough information to perturb small-tail inference on these data.
      SELECT p.id,p.level,
        SUM(EXP(x.logterm-p.peak)*POWER(EXP(x.u)-p.ex,2) ORDER BY x.node)/MAX(p.den) AS var_exp,
        SUM(EXP(x.logterm-p.peak)*POWER(x.u*x.u-p.eu2,2) ORDER BY x.node)/MAX(p.den) AS var_u2,
@@ -290,6 +293,8 @@ search(iter,a,b,t,g,n,old_a,old_b,old_t,u0,u1,u2,s0,s1,s2,i00,i01,i02,i11,i12,i2
        THEN error('normal RE information is singular') ELSE i22-i02*i02/p00-POWER(i12-i01*i02/p00,2)/p11 END AS p22 FROM second_pivot
    ), steps AS (SELECT *, (u2-(i02/p00)*u0-l21*(u1-(i01/p00)*u0))/p22 AS dt FROM third_pivot),
    steps2 AS (SELECT *, (u1-(i01/p00)*u0)/p11-l21*dt AS db FROM steps)
+   -- The declared first half-step avoids the original sample's nonascending
+   -- full Newton step. Later full steps still must pass the ascent guard.
    SELECT *, (u0-i01*db-i02*dt)/p00 AS da,CASE WHEN iter=0 THEN 0.5 ELSE 1.0 END AS factor FROM steps2
  ) step
  WHERE iter<100 AND (iter=0 OR last_step>1e-12)

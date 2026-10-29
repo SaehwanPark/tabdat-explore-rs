@@ -45,7 +45,8 @@ posterior means. Neither these predictions nor model-based inference establish
 a correct conditional distribution, exogeneity, causality or out-of-sample
 accuracy. A separate [distinct-copy whole-firm bootstrap](gamma_re_bootstrap.md)
 provides bootstrap summaries under explicitly declared ID and RNG conventions;
-the normal-RE alternative remains required work.
+a separate [normal random-intercept workflow](normal_re_poisson.md) uses a
+different effect distribution and marginal-mean normalization.
 
 | Original source, float64 | Estimate | Model-based SE |
 | --- | ---: | ---: |
@@ -151,7 +152,8 @@ sample under materialization; the composition now aggregates each iteration
 from one panel scan and explicitly checks firm/row counts on every step. R,
 Python and author data are development-only.
 
-This does not cover normal random effects, general GEE or Figure 23.1. The
-separate [gamma-RE bootstrap](gamma_re_bootstrap.md) uses distinct firm copies;
-historical bootstrap semantics and the rest of the book inventory remain
+This does not cover general GEE or Figure 23.1. The separate
+[gamma-RE bootstrap](gamma_re_bootstrap.md) uses distinct firm copies, and the
+[normal-RE workflow](normal_re_poisson.md) uses a different effect distribution.
+Historical bootstrap semantics and the rest of the book inventory remain
 unresolved, so the chapter and roadmap are not complete.
