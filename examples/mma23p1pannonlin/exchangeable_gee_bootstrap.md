@@ -44,7 +44,15 @@ in particular, treating duplicate copies as a single longer exchangeable panel
 can change GEE equations. This workflow explicitly uses distinct five-row
 copies as the well-defined cluster-pairs bootstrap. Different RNG streams and
 unresolved historical ID behavior both preclude exact historical bootstrap
-parity; do not silently count that ambiguity as resolved.
+parity; do not silently count that ambiguity as resolved. An independent R
+`gee` 4.13-30 counterfactual on the **same** first prescribed draw gives slope
+`0.5712201728` with distinct five-row copies versus `0.5422699889` when copies
+sharing source ID are merged (maximum cluster size 35); see
+`exchangeable_gee_duplicate_probe.R`. This demonstrates material sensitivity,
+not that the historical Stata program used either exact convention. The
+author's bootstrap slope SE `.10729042` also differs from the independent
+500-draw distinct-copy reference (`.04188961`); RNG and/or historical panel
+identity/estimator behavior remain unresolved, not a parity gate.
 
 ## Acceptance and failure cases
 
@@ -55,7 +63,9 @@ parity; do not silently count that ambiguity as resolved.
    original sample/design, GEE coefficients/rho and original prediction rows
    independently. Investigate differences rather than widen tolerances.
 2. Check a 12-firm inspectable fixture, all draws/refits, source order,
-   text/JSON and no-clobber; include negative rho if feasible.
+   text/JSON and no-clobber. The separately validated negative-rho fixture
+   produces a singular lower-boundary correlation on bootstrap replicate 6;
+   assert that this causes a clean whole-script failure, not a discarded draw.
 3. Test invalid, missing, duplicate, nonfinite and singular data; zero Pearson
    variance, exact/near correlation boundaries, cancellation-dominated bread,
    invalid predictor, nonconvergence, RNG/iteration bounds and an actual failed
