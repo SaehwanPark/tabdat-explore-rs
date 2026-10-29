@@ -29,9 +29,9 @@ fn run(dir: &TestDir, mode: &str) -> Output {
 }
 fn close(actual: f64, expected: f64, label: &str) {
   let tolerance = if label.ends_with("p_value") {
-    (expected.abs() * 1e-8).max(f64::MIN_POSITIVE)
+    (expected.abs() * 1e-9).max(f64::MIN_POSITIVE)
   } else {
-    1e-9 + 1e-9 * expected.abs()
+    1e-10 + 1e-10 * expected.abs()
   };
   assert!(
     actual.is_finite() && (actual - expected).abs() <= tolerance,
@@ -151,6 +151,26 @@ fn synthetic_reference_text_json_and_non_clobber() {
 }
 
 #[test]
+fn free_format_conversion_is_independent_of_line_wrapping_and_crlf() {
+  let source = include_str!("fixtures/mma23_pooled_poisson/source.asc");
+  let a = TestDir::new();
+  assert!(prepare(&a, source, "patents.csv").status.success());
+  let b = TestDir::new();
+  let wrapped = source
+    .split_whitespace()
+    .collect::<Vec<_>>()
+    .chunks(7)
+    .map(|chunk| chunk.join(" "))
+    .collect::<Vec<_>>()
+    .join("\r\n");
+  assert!(prepare(&b, &wrapped, "patents.csv").status.success());
+  assert_eq!(
+    fs::read(a.path().join("patents.csv")).unwrap(),
+    fs::read(b.path().join("patents.csv")).unwrap()
+  );
+}
+
+#[test]
 fn preparation_and_workflow_reject_invalid_inputs_without_publication() {
   let source = include_str!("fixtures/mma23_pooled_poisson/source.asc");
   for bad in [
@@ -194,6 +214,20 @@ fn preparation_and_workflow_reject_invalid_inputs_without_publication() {
   assert!(!run(&d, "--json").status.success());
   assert!(!d.path().join("pooled_poisson_predictions.csv").exists());
   assert_eq!(fs::read(&path).unwrap(), before);
+  for (column, bad) in [(0, "0"), (1, "1980"), (7, ""), (8, "-1"), (8, "0.5")] {
+    let mut lines: Vec<_> = csv.lines().map(str::to_owned).collect();
+    let mut fields: Vec<_> = lines[1].split(',').map(str::to_owned).collect();
+    fields[column] = bad.into();
+    lines[1] = fields.join(",");
+    fs::write(&path, lines.join("\n") + "\n").unwrap();
+    let before = fs::read(&path).unwrap();
+    assert!(
+      !run(&d, "--json").status.success(),
+      "accepted column {column}={bad}"
+    );
+    assert!(!d.path().join("pooled_poisson_predictions.csv").exists());
+    assert_eq!(fs::read(&path).unwrap(), before);
+  }
   fs::write(
     &path,
     csv.lines().take(200).collect::<Vec<_>>().join("\n") + "\n",

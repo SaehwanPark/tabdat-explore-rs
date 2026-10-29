@@ -17,7 +17,7 @@ def records(path):
 def near(actual, expected, label):
   a,e=float(actual),float(expected)
   assert math.isfinite(a) and math.isfinite(e),(label,a,e)
-  tolerance = max(abs(e)*1e-8, sys.float_info.min) if label.endswith('p_value') else 1e-9+1e-9*abs(e)
+  tolerance = max(abs(e)*1e-9, sys.float_info.min) if label.endswith('p_value') else 1e-10+1e-10*abs(e)
   assert abs(a-e)<=tolerance,(label,a,e,tolerance)
 
 tokens=raw.read_text().split(); assert len(tokens)==346*25
@@ -40,7 +40,10 @@ for mode in modes:
   assert fit['reference_distribution']==effect['reference_distribution']=='asymptotic_standard_normal'
   assert fit['covariance_parameter_names']==['intercept','logr'] and fit['include_intercept'] and fit['converged']
   assert fit['sample']['retained_indices']==list(range(1730)) and fit['sample']['dropped_observations']==0
+  assert fit['sample']['total_observations']==1730 and fit['sample']['weights'] is None
   assert effect['effect']=='average_continuous_predictor_column_derivative' and effect['uncertainty']=='conditional_on_observed_design_delta_method'
+  assert effect['sample']=='retained_estimation_design'
+  if mode!='cluster': assert fit['sample']['cluster_groups'] is None
   if mode=='cluster':
     assert fit['cluster']['group_count']==346 and fit['cluster']['variable']=='id'
     near(fit['cluster']['finite_sample_multiplier'],346/345,'cluster_correction')
