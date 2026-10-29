@@ -94,6 +94,7 @@ R/Python are not production dependencies.
 Separate workflows now cover [conditional-FE Poisson](conditional_fe.md),
 [exponential-mean NLS](exponential_nls.md), and whole-firm bootstraps for
 [pooled](pooled_poisson_bootstrap.md) and [conditional-FE](conditional_fe_bootstrap.md)
-Poisson, without historical RNG parity. Random-effects Poisson, exchangeable GEE,
-their other bootstraps and the figure remain required. These bounded workflows
+Poisson, without historical RNG parity. The bounded [exchangeable Poisson GEE](exchangeable_gee.md)
+is also separate. Random-effects Poisson, general GEE, other bootstraps and the
+figure remain required. These bounded workflows
 do not complete Table 23.1, the empirical inventory or the chapter.

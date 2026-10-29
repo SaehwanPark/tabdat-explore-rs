@@ -96,6 +96,8 @@ finite original fit with a separated bootstrap replicate, empty information,
 invalid keys and RNG work exhaustion. R/Python and author data are not
 production dependencies.
 
-The separate Poisson RE, pooled/RE/GEE/NLS firm bootstraps, GEE, NLS and
-Figure 23.1 remain required; this composition does not complete the nonlinear
-panel chapter, graduate-method target or full book inventory.
+The separate [pooled bootstrap](pooled_poisson_bootstrap.md), [exponential NLS](exponential_nls.md)
+and bounded [exchangeable Poisson GEE](exchangeable_gee.md) are validated.
+Poisson RE, RE/GEE/NLS firm bootstraps, general GEE and Figure 23.1 remain
+required; this composition does not complete the nonlinear panel chapter,
+graduate-method target or full book inventory.
