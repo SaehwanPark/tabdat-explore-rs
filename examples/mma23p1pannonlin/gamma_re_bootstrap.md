@@ -151,6 +151,7 @@ and cancellation-sensitive information, reconstructed-start and predictor
 limits, forced iteration/RNG bounds, incomplete iteration membership and state
 and file invariants. Python/R and author data are development-only.
 
-Normal-RE Poisson, Figure 23.1, general nonlinear panels and other required
-book analyses remain open. This slice does not complete Chapter 23, the
-graduate methods core or the full book inventory.
+The separate [normal-RE Poisson workflow](normal_re_poisson.md) uses a different
+random-effect distribution. Normal-RE bootstrap, Figure 23.1, general nonlinear
+panels and other required book analyses remain open. This slice does not complete
+Chapter 23, the graduate methods core or the full book inventory.
