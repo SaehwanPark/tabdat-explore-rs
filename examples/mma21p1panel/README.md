@@ -18,7 +18,8 @@ not `ols`. Between compares classical and HC1 named reports on person means. Per
 `panel`/`xtdata` and whole-table coverage remain absent. Interior ML is documented below.
 The separate [Figure21.2 between-person source-data adaptation](between_figure.md)
 uses exact-source-scale means, native LOWESS and an independently audited SVG;
-historical tied-curve parity remains unresolved.
+the [Figure21.1 pooled adaptation](pooled_figure.md) validates all 5,320
+person-year rows and SVG geometry. Historical tied-curve parity remains unresolved.
 
 ## Data and exact samples
 
