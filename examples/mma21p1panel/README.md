@@ -19,7 +19,9 @@ not `ols`. Between compares classical and HC1 named reports on person means. Per
 The separate [Figure21.2 between-person source-data adaptation](between_figure.md)
 uses exact-source-scale means, native LOWESS and an independently audited SVG;
 the [Figure21.1 pooled adaptation](pooled_figure.md) validates all 5,320
-person-year rows and SVG geometry. Historical tied-curve parity remains unresolved.
+person-year rows and SVG geometry. The [Figure21.4 first-differences adaptation](fd_figure.md)
+validates all 4,788 raw-lag annual pairs and SVG geometry. Historical tied-curve
+parity remains unresolved.
 
 ## Data and exact samples
 
