@@ -31,7 +31,7 @@ centered <- function(x,y,span) {
     span>0,span<1,n*span>=.5)
   order<-order(x,seq_len(n));xx<-x[order];yy<-y[order]
   k<-floor((n*span-.5)/2)
-  stopifnot(n*min(n,2*k+1)<=20000000)
+  stopifnot(n*min(n,2*k+1)<=23000000)
   fitted<-numeric(n);constant<-0;score<-0
   for(i in seq_len(n)) {
     at<-seq.int(max(1,i-k),min(n,i+k))
