@@ -16,6 +16,9 @@ data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
 FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
 not `ols`. Between compares classical and HC1 named reports on person means. Persistent
 `panel`/`xtdata` and whole-table coverage remain absent. Interior ML is documented below.
+The separate [Figure21.2 between-person source-data adaptation](between_figure.md)
+uses exact-source-scale means, native LOWESS and an independently audited SVG;
+historical tied-curve parity remains unresolved.
 
 ## Data and exact samples
 
