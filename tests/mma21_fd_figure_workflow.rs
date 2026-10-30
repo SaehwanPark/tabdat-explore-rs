@@ -158,6 +158,11 @@ fn invalid_duplicate_keys_collision_and_singular_design_preserve_source_and_file
         r[0] = "1.5".into()
       }
     }),
+    rewrite(INPUT, |i, r| {
+      if i == 1 {
+        r[0] = "1".into()
+      }
+    }),
     format!(
       "{header},DLNWG\n{}\n",
       rows
