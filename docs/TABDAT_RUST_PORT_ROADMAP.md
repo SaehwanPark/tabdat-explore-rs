@@ -273,7 +273,9 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    work cap raised to23million for its22,636,600-window bound. The
    [Figure21.4 first-difference adaptation](../examples/mma21p1panel/fd_figure.md)
    validates all4,788 consecutive pairs and SVG geometry, with raw lags before
-   finite filtering. Historical tied-curve parity remains open.
+   finite filtering. The [Figure21.3 within adaptation](../examples/mma21p1panel/within_figure.md)
+   validates5,320 exact-source-scale transformed rows, FE/auxiliary OLS cluster
+   inference and SVG geometry. Historical tied-curve parity remains open.
    The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
    OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
    printed facts, with F(1,G-1) reference and explicit covariance assumptions.
