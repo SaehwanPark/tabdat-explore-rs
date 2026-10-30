@@ -183,6 +183,17 @@ fn enforces_work_and_observation_limits_and_rejects_unrepresentable_arithmetic()
     )
     .is_err()
   );
+  // 5,000 × 4,599 is below the bound; the next odd window exceeds it.
+  let near_limit = vec![0.; 5_000];
+  let allowed = smooth_lowess(&near_limit, &near_limit, 4_599.0 / 5_000.0).unwrap();
+  assert_eq!(allowed.half_window, 2_299);
+  assert_eq!(allowed.values, near_limit);
+  assert!(
+    smooth_lowess(&near_limit, &near_limit, 4_601.0 / 5_000.0)
+      .unwrap_err()
+      .to_string()
+      .contains("window-work")
+  );
   let full = vec![0.; MAX_LOWESS_OBSERVATIONS];
   assert!(
     smooth_lowess(&full, &full, 0.8)

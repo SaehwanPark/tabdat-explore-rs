@@ -3,7 +3,7 @@ use crate::StatsError;
 use crate::matrix::add_compensated;
 
 pub const MAX_LOWESS_OBSERVATIONS: usize = 10_000;
-pub const MAX_LOWESS_WORK: usize = 20_000_000;
+pub const MAX_LOWESS_WORK: usize = 23_000_000;
 
 /// Fits are restored to input order. No estimator state or out-of-sample model.
 #[derive(Debug, Clone, PartialEq)]
