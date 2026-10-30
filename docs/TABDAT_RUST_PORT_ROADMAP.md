@@ -266,6 +266,9 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
    POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
    and Gaussian ML with joint/constrained observed information and null/slope LR.
+   The [Figure21.2 between-person source-data adaptation](../examples/mma21p1panel/between_figure.md)
+   validates 5,320 source rows, 532 exact-source-scale person means and ordered
+   LOWESS/OLS fits plus SVG geometry; historical tied-curve parity remains open.
    The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
    OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
    printed facts, with F(1,G-1) reference and explicit covariance assumptions.

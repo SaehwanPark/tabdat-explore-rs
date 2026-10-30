@@ -149,18 +149,37 @@ fn joint_finite_rows_and_nonmodel_missingness() {
     0 => r[1] = "".into(),
     5 => r[2] = "".into(),
     8 => r[3] = "".into(),
+    92.. => r[2] = "".into(),
     _ => {}
   });
   fs::write(&p, &changed).unwrap();
+  for (name, content) in [
+    (
+      "source.csv",
+      include_str!("fixtures/mma21_between_figure_missing/source.csv"),
+    ),
+    (
+      "rows.csv",
+      include_str!("fixtures/mma21_between_figure_missing/rows.csv"),
+    ),
+    (
+      "meta.csv",
+      include_str!("fixtures/mma21_between_figure_missing/meta.csv"),
+    ),
+  ] {
+    fs::write(d.path().join("reference").join(name), content).unwrap();
+  }
   let o = run(&d, "--json");
   ok(&o);
+  fs::write(d.path().join("out.jsonl"), &o.stdout).unwrap();
+  ok(&audit(&d));
   let data = fs::read_to_string(d.path().join("between_figure.csv")).unwrap();
   let rows: Vec<Vec<&str>> = data
     .lines()
     .skip(1)
     .map(|s| s.split(',').collect())
     .collect();
-  assert_eq!(rows.len(), 24);
+  assert_eq!(rows.len(), 23);
   assert_eq!(rows[0][1], "3");
   assert_eq!(rows[0][2].parse::<f64>().unwrap(), 1980.0);
   assert_eq!(rows[1][1], "3");
@@ -191,6 +210,8 @@ fn invalid_precision_keys_collision_and_singular_design_do_not_export() {
   let mut lines = input.lines();
   let header = lines.next().unwrap();
   let rows: Vec<_> = lines.collect();
+  let svg = d.path().join("between_figure.svg");
+  fs::write(&svg, b"sentinel").unwrap();
   let cases = [
     format!("{header}\n{}\n{}\n", rows.join("\n"), rows[0]),
     rewrite(&input, |i, r| {
@@ -229,7 +250,7 @@ fn invalid_precision_keys_collision_and_singular_design_do_not_export() {
     );
     assert_eq!(fs::read_to_string(&p).unwrap(), case);
     assert!(!d.path().join("between_figure.csv").exists());
-    assert!(!d.path().join("between_figure.svg").exists());
+    assert_eq!(fs::read(&svg).unwrap(), b"sentinel");
   }
 }
 
