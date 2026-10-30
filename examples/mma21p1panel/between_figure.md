@@ -55,10 +55,10 @@ recovered or detected by this numeric check. The pinned original source and
 converter preserve its two-decimal spellings. This is not a generic arbitrary-
 precision panel mean.
 
-The final quotient and smoother use float64: **only exactly equal resulting
-X values tie**. Equal-length original panels with equal source-scale sums give
+The final quotient and smoother use float64: **only numerically equal resulting
+X values tie**, including signed zeros. Equal-length original panels with equal source-scale sums give
 the same numeric mean; for unequal row counts, mathematically equal rational
-means are not promised bitwise equality. This convention is deterministic for
+means are not promised exact numeric equality. This convention is deterministic for
 a given sample and avoids floating accumulation order changing original ties.
 
 An initial ordered binary AVG and independent R mean differed by at most

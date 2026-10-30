@@ -20,8 +20,10 @@ The separate [Figure21.2 between-person source-data adaptation](between_figure.m
 uses exact-source-scale means, native LOWESS and an independently audited SVG;
 the [Figure21.1 pooled adaptation](pooled_figure.md) validates all 5,320
 person-year rows and SVG geometry. The [Figure21.4 first-differences adaptation](fd_figure.md)
-validates all 4,788 raw-lag annual pairs and SVG geometry. Historical tied-curve
-parity remains unresolved.
+validates all 4,788 raw-lag annual pairs and SVG geometry. The [Figure21.3
+within adaptation](within_figure.md) validates all 5,320 exact-source-scale
+transformed rows, distinct FE/auxiliary-OLS cluster inference and actual SVG
+geometry. Historical tied-curve parity remains unresolved.
 
 ## Data and exact samples
 
