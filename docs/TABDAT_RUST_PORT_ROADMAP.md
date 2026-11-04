@@ -79,7 +79,7 @@ single PR or a demand to expose every option immediately.
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
 | **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced/unbalanced Swamy–Arora RE-GLS, and balanced/unbalanced Gaussian RE-ML with positive-interior variance-component log-Wald intervals and a one-sided zero-unit-variance LR test are also validated. Interior ML additionally supports full joint unit-score inference; remaining illustrated ML inference and general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Installed bounded unweighted IID-location inference and current-row predictions, validated .1/.5/.9 household fits; joint IID pairs-bootstrap covariance/marginal percentile intervals permit heteroskedasticity under IID regularity, with a shared-replicate B-1 SE and asymptotic normal test/95% Wald interval for one coefficient across exactly two quantiles. Cluster inference, general restrictions, simultaneous bands and Figure4.1 rendering remain. See MMA-QREG. |
-| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits). Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, automatic FE/RE refits and simulation remain required. |
+| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits). Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, general automatic FE/RE refits and simulation remain required; the bounded MOM component-refitting compositions below are not a general resampling API. |
 
 Graduate-core acceptance requires representative end-to-end analyses across these
 families, the design/reporting foundations they need, usable terminal and script
@@ -268,10 +268,15 @@ now refits variance components per draw on the original MOM mean design:
 500 independent R refits/266,000 exact native-stream draws, full coefficient
 covariance/type7 intervals and original predictions are audited. Boundary draws
 are retained; historical Stata draw/duplicate-ID/all-interval parity and a general
-ML bootstrap API are not claimed. A next candidate is component-refitting RE-GLS
-resampling with population-scale intercept uncertainty. Gaussian population-averaged
-GEE and complete comparison reporting remain separate requirements; existing
-fixed-transform bootstraps do not close them.
+ML bootstrap API are not claimed. The distinct [component-refitting RE-GLS
+bootstrap](../examples/mma21p1panel/random_effects_gls_refit_bootstrap.md) now
+validates500 R/plm Swamy–Arora refits/266,000 exact draws, signed/truncated
+components/theta, population-intercept/slope covariance/type7 intervals, readable/
+CLI-v1 uncertainty and original predictions. Existing fixed-theta workflows
+remain separate and unchanged. A next candidate is the still-missing Gaussian
+identity-link exchangeable population-averaged GEE, after defining exact working
+correlation/scale/covariance conventions. Complete comparison reporting, FE
+level-intercept uncertainty and historical parity also remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
