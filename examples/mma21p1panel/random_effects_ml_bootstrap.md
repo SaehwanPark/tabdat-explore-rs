@@ -163,5 +163,7 @@ source value. Existing RE-ML workflow integration checks also pass. No productio
 Python/R dependency, shared estimator/API change, whole-chapter, platform or
 release certification is introduced. The separate [component-refitting RE-GLS
 bootstrap](random_effects_gls_refit_bootstrap.md) now validates its bounded
-Swamy–Arora target; it is not this ML bootstrap. FE level-intercept uncertainty,
-Gaussian PA and historical parity remain required work.
+Swamy–Arora target; it is not this ML bootstrap. The bounded [Gaussian PA](gaussian_pa.md)
+and [normalized FE pairs bootstrap](fe_level_bootstrap.md) targets are now
+validated separately. Classical analytic FE level-intercept uncertainty and
+historical parity remain required work.

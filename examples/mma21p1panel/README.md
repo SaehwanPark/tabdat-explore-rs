@@ -10,7 +10,7 @@ the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 The [source-pinned first-program inventory](inventory.md) separates its 20
 analysis/reporting requirements, links current workflows and independent evidence,
-and explicitly retains missing FE level-intercept uncertainty,
+and explicitly retains missing classical analytic FE level-intercept uncertainty,
 full reporting and historical-parity requirements. It is not a complete chapter
 or book inventory. The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
@@ -26,7 +26,11 @@ unit-sandwich covariance/normal95, all5,320 predictions/532 unit scores and12
 printed author facts against R gee/dense matrices. Positive and negative
 correlation controls pass. Native retained state remains pooled OLS: no owned
 GEE/general API or p-values; explicit GEE prediction columns and readable/CLI-v1
-reports are provided.
+reports are provided. The distinct [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
+now refits500 within slopes/sample normalizations, validates full B-1 coefficient
+covariance/type7 intervals against raw-copy R QR and retains all native original
+FE predictions. Zero empirical slope variance is retained; classical analytic
+common-intercept inference remains unimplemented.
 
 POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage
@@ -760,6 +764,9 @@ OLS fit remains usable for prediction/export; this is a read-only report.
 B-1 covariance/SE, replicate means/bias and type7 percentile95 intervals. The wage
 slope bootstrap SE is0.0849753799988. The centered intercept is numerical zero;
 its tiny floating-point variability is not FE nuisance-intercept inference.
+For the distinct normalized **level** intercept, use the [FE refitting composition](fe_level_bootstrap.md);
+it recomputes sample means/normalization per draw and retains original native FE
+state, rather than reinterpreting this centered auxiliary intercept.
 These fixed input transformations match the manual program; there is no automatic
 FE/RE refit, RE variance-component re-estimation, residual/wild bootstrap or
 few-cluster/nominal-coverage guarantee. No equality to the historical Stata draw
