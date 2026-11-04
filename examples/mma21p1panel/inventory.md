@@ -112,9 +112,10 @@ The separate [first-program B500 Between workflow](between_bootstrap_b500.md)
 now validates its native replication-count target while retaining manual B200;
 historical replay and full first-program coverage remain unclaimed.
 
-The source overview also names `mma21p2panfeandre.do`,
-`mma21p3panresiduals.do` and `mma21p4panpangls.do`. This inventory does not assert
-those programs or all book illustrations have been exhausted. Existing manual
-within/GLS bootstrap and robust auxiliary Hausman evidence must be attached to
-those companion blocks when inspected, not used to erase the distinct targets
-above. No required illustration has been excluded by this slice.
+The [manual-program inventory](manual_inventory.md) now maps29 separate source
+requirements and attaches the manual within/fixed-GLS bootstrap and robust
+auxiliary Hausman evidence without erasing the distinct targets above. The live
+publisher filenames are `mma21p2panmanual.do`, `mma21p3panresiduals.do` and
+`mma21p4pangls.do`; the overview's second/fourth names are stale HTTP404 aliases.
+Detailed residual/GLS inventories and the full book inventory remain required.
+No required illustration has been excluded.

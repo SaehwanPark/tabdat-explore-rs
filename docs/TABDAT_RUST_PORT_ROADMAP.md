@@ -262,8 +262,11 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 ## Next bounded actions
 
 The [Chapter21 first-program inventory](../examples/mma21p1panel/inventory.md)
-now separates 20 source-program requirements without claiming full chapter/book
-coverage. Its [whole-person RE-ML bootstrap composition](../examples/mma21p1panel/random_effects_ml_bootstrap.md)
+now separates20 source-program requirements; the [manual-program inventory](../examples/mma21p1panel/manual_inventory.md)
+adds29 transformed-OLS/reporting requirements and verified publisher filenames.
+Neither closes full chapter/book coverage. Native FE/ML inference is not a proxy
+for the manual auxiliary rows; the logged GLS-under-ML-HC1 anomaly is explicit.
+The separate first-program [whole-person RE-ML bootstrap composition](../examples/mma21p1panel/random_effects_ml_bootstrap.md)
 now refits variance components per draw on the original MOM mean design:
 500 independent R refits/266,000 exact native-stream draws, full coefficient
 covariance/type7 intervals and original predictions are audited. Boundary draws
@@ -297,8 +300,12 @@ new normalized inference, not existing slope/point fits.
 The separate [first-program B500 Between bootstrap](../examples/mma21p1panel/between_bootstrap_b500.md)
 now validates18 independent R summaries/all532 mean/prediction records and exact
 raw inputs, retaining manual B200 and distinguishing native/historical RNG.
-Next reassess companion-program inventory/source alignment and full reporting. Complete comparison reporting,
-historical parity and companion/full-book inventory remain required.
+A next bounded implementation target is the manual FE auxiliary covariance
+comparison (classical DF5318, row-HC1 versus person-cluster DF531), with exact-sample
+R validation and explicit deterministic centered-intercept treatment. Do not
+substitute canonical absorbed FE covariance/normalization. Residual/GLS companion
+inventories, fixed-ML auxiliary inference/bootstrap, complete comparisons,
+historical parity and the full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
