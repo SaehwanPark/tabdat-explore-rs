@@ -78,6 +78,14 @@ components/theta, population-intercept/slope covariance/type7 intervals and
 original predictions; existing fixed-theta resampling is unchanged. None of
 these bootstrap slices or this inventory is whole-program/chapter/book closure.
 
+The separate [Chapter21 manual-program inventory](../../examples/mma21p1panel/manual_inventory.md)
+now maps29 analysis/preparation/reporting requirements and verifies the live
+companion filenames against the publisher index. It distinguishes canonical
+FE/ML from fixed transformed-OLS inference, B200/no preceding seed reset from
+B500/reset10001, and the logged GLS-HC1 row stored under an ML label. Residual/GLS
+program inventories and complete comparisons remain open; no analytical method
+was implemented or newly numerically validated by this inventory slice.
+
 These are starting points from the authors' [dataset index][data], not a complete
 inventory or exact replication specifications. Page ranges are locators from that
 index; inspect the book and accompanying program before naming a table, sample,

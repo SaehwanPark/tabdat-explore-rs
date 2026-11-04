@@ -11,7 +11,11 @@ This is linear-panel chapter **21**, not clustered-sample chapter24.
 The [source-pinned first-program inventory](inventory.md) separates its 20
 analysis/reporting requirements, links current workflows and independent evidence,
 and explicitly retains missing full reporting and historical-parity requirements. It is not a complete chapter
-or book inventory. The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
+or book inventory. The [manual-program inventory](manual_inventory.md) now
+separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
+filenames, and records the source/log GLS-HC1 row stored under an ML label.
+Canonical FE/ML inference does not close those auxiliary covariance targets.
+The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;
 it is not a general ML bootstrap API or historical Stata draw replay. A separate
