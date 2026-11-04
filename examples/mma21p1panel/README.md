@@ -709,6 +709,12 @@ Earlier successful script effects are not rolled back after a later error.
 
 ### Seeded Between IID pairs bootstrap
 
+The separate [first-program B500 Between workflow](between_bootstrap_b500.md)
+now validates500 native pairs refits via18 independent R summary fields and all
+532 person mean/design/prediction records, without replacing the manual B200
+workflow below. Exports have distinct names and historical Stata draw parity
+remains unclaimed.
+
 [`between_bootstrap.td`](between_bootstrap.td) implements the Between-bootstrap
 analysis of the March2005 manual program on all5,320 MOM observations/532 people.
 First select joint-finite lnhr/lnwg cases, compute person means (ordered by year)

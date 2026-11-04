@@ -1,14 +1,23 @@
 # Independent raw-MOM means, Python reference indices and R lm/cov/quantile audit.
-# Rscript between_bootstrap_reference.R MOM.dat fresh_output_directory
+# Rscript between_bootstrap_reference.R MOM.dat fresh_output_directory [500]
+# Default retains the original B200/manual-program source contract.
 options(digits=17)
-args <- commandArgs(trailingOnly=TRUE); stopifnot(length(args)==2,!file.exists(args[2]))
+args <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(args)%in%c(2,3),!file.exists(args[2]))
+B <- if(length(args)==3) {stopifnot(args[3]=='500');500L} else 200L
 script <- sub('^--file=','',commandArgs()[grepl('^--file=',commandArgs())])
 repo <- normalizePath(file.path(dirname(script),'../..'))
-v <- scan(args[1],quiet=TRUE); stopifnot(length(v)==5320*8,all(is.finite(v)))
+v <- scan(args[1],quiet=TRUE); stopifnot(length(v)>0,length(v)%%8==0,all(is.finite(v)))
 d <- as.data.frame(matrix(v,ncol=8,byrow=TRUE)); names(d) <- c('lnhr','lnwg','kids','ageh','agesq','disab','id','year')
-stopifnot(identical(d$id,rep(as.numeric(1:532),each=10)),identical(d$year,rep(as.numeric(1979:1988),532)))
+if(B==200L) {
+  stopifnot(length(v)==5320*8,identical(d$id,rep(as.numeric(1:532),each=10)),identical(d$year,rep(as.numeric(1979:1988),532)))
+} else {
+  stopifnot(!anyDuplicated(d[c('id','year')]),all(d$id==floor(d$id)),all(d$id>=1 & d$id<=532),
+    all(d$year%in%1979:1988),all(abs(d$lnhr)<=20),all(abs(d$lnwg)<=20),
+    length(unique(d$id))>=3,length(unique(d$id))<=532,all(table(d$id)==10))
+}
 f <- do.call(rbind,lapply(split(d,d$id),function(p) data.frame(id=p$id[1],model_rows=nrow(p),first_year=min(p$year),last_year=max(p$year),mean_lnhr=mean(p$lnhr),mean_lnwg=mean(p$lnwg))))
-f <- f[order(f$id),]; N <- nrow(f); B <- 200; seed <- 10001
+f <- f[order(f$id),]; N <- nrow(f); seed <- 10001
 fit <- lm(mean_lnhr~mean_lnwg,f); X <- model.matrix(fit); beta <- unname(coef(fit))
 index_file <- tempfile(fileext='.csv')
 status <- system2('python3',c(shQuote(file.path(repo,'crates/tabdat-stats/tests/fixtures/bootstrap/draws.py')),'--draws',seed,N,B,shQuote(index_file)))

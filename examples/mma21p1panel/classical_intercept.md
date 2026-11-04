@@ -126,5 +126,6 @@ only the original-file hash gate, not raw-field/sample/reference checks.
 C21-P1-FE remains partial: remaining historical panel statistics and complete
 comparison reporting are not supplied by this covariance increment. Individual
 FE uncertainty, complete companion-program/book inventory and other required
-roadmap methods remain open. A next bounded candidate is the first-program
-B500 Between bootstrap gap; reassess source/priorities before selecting it.
+roadmap methods remain open. The separate [B500 Between workflow](between_bootstrap_b500.md) now covers its
+native replication-count target. Next reassess companion-program source inventory
+and complete comparison/reporting needs.
