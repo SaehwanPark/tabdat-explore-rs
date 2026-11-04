@@ -31,6 +31,10 @@ whole-chapter/book coverage or adds runtime capability. The separate
 now validates centered auxiliary IID/row-HC1/person-CR1 comparisons, full covariance,
 slope intervals and named reports on all5,320 rows; their5318/531 DF and numerical
 centered intercept remain distinct from canonical FE inference/normalization.
+The [manual fixed-GLS covariance workflow](examples/mma21p1panel/manual_gls_covariance.md)
+adds original-theta IID/HC1/person-CR1 matrices/both coefficient intervals and
+population/quasi predictions, with independent120-field R/plm evidence and
+explicit negative-raw-component truncation, intercept scaling and normal/t references.
 
 ## Implemented and deferred capabilities
 

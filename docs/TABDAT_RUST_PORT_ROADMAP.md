@@ -305,10 +305,16 @@ now validates68 original QR quantities/79,800 source/mean/prediction cells,
 IID/row-HC1/person-CR1 full matrices and5318/531 slope-interval DF. Named reports
 carry exact samples/cluster labels; post-prediction cluster inference is retained.
 Centered-intercept t/p artifacts are explicitly not interpreted; canonical FE
-covariance/normalization remains separate. A next bounded target is the manual
-fixed-GLS-theta auxiliary covariance comparison, not component-refitting GLS or
-ML information. Residual/GLS companion inventories, fixed-ML auxiliary work,
-complete mixed comparisons, historical parity and full book inventory remain required.
+covariance/normalization remains separate. The [manual fixed-GLS-theta comparison](../examples/mma21p1panel/manual_gls_covariance.md)
+now validates120 original R/plm/QR fields, all122,360 source/component/population/
+quasi prediction cells, three matrices/both coefficient intervals and two
+independent interior/theta0 controls. Signed negative raw variance is retained,
+not re-estimated per covariance; native normal versus auxiliary t and quasi
+intercept scaling are explicit. A next bounded diagnostic is the manual
+nonrobust auxiliary Hausman comparison alongside the existing robust auxiliary
+target, not native covariance subtraction. Fixed-ML auxiliary work, residual/GLS
+inventories, complete mixed reporting, historical parity and full book inventory
+remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

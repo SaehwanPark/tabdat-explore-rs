@@ -1914,6 +1914,28 @@ RE nuisance-component bootstrap or FE intercept inference. The transformed
 intercept is numerical zero. No few-cluster or nominal-coverage guarantee;
 any bad replication aborts without redraw/discard and prior fit/data stay intact.
 
+### MMA-PANEL manual fixed-GLS-theta auxiliary covariance comparison
+
+The [bounded workflow](../../examples/mma21p1panel/manual_gls_covariance.md) addresses
+P2-GLS-IID/CL/HC1 source264–269/278–279, keeping original Swamy–Arora components/
+theta fixed across quasi OLS IID/row-HC1/person-CR1 covariance. It validates both
+coefficients/intervals, full matrices and exact named sample/cluster provenance;
+native population normal inference/intercept scale is separate from auxiliary
+t(5318)/cluster t(531). R4.6.2/plm2.6.7 raw mean/QR/score references check120
+original quantities and122,360 source/component/population/quasi prediction cells
+(47,880 raw/key cells exact); two independent160-row interior/theta0 controls
+add240 fields/7360 cells. Original theta0.5847092377438329; slope SEs are
+0.013631220624/0.042689677760/0.051401584845. Signed negative raw_u is preserved,
+truncated only for admissible component/theta construction, not clipped to fix
+covariance discrepancies. Three actual-script tests cover both controls, late
+owned inference, text parity, seven invalid key/sample/component-design cases,
+file/source preservation and no full-joint inversion requirement. Thirteen forged
+numerical/provenance/source/partial-export/boundary traces are rejected. Coarse exact
+dyadic controls avoid the reproduced R decimal-parser ULP trap without weakening
+raw equality/tolerances. Not component refitting, ML information, exact nominal
+coverage, historical printed-SE parity, native RE snapshots or complete mixed
+reporting; source GLS-under-ML-HC1 labels and required panel/book gaps stay open.
+
 ### MMA-PANEL fixed-theta RE-GLS whole-person bootstrap evidence
 
 The [bounded workflow](../../examples/mma21p1panel/README.md) implements block5
