@@ -153,6 +153,10 @@ pub struct RandomEffectsState {
   pub time_variable: String,
   pub entity_data_type: String,
   pub result: tabdat_stats::RandomEffectsResult,
+  /// Original joint-finite design for the bounded classical comparison.
+  /// Older snapshots and unsupported fit variants do not retain this design.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub hausman_problem: Option<tabdat_stats::EstimationProblem>,
 }
 
 /// Owned binary logit design and maximum likelihood fit, independent of current data.
@@ -269,6 +273,7 @@ pub enum EstimationState {
   ZeroInflatedNegativeBinomial(ModelState),
   Survival(ModelState),
   InstrumentalVariables(Box<InstrumentalVariablesState>),
+  ClusterGmm(Box<crate::ClusterGmmFit>),
   PanelLinear(ModelState),
   FixedEffects(Box<FixedEffectsState>),
   RandomEffects(Box<RandomEffectsState>),
@@ -340,7 +345,9 @@ impl EstimationState {
       Self::Survival(..) | Self::WeibullFit(..) | Self::GompertzFit(..) | Self::CoxFit(..) => {
         EstimationFamily::Survival
       }
-      Self::InstrumentalVariables(..) => EstimationFamily::InstrumentalVariables,
+      Self::InstrumentalVariables(..) | Self::ClusterGmm(..) => {
+        EstimationFamily::InstrumentalVariables
+      }
       Self::PanelLinear(..) | Self::FixedEffects(..) | Self::RandomEffects(..) => {
         EstimationFamily::PanelLinear
       }

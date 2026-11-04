@@ -35,7 +35,8 @@ workflow before export. The export refuses to overwrite an existing file; prior
 session effects are not rolled back. The converter below verifies the source
 hash and publishes without clobbering an existing file. Python and R are needed
 only for source conversion and reference checking, not the application. This
-is a bounded source workflow, not a general panel-GMM command. Two-step GMM and dynamic-panel methods remain unimplemented here.
+is a bounded source workflow, not a general panel-GMM command. The separate
+base- and stacked-instrument GMM workflows do not implement dynamic-panel methods.
 
 From a fresh directory:
 
@@ -56,6 +57,40 @@ not claimed to match the present double-precision input exactly. Focused CLI
 tests cover complete panels, reverse row order, duplicated/missing years, rank
 failure and no-clobber export; the converter was checked against a modified
 source and an existing destination.
+
+## Base-instrument clustered two-step GMM
+
+[`base_gmm.td`](base_gmm.td) uses the same complete 4,256-row, 532-person
+sample, five endogenous differences and nine lagged-level instruments without an
+intercept. Wage coefficient is 0.54679608. The uncorrected fixed-pilot-weight
+cluster sandwich SE is 0.32975788 and its J is 5.32649145. Separately, the
+author's updated-residual inverse-information SE is 0.32762393 and its updated
+J is 5.45038655, both distinct finite-sample quantities. Both J tests use four
+asymptotic chi-square degrees of freedom. Normal coefficient inference assumes
+independent people and valid instruments; it is not weak-IV-robust or causal.
+The implementation does not provide dynamic-panel GMM, stacked 72-instrument
+GMM, iterative GMM, finite-sample cluster corrections, or GMM post-estimation
+beyond current-data `xb` and residual prediction. See [gmm.md](gmm.md) for
+numerical limits and both covariance definitions.
+
+After preparing `MOMprecise.csv` and the independent base `reference` directory
+as above, in a fresh output directory:
+
+```sh
+/path/to/tabdat-explore-rs --json -f /path/to/repo/examples/mma22p1panel/base_gmm.td > gmm-result.jsonl
+Rscript /path/to/repo/examples/mma22p1panel/gmm_reference.R reference/design.csv gmm-reference
+python3 /path/to/repo/examples/mma22p1panel/check_gmm.py /path/to/MOMprecise.dat gmm-result.jsonl panel_gmm_design.csv gmm-reference
+```
+
+R 4.6.1 independently forms the scaled QR pilot, moment covariances, second-step
+fit, both full covariance matrices and objectives. The audit checks every source
+row and prediction, sample/group provenance, coefficients, SEs, p-values,
+intervals, matrices, and both J statistics and p-values at
+`1e-9 + 1e-9*abs(reference)`. Selected author-log wage and J values use absolute
+`1e-6` and `1e-5` respectively; historical float storage prevents a claim of
+exact digit parity. Original text and JSON exports were byte-identical. Focused
+script tests cover reversed input, missing/duplicate years, singular design and
+no-clobber export. Earlier script effects are not rolled back on failure.
 
 ## First-difference OLS
 
@@ -125,6 +160,16 @@ it also checks the author-log R² and F values at `1e-5` to account for its floa
 storage. Original JSON/text exports are byte-identical. The complete-panel and
 no-clobber rules above apply; the focused test exercises reversed input, missing
 years, rank failure and existing export. Scripts are not transactional.
+
+## Author-program wage Shea diagnostic
+
+The separate [wage Shea workflow](shea.md) reproduces the author's §22.3
+intercept-including auxiliary regressions and squared residual correlation on
+4,256 person-years. Independent R gives rho 0.0603937911 and squared correlation
+0.0036474100; the author log prints 0.00364741. All design/prediction rows and
+seven classical regression results are audited. This descriptive relevance measure
+is not a joint weak-IV test or evidence of instrument validity. It differs in
+intercept convention from the no-intercept structural 2SLS diagnostics above.
 
 ## Year-stacked wage diagnostic
 
@@ -212,8 +257,8 @@ and 2e-7 respectively, while native-covariance F is checked at the standard
 tolerance. R separately evaluates the F survival function at each *native* F,
 including the subnormal age-squared p-value, to 1e-10 relative plus 1e-320.
 Original JSON/text exports are byte-identical. Incomplete panels, insufficient
-cluster rank and existing exports fail; scripts are not transactional. GMM
-and other chapter requirements remain.
+cluster rank and existing exports fail; scripts are not transactional. Other
+chapter requirements remain.
 
 ## Year-stacked instruments
 
@@ -241,5 +286,7 @@ prepared base design and uses QR projection for the two covariance estimators.
 The check compares every design, fitted and residual value, coefficients,
 p-values and both covariance matrices at `1e-9 + 1e-9*abs(reference)`, plus
 the author coefficient and SE values at table precision. Focused tests cover
-block placement, missing years, the two fits and no-clobber export. This adds
-one stacked 2SLS column; it does not implement two-step GMM.
+block placement, missing years, the two fits and no-clobber export. The separate
+[stacked GMM workflow](stacked_gmm.md) validates the two-step GMM column using
+these same 72 instruments, distinguishing the standard fixed-weight and author's
+updated covariance and objective. This does not implement dynamic-panel GMM.

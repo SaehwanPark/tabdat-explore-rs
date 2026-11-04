@@ -27,7 +27,7 @@ No robust reweighting iterations or interpolation between fitted observations.
 If d=0, every window X is identical: use its local arithmetic mean (degree0),
 not an arbitrary slope, ridge or pseudoinverse. A supported k=0 returns the
 original eligible Y exactly. Require2<=N<=10000,0<bandwidth<1,N*bandwidth>=.5
-(k must be nonnegative) and N*min(N,2k+1)<=20000000. Unsupported tiny bandwidths
+(k must be nonnegative) and N*min(N,2k+1)<=23000000. Unsupported tiny bandwidths
 error, not silent clipping. Compute local centred/radius-scaled X and window-local
 scaled Y with compensated sums; nonfinite local differences/unrepresentable
 requested fits fail. Positive-radius windows must have positive finite centred

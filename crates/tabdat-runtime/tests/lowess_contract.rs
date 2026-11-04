@@ -285,7 +285,7 @@ fn arithmetic_failure_after_a_completed_window_does_not_publish_or_clear_prior_f
 #[test]
 fn row_and_window_work_limits_fail_atomically_without_destroying_a_retained_fit() {
   let f = Fixture::new(INPUT);
-  for n in [10000, 10001] {
+  for (n, bandwidth) in [(5_000, "0.9202"), (10_000, "0.8"), (10_001, "0.8")] {
     let mut s = f.load();
     run(
       &mut s,
@@ -298,7 +298,7 @@ fn row_and_window_work_limits_fail_atomically_without_destroying_a_retained_fit(
     let before = s.state();
     let signature = run(&mut s, "datasignature");
     assert!(matches!(
-      s.execute(direct("not_published", "0.8")),
+      s.execute(direct("not_published", bandwidth)),
       Err(RuntimeError::LowessFailed(_))
     ));
     assert_eq!(s.state(), before);

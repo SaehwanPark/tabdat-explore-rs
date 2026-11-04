@@ -11,6 +11,15 @@ fn batch_and_script_share_bounded_command_admission() {
     ("regress y x if x > 0", true),
     ("ivregress 2sls y x, endog(z) iv(w)", true),
     ("ivregress gmm y x, endog(z) iv(w)", false),
+    (
+      "ivregress gmm y, endog(x) iv(z w) noconstant cluster(id)",
+      true,
+    ),
+    ("ivregress gmm y, endog(x) iv(z w) noconstant", false),
+    (
+      "ivregress gmm y x, endog(q) iv(z w) noconstant cluster(id)",
+      false,
+    ),
     ("summarize x if x > 0", true),
     ("summarize x if x > 0, detail", true),
     ("summarize x, detail detail", false),

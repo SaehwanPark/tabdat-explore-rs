@@ -128,7 +128,7 @@ fn lowess_batch_script_admission_schema_and_help_match_installed_parser() {
     "default 2/3",
     "within-tie row order",
     "window-local",
-    "20,000,000",
+    "23,000,000",
     "PREVIOUS retained model",
     "nearest-neighbour",
   ] {

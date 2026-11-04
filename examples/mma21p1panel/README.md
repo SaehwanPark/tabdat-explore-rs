@@ -16,6 +16,14 @@ data through text/CLI-v1/scripts. POLS/FD compare three immutable named reports;
 FE reports classical and unit-cluster results with a new `FixedEffectsResult`,
 not `ols`. Between compares classical and HC1 named reports on person means. Persistent
 `panel`/`xtdata` and whole-table coverage remain absent. Interior ML is documented below.
+The separate [Figure21.2 between-person source-data adaptation](between_figure.md)
+uses exact-source-scale means, native LOWESS and an independently audited SVG;
+the [Figure21.1 pooled adaptation](pooled_figure.md) validates all 5,320
+person-year rows and SVG geometry. The [Figure21.4 first-differences adaptation](fd_figure.md)
+validates all 4,788 raw-lag annual pairs and SVG geometry. The [Figure21.3
+within adaptation](within_figure.md) validates all 5,320 exact-source-scale
+transformed rows, distinct FE/auxiliary-OLS cluster inference and actual SVG
+geometry. Historical tied-curve parity remains unresolved.
 
 ## Data and exact samples
 
@@ -364,6 +372,27 @@ Hausman and other panel diagnostics, bootstrap and remaining table/figure output
 This bounded balanced classical RE-GLS portion does not complete
 the column/table, panel family or textbook target.
 
+## Pooled whole-person bootstrap
+
+The separate [pooled bootstrap workflow](pooled_bootstrap.md) uses the original
+5,320 person-years and 532 people, with 500 seeded whole-person pairs draws and
+an explicitly distinct native RNG from the author's Stata run. R independently
+validates all bootstrap summary/covariance quantities and every exported
+prediction row; the wage bootstrap SE is 0.02881286627. The current OLS fit
+remains available for prediction. This is not a few-cluster guarantee or an
+automatic FE/RE bootstrap.
+
+## First-difference whole-person bootstrap
+
+The separate [first-difference bootstrap workflow](fd_bootstrap.md) forms
+consecutive-year differences before finite-pair filtering and resamples the
+532 people in whole blocks for 500 seeded draws. Independent R validates the
+4,788 original annual pairs, full bootstrap covariance and predictions; wage
+bootstrap SE is 0.08284363321. The native RNG differs from Stata's historical
+run. Missing levels and year gaps are not bridged; bootstrap metadata describes
+the retained pair frame, with candidate/excluded counts reported separately.
+This is not automatic FE/RE refitting or a finite-sample coverage guarantee.
+
 ## Unit-cluster RE extension
 
 `random_effects_cluster.td` supplies both explicit `cluster(id)` and equivalent
@@ -574,6 +603,18 @@ actual count/theta ranges and eta reference T_min. The Rust group_size=0 sentine
 uses retained-sample range methods, with no new required result-struct fields.
 The bounded profile, covariance assumptions, boundary LR withholding and original
 printed-Stata8 uncertainty discrepancy remain as documented above.
+
+### Classical FE–RE Hausman comparison — §21.4.3 p.719
+
+[`classical_hausman.td`](classical_hausman.td) and its
+[contract and reference audit](classical_hausman.md) implement the separate
+model-based balanced one-slope FE–RE covariance-difference test. On the original
+5,320 observations, chi-square(1)=13.7259113889, p=0.0002115161044; independent
+R/plm checks12 quantities and58,520 export cells. `estat hausman` uses the
+retained RE sample and rejects invalid covariance differences. This classical
+comparison requires RE efficiency under the null and is **not cluster robust**;
+the robust auxiliary workflow below is distinct. General multivariate,
+unbalanced, clustered and ML native comparisons remain unsupported.
 
 ### Robust auxiliary Hausman comparison — §21.4.3 p.719
 

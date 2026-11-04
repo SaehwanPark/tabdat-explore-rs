@@ -79,7 +79,7 @@ single PR or a demand to expose every option immediately.
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
 | **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced/unbalanced Swamy–Arora RE-GLS, and balanced/unbalanced Gaussian RE-ML with positive-interior variance-component log-Wald intervals and a one-sided zero-unit-variance LR test are also validated. Interior ML additionally supports full joint unit-score inference; remaining illustrated ML inference and general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Installed bounded unweighted IID-location inference and current-row predictions, validated .1/.5/.9 household fits; joint IID pairs-bootstrap covariance/marginal percentile intervals permit heteroskedasticity under IID regularity, with a shared-replicate B-1 SE and asymptotic normal test/95% Wald interval for one coefficient across exactly two quantiles. Cluster inference, general restrictions, simultaneous bands and Figure4.1 rendering remain. See MMA-QREG. |
-| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits). Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, automatic FE/RE refits and simulation remain required. |
+| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits). Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, automatic FE/RE refits and simulation remain required. |
 
 Graduate-core acceptance requires representative end-to-end analyses across these
 families, the design/reporting foundations they need, usable terminal and script
@@ -266,10 +266,25 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
    POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
    and Gaussian ML with joint/constrained observed information and null/slope LR.
+   The [Figure21.2 between-person source-data adaptation](../examples/mma21p1panel/between_figure.md)
+   validates 5,320 source rows, 532 exact-source-scale person means and ordered
+   LOWESS/OLS fits plus SVG geometry. The [Figure21.1 pooled adaptation](../examples/mma21p1panel/pooled_figure.md)
+   validates all5,320 source/fit rows and SVG geometry, with the native LOWESS
+   work cap raised to23million for its22,636,600-window bound. The
+   [Figure21.4 first-difference adaptation](../examples/mma21p1panel/fd_figure.md)
+   validates all4,788 consecutive pairs and SVG geometry, with raw lags before
+   finite filtering. The [Figure21.3 within adaptation](../examples/mma21p1panel/within_figure.md)
+   validates5,320 exact-source-scale transformed rows, FE/auxiliary OLS cluster
+   inference and SVG geometry. Historical tied-curve parity remains open.
    The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
    OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
    printed facts, with F(1,G-1) reference and explicit covariance assumptions.
-   This does not install general native `estat hausman` or automatic model selection.
+   Separately, bounded native `estat hausman` compares a balanced nonclustered
+   one-slope RE-GLS fit with same-sample FE using classical covariance subtraction;
+   original MOM R/plm validates12 quantities and58,520 exported cells. It rejects
+   nonpositive/cancellation-dominated differences and unsupported ML, clustered,
+   unbalanced or multivariate fits. Neither method supplies general model selection
+   or makes the classical test robust to within-unit dependence.
    Conventional nonclustered FE now also reports the pooled-versus-within
    unit-effects F test; independent R/plm comparisons cover balanced, unbalanced
    and interleaved synthetic fixtures, while clustered FE withholds the classical
@@ -337,6 +352,54 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
    offset-fit/current-row probabilities validate the bounded
    [complete workflow](../examples/count-probability/README.md). Full laws remain
    assumptions; robust covariance does not establish distributional calibration.
+   The [§23.3 log-patents linear panel workflow](../examples/mma23p1pannonlin/linear_panel.md)
+   validates clustered pooled OLS, classical within FE and balanced RE-GLS on
+   all1,730 source rows and91 independent R/plm fit/test quantities;337 zeros
+   use the author's ad hoc ln(0.5), and FE intercept inference remains absent.
+   The [Figure23.1 source-data adaptation](../examples/mma23p1pannonlin/figure.md)
+   independently validates all1,730 observations, centred-rank LOWESS and
+   linear fits and SVG geometry; historical Stata tied-curve parity remains open.
+   The [§23.3 pooled patent Poisson illustration](../examples/mma23p1pannonlin/pooled_poisson.md)
+   now validates all1,730 original firm-years, three covariance modes,103 R
+   quantities and19,030 exported cells;22 all-zero firms remain in pooled data.
+   Its [whole-firm bootstrap](../examples/mma23p1pannonlin/pooled_poisson_bootstrap.md)
+   validates both coefficients in500 R refits and173,000 ordered RNG-oracle draws;
+   the non-Stata stream and whole-script failure boundaries are explicit.
+   A separate [bounded conditional-FE Poisson SQL composition](../examples/mma23p1pannonlin/conditional_fe.md)
+   validates the 1,620-row/324-firm positive-total sample against14 R quantities
+   and48,440 export cells; this model-based one-slope test is not cluster robust
+   or a general native panel estimator. Its [whole-firm bootstrap](../examples/mma23p1pannonlin/conditional_fe_bootstrap.md)
+   separately validates 500 R refits and 162,000 ordered independent-oracle draws;
+   the explicit RNG differs from Stata. The separate [exponential-mean NLS](../examples/mma23p1pannonlin/exponential_nls.md)
+   uses native `nl` and a firm-score SQL sandwich; R validates all1,730 source
+   rows, 346 firm scores and both author working/cluster covariance conventions.
+   Its [whole-firm bootstrap](../examples/mma23p1pannonlin/exponential_nls_bootstrap.md)
+   validates 500 two-parameter R refits and173,000 ordered RNG-oracle draws;
+   its bounded profiled score can be nonmonotone, and final observed-curvature
+   checks establish a local minimum without a global-uniqueness claim.
+   The bounded [exchangeable Poisson GEE composition](../examples/mma23p1pannonlin/exchangeable_gee.md)
+   independently validates both full covariance matrices, all1,730 predictions
+   and346 firm scores against legacy R `gee` and base-R equations. A nine-step
+   float32 probe supports storage/stopping as contributors to the
+   disclosed seven-decimal slope difference; native pooled Poisson, not GEE,
+   remains the retained state. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/exchangeable_gee_bootstrap.md)
+   validates 500 R/base-R refits and173,000 independent ordered draws; the
+   author's materially different bootstrap SE and historical duplicate-ID
+   handling remain unresolved, not counted as historical parity.
+   The bounded [gamma random-effects Poisson composition](../examples/mma23p1pannonlin/gamma_re_poisson.md)
+   validates the shared-firm gamma likelihood, joint observed covariance, boundary
+   LR and all1,730 marginal predictions against independent R; a float32 probe
+   explains part of the historical ln(alpha) precision discrepancy without an
+   exact-parity claim. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
+   validates 500 joint three-parameter R refits and173,000 independent ordered
+   draws; historical repeated-ID semantics remain unresolved despite a material
+   merged-ID counterfactual. The separate [normal random-intercept Poisson composition](../examples/mma23p1pannonlin/normal_re_poisson.md)
+   validates all1,730 source/prediction rows and42 report quantities against
+   independent direct R integration, with guarded quadrature and full joint
+   information. The historical normal-RE result has missing SEs and materially
+   differs from the integrated likelihood; it is not counted as exact parity.
+   General conditional FE, normal-RE bootstrap, general GEE, other firm
+   bootstraps and Figure23.1 remain separate required work.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
@@ -407,7 +470,7 @@ script outputs remain on later failure, not whole-script rollback. Reporting for
 future estimator families remains required. This completes that bounded native
 analytical contract, not the binary milestone, IV illustration or full book.
 
-Keep GMM/Hansen J, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
+Keep general GMM/Hansen J beyond the bounded clustered/no-intercept slice, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
 any further endogeneity inference required by exact illustrations explicit as
 remaining required work.
 Conventional Wald results, Sargan/Wu diagnostics and first-stage relevance tests
@@ -444,7 +507,21 @@ Wooldridge score, with uncorrected score OPG, retained structural residuals and
 asymptotic chi-square(L-K). Independent R SVD/lm.fit matches the exact 48-state
 source/design/score/tail and five synthetic q1/q2 designs; see the same example.
 This is additional method evidence, not new textbook coverage or Hansen J.
-Clustered overidentification and GMM remain required work.
+Clustered overidentification after 2SLS and general GMM remain required work.
+A bounded [Chapter 22 base-instrument workflow](../examples/mma22p1panel/README.md)
+now implements clustered two-step linear IV GMM with no intercept/included
+exogenous variables and nine instruments on 4,256 person-years. Independent R
+checks all source design/prediction rows, coefficients, full fixed-weight and
+author-updated covariance matrices, and both J objectives/p-values; selected
+author-log facts are checked with explicit float-precision caveats. A separate
+[year-stacked workflow](../examples/mma22p1panel/stacked_gmm.md) validates the
+72-instrument column against independent R with both covariance/objective
+conventions; the highly conditioned cluster moments and small historical-log
+differences are documented. Neither workflow implements dynamic-panel GMM or
+resolves weak identification. The separate [Chapter 22 author wage Shea
+workflow](../examples/mma22p1panel/shea.md) reproduces the intercept-including
+auxiliary residual correlation on the original panel against independent R;
+it is a descriptive relevance measure, not a joint weak-IV test.
 The same specified sample additionally validates joint homoskedastic
 `estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
 using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all

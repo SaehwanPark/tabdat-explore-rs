@@ -31,7 +31,7 @@ so a huge distant Y cannot erase small local responses. Ordinary float64 numeric
 resolution within each window still applies.
 
 Require 2 <= N <= 10,000, finite 0 < bandwidth < 1, N*bandwidth >= 0.5 and
-N*min(N,2*k+1) <= 20,000,000. Unsupported bandwidth/work, nonnumeric columns,
+N*min(N,2*k+1) <= 23,000,000. Unsupported bandwidth/work, nonnumeric columns,
 unrepresentable local differences/fits and existing target names error; no
 silent clipping, ridge, pseudoinverse or replacement. Calculate all fits before
 typed staged column publication; validation/numerical/collision failures preserve

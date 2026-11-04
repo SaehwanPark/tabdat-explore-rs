@@ -1108,7 +1108,7 @@ means, zero robust iterations and no interpolation/inference/out-of-sample model
 previous retained model, not the smoother. Excluded rows get NULL in a new DOUBLE
 column; source storage/order/labels remain. Validation/numerical/collision failures
 publish nothing. Default2/3 and finite0<span<1 are unchanged parser semantics;
-2<=retained N<=10000, N*span>=.5 and N*min(N,2k+1)<=20million are runtime bounds.
+2<=retained N<=10000, N*span>=.5 and N*min(N,2k+1)<=23million are runtime bounds.
 Equal X can have different fits; permuting within ties can change them. No slope,
 SE, p-value or confidence band is implied. See `help lowess`,
 [method/source evidence](../../examples/mma09p1np/lowess.md) and MIG-0023 for the

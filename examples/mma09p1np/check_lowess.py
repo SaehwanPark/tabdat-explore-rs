@@ -44,7 +44,7 @@ def prepare(path):
 
 def smooth(x,y,span):
   n=len(x);k=math.floor((n*span-.5)/2)
-  assert 2<=n<=10000 and n*span>=.5 and n*min(n,2*k+1)<=20000000
+  assert 2<=n<=10000 and n*span>=.5 and n*min(n,2*k+1)<=23000000
   order=sorted(range(n),key=lambda i:(x[i],i));result=[None]*n;constant=0
   for i,index in enumerate(order):
     at=order[max(0,i-k):min(n,i+k+1)]

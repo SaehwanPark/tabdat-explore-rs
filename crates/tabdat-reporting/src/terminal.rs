@@ -1274,6 +1274,24 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       inference_number(result.covariance_correction),
       result.cluster_group_count,
     ),
+    ExecutionResult::ClassicalPanelHausman(result) => format!(
+      "Classical panel FE–RE Hausman covariance-difference test\nOutcome: {}; slope: {}; groups({}) = {}; N = {}; T = {}\nFE = {}; RE = {}; FE variance = {}; RE variance = {}; difference = {}; variance difference = {}\nChi-square({}) = {}; asymptotic p = {}\nRequires RE efficiency under the null; not cluster robust. Failure to reject does not establish exogeneity.\n",
+      result.outcome.escape_debug(),
+      result.predictor.escape_debug(),
+      result.entity_variable.escape_debug(),
+      result.group_count,
+      result.observation_count,
+      result.group_size,
+      result.fe_coefficient,
+      result.re_coefficient,
+      result.fe_variance,
+      result.re_variance,
+      result.difference,
+      result.variance_difference,
+      result.df,
+      result.statistic,
+      result.p_value
+    ),
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,
@@ -1963,6 +1981,46 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::ClusterGmm(fit) => {
+      let r = &fit.result;
+      let mut table = String::from(
+        "Variable\tCoefficient\tFixed-weight SE\tz\tP(two-sided)\t95% CI lower\t95% CI upper\tAuthor-updated SE\n",
+      );
+      for (i, (name, value)) in r.parameter_names.iter().zip(&r.coefficients).enumerate() {
+        let se = r.fixed_covariance[i][i].sqrt();
+        let z = value / se;
+        writeln!(
+          table,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          name.escape_debug(),
+          value,
+          se,
+          z,
+          2.0 * tabdat_stats::normal_cdf(-z.abs()),
+          value - 1.959963984540054 * se,
+          value + 1.959963984540054 * se,
+          r.updated_covariance[i][i].sqrt()
+        )
+        .unwrap();
+      }
+      format!(
+        "Clustered two-step linear IV GMM (no intercept)\nOutcome: {}; N = {}; clusters({}) = {}; instruments = {}\nFixed-weight full cluster sandwich; correction 1; asymptotic normal 95%, not Student t.\n{}Fixed-weight Hansen objective J = {}; p = {}; author-updated J = {}; p = {}; df = {} (chi-square asymptotic).\nAuthor-updated SE uses inverse information formed from second-step residuals, not the fixed-weight sandwich. NA = exactly identified.\nAssumes independent clusters and valid moments; relevance tests do not resolve weak identification.\n",
+        fit.outcome.escape_debug(),
+        fit.sample.retained_count(),
+        fit.cluster_variable.escape_debug(),
+        r.cluster_count,
+        fit.instruments.len(),
+        table,
+        optional_number(r.fixed_j),
+        optional_number(r.fixed_j_p_value),
+        optional_number(r.updated_j),
+        optional_number(r.updated_j_p_value),
+        fit
+          .instruments
+          .len()
+          .saturating_sub(r.parameter_names.len())
+      )
+    }
     ExecutionResult::Cox(r) => {
       let mut table = String::from(
         "Variable\tPH coefficient\tStd. error\tz\tP(two-sided)\tCI lower (95%)\tCI upper (95%)\n",
@@ -2398,6 +2456,7 @@ mod tests {
       time_variable: "time".into(),
       entity_data_type: "BIGINT".into(),
       result,
+      hausman_problem: None,
     });
     assert!(output.contains("Unbalanced one-way random-effects GLS"));
     assert!(output.contains("theta@minimum T"));

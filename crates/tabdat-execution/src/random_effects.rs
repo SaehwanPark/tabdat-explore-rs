@@ -50,10 +50,17 @@ impl Session {
     };
     let result =
       fit(&input.problem, &input.entity).map_err(|error| fit_error(error.to_string()))?;
+    let hausman_problem = (command.estimator == XtRegEstimator::RandomEffects
+      && !command.robust
+      && command.cluster_variable.is_none()
+      && !unbalanced
+      && command.predictors.len() == 1)
+      .then_some(input.problem);
     let state = RandomEffectsState {
       time_variable: input.time,
       entity_data_type: input.entity_data_type,
       result,
+      hausman_problem,
     };
     self.estimation = Some(EstimationState::RandomEffects(Box::new(state.clone())));
     Ok(ExecutionResult::RandomEffects(Box::new(state)))
