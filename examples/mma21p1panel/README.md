@@ -10,9 +10,12 @@ the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 The [source-pinned first-program inventory](inventory.md) separates its 20
 analysis/reporting requirements, links current workflows and independent evidence,
-and explicitly retains missing RE component-refitting bootstrap, Gaussian PA,
+and explicitly retains missing RE-GLS component-refitting bootstrap, Gaussian PA,
 full reporting and historical-parity requirements. It is not a complete chapter
-or book inventory.
+or book inventory. The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
+now audits500 component-refitting replications and266,000 native-stream draws
+against independent R/Python, retaining the original native prediction model;
+it is not a general ML bootstrap API or historical Stata draw replay.
 
 POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage

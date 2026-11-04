@@ -263,11 +263,15 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 The [Chapter21 first-program inventory](../examples/mma21p1panel/inventory.md)
 now separates 20 source-program requirements without claiming full chapter/book
-coverage. A next bounded candidate is its missing whole-person RE-ML bootstrap:
-refit variance components per draw on the original MOM mean design and validate
-all native-stream replicates independently. Component-refitting RE-GLS resampling,
-Gaussian population-averaged GEE and complete comparison reporting remain
-separate requirements; existing fixed-transform bootstraps do not close them.
+coverage. Its [whole-person RE-ML bootstrap composition](../examples/mma21p1panel/random_effects_ml_bootstrap.md)
+now refits variance components per draw on the original MOM mean design:
+500 independent R refits/266,000 exact native-stream draws, full coefficient
+covariance/type7 intervals and original predictions are audited. Boundary draws
+are retained; historical Stata draw/duplicate-ID/all-interval parity and a general
+ML bootstrap API are not claimed. A next candidate is component-refitting RE-GLS
+resampling with population-scale intercept uncertainty. Gaussian population-averaged
+GEE and complete comparison reporting remain separate requirements; existing
+fixed-transform bootstraps do not close them.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

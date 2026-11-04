@@ -83,6 +83,18 @@ fn validate(input: &str, refits: &str, summary: &str, expect_boundary: bool) {
   );
   let fits = records(refits);
   assert_eq!(fits.len(), 501);
+  let native = &events
+    .iter()
+    .find(|e| e["result_type"] == "RandomEffectsResult")
+    .unwrap()["data"];
+  for key in ["sigma_e_squared", "sigma_u_squared", "log_likelihood"] {
+    close(
+      native[key].as_f64().unwrap(),
+      number(&fits[0], key),
+      1e-9,
+      key,
+    );
+  }
   let draws = records(std::str::from_utf8(&bytes[1]).unwrap());
   assert_eq!(draws.len(), 8000);
   let mut boundary_count = 0;
