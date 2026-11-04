@@ -279,8 +279,13 @@ Pearson exchangeable correlation/RSS-N scale, full working/uncorrected unit
 sandwich covariance/normal95, all5,320 predictions/532 unit scores and12 author
 printed facts against R gee/dense matrices. Positive/negative-correlation controls,
 readable/CLI-v1 reports and retained pooled-OLS state are explicit; no owned GEE
-model, generic API or p-values. A next candidate is FE normalized common-level
-intercept inference, not the centered auxiliary-OLS intercept bootstrap.
+model, generic API or p-values. The distinct [normalized FE level-intercept
+pairs bootstrap](../examples/mma21p1panel/fe_level_bootstrap.md) now validates500
+raw-copy R QR refits/266,000 exact draws, full coefficient covariance/type7
+intervals and retained native original FE predictions. Re-normalization is per
+draw; zero empirical variance is retained, not dropped. The centered auxiliary-
+OLS bootstrap is unchanged. A next candidate is **classical analytic** FE common-
+intercept covariance under the explicit normalization, not a bootstrap substitute.
 Complete comparison reporting, historical parity and companion/full-book
 inventory remain required.
 
