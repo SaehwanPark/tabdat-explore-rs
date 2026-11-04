@@ -26,7 +26,11 @@ gaps and textbook replication evidence. Its linked
 maps29 transformed-OLS/reporting requirements and resolves the live companion
 filenames. Auxiliary/canonical covariance and fixed/refitted theta remain distinct;
 the source's GLS-under-ML-HC1 label is explicit. Neither inventory establishes
-whole-chapter/book coverage or adds runtime capability.
+whole-chapter/book coverage or adds runtime capability. The separate
+[manual FE covariance workflow](examples/mma21p1panel/manual_fe_covariance.md)
+now validates centered auxiliary IID/row-HC1/person-CR1 comparisons, full covariance,
+slope intervals and named reports on all5,320 rows; their5318/531 DF and numerical
+centered intercept remain distinct from canonical FE inference/normalization.
 
 ## Implemented and deferred capabilities
 
