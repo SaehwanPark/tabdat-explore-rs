@@ -273,10 +273,16 @@ bootstrap](../examples/mma21p1panel/random_effects_gls_refit_bootstrap.md) now
 validates500 R/plm Swamy–Arora refits/266,000 exact draws, signed/truncated
 components/theta, population-intercept/slope covariance/type7 intervals, readable/
 CLI-v1 uncertainty and original predictions. Existing fixed-theta workflows
-remain separate and unchanged. A next candidate is the still-missing Gaussian
-identity-link exchangeable population-averaged GEE, after defining exact working
-correlation/scale/covariance conventions. Complete comparison reporting, FE
-level-intercept uncertainty and historical parity also remain required.
+remain separate and unchanged. The bounded [Gaussian population-averaged
+GEE composition](../examples/mma21p1panel/gaussian_pa.md) now validates legacy
+Pearson exchangeable correlation/RSS-N scale, full working/uncorrected unit
+sandwich covariance/normal95, all5,320 predictions/532 unit scores and12 author
+printed facts against R gee/dense matrices. Positive/negative-correlation controls,
+readable/CLI-v1 reports and retained pooled-OLS state are explicit; no owned GEE
+model, generic API or p-values. A next candidate is FE normalized common-level
+intercept inference, not the centered auxiliary-OLS intercept bootstrap.
+Complete comparison reporting, historical parity and companion/full-book
+inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

@@ -165,5 +165,7 @@ workflow tests still pass. Seven corruption probes reject changed person ID,
 coefficient, theta, signed unit variance, covariance, method label or raw source
 value. Scoped Clippy, formatting, syntax/link and diff checks pass. No shared
 kernel/parser/runtime/API change, whole-workspace/platform/release claim or
-whole-table/chapter completion follows. Gaussian population-averaged GEE,
-FE normalized-intercept uncertainty and historical parity remain required work.
+whole-table/chapter completion follows. The separate [Gaussian population-averaged
+GEE composition](gaussian_pa.md) now validates a bounded coefficient/covariance/
+normal95 target; FE normalized-intercept uncertainty and historical parity remain
+required work.
