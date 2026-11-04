@@ -38,11 +38,19 @@ Inference and reporting:
   multiplier G/(G-1)*(N-1)/(N-p) (plm Arellano sss/nested-unit convention), and
   Student-t/F inference DF G-1. Clustered fits require at least two units;
   few-cluster calibration and independence across units remain assumptions.
-- Covariance and `lincom`/`test` contain **slopes only**. The normalized common
-  intercept is a descriptive point: mean(y)-mean(X)beta on the estimation sample.
-  Unit deviations have estimation-observation-weighted mean zero. Standard
-  errors and intervals for the normalization point or individual unit intercepts
-  are not reported, and there is no implicit intercept constraint. Conventional
+- The common intercept is mean(y)-mean(X)beta on the estimation sample;
+  unit deviations have estimation-observation-weighted mean zero. Classical
+  inference adds its SE/t/p/95CI and full slope cross-covariance: Var(a)=sigma²/N
+  +mean(X)'Vb mean(X), Cov(a,beta)=-mean(X)'Vb. `lincom _cons` and joint
+  `test _cons x` use N-G-p DF, conditional on retained units/design; moments do
+  not recenter after active-data changes. Existing slope covariance arrays stay
+  slope-only. Unit-cluster fits withhold common inference with a reason; no
+  individual-effect intervals are supplied. A real slope named `_cons` keeps
+  its name and prevents adding a common parameter. Zero variance has zero SE,
+  point intervals and undefined t/p; singular joint restrictions fail. Nonfinite
+  or ill-conditioned joint covariance is withheld without discarding slopes/point
+  fits: its grand-mean contrast must recover sigma²/N within sqrt(f64 epsilon)
+  relative error. Conventional
   nonclustered FE additionally reports the
   classical pooled-versus-within F test of equal unit intercepts, with
   `F(G-1, N-G-p)` degrees of freedom. It assumes independent homoskedastic

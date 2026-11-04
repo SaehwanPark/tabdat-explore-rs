@@ -783,7 +783,37 @@ fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
     )
     .unwrap();
   }
-  writeln!(output,"Common intercept (normalization point only) = {}; unit deviations have observation-weighted mean zero",inference_number(result.common_intercept)).unwrap();
+  if let Some(model) = &result.normalized_level {
+    let mut weights = vec![0.0; model.parameters.len()];
+    weights[0] = 1.0;
+    if let Ok(inference) = model.linear_combination_with_inference(&weights, 0.0, 95.0) {
+      writeln!(output,"Common intercept _cons (classical Student-t, DF = {}; observation-weighted zero-mean unit effects)",inference.degrees_of_freedom).unwrap();
+      output.push_str(
+        "Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)\t95% CI lower\t95% CI upper\n",
+      );
+      writeln!(
+        output,
+        "_cons\t{}\t{}\t{}\t{}\t{}\t{}",
+        inference_number(inference.estimate),
+        inference_number(inference.standard_error),
+        optional_inference(inference.statistic),
+        inference_number(inference.p_value),
+        inference_number(inference.ci_lower),
+        inference_number(inference.ci_upper)
+      )
+      .unwrap();
+    }
+  } else {
+    writeln!(output,"Common intercept (normalization point only) = {}; unit deviations have observation-weighted mean zero",inference_number(result.common_intercept)).unwrap();
+  }
+  if let Some(reason) = &result.normalized_level_unavailable_reason {
+    writeln!(
+      output,
+      "Common-intercept inference unavailable: {}",
+      reason.escape_debug()
+    )
+    .unwrap();
+  }
   output.push_str("Slope\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
   for c in &fit.coefficients {
     writeln!(
@@ -798,7 +828,7 @@ fn fixed_effects(state: &tabdat_domain::FixedEffectsState) -> String {
     .unwrap();
   }
   output.push_str(
-    "No standard errors or intervals for the common normalization point or individual unit-intercept coefficients; no panel likelihood. NA = unavailable or undefined.\n",
+    "No individual unit-intercept coefficient intervals or panel likelihood. Common-intercept inference requires classical homoskedastic errors; unit-cluster inference is withheld. NA = unavailable or undefined.\n",
   );
   output
 }

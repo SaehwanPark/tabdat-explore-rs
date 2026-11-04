@@ -192,6 +192,16 @@ impl Session {
       self.linear_state().map(|state| &state.result)
     }
   }
+  fn linear_inference_model(&self) -> Option<tabdat_stats::PostEstimationModel> {
+    if let Some(EstimationState::FixedEffects(state)) = &self.estimation
+      && let Some(model) = &state.result.normalized_level
+    {
+      return Some(model.clone());
+    }
+    self
+      .linear_inference_result()
+      .map(tabdat_stats::PostEstimationModel::from_least_squares)
+  }
   /// Read an owned domain snapshot without initializing a backend.
   /// Panel/operation/materialization tracking are not executed by this slice.
   pub fn state(&self) -> ExecutionState {

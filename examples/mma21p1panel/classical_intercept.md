@@ -1,41 +1,125 @@
 # Classical FE normalized common-intercept inference
 
-## Preimplementation contract — in progress
+Target: C21-P1-FE, author first-program lines201–205/Table21.2. Original5,320
+MOM observations/532 people/1979–1988; unweighted lnhr on lnwg and person effects.
+[Script](classical_intercept.td), [independent R QR](classical_intercept_reference.R),
+[auditor](check_classical_intercept.py). The source hashes/inventory and raw-data
+license/access cautions are in [inventory.md](inventory.md) and [README.md](README.md).
 
-Target C21-P1-FE author first-program lines201–205/Table21.2, original5,320-row
-MOM panel/532 people/1979–1988, unweighted lnhr on lnwg plus person intercepts.
-General native scope remains existing unweighted one-way FE with joint-finite
-sample, arbitrary supported slope count, balanced/unbalanced groups/singletons.
-Normalization remains sum(n_g*u_g)=0 and a=grand_mean_y-grand_mean_x' beta.
+## Statistical contract
 
-For classical iid homoskedastic disturbances conditional on retained units/design,
-residual DF=N-G-p and sigma2=within_RSS/DF. Preserve the existing slope covariance
-Vb; Cov(a,beta)=-mean_x' Vb, Var(a)=sigma2/N+mean_x' Vb mean_x. Retain the full
-joint (a,beta) covariance as an optional existing PostEstimationModel; no new
-numerical library or framework. Student-t inference uses N-G-p. Native classical
-_cons combinations/restrictions become usable; existing slope-only result arrays,
-DF, point predictions, effects and cache semantics are unchanged. Unit-cluster
-common-intercept inference is explicitly withheld, not manufactured by applying
-a slope sandwich or a classical variance to it. Preserve legacy fits if new
-normalized inference is numerically unrepresentable; expose an unavailable reason.
+Native one-way FE retains the joint-finite estimation sample, counts n_g, grand
+means and normalization sum(n_g*u_g)=0. The common intercept is
+`a=mean_y-mean_x' beta`; total unit intercepts are a+u_g. Under iid homoskedastic
+errors conditional on retained units/design, DF=N-G-p and sigma²=within_RSS/DF:
 
-Acceptance:
-1. Independent full weighted-zero-sum dummy QR on balanced/unbalanced/multiple-
-   predictor/singleton controls validates all joint covariance entries, intercept
-   SE/t/p/95 CI, common+slopes lincom and joint F restrictions; original MOM gets
-   the same source-bound check and readable/CLI-v1/report/prediction workflow.
-2. Owned classical normalized inference survives data activation; clustered fits
-   retain existing slope G-1 inference and explicitly withhold common inference.
-   Existing p-by-p slope covariance/parameter names stay unchanged; new fields
-   are additive. Preserve malformed/rank/DF failure state and original predictions.
-3. Missingness/exact sample keys, predictor/response shifts, degenerate zero RSS,
-   nonfinite normalized covariance and parameter-name collision are covered;
-   no tolerance widening or hidden variance clipping. Run focused tests first,
-   affected crates/reverse consumers and relevant end-to-end contracts before merge.
+- Existing p-by-p slope covariance Vb is unchanged.
+- Cov(a,beta)=-mean_x' Vb.
+- Var(a)=sigma²/N+mean_x' Vb mean_x.
 
-No weights, robust common-intercept SE, individual-effect intervals, new panel
-likelihood/statistics, generic FE snapshots or cross-family restrictions. This is
-not the sampled-person pairs bootstrap target. Classical exact t/F references
-require normal iid errors; without that law they are working references, not
-causal or arbitrary within-unit-dependence guarantees. Historical float32/output
-parity and whole-table/chapter/book closure are not claimed.
+The grand-mean error is orthogonal to demeaned slope scores, including unbalanced
+panels and singletons. Full covariance/point order is (_cons, explicit slopes).
+Student-t/95% inference and joint F restrictions use N-G-p; exact references
+additionally require normal errors. This is fixed-cohort conditional uncertainty,
+**not** variability from resampling people or an assumption of random unit effects.
+The [pairs bootstrap](fe_level_bootstrap.md) remains a different target.
+
+Existing `within`/CLI `coefficients`, covariance matrix and parameter names remain
+slope-only. Optional kernel `normalized_level` reuses `PostEstimationModel`;
+classical native `lincom _cons`, intercept/slope combinations and `test _cons lnwg`
+now use its full covariance. Owned moments survive active-data changes; they are
+not recomputed from the current frame. `_cons` is withheld as a *common* parameter
+if a real slope already owns that name; existing slope naming remains intact.
+
+Unit-cluster/`robust` fits retain slope t/F(G-1) and **withhold common-intercept
+inference** with a reason. No classical variance is substituted into a clustered
+fit. Nonfinite/negative or ill-conditioned new covariance likewise withholds only
+the new inference, not the point fit. Its grand-mean contrast must recover sigma²/N
+within sqrt(f64 epsilon) relative error (half of double precision). Review reproduced
+a10^12 predictor shift producing a false zero contrast SE without this guard;
+the regression now retains identical slope covariance/fits while explicitly
+withholding the unrepresentable normalized model. Zero residual variance retains zero SE and point intervals;
+t/p are undefined/null, and zero-covariance joint restrictions are not invertible.
+No individual-effect intervals, robust common SE, weights, named FE snapshots,
+new likelihood or general bootstrap API are added. Float64 coordinate-conditioning
+limits still apply to intercept–slope contrasts; this is not arbitrary-precision
+inference or evidence that a common-component contrast is causal.
+
+## Workflow and independent evidence
+
+`classical_intercept.td` requires3..532 complete ten-year people, finite bounded
+model fields/exact keys. These are source-example guards, **not** new kernel
+restrictions: native unweighted FE continues to support existing balanced,
+unbalanced, multiple-predictor and singleton designs. It fits, activates an
+ordered frame, reports common/mean-at-lnwg2.5 contrasts and a joint zero test,
+then exports all four native prediction modes. Interpret xb as the normalized
+common component, not an individual conditional prediction; xbu includes its
+retained unit intercept. A failed joint restriction on degenerate zero variance
+stops the script; point fitting/lincom remain usable separately.
+
+Independent base R4.6.2 `lm.fit` uses a full dummy design with weighted-zero-sum
+contrasts: column j is I(g=j)-n_j/n_last*I(g=last). QR covariance uses the full
+design rank, not copied within moments/formulas. On original MOM,39 native
+coefficient/covariance/SE/t/p/CI/DF/contrast/F fields and5,320 prediction rows
+match; all42,560 original raw fields remain exact. Original a/b are
+7.219891979652281/0.167675488629312, common SE0.049343396739207, t146.3193143717,
+95%CI[7.12315624021309,7.31662771909147], DF4787. These agree with the author's
+printed common-intercept row at its displayed precision. All original JSON/text
+prediction CSV bytes are identical.
+
+Numerical tolerances were fixed before comparison: coefficients/covariances/SE/CI
+and core controls abs1e-9; p-values relative1e-8 with exact matching underflowed
+zero. Original joint F is about2.878million in correlated intercept/slope
+coordinates, so it uses abs1e-9+relative1e-10. Actual F discrepancy1.64e-7 is only
+5.71e-14 relative; the larger absolute difference is expected from the independent
+QR/inversion paths, not an estimator/sample difference. No tolerances were widened. Eight source-bound corruptions (SE/cross-covariance,
+contrast/F, raw/prediction fields and mode/name metadata) are rejected.
+
+Three balanced/unbalanced/interleaved two-predictor controls (including singleton)
+add96 independent QR fields. A separate160-row complete-panel control adds39
+fields/160 predictions; fixtures and regeneration R are checked in. Tests cover
+response/predictor shift covariance, legacy serde defaults, name collision,
+zero RSS, injected nonrepresentable covariance and actual large-offset guards,
+exact missing-case keys,
+classical joint routing, active-data mutation without refitting, clustered
+withholding/state preservation, source preflight and refused overwrite.
+
+Focused tests passed before expanded shared-API validation. Reverse dependency
+scope initially covered1811 passing tests across329 binaries, plus seven earlier
+passing stats tests. After the review-driven conditioning guard, eight focused
+stats cases pass; final reverse-consumer confirmation is recorded in the PR
+(two pre-existing ignored tests remain excluded).
+Affected-crate/changed-target Clippy, formatting and Python syntax pass. An
+attempted root all-target Clippy hit the unchanged `excessive_precision` literal
+in `tests/mma05_table57_comparison_workflow.rs:54`; it was not altered to hide the
+baseline issue. No other-platform or release certification is claimed.
+
+## Reproduce
+
+Use a fresh working directory and the source URL/hash in the inventory:
+
+```sh
+repo=/absolute/path/to/tabdat-explore-rs
+work=/tmp/mom-classical-fe-fresh
+mkdir "$work"
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/MOM.dat -o "$work/MOM.dat"
+sh "$repo/examples/mma21p1panel/prepare.sh" "$work/MOM.dat" "$work/MOM.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f \
+  "$repo/examples/mma21p1panel/classical_intercept.td" > output.jsonl)
+Rscript "$repo/examples/mma21p1panel/classical_intercept_reference.R" \
+  "$work/MOM.dat" "$work/reference"
+python3 "$repo/examples/mma21p1panel/check_classical_intercept.py" \
+  "$work" "$work/reference" "$work/MOM.dat"
+```
+
+Use `--text` in a separate fresh directory for readable output. Export collision
+preserves its owner and stops later commands; the script is not a session-wide
+transaction. The R/Python audit tools are development-only, not production
+runtime dependencies. `--synthetic` on the auditor labels controls and disables
+only the original-file hash gate, not raw-field/sample/reference checks.
+
+C21-P1-FE remains partial: remaining historical panel statistics and complete
+comparison reporting are not supplied by this covariance increment. Individual
+FE uncertainty, complete companion-program/book inventory and other required
+roadmap methods remain open. A next bounded candidate is the first-program
+B500 Between bootstrap gap; reassess source/priorities before selecting it.

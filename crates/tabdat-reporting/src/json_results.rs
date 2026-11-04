@@ -1415,6 +1415,27 @@ fn fixed_effects_result_data(state: &tabdat_domain::FixedEffectsState) -> Value 
     "coefficients":fit.coefficients.iter().map(|c|json!({"name":c.name,"value":Number::from_f64(c.value),
       "standard_error":c.standard_error.and_then(Number::from_f64),"statistic":c.statistic.and_then(Number::from_f64),"p_value":c.p_value.and_then(Number::from_f64)})).collect::<Vec<_>>()
   });
+  if let Some(model) = &result.normalized_level {
+    let mut weights = vec![0.0; model.parameters.len()];
+    weights[0] = 1.0;
+    if let Ok(inference) = model.linear_combination_with_inference(&weights, 0.0, 95.0) {
+      data["common_intercept_inference"] = json!("classical_student_t");
+      data["common_intercept_statistics"] = json!({
+        "name":"_cons","value":Number::from_f64(inference.estimate),
+        "standard_error":Number::from_f64(inference.standard_error),
+        "statistic":inference.statistic.and_then(Number::from_f64),
+        "p_value":Number::from_f64(inference.p_value),
+        "ci_lower":Number::from_f64(inference.ci_lower),"ci_upper":Number::from_f64(inference.ci_upper),
+        "confidence_level":inference.confidence_level,"degrees_of_freedom":inference.degrees_of_freedom
+      });
+      data["normalized_level"] = json!({"parameter_names":model.parameter_names,
+        "parameters":model.parameters,"covariance_matrix":model.covariance.matrix,
+        "inference_df":model.degrees_of_freedom,"reference_distribution":"student_t"});
+    }
+  }
+  if let Some(reason) = &result.normalized_level_unavailable_reason {
+    data["common_intercept_inference_unavailable_reason"] = json!(reason);
+  }
   if clustered {
     data["cluster"] = json!({"variable":result.entity_variable,"group_count":g,
       "finite_sample_multiplier":Number::from_f64(g as f64/g.saturating_sub(1) as f64*(n-1) as f64/(n-p) as f64),

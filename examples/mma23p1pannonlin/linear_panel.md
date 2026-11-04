@@ -39,9 +39,12 @@ cluster coefficient/linear-test inference uses t/F with **G−1=345** degrees of
 freedom. Classical FE uses `RSS/(N−G−p)` with one slope and **N−G−p=1383**
 degrees of freedom; the unit-intercept equality F has (345,1383) degrees of
 freedom. FE's common intercept is the normalization
-`mean(LPAT)−mean(LOGR)*slope`, a **point only**, not an inferred coefficient:
-native FE does not provide common or individual intercept SEs, so it does not
-reproduce that part of the author's FE column. RE estimates within and between
+`mean(LPAT)−mean(LOGR)*slope`. The separate [native classical common-intercept
+increment](../mma21p1panel/classical_intercept.md) now supplies conditional SE/t/95CI
+and joint slope covariance under this normalization; individual-effect SEs and
+unit-cluster common inference remain unavailable. This workflow's91-field audit
+has not yet added the original Chapter23 common-intercept-SE comparison, so that
+part of the historical FE column remains unclaimed. RE estimates within and between
 variance components with the balanced Swamy–Arora convention, and uses its
 quasi-demeaned residual variance `RSS*/(N−2)` for the full two-parameter
 covariance, normal coefficient inference and a one-slope chi-square Wald test.
@@ -49,7 +52,7 @@ covariance, normal coefficient inference and a one-slope chi-square Wald test.
 | Original float64 | LOGR slope | Slope SE | Intercept / normalization |
 | --- | ---: | ---: | ---: |
 | Pooled, firm-cluster | 0.8340744986 | 0.0228654911 | 0.7954785111 |
-| Within FE, classical | 0.1067504940 | 0.0560363644 | 1.7091160062 (point only) |
+| Within FE, classical | 0.1067504940 | 0.0560363644 | 1.7091160062 (normalization) |
 | RE-GLS, classical | 0.7202376566 | 0.0237986367 | 0.9384761387 |
 
 FE within R² is `0.0026172160`; the classical all-equal-intercepts statistic

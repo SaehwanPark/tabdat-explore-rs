@@ -16,9 +16,10 @@ runtime/schema/dependency changes or production R/Python requirement.
 
 This is **not** [within_bootstrap.td](within_bootstrap.td)'s centered auxiliary-OLS
 intercept (approximately zero). The old workflow remains unchanged. It also
-does not implement classical analytic common-intercept inference: the native
-`common_intercept_inference=normalization_point_only` contract is unchanged.
-Bootstrap level-intercept uncertainty is a separate, explicitly labelled report.
+does not itself implement classical analytic common-intercept inference.
+That is now available in the separate [native classical increment](classical_intercept.md),
+with full joint covariance and `_cons` lincom/test; unit-cluster common inference
+remains withheld. Bootstrap level-intercept uncertainty remains a separate report.
 
 ## Sample, normalization and resampling semantics
 
@@ -147,8 +148,8 @@ bootstrap regressions, scoped Clippy, formatting, Python syntax and local links
 also pass. Author review; no delegated review. No whole-workspace/platform/
 release certification or complete first-program/chapter/book closure.
 
-Remaining required work includes classical analytic common-level-intercept
-uncertainty, individual FE-effect intervals, full saved-model comparison reports,
-historical replay and companion/full-book inventory. A next bounded candidate is
-the classical FE common-intercept covariance under its explicit normalization;
-do not substitute pairs-bootstrap uncertainty for that different inference target.
+The separate [classical normalized common-intercept target](classical_intercept.md)
+is now implemented/independently validated; it is not this pairs-bootstrap target.
+Remaining required work includes individual FE-effect intervals, full saved-model
+comparison reports, historical replay and companion/full-book inventory. Reassess
+the first-program B500 Between bootstrap gap as a next bounded candidate.

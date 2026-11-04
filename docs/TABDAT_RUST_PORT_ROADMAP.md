@@ -284,10 +284,16 @@ pairs bootstrap](../examples/mma21p1panel/fe_level_bootstrap.md) now validates50
 raw-copy R QR refits/266,000 exact draws, full coefficient covariance/type7
 intervals and retained native original FE predictions. Re-normalization is per
 draw; zero empirical variance is retained, not dropped. The centered auxiliary-
-OLS bootstrap is unchanged. A next candidate is **classical analytic** FE common-
-intercept covariance under the explicit normalization, not a bootstrap substitute.
-Complete comparison reporting, historical parity and companion/full-book
-inventory remain required.
+OLS bootstrap is unchanged. The distinct [classical analytic common-intercept
+workflow](../examples/mma21p1panel/classical_intercept.md) now adds full normalized
+joint covariance/Student-t95 and `_cons` lincom/test, independently checked by
+39 original full-dummy QR fields/all5,320 predictions,96 multi-slope control
+fields and a160-row complete-panel control. Unit-cluster common inference is
+explicitly withheld; old slope arrays remain unchanged. Expanded shared-API
+verification covers1811 reverse-consumer tests plus seven earlier stats tests.
+A next bounded candidate is the first-program B500 Between bootstrap gap;
+reassess source/priorities before selecting it. Complete comparison reporting,
+historical parity and companion/full-book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
@@ -383,7 +389,9 @@ inventory remain required.
    The [§23.3 log-patents linear panel workflow](../examples/mma23p1pannonlin/linear_panel.md)
    validates clustered pooled OLS, classical within FE and balanced RE-GLS on
    all1,730 source rows and91 independent R/plm fit/test quantities;337 zeros
-   use the author's ad hoc ln(0.5), and FE intercept inference remains absent.
+   use the author's ad hoc ln(0.5); native classical common-intercept inference
+   is now available, but this Chapter23-specific original intercept-SE audit
+   remains open.
    The [Figure23.1 source-data adaptation](../examples/mma23p1pannonlin/figure.md)
    independently validates all1,730 observations, centred-rank LOWESS and
    linear fits and SVG geometry; historical Stata tied-curve parity remains open.

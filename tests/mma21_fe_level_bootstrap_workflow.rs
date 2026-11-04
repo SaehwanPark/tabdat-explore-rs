@@ -127,10 +127,7 @@ fn validate(kind: &str, zero: bool) {
     .find(|e| e["result_type"] == "FixedEffectsResult")
     .unwrap()["data"];
   assert_eq!(native["estimator"], "within_fixed_effects");
-  assert_eq!(
-    native["common_intercept_inference"],
-    "normalization_point_only"
-  );
+  assert_eq!(native["common_intercept_inference"], "classical_student_t");
   assert_eq!(
     native["unit_effect_normalization"],
     "estimation_observation_weighted_zero_mean"
