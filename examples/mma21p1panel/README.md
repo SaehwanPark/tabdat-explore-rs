@@ -8,6 +8,11 @@ and [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt).
 The header's “Table21.1” is inconsistent with the explicit Table21.2 labels in
 the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
+The [source-pinned first-program inventory](inventory.md) separates its 20
+analysis/reporting requirements, links current workflows and independent evidence,
+and explicitly retains missing RE component-refitting bootstrap, Gaussian PA,
+full reporting and historical-parity requirements. It is not a complete chapter
+or book inventory.
 
 POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage

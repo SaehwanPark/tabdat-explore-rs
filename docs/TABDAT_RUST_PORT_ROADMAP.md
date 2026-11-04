@@ -261,6 +261,14 @@ acceptance criterion. Resolve edition/example ambiguities explicitly in the ledg
 
 ## Next bounded actions
 
+The [Chapter21 first-program inventory](../examples/mma21p1panel/inventory.md)
+now separates 20 source-program requirements without claiming full chapter/book
+coverage. A next bounded candidate is its missing whole-person RE-ML bootstrap:
+refit variance components per draw on the original MOM mean design and validate
+all native-stream replicates independently. Component-refitting RE-GLS resampling,
+Gaussian population-averaged GEE and complete comparison reporting remain
+separate requirements; existing fixed-transform bootstraps do not close them.
+
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
    [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed

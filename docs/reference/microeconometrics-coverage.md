@@ -48,6 +48,15 @@ bounded numerical behavior, **not a validated textbook replication**.
 
 ## Seed empirical illustrations — inventory incomplete
 
+The [Chapter21 first-program block inventory](../../examples/mma21p1panel/inventory.md)
+splits MMA-PANEL into 20 source-pinned requirements with data/preparation,
+model/inference/post-estimation needs, executable workflows and independent
+reference links or explicit missing evidence. It identifies component-refitting
+RE-GLS/RE-ML bootstraps and Gaussian population-averaged GEE as separate missing
+targets: fixed-transform OLS resampling does not close those rows. This is an
+inventory refinement, not new numerical validation, whole-program completion or
+a complete Chapter21/book inventory.
+
 These are starting points from the authors' [dataset index][data], not a complete
 inventory or exact replication specifications. Page ranges are locators from that
 index; inspect the book and accompanying program before naming a table, sample,

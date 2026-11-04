@@ -20,7 +20,10 @@ workflows are preferred to source-language syntax parity. Deliver complete
 specify → fit → diagnose/interpret → report workflows, not syntax catalogs. The
 [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) prioritizes required graduate methods;
 the [coverage ledger](docs/reference/microeconometrics-coverage.md) tracks method
-gaps and textbook replication evidence.
+gaps and textbook replication evidence. Its linked
+[Chapter21 first-program inventory](examples/mma21p1panel/inventory.md) separates
+20 source-program requirements with explicit workflow/evidence gaps; it does not
+establish whole-chapter or whole-book coverage, or add runtime capability.
 
 ## Implemented and deferred capabilities
 
