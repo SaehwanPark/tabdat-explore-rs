@@ -310,6 +310,58 @@ fn prediction_failures_preserve_fit_and_data_but_runtime_fit_failures_clear_only
 }
 
 #[test]
+fn classical_common_intercept_routes_joint_inference_and_survives_activation() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  let fitted = fit(&mut s, "");
+  let normalized = fitted.result.normalized_level.as_ref().unwrap();
+  let expected = normalized
+    .linear_combination_with_inference(&[1.0, 2.0], 1.3, 95.0)
+    .unwrap();
+  let cached = s.state().estimation;
+  let ExecutionResult::Lincom(common) = run(&mut s, "lincom _cons") else {
+    panic!()
+  };
+  assert_eq!(common.estimate, fitted.result.common_intercept);
+  assert_eq!(common.df_residual, Some(4));
+  let ExecutionResult::Lincom(contrast) = run(&mut s, "lincom _cons + 2*x + 1.3") else {
+    panic!()
+  };
+  assert_eq!(contrast.estimate, expected.estimate);
+  assert_eq!(contrast.standard_error, expected.standard_error);
+  let ExecutionResult::Test(joint) = run(&mut s, "test _cons x") else {
+    panic!()
+  };
+  let expected = normalized
+    .test_linear_hypothesis(&[vec![1.0, 0.0], vec![0.0, 1.0]], &[0.0, 0.0])
+    .unwrap();
+  assert_eq!(joint.statistic, expected.f_statistic);
+  assert_eq!(joint.df, 2);
+  assert_eq!(joint.df_residual, Some(4));
+  run(
+    &mut s,
+    "sql \"\"\"SELECT id,year,y+500 AS y,x+100 AS x FROM active\"\"\" into changed",
+  );
+  let ExecutionResult::Lincom(after) = run(&mut s, "lincom _cons") else {
+    panic!()
+  };
+  assert_eq!(after, common);
+  assert_eq!(s.state().estimation, cached);
+
+  let mut s = f.load();
+  let fitted = fit(&mut s, "cluster(id)");
+  assert!(fitted.result.normalized_level.is_none());
+  let cached = s.state().estimation;
+  assert!(s.execute(parse_command("lincom _cons").unwrap()).is_err());
+  assert!(s.execute(parse_command("test _cons").unwrap()).is_err());
+  let ExecutionResult::Lincom(slope) = run(&mut s, "lincom x") else {
+    panic!()
+  };
+  assert_eq!(slope.df_residual, Some(2));
+  assert_eq!(s.state().estimation, cached);
+}
+
+#[test]
 fn missing_nonfinite_and_unestimated_current_units_have_null_not_zero_effects() {
   let f = Fixture::new();
   for key in ["NULL", "'NaN'::DOUBLE", "'Infinity'::DOUBLE", "99.0"] {

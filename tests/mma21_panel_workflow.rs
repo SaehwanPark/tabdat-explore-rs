@@ -343,7 +343,11 @@ fn within_script_reports_absorbed_and_inference_df_and_exports_conditional_predi
     assert_eq!(fit["coefficients"].as_array().unwrap().len(), 1);
     assert_eq!(
       fit["common_intercept_inference"],
-      "normalization_point_only"
+      if covariance == "nonrobust" {
+        "classical_student_t"
+      } else {
+        "normalization_point_only"
+      }
     );
     assert!(fit.get("log_likelihood").is_none());
   }

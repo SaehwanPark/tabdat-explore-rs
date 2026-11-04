@@ -10,8 +10,7 @@ the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 The [source-pinned first-program inventory](inventory.md) separates its 20
 analysis/reporting requirements, links current workflows and independent evidence,
-and explicitly retains missing classical analytic FE level-intercept uncertainty,
-full reporting and historical-parity requirements. It is not a complete chapter
+and explicitly retains missing full reporting and historical-parity requirements. It is not a complete chapter
 or book inventory. The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;
@@ -29,8 +28,10 @@ GEE/general API or p-values; explicit GEE prediction columns and readable/CLI-v1
 reports are provided. The distinct [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
 now refits500 within slopes/sample normalizations, validates full B-1 coefficient
 covariance/type7 intervals against raw-copy R QR and retains all native original
-FE predictions. Zero empirical slope variance is retained; classical analytic
-common-intercept inference remains unimplemented.
+FE predictions. Zero empirical slope variance is retained. The distinct native
+[classical common-intercept workflow](classical_intercept.md) now validates full
+normalized intercept/slopes covariance, Student-t95 and `_cons` lincom/test
+against independent full dummy QR, including all5,320 original predictions.
 
 POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage
@@ -142,12 +143,16 @@ IDs: DOUBLE cannot recover precision lost before fitting.
 | Unit-cluster SE | 0.0849626112 |
 | Cluster p (DF531) | 0.0489542761 |
 | Common-intercept normalization point | 7.2198919797 |
+| Classical common-intercept SE | 0.0493433967 |
 | Within R² | 0.0162265699 |
 
-The common intercept c=mean(y)-mean(X)beta is a **point normalization**, not an
-additional inferred coefficient. Retained normalized deviations u have
-estimation-observation-weighted mean zero; total unit intercepts are c+u. No
-common or individual unit-intercept coefficient SEs are reported. A conventional
+The common intercept c=mean(y)-mean(X)beta retains its explicit normalization:
+unit deviations u have estimation-observation-weighted mean zero and total unit
+intercepts are c+u. [Classical analytic inference](classical_intercept.md) now
+reports its SE/t/p/95CI and full cross-covariance with slopes, conditional on the
+retained cohort/design; this is not pairs-bootstrap composition uncertainty.
+Unit-cluster fits explicitly withhold common inference. No individual unit-effect
+coefficient SEs are reported. A conventional
 nonclustered FE fit additionally reports the classical F test that all unit
 intercepts are equal, comparing pooled and within RSS on the same sample with
 F(G-1,N-G-p) degrees of freedom. It assumes independent homoskedastic errors;
@@ -155,7 +160,8 @@ exact finite-sample calibration also requires normal errors. Clustered FE
 withholds this classical test. It does not provide a cluster-robust unit-effects
 test, sigma-u/rho inference or likelihood. Conditional level-fit R² includes
 fitted unit effects and is **not** Stata overall/between R². `lincom`/`test`
-constrain retained slopes only; residual summaries are not Hausman,
+include `_cons` for available classical normalized inference, otherwise retained
+slopes only; residual summaries are not Hausman,
 serial-correlation or other specification tests. FE removes additive
 unit-constant effects, not all endogeneity; strict-exogeneity/identification
 assumptions still matter.

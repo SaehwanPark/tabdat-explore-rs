@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-  CoefficientEstimate, CovarianceType, EstimationProblem, LeastSquaresOptions, LeastSquaresResult,
-  StatsError, f_distribution_survival_probability, fit_least_squares_with_options,
-  student_t_pvalue,
+  CoefficientEstimate, CovarianceMatrix, CovarianceType, EstimationProblem, LeastSquaresOptions,
+  LeastSquaresResult, PostEstimationModel, StatsError, f_distribution_survival_probability,
+  fit_least_squares_with_options, student_t_pvalue,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -30,7 +30,7 @@ pub struct UnitEffectsFTest {
   pub p_value: f64,
 }
 
-/// One-way within fit. Only slope coefficients have reported covariance/inference.
+/// One-way within fit, with optional classical inference under the retained normalization.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FixedEffectsResult {
   pub entity_variable: String,
@@ -40,8 +40,14 @@ pub struct FixedEffectsResult {
   pub within: LeastSquaresResult,
   pub effects: Vec<FixedEffect>,
   pub fitted_values: Vec<f64>,
-  /// Descriptive normalization, not an independently inferred coefficient.
+  /// Observation-weighted zero-effect normalization; inference depends on covariance mode.
   pub common_intercept: f64,
+  /// Classical joint common-intercept/slopes covariance; `within` remains slope-only.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub normalized_level: Option<PostEstimationModel>,
+  /// Why common-intercept inference is withheld without discarding the fitted model.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub normalized_level_unavailable_reason: Option<String>,
   /// R² of conditional level fits including unit intercepts, not Stata overall R².
   pub conditional_r_squared: Option<f64>,
   pub minimum_group_size: usize,
@@ -65,6 +71,70 @@ fn average(values: impl Iterator<Item = f64> + Clone) -> Result<f64, StatsError>
     ));
   }
   Ok(mean)
+}
+
+fn normalized_level_model(
+  within: &LeastSquaresResult,
+  common_intercept: f64,
+  grand_x: &[f64],
+) -> Result<PostEstimationModel, String> {
+  if within.covariance.covariance_type != CovarianceType::NonRobust {
+    return Err("common-intercept inference is unavailable for unit-cluster covariance; classical homoskedastic inference is not substituted".into());
+  }
+  if within.parameter_names.iter().any(|name| name == "_cons") {
+    return Err("a slope named _cons conflicts with the normalized common-intercept name".into());
+  }
+  let p = grand_x.len();
+  let cross: Vec<f64> = within
+    .covariance
+    .matrix
+    .iter()
+    .map(|row| -row.iter().zip(grand_x).map(|(v, x)| v * x).sum::<f64>())
+    .collect();
+  // The grand-mean error is orthogonal to demeaned slope scores, including
+  // unbalanced panels: Cov(a,b)=-xbar'Vb and Var(a)=sigma²/N+xbar'Vb*xbar.
+  let rss = within.fit_statistics.residual_sum_of_squares.unwrap();
+  let mean_variance = rss
+    / within.fit_statistics.degrees_of_freedom as f64
+    / within.fit_statistics.observation_count as f64;
+  let variance = mean_variance - grand_x.iter().zip(&cross).map(|(x, v)| x * v).sum::<f64>();
+  let mut matrix = vec![vec![0.0; p + 1]; p + 1];
+  matrix[0][0] = variance;
+  for i in 0..p {
+    matrix[0][i + 1] = cross[i];
+    matrix[i + 1][0] = cross[i];
+    matrix[i + 1][1..].copy_from_slice(&within.covariance.matrix[i]);
+  }
+  if matrix.iter().flatten().any(|v| !v.is_finite()) || (0..=p).any(|i| matrix[i][i] < 0.0) {
+    return Err(
+      "normalized common-intercept covariance is nonfinite or has negative variance".into(),
+    );
+  }
+  // An enormous predictor offset can leave every entry finite yet erase the
+  // grand-mean error component. Require its contrast to retain half of f64's
+  // relative precision; never turn cancellation into a zero-SE inference.
+  if rss > 0.0 {
+    let mut weights = vec![1.0];
+    weights.extend_from_slice(grand_x);
+    let product =
+      crate::matrix::multiply_vector(&matrix, &weights).map_err(|error| error.to_string())?;
+    let recovered: f64 = weights.iter().zip(product).map(|(w, v)| w * v).sum();
+    let relative_error = (recovered / mean_variance - 1.0).abs();
+    if !relative_error.is_finite() || relative_error > f64::EPSILON.sqrt() {
+      return Err("normalized common-intercept covariance is ill-conditioned: the grand-mean error variance cannot be recovered reliably".into());
+    }
+  }
+  let mut names = vec!["_cons".to_owned()];
+  names.extend(within.parameter_names.clone());
+  let mut parameters = vec![common_intercept];
+  parameters.extend(within.coefficients.iter().map(|c| c.value));
+  Ok(PostEstimationModel {
+    parameter_names: names.clone(),
+    parameters,
+    covariance: CovarianceMatrix::new(names, CovarianceType::NonRobust, matrix)
+      .map_err(|error| error.to_string())?,
+    degrees_of_freedom: within.fit_statistics.degrees_of_freedom,
+  })
 }
 
 fn unit_effects_f_test(
@@ -330,6 +400,11 @@ pub fn fit_fixed_effects(
   let singleton_groups = members.iter().filter(|rows| rows.len() == 1).count();
   let (unit_effects_f_test, unit_effects_f_test_unavailable_reason) =
     unit_effects_f_test(problem, &within, g);
+  let (normalized_level, normalized_level_unavailable_reason) =
+    match normalized_level_model(&within, common_intercept, &grand_x) {
+      Ok(model) => (Some(model), None),
+      Err(reason) => (None, Some(reason)),
+    };
   Ok(FixedEffectsResult {
     entity_variable: entity_variable.into(),
     outcome: problem.outcome.clone(),
@@ -337,6 +412,8 @@ pub fn fit_fixed_effects(
     effects,
     fitted_values,
     common_intercept,
+    normalized_level,
+    normalized_level_unavailable_reason,
     conditional_r_squared,
     minimum_group_size,
     maximum_group_size,
@@ -344,4 +421,42 @@ pub fn fit_fixed_effects(
     unit_effects_f_test,
     unit_effects_f_test_unavailable_reason,
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn unrepresentable_new_covariance_is_withheld_without_mutating_slope_state() {
+    let mut problem = EstimationProblem::new(
+      "y",
+      vec!["x".into()],
+      vec![1.0, 2.2, 2.8, 4.1],
+      vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]],
+    )
+    .unwrap();
+    problem.include_intercept = false;
+    let mut within = fit_least_squares_with_options(
+      &problem,
+      &LeastSquaresOptions {
+        covariance_type: CovarianceType::NonRobust,
+      },
+    )
+    .unwrap();
+    within.covariance.matrix[0][0] = f64::MAX;
+    let before = within.clone();
+    assert!(
+      normalized_level_model(&within, 1.0, &[2.0])
+        .unwrap_err()
+        .contains("nonfinite")
+    );
+    assert_eq!(within, before);
+    within.covariance.matrix[0][0] = -1.0;
+    assert!(
+      normalized_level_model(&within, 1.0, &[0.0])
+        .unwrap_err()
+        .contains("negative variance")
+    );
+  }
 }

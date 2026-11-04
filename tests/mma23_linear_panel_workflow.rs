@@ -68,10 +68,7 @@ fn check_results(ev: &[Value]) {
   );
   assert_eq!(pools[0]["covariance"], "cluster(id)");
   assert_eq!(fes[0]["covariance"], "nonrobust");
-  assert_eq!(
-    fes[0]["common_intercept_inference"],
-    "normalization_point_only"
-  );
+  assert_eq!(fes[0]["common_intercept_inference"], "classical_student_t");
   assert_eq!(
     res[0]["estimator"],
     "balanced_swamy_arora_random_effects_gls"

@@ -154,8 +154,10 @@ No weights/unbalanced panels, arbitrary formulas, generic GEE API, retained GEE
 state, prediction uncertainty, p-values, likelihood, finite/few-cluster/causal
 claim or literal historical iteration/output replay. This bounded source PA
 coefficient/covariance/normal95 target does not close complete first-program
-reporting, classical analytic FE normalized-level-intercept uncertainty, historical
-bootstrap parity, companion-program inventory or full chapter/book coverage.
+reporting, historical bootstrap parity, companion-program inventory or full
+chapter/book coverage.
 The separate [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
 now validates a bounded pairs-bootstrap target, not the centered auxiliary-OLS
-intercept. Classical analytic common-intercept covariance remains a next candidate.
+intercept. The distinct [classical normalized common-intercept increment](classical_intercept.md)
+now supplies native joint covariance/Student-t95 and `_cons` restrictions with
+independent full dummy QR evidence; clustered common inference remains withheld.

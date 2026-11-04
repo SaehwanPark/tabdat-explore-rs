@@ -655,10 +655,10 @@ impl Session {
           "lincom after logit is not implemented; logit reports normal coefficient inference".into(),
       });
     }
-    let result = self
-      .linear_inference_result()
+    let post_estimation = self
+      .linear_inference_model()
       .ok_or(RuntimeError::LincomRequiresPriorEstimation)?;
-    let parameter_indices = result
+    let parameter_indices = post_estimation
       .parameter_names
       .iter()
       .enumerate()
@@ -667,9 +667,8 @@ impl Session {
     let combination = affine_lincom_expression(
       &command.expression,
       &parameter_indices,
-      result.parameter_names.len(),
+      post_estimation.parameter_names.len(),
     )?;
-    let post_estimation = tabdat_stats::PostEstimationModel::from_least_squares(result);
     let inference = post_estimation
       .linear_combination_with_inference(&combination.weights, combination.offset, 95.0)
       .map_err(|error| RuntimeError::LincomFailed {
@@ -700,8 +699,8 @@ impl Session {
         message: "test after logit is not implemented; logit reports normal coefficient tests and an overall likelihood-ratio test".into(),
       });
     }
-    let result = self
-      .linear_inference_result()
+    let post_estimation = self
+      .linear_inference_model()
       .ok_or(RuntimeError::TestRequiresPriorEstimation)?;
     if command.constraints.is_empty() {
       return Err(RuntimeError::TestFailed {
@@ -709,7 +708,7 @@ impl Session {
       });
     }
 
-    let parameter_indices = result
+    let parameter_indices = post_estimation
       .parameter_names
       .iter()
       .enumerate()
@@ -719,15 +718,17 @@ impl Session {
     let mut r_vector = Vec::with_capacity(command.constraints.len());
     let mut constraints = Vec::with_capacity(command.constraints.len());
     for constraint in &command.constraints {
-      let affine =
-        affine_test_expression(constraint, &parameter_indices, result.parameter_names.len())
-          .map_err(|message| RuntimeError::TestFailed { message })?;
+      let affine = affine_test_expression(
+        constraint,
+        &parameter_indices,
+        post_estimation.parameter_names.len(),
+      )
+      .map_err(|message| RuntimeError::TestFailed { message })?;
       r_matrix.push(affine.weights);
       r_vector.push(-affine.offset);
       constraints.push(format_test_constraint(constraint));
     }
 
-    let post_estimation = tabdat_stats::PostEstimationModel::from_least_squares(result);
     let wald = post_estimation
       .test_linear_hypothesis(&r_matrix, &r_vector)
       .map_err(|error| RuntimeError::TestFailed {

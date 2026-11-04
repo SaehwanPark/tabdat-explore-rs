@@ -1552,12 +1552,23 @@ Fields:
   **not Stata overall/between R²**), `root_mse`, `residual_sum_of_squares`,
   `within_total_sum_of_squares`; `minimum_group_size`, `maximum_group_size`,
   `singleton_groups`. Undefined/nonfinite optional measures encode as null.
-- `common_intercept` is only mean(y)-mean(X)beta on the estimation sample,
-  `common_intercept_inference: "normalization_point_only"`,
-  `unit_effect_normalization: "estimation_observation_weighted_zero_mean"`.
-  No covariance, standard errors or intervals are reported for the common
-  normalization point or individual unit-intercept coefficients, and no
-  implicit intercept restriction is imposed.
+- `common_intercept` is mean(y)-mean(X)beta on the estimation sample;
+  `unit_effect_normalization: "estimation_observation_weighted_zero_mean"` remains.
+  Available classical inference sets `common_intercept_inference: "classical_student_t"`
+  and adds `common_intercept_statistics` (`name: "_cons"`, `value`, `standard_error`,
+  nullable `statistic`/`p_value`, `ci_lower`, `ci_upper`, `confidence_level: 95.0`,
+  `degrees_of_freedom: N-G-p`). Additive `normalized_level` has `parameter_names`
+  (`_cons` then explicit slopes), `parameters`, full `covariance_matrix`,
+  `inference_df` and `reference_distribution: "student_t"`. Existing top-level
+  slope arrays remain unchanged. Var(a)=sigma²/N+mean(X)'Vb mean(X) and
+  Cov(a,beta)=-mean(X)'Vb, conditional on retained units/design.
+  Unit-cluster fits, name collision or unrepresentable/ill-conditioned new covariance retain
+  `normalization_point_only` plus `common_intercept_inference_unavailable_reason`;
+  no classical variance is substituted into clustered inference. The grand-mean
+  contrast must recover sigma²/N within sqrt(f64 epsilon) relative error; otherwise
+  the normalized model is withheld without discarding slopes/point fits. Degenerate zero
+  variance gives zero SE/point intervals and null t/p. No individual unit-effect
+  intervals or implicit intercept restriction are added.
 - `unit_effects_f_test`, when present, tests that all unit intercepts are equal
   by comparing pooled and within RSS on the same estimation sample. It contains
   `f_statistic`, `df_num` (=G-1), `df_denom` (=N-G-p), `p_value`, and the
@@ -1568,8 +1579,11 @@ Fields:
   No adjusted within R², panel/Gaussian likelihood, unit vectors or named FE
   snapshots are emitted. Existing non-FE result shapes remain unchanged.
 
-`LincomResult`/`TestResult` operate on retained slopes only, using the inference
-DF above even though fit residual DF remains N-G-p. Predictions append current-row
+`LincomResult`/`TestResult` use the retained classical joint normalized model
+when available, including `_cons` and intercept–slope cross-covariance; otherwise
+retained slopes only. They use the inference DF above even though fit residual
+DF remains N-G-p. A real slope named `_cons` keeps that name; in that case no
+common parameter is added. Owned moments do not recenter after active-data changes. Predictions append current-row
 DOUBLE columns atomically: `xb` (also bare predict) is common intercept+X beta;
 `xbu` is retained total unit intercept+X beta; `u` is retained normalized deviation;
 `residuals` is current y minus xbu. Conditional modes require matching ID name and

@@ -231,4 +231,195 @@ fn exact_within_fit_keeps_the_model_when_the_unit_effect_test_is_undefined() {
       .unwrap()
       .contains("residual variance is degenerate")
   );
+  let normalized = result.normalized_level.unwrap();
+  let common = normalized
+    .linear_combination_with_inference(&[1.0, 0.0], 0.0, 95.0)
+    .unwrap();
+  assert_eq!(common.standard_error, 0.0);
+  assert_eq!(common.statistic, None);
+  assert!(common.p_value.is_nan());
+  assert_eq!(common.ci_lower, common.estimate);
+  assert_eq!(common.ci_upper, common.estimate);
+}
+
+#[test]
+fn normalized_common_inference_matches_independent_weighted_dummy_qr() {
+  let reference: Vec<_> = include_str!("fixtures/fixed_effects_common_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|row| row.split(',').collect::<Vec<_>>())
+    .collect();
+  assert_eq!(reference.len(), 96);
+  let mut checked = 0;
+  for case in ["balanced", "unbalanced", "interleaved"] {
+    let fit = fit_fixed_effects(&problem(case), "person", false).unwrap();
+    let normalized = fit.normalized_level.as_ref().unwrap();
+    assert_eq!(normalized.parameter_names, ["_cons", "x", "z"]);
+    assert_eq!(fit.within.parameter_names, ["x", "z"]);
+    assert_eq!(
+      normalized.degrees_of_freedom,
+      fit.within.fit_statistics.degrees_of_freedom
+    );
+    for i in 0..2 {
+      for j in 0..2 {
+        assert_eq!(
+          normalized.covariance.matrix[i + 1][j + 1],
+          fit.within.covariance.matrix[i][j]
+        );
+      }
+    }
+    let common = normalized
+      .linear_combination_with_inference(&[1.0, 0.0, 0.0], 0.0, 95.0)
+      .unwrap();
+    let contrast = normalized
+      .linear_combination_with_inference(&[1.0, 2.0, -0.5], 1.3, 95.0)
+      .unwrap();
+    let joint = normalized
+      .test_linear_hypothesis(&[vec![1.0, 0.0, 0.0], vec![0.0, 1.0, -0.5]], &[0.0, 0.2])
+      .unwrap();
+    let mut value = serde_json::to_value(&fit).unwrap();
+    value["common"] = serde_json::to_value(common).unwrap();
+    value["contrast"] = serde_json::to_value(contrast).unwrap();
+    value["joint"] = json!({"f_statistic":joint.f_statistic,"df_num":joint.df_num,"df_denom":joint.df_denom,
+      "p_value":f_distribution_survival_probability(joint.f_statistic,joint.df_num as f64,joint.df_denom as f64)});
+    for row in reference.iter().filter(|r| r[0] == case) {
+      let actual = value.pointer(row[1]).and_then(|v| v.as_f64()).unwrap();
+      let expected: f64 = row[2].parse().unwrap();
+      let tolerance = if row[1].ends_with("p_value") {
+        expected.abs() * 1e-8
+      } else {
+        1e-9
+      };
+      assert!(
+        (actual - expected).abs() <= tolerance,
+        "{row:?}: native={actual:e}, R={expected:e}"
+      );
+      checked += 1;
+    }
+  }
+  assert_eq!(checked, reference.len());
+}
+
+#[test]
+fn normalized_common_covariance_transforms_with_predictor_and_response_shifts() {
+  let mut p = problem("balanced");
+  for y in &mut p.response {
+    *y = (*y * 16.0).round() / 16.0;
+  }
+  for row in &mut p.design_matrix {
+    for x in row {
+      *x = (*x * 16.0).round() / 16.0;
+    }
+  }
+  let before = fit_fixed_effects(&p, "person", false)
+    .unwrap()
+    .normalized_level
+    .unwrap();
+  for y in &mut p.response {
+    *y += 32.0;
+  }
+  for row in &mut p.design_matrix {
+    row[0] += 16.0;
+  }
+  let after = fit_fixed_effects(&p, "person", false)
+    .unwrap()
+    .normalized_level
+    .unwrap();
+  let a = &before.covariance.matrix;
+  let b = &after.covariance.matrix;
+  assert!(
+    (after.parameters[0] - (before.parameters[0] + 32.0 - 16.0 * before.parameters[1])).abs()
+      < 1e-9
+  );
+  assert!((b[0][0] - (a[0][0] - 32.0 * a[0][1] + 256.0 * a[1][1])).abs() < 1e-9);
+  for j in 1..3 {
+    assert!((b[0][j] - (a[0][j] - 16.0 * a[1][j])).abs() < 1e-9);
+  }
+}
+
+#[test]
+fn huge_predictor_offsets_withhold_unrecoverable_common_covariance_not_slopes() {
+  let mut p = EstimationProblem::new(
+    "y",
+    vec!["x".into()],
+    (1..=3)
+      .flat_map(|g| (0..4).map(move |t| 3.0 + g as f64 + 0.5 * t as f64 + 0.0625 * (t * t) as f64))
+      .collect(),
+    (1..=3)
+      .flat_map(|g| (0..4).map(move |t| vec![g as f64 * 0.5 + t as f64 * 0.25]))
+      .collect(),
+  )
+  .unwrap()
+  .with_sample(
+    EstimationSample::new(
+      (0..12).collect(),
+      12,
+      0,
+      None,
+      Some(
+        (1..=3)
+          .flat_map(|g| (0..4).map(move |_| g.to_string()))
+          .collect(),
+      ),
+    )
+    .unwrap(),
+  );
+  let before = fit_fixed_effects(&p, "person", false).unwrap();
+  let expected = before
+    .normalized_level
+    .as_ref()
+    .unwrap()
+    .linear_combination_with_inference(&[1.0, 0.0], 0.0, 95.0)
+    .unwrap();
+  assert!(expected.standard_error > 0.0);
+  for row in &mut p.design_matrix {
+    row[0] += 1e12;
+  }
+  let after = fit_fixed_effects(&p, "person", false).unwrap();
+  assert!(after.normalized_level.is_none());
+  assert!(
+    after
+      .normalized_level_unavailable_reason
+      .as_deref()
+      .unwrap()
+      .contains("ill-conditioned")
+  );
+  assert_eq!(before.within.coefficients, after.within.coefficients);
+  assert_eq!(before.within.covariance, after.within.covariance);
+  assert_eq!(before.fitted_values, after.fitted_values);
+}
+
+#[test]
+fn normalized_common_withholding_and_legacy_state_are_explicit() {
+  let fit = fit_fixed_effects(&problem("balanced"), "person", true).unwrap();
+  assert!(fit.normalized_level.is_none());
+  assert!(
+    fit
+      .normalized_level_unavailable_reason
+      .as_deref()
+      .unwrap()
+      .contains("unit-cluster")
+  );
+  let mut p = problem("balanced");
+  p.predictor_names[0] = "_cons".into();
+  let fit = fit_fixed_effects(&p, "person", false).unwrap();
+  assert!(fit.normalized_level.is_none());
+  assert!(
+    fit
+      .normalized_level_unavailable_reason
+      .as_deref()
+      .unwrap()
+      .contains("conflicts")
+  );
+  let fit = fit_fixed_effects(&problem("balanced"), "person", false).unwrap();
+  let mut legacy = serde_json::to_value(&fit).unwrap();
+  legacy.as_object_mut().unwrap().remove("normalized_level");
+  legacy
+    .as_object_mut()
+    .unwrap()
+    .remove("normalized_level_unavailable_reason");
+  let restored: tabdat_stats::FixedEffectsResult = serde_json::from_value(legacy).unwrap();
+  assert!(restored.normalized_level.is_none());
+  assert_eq!(restored.common_intercept, fit.common_intercept);
+  assert_eq!(restored.within, fit.within);
 }
