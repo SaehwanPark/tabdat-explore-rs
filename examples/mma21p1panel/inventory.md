@@ -75,7 +75,7 @@ closure even where a bounded SE/covariance workflow is validated below.
 | C21-P1-REGLS / 274–278 | All rows; Swamy–Arora RE-GLS lnhr on intercept/lnwg | Model-based covariance, components, population predictions and report | [random_effects.td](random_effects.td), [R reference](random_effects_reference.R), [evidence](README.md) | Validated bounded; native unit-score extension is separate from this source default |
 | C21-P1-REGLS-BOOT / 285–287 | Resample people; **refit variance components/theta per draw**, then RE-GLS | B500, seed10001; population-scale intercept and wage bootstrap uncertainty | —; [related fixed-theta script](random_effects_gls_bootstrap.td), [R reference for that different target](random_effects_gls_bootstrap_reference.R) | Planned exact target: fixed-theta transformed OLS does not satisfy per-draw RE refitting or population-intercept uncertainty |
 | C21-P1-REML / 291–295 | All rows, Gaussian random-intercept marginal ML | Coefficients, joint component uncertainty, likelihood and boundary test; reporting | [random_effects_ml.td](random_effects_ml.td), [independent R fixture](../../crates/tabdat-stats/tests/fixtures/random_effects_ml_reference.R), [evidence](README.md) | Partial: native interior information/component inference validated; small historical Stata8 SE differences remain unresolved |
-| C21-P1-REML-BOOT / 301–303 | Resample people with distinct copied unit identities; refit marginal ML/components | B500, seed10001; slope/intercept bootstrap SEs and report; convergence/boundary failure policy | — | Planned: no RE-ML bootstrap workflow/evidence; analytic unit-score sandwich is not resampling |
+| C21-P1-REML-BOOT / 301–303 | Resample people with distinct copied unit identities; refit marginal ML/components | B500, seed10001; slope/intercept bootstrap SEs and report; convergence/boundary failure policy | [Bounded workflow/evidence](random_effects_ml_bootstrap.md), [script](random_effects_ml_bootstrap.td), [R reference](random_effects_ml_bootstrap_reference.R) | Validated bounded native-stream coefficient target: all500 refits/266,000 draws, full B−1 covariance/type7 intervals and original predictions audited; boundary fits retained. Historical Stata RNG/duplicate-ID/all-interval parity unresolved; no general ML bootstrap API |
 | C21-P1-PA / 307–308 | Same original panel; Gaussian identity-link population-averaged exchangeable GEE | Working correlation/scale, coefficient covariance and report for author `xtreg ..., pa` | — | Planned: RE point-estimate similarity is not an independently validated PA/GEE workflow; Chapter23 Poisson GEE has a different response/link |
 | C21-P1-HAUSMAN / 310–322 | Same-sample classical FE versus RE-GLS | Covariance-difference Hausman statistic; explicit efficiency assumptions | [Classical Hausman](classical_hausman.md), [script](classical_hausman.td), [R reference](classical_hausman_reference.R) | Validated bounded one-slope classical comparison; not robust to arbitrary within-person dependence; companion robust auxiliary workflow is separate |
 | C21-P1-REPORT / 327–339 | Saved model estimates and six bootstrap SE matrices | Two multi-model tables plus PA table; N/ll/r2/tss/rss/mss/rmse/df_r where defined; six bootstrap SE reports | [Current reporting limits](README.md), [pooled](pooled.td)/[FD](first_difference.td)/[Between](between.td) named reports | Partial: no exact full-source comparison table or six-matrix report; FE/RE/PA snapshots, fit-statistic conventions and unresolved bootstrap rows must be settled before closure |
@@ -88,16 +88,15 @@ Native refitting must give resampled copies distinct unit identities so an
 original person drawn twice represents two independent cluster copies, not one
 artificially doubled-length panel.
 
-The missing RE-ML whole-person bootstrap is a bounded candidate following this
-inventory: original 5,320 rows/532 people, B500, mean model lnhr~1+lnwg,
-refit both variance components per draw, distinct identities for duplicate
-people, explicit convergence/boundary handling, full coefficient bootstrap
-covariance and reproducible exports. Choose a documented native RNG rather than
-claim historical Stata draws. Independently refit every draw in R; verify copy
-identities, no silent dropped/failed replicates and script/file failure behavior
-before marking that row validated. This paragraph is a candidate contract,
-**not implementation or a claim that a general bootstrap command supports ML**.
-RE-GLS component-refitting bootstrap and Gaussian PA remain separate requirements.
+The [RE-ML whole-person bootstrap composition](random_effects_ml_bootstrap.md)
+now validates the bounded coefficient target on original5,320-row MOM with
+500 independent R refits/266,000 exact draws, distinct copies, per-draw component
+refits, boundary/convergence guards, full coefficient covariance and reproducible
+exports. It does not install a general ML bootstrap API or establish historical
+Stata draw/duplicate-ID/all-interval parity. A next independent bounded candidate
+is C21-P1-REGLS-BOOT: recompute variance components/theta for every resampled
+panel and report population-scale intercept uncertainty, rather than reuse fixed
+quasi-transforms. Gaussian PA remains a separate missing analysis.
 
 The source overview also names `mma21p2panfeandre.do`,
 `mma21p3panresiduals.do` and `mma21p4panpangls.do`. This inventory does not assert
