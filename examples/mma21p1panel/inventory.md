@@ -76,7 +76,7 @@ closure even where a bounded SE/covariance workflow is validated below.
 | C21-P1-REGLS-BOOT / 285–287 | Resample people; **refit variance components/theta per draw**, then RE-GLS | B500, seed10001; population-scale intercept and wage bootstrap uncertainty | [Component-refitting workflow/evidence](random_effects_gls_refit_bootstrap.md), [script](random_effects_gls_refit_bootstrap.td), [R/plm reference](random_effects_gls_refit_bootstrap_reference.R) | Validated bounded native-stream target: all500 refits/266,000 draws, signed/truncated components, theta, population-intercept/slope covariance/type7 intervals and original predictions audited. Fixed-theta workflow unchanged; historical Stata draw/duplicate-ID/all-interval parity unresolved; no general resampling API |
 | C21-P1-REML / 291–295 | All rows, Gaussian random-intercept marginal ML | Coefficients, joint component uncertainty, likelihood and boundary test; reporting | [random_effects_ml.td](random_effects_ml.td), [independent R fixture](../../crates/tabdat-stats/tests/fixtures/random_effects_ml_reference.R), [evidence](README.md) | Partial: native interior information/component inference validated; small historical Stata8 SE differences remain unresolved |
 | C21-P1-REML-BOOT / 301–303 | Resample people with distinct copied unit identities; refit marginal ML/components | B500, seed10001; slope/intercept bootstrap SEs and report; convergence/boundary failure policy | [Bounded workflow/evidence](random_effects_ml_bootstrap.md), [script](random_effects_ml_bootstrap.td), [R reference](random_effects_ml_bootstrap_reference.R) | Validated bounded native-stream coefficient target: all500 refits/266,000 draws, full B−1 covariance/type7 intervals and original predictions audited; boundary fits retained. Historical Stata RNG/duplicate-ID/all-interval parity unresolved; no general ML bootstrap API |
-| C21-P1-PA / 307–308 | Same original panel; Gaussian identity-link population-averaged exchangeable GEE | Working correlation/scale, coefficient covariance and report for author `xtreg ..., pa` | — | Planned: RE point-estimate similarity is not an independently validated PA/GEE workflow; Chapter23 Poisson GEE has a different response/link |
+| C21-P1-PA / 307–308 | Same original panel; Gaussian identity-link population-averaged exchangeable GEE | Working correlation/scale, coefficient covariance and report for author `xtreg ..., pa` | [Workflow/evidence](gaussian_pa.md), [script](gaussian_pa.td), [R gee/dense reference](gaussian_pa_reference.R) | Validated bounded coefficient/covariance/normal95 target: legacy Pearson/RSS-N, full working and uncorrected unit-sandwich matrices, all5,320 predictions/532 scores and12 printed facts. Negative-correlation controls pass; not relabelled RE. No owned GEE state/general API/p-values or literal historical iteration/output replay |
 | C21-P1-HAUSMAN / 310–322 | Same-sample classical FE versus RE-GLS | Covariance-difference Hausman statistic; explicit efficiency assumptions | [Classical Hausman](classical_hausman.md), [script](classical_hausman.td), [R reference](classical_hausman_reference.R) | Validated bounded one-slope classical comparison; not robust to arbitrary within-person dependence; companion robust auxiliary workflow is separate |
 | C21-P1-REPORT / 327–339 | Saved model estimates and six bootstrap SE matrices | Two multi-model tables plus PA table; N/ll/r2/tss/rss/mss/rmse/df_r where defined; six bootstrap SE reports | [Current reporting limits](README.md), [pooled](pooled.td)/[FD](first_difference.td)/[Between](between.td) named reports | Partial: no exact full-source comparison table or six-matrix report; FE/RE/PA snapshots, fit-statistic conventions and unresolved bootstrap rows must be settled before closure |
 
@@ -96,10 +96,12 @@ exports. The separate [component-refitting RE-GLS bootstrap](random_effects_gls_
 now validates all500 Swamy–Arora refits/266,000 draws, theta and population-scale
 intercept uncertainty instead of fixed quasi-transforms. Neither composition
 installs a general resampling API or establishes historical Stata draw/duplicate-ID/
-all-interval parity. A next independent bounded candidate is C21-P1-PA: Gaussian
-identity-link exchangeable population-averaged GEE on the same source panel.
-Define working-correlation/scale/covariance conventions before implementation;
-RE point-estimate similarity does not close that missing analysis.
+all-interval parity. The [Gaussian PA composition](gaussian_pa.md) now validates
+the independently specified legacy moment/scale convention, both full coefficient
+covariances/normal95, every original prediction and unit score, with negative-rho
+controls and explicit retained pooled-OLS state. No general/owned GEE API or
+p-values are installed. A next bounded candidate is C21-P1-FE normalized common
+level-intercept inference; the centered auxiliary-OLS bootstrap does not close it.
 
 The source overview also names `mma21p2panfeandre.do`,
 `mma21p3panresiduals.do` and `mma21p4panpangls.do`. This inventory does not assert
