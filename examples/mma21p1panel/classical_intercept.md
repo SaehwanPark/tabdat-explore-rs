@@ -85,10 +85,11 @@ classical joint routing, active-data mutation without refitting, clustered
 withholding/state preservation, source preflight and refused overwrite.
 
 Focused tests passed before expanded shared-API validation. Reverse dependency
-scope initially covered1811 passing tests across329 binaries, plus seven earlier
-passing stats tests. After the review-driven conditioning guard, eight focused
-stats cases pass; final reverse-consumer confirmation is recorded in the PR
-(two pre-existing ignored tests remain excluded).
+scope initially covered1811 passing tests. After the review-driven conditioning
+guard,1810 reverse-consumer cases pass across328 binaries, plus eight focused
+stats cases and two unaffected earlier stats cases:1820 passing/two pre-existing
+ignored in the complete combined impact scope. Embedded-help regression and
+loadability checks pass; affected doctest targets contain no executable cases.
 Affected-crate/changed-target Clippy, formatting and Python syntax pass. An
 attempted root all-target Clippy hit the unchanged `excessive_precision` literal
 in `tests/mma05_table57_comparison_workflow.rs:54`; it was not altered to hide the
@@ -115,7 +116,11 @@ python3 "$repo/examples/mma21p1panel/check_classical_intercept.py" \
 Use `--text` in a separate fresh directory for readable output. Export collision
 preserves its owner and stops later commands; the script is not a session-wide
 transaction. The R/Python audit tools are development-only, not production
-runtime dependencies. `--synthetic` on the auditor labels controls and disables
+runtime dependencies. Regenerate the control with
+`python3 examples/mma21p1panel/fe_level_bootstrap_synthetic.py heterogeneous fresh_dir`
+and pass its MOM.dat to the R reference; the core fixture generator is
+`crates/tabdat-stats/tests/fixtures/fixed_effects_common_reference.R`.
+`--synthetic` on the auditor labels controls and disables
 only the original-file hash gate, not raw-field/sample/reference checks.
 
 C21-P1-FE remains partial: remaining historical panel statistics and complete

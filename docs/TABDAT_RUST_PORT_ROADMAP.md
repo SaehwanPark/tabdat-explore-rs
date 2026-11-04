@@ -290,7 +290,10 @@ joint covariance/Student-t95 and `_cons` lincom/test, independently checked by
 39 original full-dummy QR fields/all5,320 predictions,96 multi-slope control
 fields and a160-row complete-panel control. Unit-cluster common inference is
 explicitly withheld; old slope arrays remain unchanged. Expanded shared-API
-verification covers1811 reverse-consumer tests plus seven earlier stats tests.
+verification after the conditioning guard covers1810 reverse-consumer cases plus
+8 focused and2 unaffected earlier stats cases (1820 passing,2 pre-existing ignored);
+large predictor offsets with unrecoverable mean-error variance withhold only
+new normalized inference, not existing slope/point fits.
 A next bounded candidate is the first-program B500 Between bootstrap gap;
 reassess source/priorities before selecting it. Complete comparison reporting,
 historical parity and companion/full-book inventory remain required.
