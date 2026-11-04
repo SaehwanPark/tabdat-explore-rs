@@ -152,4 +152,6 @@ The separate [classical normalized common-intercept target](classical_intercept.
 is now implemented/independently validated; it is not this pairs-bootstrap target.
 Remaining required work includes individual FE-effect intervals, full saved-model
 comparison reports, historical replay and companion/full-book inventory. Reassess
-the first-program B500 Between bootstrap gap as a next bounded candidate.
+companion-program source inventory and complete comparison/reporting needs;
+the separate [B500 Between workflow](between_bootstrap_b500.md) now covers its
+native replication-count target.

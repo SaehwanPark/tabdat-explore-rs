@@ -1846,6 +1846,14 @@ general Hausman testing, bootstrap or full panel coverage.
 
 ### MMA-PANEL Between seeded pairs-bootstrap method evidence
 
+The separate [first-program B500 workflow](../../examples/mma21p1panel/between_bootstrap_b500.md)
+now addresses C21-P1-BE-BOOT lines183–185 with500 native mean-record pairs refits,
+18 independent R summaries/all532 ordered mean/design/prediction rows and exact
+original raw inputs. A16-person control, JSON/text parity, seven forgery checks,
+first-draw rank failure and file preservation are covered. It retains the manual
+B200 script/default reference below; historical Stata RNG/repeated-ID/all-interval
+parity and full first-program reporting remain unclaimed.
+
 The [complete workflow](../../examples/mma21p1panel/README.md) extends the
 Between-bootstrap block of March2005 mma21p2panmanual.do: equal-weight means on
 all5,320 jointly finite MOM observations/532 people, then resample532 independent

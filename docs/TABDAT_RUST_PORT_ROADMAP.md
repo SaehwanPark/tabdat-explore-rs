@@ -294,8 +294,10 @@ verification after the conditioning guard covers1810 reverse-consumer cases plus
 8 focused and2 unaffected earlier stats cases (1820 passing,2 pre-existing ignored);
 large predictor offsets with unrecoverable mean-error variance withhold only
 new normalized inference, not existing slope/point fits.
-A next bounded candidate is the first-program B500 Between bootstrap gap;
-reassess source/priorities before selecting it. Complete comparison reporting,
+The separate [first-program B500 Between bootstrap](../examples/mma21p1panel/between_bootstrap_b500.md)
+now validates18 independent R summaries/all532 mean/prediction records and exact
+raw inputs, retaining manual B200 and distinguishing native/historical RNG.
+Next reassess companion-program inventory/source alignment and full reporting. Complete comparison reporting,
 historical parity and companion/full-book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
