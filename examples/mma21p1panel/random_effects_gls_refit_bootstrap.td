@@ -67,6 +67,7 @@ seeds AS (
  THEN error('RE-GLS refit bootstrap replicate has unidentified or invalid within/between moments') ELSE wxx END AS wxx
  FROM moments
 ), preliminaries AS MATERIALIZED (
+ -- Direct squared residuals avoid cancellation when the Between fit is nearly exact.
  SELECT c.*,wxy/wxx AS within_slope,bxy/bxx AS between_slope,ew/(9*g-1) AS e,eb/(g-2) AS between_variance
  FROM checked c
  CROSS JOIN LATERAL (

@@ -73,7 +73,7 @@ closure even where a bounded SE/covariance workflow is validated below.
 | C21-P1-FD-BOOT / 258–260 | Resample whole-person annual-pair blocks, refit FD | B500, seed10001; slope/intercept uncertainty and report | [FD bootstrap](fd_bootstrap.md), [script](fd_bootstrap.td), [R reference](fd_bootstrap_reference.R) | Validated bounded native RNG; historical draws not established |
 | C21-P1-FIG214 / 263–270 | Annual differences, OLS/LOWESS | Difference-data marks, curves and labelled figure | [Figure21.4](fd_figure.md), [script](fd_figure.td), [R reference](fd_figure_reference.R) | Partial: audited native SVG adaptation; source level-axis labels corrected to changes; historical tied curves unresolved |
 | C21-P1-REGLS / 274–278 | All rows; Swamy–Arora RE-GLS lnhr on intercept/lnwg | Model-based covariance, components, population predictions and report | [random_effects.td](random_effects.td), [R reference](random_effects_reference.R), [evidence](README.md) | Validated bounded; native unit-score extension is separate from this source default |
-| C21-P1-REGLS-BOOT / 285–287 | Resample people; **refit variance components/theta per draw**, then RE-GLS | B500, seed10001; population-scale intercept and wage bootstrap uncertainty | —; [related fixed-theta script](random_effects_gls_bootstrap.td), [R reference for that different target](random_effects_gls_bootstrap_reference.R) | Planned exact target: fixed-theta transformed OLS does not satisfy per-draw RE refitting or population-intercept uncertainty |
+| C21-P1-REGLS-BOOT / 285–287 | Resample people; **refit variance components/theta per draw**, then RE-GLS | B500, seed10001; population-scale intercept and wage bootstrap uncertainty | [Component-refitting workflow/evidence](random_effects_gls_refit_bootstrap.md), [script](random_effects_gls_refit_bootstrap.td), [R/plm reference](random_effects_gls_refit_bootstrap_reference.R) | Validated bounded native-stream target: all500 refits/266,000 draws, signed/truncated components, theta, population-intercept/slope covariance/type7 intervals and original predictions audited. Fixed-theta workflow unchanged; historical Stata draw/duplicate-ID/all-interval parity unresolved; no general resampling API |
 | C21-P1-REML / 291–295 | All rows, Gaussian random-intercept marginal ML | Coefficients, joint component uncertainty, likelihood and boundary test; reporting | [random_effects_ml.td](random_effects_ml.td), [independent R fixture](../../crates/tabdat-stats/tests/fixtures/random_effects_ml_reference.R), [evidence](README.md) | Partial: native interior information/component inference validated; small historical Stata8 SE differences remain unresolved |
 | C21-P1-REML-BOOT / 301–303 | Resample people with distinct copied unit identities; refit marginal ML/components | B500, seed10001; slope/intercept bootstrap SEs and report; convergence/boundary failure policy | [Bounded workflow/evidence](random_effects_ml_bootstrap.md), [script](random_effects_ml_bootstrap.td), [R reference](random_effects_ml_bootstrap_reference.R) | Validated bounded native-stream coefficient target: all500 refits/266,000 draws, full B−1 covariance/type7 intervals and original predictions audited; boundary fits retained. Historical Stata RNG/duplicate-ID/all-interval parity unresolved; no general ML bootstrap API |
 | C21-P1-PA / 307–308 | Same original panel; Gaussian identity-link population-averaged exchangeable GEE | Working correlation/scale, coefficient covariance and report for author `xtreg ..., pa` | — | Planned: RE point-estimate similarity is not an independently validated PA/GEE workflow; Chapter23 Poisson GEE has a different response/link |
@@ -92,11 +92,14 @@ The [RE-ML whole-person bootstrap composition](random_effects_ml_bootstrap.md)
 now validates the bounded coefficient target on original5,320-row MOM with
 500 independent R refits/266,000 exact draws, distinct copies, per-draw component
 refits, boundary/convergence guards, full coefficient covariance and reproducible
-exports. It does not install a general ML bootstrap API or establish historical
-Stata draw/duplicate-ID/all-interval parity. A next independent bounded candidate
-is C21-P1-REGLS-BOOT: recompute variance components/theta for every resampled
-panel and report population-scale intercept uncertainty, rather than reuse fixed
-quasi-transforms. Gaussian PA remains a separate missing analysis.
+exports. The separate [component-refitting RE-GLS bootstrap](random_effects_gls_refit_bootstrap.md)
+now validates all500 Swamy–Arora refits/266,000 draws, theta and population-scale
+intercept uncertainty instead of fixed quasi-transforms. Neither composition
+installs a general resampling API or establishes historical Stata draw/duplicate-ID/
+all-interval parity. A next independent bounded candidate is C21-P1-PA: Gaussian
+identity-link exchangeable population-averaged GEE on the same source panel.
+Define working-correlation/scale/covariance conventions before implementation;
+RE point-estimate similarity does not close that missing analysis.
 
 The source overview also names `mma21p2panfeandre.do`,
 `mma21p3panresiduals.do` and `mma21p4panpangls.do`. This inventory does not assert

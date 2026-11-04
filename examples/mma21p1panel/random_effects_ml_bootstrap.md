@@ -161,6 +161,7 @@ all three no-clobber export stages. Six audit-corruption probes reject a changed
 person ID, coefficient, profile information, covariance, interval label or raw
 source value. Existing RE-ML workflow integration checks also pass. No production
 Python/R dependency, shared estimator/API change, whole-chapter, platform or
-release certification is introduced. Component-refitting RE-GLS bootstrap,
-FE level-intercept uncertainty, Gaussian PA and historical parity remain separate
-required work.
+release certification is introduced. The separate [component-refitting RE-GLS
+bootstrap](random_effects_gls_refit_bootstrap.md) now validates its bounded
+Swamy–Arora target; it is not this ML bootstrap. FE level-intercept uncertainty,
+Gaussian PA and historical parity remain required work.

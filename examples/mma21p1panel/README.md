@@ -10,12 +10,16 @@ the POLS/FD sections and final table block; the latter identifies this slice.
 This is linear-panel chapter **21**, not clustered-sample chapter24.
 The [source-pinned first-program inventory](inventory.md) separates its 20
 analysis/reporting requirements, links current workflows and independent evidence,
-and explicitly retains missing RE-GLS component-refitting bootstrap, Gaussian PA,
+and explicitly retains missing Gaussian PA, FE level-intercept uncertainty,
 full reporting and historical-parity requirements. It is not a complete chapter
 or book inventory. The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;
-it is not a general ML bootstrap API or historical Stata draw replay.
+it is not a general ML bootstrap API or historical Stata draw replay. A separate
+[component-refitting RE-GLS bootstrap](random_effects_gls_refit_bootstrap.md)
+now audits500 per-draw Swamy–Arora component/theta refits,266,000 draws and
+population-scale intercept/slope uncertainty against R/plm, with a readable/
+CLI-v1 uncertainty table and preserved original prediction state.
 
 POLS/FD/Between are **composed native SQL/OLS workflows**. `within.td` executes bounded
 native `xtreg ..., fe id(id) time(year)`. All load, guard keys, fit, test the wage
@@ -775,6 +779,10 @@ exports. Any failed replication aborts without redraw/drop. Work is bounded by
 G*largest_cluster_size*B*K²<=100,000,000; IID stream/API behavior is preserved.
 
 ### Fixed-transform RE-GLS whole-person bootstrap
+
+For per-draw component/theta refits and population-scale intercept uncertainty,
+use the separate [component-refitting workflow](random_effects_gls_refit_bootstrap.md).
+The two workflows answer different resampling targets and are not interchangeable.
 
 [`random_effects_gls_bootstrap.td`](random_effects_gls_bootstrap.td) implements
 March2005 mma21p2panmanual.do block5 on all5,320 MOM rows/532 people. Guard raw

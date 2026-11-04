@@ -51,15 +51,19 @@ bounded numerical behavior, **not a validated textbook replication**.
 The [Chapter21 first-program block inventory](../../examples/mma21p1panel/inventory.md)
 splits MMA-PANEL into 20 source-pinned requirements with data/preparation,
 model/inference/post-estimation needs, executable workflows and independent
-reference links or explicit missing evidence. Component-refitting RE-GLS
-bootstrap and Gaussian population-averaged GEE remain missing targets:
-fixed-transform OLS resampling does not close those rows. The separate
+reference links or explicit missing evidence. Gaussian population-averaged GEE
+and FE level-intercept uncertainty remain missing targets; fixed-transform OLS
+resampling does not close those rows. The separate
 [balanced RE-ML bootstrap composition](../../examples/mma21p1panel/random_effects_ml_bootstrap.md)
 now validates500 per-draw component refits/266,000 exact draws, coefficient
 covariance/type7 intervals and all5,320 original prediction rows against
 independent R/Python. It retains boundary draws and original native state, not
 historical Stata stream/duplicate-ID/all-interval parity or a general bootstrap
-API. Neither that slice nor this inventory is whole-program/chapter/book closure.
+API. The distinct [component-refitting RE-GLS bootstrap](../../examples/mma21p1panel/random_effects_gls_refit_bootstrap.md)
+now audits500 independent R/plm refits/266,000 exact draws, signed/truncated
+components/theta, population-intercept/slope covariance/type7 intervals and
+original predictions; existing fixed-theta resampling is unchanged. Neither
+bootstrap slice nor this inventory is whole-program/chapter/book closure.
 
 These are starting points from the authors' [dataset index][data], not a complete
 inventory or exact replication specifications. Page ranges are locators from that
