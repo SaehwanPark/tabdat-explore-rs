@@ -19,6 +19,10 @@ The [manual FE auxiliary covariance workflow](manual_fe_covariance.md) now valid
 its three IID/HC1/person-CR1 rows, full covariance/slope intervals, named reports
 and all5,320 predictions. Working5318/cluster531 DF and centered-intercept artifacts
 are explicitly distinguished from canonical FE4787/normalized-intercept inference.
+The [manual fixed-GLS-theta covariance comparison](manual_gls_covariance.md) now
+validates its three auxiliary covariance rows/both coefficient intervals against
+R/plm on all5,320 rows; native population/normal versus quasi-intercept/Student-t
+scaling and valid negative raw unit-variance/theta0 controls are explicit.
 The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;

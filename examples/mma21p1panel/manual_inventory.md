@@ -103,6 +103,11 @@ and the final tables identify Table21.2 p710. No publisher program/data is vendo
 - **GLS-AUX-BOOT:** [fixed-theta script](random_effects_gls_bootstrap.td)/[R](random_effects_gls_bootstrap_reference.R):
   theta, quasi/population scaling,500 bootstrap summaries and original predictions
   audited; this is not ML-theta or a complete analytic covariance-row comparison.
+- **GLS-AUX-COV:** [fixed-GLS covariance comparison](manual_gls_covariance.md)
+  validates all three original-theta matrices/both coefficient intervals,
+  population/quasi scaling, exact named samples and original/interior/theta0
+  predictions. Signed raw unit variance is retained; no component refitting,
+  native RE snapshots or full mixed saved comparison is claimed.
 - **HM-CL:** [robust_hausman.td](robust_hausman.td)/[R](robust_hausman_reference.R)
   and [README interpretation](README.md). Do not replace it with
   [classical covariance-difference Hausman](classical_hausman.md).
@@ -132,19 +137,19 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-FE-CL / 244–245 | Same centered design, person-cluster OLS correction/DF531 | Validated bounded: FE-AUX-COV, explicit CR1/sample/DF; no centered-intercept t/p interpretation |
 | P2-FE-BOOT / 249–251 | Fixed centered inputs, whole-person B500/reset10001, both coefficients | Validated bounded native-stream: FE-AUX-BOOT; centered intercept not level-intercept uncertainty |
 | P2-FE-HC1 / 254–255 | Centered design, row-HC1 comparison (not panel robust) | Validated bounded working comparison: FE-AUX-COV; no claim of panel-robust validity |
-| P2-GLS-IID / 264–265 | Original GLS-theta quasi OLS, transformed intercept/DF5318 | Partial: GLS-AUX-BOOT supplies theta/fit/scaling/points, not dedicated full analytic inference audit |
-| P2-GLS-CL / 268–269 | Fixed GLS-theta quasi OLS, person-cluster covariance/DF531 | Partial: canonical RE-GLS cluster exists but differs in intercept representation; dedicated auxiliary comparison remains |
+| P2-GLS-IID / 264–265 | Original GLS-theta quasi OLS, transformed intercept/DF5318 | Validated bounded working comparison: GLS-AUX-COV, quasi/population covariance scaling and normal/t distinction explicit |
+| P2-GLS-CL / 268–269 | Fixed GLS-theta quasi OLS, person-cluster covariance/DF531 | Validated bounded: GLS-AUX-COV, CR1/exact samples/both coefficient intervals |
 | P2-GLS-BOOT / 273–275 | Fixed GLS-theta whole-person B500/reset10001 | Validated bounded native-stream: GLS-AUX-BOOT; not component-refitting GLS bootstrap |
-| P2-GLS-HC1 / 278–279 | Fixed GLS quasi design, row-HC1 comparison | Missing dedicated source-specific workflow/audit |
+| P2-GLS-HC1 / 278–279 | Fixed GLS quasi design, row-HC1 comparison | Validated bounded working comparison: GLS-AUX-COV, not arbitrary within-person robust inference |
 | P2-ML-IID / 288–289 | Fixed original ML-theta quasi OLS, transformed intercept/DF5318 | Missing dedicated workflow/audit; marginal ML information is not this covariance |
 | P2-ML-CL / 292–293 | Same fixed ML quasi design, person-cluster OLS | Missing; native full-joint ML score sandwich does not close this row |
 | P2-ML-BOOT / 297–299 | Fixed ML quasi design, whole-person B500/reset10001 | Missing; component-refitting marginal-ML bootstrap is a different target |
-| P2-ML-HC1-SOURCE / 302–303 | Source-as-written GLS HC1 stored under ML label | Source anomaly verified in code/log; not a validated ML-HC1 target. Requires explicit labelling/decision in any future reproduction |
+| P2-ML-HC1-SOURCE / 302–303 | Source-as-written GLS HC1 stored under ML label | GLS-HC1 values now audited in GLS-AUX-COV; source ML label remains erroneous, not validated ML-HC1. Full reporting still requires explicit source-as-written/corrected distinction |
 | P2-HM-IID / 314–316 | GLS quasi response/design plus within wage, ordinary auxiliary coefficient t² | Missing dedicated auxiliary-iid workflow/audit; not covariance-difference Hausman |
 | P2-HM-CL / 320–322 | Same augmented design, clustered auxiliary coefficient t² | Validated bounded: HM-CL, with calibration/assumptions explicitly labelled |
 | P2-REPORT-BE / 331–332 | Stored native/OLS/HC1 comparison, named coefficients and N/ll/R²/sums/RMSE/DF | Partial: BE named OLS reports exist, but native Between-panel row/whole source comparison not supplied |
 | P2-REPORT-FE / 333–334 | Canonical/auxiliary-iid/HC1/cluster comparison with correct intercepts/DF | Partial: three auxiliary named columns/canonical context in FE-AUX-COV; full mixed saved table still missing, no native FE snapshots |
-| P2-REPORT-GLS / 335–336 | Native/quasi iid/HC1/cluster comparison and scale-aware coefficients | Missing complete saved comparison; do not equate Gaussian working OLS likelihood with panel likelihood |
+| P2-REPORT-GLS / 335–336 | Native/quasi iid/HC1/cluster comparison and scale-aware coefficients | Partial: three auxiliary named columns/native population context in GLS-AUX-COV; full mixed saved table still missing, no native RE snapshots or panel-likelihood substitution |
 | P2-REPORT-ML / 337–338 | Marginal-ML/quasi iid/source-labelled GLS-HC1/quasi cluster comparison | Missing complete comparison; preserve source anomaly and different likelihood/covariance meanings |
 | P2-REPORT-BOOT / 341–346 | Four coefficient-SE matrices, named ordering, separate fixed-transform targets | Partial: BE/FE/GLS bootstrap summaries exist; fixed-ML target and complete combined report remain missing |
 | P2-REPORT-DIAG / 349–354 | Both original theta values and robust/nonrobust auxiliary H scalars together | Partial: separate GLS/ML component and HM-CL outputs exist; combined source report/nonrobust auxiliary target missing |
@@ -160,9 +165,11 @@ and exact sample/source/prediction evidence, without changing shared primitives.
 Do not confuse that bounded evidence with source/intercept/historical parity or
 whole-program completion.
 
-A next useful implementation slice is the manual **fixed-GLS-theta auxiliary
-covariance comparison**, with transformed versus population intercept scaling,
-working/student-t versus canonical normal inference and original theta made
-explicit. Remaining residual/GLS inventories, complete mixed reporting, fixed-ML
-auxiliary work and full book inventory stay required; do not make every remaining
-inventory a prerequisite to bounded analytical delivery.
+The subsequent [GLS-AUX-COV workflow](manual_gls_covariance.md) adds120 original
+R/plm/QR quantities/full matrices/both intervals and population/quasi predictions,
+including interior/theta0 controls. A next bounded diagnostic is the manual
+**nonrobust auxiliary Hausman comparison** alongside HM-CL, with auxiliary t²/F
+versus asymptotic chi-square calibration explicit, not substituted by native
+covariance-difference Hausman. Remaining fixed-ML auxiliary work, residual/GLS
+inventories, complete mixed reporting and full book inventory stay required;
+do not make every remaining inventory a prerequisite to analytical delivery.
