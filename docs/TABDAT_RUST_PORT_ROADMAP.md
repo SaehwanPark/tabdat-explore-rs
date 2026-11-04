@@ -300,12 +300,15 @@ new normalized inference, not existing slope/point fits.
 The separate [first-program B500 Between bootstrap](../examples/mma21p1panel/between_bootstrap_b500.md)
 now validates18 independent R summaries/all532 mean/prediction records and exact
 raw inputs, retaining manual B200 and distinguishing native/historical RNG.
-A next bounded implementation target is the manual FE auxiliary covariance
-comparison (classical DF5318, row-HC1 versus person-cluster DF531), with exact-sample
-R validation and explicit deterministic centered-intercept treatment. Do not
-substitute canonical absorbed FE covariance/normalization. Residual/GLS companion
-inventories, fixed-ML auxiliary inference/bootstrap, complete comparisons,
-historical parity and the full book inventory remain required.
+The [manual FE auxiliary covariance comparison](../examples/mma21p1panel/manual_fe_covariance.md)
+now validates68 original QR quantities/79,800 source/mean/prediction cells,
+IID/row-HC1/person-CR1 full matrices and5318/531 slope-interval DF. Named reports
+carry exact samples/cluster labels; post-prediction cluster inference is retained.
+Centered-intercept t/p artifacts are explicitly not interpreted; canonical FE
+covariance/normalization remains separate. A next bounded target is the manual
+fixed-GLS-theta auxiliary covariance comparison, not component-refitting GLS or
+ML information. Residual/GLS companion inventories, fixed-ML auxiliary work,
+complete mixed comparisons, historical parity and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

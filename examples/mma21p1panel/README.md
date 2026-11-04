@@ -15,6 +15,10 @@ or book inventory. The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
 Canonical FE/ML inference does not close those auxiliary covariance targets.
+The [manual FE auxiliary covariance workflow](manual_fe_covariance.md) now validates
+its three IID/HC1/person-CR1 rows, full covariance/slope intervals, named reports
+and all5,320 predictions. Working5318/cluster531 DF and centered-intercept artifacts
+are explicitly distinguished from canonical FE4787/normalized-intercept inference.
 The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;

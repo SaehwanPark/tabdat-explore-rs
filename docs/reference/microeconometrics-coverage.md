@@ -1876,6 +1876,28 @@ SE replication. It does not add raw person-year/cluster/FE/RE bootstrap or compl
 Chapters11–13. Any failed replicate aborts without redraw/discard. Bootstrap
 reports do not replace retained fits or supply analytic test p-values.
 
+### MMA-PANEL manual centered-FE auxiliary covariance comparison
+
+The [complete bounded workflow](../../examples/mma21p1panel/manual_fe_covariance.md)
+addresses P2-FE-IID/CL/HC1, March2005 manual source240–245/254–255. On all5,320
+MOM rows/532 complete people it compares centered OLS IID, row-HC1 and person-CR1
+full covariance, slope t/p/95 intervals and named reports, keeping the canonical
+absorbed FE baseline separate. Generic residual DF5318 is distinguished from
+cluster inference531 and canonical FE4787. Independent raw-mean/full dummy and
+auxiliary R4.6.2 QR checks68 fields/79,800 source/mean/prediction cells (47,880
+raw/key cells exact), exact registry sample/cluster labels and copied covariance.
+Slope SEs are0.017903155989/0.060094202615/0.084970599060. Working IID/HC1 is not
+claimed valid canonical FE inference; CR1 assumes independent people/adequate
+asymptotics. Centered-intercept t/p floating artifacts are explicitly not
+interpreted or validated. Three actual-script tests include independent160-row
+interleaved references, vanishing scores, key/sample/rank/file failures and
+source preservation; text/JSON prediction bytes match and owned cluster inference
+survives reports/prediction columns. Ten forged outputs are rejected, including
+an incomplete export trace with an old CSV still present. No new
+primitive, clipping, singular joint test, historical printed-SE parity or complete
+mixed canonical/auxiliary snapshot table is claimed; remaining panel/book work
+stays required.
+
 ### MMA-PANEL within-transformed whole-person pairs-bootstrap evidence
 
 The [bounded workflow](../../examples/mma21p1panel/README.md) implements block4

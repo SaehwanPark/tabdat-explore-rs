@@ -95,6 +95,11 @@ and the final tables identify Table21.2 p710. No publisher program/data is vendo
 - **FE-AUX-BOOT:** [within_bootstrap.td](within_bootstrap.td)/[R](within_bootstrap_reference.R):
   source500 raw-copy bootstrap summaries/predictions audited, not a dedicated
   audit of all classical/HC1/cluster auxiliary-OLS inference rows.
+- **FE-AUX-COV:** [manual FE covariance comparison](manual_fe_covariance.md)
+  validates all three auxiliary matrices/slope intervals, exact owned samples/
+  cluster labels and named reports on original/interleaved controls. Centered
+  intercept t/p are artifacts, not interpreted inference; canonical FE context
+  remains separate and complete mixed saved-table support remains open.
 - **GLS-AUX-BOOT:** [fixed-theta script](random_effects_gls_bootstrap.td)/[R](random_effects_gls_bootstrap_reference.R):
   theta, quasi/population scaling,500 bootstrap summaries and original predictions
   audited; this is not ML-theta or a complete analytic covariance-row comparison.
@@ -123,10 +128,10 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-BE-IID / 146–147 | Equal-person mean OLS, classical covariance/DF530, stored fit | Validated bounded: BE; see separate comparison requirement |
 | P2-BE-HC1 / 150–151 | Same mean-record design, independent-person HC1, stored fit | Validated bounded: BE |
 | P2-BE-BOOT / 154–155 | B200 mean-record pairs, no prior seed reset, both coefficient SEs | Validated bounded native-stream: BE-BOOT; explicit native seed extension, not historical draw replay |
-| P2-FE-IID / 240–241 | Centered auxiliary OLS with intercept, DF5318 | Partial: FE-AUX-BOOT supplies executable original fit/points; dedicated analytic covariance/DF/CI reference for this row not established |
-| P2-FE-CL / 244–245 | Same centered design, person-cluster OLS correction/DF531 | Missing complete dedicated auxiliary comparison; canonical FE cluster evidence is not substituted |
+| P2-FE-IID / 240–241 | Centered auxiliary OLS with intercept, DF5318 | Validated bounded working comparison: FE-AUX-COV, not absorbed-FE covariance |
+| P2-FE-CL / 244–245 | Same centered design, person-cluster OLS correction/DF531 | Validated bounded: FE-AUX-COV, explicit CR1/sample/DF; no centered-intercept t/p interpretation |
 | P2-FE-BOOT / 249–251 | Fixed centered inputs, whole-person B500/reset10001, both coefficients | Validated bounded native-stream: FE-AUX-BOOT; centered intercept not level-intercept uncertainty |
-| P2-FE-HC1 / 254–255 | Centered design, row-HC1 comparison (not panel robust) | Missing dedicated source-specific workflow/audit |
+| P2-FE-HC1 / 254–255 | Centered design, row-HC1 comparison (not panel robust) | Validated bounded working comparison: FE-AUX-COV; no claim of panel-robust validity |
 | P2-GLS-IID / 264–265 | Original GLS-theta quasi OLS, transformed intercept/DF5318 | Partial: GLS-AUX-BOOT supplies theta/fit/scaling/points, not dedicated full analytic inference audit |
 | P2-GLS-CL / 268–269 | Fixed GLS-theta quasi OLS, person-cluster covariance/DF531 | Partial: canonical RE-GLS cluster exists but differs in intercept representation; dedicated auxiliary comparison remains |
 | P2-GLS-BOOT / 273–275 | Fixed GLS-theta whole-person B500/reset10001 | Validated bounded native-stream: GLS-AUX-BOOT; not component-refitting GLS bootstrap |
@@ -138,7 +143,7 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-HM-IID / 314–316 | GLS quasi response/design plus within wage, ordinary auxiliary coefficient t² | Missing dedicated auxiliary-iid workflow/audit; not covariance-difference Hausman |
 | P2-HM-CL / 320–322 | Same augmented design, clustered auxiliary coefficient t² | Validated bounded: HM-CL, with calibration/assumptions explicitly labelled |
 | P2-REPORT-BE / 331–332 | Stored native/OLS/HC1 comparison, named coefficients and N/ll/R²/sums/RMSE/DF | Partial: BE named OLS reports exist, but native Between-panel row/whole source comparison not supplied |
-| P2-REPORT-FE / 333–334 | Canonical/auxiliary-iid/HC1/cluster comparison with correct intercepts/DF | Missing complete mixed canonical/auxiliary table; no native FE snapshots |
+| P2-REPORT-FE / 333–334 | Canonical/auxiliary-iid/HC1/cluster comparison with correct intercepts/DF | Partial: three auxiliary named columns/canonical context in FE-AUX-COV; full mixed saved table still missing, no native FE snapshots |
 | P2-REPORT-GLS / 335–336 | Native/quasi iid/HC1/cluster comparison and scale-aware coefficients | Missing complete saved comparison; do not equate Gaussian working OLS likelihood with panel likelihood |
 | P2-REPORT-ML / 337–338 | Marginal-ML/quasi iid/source-labelled GLS-HC1/quasi cluster comparison | Missing complete comparison; preserve source anomaly and different likelihood/covariance meanings |
 | P2-REPORT-BOOT / 341–346 | Four coefficient-SE matrices, named ordering, separate fixed-transform targets | Partial: BE/FE/GLS bootstrap summaries exist; fixed-ML target and complete combined report remain missing |
@@ -146,19 +151,18 @@ generic parser/OLS capability alone does not close that requirement.
 
 ## Delivery and verification limits
 
-No estimator or numerical result changed in this inventory slice. Source/code/log
-blocks, existing scripts/references and current capability documents were inspected;
-all active baseline/auxiliary fits, bootstraps, Hausman and table/matrix outputs
-are assigned above. Preparation/labels, statistical meaning and missing evidence
-are recorded rather than hidden behind generic command availability. Local links,
-source hashes/line mapping and diff are checked; unchanged Rust/numerical baseline
-is not rerun for documentation-only changes. This is not new numerical validation.
+The initial inventory changed no estimator. Source/code/log and relevant
+workflows/references were inspected; all active baseline/auxiliary fits,
+bootstraps, Hausman and reporting commands are assigned above. Hash/line coverage,
+local links and diff are checked. The subsequent [FE-AUX-COV workflow](manual_fe_covariance.md)
+adds independent68-field original/interleaved references/full matrices/intervals
+and exact sample/source/prediction evidence, without changing shared primitives.
+Do not confuse that bounded evidence with source/intercept/historical parity or
+whole-program completion.
 
-A next useful implementation slice is the **manual FE auxiliary covariance
-comparison**: exact centered N5320/G532/T10 design, original OLS versus row-HC1
-versus person-cluster corrections/DF, independently checked on the original sample
-and a small control. Explain the deterministic centered intercept and do not
-advertise its floating-point t/p artifacts as inference. Keep it distinct from
-canonical FE and its normalized common-intercept uncertainty. Remaining residual/
-GLS program inventories and complete report/ML auxiliary work stay required;
-do not make every remaining inventory a prerequisite to this bounded delivery.
+A next useful implementation slice is the manual **fixed-GLS-theta auxiliary
+covariance comparison**, with transformed versus population intercept scaling,
+working/student-t versus canonical normal inference and original theta made
+explicit. Remaining residual/GLS inventories, complete mixed reporting, fixed-ML
+auxiliary work and full book inventory stay required; do not make every remaining
+inventory a prerequisite to bounded analytical delivery.
