@@ -9,8 +9,10 @@ they are not causal effects or a complex-survey design analysis. In particular,
 cluster independence is an assumption, not established by this output. As in
 the author regression, EDUC and FARM enter as their numeric codes, not as
 one-hot factors; SEX retains its original 1/2 coding.
-Random/fixed effects, GEE, bootstrap, the separate Poisson illustration, and
-survey weights/strata remain required work.
+A separate [commune fixed-effects workflow](household_fe.md) covers the
+household FE columns. Random effects, GEE, bootstrap, and survey weights/strata
+remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+covers a separate portion of Table 24.6.
 
 ## Source and preparation
 
