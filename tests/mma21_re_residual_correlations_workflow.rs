@@ -254,7 +254,7 @@ fn invalid_keys_samples_rank_and_constant_year_fail_before_export() {
     changed[1] = &line;
     variants.push(format!("{}\n", changed.join("\n")));
   }
-  for kind in 0..3 {
+  for kind in 0..5 {
     let mut changed = vec![lines[0].to_owned()];
     for line in &lines[1..] {
       let mut cells: Vec<_> = line.split(',').map(str::to_owned).collect();
@@ -263,12 +263,14 @@ fn invalid_keys_samples_rank_and_constant_year_fail_before_export() {
       match kind {
         0 => cells[2] = "2".to_owned(),
         1 => cells[1] = (3.0 + 2.0 * x + (g % 4.0 - 1.5) / 2.0).to_string(),
-        _ => {
+        2 => {
           let t: f64 = cells[8].parse::<f64>().unwrap() - 1979.0;
           let x = 2.0 + g / 8.0 + t / 4.0;
           cells[2] = x.to_string();
           cells[1] = (7.0 + x / 2.0 + (t * t - 9.0 * t) / 128.0).to_string();
         }
+        3 => cells[2] = (2.0 + (cells[8].parse::<f64>().unwrap() - 1979.0) / 4.0).to_string(),
+        _ => cells[2] = cells[7].clone(),
       }
       changed.push(cells.join(","));
     }
