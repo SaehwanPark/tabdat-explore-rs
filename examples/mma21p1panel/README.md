@@ -23,6 +23,10 @@ The [manual fixed-GLS-theta covariance comparison](manual_gls_covariance.md) now
 validates its three auxiliary covariance rows/both coefficient intervals against
 R/plm on all5,320 rows; native population/normal versus quasi-intercept/Student-t
 scaling and valid negative raw unit-variance/theta0 controls are explicit.
+The [manual fixed-ML-theta comparison](manual_ml_covariance.md) separately
+validates ordinary/person-CR1 auxiliary matrices and both intervals against
+independent ML likelihood/QR, including constrained theta0. These are not native
+ML observed-information covariances or a complete mixed report.
 The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;
