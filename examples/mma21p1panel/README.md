@@ -657,6 +657,13 @@ comparison requires RE efficiency under the null and is **not cluster robust**;
 the robust auxiliary workflow below is distinct. General multivariate,
 unbalanced, clustered and ML native comparisons remain unsupported.
 
+### Ordinary auxiliary Hausman comparison — §21.4.3
+
+The separate [ordinary auxiliary workflow](iid_hausman.md) validates the manual
+nonrobust H=t² on balanced joint cases against R/plm/QR. It reports a working
+F(1,N-3) tail, not the asymptotic chi-square tail, and its contrast is
+within-minus-Between, not direct FE-minus-RE or covariance subtraction.
+
 ### Robust auxiliary Hausman comparison — §21.4.3 p.719
 
 [`robust_hausman.td`](robust_hausman.td) implements block7 of the authors'

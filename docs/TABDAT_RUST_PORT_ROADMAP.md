@@ -310,9 +310,11 @@ now validates120 original R/plm/QR fields, all122,360 source/component/populatio
 quasi prediction cells, three matrices/both coefficient intervals and two
 independent interior/theta0 controls. Signed negative raw variance is retained,
 not re-estimated per covariance; native normal versus auxiliary t and quasi
-intercept scaling are explicit. A next bounded diagnostic is the manual
-nonrobust auxiliary Hausman comparison alongside the existing robust auxiliary
-target, not native covariance subtraction. Fixed-ML auxiliary work, residual/GLS
+intercept scaling are explicit. The [manual nonrobust auxiliary Hausman comparison](../examples/mma21p1panel/iid_hausman.md)
+now validates39 original R/plm/QR fields and all5,320x18 source/design/prediction
+cells, plus interior/theta0 controls. Its working F and asymptotic chi-square
+tails are distinct; this is neither the robust target nor native covariance
+subtraction. Fixed-ML auxiliary work, residual/GLS
 inventories, complete mixed reporting, historical parity and full book inventory
 remain required.
 
