@@ -320,8 +320,12 @@ prediction cells, plus interior and constrained-boundary controls. Native ML
 information is distinct from working auxiliary IID/CR1. The [fixed-ML auxiliary bootstrap](../examples/mma21p1panel/manual_ml_bootstrap.md)
 adds500 independent QR refits,22 aggregate fields and all5,320x22 cells with
 interior/theta0 controls; it freezes theta rather than refitting ML components.
-Residual/GLS inventories, complete mixed reporting, historical parity and full
-book inventory remain required.
+The [residual-program inventory](../examples/mma21p1panel/residual_inventory.md)
+now maps the source blocks, and the [Table21.3 pooled residual matrix](../examples/mma21p1panel/pooled_residual_correlations.md)
+validates100 year-pair cells/all5,320 source/prediction rows against R and45
+printed-log entries. Remaining FE/RE/FD/individual correlations, the GLS companion
+inventory, complete mixed reporting, historical parity and full book inventory
+remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
