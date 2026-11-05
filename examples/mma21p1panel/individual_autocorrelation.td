@@ -1,0 +1,15 @@
+# Individual log-hours lag-one correlations across time; descriptive, not a test.
+use MOM.csv
+isid id year
+isid source_row
+sql """SELECT CASE WHEN COUNT(*)=0 OR COUNT(*)>5320 OR COUNT(*) FILTER (WHERE id IS NULL OR year IS NULL OR source_row IS NULL OR lnhr IS NULL OR lnwg IS NULL OR NOT isfinite(id) OR NOT isfinite(year) OR NOT isfinite(source_row) OR NOT isfinite(lnhr) OR NOT isfinite(lnwg) OR id!=floor(id) OR id<1 OR id>532 OR year!=floor(year) OR year<1979 OR year>1988 OR source_row!=floor(source_row) OR source_row<1 OR source_row>5320 OR ABS(lnhr)>20 OR ABS(lnwg)>20)>0 THEN error('individual lag correlations require finite bounded model fields and exact MOM keys') ELSE COUNT(*) END AS observations FROM active"""
+sql """SELECT CASE WHEN COUNT(*)<3 OR COUNT(*)>532 OR MIN(t)!=10 OR MAX(t)!=10 THEN error('individual lag correlations require 3..532 complete ten-year people') ELSE COUNT(*) END AS people FROM (SELECT id,COUNT(*) AS t FROM active GROUP BY id)"""
+sql """SELECT 'Individual lnhr lag-one Pearson correlations compare nine adjacent years within each person, not people across years; they are descriptive, not a test or covariance correction. Both current and lagged lnhr require finite population standard deviation greater than 1e-12 per person.' AS correlation_scope"""
+sql """WITH adjacent AS (SELECT source_row,lnhr,lnwg,kids,ageh,agesq,disab,id,year,LAG(source_row) OVER w AS previous_source_row,LAG(year) OVER w AS previous_year,LAG(lnhr) OVER w AS previous_lnhr FROM active WINDOW w AS (PARTITION BY id ORDER BY year)) SELECT * FROM adjacent WHERE year=previous_year+1 ORDER BY id,year""" into individual_lnhr_pairs
+isid id year
+# Recenter before variance/correlation to avoid cancellation for nearly constant levels.
+sql """WITH centered AS (SELECT *,lnhr-MIN(lnhr) OVER (PARTITION BY id) AS current_centered,previous_lnhr-MIN(previous_lnhr) OVER (PARTITION BY id) AS lag_centered FROM active), people AS (SELECT id,COUNT(*) AS n,VAR_POP(current_centered) AS current_var,VAR_POP(lag_centered) AS lag_var,CORR(current_centered,lag_centered) AS r FROM centered GROUP BY id) SELECT CASE WHEN COUNT(*)<3 OR COUNT(*)>532 OR COUNT(*) FILTER (WHERE n!=9 OR current_var IS NULL OR lag_var IS NULL OR NOT isfinite(current_var) OR NOT isfinite(lag_var) OR current_var<=1e-24 OR lag_var<=1e-24 OR r IS NULL OR NOT isfinite(r) OR ABS(r)>1.000000000001)>0 THEN error('individual lag correlations require nine pairs and resolved finite within-person variance and correlation') ELSE COUNT(*) END AS validated_people FROM people"""
+export panel_individual_lnhr_pairs.csv
+sql """WITH centered AS (SELECT *,lnhr-MIN(lnhr) OVER (PARTITION BY id) AS current_centered,previous_lnhr-MIN(previous_lnhr) OVER (PARTITION BY id) AS lag_centered FROM active) SELECT id,COUNT(*) AS pairs,CORR(current_centered,lag_centered) AS correlation FROM centered GROUP BY id ORDER BY id""" into individual_lnhr_correlations
+sql """SELECT id,pairs,correlation FROM active ORDER BY id"""
+export panel_individual_lnhr_correlations.csv
