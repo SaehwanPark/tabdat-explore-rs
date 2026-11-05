@@ -194,8 +194,11 @@ Extend the same workflow/validation standard to:
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
   validates complete-case and single-mean-filled OLS on four generated 1,000-row
-  author inputs. Naive filled-fit t/SE omit missing-value uncertainty; author MCMC
-  MI, pooling, diagnostics and logit are not installed.
+  author inputs. Naive filled-fit t/SE omit missing-value uncertainty. Separate
+  [supplied-summary Rubin pooling](../examples/mma27p1milinear/rubin_pooling.md)
+  validates marginal large-complete-DF inference on ten rounded author-log fits;
+  it does not generate imputations, fit completed data, provide joint covariance
+  or finite-complete-DF corrections. Author MCMC MI, diagnostics and logit remain required.
 
 Choose a specific example before fixing detailed parameterizations, algorithms or
 backend choices. Do not advertise a broad family based on one narrow estimator.

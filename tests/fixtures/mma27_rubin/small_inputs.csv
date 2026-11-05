@@ -1,0 +1,7 @@
+imputation,parameter,estimate,standard_error
+1,intercept,-1,0.1
+1,x1missing,1,0.1
+1,x2missing,0.2,0.3
+2,intercept,1,0.1
+2,x1missing,5,0.1
+2,x2missing,0.8,0.3
