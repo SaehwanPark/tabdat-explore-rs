@@ -120,6 +120,7 @@ publisher filenames are `mma21p2panmanual.do`, `mma21p3panresiduals.do` and
 The [residual-program inventory](residual_inventory.md) maps its distinct level,
 POLS/FE/RE/FD and individual analyses; its pooled, within-FE and RE idiosyncratic
 residual matrices are validated under bounded complete-sample contracts; the
-[observed-level matrices](level_correlations.md) are validated separately. The
-detailed GLS companion and full book inventories remain required.
+[observed-level matrices](level_correlations.md) and [annual-FD matrices](fd_residual_correlations.md)
+are validated separately. The FD author's external `mom` binary identity remains
+unknown; the detailed GLS companion and full book inventories remain required.
 No required illustration has been excluded.
