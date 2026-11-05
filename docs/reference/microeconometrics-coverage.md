@@ -1852,6 +1852,15 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL observed-level year-pair matrices
+
+The [bounded observed-level workflow](../../examples/mma21p1panel/level_correlations.md)
+reports200 Pearson cells for lnhr and lnwg across the same532 complete people.
+Independent R `cor` checks every5,320 source row and all200 table/export cells;
+90 author-log off-diagonals match at printed four-decimal precision. The output
+is descriptive, not an inferential serial-correlation test. FD/individual
+blocks and the source's external `mom` reload remain open.
+
 ### MMA-PANEL RE idiosyncratic residual correlation matrix
 
 The [bounded source composition](../../examples/mma21p1panel/random_effects_residual_correlations.md)
@@ -1861,7 +1870,7 @@ idiosyncratic residuals across people for all100 year pairs. Independent R/plm
 `ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
 table cells;45 author-log off-diagonals agree to four decimals. The native
 population residual is u+e, not this e; no general owned RE unit prediction is
-added. Level/FD/individual matrices and the source's external `mom` reload remain
+added. FD/individual matrices and the source's external `mom` reload remain
 open; descriptive correlation is neither a test nor covariance correction.
 
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
