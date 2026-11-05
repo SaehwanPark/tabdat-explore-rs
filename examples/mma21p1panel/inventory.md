@@ -118,6 +118,6 @@ auxiliary Hausman evidence without erasing the distinct targets above. The live
 publisher filenames are `mma21p2panmanual.do`, `mma21p3panresiduals.do` and
 `mma21p4pangls.do`; the overview's second/fourth names are stale HTTP404 aliases.
 The [residual-program inventory](residual_inventory.md) maps its distinct level,
-POLS/FE/RE/FD and individual analyses; only its pooled residual matrix is fully
-validated. The detailed GLS companion and full book inventories remain required.
+POLS/FE/RE/FD and individual analyses; its pooled and within-FE residual
+matrices are validated under bounded complete-sample contracts. The detailed GLS companion and full book inventories remain required.
 No required illustration has been excluded.
