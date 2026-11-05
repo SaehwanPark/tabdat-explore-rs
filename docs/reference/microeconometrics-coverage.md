@@ -1852,6 +1852,18 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL RE idiosyncratic residual correlation matrix
+
+The [bounded source composition](../../examples/mma21p1panel/random_effects_residual_correlations.md)
+uses balanced RE-GLS on all5,320 MOM rows/532 people, reconstructs original-sample
+unit predictions with T*sigma_u²/(sigma_e²+T*sigma_u²), and correlates the
+idiosyncratic residuals across people for all100 year pairs. Independent R/plm
+`ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
+table cells;45 author-log off-diagonals agree to four decimals. The native
+population residual is u+e, not this e; no general owned RE unit prediction is
+added. Level/FD/individual matrices and the source's external `mom` reload remain
+open; descriptive correlation is neither a test nor covariance correction.
+
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
 
 The [bounded source workflow](../../examples/mma21p1panel/within_residual_correlations.md)
