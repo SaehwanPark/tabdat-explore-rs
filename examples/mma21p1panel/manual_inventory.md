@@ -16,7 +16,7 @@ The live [publisher program index](https://cameron.econ.ucdavis.edu/mmabook/mmap
 | --- | --- | --- |
 | First: FE/RE | [mma21p1panfeandre.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do) | [20 first-program requirements](inventory.md) |
 | Second: transformed OLS | [mma21p2panmanual.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.do) / [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.txt) | This document's29 requirements |
-| Third: residual analysis | [mma21p3panresiduals.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p3panresiduals.do) | [Source-scoped inventory](residual_inventory.md); level and pooled/FE/RE/annual-FD matrices validated within bounded contracts, external FD reload identity/individual block remain open |
+| Third: residual analysis | [mma21p3panresiduals.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p3panresiduals.do) | [Source-scoped inventory](residual_inventory.md); level, pooled/FE/RE/annual-FD matrices and individual lnhr lag examples validated within bounded contracts; combined residual report, 1979 fit and external FD reload identity remain open |
 | Fourth: pooled OLS/GLS | [mma21p4pangls.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p4pangls.do) | Detailed inventory still required |
 
 The overview inside both first/second programs instead spells the second

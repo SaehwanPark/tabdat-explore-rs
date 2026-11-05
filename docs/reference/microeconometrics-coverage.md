@@ -1852,6 +1852,16 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL individual log-hours lag correlation examples
+
+The [bounded within-person workflow](../../examples/mma21p1panel/individual_autocorrelation.md)
+uses nine adjacent annual pairs per person, independently checks4,788x12 source/
+lag cells and all532 R `cor`/table cells, and matches the two author-log examples
+at printed precision. Per-person centering avoids cancellation for near-constant
+series; population SD>1e-12 is an explicit resolution bound. It is descriptive,
+not a serial-correlation test. Combined residual reporting, the dedicated1979
+fit and full chapter/book coverage remain open.
+
 ### MMA-PANEL annual first-difference correlation matrices
 
 The [bounded annual-FD composition](../../examples/mma21p1panel/fd_residual_correlations.md)
@@ -1871,8 +1881,8 @@ The [bounded observed-level workflow](../../examples/mma21p1panel/level_correlat
 reports200 Pearson cells for lnhr and lnwg across the same532 complete people.
 Independent R `cor` checks every5,320 source row and all200 table/export cells;
 90 author-log off-diagonals match at printed four-decimal precision. The output
-is descriptive, not an inferential serial-correlation test. The individual
-block and the source's external `mom` binary identity remain open.
+is descriptive, not an inferential serial-correlation test. The combined
+residual report, dedicated1979 fit and external `mom` binary identity remain open.
 
 ### MMA-PANEL RE idiosyncratic residual correlation matrix
 
@@ -1883,8 +1893,9 @@ idiosyncratic residuals across people for all100 year pairs. Independent R/plm
 `ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
 table cells;45 author-log off-diagonals agree to four decimals. The native
 population residual is u+e, not this e; no general owned RE unit prediction is
-added. The individual block and the source's external `mom` binary identity
-remain open; descriptive correlation is neither a test nor covariance correction.
+added. The combined residual report, dedicated1979 fit and external `mom`
+binary identity remain open; descriptive correlation is neither a test nor
+covariance correction.
 
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
 
