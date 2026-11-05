@@ -334,9 +334,11 @@ validate all200 R cells,5,320 source rows and90 printed author-log facts. The
 validates4,788 annual-pair/prediction rows,243 R cells and108 logged correlations;
 only checked outputs, not the external `mom` binary identity/order, are equivalent.
 The [within-person lag composition](../examples/mma21p1panel/individual_autocorrelation.md)
-separately validates all532 people and both logged9-pair examples. Remaining
-combined residual reporting, the dedicated1979 fit, GLS companion inventory, mixed
-reporting, historical parity and full book inventory remain required.
+separately validates all532 people and both logged9-pair examples. The [1979
+cross-sectional fit](../examples/mma21p1panel/cross_section_1979.md) validates29 R
+inference/test fields and all532 source/prediction rows. Remaining combined
+residual reporting, GLS companion inventory, mixed reporting, historical parity
+and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

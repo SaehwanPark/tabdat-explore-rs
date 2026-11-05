@@ -24,8 +24,9 @@ validate all200 lnhr/lnwg correlations against R and90 author-log values. The
 [annual-FD matrices](fd_residual_correlations.md) validate243 cells and108 logged
 values using explicit calendar pairs; the historical external `mom` binary's
 identity remains unknown. The separate [individual lag-one composition](individual_autocorrelation.md)
-validates all532 within-person correlations and both logged examples; the combined
-residual report and dedicated1979 fit remain open.
+validates all532 within-person correlations and both logged examples. A separate
+[1979 cross-sectional fit](cross_section_1979.md) checks classical OLS inference
+and all source/prediction rows; the combined residual report remains open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
