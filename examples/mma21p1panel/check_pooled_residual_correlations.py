@@ -86,9 +86,9 @@ def audit(native,reference,raw,author_log=None,synthetic=False):
   matrix = {}
   for index,(a,b,row) in enumerate(zip(actual,expected,table['rows'])):
     x,y = 1979+index//10,1979+index%10
-    assert int(float(a['year_a'])) == int(float(b['year_a'])) == row[0] == x
-    assert int(float(a['year_b'])) == int(float(b['year_b'])) == row[1] == y
-    assert int(float(a['people'])) == int(float(b['people'])) == row[2] == g
+    assert float(a['year_a']) == float(b['year_a']) == row[0] == x
+    assert float(a['year_b']) == float(b['year_b']) == row[1] == y
+    assert float(a['people']) == float(b['people']) == row[2] == g
     close(float(a['correlation']),float(b['correlation']),(x,y));close(row[3],float(a['correlation']),(x,y))
     matrix[(x,y)] = float(a['correlation'])
   for (x,y),value in matrix.items():

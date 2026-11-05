@@ -1852,6 +1852,18 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL Table21.3 pooled residual correlation matrix
+
+The [bounded source workflow](../../examples/mma21p1panel/pooled_residual_correlations.md)
+fits pooled lnhr~lnwg on the original5,320 MOM rows/532 complete people and
+reports all100 year-pair Pearson correlations of residuals across people. R QR/
+cor checks25 fit/inference fields and all5,320x11 source/prediction cells and100
+matrix/table cells; all45 author-log off-diagonals agree to four decimals. The
+[source inventory](../../examples/mma21p1panel/residual_inventory.md) keeps FE/RE,
+FD, level and individual-series correlations open, including the source's external
+`mom` reload. Descriptive correlation is neither a formal test nor a covariance
+correction; this does not complete the residual program or chapter.
+
 ### MMA-PANEL fixed-ML-theta auxiliary bootstrap
 
 The [bounded P2-ML-BOOT workflow](../../examples/mma21p1panel/manual_ml_bootstrap.md)
