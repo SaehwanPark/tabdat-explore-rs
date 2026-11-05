@@ -323,9 +323,11 @@ interior/theta0 controls; it freezes theta rather than refitting ML components.
 The [residual-program inventory](../examples/mma21p1panel/residual_inventory.md)
 now maps the source blocks, and the [Table21.3 pooled residual matrix](../examples/mma21p1panel/pooled_residual_correlations.md)
 validates100 year-pair cells/all5,320 source/prediction rows against R and45
-printed-log entries. Remaining FE/RE/FD/individual correlations, the GLS companion
-inventory, complete mixed reporting, historical parity and full book inventory
-remain required.
+printed-log entries. The [Table21.4 within-FE residual matrix](../examples/mma21p1panel/within_residual_correlations.md)
+separately validates100 correlations,25 full-dummy QR inference fields, all5,320
+source/prediction rows and45 printed facts. Remaining RE/FD/level/individual
+correlations, the GLS companion inventory, complete mixed reporting, historical
+parity and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

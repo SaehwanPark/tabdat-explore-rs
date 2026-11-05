@@ -13,9 +13,10 @@ analysis/reporting requirements, links current workflows and independent evidenc
 and explicitly retains missing full reporting and historical-parity requirements. It is not a complete chapter
 or book inventory. The [residual-program inventory](residual_inventory.md) maps
 its distinct level, pooled/FE/RE/FD and individual analyses; the separate
-[Table21.3 pooled residual matrix](pooled_residual_correlations.md) validates all
-100 year-pair correlations and5,320 source/prediction rows against R, with45
-separate printed-log facts. Remaining residual blocks are open.
+[Table21.3 pooled residual matrix](pooled_residual_correlations.md) and
+[Table21.4 within-FE residual matrix](within_residual_correlations.md) each
+validate all100 year-pair correlations and5,320 source/prediction rows against R,
+with45 separate printed-log facts per matrix. Remaining residual blocks are open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
