@@ -143,7 +143,7 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-GLS-HC1 / 278–279 | Fixed GLS quasi design, row-HC1 comparison | Validated bounded working comparison: GLS-AUX-COV, not arbitrary within-person robust inference |
 | P2-ML-IID / 288–289 | Fixed original ML-theta quasi OLS, transformed intercept/DF5318 | Validated bounded working comparison: [ML-AUX-COV](manual_ml_covariance.md); marginal ML information is not this covariance |
 | P2-ML-CL / 292–293 | Same fixed ML quasi design, person-cluster OLS | Validated bounded: ML-AUX-COV, CR1/exact samples/both intervals; not native joint ML score sandwich |
-| P2-ML-BOOT / 297–299 | Fixed ML quasi design, whole-person B500/reset10001 | Missing; component-refitting marginal-ML bootstrap is a different target |
+| P2-ML-BOOT / 297–299 | Fixed ML quasi design, whole-person B500/reset10001 | Validated bounded native-stream: [ML-AUX-BOOT](manual_ml_bootstrap.md); component-refitting marginal-ML bootstrap remains a different target |
 | P2-ML-HC1-SOURCE / 302–303 | Source-as-written GLS HC1 stored under ML label | GLS-HC1 values now audited in GLS-AUX-COV; source ML label remains erroneous, not validated ML-HC1. Full reporting still requires explicit source-as-written/corrected distinction |
 | P2-HM-IID / 314–316 | GLS quasi response/design plus within wage, ordinary auxiliary coefficient t² | Validated bounded: [HM-IID](iid_hausman.md), working F versus asymptotic chi-square explicit; not covariance-difference Hausman |
 | P2-HM-CL / 320–322 | Same augmented design, clustered auxiliary coefficient t² | Validated bounded: HM-CL, with calibration/assumptions explicitly labelled |
@@ -151,7 +151,7 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-REPORT-FE / 333–334 | Canonical/auxiliary-iid/HC1/cluster comparison with correct intercepts/DF | Partial: three auxiliary named columns/canonical context in FE-AUX-COV; full mixed saved table still missing, no native FE snapshots |
 | P2-REPORT-GLS / 335–336 | Native/quasi iid/HC1/cluster comparison and scale-aware coefficients | Partial: three auxiliary named columns/native population context in GLS-AUX-COV; full mixed saved table still missing, no native RE snapshots or panel-likelihood substitution |
 | P2-REPORT-ML / 337–338 | Marginal-ML/quasi iid/source-labelled GLS-HC1/quasi cluster comparison | Partial: ML-AUX-COV compares IID/cluster, but full mixed table remains missing; preserve source anomaly and different likelihood/covariance meanings |
-| P2-REPORT-BOOT / 341–346 | Four coefficient-SE matrices, named ordering, separate fixed-transform targets | Partial: BE/FE/GLS bootstrap summaries exist; fixed-ML target and complete combined report remain missing |
+| P2-REPORT-BOOT / 341–346 | Four coefficient-SE matrices, named ordering, separate fixed-transform targets | Partial: BE/FE/GLS/fixed-ML summaries exist separately; complete combined report remains missing |
 | P2-REPORT-DIAG / 349–354 | Both original theta values and robust/nonrobust auxiliary H scalars together | Partial: separate GLS/ML component and HM-CL/HM-IID outputs exist; combined source report missing |
 
 ## Delivery and verification limits
@@ -172,6 +172,8 @@ adds39 independent original fields and all5,320x18 cells alongside HM-CL, with
 auxiliary t²/F versus asymptotic chi-square calibration explicit, not substituted
 by native covariance-difference Hausman. The [fixed-ML auxiliary covariance comparison](manual_ml_covariance.md)
 adds66 original likelihood/QR fields and all5,320x22 cells, including boundary
-and interior controls; it does not close fixed-ML bootstrap or mixed reporting.
-Remaining residual/GLS inventories, complete mixed reporting and full book inventory stay required;
+and interior controls. The [fixed-ML auxiliary bootstrap](manual_ml_bootstrap.md)
+adds22 independent aggregate fields,500 QR refits and all5,320x22 cells; it does
+not re-estimate components or close mixed reporting. Remaining residual/GLS
+inventories, complete mixed reporting and full book inventory stay required;
 do not make every remaining inventory a prerequisite to analytical delivery.

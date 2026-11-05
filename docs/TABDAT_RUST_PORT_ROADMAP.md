@@ -317,8 +317,10 @@ tails are distinct; this is neither the robust target nor native covariance
 subtraction. The [fixed-ML-theta auxiliary comparison](../examples/mma21p1panel/manual_ml_covariance.md)
 now validates66 independent likelihood/QR fields and all5,320x22 source/design/
 prediction cells, plus interior and constrained-boundary controls. Native ML
-information is distinct from working auxiliary IID/CR1. Fixed-ML bootstrap,
-residual/GLS inventories, complete mixed reporting, historical parity and full
+information is distinct from working auxiliary IID/CR1. The [fixed-ML auxiliary bootstrap](../examples/mma21p1panel/manual_ml_bootstrap.md)
+adds500 independent QR refits,22 aggregate fields and all5,320x22 cells with
+interior/theta0 controls; it freezes theta rather than refitting ML components.
+Residual/GLS inventories, complete mixed reporting, historical parity and full
 book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an

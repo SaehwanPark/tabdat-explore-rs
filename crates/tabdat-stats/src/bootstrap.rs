@@ -338,6 +338,29 @@ mod tests {
     assert_eq!(count, 640);
   }
   #[test]
+  fn fixed_ml_control_stream_matches_all_independent_python_draws() {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(10001);
+    let mut rows = 0;
+    let mut compared = 0;
+    for line in include_str!("../tests/fixtures/bootstrap/fixed_ml_draws.csv")
+      .lines()
+      .skip(1)
+    {
+      let (replication, indices) = line.split_once(',').unwrap();
+      rows += 1;
+      assert_eq!(replication.parse::<usize>().unwrap(), rows);
+      let mut group_count = 0;
+      for expected in indices.split(':') {
+        assert_eq!(draw_index(&mut rng, 16), expected.parse::<usize>().unwrap());
+        group_count += 1;
+      }
+      assert_eq!(group_count, 16);
+      compared += group_count;
+    }
+    assert_eq!(rows, 500);
+    assert_eq!(compared, 8000);
+  }
+  #[test]
   fn every_draw_matches_independent_python_reference() {
     let mut compared = 0;
     for (case, seed) in [("multiple", u64::MAX), ("noconstant", 7), ("shifted", 7)] {

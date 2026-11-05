@@ -26,7 +26,10 @@ scaling and valid negative raw unit-variance/theta0 controls are explicit.
 The [manual fixed-ML-theta comparison](manual_ml_covariance.md) separately
 validates ordinary/person-CR1 auxiliary matrices and both intervals against
 independent ML likelihood/QR, including constrained theta0. These are not native
-ML observed-information covariances or a complete mixed report.
+ML observed-information covariances or a complete mixed report. The distinct
+[fixed-ML-theta whole-person bootstrap](manual_ml_bootstrap.md) validates its
+B500 native-stream auxiliary uncertainty and original predictions against
+independent likelihood/QR and indices, without re-estimating theta per draw.
 The separate [balanced RE-ML whole-person bootstrap](random_effects_ml_bootstrap.md)
 now audits500 component-refitting replications and266,000 native-stream draws
 against independent R/Python, retaining the original native prediction model;
