@@ -20,8 +20,10 @@ with45 separate printed-log facts per matrix. A distinct [RE idiosyncratic resid
 composition](random_effects_residual_correlations.md) validates the same matrix
 against plm `ranef` and45 logged values; it is not the native population residual
 or a new owned RE unit-effect predictor. Separate [observed-level matrices](level_correlations.md)
-validate all200 lnhr/lnwg correlations against R and90 author-log values.
-Remaining FD/individual blocks are open.
+validate all200 lnhr/lnwg correlations against R and90 author-log values. The
+[annual-FD matrices](fd_residual_correlations.md) validate243 cells and108 logged
+values using explicit calendar pairs; the historical external `mom` binary's
+identity remains unknown. The individual correlation block remains open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.

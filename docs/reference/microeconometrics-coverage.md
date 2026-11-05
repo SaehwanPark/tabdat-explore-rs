@@ -1852,14 +1852,27 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL annual first-difference correlation matrices
+
+The [bounded annual-FD composition](../../examples/mma21p1panel/fd_residual_correlations.md)
+uses4,788 explicitly adjacent within-person pairs, intercept OLS, three9x9
+across-person matrices and retained slope lincom. Independent R QR/`cor` checks
+25 classical/lincom fields, all4,788x17 pair/prediction cells and243 matrix cells;
+108 author-log correlations match to four decimals. A separate plausible float32
+path matches12 printed author fit facts, while raw-double R tolerance remains
+fixed. The historical external `mom` binary identity/order remains unknown;
+only checked sample/outputs have a justified source-derived equivalent. The
+workflow requires population SD>1e-12 per differenced year/series and is
+descriptive, not a serial-correlation test or covariance correction.
+
 ### MMA-PANEL observed-level year-pair matrices
 
 The [bounded observed-level workflow](../../examples/mma21p1panel/level_correlations.md)
 reports200 Pearson cells for lnhr and lnwg across the same532 complete people.
 Independent R `cor` checks every5,320 source row and all200 table/export cells;
 90 author-log off-diagonals match at printed four-decimal precision. The output
-is descriptive, not an inferential serial-correlation test. FD/individual
-blocks and the source's external `mom` reload remain open.
+is descriptive, not an inferential serial-correlation test. The individual
+block and the source's external `mom` binary identity remain open.
 
 ### MMA-PANEL RE idiosyncratic residual correlation matrix
 
@@ -1870,8 +1883,8 @@ idiosyncratic residuals across people for all100 year pairs. Independent R/plm
 `ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
 table cells;45 author-log off-diagonals agree to four decimals. The native
 population residual is u+e, not this e; no general owned RE unit prediction is
-added. FD/individual matrices and the source's external `mom` reload remain
-open; descriptive correlation is neither a test nor covariance correction.
+added. The individual block and the source's external `mom` binary identity
+remain open; descriptive correlation is neither a test nor covariance correction.
 
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
 

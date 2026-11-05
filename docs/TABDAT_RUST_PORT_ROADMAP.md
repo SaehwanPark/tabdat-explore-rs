@@ -329,9 +329,12 @@ source/prediction rows and45 printed facts. The [RE idiosyncratic residual compo
 separately validates100 correlations,30 plm/ranef fields and all5,320x24 source/
 prediction cells plus45 printed facts; its sample-specific unit predictions are
 not native retained RE state. The [two observed-level year matrices](../examples/mma21p1panel/level_correlations.md)
-validate all200 R cells,5,320 source rows and90 printed author-log facts. Remaining
-FD/individual correlations, GLS companion inventory, mixed reporting, historical
-parity and full book inventory remain required.
+validate all200 R cells,5,320 source rows and90 printed author-log facts. The
+[annual-FD composition](../examples/mma21p1panel/fd_residual_correlations.md)
+validates4,788 annual-pair/prediction rows,243 R cells and108 logged correlations;
+only checked outputs, not the external `mom` binary identity/order, are equivalent.
+Remaining individual correlations, GLS companion inventory, mixed reporting,
+historical parity and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
