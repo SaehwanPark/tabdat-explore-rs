@@ -189,7 +189,11 @@ Extend the same workflow/validation standard to:
   and estimator-appropriate uncertainty. Add DID where the selected analysis needs
   it; modern causal extensions must not displace the book's required workflows.
 - **Complex surveys:** probability weights, strata/PSUs and design-based variance;
-  one-way regression clustering alone does not satisfy this outcome.
+  one-way regression clustering alone does not satisfy this outcome. The bounded
+  [Chapter24 household OLS workflow](../examples/mma24p1olscluster/README.md)
+  validates Table24.4 IID/HC1/commune-CR1 OLS on 5,006 observations against R;
+  it is unweighted, not design-based survey inference. FE/RE/GEE, bootstrap,
+  the individual-level count illustration and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

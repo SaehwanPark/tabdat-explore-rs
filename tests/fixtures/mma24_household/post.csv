@@ -1,0 +1,9 @@
+"result","path","value"
+"lincom","/estimate",0.412202996644289
+"lincom","/standard_error",0.0625699633090959
+"lincom","/statistic",6.58787339554611
+"lincom","/p_value",0.0012103879821293
+"lincom","/ci_lower",0.251361785505497
+"lincom","/ci_upper",0.573044207783082
+"test","/statistic",43.4000758757443
+"test","/p_value",0.0012103879821293
