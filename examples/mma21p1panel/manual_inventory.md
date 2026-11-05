@@ -145,14 +145,14 @@ generic parser/OLS capability alone does not close that requirement.
 | P2-ML-CL / 292–293 | Same fixed ML quasi design, person-cluster OLS | Missing; native full-joint ML score sandwich does not close this row |
 | P2-ML-BOOT / 297–299 | Fixed ML quasi design, whole-person B500/reset10001 | Missing; component-refitting marginal-ML bootstrap is a different target |
 | P2-ML-HC1-SOURCE / 302–303 | Source-as-written GLS HC1 stored under ML label | GLS-HC1 values now audited in GLS-AUX-COV; source ML label remains erroneous, not validated ML-HC1. Full reporting still requires explicit source-as-written/corrected distinction |
-| P2-HM-IID / 314–316 | GLS quasi response/design plus within wage, ordinary auxiliary coefficient t² | Missing dedicated auxiliary-iid workflow/audit; not covariance-difference Hausman |
+| P2-HM-IID / 314–316 | GLS quasi response/design plus within wage, ordinary auxiliary coefficient t² | Validated bounded: [HM-IID](iid_hausman.md), working F versus asymptotic chi-square explicit; not covariance-difference Hausman |
 | P2-HM-CL / 320–322 | Same augmented design, clustered auxiliary coefficient t² | Validated bounded: HM-CL, with calibration/assumptions explicitly labelled |
 | P2-REPORT-BE / 331–332 | Stored native/OLS/HC1 comparison, named coefficients and N/ll/R²/sums/RMSE/DF | Partial: BE named OLS reports exist, but native Between-panel row/whole source comparison not supplied |
 | P2-REPORT-FE / 333–334 | Canonical/auxiliary-iid/HC1/cluster comparison with correct intercepts/DF | Partial: three auxiliary named columns/canonical context in FE-AUX-COV; full mixed saved table still missing, no native FE snapshots |
 | P2-REPORT-GLS / 335–336 | Native/quasi iid/HC1/cluster comparison and scale-aware coefficients | Partial: three auxiliary named columns/native population context in GLS-AUX-COV; full mixed saved table still missing, no native RE snapshots or panel-likelihood substitution |
 | P2-REPORT-ML / 337–338 | Marginal-ML/quasi iid/source-labelled GLS-HC1/quasi cluster comparison | Missing complete comparison; preserve source anomaly and different likelihood/covariance meanings |
 | P2-REPORT-BOOT / 341–346 | Four coefficient-SE matrices, named ordering, separate fixed-transform targets | Partial: BE/FE/GLS bootstrap summaries exist; fixed-ML target and complete combined report remain missing |
-| P2-REPORT-DIAG / 349–354 | Both original theta values and robust/nonrobust auxiliary H scalars together | Partial: separate GLS/ML component and HM-CL outputs exist; combined source report/nonrobust auxiliary target missing |
+| P2-REPORT-DIAG / 349–354 | Both original theta values and robust/nonrobust auxiliary H scalars together | Partial: separate GLS/ML component and HM-CL/HM-IID outputs exist; combined source report missing |
 
 ## Delivery and verification limits
 
@@ -167,9 +167,9 @@ whole-program completion.
 
 The subsequent [GLS-AUX-COV workflow](manual_gls_covariance.md) adds120 original
 R/plm/QR quantities/full matrices/both intervals and population/quasi predictions,
-including interior/theta0 controls. A next bounded diagnostic is the manual
-**nonrobust auxiliary Hausman comparison** alongside HM-CL, with auxiliary t²/F
-versus asymptotic chi-square calibration explicit, not substituted by native
-covariance-difference Hausman. Remaining fixed-ML auxiliary work, residual/GLS
+including interior/theta0 controls. The [nonrobust auxiliary Hausman comparison](iid_hausman.md)
+adds39 independent original fields and all5,320x18 cells alongside HM-CL, with
+auxiliary t²/F versus asymptotic chi-square calibration explicit, not substituted
+by native covariance-difference Hausman. Remaining fixed-ML auxiliary work, residual/GLS
 inventories, complete mixed reporting and full book inventory stay required;
 do not make every remaining inventory a prerequisite to analytical delivery.

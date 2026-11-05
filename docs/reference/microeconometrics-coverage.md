@@ -1852,6 +1852,19 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL ordinary auxiliary Hausman comparison
+
+The [bounded P2-HM-IID workflow](../../examples/mma21p1panel/iid_hausman.md)
+uses the joint-finite balanced MOM sample (5,320 rows/532 people/T10), one
+Swamy–Arora theta and ordinary K3 quasi/within OLS. The contrast is within-minus-
+Between, not direct FE-minus-RE or covariance subtraction. Independent R/plm/QR
+checks39 fields and5,320x18 source/design/prediction cells; two16-person controls
+cover positive theta and theta0/null contrast. H=13.69034469972815; the working
+F(1,5317) p=0.00021773807753413903 differs from the asymptotic chi-square(1)
+p=0.00021555989719666303. Assumptions and lack of exact finite-sample guarantee
+are explicit. This does not complete the combined diagnostic report, fixed-ML
+comparisons or chapter coverage.
+
 ### MMA-PANEL Between seeded pairs-bootstrap method evidence
 
 The separate [first-program B500 workflow](../../examples/mma21p1panel/between_bootstrap_b500.md)
