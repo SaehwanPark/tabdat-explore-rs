@@ -44,7 +44,7 @@ def main():
   events=[json.loads(line) for line in (native/'result.jsonl').read_text().splitlines()]
   assert all(e['schema_version']==1 and 'error' not in e for e in events)
   assert [e['result_type'] for e in events]==['LoadResult','IsidResult','TableResult','SqlCreateResult',
-    'FixedEffectsResult','LincomResult','LincomResult','TestResult','PredictionResult','PredictionResult',
+    'TableResult','FixedEffectsResult','LincomResult','LincomResult','TestResult','PredictionResult','PredictionResult',
     'PredictionResult','PredictionResult','SummarizeResult','TableResult','ExportResult']
   select=lambda kind:[e['data'] for e in events if e['result_type']==kind]
   fit=select('FixedEffectsResult')[0]; lincom=select('LincomResult'); joint=select('TestResult')[0]

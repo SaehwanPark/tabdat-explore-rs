@@ -192,10 +192,13 @@ Extend the same workflow/validation standard to:
   one-way regression clustering alone does not satisfy this outcome. The bounded
   [Chapter24 household OLS workflow](../examples/mma24p1olscluster/README.md)
   validates Table24.4 IID/HC1/commune-CR1 OLS on 5,006 observations against R;
-  the [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
+  [commune FE](../examples/mma24p1olscluster/household_fe.md) separately checks
+  normalized common-intercept/slope inference and predictions against full-dummy
+  R QR, using cross-sectional source-row only as a unique key. The
+  [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
   27,765 individuals against R. Both are unweighted, not design-based survey
-  inference. FE/RE/GEE, bootstraps and full survey methods remain required.
+  inference. Remaining FE/RE/GEE, bootstraps and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
