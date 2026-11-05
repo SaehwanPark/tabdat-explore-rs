@@ -282,7 +282,8 @@ Pearson exchangeable correlation/RSS-N scale, full working/uncorrected unit
 sandwich covariance/normal95, all5,320 predictions/532 unit scores and12 author
 printed facts against R gee/dense matrices. Positive/negative-correlation controls,
 readable/CLI-v1 reports and retained pooled-OLS state are explicit; no owned GEE
-model, generic API or p-values. The distinct [normalized FE level-intercept
+model or generic API; its original report omits p-values, while the P4 report
+below supplies them. The distinct [normalized FE level-intercept
 pairs bootstrap](../examples/mma21p1panel/fe_level_bootstrap.md) now validates500
 raw-copy R QR refits/266,000 exact draws, full coefficient covariance/type7
 intervals and retained native original FE predictions. Re-normalization is per
@@ -344,7 +345,10 @@ now maps four working correlations, bootstraps and reporting. Its [independent-w
 GEE composition](../examples/mma21p1panel/independent_gee.md) checks18 fit/26
 inference fields, all5,320 source/prediction rows and532 unit scores against R;
 RSS/N, G/(G-1), normal/chi-square and retained pooled OLS are explicit. A
-separate float32-input hypothesis matches24 printed facts. The author's log
+separate float32-input hypothesis matches24 printed facts. The [exchangeable P4 report](../examples/mma21p1panel/exchangeable_p4.md)
+reuses the legacy-Pearson composition and validates19 R fit/26 inference fields,
+full G/(G-1) sandwich, all5,320 source/prediction rows,532 scores and25 direct
+printed facts, retaining pooled OLS rather than a GEE model. The author's log
 requests500 bootstrap replications but reports72 for independent/exchangeable;
 its unstructured bootstrap is commented out and final matrix list fails. Other
 GLS blocks, mixed reporting, historical parity and full book inventory remain required.
