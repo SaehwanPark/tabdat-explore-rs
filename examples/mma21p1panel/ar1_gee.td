@@ -10,6 +10,7 @@ regress lnhr lnwg
 predict pols_mean, xb
 predict pols_residual, residuals
 sql """SELECT * FROM active ORDER BY source_row""" into ar1_gee_source
+# Residual-score updates avoid cancellation in the uncentered normal-equation RHS.
 sql """
 WITH RECURSIVE
 source AS MATERIALIZED (

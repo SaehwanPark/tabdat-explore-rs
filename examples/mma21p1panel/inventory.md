@@ -127,6 +127,7 @@ snapshot/report](residual_summary.md) are also validated in bounded form. One
 near-zero historical RE mean's final digit and the FD author's external `mom`
 binary identity remain unresolved. The [GLS companion inventory](gls_inventory.md)
 now maps its four working-correlation, bootstrap and reporting blocks; its
-[independent-working GEE](independent_gee.md) and [exchangeable-working report](exchangeable_p4.md)
-are validated in bounded form. Other GLS blocks and the full book inventory remain required.
+[independent-working GEE](independent_gee.md), [exchangeable-working report](exchangeable_p4.md)
+and [AR1-working GEE](ar1_gee.md) are validated in bounded form. Other GLS blocks
+and the full book inventory remain required.
 No required illustration has been excluded.
