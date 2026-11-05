@@ -26,7 +26,9 @@ values using explicit calendar pairs; the historical external `mom` binary's
 identity remains unknown. The separate [individual lag-one composition](individual_autocorrelation.md)
 validates all532 within-person correlations and both logged examples. A separate
 [1979 cross-sectional fit](cross_section_1979.md) checks classical OLS inference
-and all source/prediction rows; the combined residual report remains open.
+and all source/prediction rows. The [combined residual snapshot/report](residual_summary.md)
+validates all5,320x30 source/prediction cells and55 summaries; one near-zero
+historical RE mean's last printed digit remains unresolved.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
