@@ -34,7 +34,9 @@ DF is NULL, explicitly labeled `normal_infinite_df_limit`. For positive B, rejec
 finite DF above1,000,000 rather than silently normal-approximate. The script
 accepts2–100 contiguous integer imputation keys `1..m`, exactly the same three
 parameter names and one row for every key/parameter; unique key pairs are
-required. Estimates must be finite with magnitude at most1,000,000; supplied SEs
+required. The CSV key column must load as BIGINT, so use integer lexical forms
+(not decimal/exponent forms); this rejects fractional values that would otherwise
+round to an integer when parsed as binary floating point. Estimates must be finite with magnitude at most1,000,000; supplied SEs
 must be finite and within `1e-12..1e6`. Total variance and the resulting statistic
 must be finite; `|statistic|<=1e6`. Missing/invalid values or unresolved inference
 fail before export; no imputations or failed results are silently dropped.
@@ -95,8 +97,9 @@ Independent R synthetic controls cover positive and zero B, the normal limit,
 zero-underflow p and two imputations with small fractional t DF. Native SQL tests
 compare R t tails/quantiles at DF1,3,172.3775,33662 and1,000,000, check NULL,
 invalid and multichunk paths. Actual CLI tests cover malformed/duplicate log
-blocks, extraction/export collisions, unbalanced/duplicate keys, bad SEs,
-excessive DF/t, source/JSON/report forgeries, preservation of a prior OLS model,
+blocks, extraction/export collisions, unbalanced/duplicate keys and decimal keys
+that would round to integers, bad SEs, excessive DF/t, source/JSON/report
+forgeries, preservation of a prior OLS model,
 and text/JSON parity. R and Python are reference/audit tools only, not production
 dependencies. The author MCMC generation, completed-data fits, cross-covariance,
 finite-complete-DF inference and the full textbook inventory remain open.

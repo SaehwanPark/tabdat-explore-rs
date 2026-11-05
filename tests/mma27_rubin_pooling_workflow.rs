@@ -87,6 +87,25 @@ fn success(kind: &str) {
   );
 }
 #[test]
+fn sql_help_exposes_student_t_boundaries() {
+  let output = tabdat_bin()
+    .args(["--json", "--help-topic", "sql"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+  let text = envelope["data"]["text"].as_str().unwrap();
+  for term in [
+    "tabdat_t_pvalue",
+    "tabdat_t_quantile",
+    "1<=df<=1000000",
+    "0.025<=p<=0.975",
+    "return NULL",
+  ] {
+    assert!(text.contains(term), "missing help: {term}");
+  }
+}
+#[test]
 fn mixed_zero_and_positive_between_match_r() {
   success("mixed");
 }
@@ -277,6 +296,7 @@ fn bad_input_and_collisions_do_not_clobber() {
   let lines: Vec<_> = source.lines().collect();
   let cases=[format!("{source}{}\n",lines[1]),format!("{}\n",lines[..lines.len()-1].join("\n")),source.replace("2,","3,"),
  source.replacen("intercept","wrong",1),source.replacen("-1,0.1","NaN,0.1",1),source.replacen("-1,0.1","-1,0",1),
+ source.replacen("1,intercept","1.00000000000000001,intercept",1),source.replacen("1,intercept","1.0,intercept",1),
  "imputation,parameter,estimate,standard_error\n1,intercept,1,1\n1,x1missing,1,1\n1,x2missing,1,1\n2,intercept,1.00001,1\n2,x1missing,2,1\n2,x2missing,2,1\n".to_owned(),
  "imputation,parameter,estimate,standard_error\n1,intercept,100,0.000000000001\n1,x1missing,1,1\n1,x2missing,1,1\n2,intercept,100,0.000000000001\n2,x1missing,2,1\n2,x2missing,2,1\n".to_owned()];
   for (i, bad) in cases.iter().enumerate() {
