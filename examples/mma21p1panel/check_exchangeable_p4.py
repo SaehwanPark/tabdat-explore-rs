@@ -52,6 +52,7 @@ def main():
       ('unit_sandwich_g_adjusted','lnwg','standard_error',.0515426,.00000005),
       ('unit_sandwich_g_adjusted','lnwg','z',2.32,.005),
       ('unit_sandwich_g_adjusted','lnwg','p_value',.020,.0005),
+      ('unit_sandwich_g_adjusted','lnwg','p_value',.0204,.00005),
       ('unit_sandwich_g_adjusted','lnwg','normal95_lower',.0185258,.00000005),
       ('unit_sandwich_g_adjusted','lnwg','normal95_upper',.220569,.0000005),
       ('unit_sandwich_g_adjusted','lnwg','slope_wald_chi2_1',5.38,.005),

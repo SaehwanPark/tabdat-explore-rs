@@ -57,7 +57,8 @@ now validates the legacy Pearson/RSS-N convention, full working and uncorrected
 unit-sandwich covariance/normal95, all5,320 source predictions/532 unit scores
 and12 printed author facts against R gee/dense matrices, including separate
 positive/negative-correlation controls. Native retained state remains pooled OLS;
-there is no owned GEE model, generic API or p-values. The separate [normalized
+there is no owned GEE model or generic API; the original report omits p-values,
+while the separate P4 report below supplies them. The separate [normalized
 FE level-intercept pairs bootstrap](../../examples/mma21p1panel/fe_level_bootstrap.md)
 now validates500 raw-copy R QR refits/266,000 exact draws, full coefficient
 covariance/type7 intervals and original native FE predictions. Sample means and
@@ -1851,6 +1852,20 @@ fixtures, sample/rank/theta guards and export failure/identity checks complete
 the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
+
+### MMA-PANEL exchangeable-working GEE companion
+
+[Source-specific composition](../../examples/mma21p1panel/exchangeable_p4.md)
+reuses the original balanced MOM legacy-Pearson Gaussian PA workflow and adds
+its G/(G-1) person-sandwich matrix, normal p/95 and slope chi-square report.
+R gee4.13.30/dense score reference validates all5,320x13 source/prediction cells,
+532x6 score cells,19 P4 fit and26 inference fields;25 P4 author facts match
+printed precision. Positive/negative rho controls, prerequisite/input/guard and
+six export-collision tests preserve original four exports and retained OLS state.
+Unresolved-zero-score and exhausted-iteration tests inject the relevant failure;
+they are not observed original-sample failures. Bootstrap source reports72 of
+500 requested replications; AR1/unstructured, mixed reporting and remaining
+book inventory remain required.
 
 ### MMA-PANEL independent-working Gaussian GEE companion
 

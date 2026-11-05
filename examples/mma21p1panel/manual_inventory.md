@@ -17,7 +17,7 @@ The live [publisher program index](https://cameron.econ.ucdavis.edu/mmabook/mmap
 | First: FE/RE | [mma21p1panfeandre.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do) | [20 first-program requirements](inventory.md) |
 | Second: transformed OLS | [mma21p2panmanual.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.do) / [output](https://cameron.econ.ucdavis.edu/mmabook/mma21p2panmanual.txt) | This document's29 requirements |
 | Third: residual analysis | [mma21p3panresiduals.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p3panresiduals.do) | [Source-scoped inventory](residual_inventory.md); level, pooled/FE/RE/annual-FD matrices, individual lag,1979 fit and combined residual report validated within bounded contracts; exact historical RE mean digit and external FD reload identity remain open |
-| Fourth: pooled OLS/GLS | [mma21p4pangls.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p4pangls.do) | [GLS source inventory](gls_inventory.md); bounded independent-working GEE validated; remaining correlations/bootstrap/reporting open |
+| Fourth: pooled OLS/GLS | [mma21p4pangls.do](https://cameron.econ.ucdavis.edu/mmabook/mma21p4pangls.do) | [GLS source inventory](gls_inventory.md); bounded independent- and exchangeable-working GEE reports validated; AR1/unstructured, bootstrap and mixed reporting open |
 
 The overview inside both first/second programs instead spells the second
 `mma21p2panfeandre.do` and fourth `mma21p4panpangls.do`. Those exact live URLs

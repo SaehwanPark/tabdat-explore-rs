@@ -32,8 +32,11 @@ historical RE mean's last printed digit remains unresolved. The [GLS companion
 inventory](gls_inventory.md) maps the four working correlations, bootstrap and
 reporting blocks; the separate [independent-working Gaussian GEE composition](independent_gee.md)
 validates all5,320 source/prediction rows, working and person-sandwich matrices
-and normal inference against R. It retains pooled OLS state, not GEE state;
-the historical72-of-500 bootstrap discrepancy and remaining GLS blocks stay open.
+and normal inference against R. The [P4 exchangeable report](exchangeable_p4.md)
+adds the source-specific G/(G-1) person sandwich and normal/chi-square inference,
+validated against R gee/dense matrices and25 printed facts. Both retain pooled
+OLS state, not GEE state; the historical72-of-500 bootstrap discrepancy and
+remaining GLS blocks stay open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
@@ -66,8 +69,9 @@ Pearson exchangeable correlation/RSS-N scale, full working and uncorrected
 unit-sandwich covariance/normal95, all5,320 predictions/532 unit scores and12
 printed author facts against R gee/dense matrices. Positive and negative
 correlation controls pass. Native retained state remains pooled OLS: no owned
-GEE/general API or p-values; explicit GEE prediction columns and readable/CLI-v1
-reports are provided. The distinct [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
+GEE/general API; the original report has no p-values, while the P4 extension
+above supplies them. Explicit GEE prediction columns and readable/CLI-v1 reports
+are provided. The distinct [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
 now refits500 within slopes/sample normalizations, validates full B-1 coefficient
 covariance/type7 intervals against raw-copy R QR and retains all native original
 FE predictions. Zero empirical slope variance is retained. The distinct native

@@ -67,8 +67,10 @@ U_i=X_i'V^-1 r_i, influence h_i=H^-1 U_i and covariance sum_i h_i h_i'.
 robust covariance. Independent people and a correct marginal mean are needed;
 the sandwich permits misspecified within-person covariance, not cross-person
 dependence or mean confounding. All intervals are asymptotic normal95, not t.
-The coefficient report includes z but no p-values: no trusted normal-tail SQL
-primitive is installed. No likelihood/LR or component inference is claimed.
+This original coefficient report includes z but no p-values. The separate
+[P4 exchangeable report](exchangeable_p4.md) uses the validated normal-CDF SQL
+function for p-values and the source-specific G/(G-1) sandwich. No likelihood/LR
+or component inference is claimed.
 
 Original intercept/slope are7.345479144924085/0.11954740235725124,
 phi0.08055113024536754 and rho0.32650965848038677. Working slope SE is
@@ -151,11 +153,11 @@ Adjacent Poisson GEE regressions, scoped Clippy, formatting, Python syntax and
 local links are also checked. No whole-workspace/other-platform/release claim.
 
 No weights/unbalanced panels, arbitrary formulas, generic GEE API, retained GEE
-state, prediction uncertainty, p-values, likelihood, finite/few-cluster/causal
-claim or literal historical iteration/output replay. This bounded source PA
+state, prediction uncertainty, p-values in this original report, likelihood,
+finite/few-cluster/causal claim or literal historical iteration/output replay. This bounded source PA
 coefficient/covariance/normal95 target does not close complete first-program
-reporting, historical bootstrap parity, companion-program inventory or full
-chapter/book coverage.
+reporting, historical bootstrap parity, the remaining companion-program blocks or
+full chapter/book coverage.
 The separate [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
 now validates a bounded pairs-bootstrap target, not the centered auxiliary-OLS
 intercept. The distinct [classical normalized common-intercept increment](classical_intercept.md)
