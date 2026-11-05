@@ -1852,6 +1852,18 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL combined residual snapshot and summary
+
+The [bounded joint residual workflow](../../examples/mma21p1panel/residual_summary.md)
+fits pooled, within FE and balanced RE on all5,320 source rows, reports their
+distinct residuals and55 overall/year summaries, and retains final RE population
+prediction state. Independent QR/full-dummy QR/plm checks64 fit fields and all
+5,320x30 cells/summaries. A separate plausible float32 path matches53 author
+counts and211 of212 printed numeric facts; the near-zero overall RE mean differs
+by8.38e-14 and its exact last historical digit remains unexplained. Source-keyed
+long form is equivalent for checked sample/results, not generic DTA identity.
+External FD `mom` identity and full chapter/book coverage remain open.
+
 ### MMA-PANEL 1979 cross-sectional regression
 
 The [bounded 1979 workflow](../../examples/mma21p1panel/cross_section_1979.md)
@@ -1859,8 +1871,8 @@ selects one row for each of532 complete people, fits intercept OLS with classica
 N−2 covariance/t inference and slope F test, retains state and exports source/
 prediction rows. Independent R QR checks29 fields and all532x11 cells; a separate
 plausible float32 storage path matches12 printed author fit facts without widening
-the canonical raw-double tolerance. The combined residual report and full
-chapter/book coverage remain open.
+the canonical raw-double tolerance. The external FD `mom` binary identity and
+full chapter/book coverage remain open.
 
 ### MMA-PANEL individual log-hours lag correlation examples
 
@@ -1869,8 +1881,7 @@ uses nine adjacent annual pairs per person, independently checks4,788x12 source/
 lag cells and all532 R `cor`/table cells, and matches the two author-log examples
 at printed precision. Per-person centering avoids cancellation for near-constant
 series; population SD>1e-12 is an explicit resolution bound. It is descriptive,
-not a serial-correlation test. Combined residual reporting and full chapter/book
-coverage remain open.
+not a serial-correlation test. Full chapter/book coverage remains open.
 
 ### MMA-PANEL annual first-difference correlation matrices
 
@@ -1891,8 +1902,8 @@ The [bounded observed-level workflow](../../examples/mma21p1panel/level_correlat
 reports200 Pearson cells for lnhr and lnwg across the same532 complete people.
 Independent R `cor` checks every5,320 source row and all200 table/export cells;
 90 author-log off-diagonals match at printed four-decimal precision. The output
-is descriptive, not an inferential serial-correlation test. The combined
-residual report and external `mom` binary identity remain open.
+is descriptive, not an inferential serial-correlation test. The external FD
+`mom` binary identity remains open.
 
 ### MMA-PANEL RE idiosyncratic residual correlation matrix
 
@@ -1903,8 +1914,8 @@ idiosyncratic residuals across people for all100 year pairs. Independent R/plm
 `ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
 table cells;45 author-log off-diagonals agree to four decimals. The native
 population residual is u+e, not this e; no general owned RE unit prediction is
-added. The combined residual report and external `mom` binary identity remain
-open; descriptive correlation is neither a test nor covariance correction.
+added. The external FD `mom` binary identity remains open; descriptive
+correlation is neither a test nor covariance correction.
 
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
 

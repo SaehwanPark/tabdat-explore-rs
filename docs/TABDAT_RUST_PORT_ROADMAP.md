@@ -336,9 +336,11 @@ only checked outputs, not the external `mom` binary identity/order, are equivale
 The [within-person lag composition](../examples/mma21p1panel/individual_autocorrelation.md)
 separately validates all532 people and both logged9-pair examples. The [1979
 cross-sectional fit](../examples/mma21p1panel/cross_section_1979.md) validates29 R
-inference/test fields and all532 source/prediction rows. Remaining combined
-residual reporting, GLS companion inventory, mixed reporting, historical parity
-and full book inventory remain required.
+inference/test fields and all532 source/prediction rows. The [joint residual
+snapshot/report](../examples/mma21p1panel/residual_summary.md) checks64 R/plm
+fields, all5,320x30 source/prediction cells and55 summaries; one near-zero
+author RE mean's last printed digit is unresolved. Remaining GLS companion
+inventory, mixed reporting, historical parity and full book inventory are required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
