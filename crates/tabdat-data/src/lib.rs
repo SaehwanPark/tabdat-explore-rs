@@ -34,6 +34,7 @@ mod expressions;
 pub use expressions::*;
 mod gauss_phi;
 mod scalars;
+mod student_t;
 use scalars::*;
 pub use scalars::{python_float_hex, validate_sql_query};
 mod inspection;
@@ -53,6 +54,12 @@ impl DuckDbBackend {
       Connection::open_in_memory().map_err(|_| RuntimeError::BackendInitialization)?;
     connection
       .register_scalar_function::<gauss_phi::GaussPhi>("tabdat_gauss_phi")
+      .map_err(|_| RuntimeError::BackendInitialization)?;
+    connection
+      .register_scalar_function::<student_t::StudentTPvalue>("tabdat_t_pvalue")
+      .map_err(|_| RuntimeError::BackendInitialization)?;
+    connection
+      .register_scalar_function::<student_t::StudentTQuantile>("tabdat_t_quantile")
       .map_err(|_| RuntimeError::BackendInitialization)?;
     connection
       .execute_batch("SET preserve_insertion_order = true")

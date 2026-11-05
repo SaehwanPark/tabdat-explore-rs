@@ -1,0 +1,4 @@
+"parameter","imputations","estimate","within_variance","between_variance","total_variance","standard_error","relative_increase","degrees_freedom","statistic","p_value","normal_or_t95_lower","normal_or_t95_upper","missing_information","relative_efficiency","minimum","maximum","reference"
+"intercept",2,0,0.01,2,3.01,1.73493515728975,300,1.00667777777778,0,1,-21.701866216241,21.701866216241,0.998336101890291,0.667036626994254,-1,1,"rubin_student_t_large_complete_df"
+"x1missing",2,3,0.01,8,12.01,3.46554469023269,1200,1.00166736111111,0.865664785237142,0.545565942164713,-40.8610860823977,46.8610860823977,0.999583506799919,0.66675923356229,1,5,"rubin_student_t_large_complete_df"
+"x2missing",2,0.5,0.09,0.18,0.36,0.6,3,1.77777777777778,0.833333333333333,0.501609304757191,-2.41688356553594,3.41688356553594,0.854651162790698,0.70061099796334,0.2,0.8,"rubin_student_t_large_complete_df"
