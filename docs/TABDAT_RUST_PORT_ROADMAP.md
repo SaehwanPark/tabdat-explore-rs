@@ -328,9 +328,10 @@ separately validates100 correlations,25 full-dummy QR inference fields, all5,320
 source/prediction rows and45 printed facts. The [RE idiosyncratic residual composition](../examples/mma21p1panel/random_effects_residual_correlations.md)
 separately validates100 correlations,30 plm/ranef fields and all5,320x24 source/
 prediction cells plus45 printed facts; its sample-specific unit predictions are
-not native retained RE state. Remaining FD/level/individual correlations, GLS
-companion inventory, mixed reporting, historical parity and full book inventory
-remain required.
+not native retained RE state. The [two observed-level year matrices](../examples/mma21p1panel/level_correlations.md)
+validate all200 R cells,5,320 source rows and90 printed author-log facts. Remaining
+FD/individual correlations, GLS companion inventory, mixed reporting, historical
+parity and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The
