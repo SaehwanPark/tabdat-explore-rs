@@ -21,8 +21,10 @@ values at their printed precision, separately from R abs1e-9/p-relative1e-8;
 investigate float/storage differences rather than relax R tolerance; (3)
 interleaved synthetic controls and text/JSON parity; (4) linear postestimation
 state after SQL. Failure: duplicates/incomplete/missing/nonfinite/out-of-range
-keys or values, rank-deficient fit and a zero-variance year/series fail before
-any export; both output collisions preserve owners, document partial file state.
+keys or values, rank-deficient fit and a year/series with cross-person standard
+deviation at most1e-12 fail before any export; both output collisions preserve
+owners, document partial file state. The fixed resolution guard also rejects
+roundoff-scale residuals that otherwise masquerade as identified correlation.
 Do not add native API or production R/Python dependency.
 
 The author program reloads an external `mom` whose original binary identity/order
