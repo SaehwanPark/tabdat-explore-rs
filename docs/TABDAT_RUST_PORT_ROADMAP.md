@@ -191,7 +191,11 @@ Extend the same workflow/validation standard to:
 - **Complex surveys:** probability weights, strata/PSUs and design-based variance;
   one-way regression clustering alone does not satisfy this outcome.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
-  finite-case deletion and missingness profiles alone do not satisfy it.
+  finite-case deletion and missingness profiles alone do not satisfy it. The bounded
+  [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
+  validates complete-case and single-mean-filled OLS on four generated 1,000-row
+  author inputs. Naive filled-fit t/SE omit missing-value uncertainty; author MCMC
+  MI, pooling, diagnostics and logit are not installed.
 
 Choose a specific example before fixing detailed parameterizations, algorithms or
 backend choices. Do not advertise a broad family based on one narrow estimator.
