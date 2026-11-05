@@ -1852,6 +1852,18 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL fixed-ML-theta auxiliary covariance comparison
+
+The [bounded P2-ML-IID/CL workflow](../../examples/mma21p1panel/manual_ml_covariance.md)
+freezes native balanced Gaussian ML theta on all5,320 MOM rows/532 people/T10,
+then compares ordinary and person-CR1 quasi OLS with both coefficient intervals.
+Independent R profile/QR and direct covariance likelihood check66 fields and all
+5,320x22 source/design/prediction cells;16-person interior and theta0 controls
+cover score-equation component reconstruction and constrained boundary. Native ML
+observed-information/normal inference is not auxiliary IID/t inference. Fixed-ML
+bootstrap, source-labelled GLS-HC1 anomaly/full mixed report and chapter coverage
+remain open.
+
 ### MMA-PANEL ordinary auxiliary Hausman comparison
 
 The [bounded P2-HM-IID workflow](../../examples/mma21p1panel/iid_hausman.md)
