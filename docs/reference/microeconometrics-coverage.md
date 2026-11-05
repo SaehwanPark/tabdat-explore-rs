@@ -1855,14 +1855,16 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
-### MMA-MISSING-LINEAR supplied-imputation marginal pooling (in progress)
+### MMA-MISSING-LINEAR supplied-imputation marginal pooling
 
-[Preimplementation contract](../../examples/mma27p1milinear/rubin_pooling.md):
-Chapter27 case1 SAS log supplies ten rounded per-imputation marginal estimates
-and SEs, but not completed imputed data. A bounded old-Rubin scalar pooling
-workflow and independent R/source-log evidence are being developed; do not count
-this as imputation generation, joint inference, finite-complete-df correction or
-completed MI/chapter coverage.
+[Bounded pooling](../../examples/mma27p1milinear/rubin_pooling.md) validates
+large-complete-DF Rubin within/between/total variance and scalar t inference
+against R on ten rounded per-imputation marginal estimates/SEs from the case1 SAS
+log (48 fields, max absolute3.35e-10; all30 displayed source pairs bound). Exact
+zero-between normal limits and small-DF synthetic controls are also tested.
+Completed imputed data are not published; this is not imputation generation,
+per-data fitting, joint inference, finite-complete-df correction or completed
+MI/chapter coverage.
 
 ### MMA-PANEL AR1-working Gaussian GEE companion
 
