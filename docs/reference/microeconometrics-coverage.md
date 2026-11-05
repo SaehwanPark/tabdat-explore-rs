@@ -1852,6 +1852,16 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL 1979 cross-sectional regression
+
+The [bounded 1979 workflow](../../examples/mma21p1panel/cross_section_1979.md)
+selects one row for each of532 complete people, fits intercept OLS with classical
+N−2 covariance/t inference and slope F test, retains state and exports source/
+prediction rows. Independent R QR checks29 fields and all532x11 cells; a separate
+plausible float32 storage path matches12 printed author fit facts without widening
+the canonical raw-double tolerance. The combined residual report and full
+chapter/book coverage remain open.
+
 ### MMA-PANEL individual log-hours lag correlation examples
 
 The [bounded within-person workflow](../../examples/mma21p1panel/individual_autocorrelation.md)
@@ -1859,8 +1869,8 @@ uses nine adjacent annual pairs per person, independently checks4,788x12 source/
 lag cells and all532 R `cor`/table cells, and matches the two author-log examples
 at printed precision. Per-person centering avoids cancellation for near-constant
 series; population SD>1e-12 is an explicit resolution bound. It is descriptive,
-not a serial-correlation test. Combined residual reporting, the dedicated1979
-fit and full chapter/book coverage remain open.
+not a serial-correlation test. Combined residual reporting and full chapter/book
+coverage remain open.
 
 ### MMA-PANEL annual first-difference correlation matrices
 
@@ -1882,7 +1892,7 @@ reports200 Pearson cells for lnhr and lnwg across the same532 complete people.
 Independent R `cor` checks every5,320 source row and all200 table/export cells;
 90 author-log off-diagonals match at printed four-decimal precision. The output
 is descriptive, not an inferential serial-correlation test. The combined
-residual report, dedicated1979 fit and external `mom` binary identity remain open.
+residual report and external `mom` binary identity remain open.
 
 ### MMA-PANEL RE idiosyncratic residual correlation matrix
 
@@ -1893,9 +1903,8 @@ idiosyncratic residuals across people for all100 year pairs. Independent R/plm
 `ranef` checks30 RE fields, all5,320x24 source/prediction cells and100 matrix/
 table cells;45 author-log off-diagonals agree to four decimals. The native
 population residual is u+e, not this e; no general owned RE unit prediction is
-added. The combined residual report, dedicated1979 fit and external `mom`
-binary identity remain open; descriptive correlation is neither a test nor
-covariance correction.
+added. The combined residual report and external `mom` binary identity remain
+open; descriptive correlation is neither a test nor covariance correction.
 
 ### MMA-PANEL Table21.4 within-FE residual correlation matrix
 
