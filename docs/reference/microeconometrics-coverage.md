@@ -1852,6 +1852,17 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL fixed-ML-theta auxiliary bootstrap
+
+The [bounded P2-ML-BOOT workflow](../../examples/mma21p1panel/manual_ml_bootstrap.md)
+freezes ML theta/person means on all5,320 MOM rows/532 complete people/T10 and
+runs500 seeded whole-person quasi-OLS pairs refits. Independent R likelihood/QR
+and Python indices check22 aggregate fields and all5,320x22 source/design/
+prediction cells; two16-person controls cover interior/theta0 and exact native
+control RNG indices. Native CLI does not expose individual refit coefficients.
+This is not the separate component-refitting ML bootstrap, historical Stata stream
+or a complete mixed report/chapter.
+
 ### MMA-PANEL fixed-ML-theta auxiliary covariance comparison
 
 The [bounded P2-ML-IID/CL workflow](../../examples/mma21p1panel/manual_ml_covariance.md)
