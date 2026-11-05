@@ -28,7 +28,12 @@ validates all532 within-person correlations and both logged examples. A separate
 [1979 cross-sectional fit](cross_section_1979.md) checks classical OLS inference
 and all source/prediction rows. The [combined residual snapshot/report](residual_summary.md)
 validates all5,320x30 source/prediction cells and55 summaries; one near-zero
-historical RE mean's last printed digit remains unresolved.
+historical RE mean's last printed digit remains unresolved. The [GLS companion
+inventory](gls_inventory.md) maps the four working correlations, bootstrap and
+reporting blocks; the separate [independent-working Gaussian GEE composition](independent_gee.md)
+validates all5,320 source/prediction rows, working and person-sandwich matrices
+and normal inference against R. It retains pooled OLS state, not GEE state;
+the historical72-of-500 bootstrap discrepancy and remaining GLS blocks stay open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
