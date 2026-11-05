@@ -1853,6 +1853,19 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL AR1-working Gaussian GEE companion
+
+[Source-specific composition](../../examples/mma21p1panel/ar1_gee.md) validates
+all5,320 MOM source/prediction rows and4,788 keyed annual pairs, legacy Pearson
+AR1 rho/RSS-N scale, full working and G/(G-1) person-sandwich covariances,
+normal inference and532 unit scores. R gee4.13.30 and independent dense10x10
+matrix/score iteration check17 fit and26 inference quantities/all5,320x13
+source/prediction and532x6 score cells;25 author facts match printed precision.
+Positive/negative/zero-correlation controls, actual singular rho=±1, key/rank/IO,
+injected convergence and unit-variance failure and retained pooled OLS are tested.
+AR1 bootstrap source omits `t(year)` and remains open along with unstructured,
+full mixed reporting and remaining book inventory.
+
 ### MMA-PANEL exchangeable-working GEE companion
 
 [Source-specific composition](../../examples/mma21p1panel/exchangeable_p4.md)

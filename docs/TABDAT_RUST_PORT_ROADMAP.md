@@ -348,7 +348,10 @@ RSS/N, G/(G-1), normal/chi-square and retained pooled OLS are explicit. A
 separate float32-input hypothesis matches24 printed facts. The [exchangeable P4 report](../examples/mma21p1panel/exchangeable_p4.md)
 reuses the legacy-Pearson composition and validates19 R fit/26 inference fields,
 full G/(G-1) sandwich, all5,320 source/prediction rows,532 scores and25 direct
-printed facts, retaining pooled OLS rather than a GEE model. The author's log
+printed facts, retaining pooled OLS rather than a GEE model. The [AR1 GEE](../examples/mma21p1panel/ar1_gee.md)
+validates17 fit/26 inference fields, all5,320 source/prediction rows,532 unit
+scores and25 printed facts against R gee/dense matrices; keyed annual pairs,
+strict rho/convergence guards and retained pooled OLS are explicit. The author's log
 requests500 bootstrap replications but reports72 for independent/exchangeable;
 its unstructured bootstrap is commented out and final matrix list fails. Other
 GLS blocks, mixed reporting, historical parity and full book inventory remain required.

@@ -34,8 +34,11 @@ matrices and normal inference against R; RSS/N and G/(G-1) differ from OLS t/CR1
 The [exchangeable-working report](examples/mma21p1panel/exchangeable_p4.md)
 reuses the legacy-Pearson composition and adds full G/(G-1) person-sandwich,
 normal p/chi-square and R gee/dense evidence, including25 printed author facts.
-Both retain pooled OLS, not GEE; historical72-of-500 bootstrap, AR1/unstructured
-and complete mixed reporting remain open. The separate
+The [AR1-working GEE composition](examples/mma21p1panel/ar1_gee.md) validates
+keyed annual pairs, legacy Pearson rho, working and unit-sandwich matrices and
+normal inference against R gee/dense scores on all5,320 source rows. All three
+retain pooled OLS, not GEE; historical72-of-500 bootstrap, AR1 bootstrap,
+unstructured correlation and complete mixed reporting remain open. The separate
 [manual FE covariance workflow](examples/mma21p1panel/manual_fe_covariance.md)
 now validates centered auxiliary IID/row-HC1/person-CR1 comparisons, full covariance,
 slope intervals and named reports on all5,320 rows; their5318/531 DF and numerical

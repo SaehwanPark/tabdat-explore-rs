@@ -34,9 +34,11 @@ reporting blocks; the separate [independent-working Gaussian GEE composition](in
 validates all5,320 source/prediction rows, working and person-sandwich matrices
 and normal inference against R. The [P4 exchangeable report](exchangeable_p4.md)
 adds the source-specific G/(G-1) person sandwich and normal/chi-square inference,
-validated against R gee/dense matrices and25 printed facts. Both retain pooled
-OLS state, not GEE state; the historical72-of-500 bootstrap discrepancy and
-remaining GLS blocks stay open.
+validated against R gee/dense matrices and25 printed facts. The separate [AR1
+GEE composition](ar1_gee.md) validates keyed annual pairs, full working/unit
+covariances and all source/prediction rows against R gee/dense matrices. These
+retain pooled OLS, not GEE state; the historical72-of-500 bootstrap discrepancy,
+AR1 bootstrap, unstructured correlation and mixed reporting stay open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
