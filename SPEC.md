@@ -26,7 +26,13 @@ gaps and textbook replication evidence. Its linked
 maps29 transformed-OLS/reporting requirements and resolves the live companion
 filenames. Auxiliary/canonical covariance and fixed/refitted theta remain distinct;
 the source's GLS-under-ML-HC1 label is explicit. Neither inventory establishes
-whole-chapter/book coverage or adds runtime capability. The separate
+whole-chapter/book coverage or adds runtime capability. The [GLS companion
+inventory](examples/mma21p1panel/gls_inventory.md) now maps its four working
+correlations, bootstraps and report. Its [independent-working GEE composition](examples/mma21p1panel/independent_gee.md)
+validates all5,320 source/prediction rows, both full working/unit covariance
+matrices and normal inference against R; RSS/N and G/(G-1) differ from OLS t/CR1.
+It retains pooled OLS, not GEE, and does not resolve the historical72-of-500
+bootstrap discrepancy or implement the other GLS blocks. The separate
 [manual FE covariance workflow](examples/mma21p1panel/manual_fe_covariance.md)
 now validates centered auxiliary IID/row-HC1/person-CR1 comparisons, full covariance,
 slope intervals and named reports on all5,320 rows; their5318/531 DF and numerical

@@ -1852,6 +1852,22 @@ the workflow. This composed comparison is separate from the bounded classical
 native `estat hausman` above; neither supplies arbitrary model selection,
 general Hausman testing, bootstrap or full panel coverage.
 
+### MMA-PANEL independent-working Gaussian GEE companion
+
+[Source-pinned GLS inventory](../../examples/mma21p1panel/gls_inventory.md) and
+[bounded workflow/evidence](../../examples/mma21p1panel/independent_gee.md):
+5,320 original person-years/532 complete people, lnhr on intercept/lnwg;
+RSS/N working and G/(G-1) person-score full covariance, normal coefficient/
+slope-chi-square inference. Base-R QR/score reference checks18 fit and26 inference
+fields, all5,320x13 source/prediction cells and532x6 person-score cells; two
+32-person controls, failure/no-clobber and retained-OLS-state tests apply.
+Independent source hashing binds42,560 raw cells; text/JSON exports match.
+A separate float32-input hypothesis matches24 author-log facts without replacing
+canonical raw-double tolerances. Author independent/exchangeable bootstrap logs
+request500 but report72 per coefficient; unstructured bootstrap is commented
+out and its final matrix listing fails. Other GLS blocks, historical source
+precision/bootstrap parity and whole Chapter21/book coverage remain open.
+
 ### MMA-PANEL combined residual snapshot and summary
 
 The [bounded joint residual workflow](../../examples/mma21p1panel/residual_summary.md)

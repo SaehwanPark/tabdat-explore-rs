@@ -339,8 +339,15 @@ cross-sectional fit](../examples/mma21p1panel/cross_section_1979.md) validates29
 inference/test fields and all532 source/prediction rows. The [joint residual
 snapshot/report](../examples/mma21p1panel/residual_summary.md) checks64 R/plm
 fields, all5,320x30 source/prediction cells and55 summaries; one near-zero
-author RE mean's last printed digit is unresolved. Remaining GLS companion
-inventory, mixed reporting, historical parity and full book inventory are required.
+author RE mean's last printed digit is unresolved. The [GLS companion inventory](../examples/mma21p1panel/gls_inventory.md)
+now maps four working correlations, bootstraps and reporting. Its [independent-working
+GEE composition](../examples/mma21p1panel/independent_gee.md) checks18 fit/26
+inference fields, all5,320 source/prediction rows and532 unit scores against R;
+RSS/N, G/(G-1), normal/chi-square and retained pooled OLS are explicit. A
+separate float32-input hypothesis matches24 printed facts. The author's log
+requests500 bootstrap replications but reports72 for independent/exchangeable;
+its unstructured bootstrap is commented out and final matrix list fails. Other
+GLS blocks, mixed reporting, historical parity and full book inventory remain required.
 
 1. Advance another required econometric analysis or bounded panel diagnostic on an
    exact ledger-defined sample/design/reference. The

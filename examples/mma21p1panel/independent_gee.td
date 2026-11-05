@@ -39,7 +39,7 @@ SELECT 1 AS gee_join_key,n AS observations,g AS people,10 AS years_per_person,a 
  w00 AS working_covariance_aa,w01 AS working_covariance_ab,w11 AS working_covariance_bb,
  v00 AS unit_covariance_aa,v01 AS unit_covariance_ab,v11 AS unit_covariance_bb,
  CASE WHEN NOT isfinite(w00) OR w00<=0 OR NOT isfinite(w01) OR NOT isfinite(w11) OR w11<=0
- OR NOT isfinite(v00) OR v00<=0 OR NOT isfinite(v01) OR NOT isfinite(v11) OR v11<=0
+ OR NOT isfinite(v00) OR v00<=2.842170943040401e-14*w00 OR NOT isfinite(v01) OR NOT isfinite(v11) OR v11<=2.842170943040401e-14*w11
  OR NOT isfinite(step0) OR NOT isfinite(step1) OR ABS(step0)>1e-10*(1+ABS(a)) OR ABS(step1)>1e-10*(1+ABS(b))
  THEN error('independent GEE failed covariance or estimating-score certificate') ELSE step0 END AS intercept_step,
  step1 AS slope_step,'rss_over_n_independent' AS convention,'g_over_g_minus_1_unit_sandwich' AS unit_covariance,
