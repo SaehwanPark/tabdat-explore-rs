@@ -84,7 +84,7 @@ first_slopes AS MATERIALIZED (SELECT rep,kind,LIST_TRANSFORM(range(1,7),i -> a[(
 slopes AS MATERIALIZED (
  SELECT a.rep,a.b AS bw,b.b AS bb FROM first_slopes a JOIN first_slopes b ON a.rep=b.rep WHERE a.kind='within' AND b.kind='between'
 ),
-rss AS MATERIALIZED (
+rss AS NOT MATERIALIZED (
  SELECT w.*,s.bw,s.bb,
  -- Reject strong cancellation in the residual quadratic below; no clipping.
  w.wyy-2*LIST_SUM(LIST_TRANSFORM(range(1,7),i -> s.bw[i]*w.rhs[i]))+
@@ -93,12 +93,12 @@ rss AS MATERIALIZED (
  LIST_SUM(LIST_TRANSFORM(ids,j -> 1.0/gs[j].n))/len(ids) AS mean_inverse_n
  FROM within_moments w JOIN slopes s USING(rep)
 ),
-variances AS MATERIALIZED (
+variances AS NOT MATERIALIZED (
  SELECT *,CASE WHEN within_rss IS NULL OR NOT isfinite(within_rss) OR within_rss<=1e-4*wyy OR sample_n<=(SELECT g FROM params)+6 OR between_rss IS NULL OR NOT isfinite(between_rss) OR between_rss<0 THEN error('RE bootstrap invalid or unstable residual moments') ELSE within_rss/(sample_n-(SELECT g FROM params)-6) END AS e FROM rss
 ),
-raw_component AS MATERIALIZED (SELECT *,between_rss/((SELECT g FROM params)-7)-e*mean_inverse_n AS raw_u FROM variances),
-components AS MATERIALIZED (SELECT *,CASE WHEN raw_u IS NULL OR NOT isfinite(raw_u) OR e IS NULL OR NOT isfinite(e) OR e<=0 THEN error('RE bootstrap invalid variance components') ELSE GREATEST(raw_u,0) END AS u FROM raw_component),
-weights AS MATERIALIZED (
+raw_component AS NOT MATERIALIZED (SELECT *,between_rss/((SELECT g FROM params)-7)-e*mean_inverse_n AS raw_u FROM variances),
+components AS NOT MATERIALIZED (SELECT *,CASE WHEN raw_u IS NULL OR NOT isfinite(raw_u) OR e IS NULL OR NOT isfinite(e) OR e<=0 THEN error('RE bootstrap invalid variance components') ELSE GREATEST(raw_u,0) END AS u FROM raw_component),
+weights AS NOT MATERIALIZED (
  SELECT *,LIST_TRANSFORM(ids,j -> CASE WHEN e/(e+gs[j].n*u) IS NULL OR NOT isfinite(e/(e+gs[j].n*u)) OR e/(e+gs[j].n*u)<=1e-24 THEN error('RE bootstrap loses transformed intercept precision') ELSE gs[j].n*e/(e+gs[j].n*u) END) AS weights FROM components
 ),
 weighted_means AS MATERIALIZED (

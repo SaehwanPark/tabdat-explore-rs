@@ -58,7 +58,7 @@ def main():
   N=len(selected);sizes={}
   for row in selected:
     key=int(row['commune']);sizes[key]=sizes.get(key,0)+1
-  groups=sorted(sizes);G=len(groups);assert 7<=G<=194 and max(sizes.values())<=39
+  groups=sorted(sizes);G=len(groups);assert 8<=G<=194 and max(sizes.values())<=39
   if mode!='--synthetic': assert (N,G,len(source)-N,min(sizes.values()),max(sizes.values()))==(5006,194,993,1,39)
   expected_groups=rows(ref/'groups.csv');assert [(int(g['commune']),int(g['observations'])) for g in expected_groups]==[(g,sizes[g]) for g in groups]
   draws=rows(native/'household_re_bootstrap_draws.csv');assert len(draws)==500*G
@@ -101,13 +101,17 @@ def main():
       assert a[k]==b[k]==v
   events=[json.loads(line) for line in (native/'result.jsonl').read_text().splitlines()]
   assert all(e['schema_version']==1 and 'error' not in e for e in events)
-  fe=[e['data'] for e in events if e['result_type']=='UnbalancedRandomEffectsGlsResult'];assert len(fe)==1
-  fit=fe[0];assert fit['observation_count']==N and fit['group_count']==G and fit['variance_component_method']=='equal_group_between'
+  results=[e for e in events if e['result_type'] in ('RandomEffectsResult','UnbalancedRandomEffectsGlsResult')];assert len(results)==1
+  fit=results[0]['data'];assert fit['observation_count']==N and fit['group_count']==G and fit['variance_component_method']=='equal_group_between'
   assert [c['name'] for c in fit['coefficients']]==['intercept',*names[1:]]
   for i,c in enumerate(fit['coefficients']): near(c['value'],summary[i*7]['estimate'])
   baseline=rows(ref/'baseline.csv');assert len(baseline)==1
-  for native_name,reference_name in [('sigma_e_squared','e'),('raw_sigma_u_squared','raw_u'),('sigma_u_squared','u'),('theta_min','theta_min'),('theta_max','theta_max')]:
+  for native_name,reference_name in [('sigma_e_squared','e'),('raw_sigma_u_squared','raw_u'),('sigma_u_squared','u')]:
     near(fit[native_name],baseline[0][reference_name])
+  if results[0]['result_type']=='RandomEffectsResult':
+    near(fit['theta'],baseline[0]['theta_min']);near(fit['theta'],baseline[0]['theta_max'])
+  else:
+    near(fit['theta_min'],baseline[0]['theta_min']);near(fit['theta_max'],baseline[0]['theta_max'])
   exported=rows(native/'household_re_bootstrap_predictions.csv');prediction=rows(ref/'predictions.csv')
   assert len(exported)==len(prediction)==N
   for a,b,s in zip(exported,prediction,selected):

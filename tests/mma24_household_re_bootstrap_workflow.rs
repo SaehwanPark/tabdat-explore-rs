@@ -150,6 +150,33 @@ fn actual_unbalanced_script_matches_all_r_refits_and_preserves_original_predicti
   let expected_fits = rows(FITS);
   assert_eq!(fits.len(), 500);
   assert_eq!(expected_fits.len(), 500);
+  let truncated = fits
+    .iter()
+    .filter(|r| r["u"].parse::<f64>().unwrap() == 0.0)
+    .count();
+  assert_eq!(truncated, 28);
+  assert!(
+    fits
+      .iter()
+      .any(|r| r["raw_u"].parse::<f64>().unwrap() > 0.0)
+  );
+  let baseline = rows(include_str!(
+    "fixtures/mma24_household_re_bootstrap/mixed_baseline.csv"
+  ));
+  assert_eq!(baseline.len(), 1);
+  for (native_key, reference_key) in [
+    ("sigma_e_squared", "e"),
+    ("raw_sigma_u_squared", "raw_u"),
+    ("sigma_u_squared", "u"),
+    ("theta_min", "theta_min"),
+    ("theta_max", "theta_max"),
+  ] {
+    near(
+      &native[native_key].as_f64().unwrap().to_string(),
+      baseline[0][reference_key],
+      native_key,
+    );
+  }
   let group_rows = rows(GROUPS);
   let group_sizes = group_rows
     .iter()
@@ -233,6 +260,23 @@ fn actual_unbalanced_script_matches_all_r_refits_and_preserves_original_predicti
   for (f, b) in OUTPUTS.iter().zip(original.iter()) {
     assert_eq!(&fs::read(text.path().join(f)).unwrap(), b);
   }
+  let mut lines = INPUT.lines();
+  let header = lines.next().unwrap();
+  let reordered = format!(
+    "{}\n{}\n",
+    header,
+    lines.rev().collect::<Vec<_>>().join("\n")
+  );
+  let reversed = TestDir::new();
+  fs::write(reversed.path().join("vietnam.csv"), &reordered).unwrap();
+  checked(run(&reversed, "--json"));
+  for (f, b) in OUTPUTS.iter().zip(original.iter()) {
+    assert_eq!(&fs::read(reversed.path().join(f)).unwrap(), b);
+  }
+  assert_eq!(
+    fs::read_to_string(reversed.path().join("vietnam.csv")).unwrap(),
+    reordered
+  );
 }
 #[test]
 fn every_zero_truncated_refit_matches_independent_r() {
@@ -281,6 +325,155 @@ fn every_zero_truncated_refit_matches_independent_r() {
   }
 }
 
+#[test]
+fn balanced_result_matches_independent_r_and_single_theta() {
+  let d = TestDir::new();
+  fs::write(
+    d.path().join("vietnam.csv"),
+    include_str!("fixtures/mma24_household_re_bootstrap/balanced_input.csv"),
+  )
+  .unwrap();
+  let events = checked(run(&d, "--json"));
+  let result = &events
+    .iter()
+    .find(|e| e["result_type"] == "RandomEffectsResult")
+    .unwrap()["data"];
+  assert_eq!(result["observation_count"], 192);
+  assert_eq!(result["group_count"], 48);
+  assert_eq!(result["variance_component_method"], "equal_group_between");
+  let baseline = rows(include_str!(
+    "fixtures/mma24_household_re_bootstrap/balanced_baseline.csv"
+  ));
+  for key in ["theta_min", "theta_max"] {
+    near(
+      &result["theta"].as_f64().unwrap().to_string(),
+      baseline[0][key],
+      key,
+    );
+  }
+  for (filename, reference, count) in [
+    (
+      OUTPUTS[0],
+      include_str!("fixtures/mma24_household_re_bootstrap/balanced_summary.csv"),
+      49,
+    ),
+    (
+      OUTPUTS[1],
+      include_str!("fixtures/mma24_household_re_bootstrap/balanced_fits.csv"),
+      500,
+    ),
+  ] {
+    let text = fs::read_to_string(d.path().join(filename)).unwrap();
+    let actual = rows(&text);
+    let expected = rows(reference);
+    assert_eq!(actual.len(), count);
+    assert_eq!(actual.len(), expected.len());
+    for (a, b) in actual.iter().zip(expected.iter()) {
+      for (key, value) in b {
+        if value.parse::<f64>().is_ok() {
+          near(a[key], value, key)
+        } else {
+          assert_eq!(a[key], *value, "{key}")
+        }
+      }
+    }
+  }
+}
+
+#[test]
+fn correlated_control_matches_all_independent_r_refits() {
+  let d = TestDir::new();
+  fs::write(
+    d.path().join("vietnam.csv"),
+    include_str!("fixtures/mma24_household_fe_bootstrap/conditioned_input.csv"),
+  )
+  .unwrap();
+  checked(run(&d, "--json"));
+  for (filename, reference, count) in [
+    (
+      OUTPUTS[0],
+      include_str!("fixtures/mma24_household_re_bootstrap/conditioned_summary.csv"),
+      49,
+    ),
+    (
+      OUTPUTS[1],
+      include_str!("fixtures/mma24_household_re_bootstrap/conditioned_fits.csv"),
+      500,
+    ),
+  ] {
+    let text = fs::read_to_string(d.path().join(filename)).unwrap();
+    let actual = rows(&text);
+    let expected = rows(reference);
+    assert_eq!(actual.len(), count);
+    assert_eq!(actual.len(), expected.len());
+    for (a, b) in actual.iter().zip(expected.iter()) {
+      for (key, value) in b {
+        if value.parse::<f64>().is_ok() {
+          near(a[key], value, key);
+        } else {
+          assert_eq!(a[key], *value, "{key}");
+        }
+      }
+    }
+  }
+}
+
+fn numerical_stress_input(collinear: bool) -> String {
+  let mut lines = INPUT.lines();
+  let mut output = format!("{}\n", lines.next().unwrap());
+  for line in lines {
+    let mut fields = line.split(',').map(str::to_owned).collect::<Vec<_>>();
+    if collinear {
+      let x: f64 = fields[2].parse().unwrap();
+      let educ: f64 = fields[7].parse().unwrap();
+      fields[7] = format!("{:.17}", x + 0.001 * educ);
+    } else if !fields[1].is_empty() {
+      let values = fields[2..8]
+        .iter()
+        .map(|x| x.parse::<f64>().unwrap())
+        .collect::<Vec<_>>();
+      let group: f64 = fields[8].parse().unwrap();
+      let y: f64 = fields[1].parse().unwrap();
+      let linear = values
+        .iter()
+        .zip([0.4, -0.2, 0.3, 0.15, -0.25, 0.1])
+        .map(|(x, b)| x * b)
+        .sum::<f64>();
+      fields[1] = format!("{:.17}", 1.0 + 0.1 * group + linear + 1e-5 * y);
+    }
+    output.push_str(&fields.join(","));
+    output.push('\n');
+  }
+  output
+}
+
+fn variance_failure_input(original_failure: bool) -> String {
+  let mut lines = INPUT.lines();
+  let mut output = format!("{}\n", lines.next().unwrap());
+  for line in lines {
+    let mut fields = line.split(',').map(str::to_owned).collect::<Vec<_>>();
+    if !fields[1].is_empty() {
+      let y: f64 = fields[1].parse().unwrap();
+      let group: f64 = fields[8].parse().unwrap();
+      let value = if original_failure {
+        group
+      } else {
+        let linear = fields[2..8]
+          .iter()
+          .map(|x| x.parse::<f64>().unwrap())
+          .zip([0.4, -0.2, 0.3, 0.15, -0.25, 0.1])
+          .map(|(x, b)| x * b)
+          .sum::<f64>();
+        1.0 + 0.1 * group + linear + if group == 6.0 { y } else { 0.0 }
+      };
+      fields[1] = format!("{value:.17}");
+    }
+    output.push_str(&fields.join(","));
+    output.push('\n');
+  }
+  output
+}
+
 fn failing_rank_input(original_rank_failure: bool) -> String {
   let mut out = String::from("source_row,lnexp12m,lnhhexp,age,sex,hhsize,farm,educ,commune\n");
   for g in 1..=8 {
@@ -307,13 +500,15 @@ fn failing_rank_input(original_rank_failure: bool) -> String {
   out
 }
 #[test]
-fn invalid_keys_original_rank_and_singular_resamples_fail_before_exports() {
+fn invalid_keys_rank_variance_and_numerical_failures_stop_before_exports() {
   let input = INPUT.lines().collect::<Vec<_>>();
   let mut missing = input[1].split(',').collect::<Vec<_>>();
   let last = missing.len() - 1;
   missing[last] = "";
   let mut out_of_range = input[1].split(',').collect::<Vec<_>>();
   out_of_range[last] = "195";
+  let mut extreme_predictor = input[1].split(',').collect::<Vec<_>>();
+  extreme_predictor[2] = "1000001";
   let mut large_group = INPUT.to_owned();
   for id in 171..210 {
     let mut fields = input[1].split(',').map(str::to_owned).collect::<Vec<_>>();
@@ -345,8 +540,21 @@ fn invalid_keys_original_rank_and_singular_resamples_fail_before_exports() {
       false,
     ),
     (large_group, false),
+    (
+      format!(
+        "{}\n{}\n{}\n",
+        input[0],
+        extreme_predictor.join(","),
+        input[2..].join("\n")
+      ),
+      false,
+    ),
     (failing_rank_input(true), false),
     (failing_rank_input(false), true),
+    (variance_failure_input(true), false),
+    (variance_failure_input(false), true),
+    (numerical_stress_input(true), true),
+    (numerical_stress_input(false), true),
   ];
   for (input, started) in cases {
     let d = TestDir::new();
@@ -371,44 +579,45 @@ fn invalid_keys_original_rank_and_singular_resamples_fail_before_exports() {
 }
 #[test]
 fn failed_resample_preserves_native_fit_and_current_data() {
-  let d = TestDir::new();
-  let source = d.path().join("vietnam.csv");
-  let input = failing_rank_input(false);
-  fs::write(&source, &input).unwrap();
-  let mut session = Session::new();
-  let mut saw_failure = false;
-  for command in parse_script(SCRIPT, Path::new("household_re_bootstrap.td")).unwrap() {
-    let text = if command.text == "use vietnam.csv" {
-      format!("use \"{}\"", source.display())
-    } else {
-      command.text.clone()
-    };
-    if command.text.starts_with("sql \"\"\"\nWITH RECURSIVE") {
-      let before = session.state();
-      let head = session.execute(parse_command("head 3").unwrap()).unwrap();
-      assert!(matches!(
-        before.estimation,
-        Some(EstimationState::RandomEffects(_))
-      ));
-      assert!(session.execute(parse_command(&text).unwrap()).is_err());
-      assert_eq!(session.state(), before);
-      assert_eq!(
-        session.execute(parse_command("head 3").unwrap()).unwrap(),
-        head
-      );
-      session
-        .execute(parse_command("predict retained_after_failure, xb").unwrap())
-        .unwrap();
-      assert_eq!(session.state().estimation, before.estimation);
-      saw_failure = true;
-      break;
+  for input in [failing_rank_input(false), variance_failure_input(false)] {
+    let d = TestDir::new();
+    let source = d.path().join("vietnam.csv");
+    fs::write(&source, &input).unwrap();
+    let mut session = Session::new();
+    let mut saw_failure = false;
+    for command in parse_script(SCRIPT, Path::new("household_re_bootstrap.td")).unwrap() {
+      let text = if command.text == "use vietnam.csv" {
+        format!("use \"{}\"", source.display())
+      } else {
+        command.text.clone()
+      };
+      if command.text.starts_with("sql \"\"\"\nWITH RECURSIVE") {
+        let before = session.state();
+        let head = session.execute(parse_command("head 3").unwrap()).unwrap();
+        assert!(matches!(
+          before.estimation,
+          Some(EstimationState::RandomEffects(_))
+        ));
+        assert!(session.execute(parse_command(&text).unwrap()).is_err());
+        assert_eq!(session.state(), before);
+        assert_eq!(
+          session.execute(parse_command("head 3").unwrap()).unwrap(),
+          head
+        );
+        session
+          .execute(parse_command("predict retained_after_failure, xb").unwrap())
+          .unwrap();
+        assert_eq!(session.state().estimation, before.estimation);
+        saw_failure = true;
+        break;
+      }
+      session.execute(parse_command(&text).unwrap()).unwrap();
     }
-    session.execute(parse_command(&text).unwrap()).unwrap();
-  }
-  assert!(saw_failure);
-  assert_eq!(fs::read_to_string(source).unwrap(), input);
-  for name in OUTPUTS {
-    assert!(!d.path().join(name).exists());
+    assert!(saw_failure);
+    assert_eq!(fs::read_to_string(source).unwrap(), input);
+    for name in OUTPUTS {
+      assert!(!d.path().join(name).exists());
+    }
   }
 }
 
