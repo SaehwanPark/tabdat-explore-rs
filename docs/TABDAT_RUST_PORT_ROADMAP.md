@@ -194,11 +194,16 @@ Extend the same workflow/validation standard to:
   validates Table24.4 IID/HC1/commune-CR1 OLS on 5,006 observations against R;
   [commune FE](../examples/mma24p1olscluster/household_fe.md) separately checks
   normalized common-intercept/slope inference and predictions against full-dummy
-  R QR, using cross-sectional source-row only as a unique key. The
+  R QR, using cross-sectional source-row only as a unique key. The separate
+  [household RE GLS workflow](../examples/mma24p1olscluster/household_re_gls.md)
+  validates native unbalanced Swamy–Arora components, full covariance/normal
+  inference and population predictions against R/plm on the same cohort; it is
+  not the author's different RE component convention. The
   [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
-  27,765 individuals against R. Both are unweighted, not design-based survey
-  inference. Remaining FE/RE/GEE, bootstraps and full survey methods remain required.
+  27,765 individuals against R. These workflows are unweighted, not design-based survey
+  inference. Individual FE/RE, household author-style RE, GEE, bootstraps and
+  full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

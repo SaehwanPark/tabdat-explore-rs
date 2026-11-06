@@ -10,7 +10,9 @@ cluster independence is an assumption, not established by this output. As in
 the author regression, EDUC and FARM enter as their numeric codes, not as
 one-hot factors; SEX retains its original 1/2 coding.
 A separate [commune fixed-effects workflow](household_fe.md) covers the
-household FE columns. Random effects, GEE, bootstrap, and survey weights/strata
+household FE columns. A separate [commune RE-GLS workflow](household_re_gls.md)
+validates native unbalanced Swamy–Arora estimation, **not** the author's different
+RE component convention. Author-style RE, GEE, bootstrap, and survey weights/strata
 remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
