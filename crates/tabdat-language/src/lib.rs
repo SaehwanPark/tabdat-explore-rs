@@ -2555,15 +2555,24 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   }
   let cluster_variable = cluster_values.and_then(|mut v| v.pop());
   if let Some(model) = parse_identifier_option("bootstrap", &options, "model")? {
-    if model.len() != 1 || !model[0].eq_ignore_ascii_case("poisson") {
-      return Err(ParseError::new("bootstrap model supports only poisson"));
+    if model.len() != 1
+      || !(model[0].eq_ignore_ascii_case("poisson")
+        || model[0].eq_ignore_ascii_case("conditional_poisson"))
+    {
+      return Err(ParseError::new(
+        "bootstrap model supports only poisson or conditional_poisson",
+      ));
     }
     if options
       .iter()
       .any(|o| matches!(o.name.as_str(), "noconstant" | "quantiles" | "contrast"))
     {
       return Err(ParseError::new(
-        "Poisson bootstrap requires an intercept and does not support quantiles or contrast",
+        if model[0].eq_ignore_ascii_case("poisson") {
+          "Poisson bootstrap requires an intercept and does not support quantiles or contrast"
+        } else {
+          "conditional Poisson FE has no common intercept; noconstant, quantiles and contrast options are unsupported"
+        },
       ));
     }
     if reps > 500 {
@@ -2573,17 +2582,20 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     }
     let cluster_variable = cluster_variable
       .ok_or_else(|| ParseError::new("Poisson bootstrap requires cluster(variable)"))?;
-    return Ok(Command::PoissonBootstrap {
-      command: tabdat_domain::PoissonBootstrapCommand {
-        outcome: parts.arguments[0].text.clone(),
-        predictors: parts.arguments[1..]
-          .iter()
-          .map(|a| a.text.clone())
-          .collect(),
-        cluster_variable,
-        replications: reps as usize,
-        seed,
-      },
+    let command = tabdat_domain::PoissonBootstrapCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      cluster_variable,
+      replications: reps as usize,
+      seed,
+    };
+    return Ok(if model[0].eq_ignore_ascii_case("poisson") {
+      Command::PoissonBootstrap { command }
+    } else {
+      Command::ConditionalPoissonBootstrap { command }
     });
   }
   let command = tabdat_domain::BootstrapCommand {

@@ -79,7 +79,7 @@ single PR or a demand to expose every option immediately.
 | **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
 | **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced/unbalanced Swamy–Arora RE-GLS, and balanced/unbalanced Gaussian RE-ML with positive-interior variance-component log-Wald intervals and a one-sided zero-unit-variance LR test are also validated. Interior ML additionally supports full joint unit-score inference; remaining illustrated ML inference and general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
 | **Quantile regression** | Installed bounded unweighted IID-location inference and current-row predictions, validated .1/.5/.9 household fits; joint IID pairs-bootstrap covariance/marginal percentile intervals permit heteroskedasticity under IID regularity, with a shared-replicate B-1 SE and asymptotic normal test/95% Wald interval for one coefficient across exactly two quantiles. Cluster inference, general restrictions, simultaneous bands and Figure4.1 rendering remain. See MMA-QREG. |
-| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits), plus the 500-refit Chapter24 household whole-commune OLS workflow. IID work is capped at100million and conservative cluster work at200million. A separate bounded native whole-cluster pooled Poisson mode refits all coefficients and exposes every ordered draw, with independent Chapter24 individual B500 QR evidence. Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, general automatic FE/RE refits and simulation remain required; the bounded MOM component-refitting compositions below are not a general resampling API. |
+| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits), plus the 500-refit Chapter24 household whole-commune OLS workflow. IID work is capped at100million and conservative cluster work at200million. Separate bounded native whole-cluster pooled and conditional-FE Poisson modes refit all coefficients and expose every ordered draw, with independent Chapter24 individual B500 QR and conditional-score evidence, respectively. Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, general automatic FE/RE refits and simulation remain required; the bounded MOM component-refitting compositions below are not a general resampling API. |
 
 Graduate-core acceptance requires representative end-to-end analyses across these
 families, the design/reporting foundations they need, usable terminal and script
@@ -229,15 +229,21 @@ Extend the same workflow/validation standard to:
   validates 179 R quantities and all source/prediction rows after excluding one
   94-person all-zero commune (27,671 people/193 communes); native DTA results match
   20 printed author coefficient/SE facts. Owned group normalization and atomic
-  prediction/export-state failures are tested. The separate native
+  prediction/export-state failures are tested. The separate [individual FE
+  commune bootstrap](../examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md)
+  resamples193 retained positive-total groups, checks all500 R conditional-score
+  refits,96,500 exact draws and all source/prediction rows on ASCII and precise
+  DTA, and cross-checks three synthetic raw-copy dummy GLMs. Nine of ten author
+  bootstrap points match half a printed digit; the remaining MARRIED final-digit
+  discrepancy is documented, not hidden by a widened tolerance. The separate native
   [individual shared-gamma RE workflow](../examples/mma24p2poiscluster/individual_gamma_re.md)
   retains all 27,765 people/194 communes including the all-zero commune, validates
   236 independent R full-joint/inference quantities and every source/marginal-
   prediction row on ASCII and DTA, and matches 29 native DTA author facts.
   These workflows are unweighted, not design-based survey inference.
   Household RE outputs beyond the validated
-  coefficient/SE portion, other GEE workflows, individual FE/RE Poisson
-  bootstraps, and full survey methods remain required.
+  coefficient/SE portion, other GEE workflows, individual shared-gamma RE
+  Poisson bootstrap, and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

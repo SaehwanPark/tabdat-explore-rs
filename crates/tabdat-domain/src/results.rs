@@ -878,6 +878,7 @@ pub enum ExecutionResult {
   QuantileBootstrap(Box<tabdat_stats::QuantileBootstrapResult>),
   ClusterBootstrap(Box<tabdat_stats::ClusterBootstrapOlsResult>),
   ClusterPoissonBootstrap(Box<tabdat_stats::ClusterBootstrapPoissonResult>),
+  ConditionalPoissonBootstrap(Box<tabdat_stats::ConditionalPoissonBootstrapResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// At-least-nominal projection of a joint homoskedastic AR region.

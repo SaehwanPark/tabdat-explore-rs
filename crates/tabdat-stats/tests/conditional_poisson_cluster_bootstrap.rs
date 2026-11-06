@@ -57,6 +57,56 @@ fn every_refit_matches_closed_form_and_zero_groups_are_excluded() {
 }
 
 #[test]
+fn rejects_group_and_conservative_work_caps() {
+  let too_many = sample(257, false);
+  let err = bootstrap_conditional_poisson_clustered(&too_many, "id", 2, 0)
+    .unwrap_err()
+    .to_string();
+  assert!(err.contains("2 to 256 retained"), "{err}");
+
+  let mut too_large = sample(32, false);
+  for i in 0..1250 {
+    too_large.response.push(1.0);
+    too_large.design_matrix.push(vec![(i % 2) as f64]);
+    let sample = too_large.sample.as_mut().unwrap();
+    sample.retained_indices.push(sample.total_observations);
+    sample.total_observations += 1;
+    sample.cluster_groups.as_mut().unwrap().push("g0".into());
+  }
+  let err = bootstrap_conditional_poisson_clustered(&too_large, "id", 2, 0)
+    .unwrap_err()
+    .to_string();
+  assert!(
+    err.contains("G * largest group size must be at most 40000"),
+    "{err}"
+  );
+
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  let mut keys = Vec::new();
+  for group in 0..50 {
+    for row in 0..if group == 0 { 500 } else { 2 } {
+      y.push(1.0);
+      x.push(
+        (0..16)
+          .map(|j| (((row + 1) * (j + 1) * (group + 1)) as f64 * 0.011).sin())
+          .collect::<Vec<_>>(),
+      );
+      keys.push(group.to_string());
+    }
+  }
+  let n = y.len();
+  let p = EstimationProblem::new("y", (0..16).map(|j| format!("x{j}")).collect(), y, x)
+    .unwrap()
+    .with_intercept(false)
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap());
+  let err = bootstrap_conditional_poisson_clustered(&p, "id", 500, 0)
+    .unwrap_err()
+    .to_string();
+  assert!(err.contains("2500000000"), "{err}");
+}
+
+#[test]
 fn a_singular_copy_aborts_and_invalid_contracts_fail() {
   let p = sample(1, true);
   let error = bootstrap_conditional_poisson_clustered(&p, "id", 2, 0)

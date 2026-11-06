@@ -106,6 +106,7 @@ impl Command {
       Command::Regress { .. } | Command::RegressQuery { .. } => "regress",
       Command::Bootstrap { .. }
       | Command::PoissonBootstrap { .. }
+      | Command::ConditionalPoissonBootstrap { .. }
       | Command::QuantileBootstrap { .. } => "bootstrap",
       Command::Logit { .. } => "logit",
       Command::Probit { .. } => "probit",
@@ -221,6 +222,7 @@ impl Command {
       Command::Regress { .. } | Command::RegressQuery { .. } => &[CommandEffect::Read],
       Command::Bootstrap { .. }
       | Command::PoissonBootstrap { .. }
+      | Command::ConditionalPoissonBootstrap { .. }
       | Command::QuantileBootstrap { .. } => &[CommandEffect::Read],
       Command::Logit { .. } => &[CommandEffect::Read],
       Command::Probit { .. } => &[CommandEffect::Read],

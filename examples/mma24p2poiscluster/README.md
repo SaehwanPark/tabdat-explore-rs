@@ -24,8 +24,13 @@ shared-group mixing, not row NB2, posterior-effect or complex-survey inference.
 The separate [pooled Poisson whole-commune bootstrap](individual_pooled_bootstrap.md)
 refits all11 coefficients for each of500 group resamples and independently
 checks all97,000 ordered draws, full covariance and all source/prediction rows.
-It is unweighted and does not complete the individual FE/RE bootstraps or survey
-analysis.
+The separate [conditional-FE whole-commune bootstrap](individual_conditional_fe_bootstrap.md)
+samples the193 originally retained positive-total communes, independently checks
+all500 conditional-score refits,96,500 ordered draws, full covariance and all
+source/prediction rows on ASCII and precise DTA, with raw-copy dummy-GLM synthetic
+controls. Nine of ten printed author bootstrap points match to half a digit; the
+remaining last-digit `MARRIED` discrepancy is explicit in the linked audit.
+Neither workflow completes the individual RE bootstrap or survey analysis.
 
 ## Source, design and execution
 

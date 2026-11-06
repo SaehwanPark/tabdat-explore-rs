@@ -109,8 +109,10 @@ The separate [shared-gamma RE workflow](individual_gamma_re.md) now supplies
 model-based individual RE, including zero-total communes and owned marginal
 predictions; it does not add clustered FE or survey inference.
 
-Still required: GEE/bootstraps, genuine survey weights/strata/design
-semantics, remaining household outputs and remaining table/chapter illustrations.
-Weights/offsets, robust/cluster covariance, factors, generic post-estimation/
-margins, unit-effect uncertainty and automatic native bootstrap are unsupported
-in this bounded command, not removed from the project's required roadmap.
+The separate [conditional-FE whole-commune bootstrap](individual_conditional_fe_bootstrap.md)
+refits all ten slopes on each sampled group copy and does not replace the retained
+FE fit. Still required: other GEE workflows, individual RE bootstrap, genuine
+survey weights/strata/design semantics, remaining household outputs and remaining
+table/chapter illustrations. Weights/offsets, robust/cluster covariance, factors,
+generic post-estimation/margins and unit-effect uncertainty are unsupported in
+this bounded estimator, not removed from the project's required roadmap.
