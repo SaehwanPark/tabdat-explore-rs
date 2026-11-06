@@ -1,10 +1,12 @@
 # Independent R/plm and full-dummy/weighted-between/quasi-QR reference.
 options(digits=17)
 a <- commandArgs(trailingOnly=TRUE)
-if (!(length(a)%in%c(2,3)) || (length(a)==3 && a[3]!='--csv'))
-  stop('usage: household_re_gls_reference.R source output-directory [--csv]')
+if (length(a)<2 || length(a)>4 || anyDuplicated(a[-c(1,2)]) ||
+    any(!a[-c(1,2)]%in%c('--csv','--equal-group-between')))
+  stop('usage: household_re_gls_reference.R source output-directory [--csv] [--equal-group-between]')
+equal_group <- '--equal-group-between'%in%a
 if (file.exists(a[2])) stop('reference directory already exists')
-if (length(a)==3) {
+if ('--csv'%in%a) {
   source <- read.csv(a[1])
 } else {
   tokens <- scan(a[1],what=character(),quote='"',quiet=TRUE)
@@ -22,7 +24,7 @@ if (length(a)==3) {
 }
 d <- source[!is.na(source$lnexp12m),]
 f <- lnexp12m~lnhhexp+age+sex+hhsize+farm+educ
-fit <- plm::plm(f,data=d,index=c('commune','source_row'),model='random',random.method='swar')
+fit <- if (!equal_group) plm::plm(f,data=d,index=c('commune','source_row'),model='random',random.method='swar') else NULL
 y <- d$lnexp12m; X <- model.matrix(f,d); ids <- sort(unique(d$commune)); g <- length(ids)
 N <- nrow(X); K <- ncol(X); groups <- factor(d$commune,levels=ids); sizes <- as.numeric(table(groups))
 stopifnot(g>K,!anyDuplicated(d$source_row))
@@ -33,15 +35,17 @@ e <- sum(within$residuals^2)/within$df.residual
 Z <- rowsum(X,groups)/sizes; Ybar <- as.numeric(rowsum(y,groups))/sizes
 between <- lm.wfit(Z,Ybar,sizes);stopifnot(between$rank==K)
 trace <- sum(diag(solve(crossprod(Z,Z*sizes),crossprod(Z,Z*sizes^2))))
-raw_u <- (sum(sizes*between$residuals^2)-(g-K)*e)/(N-trace);u <- max(0,raw_u)
-stopifnot(max(abs(c(e,u)-unname(fit$ercomp$sigma2)))<1e-9)
+raw_u <- if (equal_group) sum(lm.fit(Z,Ybar)$residuals^2)/(g-K)-e*mean(1/sizes) else
+  (sum(sizes*between$residuals^2)-(g-K)*e)/(N-trace)
+u <- max(0,raw_u)
+if (!equal_group) stopifnot(max(abs(c(e,u)-unname(fit$ercomp$sigma2)))<1e-9)
 theta_g <- 1-sqrt(e/(e+sizes*u)); theta <- theta_g[match(d$commune,ids)]
 Xmean <- Z[match(d$commune,ids),]; ymean <- Ybar[match(d$commune,ids)]
 Xq <- X-theta*Xmean; yq <- y-theta*ymean
 qfit <- lm.fit(Xq,yq);stopifnot(qfit$rank==K)
 b <- unname(qfit$coefficients);rss <- sum(qfit$residuals^2);df <- N-K
 V <- rss/df*chol2inv(qr.R(qfit$qr))
-stopifnot(max(abs(b-unname(coef(fit))))<1e-9,max(abs(V-unname(vcov(fit))))<1e-9)
+if (!equal_group) stopifnot(max(abs(b-unname(coef(fit))))<1e-9,max(abs(V-unname(vcov(fit))))<1e-9)
 w <- drop(t(b[-1])%*%solve(V[-1,-1],b[-1])); refs <- list()
 emit <- function(path,value) {refs[[length(refs)+1L]] <<- data.frame(path=path,value=unname(value))}
 for (name in c('observation_count','group_count','minimum_group_size','maximum_group_size',
@@ -78,4 +82,4 @@ write.csv(do.call(rbind,refs),file.path(a[2],'reference.csv'),row.names=FALSE,qu
 write.csv(source,file.path(a[2],'source.csv'),row.names=FALSE,quote=FALSE,na='')
 d$re_xb <- drop(X%*%b);d$re_residual <- y-d$re_xb
 write.csv(d,file.path(a[2],'predictions.csv'),row.names=FALSE,quote=FALSE,na='')
-cat(R.version.string,'; plm',as.character(packageVersion('plm')),';',N,'observations;',g,'communes;',length(refs),'quantities\n')
+cat(R.version.string,';',if (equal_group) 'direct equal-group-between / quasi-QR' else paste('plm',packageVersion('plm')),';',N,'observations;',g,'communes;',length(refs),'quantities\n')

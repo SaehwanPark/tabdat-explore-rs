@@ -1103,6 +1103,8 @@ pub enum XtRegEstimator {
   RandomEffects,
   /// Gaussian marginal maximum likelihood, optionally with interior unit clustering.
   RandomEffectsMl,
+  /// Model-based GLS with equal-group between MSE and mean-inverse-size correction.
+  RandomEffectsEqualGroupBetween,
 }
 
 /// Executable panel estimators require explicit id/time options.

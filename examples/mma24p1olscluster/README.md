@@ -12,8 +12,10 @@ one-hot factors; SEX retains its original 1/2 coding.
 A separate [commune fixed-effects workflow](household_fe.md) covers the
 household FE columns. A separate [commune RE-GLS workflow](household_re_gls.md)
 validates native unbalanced Swamy–Arora estimation, **not** the author's different
-RE component convention. Author-style RE, GEE, bootstrap, and survey weights/strata
-remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+RE component convention. The opt-in
+[equal-group-between RE workflow](household_equal_group_re.md) separately
+validates all 14 printed author coefficient/SE facts on the DTA. Remaining RE
+outputs, GEE, bootstrap, and survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
 ## Source and preparation

@@ -571,3 +571,84 @@ fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
   assert!(s.state().estimation.is_none());
   assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
 }
+
+#[test]
+fn equal_group_method_sample_predictions_and_unsupported_postestimation_are_explicit() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  let ExecutionResult::RandomEffects(fit) = run(
+    &mut s,
+    "xtreg y x, re id(id) time(year) vcmethod(equal_group_between)",
+  ) else {
+    panic!()
+  };
+  assert_eq!(
+    fit.result.component_method,
+    tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween
+  );
+  assert_eq!(
+    fit.result.gls.sample.as_ref().unwrap().dropped_observations,
+    10
+  );
+  assert_eq!(fit.result.group_count, 6);
+  assert!(fit.hausman_problem.is_none());
+  run(&mut s, "predict equal_xb, xb");
+  run(&mut s, "predict equal_residual, residuals");
+  for row in rows(&mut s, "SELECT y,x,equal_xb,equal_residual FROM active") {
+    let b = &fit.result.gls.coefficients;
+    let expected = b[0].value + b[1].value * number(&row[1]).unwrap();
+    assert!((number(&row[2]).unwrap() - expected).abs() < 1e-12);
+    if let Some(y) = number(&row[0]) {
+      assert!((number(&row[3]).unwrap() - (y - expected)).abs() < 1e-12);
+    } else {
+      assert_eq!(row[3], CellValue::Null);
+    }
+  }
+  let state = s.state();
+  assert!(s.execute(parse_command("estat hausman").unwrap()).is_err());
+  assert_eq!(s.state(), state);
+  let Some(EstimationState::RandomEffects(retained)) = state.estimation else {
+    panic!()
+  };
+  assert_eq!(*retained, *fit);
+}
+
+#[test]
+fn equal_group_runtime_guards_and_rank_failure_clear_fit_but_preserve_data() {
+  let f = Fixture::new();
+  let mut s = f.load();
+  for cluster in [false, true] {
+    fit(&mut s);
+    let data = rows(&mut s, "SELECT * FROM active");
+    let tabdat_domain::Command::XtReg { mut command } =
+      parse_command("xtreg y x, re id(id) time(year) vcmethod(equal_group_between)").unwrap()
+    else {
+      panic!()
+    };
+    if cluster {
+      command.cluster_variable = Some("id".into());
+    } else {
+      command.robust = true;
+    }
+    let error = s
+      .execute(tabdat_domain::Command::XtReg { command })
+      .unwrap_err();
+    assert!(error.to_string().contains("model-based covariance only"));
+    assert!(s.state().estimation.is_none());
+    assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+  }
+  run(
+    &mut s,
+    "xtreg y x, re id(id) time(year) vcmethod(equal_group_between)",
+  );
+  run(&mut s, "replace x = 1");
+  let data = rows(&mut s, "SELECT * FROM active");
+  assert!(
+    s.execute(
+      parse_command("xtreg y x, re id(id) time(year) vcmethod(equal_group_between)").unwrap()
+    )
+    .is_err()
+  );
+  assert!(s.state().estimation.is_none());
+  assert_eq!(rows(&mut s, "SELECT * FROM active"), data);
+}

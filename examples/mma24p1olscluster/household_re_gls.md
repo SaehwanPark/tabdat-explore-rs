@@ -94,8 +94,11 @@ commune between-regression MSE minus sigma_e² * mean(1/T_g)** for the unit
 component (truncated at zero), followed by per-group quasi-GLS, matches all 14
 printed author coefficient/SE facts at their displayed rounding precision.
 This explains the observed difference **for this sample**, not a verified general
-Stata rule or an implemented author-style estimator. `author_hypothesis.csv` is
-separate reference output and never replaces native retained state. No canonical
+Stata rule. It is now executable as the separate opt-in
+[equal-group-between method](household_equal_group_re.md), which validates
+all 14 native DTA coefficient/SE facts without changing this workflow's default.
+`author_hypothesis.csv` remains separate reference output and never replaces
+this script's trace-corrected retained state. No canonical
 tolerances were widened. To reproduce separately, using the pinned DTA/log from
 README:
 
@@ -106,5 +109,6 @@ python3 "$repo/examples/mma24p1olscluster/check_household_re_author.py" /path/to
 ```
 
 **Status:** independently validated native RE-GLS workflow, partial Table 24.4
-method coverage only. Author-style RE estimation/inference, GEE, bootstraps,
-survey weights/strata, individual FE/RE and remaining tables remain required.
+method coverage only. Household RE outputs beyond the separately validated
+equal-group coefficient/SE portion, GEE, bootstraps, survey weights/strata,
+individual FE/RE and remaining tables remain required.

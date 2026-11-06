@@ -6,13 +6,17 @@ use tabdat_language::parse_command;
 use tabdat_runtime::Session;
 
 const OUTPUT: &str = "household_re_gls_predictions.csv";
-fn run(dir: &TestDir, mode: &str) -> std::process::Output {
+const EQUAL_OUTPUT: &str = "household_equal_group_re_predictions.csv";
+fn run(dir: &TestDir, mode: &str, equal_group: bool) -> std::process::Output {
   tabdat_bin()
     .current_dir(dir.path())
     .args([mode, "-f"])
     .arg(
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/mma24p1olscluster/household_re_gls.td"),
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(if equal_group {
+        "examples/mma24p1olscluster/household_equal_group_re.td"
+      } else {
+        "examples/mma24p1olscluster/household_re_gls.td"
+      }),
     )
     .output()
     .unwrap()
@@ -33,10 +37,11 @@ fn close(a: f64, b: f64, p: bool) {
   let tol = if p { b.abs() * 1e-8 } else { 1e-9 };
   assert!((a - b).abs() <= tol, "{a} != {b}, tol {tol}");
 }
-fn check(input: &str, reference: &str, predictions: &str, boundary: bool) {
+fn check(input: &str, reference: &str, predictions: &str, boundary: bool, equal_group: bool) {
+  let output = if equal_group { EQUAL_OUTPUT } else { OUTPUT };
   let dir = TestDir::new();
   fs::write(dir.path().join("vietnam.csv"), input).unwrap();
-  let out = run(&dir, "--json");
+  let out = run(&dir, "--json", equal_group);
   assert!(
     out.status.success(),
     "{}",
@@ -60,7 +65,14 @@ fn check(input: &str, reference: &str, predictions: &str, boundary: bool) {
   assert_eq!(fit["group_count"], 16);
   assert_eq!(fit["minimum_group_size"], 1);
   assert_eq!(fit["time_variable"], "source_row");
-  assert_eq!(fit["variance_component_method"], "unbalanced_swamy_arora");
+  assert_eq!(
+    fit["variance_component_method"],
+    if equal_group {
+      "equal_group_between"
+    } else {
+      "unbalanced_swamy_arora"
+    }
+  );
   assert_eq!(fit["reference_distribution"], "normal");
   assert_eq!(
     fit["covariance_parameter_names"],
@@ -91,7 +103,7 @@ fn check(input: &str, reference: &str, predictions: &str, boundary: bool) {
       r["path"].ends_with("p_value"),
     );
   }
-  let text = fs::read_to_string(dir.path().join(OUTPUT)).unwrap();
+  let text = fs::read_to_string(dir.path().join(output)).unwrap();
   let (a, b) = (rows(&text), rows(predictions));
   assert_eq!((a.len(), b.len()), (179, 179));
   for (a, b) in a.iter().zip(b.iter()) {
@@ -112,19 +124,24 @@ fn check(input: &str, reference: &str, predictions: &str, boundary: bool) {
     );
   }
   assert!(!a.iter().any(|r| r["source_row"] == "4"));
-  fs::remove_file(dir.path().join(OUTPUT)).unwrap();
-  let out = run(&dir, "--text");
+  fs::remove_file(dir.path().join(output)).unwrap();
+  let out = run(&dir, "--text", equal_group);
   assert!(
     out.status.success(),
     "{}",
     String::from_utf8_lossy(&out.stderr)
   );
-  assert!(
-    String::from_utf8(out.stdout)
-      .unwrap()
-      .contains("source_row is a unique key, not time")
-  );
-  assert_eq!(fs::read_to_string(dir.path().join(OUTPUT)).unwrap(), text);
+  let readable = String::from_utf8(out.stdout).unwrap();
+  assert!(readable.contains("source_row is a unique key, not time"));
+  assert!(readable.contains(if equal_group {
+    "Equal-group between MSE with mean inverse-size correction"
+  } else {
+    "Swamy-Arora"
+  }));
+  if equal_group {
+    assert!(!readable.contains("Swamy-Arora"));
+  }
+  assert_eq!(fs::read_to_string(dir.path().join(output)).unwrap(), text);
   assert_eq!(
     fs::read_to_string(dir.path().join("vietnam.csv")).unwrap(),
     input
@@ -137,6 +154,7 @@ fn unbalanced_interior_matches_r_plm_and_qr() {
     include_str!("fixtures/mma24_household_re/interior_reference.csv"),
     include_str!("fixtures/mma24_household_re/interior_predictions.csv"),
     false,
+    false,
   )
 }
 #[test]
@@ -146,61 +164,101 @@ fn negative_raw_component_is_truncated_and_matches_r_plm() {
     include_str!("fixtures/mma24_household_re/boundary_reference.csv"),
     include_str!("fixtures/mma24_household_re/boundary_predictions.csv"),
     true,
+    false,
   )
 }
 #[test]
 fn retained_re_state_survives_reporting_and_export_collision() {
-  for collision in [false, true] {
-    let dir = TestDir::new();
-    let source = dir.path().join("vietnam.csv");
-    let output = dir.path().join(OUTPUT);
-    let input = include_str!("fixtures/mma24_household_re/interior_input.csv");
-    fs::write(&source, input).unwrap();
-    if collision {
-      fs::write(&output, "owner").unwrap();
-    }
-    let mut session = Session::new();
-    let mut retained = None;
-    for line in include_str!("../examples/mma24p1olscluster/household_re_gls.td").lines() {
-      if line.starts_with('#') || line.is_empty() {
-        continue;
+  for (script, output_name) in [
+    (
+      include_str!("../examples/mma24p1olscluster/household_re_gls.td"),
+      OUTPUT,
+    ),
+    (
+      include_str!("../examples/mma24p1olscluster/household_equal_group_re.td"),
+      EQUAL_OUTPUT,
+    ),
+  ] {
+    for collision in [false, true] {
+      let dir = TestDir::new();
+      let source = dir.path().join("vietnam.csv");
+      let output = dir.path().join(output_name);
+      let input = include_str!("fixtures/mma24_household_re/interior_input.csv");
+      fs::write(&source, input).unwrap();
+      if collision {
+        fs::write(&output, "owner").unwrap();
       }
-      let command = if line == "use vietnam.csv" {
-        format!("use \"{}\"", source.display())
-      } else if line == "export household_re_gls_predictions.csv" {
-        format!("export \"{}\"", output.display())
+      let mut session = Session::new();
+      let mut retained = None;
+      for line in script.lines() {
+        if line.starts_with('#') || line.is_empty() {
+          continue;
+        }
+        let command = if line == "use vietnam.csv" {
+          format!("use \"{}\"", source.display())
+        } else if line.starts_with("export ") {
+          format!("export \"{}\"", output.display())
+        } else {
+          line.to_owned()
+        };
+        let result = session.execute(parse_command(&command).unwrap());
+        if collision && line.starts_with("export ") {
+          assert!(result.is_err());
+        } else {
+          result.unwrap();
+        }
+        if line.starts_with("xtreg ") {
+          retained = session.state().estimation;
+          assert!(retained.is_some());
+        } else if retained.is_some() {
+          assert_eq!(session.state().estimation, retained);
+        }
+      }
+      session
+        .execute(parse_command("predict re_after, xb").unwrap())
+        .unwrap();
+      assert_eq!(session.state().estimation, retained);
+      session.execute(parse_command("sql \"\"\"SELECT CASE WHEN COUNT(*)!=179 OR MAX(ABS(re_after-re_xb))>1e-12 OR MAX(ABS(lnexp12m-re_xb-re_residual))>1e-12 THEN error('wrong retained RE prediction') ELSE 1 END AS valid FROM active\"\"\"").unwrap()).unwrap();
+      if collision {
+        assert_eq!(fs::read_to_string(&output).unwrap(), "owner");
       } else {
-        line.to_owned()
-      };
-      let result = session.execute(parse_command(&command).unwrap());
-      if collision && line.starts_with("export ") {
-        assert!(result.is_err());
-      } else {
-        result.unwrap();
+        assert_eq!(rows(&fs::read_to_string(&output).unwrap()).len(), 179);
       }
-      if line.starts_with("xtreg ") {
-        retained = session.state().estimation;
-        assert!(retained.is_some());
-      } else if retained.is_some() {
-        assert_eq!(session.state().estimation, retained);
-      }
+      assert_eq!(fs::read_to_string(&source).unwrap(), input);
     }
-    session
-      .execute(parse_command("predict re_after, xb").unwrap())
-      .unwrap();
-    assert_eq!(session.state().estimation, retained);
-    session.execute(parse_command("sql \"\"\"SELECT CASE WHEN COUNT(*)!=179 OR MAX(ABS(re_after-re_xb))>1e-12 OR MAX(ABS(lnexp12m-re_xb-re_residual))>1e-12 THEN error('wrong retained RE prediction') ELSE 1 END AS valid FROM active\"\"\"").unwrap()).unwrap();
-    if collision {
-      assert_eq!(fs::read_to_string(&output).unwrap(), "owner");
-    } else {
-      assert_eq!(rows(&fs::read_to_string(&output).unwrap()).len(), 179);
-    }
-    assert_eq!(fs::read_to_string(&source).unwrap(), input);
   }
 }
 
 #[test]
+fn equal_group_interior_matches_independent_qr() {
+  check(
+    include_str!("fixtures/mma24_household_re/interior_input.csv"),
+    include_str!("fixtures/mma24_household_equal_group_re/interior_reference.csv"),
+    include_str!("fixtures/mma24_household_equal_group_re/interior_predictions.csv"),
+    false,
+    true,
+  )
+}
+
+#[test]
+fn equal_group_negative_raw_component_is_truncated() {
+  check(
+    include_str!("fixtures/mma24_household_re/boundary_input.csv"),
+    include_str!("fixtures/mma24_household_equal_group_re/boundary_reference.csv"),
+    include_str!("fixtures/mma24_household_equal_group_re/boundary_predictions.csv"),
+    true,
+    true,
+  )
+}
+
+#[test]
 fn invalid_source_and_export_collision_preserve_owner() {
+  for equal_group in [false, true] {
+    check_invalid_source(equal_group);
+  }
+}
+fn check_invalid_source(equal_group: bool) {
+  let output = if equal_group { EQUAL_OUTPUT } else { OUTPUT };
   let input = include_str!("fixtures/mma24_household_re/interior_input.csv");
   let lines: Vec<_> = input.lines().collect();
   let mut variants = vec![format!("{input}{}\n", lines[1])];
@@ -238,9 +296,9 @@ fn invalid_source_and_export_collision_preserve_owner() {
   for (i, input) in variants.iter().enumerate() {
     let d = TestDir::new();
     fs::write(d.path().join("vietnam.csv"), input).unwrap();
-    let out = run(&d, "--json");
+    let out = run(&d, "--json", equal_group);
     assert!(!out.status.success(), "invalid case {i} succeeded");
-    assert!(!d.path().join(OUTPUT).exists());
+    assert!(!d.path().join(output).exists());
     assert_eq!(
       fs::read_to_string(d.path().join("vietnam.csv")).unwrap(),
       *input
@@ -248,9 +306,9 @@ fn invalid_source_and_export_collision_preserve_owner() {
   }
   let d = TestDir::new();
   fs::write(d.path().join("vietnam.csv"), input).unwrap();
-  fs::write(d.path().join(OUTPUT), "owner").unwrap();
-  assert!(!run(&d, "--json").status.success());
-  assert_eq!(fs::read_to_string(d.path().join(OUTPUT)).unwrap(), "owner");
+  fs::write(d.path().join(output), "owner").unwrap();
+  assert!(!run(&d, "--json", equal_group).status.success());
+  assert_eq!(fs::read_to_string(d.path().join(output)).unwrap(), "owner");
   assert_eq!(
     fs::read_to_string(d.path().join("vietnam.csv")).unwrap(),
     input

@@ -806,6 +806,7 @@ pub fn fit_random_effects_ml(
     entity_variable: entity.into(),
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),
+    component_method: crate::RandomEffectsComponentMethod::GaussianMarginalMl,
     gls: r.regression,
     group_count: r.group_count,
     group_size: r.group_size,

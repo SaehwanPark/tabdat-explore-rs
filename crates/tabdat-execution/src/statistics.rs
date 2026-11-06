@@ -1080,12 +1080,13 @@ impl Session {
         ));
       };
       if state.result.ml.is_some()
+        || state.result.component_method != tabdat_stats::RandomEffectsComponentMethod::SwamyArora
         || state.result.group_size == 0
         || state.result.predictor_names.len() != 1
         || state.result.gls.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust
       {
         return Err(RuntimeError::EstatHausmanFailed(
-          "requires balanced nonclustered one-slope Swamy–Arora RE-GLS; ML and robust/cluster fits are unsupported".into(),
+          "requires balanced nonclustered one-slope Swamy–Arora RE-GLS; ML, equal-group-between and robust/cluster fits are unsupported".into(),
         ));
       }
       let problem = state.hausman_problem.as_ref().ok_or_else(|| {
