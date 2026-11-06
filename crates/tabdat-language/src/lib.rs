@@ -2509,7 +2509,7 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   for option in &options {
     if !matches!(
       option.name.as_str(),
-      "seed" | "reps" | "noconstant" | "cluster" | "quantiles" | "contrast"
+      "seed" | "reps" | "noconstant" | "cluster" | "quantiles" | "contrast" | "model"
     ) {
       return Err(ParseError::new(format!(
         "bootstrap unsupported option: {}",
@@ -2554,6 +2554,38 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("bootstrap cluster expects one variable"));
   }
   let cluster_variable = cluster_values.and_then(|mut v| v.pop());
+  if let Some(model) = parse_identifier_option("bootstrap", &options, "model")? {
+    if model.len() != 1 || !model[0].eq_ignore_ascii_case("poisson") {
+      return Err(ParseError::new("bootstrap model supports only poisson"));
+    }
+    if options
+      .iter()
+      .any(|o| matches!(o.name.as_str(), "noconstant" | "quantiles" | "contrast"))
+    {
+      return Err(ParseError::new(
+        "Poisson bootstrap requires an intercept and does not support quantiles or contrast",
+      ));
+    }
+    if reps > 500 {
+      return Err(ParseError::new(
+        "Poisson bootstrap reps must be from 2 to 500",
+      ));
+    }
+    let cluster_variable = cluster_variable
+      .ok_or_else(|| ParseError::new("Poisson bootstrap requires cluster(variable)"))?;
+    return Ok(Command::PoissonBootstrap {
+      command: tabdat_domain::PoissonBootstrapCommand {
+        outcome: parts.arguments[0].text.clone(),
+        predictors: parts.arguments[1..]
+          .iter()
+          .map(|a| a.text.clone())
+          .collect(),
+        cluster_variable,
+        replications: reps as usize,
+        seed,
+      },
+    });
+  }
   let command = tabdat_domain::BootstrapCommand {
     regression: RegressCommand {
       outcome: parts.arguments[0].text.clone(),

@@ -104,7 +104,9 @@ impl Command {
       Command::Tail { .. } => "tail",
       Command::Sql { .. } => "sql",
       Command::Regress { .. } | Command::RegressQuery { .. } => "regress",
-      Command::Bootstrap { .. } | Command::QuantileBootstrap { .. } => "bootstrap",
+      Command::Bootstrap { .. }
+      | Command::PoissonBootstrap { .. }
+      | Command::QuantileBootstrap { .. } => "bootstrap",
       Command::Logit { .. } => "logit",
       Command::Probit { .. } => "probit",
       Command::Mlogit { .. } => "mlogit",
@@ -217,7 +219,9 @@ impl Command {
       Command::Tail { .. } => &[CommandEffect::Read],
       Command::Sql { .. } => &[CommandEffect::Read, CommandEffect::Write],
       Command::Regress { .. } | Command::RegressQuery { .. } => &[CommandEffect::Read],
-      Command::Bootstrap { .. } | Command::QuantileBootstrap { .. } => &[CommandEffect::Read],
+      Command::Bootstrap { .. }
+      | Command::PoissonBootstrap { .. }
+      | Command::QuantileBootstrap { .. } => &[CommandEffect::Read],
       Command::Logit { .. } => &[CommandEffect::Read],
       Command::Probit { .. } => &[CommandEffect::Read],
       Command::Mlogit { .. } => &[CommandEffect::Read],
