@@ -1,8 +1,9 @@
 # Household Gaussian exchangeable GEE: implementation contract
 
 **Status: WIP; no native GEE command or retained GEE model is installed yet.**
-The optional independent R reference is executable. This document defines the
-bounded next slice; it is not a capability or whole-Table24.4 completion claim.
+The optional independent R reference and a not-yet-integrated Rust kernel are
+executable. This document defines the bounded next slice; it is not a user-facing
+capability or whole-Table24.4 completion claim.
 
 ## Exact illustration and sample
 
@@ -30,6 +31,8 @@ For selected group g, size T_g, residual vector e_g, and N selected cases:
 - Working covariance `V_g=phi*((1-rho)*I+rho*11')` must be positive definite:
   `-1/(max(T_g)-1) < rho < 1`. Negative admissible correlation is supported;
   do not replace this fit with a positive-variance random-intercept model.
+  A numerically indistinguishable zero residual scale also fails explicitly:
+  `sqrt(phi) <= 128*machine_epsilon*max(abs(y))`.
 - Iterate from pooled OLS. The native solve will use exchangeable whitening and
   existing QR helpers, not dense T_g-by-T_g matrices. Require relative coefficient
   change at most1e-12 and final inverse-bread-scaled score at most
@@ -126,5 +129,9 @@ Rscript examples/mma24p1olscluster/household_gee_reference.R vietnam_ex1.dta ref
 Rscript examples/mma24p1olscluster/household_gee_reference.R vietnam.csv ref-csv --csv
 ```
 
-No native implementation, native numerical audit, regression test run or hosted
-CI evidence is claimed by this reference-only checkpoint.
+The in-progress Rust kernel is exercised against all198 quantities and all
+selected predictions on checked-in 48-group synthetic fixtures with positive
+`rho=0.7204` and negative `rho=-0.1377`, singleton groups and missing cases.
+Optional `TABDAT_GAUSSIAN_GEE_REFERENCE_ROOT` additionally replays the ASCII or
+DTA reference output. These tests do not install a user-facing command; full
+workflow, file/state contracts, affected-crate tests and hosted CI remain unverified.
