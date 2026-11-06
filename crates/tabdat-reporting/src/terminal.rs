@@ -542,6 +542,8 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
       "Gaussian marginal maximum likelihood (zero unit variance boundary)"
     } else if r.ml.is_some() {
       "Gaussian marginal maximum likelihood (interior unit variance)"
+    } else if r.component_method == tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween {
+      "Equal-group between MSE with mean inverse-size correction"
     } else {
       "Swamy-Arora"
     },
@@ -563,6 +565,8 @@ fn random_effects(state: &tabdat_domain::RandomEffectsState) -> String {
     let (lo, hi) = r.theta_range().unwrap_or((f64::NAN, f64::NAN));
     if r.ml.is_some() {
       writeln!(output, "Unequal retained counts: theta range = {}..{}; eta uses minimum T. Interior information parameters are beta, log(sigma_e squared), log(sigma_u squared).",inference_number(lo),inference_number(hi)).unwrap();
+    } else if r.component_method == tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween {
+      writeln!(output, "Unequal retained counts: equal-group-between unit-specific theta ranges from {} to {}; singleton units are allowed when identified.",inference_number(lo),inference_number(hi)).unwrap();
     } else {
       writeln!(output, "Unequal retained counts: unit-specific Swamy-Arora theta ranges from {} to {}; singleton units are allowed when identified.",inference_number(lo),inference_number(hi)).unwrap();
     }

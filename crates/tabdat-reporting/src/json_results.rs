@@ -1299,7 +1299,7 @@ fn random_effects_result_data(state: &tabdat_domain::RandomEffectsState) -> Valu
     "covariance_convention": if clustered { "unit_grouped_quasi_demeaned_scores" } else { "quasi_demeaned_rss_over_n_minus_k" },
     "covariance_matrix":fit.covariance.matrix,"covariance_parameter_names":fit.parameter_names,
     "sigma_e_squared":r.sigma_e_squared,"sigma_u_squared":r.sigma_u_squared,"raw_sigma_u_squared":r.raw_sigma_u_squared,
-    "variance_component_method":if r.ml.is_some() { "balanced_gaussian_marginal_ml" } else if r.group_size == 0 { "unbalanced_swamy_arora" } else { "balanced_swamy_arora" },
+    "variance_component_method":if r.ml.is_some() { "balanced_gaussian_marginal_ml" } else if r.component_method == tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween { "equal_group_between" } else if r.group_size == 0 { "unbalanced_swamy_arora" } else { "balanced_swamy_arora" },
     "theta":r.theta,"rho":r.rho,
     "transformed_root_mse":fit.fit_statistics.root_mse,"transformed_rss":fit.fit_statistics.residual_sum_of_squares,
     "wald_statistic":r.wald_statistic,"wald_p_value":r.wald_p_value,"wald_df":r.predictor_names.len(),"wald_reference":"chi_square",

@@ -7,7 +7,17 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// One-way RE fit (balanced/unbalanced Swamy–Arora GLS or Gaussian marginal ML).
+/// Variance-component construction retained with a one-way RE fit.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RandomEffectsComponentMethod {
+  #[default]
+  SwamyArora,
+  EqualGroupBetween,
+  GaussianMarginalMl,
+}
+
+/// One-way RE fit (Swamy–Arora/equal-group-between GLS or Gaussian marginal ML).
 /// The stored regression is on the
 /// quasi-demeaned response/design, including the transformed intercept column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -15,6 +25,8 @@ pub struct RandomEffectsResult {
   pub entity_variable: String,
   pub outcome: String,
   pub predictor_names: Vec<String>,
+  #[serde(default)]
+  pub component_method: RandomEffectsComponentMethod,
   pub gls: LeastSquaresResult,
   pub group_count: usize,
   /// Common retained count, or zero for an unbalanced fit; use group_size_range().
@@ -167,7 +179,13 @@ pub fn fit_random_effects(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, false, false)
+  fit_random_effects_impl(
+    problem,
+    entity_variable,
+    false,
+    false,
+    RandomEffectsComponentMethod::SwamyArora,
+  )
 }
 
 /// Unit-score sandwich of the quasi-demeaned design/residuals, with correction
@@ -178,7 +196,13 @@ pub fn fit_random_effects_clustered(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, true, false)
+  fit_random_effects_impl(
+    problem,
+    entity_variable,
+    true,
+    false,
+    RandomEffectsComponentMethod::SwamyArora,
+  )
 }
 
 /// Swamy–Arora GLS with unbiased unbalanced trace correction and per-unit theta.
@@ -187,7 +211,13 @@ pub fn fit_random_effects_unbalanced(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, false, true)
+  fit_random_effects_impl(
+    problem,
+    entity_variable,
+    false,
+    true,
+    RandomEffectsComponentMethod::SwamyArora,
+  )
 }
 
 /// Unit-score covariance for the same unbalanced variance-component estimator.
@@ -195,7 +225,30 @@ pub fn fit_random_effects_unbalanced_clustered(
   problem: &EstimationProblem,
   entity_variable: &str,
 ) -> Result<RandomEffectsResult, StatsError> {
-  fit_random_effects_impl(problem, entity_variable, true, true)
+  fit_random_effects_impl(
+    problem,
+    entity_variable,
+    true,
+    true,
+    RandomEffectsComponentMethod::SwamyArora,
+  )
+}
+
+/// Equal-group between MSE minus within variance times mean inverse group size,
+/// truncated at zero. Unlike unbalanced Swamy–Arora, every group has equal
+/// weight in the preliminary between fit. The same per-size quasi-GLS and
+/// model-based normal inference follow; this is not a general Stata mode.
+pub fn fit_random_effects_equal_group_between(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+) -> Result<RandomEffectsResult, StatsError> {
+  fit_random_effects_impl(
+    problem,
+    entity_variable,
+    false,
+    true,
+    RandomEffectsComponentMethod::EqualGroupBetween,
+  )
 }
 
 fn fit_random_effects_impl(
@@ -203,6 +256,7 @@ fn fit_random_effects_impl(
   entity_variable: &str,
   clustered: bool,
   allow_unbalanced: bool,
+  component_method: RandomEffectsComponentMethod,
 ) -> Result<RandomEffectsResult, StatsError> {
   let within = fit_fixed_effects(problem, entity_variable, false)?;
   let g = within.effects.len();
@@ -240,7 +294,7 @@ fn fit_random_effects_impl(
       .collect(),
   )?
   .with_intercept_name(&problem.intercept_name);
-  if !balanced {
+  if !balanced && component_method == RandomEffectsComponentMethod::SwamyArora {
     between_problem = between_problem.with_weights(
       within
         .effects
@@ -256,7 +310,16 @@ fn fit_random_effects_impl(
     .residual_sum_of_squares
     .unwrap()
     / within.within.fit_statistics.degrees_of_freedom as f64;
-  let raw_sigma_u_squared = if balanced {
+  let raw_sigma_u_squared = if component_method == RandomEffectsComponentMethod::EqualGroupBetween {
+    let mean_inverse_size = within
+      .effects
+      .iter()
+      .map(|e| 1.0 / e.observation_count as f64)
+      .sum::<f64>()
+      / g as f64;
+    between.fit_statistics.residual_sum_of_squares.unwrap() / (g - p - 1) as f64
+      - sigma_e_squared * mean_inverse_size
+  } else if balanced {
     between.fit_statistics.residual_sum_of_squares.unwrap() / (g - p - 1) as f64
       - sigma_e_squared / t as f64
   } else {
@@ -421,7 +484,9 @@ fn fit_random_effects_impl(
   gls.fit_statistics.adjusted_r_squared = None;
   gls.fit_statistics.log_likelihood = None;
   gls.fit_statistics.f_statistic = None;
-  gls.diagnostics.method = if balanced {
+  gls.diagnostics.method = if component_method == RandomEffectsComponentMethod::EqualGroupBetween {
+    "equal_group_between_random_effects_gls"
+  } else if balanced {
     "balanced_swamy_arora_random_effects_gls"
   } else {
     "unbalanced_swamy_arora_random_effects_gls"
@@ -432,6 +497,7 @@ fn fit_random_effects_impl(
     entity_variable: entity_variable.into(),
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),
+    component_method,
     gls,
     group_count: g,
     group_size: if balanced { t } else { 0 },

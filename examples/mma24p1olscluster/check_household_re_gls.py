@@ -23,9 +23,10 @@ def near(actual, expected, p=False):
 
 
 def main():
-  if len(sys.argv)!=4:
-    raise SystemExit('usage: check_household_re_gls.py native-dir reference-dir vietnam_ex1.asc')
-  native,ref,raw=map(Path,sys.argv[1:])
+  if len(sys.argv) not in (4,5) or (len(sys.argv)==5 and sys.argv[4]!='--equal-group-between'):
+    raise SystemExit('usage: check_household_re_gls.py native-dir reference-dir vietnam_ex1.asc [--equal-group-between]')
+  equal_group=len(sys.argv)==5
+  native,ref,raw=map(Path,sys.argv[1:4])
   assert hashlib.sha256(raw.read_bytes()).hexdigest()=='74cb37e8c14609e382d334e368a54f63bccd4e952d02bcbf535baf19115d4061'
   tokens=shlex.split(raw.read_text(encoding='ascii')); assert len(tokens)==5999*8
   source=rows(native/'vietnam.csv'); original=rows(ref/'source.csv')
@@ -50,7 +51,7 @@ def main():
   fit=select('UnbalancedRandomEffectsGlsResult')[0]
   assert fit['observation_count']==5006 and fit['group_count']==194
   assert fit['entity_variable']=='commune' and fit['time_variable']=='source_row'
-  assert fit['variance_component_method']=='unbalanced_swamy_arora'
+  assert fit['variance_component_method']==('equal_group_between' if equal_group else 'unbalanced_swamy_arora')
   assert fit['covariance']=='nonrobust' and fit['reference_distribution']=='normal'
   assert fit['covariance_convention']=='quasi_demeaned_rss_over_n_minus_k'
   assert fit['wald_reference']=='chi_square' and fit['balanced'] is False
@@ -66,7 +67,8 @@ def main():
     for key in r['path'].strip('/').split('/'):
       v=v[int(key)] if isinstance(v,list) else v[key]
     near(v,r['value'],r['path'].endswith('p_value'))
-  actual=rows(native/'household_re_gls_predictions.csv'); expected=rows(ref/'predictions.csv')
+  output='household_equal_group_re_predictions.csv' if equal_group else 'household_re_gls_predictions.csv'
+  actual=rows(native/output); expected=rows(ref/'predictions.csv')
   selected=[r for r in source if r['lnexp12m']!='']
   assert len(actual)==len(expected)==len(selected)==5006
   for a,b,s in zip(actual,expected,selected):
@@ -75,7 +77,7 @@ def main():
     for key in ('re_xb','re_residual'): near(a[key],b[key])
     near(float(a['lnexp12m']),float(a['re_xb'])+float(a['re_residual']))
   assert select('ExportResult')[0]['dataset']['row_count']==5006
-  print('validated 108 R/plm quantities, 5999 source rows and 5006 population-prediction rows')
+  print('validated 108 independent R quantities, 5999 source rows and 5006 population-prediction rows;',fit['variance_component_method'])
 
 
 if __name__=='__main__':

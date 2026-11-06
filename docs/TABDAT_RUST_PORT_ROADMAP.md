@@ -198,12 +198,15 @@ Extend the same workflow/validation standard to:
   [household RE GLS workflow](../examples/mma24p1olscluster/household_re_gls.md)
   validates native unbalanced Swamy–Arora components, full covariance/normal
   inference and population predictions against R/plm on the same cohort; it is
-  not the author's different RE component convention. The
-  [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
+  not the author's different RE component convention. The opt-in
+  [equal-group-between RE workflow](../examples/mma24p1olscluster/household_equal_group_re.md)
+  independently validates the alternate component formula and all 14 native
+  DTA-based printed author coefficient/SE facts, without changing the default.
+  The [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
   27,765 individuals against R. These workflows are unweighted, not design-based survey
-  inference. Individual FE/RE, household author-style RE, GEE, bootstraps and
-  full survey methods remain required.
+  inference. Individual FE/RE, household RE outputs beyond the validated
+  coefficient/SE portion, GEE, bootstraps and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

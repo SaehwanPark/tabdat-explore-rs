@@ -5643,7 +5643,7 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
     .filter(|option| {
       !matches!(
         option.name.as_str(),
-        "fe" | "re" | "mle" | "robust" | "cluster" | "id" | "time"
+        "fe" | "re" | "mle" | "robust" | "cluster" | "id" | "time" | "vcmethod"
       )
     })
     .map(|option| option.name.as_str())
@@ -5697,6 +5697,30 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
   let has_fe = options.iter().any(|option| option.name == "fe");
   let has_re = options.iter().any(|option| option.name == "re");
   let has_mle = options.iter().any(|option| option.name == "mle");
+  let vc_method = single_key("vcmethod")?;
+  if vc_method.is_some() && !has_re {
+    return Err(ParseError::new(
+      "xtreg vcmethod() requires re, not fe or mle",
+    ));
+  }
+  let equal_group = match vc_method.as_deref() {
+    None | Some("swamy_arora") => false,
+    Some("equal_group_between") => true,
+    _ => {
+      return Err(ParseError::new(
+        "xtreg vcmethod expects swamy_arora or equal_group_between",
+      ));
+    }
+  };
+  if equal_group
+    && options
+      .iter()
+      .any(|o| matches!(o.name.as_str(), "robust" | "cluster"))
+  {
+    return Err(ParseError::new(
+      "xtreg vcmethod(equal_group_between) supports model-based covariance only; omit robust/cluster",
+    ));
+  }
   if usize::from(has_fe) + usize::from(has_re) + usize::from(has_mle) != 1 {
     return Err(ParseError::new(
       "xtreg requires exactly one of fe, re or mle",
@@ -5719,6 +5743,8 @@ fn parse_xtreg_command(body: &str) -> Result<Command, ParseError> {
         XtRegEstimator::FixedEffects
       } else if has_mle {
         XtRegEstimator::RandomEffectsMl
+      } else if equal_group {
+        XtRegEstimator::RandomEffectsEqualGroupBetween
       } else {
         XtRegEstimator::RandomEffects
       },

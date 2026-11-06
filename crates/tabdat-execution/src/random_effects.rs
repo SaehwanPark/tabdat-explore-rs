@@ -17,6 +17,13 @@ impl Session {
     command: &XtRegCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
+    if command.estimator == XtRegEstimator::RandomEffectsEqualGroupBetween
+      && (command.robust || command.cluster_variable.is_some())
+    {
+      return Err(fit_error(
+        "equal_group_between supports model-based covariance only; omit robust/cluster",
+      ));
+    }
     let input = self.prepare_panel_problem(command)?;
     let group_sizes = input
       .problem
@@ -33,7 +40,9 @@ impl Session {
     let unbalanced = group_sizes
       .as_ref()
       .is_some_and(|sizes| sizes.values().min() != sizes.values().max());
-    let fit = if command.estimator == XtRegEstimator::RandomEffectsMl {
+    let fit = if command.estimator == XtRegEstimator::RandomEffectsEqualGroupBetween {
+      tabdat_stats::fit_random_effects_equal_group_between
+    } else if command.estimator == XtRegEstimator::RandomEffectsMl {
       if command.robust || command.cluster_variable.is_some() {
         tabdat_stats::fit_random_effects_ml_clustered
       } else {

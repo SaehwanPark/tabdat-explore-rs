@@ -2,7 +2,9 @@
 
 Installed bounded syntax:
 `xtreg y xvars, fe|re|mle id(unit) time(year)`
-Both FE and RE accept `robust` or `cluster(unit)`; robust clusters on the declared unit.
+FE and default RE accept `robust` or `cluster(unit)`; robust clusters on the declared unit.
+RE also accepts `vcmethod(swamy_arora|equal_group_between)`; the default is
+`swamy_arora`. The opt-in equal-group method supports model-based covariance only.
 
 `fe` fits an unweighted one-way within fixed-effects linear model, absorbing a separate
 intercept for each unit. At least one numeric slope predictor is required. Unlike
@@ -103,6 +105,18 @@ Random-effects GLS (balanced and unbalanced):
   Negative unit variance is clipped at zero and the raw value is retained.
   Unbalanced singletons are allowed when rank and residual degrees of freedom
   suffice. Zero/nonfinite sigma_e² or degenerate transformations fail.
+- Opt-in `vcmethod(equal_group_between)` instead uses **unweighted** between
+  regression on the group means, with raw sigma_u² = between RSS/(G-p-1)
+  minus sigma_e²*mean(1/T_i). The within sigma_e² and nonnegative truncation
+  are unchanged. This descriptive formula is distinct from the trace correction
+  on unequal groups and reduces to the same formula on balanced groups.
+  It matches the Chapter24 household author's printed coefficient/SE facts on
+  the pinned DTA, but is not a general Stata-compatibility mode.
+  `vcmethod()` is invalid with FE/ML; `equal_group_between` rejects robust/cluster
+  options and does not install Hausman or component-uncertainty inference.
+  Terminal output and JSON `variance_component_method` identify the method;
+  JSON retains `RandomEffectsResult` or `UnbalancedRandomEffectsGlsResult`
+  according to the sample's group sizes.
 - Quasi-demean y and X by unit-specific theta_i=1-sqrt(sigma_e² /
   (sigma_e²+T_i*sigma_u²)); transform the intercept by 1-theta_i.
   Model-based covariance uses transformed RSS/(N-p-1) times inverse transformed
@@ -128,7 +142,7 @@ Random-effects GLS (balanced and unbalanced):
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
   Unit effects/conditional predictions and named RE reports remain uninstalled.
-  `estat hausman` supports only balanced, nonclustered RE-GLS with one slope;
+  `estat hausman` supports only balanced, nonclustered Swamy–Arora RE-GLS with one slope;
   it refits FE on the original retained sample and is not cluster robust. See
   `help estat` for numerical failure conditions and assumptions.
 
