@@ -234,6 +234,53 @@ fn actual_unbalanced_script_matches_all_r_refits_and_preserves_original_predicti
     assert_eq!(&fs::read(text.path().join(f)).unwrap(), b);
   }
 }
+#[test]
+fn every_zero_truncated_refit_matches_independent_r() {
+  let d = TestDir::new();
+  fs::write(
+    d.path().join("vietnam.csv"),
+    include_str!("fixtures/mma24_household_re_bootstrap/boundary_input.csv"),
+  )
+  .unwrap();
+  checked(run(&d, "--json"));
+  for (filename, reference, count) in [
+    (
+      OUTPUTS[0],
+      include_str!("fixtures/mma24_household_re_bootstrap/boundary_summary.csv"),
+      49,
+    ),
+    (
+      OUTPUTS[1],
+      include_str!("fixtures/mma24_household_re_bootstrap/boundary_fits.csv"),
+      500,
+    ),
+    (
+      OUTPUTS[3],
+      include_str!("fixtures/mma24_household_re_bootstrap/boundary_predictions.csv"),
+      169,
+    ),
+  ] {
+    let text = fs::read_to_string(d.path().join(filename)).unwrap();
+    let actual = rows(&text);
+    let expected = rows(reference);
+    assert_eq!(actual.len(), count);
+    assert_eq!(actual.len(), expected.len());
+    for (a, b) in actual.iter().zip(expected.iter()) {
+      if filename == OUTPUTS[1] {
+        assert_eq!(a["u"].parse::<f64>().unwrap(), 0.0);
+        assert!(a["raw_u"].parse::<f64>().unwrap() < 0.0);
+      }
+      for (key, value) in b {
+        if value.parse::<f64>().is_ok() {
+          near(a[key], value, key);
+        } else {
+          assert_eq!(a[key], *value, "{key}");
+        }
+      }
+    }
+  }
+}
+
 fn failing_rank_input(original_rank_failure: bool) -> String {
   let mut out = String::from("source_row,lnexp12m,lnhhexp,age,sex,hhsize,farm,educ,commune\n");
   for g in 1..=8 {
