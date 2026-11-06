@@ -149,18 +149,23 @@ fn exact_wide_decimal_cluster_labels_remain_distinct() {
 }
 
 #[test]
-fn singular_resample_does_not_clear_original_model() {
-  let csv = "y,x,g\n1,0,a\n2,0,a\n1,0,a\n2,0,a\n2,1,b\n3,1,b\n2,1,b\n3,1,b\n";
-  let f = Fixture::new(csv);
-  let mut s = f.load();
-  run(&mut s, "poisson y x");
-  let before = s.state();
-  let error = s
-    .execute(parse_command("bootstrap y x, model(poisson) cluster(g) seed(0) reps(2)").unwrap())
-    .unwrap_err()
-    .to_string();
-  assert!(error.contains("replicate 1 failed"), "{error}");
-  assert_eq!(s.state(), before);
-  run(&mut s, "predict after_failure, n");
-  assert_eq!(s.state().estimation, before.estimation);
+fn singular_and_zero_outcome_resamples_do_not_clear_original_model() {
+  let cases = [
+    "y,x,g\n1,0,a\n2,0,a\n1,0,a\n2,0,a\n2,1,b\n3,1,b\n2,1,b\n3,1,b\n",
+    "y,x,g\n1,0,a\n2,1,a\n1,2,a\n2,3,a\n0,0,b\n0,1,b\n0,2,b\n0,3,b\n",
+  ];
+  for csv in cases {
+    let f = Fixture::new(csv);
+    let mut s = f.load();
+    run(&mut s, "poisson y x");
+    let before = s.state();
+    let error = s
+      .execute(parse_command("bootstrap y x, model(poisson) cluster(g) seed(0) reps(2)").unwrap())
+      .unwrap_err()
+      .to_string();
+    assert!(error.contains("replicate 1 failed"), "{error}");
+    assert_eq!(s.state(), before);
+    run(&mut s, "predict after_failure, n");
+    assert_eq!(s.state().estimation, before.estimation);
+  }
 }

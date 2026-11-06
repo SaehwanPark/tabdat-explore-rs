@@ -1,8 +1,11 @@
 //! Bounded whole-cluster pairs bootstrap of unweighted pooled Poisson coefficients.
 
-use crate::bootstrap::{BOOTSTRAP_RNG, BootstrapCoefficient, draw_index, summarize_pairs};
+use crate::bootstrap::{BOOTSTRAP_RNG, BootstrapCoefficient, summarize_pairs};
 use crate::{EstimationProblem, EstimationSample, StatsError, fit_poisson};
-use rand_xoshiro::{Xoshiro256PlusPlus, rand_core::SeedableRng};
+use rand_xoshiro::{
+  Xoshiro256PlusPlus,
+  rand_core::{RngCore, SeedableRng},
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -43,6 +46,22 @@ fn invalid(message: impl Into<String>) -> StatsError {
     "Poisson cluster pairs bootstrap: {}",
     message.into()
   ))
+}
+
+fn draw_clusters(rng: &mut impl RngCore, groups: usize) -> Result<Vec<usize>, StatsError> {
+  let bound = groups as u64;
+  let zone = u64::MAX - u64::MAX % bound;
+  let mut draws = Vec::with_capacity(groups);
+  for _ in 0..groups + 1024 {
+    let word = rng.next_u64();
+    if word < zone {
+      draws.push((word % bound) as usize);
+      if draws.len() == groups {
+        return Ok(draws);
+      }
+    }
+  }
+  Err(invalid("RNG rejection bound exhausted"))
 }
 
 /// Sample G whole groups with replacement and refit the intercept and all slopes
@@ -134,10 +153,9 @@ pub fn bootstrap_poisson_clustered(
   for replicate in 0..replications {
     let mut rows = Vec::new();
     let mut y = Vec::new();
-    let mut draws = Vec::with_capacity(g);
-    for _ in 0..g {
-      let index = draw_index(&mut rng, g);
-      draws.push(index);
+    let draws = draw_clusters(&mut rng, g)
+      .map_err(|e| invalid(format!("replicate {} failed: {e}", replicate + 1)))?;
+    for &index in &draws {
       for &row in &clusters[index] {
         rows.push(problem.design_matrix[row].clone());
         y.push(problem.response[row]);
@@ -178,4 +196,53 @@ pub fn bootstrap_poisson_clustered(
     covariance_matrix,
     sample: problem.sample.clone(),
   })
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  struct Rejected;
+  impl RngCore for Rejected {
+    fn next_u32(&mut self) -> u32 {
+      u32::MAX
+    }
+    fn next_u64(&mut self) -> u64 {
+      u64::MAX
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+      dest.fill(0xff);
+    }
+  }
+
+  #[test]
+  fn repeated_rng_rejection_is_bounded() {
+    assert!(
+      draw_clusters(&mut Rejected, 4)
+        .unwrap_err()
+        .to_string()
+        .contains("RNG rejection bound exhausted")
+    );
+  }
+
+  struct OneRejected(usize);
+  impl RngCore for OneRejected {
+    fn next_u32(&mut self) -> u32 {
+      self.next_u64() as u32
+    }
+    fn next_u64(&mut self) -> u64 {
+      self.0 += 1;
+      if self.0 == 1 { u64::MAX } else { 9 }
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+      dest.fill(0);
+    }
+  }
+
+  #[test]
+  fn rejected_word_is_not_counted_as_a_draw() {
+    let mut rng = OneRejected(0);
+    assert_eq!(draw_clusters(&mut rng, 10).unwrap(), vec![9; 10]);
+    assert_eq!(rng.0, 11);
+  }
 }
