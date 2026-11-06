@@ -2,8 +2,9 @@
 
 The [actual workflow](household_fe_bootstrap.td) covers the FE block of
 `mma24p1olscluster.do`, §24.7, after the separate [pooled-OLS bootstrap](household_ols_bootstrap.md).
-The author says these B500 results are not reported in Table24.4. The RE and
-individual Poisson bootstrap blocks, survey design and remaining illustrations
+The author says these B500 results are not reported in Table24.4. The separate
+[RE bootstrap](household_re_bootstrap.md) refits both variance components.
+Individual Poisson bootstrap blocks, survey design and remaining illustrations
 remain required.
 
 ## Sample and estimator

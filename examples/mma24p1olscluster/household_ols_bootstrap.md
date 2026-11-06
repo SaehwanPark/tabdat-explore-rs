@@ -2,8 +2,9 @@
 
 This validated bounded workflow covers the first of three additional cluster
 bootstrap blocks in the author `mma24p1olscluster.do`; the author notes these
-results are not reported in the book's Table24.4. It does not complete FE/RE
-bootstrap or survey design.
+results are not reported in the book's Table24.4. Separate [FE](household_fe_bootstrap.md)
+and [RE](household_re_bootstrap.md) bootstrap workflows cover the other household
+blocks; complex-survey design remains required.
 
 ## Exact outcome and sample
 

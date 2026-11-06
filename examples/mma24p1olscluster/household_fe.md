@@ -4,8 +4,9 @@ This bounded workflow covers Cameron–Trivedi (2005) §24.7/Table 24.4,
 household commune-fixed-effects columns 7–8, from the pinned author program and
 `vietnam_ex1.asc` described in the [pooled OLS workflow](README.md). It models
 `LNEXP12M` on an intercept, `LNHHEXP AGE SEX HHSIZE FARM EDUC` and one absorbed
-intercept per commune. It is unweighted, not complex-survey or causal inference;
-RE/GEE, bootstraps, full survey design and the rest of the table remain required.
+intercept per commune. It is unweighted, not complex-survey or causal inference.
+Separate [RE, GEE and household bootstrap workflows](README.md) cover additional
+bounded portions; full survey design and remaining table outputs are required.
 As in the source, categorical codes enter as **numeric regressors**, not factor
 expansion. Commune effects do not guarantee within-commune exogeneity.
 

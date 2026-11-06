@@ -22,8 +22,13 @@ uses500 deterministic native-stream refits and validates94 R quantities, every
 source/prediction row and all500 replicate sizes. The separate
 [whole-commune FE bootstrap](household_fe_bootstrap.md) independently checks
 500 distinct-copy R QR refits, full covariance and all97,000 ordered draws,
-including unbalanced observation-weighted intercept re-normalization. Remaining
-RE outputs, RE and individual bootstraps, and genuine survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+including unbalanced observation-weighted intercept re-normalization. The
+[whole-commune RE bootstrap](household_re_bootstrap.md) refits both variance
+components and quasi-GLS on every distinct-copy draw; it independently checks
+all500 refits, component diagnostics, full covariance and97,000 ordered draws.
+Its bounded SQL composition has conservative numerical gates and substantial
+memory use. Remaining RE outputs, individual bootstraps, and genuine survey
+weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
 ## Source and preparation
