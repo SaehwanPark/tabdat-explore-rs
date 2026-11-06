@@ -12,6 +12,12 @@ effects or bootstrap inference, nor the complete table/chapter. Robust SEs do
 not repair a misspecified conditional mean; commune clustering assumes
 independent communes and does not guarantee reliable few-cluster inference.
 
+A separate [native conditional Poisson FE workflow](individual_conditional_fe.md)
+now covers the individual FE column, with 27,671 retained people/193 communes,
+179 independent R fit quantities, all source/prediction/exclusion rows and a
+20-fact native DTA author coefficient/SE audit. It does not alter the pooled
+workflow below or imply individual RE, clustered FE or survey inference.
+
 ## Source, design and execution
 
 Download publisher [`vietnam_ex2.asc`](https://cameron.econ.ucdavis.edu/mmabook/vietnam_ex2.asc)

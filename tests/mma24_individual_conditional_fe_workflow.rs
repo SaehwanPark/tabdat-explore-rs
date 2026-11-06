@@ -292,6 +292,56 @@ fn retained_normalizations_do_not_renormalize_and_prediction_failures_are_atomic
   assert_eq!(s.state().estimation, fit);
 }
 #[test]
+fn actual_script_retains_fit_after_reporting_and_successful_or_failed_export() {
+  for collision in [false, true] {
+    let d = TestDir::new();
+    let source = d.path().join("vietnam_individual.csv");
+    let output = d.path().join(OUTPUT);
+    fs::write(&source, INPUT).unwrap();
+    if collision {
+      fs::write(&output, "owner").unwrap();
+    }
+    let mut s = Session::new();
+    let mut fit = None;
+    for line in include_str!("../examples/mma24p2poiscluster/individual_conditional_fe.td").lines()
+    {
+      if line.starts_with('#') || line.is_empty() {
+        continue;
+      }
+      let text = if line.starts_with("use ") {
+        format!("use \"{}\"", source.display())
+      } else if line.starts_with("export ") {
+        format!("export \"{}\"", output.display())
+      } else {
+        line.to_owned()
+      };
+      let out = s.execute(parse_command(&text).unwrap());
+      if collision && line.starts_with("export ") {
+        assert!(out.is_err());
+      } else {
+        out.unwrap();
+      }
+      if line.starts_with("xtpoisson ") {
+        fit = s.state().estimation;
+        assert!(fit.is_some());
+      } else if fit.is_some() {
+        assert_eq!(s.state().estimation, fit);
+      }
+    }
+    execute(&mut s, "predict after_export, n");
+    assert_eq!(s.state().estimation, fit);
+    execute(
+      &mut s,
+      "sql \"\"\"SELECT CASE WHEN COUNT(*)!=148 OR MAX(ABS(after_export-fe_mean))>1e-9 OR COUNT(*) FILTER (WHERE after_export IS NULL)!=8 THEN error('lost conditional fit after export') ELSE 1 END AS valid FROM active\"\"\"",
+    );
+    if collision {
+      assert_eq!(fs::read_to_string(&output).unwrap(), "owner");
+    }
+    assert_eq!(fs::read_to_string(&source).unwrap(), INPUT);
+  }
+}
+
+#[test]
 fn prediction_work_bound_is_atomic() {
   let d = TestDir::new();
   let mut s = small_session(&d);
