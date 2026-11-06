@@ -37,7 +37,8 @@ requires full-rank information and both scaled score/full-step tolerances1e-10.
 
 Counts are conditionally independent Poisson(u_g*exp(intercept+X beta)) given a
 shared u_g~Gamma(shape=1/alpha,rate=1/alpha). E(u)=1, Var(u)=alpha. This induces
-within-group dependence; it is NOT independent-row NB2 mixing. All selected
+within-group dependence; groups are independent and effects are assumed
+independent of regressors. It is NOT independent-row NB2 mixing. All selected
 groups, including all-zero groups and positive/zero singletons, remain.
 
 The intercept, slopes and ln(alpha) are jointly estimated. Covariance is inverse

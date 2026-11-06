@@ -18,7 +18,8 @@ row27,734 is entirely missing and removed before structural-key fitting. All
 observations**. Commune sizes51–206; total count14,209; zero counts20,668.
 Unlike conditional FE, zero-total groups must not be dropped.
 
-Groups are independent. Conditional on a shared group effect,
+Groups are independent, and group effects are assumed independent of the
+regressors. Conditional on a shared group effect,
 `Y_i ~ Poisson(u_g*exp(X_i*beta))`, independently within group, with
 `u_g ~ Gamma(shape=1/alpha,rate=1/alpha)`. E(u)=1 and Var(u)=alpha. This is
 shared-group mixing, NOT independent-row NB2. For r=1/alpha, group count total
