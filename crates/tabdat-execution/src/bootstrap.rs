@@ -1,6 +1,27 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_poisson_bootstrap(
+    &self,
+    command: &PoissonBootstrapCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let (problem, _) = self
+      .count_problem(
+        crate::count::CountFamily::Poisson,
+        &command.outcome,
+        &command.predictors,
+        true,
+        Some(&command.cluster_variable),
+        None,
+      )
+      .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    let mut result =
+      tabdat_stats::bootstrap_poisson_clustered(&problem, command.replications, command.seed)
+        .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    result.cluster_variable = Some(command.cluster_variable.clone());
+    Ok(ExecutionResult::ClusterPoissonBootstrap(Box::new(result)))
+  }
+
   pub(crate) fn execute_quantile_bootstrap(
     &self,
     command: &QuantileBootstrapCommand,

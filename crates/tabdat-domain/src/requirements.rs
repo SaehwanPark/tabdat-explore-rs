@@ -62,6 +62,7 @@ impl Command {
         required.extend([Data, LinearStatistics]);
       }
       Self::IvRegress { .. }
+      | Self::PoissonBootstrap { .. }
       | Self::XtReg { .. }
       | Self::XtAbond { .. }
       | Self::XtLogit { .. }

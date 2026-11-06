@@ -21,6 +21,11 @@ workflow below or imply clustered FE or survey inference. The separate
 194 communes, validates236 R quantities and every source/marginal-prediction row
 on ASCII and DTA, and matches29 printed native DTA author facts. It is model-based
 shared-group mixing, not row NB2, posterior-effect or complex-survey inference.
+The separate [pooled Poisson whole-commune bootstrap](individual_pooled_bootstrap.md)
+refits all11 coefficients for each of500 group resamples and independently
+checks all97,000 ordered draws, full covariance and all source/prediction rows.
+It is unweighted and does not complete the individual FE/RE bootstraps or survey
+analysis.
 
 ## Source, design and execution
 

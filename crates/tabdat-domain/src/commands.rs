@@ -151,6 +151,8 @@ pub enum Command {
   IvRegress { command: IvRegressCommand },
   /// Read-only seeded IID or whole-cluster pairs-bootstrap OLS report on current complete cases.
   Bootstrap { command: BootstrapCommand },
+  /// Read-only whole-cluster pairs-bootstrap pooled Poisson report.
+  PoissonBootstrap { command: PoissonBootstrapCommand },
   /// Read-only joint IID pairs-bootstrap quantiles, sharing draws across quantiles.
   QuantileBootstrap { command: QuantileBootstrapCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
@@ -1006,6 +1008,16 @@ pub struct BayesCommand {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BootstrapCommand {
   pub regression: RegressCommand,
+  pub replications: usize,
+  pub seed: u64,
+}
+
+/// Pooled Poisson cluster bootstrap is a report, not a retained estimator.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PoissonBootstrapCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub cluster_variable: String,
   pub replications: usize,
   pub seed: u64,
 }

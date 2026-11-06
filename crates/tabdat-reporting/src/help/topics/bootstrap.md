@@ -2,7 +2,7 @@
 
 `bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit) | quantiles(values) [contrast(variable)]]`
 
-Compute a read-only pairs-bootstrap OLS report on CURRENT complete-finite
+By default, compute a read-only pairs-bootstrap OLS report on CURRENT complete-finite
 outcome/predictor rows, with an intercept unless noconstant is specified. At
 least one slope is required. The existing OLS sample/type rules apply; there are
 no weights, analytic robust covariance modes, factors or if clauses on this bounded command.
@@ -61,6 +61,44 @@ automatic within/RE fit or re-estimation of variance components. For the bounded
 manual-program within workflow, joint-case person means are computed first and
 whole persons are resampled afterward. No retained model or analytic test
 covariance is installed.
+
+## Whole-cluster pooled Poisson
+
+`bootstrap y xvars, model(poisson) cluster(unit) seed(integer) [reps(200)]`
+
+This explicit model selects a read-only unweighted pooled Poisson report, not
+OLS or a command prefix. An intercept and cluster(unit) are required;
+noconstant, quantiles, contrast, offsets and weights are not supported. Counts
+must be exact nonnegative integers at most2^53−1 on the joint complete-finite
+outcome/predictor/cluster sample, using the same loaded-type checks as poisson.
+Fit the original pooled Poisson and then refit all coefficients on each of B
+whole-group copies. Repeated groups are duplicated blocks; group membership is
+not a fixed/random effect. Any original/replicate rank, zero-outcome,
+numerical-boundary or convergence failure aborts without redraw or a partial
+report; the bounded solver is not a general analytic separation/existence test. The original data and any retained fit/named reports remain unchanged.
+Fit poisson explicitly before this command if predictions are needed.
+
+Bounds: B=2..500 (default200), G=2..256, K<=16 including the intercept,
+G*largest_group_size<=40,000 and G*largest_group_size*B*K²<=2,500,000,000,
+using checked arithmetic. This is a conservative work bound, not a runtime
+promise; the underlying Poisson iteration limit applies to every refit.
+The existing continuous local xoshiro stream and first-seen cluster ordering
+apply; this mode additionally aborts if a replication needs more than G+1024
+RNG words. Independent clusters are assumed. Bootstrap covariance is B−1 and
+intervals are marginal type7 percentile95; finite B has Monte Carlo error. No
+normal/t p-values, BCa/studentized intervals, few-cluster guarantee, survey
+weights/design or causal inference are supplied.
+
+CLI-v1 `ClusterBootstrapPoissonResult` includes the full covariance, original
+and replicate coefficients, replicate sizes and ordered zero-based cluster
+indices for every draw. `cluster_labels` and `cluster_sizes` are in first-seen
+complete-case order; each index selects the corresponding label and size.
+Labels are exact internal key strings, not necessarily display formatting: for
+example DECIMAL `9007199254740993.1` is `90071992547409931e-1`.
+The seed is decimal text. Terminal output shows the original/mean/bias/SE and
+intervals; the full matrix and draw audit are available in JSON. See
+examples/mma24p2poiscluster/individual_pooled_bootstrap.md for the bounded
+Chapter24 individual workflow and independent evidence.
 
 ## Joint conditional quantiles
 

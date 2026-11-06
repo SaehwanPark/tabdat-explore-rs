@@ -46,6 +46,7 @@ mod nested_logit;
 mod nls;
 mod normalized_common_nested_logit;
 mod poisson;
+mod poisson_bootstrap;
 pub mod post_estimation;
 pub mod problem;
 mod quantile;
@@ -166,6 +167,7 @@ pub use poisson::{
   PoissonOptions, PoissonResult, fit_poisson, fit_poisson_clustered, fit_poisson_with_offset,
   fit_poisson_with_options, poisson_average_marginal_effects,
 };
+pub use poisson_bootstrap::{ClusterBootstrapPoissonResult, bootstrap_poisson_clustered};
 pub use post_estimation::{
   LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
 };

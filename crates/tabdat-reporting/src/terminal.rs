@@ -1286,6 +1286,22 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text
     }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
+    ExecutionResult::ClusterPoissonBootstrap(result) => {
+      let mut text = format!(
+        "Whole-cluster pairs-bootstrap Poisson: {}\nN = {}; clusters = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+        result.outcome.escape_debug(),
+        result.observation_count,
+        result.cluster_labels.len(),
+        result.replications,
+        result.seed,
+        result.rng
+      );
+      for b in &result.coefficients {
+        writeln!(text, "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]", b.name.escape_debug(), inference_number(b.estimate), inference_number(b.bootstrap_mean), inference_number(b.bias), inference_number(b.standard_error), inference_number(b.ci_lower), inference_number(b.ci_upper)).unwrap();
+      }
+      text.push_str("Resamples whole independent clusters with replacement; refits pooled Poisson each time. Not FE/RE, survey design, residual or wild bootstrap. Data and the retained fit are unchanged.\n");
+      text
+    }
     ExecutionResult::ClusterBootstrap(result) => {
       let text = bootstrap_report(&result.bootstrap, true);
       format!(
