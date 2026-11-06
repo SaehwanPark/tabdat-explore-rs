@@ -51,7 +51,8 @@ Each replication draws G groups uniformly with replacement and appends all
 member (y,X) rows for each selected group, including duplicated blocks. RNG
 rejection uses G in place of N. Unbalanced group sizes imply variable replicate
 N, reported for every replication. The work cap uses
-G*largest_group_size*replications*K²<=100,000,000 before fitting.
+G*largest_group_size*replications*K²<=200,000,000 before fitting; the IID
+work cap remains100,000,000.
 ClusterBootstrapOlsResult adds first-seen cluster_sizes/count/order and replicate
 observation counts to the common report; IID BootstrapOlsResult is unchanged.
 

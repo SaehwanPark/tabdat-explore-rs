@@ -17,8 +17,10 @@ RE component convention. The opt-in
 validates all 14 printed author coefficient/SE facts on the DTA. The separate
 [Gaussian exchangeable GEE workflow](household_gee.md) validates both working and
 uncorrected commune-sandwich inference, all source/prediction rows and16 printed
-DTA author facts. Remaining RE outputs, bootstrap, and genuine survey weights/strata
-remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+DTA author facts. The separate [whole-commune pooled-OLS bootstrap](household_ols_bootstrap.md)
+uses500 deterministic native-stream refits and validates94 R quantities, every
+source/prediction row and all500 replicate sizes. Remaining RE outputs, FE/RE
+and other bootstraps, and genuine survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
 ## Source and preparation

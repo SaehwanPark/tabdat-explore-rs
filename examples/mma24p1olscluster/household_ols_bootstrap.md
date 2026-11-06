@@ -1,9 +1,9 @@
-# Household pooled OLS commune bootstrap: WIP contract
+# Household pooled OLS commune bootstrap
 
-**Status: WIP, not yet an executable validated workflow.** This bounded slice
-covers the first of three additional cluster bootstrap blocks in the author
-`mma24p1olscluster.do`; the author notes these results are not reported in the
-book's Table24.4. It does not complete FE/RE bootstrap or survey design.
+This validated bounded workflow covers the first of three additional cluster
+bootstrap blocks in the author `mma24p1olscluster.do`; the author notes these
+results are not reported in the book's Table24.4. It does not complete FE/RE
+bootstrap or survey design.
 
 ## Exact outcome and sample
 
@@ -33,44 +33,59 @@ author-program replication count is rejected before fitting. A real250-rep
 probe (`92,683,500` worst-case work) completed in1.57s/72.4MB maximum RSS on the
 current development machine; that is feasibility evidence, not a platform claim.
 
-Raise **only the cluster bootstrap** conservative maximum to200,000,000, retaining
+The **cluster bootstrap** conservative maximum is now200,000,000, retaining
 checked arithmetic, max G×largest group allocation bound, B2..5000, deterministic
 stream, immediate fail-on-any-replicate semantics and unchanged100,000,000 IID
-work cap. Benchmark the actual 500-rep workflow after implementation; retain the
-change only if measured resource cost is reasonable. Explicitly test both sides
-of the new cluster boundary, the unchanged IID boundary and failure-state safety.
-This is a bounded numerical work-limit change, not permission for unlimited
-replications or broad changes to bootstrap semantics.
+work cap. The original B500 script completed in2.81s on the same machine; a
+separate B500 fit probe used73.3MB maximum RSS. These observations are not a
+platform guarantee. Tests cover both sides of the new cluster boundary, the
+unchanged IID boundary and failure-state safety. This is a bounded numerical
+work-limit change, not permission for unlimited replications.
 
-## Acceptance and evidence
+## Evidence
 
-Risk: **high** (numerical resampling and public resource limit).
+The [actual script](household_ols_bootstrap.td) performs load/key checks → ordered
+complete cases → original OLS → B500 commune bootstrap → original-model fitted
+values/residuals → report/export. The original 5,006 selected rows have194
+communes, sizes1–39. Resampled N ranges from4,765 to5,188 in this seed/stream.
 
-1. Script load/validate → ordered complete cases → original OLS → B500 whole-
-   commune bootstrap → retained OLS mean/residual → report/export, in terminal and
-   CLI-v1 JSON. Source/data and successful/colliding-export ownership are preserved;
-   scripts remain nontransactional. Fit/group/missingness errors do not silently
-   redraw or discard samples or mutate the prior model.
-2. R `lm.fit`, sample covariance and type7 quantiles independently refit all500
-   resamples using the separately implemented Python oracle of the pinned Rust RNG;
-   compare all7 point estimates, means, bias, SE/intervals, full7×7 covariance,
-   500 replicate observation counts, all5,999 source rows and all5,006 retained
-   prediction rows. Check raw stream over selected explicit indices as well as
-   full output and size sequence. Use fixed absolute1e-9 (p-relative1e-8 where
-   relevant); investigate any discrepancy, do not widen tolerances.
-3. Small inspectable uneven/singleton-group synthetic fixture exercises the actual
-   script, determinism, full covariance/intervals, correct missingness and
-   retained original prediction state; test original/resample rank failures,
-   wrong/missing keys, work caps, source/file no-clobber and negative exit status.
-   Demonstrate auditor rejection of forgeries.
-4. Optional DTA precision audit reads DTA directly in R and uses separate CSV in
-   native. Compare printed author **original OLS coefficients** within half last
-   printed digit; do not claim parity of historical random draws, bootstrap SEs,
-   bias-corrected or normal intervals.
-5. Explicitly run changed/new focused tests, affected stats/integration and
-   reverse-consumer regressions, scoped Clippy/format/diff, and review the final
-   diff. Update SPEC, roadmap and coverage only to the independently evidenced
-   slice. Report hosted CI and independent code-review status honestly.
+R4.6.2 `lm.fit`, B−1 `cov` and type7 quantiles independently refit all500 draws
+from the separate Python xoshiro oracle. Both original ASCII and directly read
+DTA validate94 point/mean/bias/SE/interval/full-covariance quantities, all5,999
+source rows, all5,006 prediction rows and all500 native replicate sizes at fixed
+absolute1e-9. Maximum discrepancies are1.85e-13 ASCII and1.28e-13 DTA. The oracle
+regenerates97,000 reference group indices; a Rust unit test directly compares the
+first388 native indices. Aggregate numerical and sample-size checks do not expose
+or claim a per-index native audit for the remaining draws. The DTA author check
+matches seven printed **original OLS points** within half the final digit, not
+historical bootstrap SEs/intervals. Original text/JSON exports are byte-identical.
+The strict auditor rejected17 forged source, result, draw or prediction fields;
+the printed-author checker rejected one forged point.
+
+An uneven 48-group fixture includes singletons and two missing cases; focused
+actual-script tests check all94 quantities, both covariance/intervals, all500
+replicate sizes, deterministic reruns, prediction rows, retained original
+model, original and resampled rank errors, invalid keys, source integrity and
+successful/colliding output. Failed scripts leave earlier effects in place.
+No independent source-code review or hosted CI is claimed by this local evidence.
+
+## Reproduction
+
+From a fresh working directory (`repo` is the repository path):
+
+```sh
+python3 "$repo/examples/mma24p1olscluster/prepare.py" vietnam_ex1.asc vietnam.csv
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_ols_bootstrap.td" > result.jsonl
+Rscript "$repo/examples/mma24p1olscluster/household_ols_bootstrap_reference.R" vietnam_ex1.asc reference
+python3 "$repo/examples/mma24p1olscluster/check_household_ols_bootstrap.py" . reference vietnam_ex1.asc
+```
+
+`--text` provides the same exported CSV and readable report. For a separate DTA
+precision check, prepare the native CSV with `dta_reference.R`, pass `--dta` to
+the R reference and Python auditor, and run
+`check_household_ols_bootstrap_author.py vietnam_ex1.dta mma24p1olscluster.txt reference result.jsonl`.
+R and Python are optional reference/preparation tools, not runtime dependencies.
+The reference directory and output files must not already exist.
 
 No automatic FE/RE/Poisson refit, variance-component resampling, survey weights,
 strata, multiway clustering, bootstrap t/normal/BC interval, new RNG interface,
