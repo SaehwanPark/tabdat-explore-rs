@@ -30,7 +30,12 @@ all500 conditional-score refits,96,500 ordered draws, full covariance and all
 source/prediction rows on ASCII and precise DTA, with raw-copy dummy-GLM synthetic
 controls. Nine of ten printed author bootstrap points match to half a digit; the
 remaining last-digit `MARRIED` discrepancy is explicit in the linked audit.
-Neither workflow completes the individual RE bootstrap or survey analysis.
+The separate [shared-gamma RE whole-commune bootstrap](individual_gamma_re_bootstrap.md)
+retains all194 groups, refits all12 joint parameters for each distinct group copy,
+and checks500 R likelihood refits,97,000 draws, full covariance and all source/
+prediction rows on ASCII and precise DTA. Ten of twelve author bootstrap original
+points match half a digit; two final-digit discrepancies and historical copy-ID
+ambiguity are explicit in the linked audit. None supplies survey-design inference.
 
 ## Source, design and execution
 

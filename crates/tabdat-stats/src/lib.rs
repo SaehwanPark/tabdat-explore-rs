@@ -25,6 +25,8 @@ pub mod estimates;
 mod fixed_effects;
 mod gamma_poisson;
 pub use gamma_poisson::{GammaPoissonOptions, GammaPoissonResult, fit_gamma_poisson};
+mod gamma_poisson_bootstrap;
+pub use gamma_poisson_bootstrap::{GammaPoissonBootstrapResult, bootstrap_gamma_poisson_clustered};
 mod gaussian_gee;
 pub use gaussian_gee::{
   GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult, fit_gaussian_gee,

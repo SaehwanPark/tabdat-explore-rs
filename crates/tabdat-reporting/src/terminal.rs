@@ -1286,6 +1286,24 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text
     }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
+    ExecutionResult::GammaPoissonBootstrap(result) => {
+      let mut text = format!(
+        "Whole-group pairs-bootstrap shared-gamma Poisson RE: {}\nN = {}; groups = {}; zero-total groups = {}; singleton groups = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+        result.outcome.escape_debug(),
+        result.observation_count,
+        result.cluster_labels.len(),
+        result.zero_total_group_count,
+        result.singleton_group_count,
+        result.replications,
+        result.seed,
+        result.rng
+      );
+      for b in &result.coefficients {
+        writeln!(text, "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]", b.name.escape_debug(), inference_number(b.estimate), inference_number(b.bootstrap_mean), inference_number(b.bias), inference_number(b.standard_error), inference_number(b.ci_lower), inference_number(b.ci_upper)).unwrap();
+      }
+      text.push_str("Resamples complete groups including zero-total groups; every copy has a distinct shared gamma effect. Failed refits abort without redraw. Not FE, survey design, residual or wild bootstrap. Data and the retained fit are unchanged.\n");
+      text
+    }
     ExecutionResult::ConditionalPoissonBootstrap(result) => {
       let mut text = format!(
         "Whole-group pairs-bootstrap conditional Poisson FE: {}\nN = {}; groups = {}; excluded zero-total groups/rows = {}/{}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
