@@ -117,6 +117,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Mlogit { .. }
     | Command::Clogit { .. }
     | Command::XtPoisson { .. }
+    | Command::XtGee { .. }
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
@@ -585,6 +586,30 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .expect("literal object")
         .extend(inference.as_object().expect("literal object").clone());
       (data, "NonNormalizedNestedLogitResult")
+    }
+    ExecutionResult::GaussianGee(r) => {
+      let mut data = serde_json::to_value(r).expect("finite Gaussian GEE result");
+      data.as_object_mut().unwrap().remove("fitted_means");
+      data["predictors"] = data
+        .as_object_mut()
+        .unwrap()
+        .remove("predictor_names")
+        .unwrap();
+      data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let metadata = json!({
+        "estimator":"gaussian_identity_exchangeable_gee","include_intercept":true,
+        "scale":"pearson_rss_over_n","correlation":"ordered_pair_weighted_pearson",
+        "working_covariance":"inverse_gee_bread","sandwich_covariance":"uncorrected_unit_sandwich",
+        "covariance_correction":1.0,"independent_unit":"group","reference_distribution":"asymptotic_standard_normal",
+        "joint_test_reference":"asymptotic_chi_square","confidence_level":95,
+        "missingness":"joint_finite_outcome_predictors_and_group",
+        "prediction_scope":"population_marginal_mean_identity_link","converged":true
+      });
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(metadata.as_object().unwrap().clone());
+      (data, "GaussianGeeResult")
     }
     ExecutionResult::GammaPoisson(r) => {
       let mut data = serde_json::to_value(r).expect("finite gamma RE result");

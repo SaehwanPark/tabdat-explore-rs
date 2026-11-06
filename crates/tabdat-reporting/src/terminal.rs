@@ -1840,6 +1840,28 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "\nWARNING: fitted inclusive values violate RUM bounds; higher likelihood is not random-utility consistency."
       },
     ),
+    ExecutionResult::GaussianGee(r) => format!(
+      "Gaussian identity-link exchangeable GEE (population averaged)\nOutcome: {}; N = {}; groups = {}; group size {}..{}; singletons = {}\nPearson scale RSS/N = {}; ordered-pair-weighted correlation = {}; ordered pairs = {}\nWorking and uncorrected group sandwich covariance; normal95 coefficient inference; no finite-sample correction.\nConverged in {} updates; inverse-bread-scaled score {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nUnit-sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPredictions are population marginal means/index/residuals, not group effects.",
+      r.outcome.escape_debug(),
+      r.observation_count,
+      r.group_count,
+      r.minimum_group_size,
+      r.maximum_group_size,
+      r.singleton_group_count,
+      inference_number(r.phi),
+      inference_number(r.rho),
+      r.ordered_pair_count,
+      r.iterations,
+      r.max_abs_scaled_score,
+      r.working.wald_df,
+      inference_number(r.working.wald_statistic),
+      logit_number(r.working.wald_p_value),
+      logit_estimates(&r.working.coefficients),
+      r.sandwich.wald_df,
+      inference_number(r.sandwich.wald_statistic),
+      logit_number(r.sandwich.wald_p_value),
+      logit_estimates(&r.sandwich.coefficients)
+    ),
     ExecutionResult::GammaPoisson(r) => {
       let mut estimates = r.coefficients.clone();
       estimates.push(r.ln_alpha.clone());

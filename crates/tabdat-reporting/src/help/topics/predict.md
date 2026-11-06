@@ -13,6 +13,10 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
 - Within FE: xb (normalized common intercept + current X beta), xbu (retained
   unit intercept + current X beta), u (normalized unit deviation), or residuals
   (current outcome minus xbu). **Use xbu for conditional fitted levels.**
+- Gaussian exchangeable GEE (`xtgee`): default/xb is the population marginal
+  mean under the identity link; residuals additionally require current y. No
+  current group ID is needed. Missing/nonfinite required inputs give NULL;
+  unrepresentable finite-input results fail atomically. See help xtgee.
 - Conditional Poisson FE (`xtpoisson ..., fe id(group)`): default/xb is the
   slope-only index; n and residuals use retained fitted-group normalization on
   current X, never renormalize the current subset. Unseen/missing/zero-total IDs

@@ -17,6 +17,7 @@ mod bootstrap;
 mod conditional_logit;
 mod estimates;
 mod fixed_effects;
+mod gaussian_gee;
 mod grouped_poisson;
 mod multinomial;
 mod nested_logit;
@@ -172,6 +173,7 @@ impl Session {
       Command::Heckman { command } if command.twostep => self.execute_heckman(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::XtPoisson { command } => self.execute_xtpoisson(&command),
+      Command::XtGee { command } => self.execute_xtgee(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
       Command::Nl { command } => self.execute_nls(&command),

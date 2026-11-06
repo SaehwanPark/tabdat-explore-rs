@@ -23,7 +23,9 @@ fn cli_json_lists_commands() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 89);
+  assert_eq!(commands.len(), 90);
+  let xtgee = commands.iter().find(|c| c["name"] == "xtgee").unwrap();
+  assert_eq!(xtgee["help_topic"], "xtgee");
   let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
   assert_eq!(xtpoisson["help_topic"], "xtpoisson");
   let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
@@ -100,7 +102,9 @@ fn cli_json_lists_command_effects() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 89);
+  assert_eq!(commands.len(), 90);
+  let xtgee = commands.iter().find(|c| c["name"] == "xtgee").unwrap();
+  assert_eq!(xtgee["effects"], serde_json::json!(["read"]));
   let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
   assert_eq!(xtpoisson["effects"], serde_json::json!(["read"]));
   let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
@@ -183,6 +187,12 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
   for (name, syntax, arguments, options) in [
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
+      "xtgee",
+      "xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)",
+      serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
+      vec!["family", "link", "corr", "id"],
+    ),
+    (
       "xtpoisson",
       "xtpoisson y xvars, fe|re id(group)",
       serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
@@ -234,7 +244,7 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     let expected: Vec<_> = options
       .into_iter()
       .map(
-        |option| serde_json::json!({"name": option, "required": name=="xtpoisson" && option=="id"}),
+        |option| serde_json::json!({"name": option, "required": name=="xtgee" || (name=="xtpoisson" && option=="id")}),
       )
       .collect();
     assert_eq!(data["options"], serde_json::json!(expected));
@@ -259,6 +269,10 @@ fn conditional_discovery_examples_preview_without_data_and_reject_malformed_synt
     ("count", "count if eligible == 1"),
     ("summarize", "summarize x if eligible == 1"),
     ("regress", "regress y x if eligible == 1, robust"),
+    (
+      "xtgee",
+      "xtgee y x, family(gaussian) link(identity) corr(exchangeable) id(i)",
+    ),
     (
       "tabulate",
       "tabulate x y if eligible == 1, row col missing nolabel",
@@ -289,6 +303,7 @@ fn conditional_discovery_examples_preview_without_data_and_reject_malformed_synt
     "regress y x if",
     "regress y",
     "regress y if eligible == 1",
+    "xtgee y x, family(gaussian) link(identity) corr(exchangeable)",
     "tabulate x if",
   ] {
     let output = tabdat_bin()

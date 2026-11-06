@@ -443,6 +443,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "mlogit" => parse_mlogit_command(body),
     "clogit" => parse_clogit_command(body),
     "xtpoisson" => parse_xtpoisson_command(body),
+    "xtgee" => parse_xtgee_command(body),
     "nlogit" => parse_nlogit_command(body),
     "poisson" => parse_binary_or_count_response_command("poisson", body),
     "nbreg" => parse_binary_or_count_response_command("nbreg", body),
@@ -2737,6 +2738,64 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
   Err(ParseError::new(format!(
     "{context} requires an integer code within +/- (2^53-1)"
   )))
+}
+
+fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
+  let syntax =
+    "xtgee expects: xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)";
+  let Some(i) = first_unquoted_comma(body) else {
+    return Err(ParseError::new(syntax));
+  };
+  let parts = parse_simple_body(&body[..i], false)?;
+  if parts.has_condition
+    || parts.has_assignment
+    || parts.has_options
+    || parts.missing_condition_expression
+    || parts.arguments.len() < 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+  let options = parse_use_options(&body[i + 1..])?;
+  for option in &options {
+    if !matches!(option.name.as_str(), "family" | "link" | "corr" | "id") {
+      return Err(ParseError::new(format!(
+        "xtgee unsupported option: {}",
+        option.name
+      )));
+    }
+    if options.iter().filter(|o| o.name == option.name).count() != 1 {
+      return Err(ParseError::new(format!(
+        "xtgee option {} may only be supplied once",
+        option.name
+      )));
+    }
+  }
+  for (name, expected) in [
+    ("family", "gaussian"),
+    ("link", "identity"),
+    ("corr", "exchangeable"),
+  ] {
+    let values =
+      parse_identifier_option("xtgee", &options, name)?.ok_or_else(|| ParseError::new(syntax))?;
+    if values.len() != 1 || !values[0].eq_ignore_ascii_case(expected) {
+      return Err(ParseError::new(syntax));
+    }
+  }
+  let keys =
+    parse_identifier_option("xtgee", &options, "id")?.ok_or_else(|| ParseError::new(syntax))?;
+  if keys.len() != 1 {
+    return Err(ParseError::new(syntax));
+  }
+  Ok(Command::XtGee {
+    command: XtGeeCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictors: parts.arguments[1..]
+        .iter()
+        .map(|a| a.text.clone())
+        .collect(),
+      entity_variable: keys[0].clone(),
+    },
+  })
 }
 
 fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {

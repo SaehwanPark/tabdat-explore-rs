@@ -242,6 +242,8 @@ pub enum Command {
   Poisson { command: PoissonCommand },
   /// Conditional Poisson fixed effects on explicitly grouped counts.
   XtPoisson { command: XtPoissonCommand },
+  /// Gaussian identity-link exchangeable population-averaged GEE.
+  XtGee { command: XtGeeCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
   Nbreg { command: NbregCommand },
   /// Fit a zero-inflated Poisson regression model (execution is deferred).
@@ -544,6 +546,14 @@ pub struct RegressCommand {
   pub cluster_variable: Option<String>,
   /// Whether the eventual runtime should include an intercept.
   pub include_intercept: bool,
+}
+
+/// Bounded Gaussian identity-link exchangeable GEE with explicit grouping.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XtGeeCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub entity_variable: String,
 }
 
 /// Binary logit syntax; runtime supports unweighted model-based covariance.
