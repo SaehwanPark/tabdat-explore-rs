@@ -208,7 +208,11 @@ Extend the same workflow/validation standard to:
   DTA author facts; it retains an owned marginal model, not an RE fit. The
   [household pooled-OLS commune bootstrap](../examples/mma24p1olscluster/household_ols_bootstrap.md)
   independently checks94 R quantities and all500 replicate sizes for500 seeded
-  native-stream refits, with all source/prediction rows on ASCII and DTA.
+  native-stream refits, with all source/prediction rows on ASCII and DTA. The
+  separate [household FE commune bootstrap](../examples/mma24p1olscluster/household_fe_bootstrap.md)
+  checks500 distinct-copy R QR refits, full covariance,97,000 exact draws and
+  all source/prediction rows; it uses bounded scaled normal-equation pivots and
+  per-draw observation-weighted level-intercept normalization.
   The [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
   27,765 individuals against R. The separate native
@@ -223,7 +227,7 @@ Extend the same workflow/validation standard to:
   prediction row on ASCII and DTA, and matches 29 native DTA author facts.
   These workflows are unweighted, not design-based survey inference.
   Household RE outputs beyond the validated
-  coefficient/SE portion, other GEE workflows, FE/RE and individual bootstraps,
+  coefficient/SE portion, other GEE workflows, RE and individual bootstraps,
   and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded

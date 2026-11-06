@@ -19,8 +19,11 @@ validates all 14 printed author coefficient/SE facts on the DTA. The separate
 uncorrected commune-sandwich inference, all source/prediction rows and16 printed
 DTA author facts. The separate [whole-commune pooled-OLS bootstrap](household_ols_bootstrap.md)
 uses500 deterministic native-stream refits and validates94 R quantities, every
-source/prediction row and all500 replicate sizes. Remaining RE outputs, FE/RE
-and other bootstraps, and genuine survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+source/prediction row and all500 replicate sizes. The separate
+[whole-commune FE bootstrap](household_fe_bootstrap.md) independently checks
+500 distinct-copy R QR refits, full covariance and all97,000 ordered draws,
+including unbalanced observation-weighted intercept re-normalization. Remaining
+RE outputs, RE and individual bootstraps, and genuine survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
 ## Source and preparation
@@ -118,6 +121,12 @@ Rscript "$repo/examples/mma24p1olscluster/dta_reference.R" /path/to/vietnam_ex1.
 Rscript "$repo/examples/mma24p1olscluster/reference.R" dta.csv dta-reference --csv
 python3 "$repo/examples/mma24p1olscluster/check_author.py" /path/to/vietnam_ex1.dta /path/to/mma24p1olscluster.txt dta.csv dta-reference vietnam.csv
 ```
+
+The converter's default CSV retains the earlier15-significant-digit formatting;
+earlier household DTA audits use that representation and do not establish
+bit-for-bit DTA-to-CSV identity. Its optional `--precise` emits17 significant
+digits for binary64 round trips, as used in the FE-bootstrap DTA audit; the
+default is unchanged for existing reproductions.
 
 Reference directories are development outputs and existing reference files
 may be overwritten. The DTA converter refuses an existing destination.
