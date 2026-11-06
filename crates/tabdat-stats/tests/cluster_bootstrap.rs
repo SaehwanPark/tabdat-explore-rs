@@ -1,4 +1,4 @@
-use tabdat_stats::{EstimationProblem, EstimationSample, bootstrap_ols_clustered};
+use tabdat_stats::{EstimationProblem, EstimationSample, bootstrap_ols, bootstrap_ols_clustered};
 fn problem(case: &str) -> EstimationProblem {
   let rows: Vec<Vec<&str>> = include_str!("fixtures/cluster-bootstrap/inputs.csv")
     .lines()
@@ -69,6 +69,52 @@ fn whole_cluster_draws_match_r_and_preserve_variable_unbalanced_sizes() {
   }
   assert_eq!(comparisons, 285);
 }
+fn boundary_problem(largest: usize) -> EstimationProblem {
+  let mut x = Vec::new();
+  let mut y = Vec::new();
+  let mut keys = Vec::new();
+  for group in 0..60 {
+    let size = if group == 0 { largest } else { 1 };
+    for row in 0..size {
+      let g = group as f64 + 1.0;
+      x.push((1..=6).map(|j| (g * j as f64 * 0.139).sin()).collect());
+      y.push((g * 0.71).cos() + row as f64 * 0.0001);
+      keys.push(group.to_string());
+    }
+  }
+  let n = y.len();
+  EstimationProblem::new("y", (1..=6).map(|i| format!("x{i}")).collect(), y, x)
+    .unwrap()
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap())
+}
+
+#[test]
+fn separate_cluster_and_iid_work_caps_are_enforced_before_resampling() {
+  // 60*136*500*7² = 199,920,000: immediately below the cluster cap,
+  // and above the unchanged 100-million IID limit.
+  let below = boundary_problem(136);
+  let result = bootstrap_ols_clustered(&below, 500, 10001).unwrap();
+  assert_eq!(result.bootstrap.replications, 500);
+  assert_eq!(result.cluster_count, 60);
+  assert_eq!(result.replicate_observation_counts.len(), 500);
+  // 60*137*500*7² = 201,390,000: reject before the original fit.
+  let above = boundary_problem(137);
+  let err = bootstrap_ols_clustered(&above, 500, 10001)
+    .unwrap_err()
+    .to_string();
+  assert!(err.contains("must be at most 200000000"), "{err}");
+  let n = 4082;
+  let iid = EstimationProblem::new(
+    "y",
+    (1..=6).map(|i| format!("x{i}")).collect(),
+    vec![1.0; n],
+    vec![vec![1.0; 6]; n],
+  )
+  .unwrap();
+  let err = bootstrap_ols(&iid, 500, 10001).unwrap_err().to_string();
+  assert!(err.contains("must be at most 100000000"), "{err}");
+}
+
 #[test]
 fn group_failures_work_bound_and_rank_failures_are_explicit() {
   let mut p = problem("unbalanced");

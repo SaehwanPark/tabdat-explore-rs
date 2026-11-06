@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 
 pub const BOOTSTRAP_RNG: &str = "xoshiro256++/splitmix64/u64-rejection-v1";
 pub const MAX_BOOTSTRAP_REPLICATIONS: usize = 5000;
+/// IID pairs work bound; clustered pairs have a separate conservative limit.
 pub const MAX_BOOTSTRAP_WORK: usize = 100_000_000;
+const MAX_CLUSTER_BOOTSTRAP_WORK: usize = 200_000_000;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BootstrapCoefficient {
@@ -197,6 +199,19 @@ pub fn bootstrap_ols_clustered(
   })
 }
 
+fn exceeds_bootstrap_work_limit(
+  max_rows: Option<usize>,
+  replications: usize,
+  k: usize,
+  limit: usize,
+) -> bool {
+  max_rows
+    .and_then(|rows| rows.checked_mul(replications))
+    .and_then(|v| v.checked_mul(k))
+    .and_then(|v| v.checked_mul(k))
+    .is_none_or(|v| v > limit)
+}
+
 fn bootstrap_ols_impl(
   problem: &EstimationProblem,
   replications: usize,
@@ -219,13 +234,14 @@ fn bootstrap_ols_impl(
       .checked_mul(groups.iter().map(Vec::len).max().unwrap()),
     None => Some(n),
   };
-  let work = max_rows
-    .and_then(|rows| rows.checked_mul(replications))
-    .and_then(|v| v.checked_mul(k))
-    .and_then(|v| v.checked_mul(k));
-  if work.is_none_or(|v| v > MAX_BOOTSTRAP_WORK) {
+  let limit = if clusters.is_some() {
+    MAX_CLUSTER_BOOTSTRAP_WORK
+  } else {
+    MAX_BOOTSTRAP_WORK
+  };
+  if exceeds_bootstrap_work_limit(max_rows, replications, k, limit) {
     return Err(invalid(if clusters.is_some() {
-      "G * largest cluster size * replications * K^2 must be at most 100000000"
+      "G * largest cluster size * replications * K^2 must be at most 200000000"
     } else {
       "N * replications * K^2 must be at most 100000000"
     }));
@@ -336,6 +352,56 @@ mod tests {
       }
     }
     assert_eq!(count, 640);
+  }
+  #[test]
+  fn work_limit_rejects_overflow_at_each_checked_stage() {
+    assert!(exceeds_bootstrap_work_limit(None, 2, 1, usize::MAX));
+    assert!(exceeds_bootstrap_work_limit(
+      Some(usize::MAX),
+      2,
+      1,
+      usize::MAX
+    ));
+    assert!(exceeds_bootstrap_work_limit(
+      Some(usize::MAX / 3),
+      2,
+      2,
+      usize::MAX
+    ));
+    assert!(exceeds_bootstrap_work_limit(
+      Some(usize::MAX / 4),
+      2,
+      2,
+      usize::MAX
+    ));
+    assert!(!exceeds_bootstrap_work_limit(Some(1), 2, 2, 8));
+    assert!(exceeds_bootstrap_work_limit(Some(1), 2, 2, 7));
+  }
+  #[test]
+  fn household_194_group_stream_matches_independent_python_draws() {
+    let mut rng = Xoshiro256PlusPlus::seed_from_u64(10001);
+    let mut rows = 0;
+    let mut compared = 0;
+    for line in include_str!("../tests/fixtures/cluster-bootstrap/household_draws.csv")
+      .lines()
+      .skip(1)
+    {
+      let (replication, indices) = line.split_once(',').unwrap();
+      rows += 1;
+      assert_eq!(replication.parse::<usize>().unwrap(), rows);
+      let mut count = 0;
+      for expected in indices.split(':') {
+        assert_eq!(
+          draw_index(&mut rng, 194),
+          expected.parse::<usize>().unwrap()
+        );
+        count += 1;
+      }
+      assert_eq!(count, 194);
+      compared += count;
+    }
+    assert_eq!(rows, 2);
+    assert_eq!(compared, 388);
   }
   #[test]
   fn fixed_ml_control_stream_matches_all_independent_python_draws() {
