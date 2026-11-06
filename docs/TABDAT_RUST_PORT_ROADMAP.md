@@ -246,9 +246,14 @@ Extend the same workflow/validation standard to:
   and all source/prediction rows on ASCII and precise DTA. Ten of twelve author
   bootstrap points match half a printed digit; two last-digit discrepancies and
   historical repeated-ID ambiguity are explicitly documented. These workflows
-  are unweighted, not design-based survey inference. Household RE outputs beyond
-  the validated coefficient/SE portion, other GEE workflows and full survey
-  methods remain required.
+  are unweighted, not design-based survey inference. The separate [household
+  Gaussian RE-ML workflow](../examples/mma24p1olscluster/household_re_ml.md)
+  checks210 independent R/nlme likelihood and information quantities and all
+  source/prediction rows on ASCII/precise DTA, with interior and boundary
+  controls. All seven printed author coefficient points and two SEs match;
+  five coefficient and two component-SD printed SE discrepancies remain
+  unexplained. Other household RE diagnostics, other GEE workflows and full
+  survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

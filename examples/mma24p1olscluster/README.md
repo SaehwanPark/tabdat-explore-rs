@@ -27,9 +27,13 @@ including unbalanced observation-weighted intercept re-normalization. The
 components and quasi-GLS on every distinct-copy draw; it independently checks
 all500 refits, component diagnostics, full covariance and97,000 ordered draws.
 Its bounded SQL composition has conservative numerical gates and substantial
-memory use. Remaining RE outputs, individual bootstraps, and genuine survey
-weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
-covers a separate portion of Table 24.6.
+memory use. A separate [household RE maximum-likelihood workflow](household_re_ml.md)
+checks210 independent R/nlme quantities and all source/prediction rows on ASCII
+and precise DTA. Seven author coefficient points and two of seven SEs match;
+five coefficient and two component-SD printed SE discrepancies remain
+explicit. Other RE diagnostics and genuine survey weights/strata remain required;
+the [individual Poisson workflows](../mma24p2poiscluster/README.md) cover separate
+portions of Table24.6, including pooled, FE and shared-gamma RE bootstraps.
 
 ## Source and preparation
 

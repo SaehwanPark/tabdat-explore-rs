@@ -54,25 +54,33 @@ def main():
   assert all(e['schema_version']==1 and 'error' not in e for e in events)
   assert [e['result_type'] for e in events]==['LoadResult','IsidResult','TableResult','SqlCreateResult','TableResult','UnbalancedRandomEffectsMlResult','PredictionResult','PredictionResult','SummarizeResult','TableResult','ExportResult']
   fit=next(e['data'] for e in events if e['result_type']=='UnbalancedRandomEffectsMlResult')
-  selected=[r for r in source if r['lnexp12m']!='']; G=len({r['commune'] for r in selected})
+  selected=sorted((r for r in source if r['lnexp12m']!=''),key=lambda r:int(r['source_row'])); G=len({r['commune'] for r in selected})
   assert fit['observation_count']==len(selected) and fit['group_count']==G
   if mode!='--synthetic': assert (len(selected),G,fit['minimum_group_size'],fit['maximum_group_size'])==(5006,194,1,39)
   assert fit['entity_variable']=='commune' and fit['time_variable']=='source_row'
   assert fit['estimator']=='unbalanced_gaussian_random_effects_ml' and fit['variance_component_method']=='unbalanced_gaussian_marginal_ml'
-  assert fit['covariance']=='observed_information' and fit['covariance_convention']=='joint_observed_information'
+  assert fit['covariance']=='observed_information'
+  assert fit['covariance_convention']==('constrained_observed_information' if fit['ml']['unit_variance_boundary'] else 'joint_observed_information')
   assert fit['reference_distribution']=='normal' and fit['wald_reference']=='chi_square' and fit['balanced'] is False
   assert fit['sample']=={'total_observations':len(selected),'dropped_observations':0}
   names=['intercept','lnhhexp','age','sex','hhsize','farm','educ']
   assert fit['covariance_parameter_names']==names and [c['name'] for c in fit['coefficients']]==names
   assert all(c['ci_level']==95 for c in fit['coefficients'])
-  assert fit['ml']['joint_parameter_names']==names+['log_sigma_e_squared','log_sigma_u_squared']
-  assert fit['ml']['unit_variance_boundary'] is False and fit['ml']['likelihood_ratio_unavailable_reason'] is None
-  reference=rows(ref/'reference.csv');assert len(reference)==210 and len({r['path'] for r in reference})==210
+  boundary=fit['ml']['unit_variance_boundary'];null_boundary=fit['ml']['null_sigma_u_squared']==0
+  assert fit['ml']['joint_parameter_names']==names+['log_sigma_e_squared']+([] if boundary else ['log_sigma_u_squared'])
+  if boundary or null_boundary:
+    assert fit['ml']['likelihood_ratio_p_value'] is None and fit['ml']['likelihood_ratio_unavailable_reason']
+  else: assert fit['ml']['likelihood_ratio_unavailable_reason'] is None
+  if boundary:
+    assert fit['sigma_u_squared']==0 and fit['ml']['variance_component_inference']['sigma_u_squared'] is None
+    assert fit['ml']['variance_component_inference']['sigma_u_squared_unavailable_reason']
+  reference=rows(ref/'reference.csv');count=210-(22 if boundary else 0)-(1 if boundary or null_boundary else 0)
+  assert len(reference)==count and len({r['path'] for r in reference})==count
   for r in reference:
     v=fit
     for key in r['path'].strip('/').split('/'):
       v=v[int(key)] if isinstance(v,list) else v[key]
-    if r['path']=='/ml/profile_score':
+    if r['path']=='/ml/profile_score' and not boundary:
       # Both numerical roots must independently satisfy a tight absolute score
       # condition; bisection's eta tolerance does not make their scores equal.
       assert abs(float(v))<1e-8 and abs(float(r['value']))<1e-8
@@ -85,7 +93,7 @@ def main():
     for key in ('ml_xb','ml_residual'): near(a[key],b[key])
     near(float(a['lnexp12m']),float(a['ml_xb'])+float(a['ml_residual']))
   assert events[-1]['data']['dataset']['row_count']==len(selected)
-  print('validated 210 independent R/nlme quantities,',len(source),'source rows and',len(selected),'population-prediction rows')
+  print('validated',count,'independent R/nlme quantities,',len(source),'source rows and',len(selected),'population-prediction rows')
 
 
 if __name__=='__main__':
