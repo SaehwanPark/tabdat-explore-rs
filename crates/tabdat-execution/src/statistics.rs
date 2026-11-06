@@ -1318,6 +1318,12 @@ impl Session {
     }
     if matches!(
       self.estimation,
+      Some(EstimationState::ConditionalPoisson(_))
+    ) {
+      return self.execute_conditional_poisson_prediction(command);
+    }
+    if matches!(
+      self.estimation,
       Some(EstimationState::PoissonFit(_) | EstimationState::NegativeBinomialFit(_))
     ) {
       return self.execute_count_prediction(command);

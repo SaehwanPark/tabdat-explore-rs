@@ -23,7 +23,9 @@ fn cli_json_lists_commands() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 88);
+  assert_eq!(commands.len(), 89);
+  let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
+  assert_eq!(xtpoisson["help_topic"], "xtpoisson");
   let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
   assert_eq!(stcox["help_topic"], "stcox");
   let truncreg = commands.iter().find(|c| c["name"] == "truncreg").unwrap();
@@ -98,7 +100,9 @@ fn cli_json_lists_command_effects() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 88);
+  assert_eq!(commands.len(), 89);
+  let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
+  assert_eq!(xtpoisson["effects"], serde_json::json!(["read"]));
   let stcox = commands.iter().find(|c| c["name"] == "stcox").unwrap();
   assert_eq!(stcox["effects"], serde_json::json!(["read"]));
   let truncreg = commands.iter().find(|c| c["name"] == "truncreg").unwrap();
@@ -179,6 +183,12 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
   for (name, syntax, arguments, options) in [
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
+      "xtpoisson",
+      "xtpoisson y xvars, fe id(group)",
+      serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
+      vec!["fe", "id"],
+    ),
+    (
       "xtreg",
       "xtreg y xvars, fe|re|mle id(unit) time(year) [robust | cluster(unit)]",
       serde_json::json!([{"name":"depvar","required":true},{"name":"indepvars","required":true}]),
@@ -223,7 +233,7 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     assert_eq!(data["arguments"], arguments);
     let expected: Vec<_> = options
       .into_iter()
-      .map(|option| serde_json::json!({"name": option, "required": false}))
+      .map(|option| serde_json::json!({"name": option, "required": name=="xtpoisson"}))
       .collect();
     assert_eq!(data["options"], serde_json::json!(expected));
     let help = tabdat_bin()

@@ -11,6 +11,11 @@ mod binary;
 mod bootstrap;
 mod cluster_gmm;
 mod conditional_logit;
+mod conditional_poisson;
+pub use conditional_poisson::{
+  ConditionalPoissonEffect, ConditionalPoissonOptions, ConditionalPoissonResult,
+  fit_conditional_poisson,
+};
 mod count_probabilities;
 mod cox;
 pub mod diagnostics;

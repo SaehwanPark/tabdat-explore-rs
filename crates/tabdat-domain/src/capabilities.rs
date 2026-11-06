@@ -111,6 +111,7 @@ impl Command {
       Command::Clogit { .. } => "clogit",
       Command::Nlogit { .. } | Command::NlogitNormalizedCommon(..) => "nlogit",
       Command::Poisson { .. } => "poisson",
+      Command::XtPoisson { .. } => "xtpoisson",
       Command::Nbreg { .. } => "nbreg",
       Command::Zip { .. } => "zip",
       Command::Zinb { .. } => "zinb",
@@ -222,7 +223,7 @@ impl Command {
       Command::Clogit { .. } | Command::Nlogit { .. } | Command::NlogitNormalizedCommon(..) => {
         &[CommandEffect::Read]
       }
-      Command::Poisson { .. } => &[CommandEffect::Read],
+      Command::Poisson { .. } | Command::XtPoisson { .. } => &[CommandEffect::Read],
       Command::Nbreg { .. } => &[CommandEffect::Read],
       Command::Zip { .. } => &[CommandEffect::Read],
       Command::Zinb { .. } => &[CommandEffect::Read],

@@ -240,6 +240,8 @@ pub enum Command {
   NlogitNormalizedCommon(NlogitCommand),
   /// Fit unweighted model-based or independent-row robust Poisson regression.
   Poisson { command: PoissonCommand },
+  /// Conditional Poisson fixed effects on explicitly grouped counts.
+  XtPoisson { command: XtPoissonCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
   Nbreg { command: NbregCommand },
   /// Fit a zero-inflated Poisson regression model (execution is deferred).
@@ -602,6 +604,14 @@ pub struct NlogitCommand {
   pub group_variable: String,
   pub alternative_variable: String,
   pub nest_variable: String,
+}
+
+/// Conditional Poisson fixed effects; no common intercept or panel declaration.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XtPoissonCommand {
+  pub outcome: String,
+  pub predictors: Vec<String>,
+  pub entity_variable: String,
 }
 
 /// Bounded unweighted log-link Poisson with model-based, independent-row

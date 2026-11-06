@@ -98,6 +98,7 @@ pub enum EstimationFamily {
   Probit,
   MultinomialLogit,
   ConditionalLogit,
+  ConditionalPoisson,
   NonNormalizedNestedLogit,
   NormalizedCommonNestedLogit,
   Tobit,
@@ -205,6 +206,13 @@ pub struct PoissonFitState {
   pub result: tabdat_stats::PoissonResult,
 }
 
+/// Owned conditional-count slopes, selected sample and group normalizations.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ConditionalPoissonState {
+  pub entity_data_type: String,
+  pub result: tabdat_stats::ConditionalPoissonResult,
+}
+
 /// Owned NB2 mean design and joint coefficient/log-dispersion fit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NegativeBinomialFitState {
@@ -266,6 +274,7 @@ pub enum EstimationState {
   /// Legacy normalized placeholder, retained for old serialized state reads.
   Poisson(ModelState),
   PoissonFit(Box<PoissonFitState>),
+  ConditionalPoisson(Box<ConditionalPoissonState>),
   /// Legacy normalized placeholder, not an installed fit.
   NegativeBinomial(ModelState),
   NegativeBinomialFit(Box<NegativeBinomialFitState>),
@@ -330,6 +339,7 @@ impl EstimationState {
       Self::Probit(..) => EstimationFamily::Probit,
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
+      Self::ConditionalPoisson(..) => EstimationFamily::ConditionalPoisson,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,

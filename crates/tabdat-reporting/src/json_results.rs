@@ -116,6 +116,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Probit { .. }
     | Command::Mlogit { .. }
     | Command::Clogit { .. }
+    | Command::XtPoisson { .. }
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
@@ -584,6 +585,33 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .expect("literal object")
         .extend(inference.as_object().expect("literal object").clone());
       (data, "NonNormalizedNestedLogitResult")
+    }
+    ExecutionResult::ConditionalPoisson(r) => {
+      let mut data = json!({
+        "estimator":"conditional_poisson_fe","likelihood":"conditional_multinomial_given_selected_group_totals",
+        "outcome":r.outcome,"predictors":r.predictor_names,"entity_variable":r.entity_variable,"include_intercept":false,
+        "observation_count":r.observation_count,"joint_finite_observation_count":r.joint_finite_observation_count,
+        "candidate_group_count":r.candidate_group_count,"group_count":r.group_count,
+        "zero_total_group_count":r.zero_total_group_count,"zero_total_observation_count":r.zero_total_observation_count,
+        "minimum_group_size":r.minimum_group_size,"maximum_group_size":r.maximum_group_size,"zero_count":r.zero_count,"count_sum":r.count_sum,
+        "sample":{"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations},
+        "missingness":"joint_finite_rows_then_zero_total_group_exclusion_after_raw_key_validation",
+      });
+      let inference = json!({
+        "coefficients":r.coefficients,"covariance_matrix":r.covariance,"covariance_parameter_names":r.predictor_names,
+        "covariance":"inverse_conditional_information","covariance_correction":1.0,"reference_distribution":"asymptotic_standard_normal","confidence_level":95,
+        "conditional_log_likelihood":r.conditional_log_likelihood,"null_conditional_log_likelihood":r.null_conditional_log_likelihood,
+        "null_model":"zero_slopes_same_selected_group_totals","likelihood_ratio":r.likelihood_ratio,"likelihood_ratio_df":r.likelihood_ratio_df,"likelihood_ratio_p_value":r.likelihood_ratio_p_value,
+        "wald_statistic":r.wald_statistic,"wald_df":r.predictor_names.len(),"wald_p_value":r.wald_p_value,"joint_test_reference":"asymptotic_chi_square",
+        "converged":true,"iterations":r.iterations,"convergence_absolute_tolerance":1e-10,"convergence_coordinate_system":"within_first_row_rms_scaled_per_positive_group_score",
+        "max_abs_scaled_score":r.max_abs_scaled_score,"max_abs_scaled_newton_step":r.max_abs_scaled_newton_step,
+        "prediction_scope":"retained_positive_group_normalization_not_population_forecast"
+      });
+      data
+        .as_object_mut()
+        .expect("literal object")
+        .extend(inference.as_object().expect("literal object").clone());
+      (data, "ConditionalPoissonResult")
     }
     ExecutionResult::ConditionalLogit(result) => (
       json!({

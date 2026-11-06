@@ -40,5 +40,8 @@ general post-estimation/margins, unit-effect uncertainty, automatic bootstrap,
 new-group/population forecasts or general Stata parity. The existing scalar
 Chapter23 SQL workflow remains intact. Parser/kernel-only WIP is not mergeable.
 
-**Status:** contract only; implementation, executable workflow, references and
-verification pending. Individual RE and remaining textbook methods are required.
+**Status:** draft implementation and executable script; original ASCII checks
+pass 179 R quantities and every source/prediction row, and the native DTA run
+matches 20 printed author coefficient/SE facts. Focused numerical/workflow tests
+pass. Broad regressions, auditor challenges, capability-map alignment and final
+review remain pending. Individual RE and remaining textbook methods are required.

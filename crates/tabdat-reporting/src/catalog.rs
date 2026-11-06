@@ -88,6 +88,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "xtabond",
   "xtdata",
   "xtlogit",
+  "xtpoisson",
   "xtreg",
   "zinb",
   "zip",
@@ -466,6 +467,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "xtlogit".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "xtpoisson".into(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1236,6 +1241,12 @@ fn get_command_schema(
         },
       ],
       syntax: "logit y x1 x2".to_string(),
+    }),
+    "xtpoisson" => Ok(CommandSchemaResult {
+      arguments:vec![ArgumentDescriptor {name:"outcome".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],
+      help_topic,name:"xtpoisson".into(),
+      options:vec![OptionDescriptor {name:"fe".into(),required:true},OptionDescriptor {name:"id".into(),required:true}],
+      syntax:"xtpoisson y xvars, fe id(group)".into(),
     }),
     "clogit" => Ok(CommandSchemaResult {
       arguments:vec![ArgumentDescriptor {name:"chosen".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],
@@ -2220,7 +2231,17 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 88);
+    assert_eq!(catalog.commands.len(), 89);
+    assert_eq!(
+      catalog
+        .commands
+        .iter()
+        .find(|c| c.name == "xtpoisson")
+        .unwrap()
+        .help_topic
+        .as_deref(),
+      Some("xtpoisson")
+    );
     assert_eq!(
       catalog
         .commands
@@ -2283,7 +2304,16 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 88);
+    assert_eq!(effects.commands.len(), 89);
+    assert_eq!(
+      effects
+        .commands
+        .iter()
+        .find(|c| c.name == "xtpoisson")
+        .unwrap()
+        .effects,
+      vec![CommandEffect::Read]
+    );
     assert_eq!(
       effects
         .commands
