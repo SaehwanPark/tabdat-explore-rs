@@ -2557,10 +2557,11 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   if let Some(model) = parse_identifier_option("bootstrap", &options, "model")? {
     if model.len() != 1
       || !(model[0].eq_ignore_ascii_case("poisson")
-        || model[0].eq_ignore_ascii_case("conditional_poisson"))
+        || model[0].eq_ignore_ascii_case("conditional_poisson")
+        || model[0].eq_ignore_ascii_case("gamma_poisson_re"))
     {
       return Err(ParseError::new(
-        "bootstrap model supports only poisson or conditional_poisson",
+        "bootstrap model supports only poisson, conditional_poisson or gamma_poisson_re",
       ));
     }
     if options
@@ -2568,10 +2569,10 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
       .any(|o| matches!(o.name.as_str(), "noconstant" | "quantiles" | "contrast"))
     {
       return Err(ParseError::new(
-        if model[0].eq_ignore_ascii_case("poisson") {
-          "Poisson bootstrap requires an intercept and does not support quantiles or contrast"
-        } else {
+        if model[0].eq_ignore_ascii_case("conditional_poisson") {
           "conditional Poisson FE has no common intercept; noconstant, quantiles and contrast options are unsupported"
+        } else {
+          "Poisson bootstrap requires an intercept and does not support quantiles or contrast"
         },
       ));
     }
@@ -2594,8 +2595,10 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     };
     return Ok(if model[0].eq_ignore_ascii_case("poisson") {
       Command::PoissonBootstrap { command }
-    } else {
+    } else if model[0].eq_ignore_ascii_case("conditional_poisson") {
       Command::ConditionalPoissonBootstrap { command }
+    } else {
+      Command::GammaPoissonBootstrap { command }
     });
   }
   let command = tabdat_domain::BootstrapCommand {

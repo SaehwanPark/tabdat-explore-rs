@@ -138,6 +138,45 @@ Terminal output gives slope/mean/bias/SE/interval summaries. See
 examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md for the
 bounded Chapter24 workflow and its independent evidence.
 
+## Whole-group shared-gamma Poisson RE
+
+`bootstrap y xvars, model(gamma_poisson_re) cluster(unit) seed(integer) [reps(200)]`
+
+This read-only report refits the existing shared-gamma Poisson random-effects
+model. The cluster(unit) is BOTH the shared-effect group and resampling unit;
+every sampled copy gets a distinct shared gamma effect, so copies of the same
+source group are not merged. Joint-finite cases define the frame; zero-total
+and singleton groups remain. Every raw group key must be nonmissing and finite,
+including on rows omitted for missing y/X. Numeric, boolean and text types
+preserve exact group identity. Selected counts and group totals must be exact
+integers 0..100000. Group order is first-seen among complete cases. All
+intercept/slopes and ln(alpha) are refit; this is not independent-row NB2,
+conditional FE, a posterior-effect forecast or a retained bootstrap model.
+Fit xtpoisson ..., re separately for marginal predictions.
+
+B=2..500 (default200), G<=256 with G>K, K=slopes+2 joint parameters including
+intercept and ln(alpha), slopes1..14, G*largest_group_size<=40000 and
+G*largest_group_size*B*K²<=3000000000. Checked limits are conservative; the
+underlying RE fit also enforces its original sample, count-total, rank,
+dispersion, information and convergence guards. Every failed original or
+replicate fit aborts without partial report, redraw or pooled-model fallback;
+the bounded optimizer is not a general existence or separation test. At most
+G+1024 RNG words may be used per replicate. The same local stream, B−1
+covariance, marginal type7 percentile95 and seed serialization as the pooled
+Poisson bootstrap apply. Finite B has Monte Carlo error; no BCa/studentized
+interval, analytic bootstrap p-value, survey inference, few-group guarantee or
+causal inference is claimed. Offsets, weights and noconstant are unsupported.
+
+CLI-v1 `GammaPoissonBootstrapResult` includes original joint parameters, full
+covariance, every replicate's coefficients/N and ordered zero-based group
+indices; `cluster_labels`/`cluster_sizes` follow first-seen complete-case order.
+`zero_total_group_count` and `singleton_group_count` disclose original groups.
+Labels are exact internal key strings, not necessarily display formatting.
+Terminal output gives the same parameter/mean/bias/SE/interval summaries.
+Data, labels, named reports and retained fit remain unchanged on success or
+failure. See examples/mma24p2poiscluster/individual_gamma_re_bootstrap.md for
+the bounded Chapter24 workflow and independent validation evidence.
+
 ## Joint conditional quantiles
 
 `bootstrap y xvars, quantiles(.25 .5 .75) [contrast(x)] seed(integer) [reps(200) noconstant]`

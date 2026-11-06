@@ -139,9 +139,10 @@ schema/missingness, atomic prediction failures, export-state and source/owner
 preservation. Verification commands/results are recorded in the PR; hosted CI
 and independent code review are not claimed.
 
-Outside this command: normal RE, robust/cluster/survey covariance, weights/
-offsets, posterior effects/uncertainty, generic margins/post-estimation and
-automatic bootstrap. GEE, required bootstraps, genuine survey design, remaining
-household outputs and textbook illustrations remain required; this bounded
-implementation does not waive them. Eighteen ASCII audit forgeries and four
+The separate [shared-gamma RE whole-commune bootstrap](individual_gamma_re_bootstrap.md)
+refits all joint parameters for each distinct group copy without replacing this
+retained fit. Outside this estimator: normal RE, robust/cluster/survey covariance,
+weights/offsets, posterior effects/uncertainty and generic margins/post-estimation.
+Other GEE workflows, genuine survey design, remaining household outputs and
+textbook illustrations remain required; this bounded implementation does not waive them. Eighteen ASCII audit forgeries and four
 native-author forgeries were rejected during auditor validation.

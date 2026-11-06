@@ -125,6 +125,7 @@ runs may be much slower. R/Python and publisher data are optional development
 inputs, not production dependencies. Test fixtures and commands are documented
 in `tests/fixtures/mma24_individual_conditional_fe_bootstrap/README.md`.
 
-The individual shared-gamma RE bootstrap, other GEE workflows, survey-design
-inference, remaining household outputs and other chapter illustrations remain
-required; this bounded slice does not complete the chapter or the roadmap.
+The separate [shared-gamma RE bootstrap](individual_gamma_re_bootstrap.md)
+refits distinct copied group effects. Other GEE workflows, survey-design inference,
+remaining household outputs and other chapter illustrations remain required;
+this bounded slice does not complete the chapter or the roadmap.

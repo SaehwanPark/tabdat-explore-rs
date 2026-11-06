@@ -64,6 +64,7 @@ impl Command {
       Self::IvRegress { .. }
       | Self::PoissonBootstrap { .. }
       | Self::ConditionalPoissonBootstrap { .. }
+      | Self::GammaPoissonBootstrap { .. }
       | Self::XtReg { .. }
       | Self::XtAbond { .. }
       | Self::XtLogit { .. }

@@ -111,8 +111,9 @@ predictions; it does not add clustered FE or survey inference.
 
 The separate [conditional-FE whole-commune bootstrap](individual_conditional_fe_bootstrap.md)
 refits all ten slopes on each sampled group copy and does not replace the retained
-FE fit. Still required: other GEE workflows, individual RE bootstrap, genuine
-survey weights/strata/design semantics, remaining household outputs and remaining
+FE fit. A separate [shared-gamma RE bootstrap](individual_gamma_re_bootstrap.md)
+uses distinct copied effects. Still required: other GEE workflows, genuine survey
+weights/strata/design semantics, remaining household outputs and remaining
 table/chapter illustrations. Weights/offsets, robust/cluster covariance, factors,
 generic post-estimation/margins and unit-effect uncertainty are unsupported in
 this bounded estimator, not removed from the project's required roadmap.

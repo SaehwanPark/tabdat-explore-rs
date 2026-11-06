@@ -5,8 +5,8 @@ individual bootstrap block in `mma24p2poiscluster.do`, §24.7. The author says
 these results are not reported in Table24.6; the pinned program and log use
 B=50 despite a comment saying website output uses B=500. This workflow uses
 B=500 and a declared native RNG. The separate [conditional-FE bootstrap](individual_conditional_fe_bootstrap.md)
-refits each copied FE group; individual shared-gamma-RE bootstrap, survey design
-and remaining illustrations remain required.
+refits each copied FE group; the separate [shared-gamma RE bootstrap](individual_gamma_re_bootstrap.md)
+refits distinct group effects. Survey design and remaining illustrations remain required.
 
 ## Sample and method
 

@@ -155,6 +155,8 @@ pub enum Command {
   PoissonBootstrap { command: PoissonBootstrapCommand },
   /// Read-only whole-group pairs-bootstrap conditional Poisson FE report.
   ConditionalPoissonBootstrap { command: PoissonBootstrapCommand },
+  /// Read-only whole-group pairs-bootstrap shared-gamma Poisson RE report.
+  GammaPoissonBootstrap { command: PoissonBootstrapCommand },
   /// Read-only joint IID pairs-bootstrap quantiles, sharing draws across quantiles.
   QuantileBootstrap { command: QuantileBootstrapCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).
@@ -1014,7 +1016,7 @@ pub struct BootstrapCommand {
   pub seed: u64,
 }
 
-/// Pooled or conditional-FE Poisson cluster bootstrap is a report, not a retained estimator.
+/// Poisson cluster bootstrap is a report, not a retained estimator.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoissonBootstrapCommand {
   pub outcome: String,

@@ -142,6 +142,51 @@ fn singular_resample_aborts_instead_of_merging_or_redrawing() {
   assert_eq!(p, before);
 }
 
+fn enlarged_group(additions: usize, extra_slopes: usize) -> EstimationProblem {
+  let mut p = problem();
+  for row in &mut p.design_matrix {
+    for j in 0..extra_slopes {
+      row.push((row[0] * (j + 1) as f64 + row[3] * (j + 2) as f64 + row[5] * 0.13).sin());
+    }
+  }
+  p.predictor_names
+    .extend((0..extra_slopes).map(|j| format!("extra{j}")));
+  let keys = p.sample.as_ref().unwrap().cluster_groups.as_ref().unwrap();
+  let key = keys[0].clone();
+  let source = keys
+    .iter()
+    .enumerate()
+    .filter_map(|(i, k)| (k == &key).then_some(i))
+    .collect::<Vec<_>>();
+  for i in 0..additions {
+    let row = source[i % source.len()];
+    p.response.push(p.response[row]);
+    p.design_matrix.push(p.design_matrix[row].clone());
+    let sample = p.sample.as_mut().unwrap();
+    sample.retained_indices.push(sample.total_observations);
+    sample.total_observations += 1;
+    sample.cluster_groups.as_mut().unwrap().push(key.clone());
+  }
+  p
+}
+
+#[test]
+fn rejects_largest_possible_draw_and_joint_work_caps() {
+  let oversized = enlarged_group(835, 0);
+  let err = bootstrap_gamma_poisson_clustered(&oversized, "id", 2, 0)
+    .unwrap_err()
+    .to_string();
+  assert!(
+    err.contains("G * largest group size must be at most 40000"),
+    "{err}"
+  );
+  let excessive_work = enlarged_group(510, 4);
+  let err = bootstrap_gamma_poisson_clustered(&excessive_work, "id", 500, 0)
+    .unwrap_err()
+    .to_string();
+  assert!(err.contains("3000000000"), "{err}");
+}
+
 #[test]
 fn rejects_too_many_retained_groups_before_sampling() {
   let original = problem();
@@ -181,6 +226,27 @@ fn rejects_too_many_retained_groups_before_sampling() {
     .unwrap_err()
     .to_string();
   assert!(error.contains("2 to 256 retained groups"), "{error}");
+}
+
+#[test]
+fn dispersion_boundary_resample_aborts_without_redraw() {
+  let y = vec![0., 0., 10., 12., 1., 2., 8., 10.];
+  let x = (0..8).map(|i| vec![(i % 2) as f64]).collect();
+  let keys = ["a", "a", "b", "b", "c", "c", "d", "d"]
+    .map(str::to_owned)
+    .to_vec();
+  let p = EstimationProblem::new("y", vec!["x".into()], y, x)
+    .unwrap()
+    .with_intercept_name("_cons")
+    .with_sample(EstimationSample::new((0..8).collect(), 8, 0, None, Some(keys)).unwrap());
+  assert!(fit_gamma_poisson(&p, "id", &Default::default()).is_ok());
+  let err = bootstrap_gamma_poisson_clustered(&p, "id", 2, 95)
+    .unwrap_err()
+    .to_string();
+  assert!(
+    err.contains("replicate 1 failed") && (err.contains("boundary") || err.contains("ln(alpha)")),
+    "{err}"
+  );
 }
 
 #[test]
