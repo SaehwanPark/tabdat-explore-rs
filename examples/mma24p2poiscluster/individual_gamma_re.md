@@ -1,123 +1,146 @@
-# Chapter 24 individual shared-gamma Poisson RE — implementation contract
+# Chapter 24 individual shared-gamma Poisson random effects
 
-**Status: kernel implemented/validated; CLI workflow not installed yet.**
-Existing native conditional FE and pooled workflows are unchanged. This is the
-next bounded slice, not whole Table24.6, chapter or survey-method completion.
+This bounded native workflow covers the shared-gamma RE portion of the author
+program for Cameron–Trivedi (2005), §24.7/Table24.6. It is not the complete
+chapter/table, complex-survey inference or general Stata compatibility. Source
+hashes, preparation and numeric-column interpretations are in [README](README.md).
+The [conditional FE workflow](individual_conditional_fe.md), pooled comparison
+and existing Chapter23 scalar SQL compositions remain separate.
 
-## Exact outcome and semantics
+## Sample, model and inference
 
-Add native `xtpoisson y xvars, re id(group)` plus an executable §24.7/Table24.6
-individual gamma-RE fit/report/marginal-prediction export workflow. The pinned
-source, preparation and ten numeric predictors are in [README](README.md).
-Joint-finite selection retains 27,765 people in all194 communes, including
-commune64's 94 all-zero records; source row27734 is entirely missing and removed
-by preparation/workflow before structural-key audit. People are cross-sectional;
-source-row is not time. Fit an intercept plus the original ten numeric columns;
-no factors, weights or offsets. Preserve original source/identity ordering.
+Outcome `PHARVIS`; original numeric predictors, in order: `LNHHEXP INSURANCE
+SEX AGE MARRIED ILLDAYS ACTDAYS INJURY ILLNESS EDUC`, plus an intercept. No
+factor expansion, weights or offsets. Source rows identify cross-sectional
+people, not temporal measurements. All27,766 publisher source records are audited;
+row27,734 is entirely missing and removed before structural-key fitting. All
+**27,765 people /194 communes** remain, including commune64's **94 all-zero
+observations**. Commune sizes51–206; total count14,209; zero counts20,668.
+Unlike conditional FE, zero-total groups must not be dropped.
 
-Given independent group effects `u_g ~ Gamma(shape=1/alpha,rate=1/alpha)`, counts
-are conditionally independent `Poisson(u_g*exp(X_i*beta))`. Thus E(u)=1 and
-Var(u)=alpha: shared-group mixing, not independent-row NB2. With r=1/alpha,
-S=sum(y) and M=sum(exp(X*beta)) within group, the integrated contribution is
-`lgamma(r+S)-lgamma(r)+r*log(r)-(r+S)*log(r+M)+sum(y*X*beta-lgamma(y+1))`.
-All-zero groups and singletons remain. Exact raw group keys are structural even
-on rows omitted for model missingness.
+Groups are independent. Conditional on a shared group effect,
+`Y_i ~ Poisson(u_g*exp(X_i*beta))`, independently within group, with
+`u_g ~ Gamma(shape=1/alpha,rate=1/alpha)`. E(u)=1 and Var(u)=alpha. This is
+shared-group mixing, NOT independent-row NB2. For r=1/alpha, group count total
+S and marginal total M=sum(exp(X beta)), the integrated contribution is:
 
-Estimate coefficients and ln(alpha) jointly. Use inverse full joint observed
-information, including coefficient/dispersion cross terms, normal95 coefficient
-and ln(alpha) inference, delta alpha SE and exponentiated log-scale alpha CI.
-The normal ln(alpha) z test has null ln(alpha)=0 (alpha=1), not alpha=0.
-Slope-only Wald uses the slope covariance block and chi-square reference.
-Compare with re-estimated same-sample pooled Poisson at alpha=0 using the
-conventional 50:50 chi-square(0)/chi-square(1) boundary LR reference. No LR
-reference is to be inferred for robust/cluster inference. No slope-null LR or
-unit-specific posterior effect inference is promised.
+```text
+lgamma(r+S)-lgamma(r)+r*log(r)-(r+S)*log(r+M)
+  +sum(y*X beta-lgamma(y+1))
+```
 
-`predict ..., n` is the marginal population mean exp(X*beta), xb the marginal
-log index, residuals current y minus marginal mean. These do not require a
-current group key or estimate posterior effects. Retain owned fitted state,
-explicit method/sample/covariance labels and convergence information.
+All coefficients and ln(alpha) are estimated jointly. Covariance is inverse
+**full joint observed information**, including coefficient/dispersion cross terms,
+without a DF multiplier. Coefficients and ln(alpha) have normal95 inference;
+alpha has delta SE and an exponentiated log-scale CI. The ln(alpha) z test has
+null alpha=1, NOT alpha=0. Slope-only Wald uses the slope covariance block and
+chi-square reference. The separate zero-variance LR compares the re-estimated
+same-sample pooled Poisson with the conventional 50:50 chi-square(0,1) mixture.
+These are model-based references, not robust/few-cluster or survey corrections.
 
-## Bounded acceptance cases
+Original ASCII: log likelihood−23419.13188988957, ln(alpha)−1.0398391652175825,
+alpha0.3535115343374449, LNHHEXP−0.1013746329270513 and intercept−1.276973841736605.
+An interior fit is not evidence of exogeneity, correct distribution or causality.
 
-1. Independent R direct integrated likelihood/analytic score/full information,
-   central score-derivative check and NB-total/conditional-multinomial likelihood
-   decomposition validate coefficients, all covariance/inference/dispersion/LR
-   fields and every source/marginal-prediction row. Predeclare absolute1e-9,
-   likelihood1e-8, nonzero-p relative1e-8, exact underflow zero; investigate
-   discrepancies rather than widen tolerances. Separately audit pinned DTA and
-   printed author facts, preserving precision/optimizer distinctions.
-2. A small multivariate unbalanced/interleaved reference includes positive and
-   all-zero groups, singleton, missing case and independent-row-NB counterexample;
-   ordering/scaling controls preserve the declared fit and marginal means.
-3. CLI text/JSON and actual script exercise load/prepare → specify → fit →
-   interpret/report → predict/export. Discovery/help describe the supported RE
-   distribution and limits without changing native FE behavior.
-4. Invalid keys/counts, rank deficiency, nonpositive final joint information,
-   boundary/no-interior dispersion and iteration failure are explicit; no silently
-   clipped alpha, dropped groups or Poisson fit mislabeled as gamma RE. Failed new
-   fits clear stale models without changing data; syntax errors preserve state.
-5. Prediction failure is atomic; successful/failed export preserves source and
-   existing owner files and retains fit. Script effects before export failure
-   remain intentionally nontransactional.
+## Execute and independently reproduce
 
-Initial resource limits to enforce/test: candidate rows<=40000, slopes1..32,
-rows*(slopes+2)^2<=20million, raw groups<=10000, retained groups>joint parameter
-count, exact individual counts and selected group totals<=100000. The group-total
-limit bounds stable integer-recurrence work/cache, rather than looping up to an
-unbounded total; this original sample's maximum is310. Require an interior
-ln(alpha) strictly in(-12,12), full-rank design and finite positive final observed
-information. RMS-rescaled design and per-group score/information use both
-max-absolute score and full undamped-step tolerances1e-10. Boundary fits fail
-explicitly in this bounded slice; automatic boundary fallback is unsupported.
-Reuse existing stats/domain/execution/reporting crates and numerical helpers;
-no production Python/R dependency or general optimizer framework.
+Build with `cargo build --locked --bin tabdat-explore-rs`. In an empty working
+directory, with `repo` set to the repository path:
 
-Exclusions: normal RE, robust/cluster/survey covariance, offsets/weights,
-factors, posterior effects, generic margins/post-estimation and automatic
-bootstrap. These and the remaining required textbook outcomes are not waived.
+```sh
+python3 "$repo/examples/mma24p2poiscluster/prepare.py" /path/to/vietnam_ex2.asc vietnam_individual.csv
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p2poiscluster/individual_gamma_re.td" > result.jsonl
+Rscript "$repo/examples/mma24p2poiscluster/gamma_re_reference.R" /path/to/vietnam_ex2.asc reference
+python3 "$repo/examples/mma24p2poiscluster/check_gamma_re.py" . reference /path/to/vietnam_ex2.asc
+```
 
-## Preliminary independent feasibility evidence (not native validation)
+Run `--text` in a separate empty directory. Both interfaces export byte-identical
+`individual_gamma_re_predictions.csv`: all27,765 complete source records, selected
+commune totals, explicit all-true inclusion flags and marginal mean/index/residual.
+The original input is unchanged. R/Python are optional preparation/validation
+tools, not production dependencies.
 
-A development-only R4.6.2 base-R BFGS fit, refined by full observed information,
-retains all27,765 people/all194 communes and gives ASCII log likelihood
--23419.13188988957, ln(alpha) -1.0398391652175825, alpha0.35351153433744487,
-LNHHEXP -0.10137463292705126 and intercept -1.2769738417366050. Full information
-is positive; central score derivatives reproduce covariance within1e-8;
-NB-total/conditional likelihood decomposition differs by5.821e-11. This is a
-feasibility probe, not a checked-in full oracle or a printed-author/native audit.
-The initial unscaled BFGS objective could overshoot into numerically unstable
-near-zero dispersion; optimizing likelihood/score per group avoids that probe
-failure without changing the objective's optimum. Stable recurrence evaluation
-and bounded native convergence were subsequently implemented and validated in
-the pure stats kernel; runtime integration remains pending.
+The independent R4.6.2 reference uses base-R BFGS plus observed-information
+refinement, direct special-function likelihood/score/information, central score
+derivatives to check the full covariance and an independent NB-total/conditional-
+multinomial likelihood decomposition. Rust instead uses bounded integer-gamma
+recurrences, centered information and a guarded Newton search. The initial R
+probe's unnormalized BFGS objective could overshoot toward unstable near-zero
+dispersion; optimizing objective/score per group avoids that probe failure
+without changing the optimum. No tolerance is widened to conceal disagreement.
 
-## Kernel-stage evidence (draft, not a delivered command)
+The strict ASCII auditor checks **236 quantities**, every source record and every
+marginal prediction record. Fixed tolerances: absolute1e-9, log likelihood1e-8,
+nonzero-p relative1e-8 and exact zero underflow. Maximum quantity discrepancy
+was below 1.051e-10. Native fitting used five information evaluations, with final
+scaled score below 2.265e-13 and undamped step below 1.942e-15.
 
-`gamma_re_reference.R` now independently checks full information against central
-score derivatives and the NB-total/conditional likelihood decomposition, and
-exports 236 quantities plus every marginal mean/index/residual row. Native pure
-Rust matches all236 quantities/all27,765 original ASCII prediction rows at the
-fixed tolerances above: maximum quantity discrepancy1.051e-10, five information
-evaluations, scaled score2.265e-13 and step1.942e-15. This does not yet verify
-native CLI, source exports or printed DTA author facts.
+### Separate DTA and printed-author checks
 
-The checked-in 279-record synthetic fixture has278 complete cases/48 groups,
-four zero-total groups and two singletons. Its independent236-field oracle and
-all predictions pass. Controls distinguish shared-group from row-NB mixing;
-all-singleton gamma reproduces native NB2 coefficients/full covariance. Scaling,
-row order, invalid counts/sample/weights/rank/work bounds, iteration and genuine
-Poisson-boundary failures are tested. All270 stats-crate tests pass; one existing
-manual probe is skipped. Stats all-target Clippy, formatting and diff checks pass.
+DTA binary floats are more precise than the rounded publisher ASCII. In another
+empty work directory, use the existing `dta_reference.R` converter for native
+CSV import, but generate the reference **directly from DTA** with `foreign`:
 
-To replay original pure-kernel validation, first generate the R reference in a
-fresh directory, copy its `source.csv` to `input.csv`, then set
-`TABDAT_GAMMA_RE_REFERENCE_ROOT` to that directory when explicitly running
-`cargo test --locked -p tabdat-stats --test gamma_poisson independent_r_full_joint_reference_and_every_marginal_prediction -- --exact --nocapture`.
-Without the override that test always runs the checked-in fixture, never skips
-an absent external reference. Production requires neither R nor this override.
+```sh
+Rscript "$repo/examples/mma24p2poiscluster/dta_reference.R" /path/to/vietnam_ex2.dta vietnam_individual.csv
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p2poiscluster/individual_gamma_re.td" > result.jsonl
+Rscript "$repo/examples/mma24p2poiscluster/gamma_re_reference.R" /path/to/vietnam_ex2.dta dta-reference --dta
+python3 "$repo/examples/mma24p2poiscluster/check_gamma_re.py" . dta-reference /path/to/vietnam_ex2.dta --dta
+python3 "$repo/examples/mma24p2poiscluster/check_gamma_re_author.py" /path/to/vietnam_ex2.dta /path/to/mma24p2poiscluster.txt dta-reference result.jsonl
+```
 
-Still pending before merge: parser/runtime/state/reporting/prediction integration,
-actual executable script, source/owner/state failure tests, strict ASCII and
-separate DTA/author auditors, capability maps and reverse-consumer regression
-validation. No hosted CI or independent code review is claimed.
+The DTA numerical audit checks the same236 quantities and every typed R-source
+and native prediction record at the same tolerances; maximum quantity discrepancy
+was below 2.247e-10. Both R and native match **29 printed author facts**: eleven
+coefficient/SE pairs, ln(alpha)/SE, alpha/SE, log likelihood, slope Wald and boundary
+LR. Printed comparisons use half the last printed digit, not the strict numerical
+tolerance. Other printed fields, historical iterations and whole-table/book
+parity are not claimed. Native DTA import support is not implied by optional
+external conversion.
+
+## State, predictions, failure and resource boundaries
+
+`predict ..., n` is the marginal population mean exp(intercept+X beta); xb
+includes the intercept; residuals are current y minus marginal mean. No current
+ID is needed. These are NOT posterior group effects or conditional-on-estimated-
+effect forecasts. Missing/nonfinite required current inputs give NULL; residuals
+require finite current y. Unrepresentable finite-input requested predictions
+fail atomically; xb does not compute an unnecessarily overflowing mean. Genuine
+floating-point exponential underflow can yield zero. Predictions never refit.
+
+A failed new fit clears stale models without changing data. Parser failures
+preserve old state. Reporting and successful/failed export retain the owned fit.
+Export refuses to overwrite an owner file. Scripts are intentionally
+nontransactional: a failed export does not undo earlier table/model effects.
+Use a fresh directory or another output path rather than deleting others' files.
+
+Generic native fits use joint-finite model cases and structural raw-key auditing,
+even on omitted model rows. The publisher script additionally requires positive
+unique BIGINT source-row keys, positive BIGINT commune IDs and complete finite
+model records except wholly missing rows; partial records fail before fitting.
+
+Bounds: candidate rows<=40000, slopes1..32, rows*(slopes+2)²<=20million,
+raw groups<=10000, selected groups>slopes+2, exact integer individual counts and
+selected group totals<=100000. The group-total cap bounds recurrence work/cache;
+this original sample's maximum is310. ln(alpha) must be strictly inside(-12,12).
+RMS-rescaled design and per-group score/information require both max-absolute
+score and full undamped-step tolerances1e-10. Intermediate damping does not change
+final undamped observed covariance. Rank, curvature, boundary and convergence
+failures are explicit: no silently clipped alpha, dropped groups or pooled model
+mislabeled as RE. Automatic zero-variance fallback is unsupported.
+
+The checked-in synthetic reference has279 source records/278 cases/48 groups,
+four zero-total groups and two singletons. Tests check all236 quantities/every
+prediction, scaling/order invariance, shared-vs-row mixing and the all-singleton
+NB2 identity including full covariance; invalid keys/counts/sample/rank/weights/
+bounds and genuine dispersion-boundary failures; CLI text/JSON, current-data
+schema/missingness, atomic prediction failures, export-state and source/owner
+preservation. Verification commands/results are recorded in the PR; hosted CI
+and independent code review are not claimed.
+
+Outside this command: normal RE, robust/cluster/survey covariance, weights/
+offsets, posterior effects/uncertainty, generic margins/post-estimation and
+automatic bootstrap. GEE, required bootstraps, genuine survey design, remaining
+household outputs and textbook illustrations remain required; this bounded
+implementation does not waive them. Eighteen ASCII audit forgeries and four
+native-author forgeries were rejected during auditor validation.

@@ -1,9 +1,13 @@
 # Development-only independent shared-gamma likelihood and full information.
 options(digits=17)
 a<-commandArgs(trailingOnly=TRUE)
-if (!(length(a)%in%c(2,3)) || (length(a)==3 && a[3]!='--csv')) stop('usage: gamma_re_reference.R source output-directory [--csv]')
+if (!(length(a)%in%c(2,3)) || (length(a)==3 && !(a[3]%in%c('--csv','--dta')))) stop('usage: gamma_re_reference.R source output-directory [--csv | --dta]')
 stopifnot(!file.exists(a[2]))
-if(length(a)==3) {source<-read.csv(a[1])} else {
+if(length(a)==3 && a[3]=='--dta') {
+ d<-foreign::read.dta(a[1],convert.factors=FALSE)
+ stopifnot(nrow(d)==27766,identical(which(is.na(d$PHARVIS)),27734L),all(is.na(d[27734,])))
+ source<-data.frame(source_row=seq_len(nrow(d)),pharvis=d$PHARVIS,lnhhexp=d$lnhhinc,age=d$AGE,sex=d$SEX,married=d$MARRIED,educ=d$COMPED98,illness=d$ILLDUM,injury=d$INJDUM,illdays=d$ILLDAYS,actdays=d$ACTDAYS,insurance=d$HLTHINS,commune=d$commune)
+} else if(length(a)==3) {source<-read.csv(a[1])} else {
  tokens<-scan(a[1],what=character(),quiet=TRUE);stopifnot(length(tokens)==27766*12)
  raw<-matrix(tokens,ncol=12,byrow=TRUE);v<-matrix(as.numeric(replace(raw,raw=='.',NA)),ncol=12)
  stopifnot(identical(which(rowSums(is.na(v))>0),27734L),all(is.na(v[27734,])))

@@ -184,9 +184,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
       "xtpoisson",
-      "xtpoisson y xvars, fe id(group)",
+      "xtpoisson y xvars, fe|re id(group)",
       serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
-      vec!["fe", "id"],
+      vec!["fe", "re", "id"],
     ),
     (
       "xtreg",
@@ -233,7 +233,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     assert_eq!(data["arguments"], arguments);
     let expected: Vec<_> = options
       .into_iter()
-      .map(|option| serde_json::json!({"name": option, "required": name=="xtpoisson"}))
+      .map(
+        |option| serde_json::json!({"name": option, "required": name=="xtpoisson" && option=="id"}),
+      )
       .collect();
     assert_eq!(data["options"], serde_json::json!(expected));
     let help = tabdat_bin()

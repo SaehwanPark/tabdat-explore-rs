@@ -16,7 +16,11 @@ A separate [native conditional Poisson FE workflow](individual_conditional_fe.md
 now covers the individual FE column, with 27,671 retained people/193 communes,
 179 independent R fit quantities, all source/prediction/exclusion rows and a
 20-fact native DTA author coefficient/SE audit. It does not alter the pooled
-workflow below or imply individual RE, clustered FE or survey inference.
+workflow below or imply clustered FE or survey inference. The separate
+[shared-gamma RE workflow](individual_gamma_re.md) now retains all27,765 people/
+194 communes, validates236 R quantities and every source/marginal-prediction row
+on ASCII and DTA, and matches29 printed native DTA author facts. It is model-based
+shared-group mixing, not row NB2, posterior-effect or complex-survey inference.
 
 ## Source, design and execution
 
