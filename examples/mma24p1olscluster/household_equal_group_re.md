@@ -112,6 +112,7 @@ python3 "$repo/examples/mma24p1olscluster/check_household_re_author.py" /path/to
 ```
 
 **Status:** independently validated bounded native workflow, not complete
-Table 24.4/chapter coverage. Household RE/GEE/OLS/FE bootstraps, GEE, individual
-FE/RE, genuine survey weights/strata and remaining illustrated outputs remain
-required.
+Table 24.4/chapter coverage. Printed author within/between/overall R²,
+component-summary rounding and other fit-statistic outputs are not covered by
+the 14-fact audit. Household bootstraps and GEE, individual FE/RE, genuine
+survey weights/strata and remaining illustrated outputs remain required.
