@@ -29,6 +29,7 @@ mod gaussian_gee;
 pub use gaussian_gee::{
   GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult, fit_gaussian_gee,
 };
+mod conditional_poisson_bootstrap;
 mod gaussian_mle;
 mod gompertz;
 mod heckman;
@@ -99,6 +100,9 @@ pub use cluster_gmm::{ClusterGmmResult, fit_cluster_two_step_gmm};
 pub use conditional_logit::{
   ConditionalLogitOptions, ConditionalLogitProblem, ConditionalLogitResult,
   conditional_logit_predict_set, fit_conditional_logit,
+};
+pub use conditional_poisson_bootstrap::{
+  ConditionalPoissonBootstrapResult, bootstrap_conditional_poisson_clustered,
 };
 pub use count_probabilities::{
   CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_POINT_CUTOFF,

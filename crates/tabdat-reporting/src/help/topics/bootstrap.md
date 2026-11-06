@@ -100,6 +100,44 @@ intervals; the full matrix and draw audit are available in JSON. See
 examples/mma24p2poiscluster/individual_pooled_bootstrap.md for the bounded
 Chapter24 individual workflow and independent evidence.
 
+## Whole-group conditional Poisson FE
+
+`bootstrap y xvars, model(conditional_poisson) cluster(unit) seed(integer) [reps(200)]`
+
+This read-only report refits the existing conditional Poisson fixed-effects
+model: cluster(unit) is BOTH the FE identifier and the resampling unit. There is
+no common intercept; noconstant, quantiles, contrast, offsets and weights are
+unsupported. As in xtpoisson, every raw unit key must be nonmissing and finite,
+including keys on rows omitted for missing y/X; supported numeric, boolean and
+text types preserve exact group identity. Joint-finite selection happens before
+checking exact counts 0..100000. Groups with zero selected count totals are
+excluded BEFORE defining the bootstrap frame; positive singletons remain but
+contribute no slope information. Group order is first-seen among retained
+positive-total complete cases. Current data and any retained model/named reports
+are unchanged; fit xtpoisson separately for prediction.
+
+Each replication samples G original retained groups with replacement and
+refits all slopes with a distinct FE identity for each copied group. B=2..500
+(default200), G<=256 with G>K, K=1..16 slopes, G*largest_group_size<=40000,
+and G*largest_group_size*B*K²<=2500000000. Checked limits are conservative;
+the underlying FE fit also enforces its original sample, rank, numerical and
+convergence guards. Any failure aborts the entire report without redraw; the
+bounded optimizer is not a general proof of existence or identification.
+At most G+1024 RNG words may be used per replication. The same local stream,
+B−1 covariance, type7 marginal percentile95 and seed serialization as pooled
+Poisson apply. Finite B has Monte Carlo error; no BCa/studentized interval,
+analytic bootstrap p-value, RE, few-group coverage, survey or causal inference
+is claimed.
+
+CLI-v1 `ConditionalPoissonBootstrapResult` includes original slopes, full
+covariance, every replicate's slopes and N, and ordered zero-based group draws.
+`cluster_labels`/`cluster_sizes` are in first-seen positive-total order, and
+`zero_total_group_count`/`zero_total_observation_count` disclose the exclusion.
+Labels use exact internal key strings, not necessarily display formatting.
+Terminal output gives slope/mean/bias/SE/interval summaries. See
+examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md for the
+bounded Chapter24 workflow and its independent evidence.
+
 ## Joint conditional quantiles
 
 `bootstrap y xvars, quantiles(.25 .5 .75) [contrast(x)] seed(integer) [reps(200) noconstant]`

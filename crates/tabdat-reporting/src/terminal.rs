@@ -1286,6 +1286,24 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text
     }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
+    ExecutionResult::ConditionalPoissonBootstrap(result) => {
+      let mut text = format!(
+        "Whole-group pairs-bootstrap conditional Poisson FE: {}\nN = {}; groups = {}; excluded zero-total groups/rows = {}/{}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",
+        result.outcome.escape_debug(),
+        result.observation_count,
+        result.cluster_labels.len(),
+        result.zero_total_group_count,
+        result.zero_total_observation_count,
+        result.replications,
+        result.seed,
+        result.rng
+      );
+      for b in &result.coefficients {
+        writeln!(text, "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]", b.name.escape_debug(), inference_number(b.estimate), inference_number(b.bootstrap_mean), inference_number(b.bias), inference_number(b.standard_error), inference_number(b.ci_lower), inference_number(b.ci_upper)).unwrap();
+      }
+      text.push_str("Resamples positive-total estimation groups with replacement; each copy has a distinct FE identity. Failed refits abort without redraw. Not RE, survey design, residual or wild bootstrap. Data and the retained fit are unchanged.\n");
+      text
+    }
     ExecutionResult::ClusterPoissonBootstrap(result) => {
       let mut text = format!(
         "Whole-cluster pairs-bootstrap Poisson: {}\nN = {}; clusters = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",

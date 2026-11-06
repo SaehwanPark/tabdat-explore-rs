@@ -63,6 +63,7 @@ impl Command {
       }
       Self::IvRegress { .. }
       | Self::PoissonBootstrap { .. }
+      | Self::ConditionalPoissonBootstrap { .. }
       | Self::XtReg { .. }
       | Self::XtAbond { .. }
       | Self::XtLogit { .. }

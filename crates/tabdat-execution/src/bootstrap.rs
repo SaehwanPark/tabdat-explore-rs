@@ -1,6 +1,41 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_conditional_poisson_bootstrap(
+    &self,
+    command: &PoissonBootstrapCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let k = command.predictors.len();
+    if !(1..=16).contains(&k) {
+      return Err(RuntimeError::BootstrapFailed(
+        "conditional Poisson FE requires 1 to 16 slopes".into(),
+      ));
+    }
+    self
+      .validate_xtpoisson_group_structure(&command.cluster_variable, k)
+      .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    let (problem, _) = self
+      .count_problem(
+        crate::count::CountFamily::ConditionalPoisson,
+        &command.outcome,
+        &command.predictors,
+        false,
+        Some(&command.cluster_variable),
+        None,
+      )
+      .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    let result = tabdat_stats::bootstrap_conditional_poisson_clustered(
+      &problem,
+      &command.cluster_variable,
+      command.replications,
+      command.seed,
+    )
+    .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    Ok(ExecutionResult::ConditionalPoissonBootstrap(Box::new(
+      result,
+    )))
+  }
+
   pub(crate) fn execute_poisson_bootstrap(
     &self,
     command: &PoissonBootstrapCommand,

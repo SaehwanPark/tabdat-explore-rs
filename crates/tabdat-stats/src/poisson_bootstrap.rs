@@ -48,7 +48,10 @@ fn invalid(message: impl Into<String>) -> StatsError {
   ))
 }
 
-fn draw_clusters(rng: &mut impl RngCore, groups: usize) -> Result<Vec<usize>, StatsError> {
+pub(crate) fn draw_clusters(
+  rng: &mut impl RngCore,
+  groups: usize,
+) -> Result<Vec<usize>, StatsError> {
   let bound = groups as u64;
   let zone = u64::MAX - u64::MAX % bound;
   let mut draws = Vec::with_capacity(groups);

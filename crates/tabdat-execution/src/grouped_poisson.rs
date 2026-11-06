@@ -7,17 +7,11 @@ fn error(message: impl Into<String>) -> RuntimeError {
   }
 }
 impl Session {
-  pub(crate) fn execute_xtpoisson(
-    &mut self,
-    command: &XtPoissonCommand,
-  ) -> Result<ExecutionResult, RuntimeError> {
-    self.estimation = None;
-    let k = command.predictors.len();
-    let gamma = command.estimator == XtPoissonEstimator::SharedGammaRe;
-    let dimension = if gamma { k + 2 } else { k };
-    if !(1..=32).contains(&k) {
-      return Err(error("requires1..32 numeric predictors"));
-    }
+  pub(crate) fn validate_xtpoisson_group_structure(
+    &self,
+    entity_variable: &str,
+    dimension: usize,
+  ) -> Result<String, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
@@ -27,7 +21,7 @@ impl Session {
     let column = dataset
       .columns
       .iter()
-      .find(|c| c.name == command.entity_variable)
+      .find(|c| c.name == entity_variable)
       .ok_or_else(|| error("unknown group variable"))?;
     let entity_data_type = column.data_type.clone();
     if !is_numeric_data_type(&entity_data_type)
@@ -40,7 +34,7 @@ impl Session {
     let mut groups = BTreeSet::new();
     let query = format!(
       "SELECT {} FROM {ACTIVE_TABLE}",
-      quote_identifier(&command.entity_variable)
+      quote_identifier(entity_variable)
     );
     self
       .backend
@@ -67,6 +61,22 @@ impl Session {
         },
         error,
       )?;
+    Ok(entity_data_type)
+  }
+
+  pub(crate) fn execute_xtpoisson(
+    &mut self,
+    command: &XtPoissonCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    self.estimation = None;
+    let k = command.predictors.len();
+    let gamma = command.estimator == XtPoissonEstimator::SharedGammaRe;
+    let dimension = if gamma { k + 2 } else { k };
+    if !(1..=32).contains(&k) {
+      return Err(error("requires1..32 numeric predictors"));
+    }
+    let entity_data_type =
+      self.validate_xtpoisson_group_structure(&command.entity_variable, dimension)?;
     let (problem, _) = self.count_problem(
       if gamma {
         CountFamily::GammaPoisson

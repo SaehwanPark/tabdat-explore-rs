@@ -160,6 +160,9 @@ impl Session {
       }
       Command::Bootstrap { command } => self.execute_bootstrap(&command),
       Command::PoissonBootstrap { command } => self.execute_poisson_bootstrap(&command),
+      Command::ConditionalPoissonBootstrap { command } => {
+        self.execute_conditional_poisson_bootstrap(&command)
+      }
       Command::QuantileBootstrap { command } => self.execute_quantile_bootstrap(&command),
       Command::Logit { command } => self.execute_logit(&command),
       Command::Probit { command } => self.execute_probit(&command),
