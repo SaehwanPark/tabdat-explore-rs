@@ -97,6 +97,7 @@ write_precise <- function(data,path) {
 write_precise(source,file.path(a[3],'input.csv'))
 write_precise(d,file.path(a[3],'predictions.csv'))
 write_precise(fits,file.path(a[3],'fits.csv'))
+write_precise(as.data.frame(as.list(base$diagnostics)),file.path(a[3],'baseline.csv'))
 write_precise(summary,file.path(a[3],'summary.csv'))
 write_precise(data.frame(commune=ids,observations=sizes),file.path(a[3],'groups.csv'))
 cat(R.version.string,'N',N,'G',G,'B',B,'intercept',base$coefficients[1],
