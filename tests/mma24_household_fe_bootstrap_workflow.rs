@@ -182,7 +182,9 @@ fn actual_unbalanced_script_matches_all_r_refits_and_preserves_original_predicti
   assert_eq!(draws.len(), 24000);
   assert_eq!(&draws[..144], head);
   let mut counts = Vec::new();
-  for (i, block) in draws.chunks_exact(48).enumerate() {
+  let (blocks, remainder) = draws.as_chunks::<48>();
+  assert!(remainder.is_empty());
+  for (i, block) in blocks.iter().enumerate() {
     let mut n = 0;
     let mut previous_step = 0;
     for (j, r) in block.iter().enumerate() {
