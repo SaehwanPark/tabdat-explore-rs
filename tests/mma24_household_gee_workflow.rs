@@ -362,6 +362,33 @@ fn numerical_fit_failure_preserves_previous_fit_and_current_table() {
 }
 
 #[test]
+fn joint_missing_group_selection_preserves_wide_decimal_key_identity() {
+  let d = TestDir::new();
+  let path = d.path().join("vietnam.csv");
+  fs::write(&path, INPUT).unwrap();
+  let mut s = Session::new();
+  execute(&mut s, &format!("use \"{}\"", path.display()));
+  execute(
+    &mut s,
+    "sql \"\"\"SELECT * EXCLUDE(commune), CASE WHEN source_row=1 THEN NULL ELSE CAST(commune AS DECIMAL(38,0))+CAST('9007199254740992' AS DECIMAL(38,0)) END AS commune FROM active\"\"\" into wide_ids",
+  );
+  execute(&mut s, FIT);
+  let Some(EstimationState::GaussianGee(fit)) = s.state().estimation else {
+    panic!()
+  };
+  assert_eq!(fit.group_count, 47);
+  assert_eq!(fit.observation_count, 167);
+  assert_eq!(fit.sample.total_observations, 170);
+  assert_eq!(fit.sample.dropped_observations, 3);
+  assert!(!fit.sample.retained_indices.contains(&0));
+  execute(&mut s, "predict marginal");
+  execute(
+    &mut s,
+    "sql \"\"\"SELECT CASE WHEN COUNT(*) FILTER (WHERE source_row=1 AND commune IS NULL AND marginal IS NOT NULL)!=1 THEN error('marginal prediction must not require group') ELSE 1 END AS valid FROM active\"\"\"",
+  );
+}
+
+#[test]
 fn bounded_candidate_groups_and_prediction_rows_fail_atomically() {
   let d = TestDir::new();
   let path = d.path().join("vietnam.csv");

@@ -201,7 +201,8 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 90);
+    assert_eq!(available_help_topics().len(), 91);
+    assert!(available_help_topics().contains(&"xtgee"));
     assert!(available_help_topics().contains(&"xtpoisson"));
     assert!(available_help_topics().contains(&"stcox"));
     assert!(available_help_topics().contains(&"truncreg"));

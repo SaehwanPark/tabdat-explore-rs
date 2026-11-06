@@ -93,8 +93,11 @@ separately converted DTA it matches198 independent R/geeM fit, full-covariance
 and inference quantities, all5,999 source/prediction rows and5,006 selected cases.
 A DTA/author-log check matches14 printed coefficient/SE facts plus scale and
 slope Wald (16 facts) within half the last printed digit. Text and JSON exports
-are byte-identical. The strict auditor rejected15 forged input/result fields;
-the author auditor rejected two further forgeries.
+are byte-identical. R4.6.2/geeM0.10.1/Matrix1.7.6/foreign0.8.92 gave maximum
+absolute discrepancies `3.48e-11` ASCII and `2.43e-11` DTA, and maximum nonzero-p
+relative discrepancies `1.74e-11` and `1.18e-11`, respectively. The strict
+auditor rejected15 forged input/result fields; the author auditor rejected two
+further forgeries.
 
 The checked-in 48-group synthetic fixtures cover positive (`rho=0.7204`) and
 negative (`rho=-0.1377`) correlations, singletons and missing cases. Focused
@@ -109,7 +112,21 @@ complex-survey weights/strata and whole-table/book coverage remain required gaps
 not waived by this slice. No generic store/restore, post-estimation contrasts,
 prediction uncertainty or new platform/release claim is included.
 
-## Run the independent reference
+## Reproduce the script and independent reference
+
+After building the binary, prepare the publisher ASCII and run from an empty
+working directory (`repo` is the repository path):
+
+```sh
+python3 "$repo/examples/mma24p1olscluster/prepare.py" /path/to/vietnam_ex1.asc vietnam.csv
+"$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_gee.td" > result.jsonl
+```
+
+Use `--text` for human-readable output. For the optional DTA comparison, run
+`Rscript "$repo/examples/mma24p1olscluster/dta_reference.R" vietnam_ex1.dta vietnam.csv`
+in a separate empty directory before running the same script. Both preparation
+paths refuse to overwrite the CSV; the script's export refuses to overwrite an
+existing prediction file.
 
 Install optional R `geeM 0.10.1` (depends on Matrix); DTA additionally uses
 `foreign`. Set `R_LIBS` to a non-default validation library if necessary.

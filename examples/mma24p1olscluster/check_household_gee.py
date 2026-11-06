@@ -92,9 +92,15 @@ def main():
   expected=rows(ref/'reference.csv')
   assert len(expected)==len(actual_fields)==198 and len({r['path'] for r in expected})==198
   assert set(actual_fields)=={r['path'] for r in expected}
-  for r in expected: near(actual_fields[r['path']],r['value'],r['path'].endswith('p_value'))
+  max_abs=0.0;max_relative_p=0.0
+  for r in expected:
+    path=r['path'];value=float(r['value']);got=float(actual_fields[path])
+    near(got,value,path.endswith('p_value'))
+    max_abs=max(max_abs,abs(got-value))
+    if path.endswith('p_value') and value!=0: max_relative_p=max(max_relative_p,abs(got-value)/abs(value))
   assert events[-1]['data']['dataset']['row_count']==5999
-  print('validated 198 R/geeM quantities, 5999 source/prediction rows and 5006 selected cases;', 'DTA' if dta else 'ASCII')
+  print('validated 198 R/geeM quantities, 5999 source/prediction rows and 5006 selected cases;',
+        'DTA' if dta else 'ASCII','maximum absolute discrepancy',max_abs,'maximum nonzero-p relative discrepancy',max_relative_p)
 
 
 if __name__=='__main__':
