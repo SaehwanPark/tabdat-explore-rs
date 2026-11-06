@@ -14,8 +14,11 @@ household FE columns. A separate [commune RE-GLS workflow](household_re_gls.md)
 validates native unbalanced Swamy–Arora estimation, **not** the author's different
 RE component convention. The opt-in
 [equal-group-between RE workflow](household_equal_group_re.md) separately
-validates all 14 printed author coefficient/SE facts on the DTA. Remaining RE
-outputs, GEE, bootstrap, and survey weights/strata remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
+validates all 14 printed author coefficient/SE facts on the DTA. The separate
+[Gaussian exchangeable GEE workflow](household_gee.md) validates both working and
+uncorrected commune-sandwich inference, all source/prediction rows and16 printed
+DTA author facts. Remaining RE outputs, bootstrap, and genuine survey weights/strata
+remain required; the [individual pooled Poisson workflow](../mma24p2poiscluster/README.md)
 covers a separate portion of Table 24.6.
 
 ## Source and preparation

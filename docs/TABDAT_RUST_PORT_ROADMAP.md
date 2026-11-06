@@ -202,6 +202,10 @@ Extend the same workflow/validation standard to:
   [equal-group-between RE workflow](../examples/mma24p1olscluster/household_equal_group_re.md)
   independently validates the alternate component formula and all 14 native
   DTA-based printed author coefficient/SE facts, without changing the default.
+  The distinct [native household Gaussian GEE](../examples/mma24p1olscluster/household_gee.md)
+  validates working and uncorrected commune-sandwich inference against198 R/geeM
+  quantities, all5,999 source/prediction rows on ASCII and DTA, and16 printed
+  DTA author facts; it retains an owned marginal model, not an RE fit.
   The [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
   27,765 individuals against R. The separate native
@@ -216,7 +220,7 @@ Extend the same workflow/validation standard to:
   prediction row on ASCII and DTA, and matches 29 native DTA author facts.
   These workflows are unweighted, not design-based survey inference.
   Household RE outputs beyond the validated
-  coefficient/SE portion, GEE, bootstraps and full survey methods remain required.
+  coefficient/SE portion, other GEE workflows, bootstraps and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
@@ -315,8 +319,9 @@ GEE composition](../examples/mma21p1panel/gaussian_pa.md) now validates legacy
 Pearson exchangeable correlation/RSS-N scale, full working/uncorrected unit
 sandwich covariance/normal95, all5,320 predictions/532 unit scores and12 author
 printed facts against R gee/dense matrices. Positive/negative-correlation controls,
-readable/CLI-v1 reports and retained pooled-OLS state are explicit; no owned GEE
-model or generic API; its original report omits p-values, while the P4 report
+readable/CLI-v1 reports and retained pooled-OLS state are explicit; this composition
+has no owned GEE model (the separate native household GEE uses different moments).
+The composition's original report omits p-values, while the P4 report
 below supplies them. The distinct [normalized FE level-intercept
 pairs bootstrap](../examples/mma21p1panel/fe_level_bootstrap.md) now validates500
 raw-copy R QR refits/266,000 exact draws, full coefficient covariance/type7

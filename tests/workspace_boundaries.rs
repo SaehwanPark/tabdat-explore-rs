@@ -149,6 +149,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
             | "nlogit"
             | "stcox"
             | "truncreg"
+            | "xtgee"
             | "xtpoisson"
         )
       )
@@ -164,6 +165,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
       &serde_json::json!({"name":"nlogit","effects":["read"]}),
       &serde_json::json!({"name":"stcox","effects":["read"]}),
       &serde_json::json!({"name":"truncreg","effects":["read"]}),
+      &serde_json::json!({"name":"xtgee","effects":["read"]}),
       &serde_json::json!({"name":"xtpoisson","effects":["read"]})
     ]
   );
@@ -179,6 +181,7 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
           | "nlogit"
           | "stcox"
           | "truncreg"
+          | "xtgee"
           | "xtpoisson"
       )
     )

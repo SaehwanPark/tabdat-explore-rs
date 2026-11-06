@@ -241,6 +241,7 @@ pub fn fit_gaussian_gee(
     || problem.weights.is_some()
     || entity_variable.trim().is_empty()
     || options.max_iterations == 0
+    || options.max_iterations > 100
     || !(1..=32).contains(&slopes)
     || problem
       .predictor_names
@@ -254,7 +255,7 @@ pub fn fit_gaussian_gee(
       .any(|name| name == &problem.intercept_name)
   {
     return Err(invalid(
-      "requires intercept, unique K1..32 slopes, group name, no weights and positive iteration bound",
+      "requires intercept, unique K1..32 slopes, group name, no weights and iteration bound1..100",
     ));
   }
   let sample = problem

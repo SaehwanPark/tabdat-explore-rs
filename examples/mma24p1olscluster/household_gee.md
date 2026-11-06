@@ -1,9 +1,8 @@
 # Household Gaussian exchangeable GEE: implementation contract
 
-**Status: WIP; no native GEE command or retained GEE model is installed yet.**
-The optional independent R reference and a not-yet-integrated Rust kernel are
-executable. This document defines the bounded next slice; it is not a user-facing
-capability or whole-Table24.4 completion claim.
+**Status: native bounded workflow implemented and independently validated.**
+This is the household population-averaged block, not a whole-Table24.4 or
+complex-survey completion claim.
 
 ## Exact illustration and sample
 
@@ -52,9 +51,9 @@ substituted. The native numerical audit will use fixed absolute1e-9,
 nonzero-p relative1e-8 and exact-zero underflow checks, with exact sample/row keys.
 Printed author facts use half the last printed digit, separately on DTA.
 
-## Planned user-visible workflow and boundaries
+## User-visible workflow and boundaries
 
-Install only:
+The installed form is:
 
 ```text
 xtgee lnexp12m lnhhexp age sex hhsize farm educ, family(gaussian) link(identity) corr(exchangeable) id(commune)
@@ -86,29 +85,24 @@ correlation. Reject boundary correlation, all-singleton/unidentified designs,
 nonfinite numerical results, nonconvergence and resource overruns explicitly;
 no clipping, working-independence fallback or relabeling as RE.
 
-## Acceptance and implementation order
+## Evidence and limits
 
-Risk: **high** (new estimator, inference and owned-state/public result boundaries).
+The actual [script](household_gee.td) exports all source rows, sample membership,
+current-X marginal mean/index and current-y residuals. On both original ASCII and
+separately converted DTA it matches198 independent R/geeM fit, full-covariance
+and inference quantities, all5,999 source/prediction rows and5,006 selected cases.
+A DTA/author-log check matches14 printed coefficient/SE facts plus scale and
+slope Wald (16 facts) within half the last printed digit. Text and JSON exports
+are byte-identical. The strict auditor rejected15 forged input/result fields;
+the author auditor rejected two further forgeries.
 
-1. Add the pure Gaussian GEE kernel/result/options under `tabdat-stats`, reusing
-   `problem.rs`, `sample.rs` and `matrix.rs`; check a small inspectable unbalanced
-   independent fixture, including a singleton, missingness, both matrices and
-   inference. Add negative-interior correlation and row/order/scaling controls;
-   identification, invalid correlation/scale, convergence and bounds must fail.
-2. Add the domain command/result/state/family and execution adapter, parser,
-   retained predictions, terminal/JSON and discovery/help. Follow the existing
-   grouped-estimator boundary rather than introducing a crate or dependency.
-   Integration cases cover parsing/rejection, current-X predictions without ID/y,
-   current-y residuals, fit/prediction failures and unchanged source/owner/model.
-3. Add the actual script, strict native/reference and printed-DTA auditors. Replay
-   ASCII and DTA independently: all5,999 source rows, sample membership, full
-   matrices/inference, all prediction rows and text/JSON exports. Exercise the
-   actual script's successful and colliding exports; mutate auditor inputs to
-   prove they reject incorrect results. Document any genuine author discrepancy.
-4. Run explicitly named new focused tests, affected-crate/reverse-consumer tests,
-   relevant integrations and scoped Clippy/format/diff checks. Update README,
-   SPEC/architecture/roadmap/coverage only to the behavior actually delivered.
-   Review the final diff and evidence before merging and safely cleaning branches.
+The checked-in 48-group synthetic fixtures cover positive (`rho=0.7204`) and
+negative (`rho=-0.1377`) correlations, singletons and missing cases. Focused
+kernel/integration tests cover full references, ordering/predictor scaling,
+non-positive-definite working correlation, singularity, zero scale, convergence,
+resource limits, retained-state/ownership, atomic predictions and successful or
+colliding actual-script exports. No independent code review or hosted CI is
+claimed by this local evidence.
 
 Remaining household RE outputs, other GEE families/correlations, bootstrap,
 complex-survey weights/strata and whole-table/book coverage remain required gaps,
@@ -129,9 +123,16 @@ Rscript examples/mma24p1olscluster/household_gee_reference.R vietnam_ex1.dta ref
 Rscript examples/mma24p1olscluster/household_gee_reference.R vietnam.csv ref-csv --csv
 ```
 
-The in-progress Rust kernel is exercised against all198 quantities and all
-selected predictions on checked-in 48-group synthetic fixtures with positive
-`rho=0.7204` and negative `rho=-0.1377`, singleton groups and missing cases.
-Optional `TABDAT_GAUSSIAN_GEE_REFERENCE_ROOT` additionally replays the ASCII or
-DTA reference output. These tests do not install a user-facing command; full
-workflow, file/state contracts, affected-crate tests and hosted CI remain unverified.
+Optional `TABDAT_GAUSSIAN_GEE_REFERENCE_ROOT` replays either original reference
+in the focused kernel test. To audit an actual script run and the separate
+DTA/log comparison, use:
+
+```sh
+python3 examples/mma24p1olscluster/check_household_gee.py native-ascii ref-ascii vietnam_ex1.asc
+python3 examples/mma24p1olscluster/check_household_gee.py native-dta ref-dta vietnam_ex1.dta --dta
+python3 examples/mma24p1olscluster/check_household_gee_author.py vietnam_ex1.dta mma24p1olscluster.txt ref-dta native-dta/result.jsonl
+```
+
+The auditor expects `vietnam.csv`, `result.jsonl` and the script's exported CSV
+in each native directory. Prepare the DTA CSV with the existing optional
+`dta_reference.R`; TabDat itself does not import DTA.

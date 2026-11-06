@@ -477,6 +477,8 @@ pub enum RuntimeError {
   PoissonFailed { message: String },
   /// Conditional count fit or retained-normalization prediction failed.
   XtPoissonFailed { message: String },
+  /// Gaussian GEE fit or prediction failed.
+  XtGeeFailed { message: String },
   /// Only n/xb without auxiliary options are installed for Poisson.
   PredictPoissonUnsupported,
   /// Existing error identity retained; n now accepts either installed count fit.
@@ -1146,6 +1148,7 @@ impl fmt::Display for RuntimeError {
       Self::HeckmanFailed(message) => write!(formatter, "heckman: {message}"),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
       Self::XtPoissonFailed { message } => write!(formatter, "xtpoisson: {message}"),
+      Self::XtGeeFailed { message } => write!(formatter, "xtgee: {message}"),
       Self::PredictPoissonUnsupported => formatter.write_str(
         "poisson prediction supports only n (mean), xb, pmf(k), cdf(k), pmf(cutoff_variable) or cdf(cutoff_variable), without interval, std or saving options",
       ),

@@ -172,6 +172,40 @@ fn independently_validated_positive_and_negative_exchangeable_panels() {
   }
 }
 #[test]
+fn rejects_unbalanced_non_positive_definite_correlation() {
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  let mut keys = Vec::new();
+  for group in 0..30 {
+    let size = if group == 0 { 20 } else { 2 };
+    for row in 0..size {
+      let residual = if group == 0 {
+        0.0
+      } else if row == 0 {
+        -1.0
+      } else {
+        1.0
+      };
+      x.push(vec![group as f64]);
+      y.push(1.0 + 2.0 * group as f64 + residual);
+      keys.push(group.to_string());
+    }
+  }
+  let n = y.len();
+  let sample = EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap();
+  let p = EstimationProblem::new("y", vec!["x".into()], y, x)
+    .unwrap()
+    .with_sample(sample);
+  let err = fit_gaussian_gee(&p, "group", &Default::default()).unwrap_err();
+  assert!(
+    err
+      .to_string()
+      .contains("non-positive-definite exchangeable correlation"),
+    "{err}"
+  );
+}
+
+#[test]
 fn ordering_scaling_and_explicit_failures() {
   let (p, _) = problem(&fixture("negative"));
   let fit = fit_gaussian_gee(&p, "commune", &Default::default()).unwrap();
@@ -208,6 +242,16 @@ fn ordering_scaling_and_explicit_failures() {
   }
   assert!(fit_gaussian_gee(&bad, "commune", &Default::default()).is_err());
   assert!(fit_gaussian_gee(&p, "commune", &GaussianGeeOptions { max_iterations: 1 }).is_err());
+  assert!(
+    fit_gaussian_gee(
+      &p,
+      "commune",
+      &GaussianGeeOptions {
+        max_iterations: 101
+      }
+    )
+    .is_err()
+  );
   bad = p.clone();
   bad.sample.as_mut().unwrap().cluster_groups =
     Some((0..bad.response.len()).map(|i| i.to_string()).collect());
