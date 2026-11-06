@@ -475,6 +475,8 @@ pub enum RuntimeError {
   HeckmanFailed(String),
   /// Invalid/unsupported Poisson request or failed finite numerical fit.
   PoissonFailed { message: String },
+  /// Conditional count fit or retained-normalization prediction failed.
+  XtPoissonFailed { message: String },
   /// Only n/xb without auxiliary options are installed for Poisson.
   PredictPoissonUnsupported,
   /// Existing error identity retained; n now accepts either installed count fit.
@@ -1143,6 +1145,7 @@ impl fmt::Display for RuntimeError {
       Self::TruncregFailed(message) => write!(formatter, "truncreg: {message}"),
       Self::HeckmanFailed(message) => write!(formatter, "heckman: {message}"),
       Self::PoissonFailed { message } => write!(formatter, "poisson: {message}"),
+      Self::XtPoissonFailed { message } => write!(formatter, "xtpoisson: {message}"),
       Self::PredictPoissonUnsupported => formatter.write_str(
         "poisson prediction supports only n (mean), xb, pmf(k), cdf(k), pmf(cutoff_variable) or cdf(cutoff_variable), without interval, std or saving options",
       ),

@@ -204,8 +204,13 @@ Extend the same workflow/validation standard to:
   DTA-based printed author coefficient/SE facts, without changing the default.
   The [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
   validates Table24.6 model-based/row/commune inference and derivatives on
-  27,765 individuals against R. These workflows are unweighted, not design-based survey
-  inference. Individual FE/RE, household RE outputs beyond the validated
+  27,765 individuals against R. The separate native
+  [individual conditional Poisson FE workflow](../examples/mma24p2poiscluster/individual_conditional_fe.md)
+  validates 179 R quantities and all source/prediction rows after excluding one
+  94-person all-zero commune (27,671 people/193 communes); native DTA results match
+  20 printed author coefficient/SE facts. Owned group normalization and atomic
+  prediction/export-state failures are tested. These workflows are unweighted,
+  not design-based survey inference. Individual RE, household RE outputs beyond the validated
   coefficient/SE portion, GEE, bootstraps and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded

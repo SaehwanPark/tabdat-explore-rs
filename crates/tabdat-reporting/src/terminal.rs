@@ -1840,6 +1840,28 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "\nWARNING: fitted inclusive values violate RUM bounds; higher likelihood is not random-utility consistency."
       },
     ),
+    ExecutionResult::ConditionalPoisson(r) => format!(
+      "Conditional fixed-effects Poisson (model-based)\nOutcome: {}; groups = {}; N = {}; group size {}..{}\nJoint-finite rows = {}; zero-total groups excluded = {} ({} rows); all candidate rows = {}\nConditions on selected group totals; no common intercept. Inverse conditional information without DF correction; normal95 coefficient inference.\nConditional log likelihood = {}; same-total zero-slope null = {}; LR chi2({}) = {}; p = {}\nSlope Wald chi2({}) = {}; p = {}; converged in {} information evaluations\nPredictions use retained positive-group normalizations, not population/new-group forecasts.\n{}",
+      r.outcome.escape_debug(),
+      r.group_count,
+      r.observation_count,
+      r.minimum_group_size,
+      r.maximum_group_size,
+      r.joint_finite_observation_count,
+      r.zero_total_group_count,
+      r.zero_total_observation_count,
+      r.sample.total_observations,
+      inference_number(r.conditional_log_likelihood),
+      inference_number(r.null_conditional_log_likelihood),
+      r.likelihood_ratio_df,
+      inference_number(r.likelihood_ratio),
+      logit_number(r.likelihood_ratio_p_value),
+      r.predictor_names.len(),
+      inference_number(r.wald_statistic),
+      logit_number(r.wald_p_value),
+      r.iterations,
+      logit_estimates(&r.coefficients)
+    ),
     ExecutionResult::ConditionalLogit(result) => format!(
       "Single-choice conditional logit maximum likelihood\nOutcome: {}; independent choice sets = {}; alternative rows = {}; alternatives per set = {}\nGroup: {}; alternative: {}; available levels = {:?}; chosen counts = {:?}\nCandidate choice sets = {}; whole-set exclusions = {}; converged in {} information evaluations\nCommon group intercepts cancel; joint model-based Fisher covariance without N-K/G-K correction, normal95 inference.\nLog likelihood = {}; equal-probability null = {}; LR chi2({}) = {}; p-value = {}; McFadden pseudo R2 = {}\n{}",
       result.outcome.escape_debug(),

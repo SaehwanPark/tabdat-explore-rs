@@ -77,6 +77,7 @@ impl Command {
       | Self::Nlogit { .. }
       | Self::NlogitNormalizedCommon(..)
       | Self::Poisson { .. }
+      | Self::XtPoisson { .. }
       | Self::Nbreg { .. }
       | Self::Zip { .. }
       | Self::Zinb { .. }

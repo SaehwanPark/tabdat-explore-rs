@@ -15,6 +15,7 @@ use tabdat_language::script::{
 mod binary;
 mod bootstrap;
 mod conditional_logit;
+mod conditional_poisson;
 mod estimates;
 mod fixed_effects;
 mod multinomial;
@@ -170,6 +171,7 @@ impl Session {
       Command::Truncreg { command } => self.execute_truncreg(&command),
       Command::Heckman { command } if command.twostep => self.execute_heckman(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
+      Command::XtPoisson { command } => self.execute_conditional_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
       Command::Nl { command } => self.execute_nls(&command),

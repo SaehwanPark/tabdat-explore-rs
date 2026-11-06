@@ -840,6 +840,8 @@ pub enum ExecutionResult {
   HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
+  /// Model-based conditional Poisson FE, including explicit zero-total exclusions.
+  ConditionalPoisson(Box<tabdat_stats::ConditionalPoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
   PoissonMarginalEffects(Box<PoissonMarginalEffects>),
   /// NB2 ML/independent-row robust fit with joint log-dispersion covariance.

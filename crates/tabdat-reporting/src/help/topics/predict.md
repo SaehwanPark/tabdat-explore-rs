@@ -13,6 +13,12 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
 - Within FE: xb (normalized common intercept + current X beta), xbu (retained
   unit intercept + current X beta), u (normalized unit deviation), or residuals
   (current outcome minus xbu). **Use xbu for conditional fitted levels.**
+- Conditional Poisson FE (`xtpoisson ..., fe id(group)`): default/xb is the
+  slope-only index; n and residuals use retained fitted-group normalization on
+  current X, never renormalize the current subset. Unseen/missing/zero-total IDs
+  give NULL means/residuals; xb does not require ID. The group logical type must
+  match the fit. These are conditional predictions, not new-group/population
+  forecasts. Point-only; see help xtpoisson for sample and work bounds.
 - Logit: pr (probability) or xb (log odds).
 - Probit: pr (Gaussian probability) or xb (latent index).
 - Lower-censored Gaussian Tobit: xb (latent mean), pr (uncensoring probability),
