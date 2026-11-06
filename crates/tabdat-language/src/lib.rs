@@ -2740,7 +2740,7 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
 }
 
 fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "xtpoisson expects: xtpoisson y xvars, fe id(group)";
+  let syntax = "xtpoisson expects: xtpoisson y xvars, fe|re id(group)";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -2755,9 +2755,9 @@ fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
   }
   let options = parse_use_options(&body[i + 1..])?;
   for option in &options {
-    if !matches!(option.name.as_str(), "fe" | "id") {
+    if !matches!(option.name.as_str(), "fe" | "re" | "id") {
       return Err(ParseError::new(format!(
-        "xtpoisson unsupported option: {}; only model-based conditional FE is implemented",
+        "xtpoisson unsupported option: {}; only model-based conditional FE or shared-gamma RE is implemented",
         option.name
       )));
     }
@@ -2768,12 +2768,18 @@ fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
       )));
     }
   }
-  if !options
+  let methods = options
     .iter()
-    .any(|o| o.name == "fe" && o.value == UseOptionValue::Flag)
-  {
+    .filter(|o| matches!(o.name.as_str(), "fe" | "re"))
+    .collect::<Vec<_>>();
+  if methods.len() != 1 || methods[0].value != UseOptionValue::Flag {
     return Err(ParseError::new(syntax));
   }
+  let estimator = if methods[0].name == "fe" {
+    XtPoissonEstimator::ConditionalFe
+  } else {
+    XtPoissonEstimator::SharedGammaRe
+  };
   let keys =
     parse_identifier_option("xtpoisson", &options, "id")?.ok_or_else(|| ParseError::new(syntax))?;
   if keys.len() != 1 {
@@ -2781,6 +2787,7 @@ fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
   }
   Ok(Command::XtPoisson {
     command: XtPoissonCommand {
+      estimator,
       outcome: parts.arguments[0].text.clone(),
       predictors: parts.arguments[1..]
         .iter()

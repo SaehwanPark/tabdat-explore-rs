@@ -842,6 +842,7 @@ pub enum ExecutionResult {
   Poisson(Box<PoissonResult>),
   /// Model-based conditional Poisson FE, including explicit zero-total exclusions.
   ConditionalPoisson(Box<tabdat_stats::ConditionalPoissonResult>),
+  GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
   PoissonMarginalEffects(Box<PoissonMarginalEffects>),
   /// NB2 ML/independent-row robust fit with joint log-dispersion covariance.

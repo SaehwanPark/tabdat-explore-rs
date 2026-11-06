@@ -154,13 +154,13 @@ fn normal_inference(name: String, value: f64, variance: f64) -> Result<Nb2Estima
 
 // Gamma(y+r)/(Gamma(r)*y!) and its dispersion derivatives by integer recurrence.
 // No cancellation of large log-gamma/digamma terms or unbounded per-row loops.
-struct CountCache {
-  log_coefficient: Vec<f64>,
-  score_sum: Vec<f64>,
-  curvature_sum: Vec<f64>,
+pub(crate) struct CountCache {
+  pub(crate) log_coefficient: Vec<f64>,
+  pub(crate) score_sum: Vec<f64>,
+  pub(crate) curvature_sum: Vec<f64>,
 }
 impl CountCache {
-  fn new(maximum: usize, r: f64) -> Self {
+  pub(crate) fn new(maximum: usize, r: f64) -> Self {
     let mut result = Self {
       log_coefficient: vec![0.0; maximum + 1],
       score_sum: vec![0.0; maximum + 1],
@@ -185,7 +185,7 @@ impl CountCache {
     result
   }
 }
-fn softplus(value: f64) -> f64 {
+pub(crate) fn softplus(value: f64) -> f64 {
   if value > 0.0 {
     value + (-value).exp().ln_1p()
   } else {
@@ -193,7 +193,7 @@ fn softplus(value: f64) -> f64 {
   }
 }
 // -log(1-q)-q, using its positive series when subtraction would lose precision.
-fn log_ratio_remainder(q: f64, log_ratio: f64) -> f64 {
+pub(crate) fn log_ratio_remainder(q: f64, log_ratio: f64) -> f64 {
   if q >= 0.01 {
     return log_ratio - q;
   }

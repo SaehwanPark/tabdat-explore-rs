@@ -19,6 +19,10 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   give NULL means/residuals; xb does not require ID. The group logical type must
   match the fit. These are conditional predictions, not new-group/population
   forecasts. Point-only; see help xtpoisson for sample and work bounds.
+- Shared-gamma Poisson RE (`xtpoisson ..., re id(group)`): xb includes the
+  intercept; n and residuals use the marginal population mean, not posterior
+  group effects. No current ID is required. Point-only, with atomic failures
+  for unrepresentable finite-input results; see help xtpoisson.
 - Logit: pr (probability) or xb (log odds).
 - Probit: pr (Gaussian probability) or xb (latent index).
 - Lower-censored Gaussian Tobit: xb (latent mean), pr (uncensoring probability),

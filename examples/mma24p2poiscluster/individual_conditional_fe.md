@@ -105,7 +105,11 @@ retained normalization, changed-data/type/target/work-bound failures and actual
 script export-state checks. Regression and validation commands are recorded in
 the PR; hosted CI and independent code review are not claimed.
 
-Still required: individual RE, GEE/bootstraps, genuine survey weights/strata/design
+The separate [shared-gamma RE workflow](individual_gamma_re.md) now supplies
+model-based individual RE, including zero-total communes and owned marginal
+predictions; it does not add clustered FE or survey inference.
+
+Still required: GEE/bootstraps, genuine survey weights/strata/design
 semantics, remaining household outputs and remaining table/chapter illustrations.
 Weights/offsets, robust/cluster covariance, factors, generic post-estimation/
 margins, unit-effect uncertainty and automatic native bootstrap are unsupported

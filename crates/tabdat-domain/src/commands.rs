@@ -606,9 +606,18 @@ pub struct NlogitCommand {
   pub nest_variable: String,
 }
 
-/// Conditional Poisson fixed effects; no common intercept or panel declaration.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum XtPoissonEstimator {
+  #[default]
+  ConditionalFe,
+  SharedGammaRe,
+}
+
+/// Explicit-key grouped counts, without persistent panel declarations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtPoissonCommand {
+  #[serde(default)]
+  pub estimator: XtPoissonEstimator,
   pub outcome: String,
   pub predictors: Vec<String>,
   pub entity_variable: String,

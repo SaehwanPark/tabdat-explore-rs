@@ -209,8 +209,13 @@ Extend the same workflow/validation standard to:
   validates 179 R quantities and all source/prediction rows after excluding one
   94-person all-zero commune (27,671 people/193 communes); native DTA results match
   20 printed author coefficient/SE facts. Owned group normalization and atomic
-  prediction/export-state failures are tested. These workflows are unweighted,
-  not design-based survey inference. Individual RE, household RE outputs beyond the validated
+  prediction/export-state failures are tested. The separate native
+  [individual shared-gamma RE workflow](../examples/mma24p2poiscluster/individual_gamma_re.md)
+  retains all 27,765 people/194 communes including the all-zero commune, validates
+  236 independent R full-joint/inference quantities and every source/marginal-
+  prediction row on ASCII and DTA, and matches 29 native DTA author facts.
+  These workflows are unweighted, not design-based survey inference.
+  Household RE outputs beyond the validated
   coefficient/SE portion, GEE, bootstraps and full survey methods remain required.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded

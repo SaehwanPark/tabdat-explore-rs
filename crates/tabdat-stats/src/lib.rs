@@ -23,6 +23,8 @@ mod distributions;
 pub mod error;
 pub mod estimates;
 mod fixed_effects;
+mod gamma_poisson;
+pub use gamma_poisson::{GammaPoissonOptions, GammaPoissonResult, fit_gamma_poisson};
 mod gaussian_mle;
 mod gompertz;
 mod heckman;

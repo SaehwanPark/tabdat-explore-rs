@@ -371,7 +371,7 @@ fn invalid_keys_count_and_rank_clear_failed_fit_without_data_mutation() {
     let mut s = small_session(&d);
     execute(&mut s, "xtpoisson y x, fe id(id)");
     let before = s.state();
-    assert!(parse_command("xtpoisson y x, re id(id)").is_err());
+    assert!(parse_command("xtpoisson y x, re id(id) robust").is_err());
     assert_eq!(s.state(), before);
     execute(&mut s, transform);
     let data = execute(&mut s, "head 100");

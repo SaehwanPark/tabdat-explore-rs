@@ -1,4 +1,4 @@
-use tabdat_domain::Command;
+use tabdat_domain::{Command, XtPoissonEstimator};
 use tabdat_language::parse_command;
 #[test]
 fn explicit_grouped_conditional_fe_is_distinct_from_pooled_poisson() {
@@ -7,6 +7,7 @@ fn explicit_grouped_conditional_fe_is_distinct_from_pooled_poisson() {
   else {
     panic!()
   };
+  assert_eq!(command.estimator, XtPoissonEstimator::ConditionalFe);
   assert_eq!(command.outcome, "visits");
   assert_eq!(command.predictors, ["income", "age"]);
   assert_eq!(command.entity_variable, "commune");
@@ -16,11 +17,27 @@ fn explicit_grouped_conditional_fe_is_distinct_from_pooled_poisson() {
   ));
 }
 #[test]
+fn explicit_gamma_re_is_typed_and_not_conditional_fe_or_row_nb() {
+  let Command::XtPoisson { command } =
+    parse_command("xtpoisson visits income age, re id(commune)").unwrap()
+  else {
+    panic!()
+  };
+  assert_eq!(command.estimator, XtPoissonEstimator::SharedGammaRe);
+  assert_eq!(command.predictors, ["income", "age"]);
+  assert_eq!(command.entity_variable, "commune");
+}
+
+#[test]
 fn unsupported_and_ambiguous_count_panel_forms_are_rejected() {
   for text in [
     "xtpoisson y x",
     "xtpoisson y, fe id(i)",
-    "xtpoisson y x, re id(i)",
+    "xtpoisson y x, re fe id(i)",
+    "xtpoisson y x, re re id(i)",
+    "xtpoisson y x, re(1) id(i)",
+    "xtpoisson y x, re id(i) robust",
+    "xtpoisson y x, re id(i) distribution(normal)",
     "xtpoisson y x, fe",
     "xtpoisson y x, fe id()",
     "xtpoisson y x, fe id(i j)",

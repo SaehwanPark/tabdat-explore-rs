@@ -99,6 +99,7 @@ pub enum EstimationFamily {
   MultinomialLogit,
   ConditionalLogit,
   ConditionalPoisson,
+  GammaPoisson,
   NonNormalizedNestedLogit,
   NormalizedCommonNestedLogit,
   Tobit,
@@ -275,6 +276,7 @@ pub enum EstimationState {
   Poisson(ModelState),
   PoissonFit(Box<PoissonFitState>),
   ConditionalPoisson(Box<ConditionalPoissonState>),
+  GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
   /// Legacy normalized placeholder, not an installed fit.
   NegativeBinomial(ModelState),
   NegativeBinomialFit(Box<NegativeBinomialFitState>),
@@ -340,6 +342,7 @@ impl EstimationState {
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
       Self::ConditionalPoisson(..) => EstimationFamily::ConditionalPoisson,
+      Self::GammaPoisson(..) => EstimationFamily::GammaPoisson,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,

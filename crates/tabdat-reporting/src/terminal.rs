@@ -1840,6 +1840,35 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "\nWARNING: fitted inclusive values violate RUM bounds; higher likelihood is not random-utility consistency."
       },
     ),
+    ExecutionResult::GammaPoisson(r) => {
+      let mut estimates = r.coefficients.clone();
+      estimates.push(r.ln_alpha.clone());
+      format!(
+        "Shared-gamma random-effects Poisson (model-based)\nOutcome: {}; N = {}; groups = {}; group size {}..{}\nAll zero-total groups retained = {}; singletons = {}\nMean-one Gamma multiplicative effects; alpha is shared group variance, not row-NB mixing.\nInverse full joint observed information without DF correction; normal95 inference. ln(alpha) z tests alpha=1, not alpha=0.\nLog likelihood = {}; same-sample pooled Poisson = {}\nDispersion boundary LR = {}; 50:50 chi-square(0,1) p = {}\nSlope Wald chi2({}) = {}; p = {}\nalpha = {}; delta SE = {}; log-Wald95 CI [{}, {}]\nConverged in {} information evaluations; scaled score {:.3e}, undamped step {:.3e}\nPredictions are marginal population means/index/residuals, not posterior group effects.\n{}",
+        r.outcome.escape_debug(),
+        r.observation_count,
+        r.group_count,
+        r.minimum_group_size,
+        r.maximum_group_size,
+        r.zero_total_group_count,
+        r.singleton_group_count,
+        inference_number(r.log_likelihood),
+        inference_number(r.poisson_log_likelihood),
+        inference_number(r.dispersion_likelihood_ratio),
+        logit_number(r.dispersion_likelihood_ratio_p_value),
+        r.wald_df,
+        inference_number(r.wald_statistic),
+        logit_number(r.wald_p_value),
+        inference_number(r.alpha),
+        inference_number(r.alpha_standard_error),
+        inference_number(r.alpha_confidence_lower),
+        inference_number(r.alpha_confidence_upper),
+        r.iterations,
+        r.max_abs_scaled_score,
+        r.max_abs_scaled_newton_step,
+        logit_estimates(&estimates)
+      )
+    }
     ExecutionResult::ConditionalPoisson(r) => format!(
       "Conditional fixed-effects Poisson (model-based)\nOutcome: {}; groups = {}; N = {}; group size {}..{}\nJoint-finite rows = {}; zero-total groups excluded = {} ({} rows); all candidate rows = {}\nConditions on selected group totals; no common intercept. Inverse conditional information without DF correction; normal95 coefficient inference.\nConditional log likelihood = {}; same-total zero-slope null = {}; LR chi2({}) = {}; p = {}\nSlope Wald chi2({}) = {}; p = {}; converged in {} information evaluations\nPredictions use retained positive-group normalizations, not population/new-group forecasts.\n{}",
       r.outcome.escape_debug(),

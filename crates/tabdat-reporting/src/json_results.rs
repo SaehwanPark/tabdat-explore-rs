@@ -586,6 +586,32 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .extend(inference.as_object().expect("literal object").clone());
       (data, "NonNormalizedNestedLogitResult")
     }
+    ExecutionResult::GammaPoisson(r) => {
+      let mut data = serde_json::to_value(r).expect("finite gamma RE result");
+      data.as_object_mut().unwrap().remove("fitted_means");
+      data["predictors"] = data
+        .as_object_mut()
+        .unwrap()
+        .remove("predictor_names")
+        .unwrap();
+      data["covariance_matrix"] = data["covariance"].take();
+      data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let metadata = json!({
+        "estimator":"shared_gamma_poisson_re","include_intercept":true,"likelihood":"integrated_shared_mean_one_gamma_poisson",
+        "random_effects_distribution":"mean_one_gamma","alpha_parameterization":"variance_of_shared_multiplicative_group_effect",
+        "covariance":"inverse_full_joint_observed_information","covariance_correction":1.0,"reference_distribution":"asymptotic_standard_normal","confidence_level":95,
+        "coefficient_test_null":0.0,"ln_alpha_test_null":"ln_alpha=0_equivalently_alpha=1_not_zero_variance",
+        "joint_test_reference":"asymptotic_chi_square","dispersion_likelihood_ratio_null":"alpha=0_same_sample_refitted_pooled_poisson",
+        "dispersion_likelihood_ratio_reference":"equal_mixture_chi_square_0_1","missingness":"joint_finite_rows_all_groups_retained_after_raw_key_validation",
+        "prediction_scope":"population_marginal_not_posterior_group_effects","converged":true,"convergence_absolute_tolerance":1e-10,
+        "convergence_coordinate_system":"raw_predictor_rms_and_log_alpha_per_group_score"
+      });
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(metadata.as_object().unwrap().clone());
+      (data, "GammaPoissonResult")
+    }
     ExecutionResult::ConditionalPoisson(r) => {
       let mut data = json!({
         "estimator":"conditional_poisson_fe","likelihood":"conditional_multinomial_given_selected_group_totals",

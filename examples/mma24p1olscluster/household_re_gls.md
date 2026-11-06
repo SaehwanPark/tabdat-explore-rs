@@ -111,6 +111,8 @@ python3 "$repo/examples/mma24p1olscluster/check_household_re_author.py" /path/to
 **Status:** independently validated native RE-GLS workflow, partial Table 24.4
 method coverage only. Household RE outputs beyond the separately validated
 equal-group coefficient/SE portion, GEE, bootstraps, survey weights/strata,
-individual RE and remaining tables remain required. The separate
+remaining individual GEE/bootstraps and tables remain required. The separate
+[individual gamma RE workflow](../mma24p2poiscluster/individual_gamma_re.md) now
+supplies model-based shared-gamma inference and marginal predictions. The separate
 [individual conditional FE workflow](../mma24p2poiscluster/individual_conditional_fe.md)
 now supplies bounded model-based Poisson FE, not survey or clustered FE inference.
