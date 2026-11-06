@@ -2,6 +2,8 @@ mod common;
 use common::{TestDir, tabdat_bin};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, fs, path::PathBuf};
+use tabdat_language::parse_command;
+use tabdat_runtime::Session;
 
 const OUTPUT: &str = "household_re_gls_predictions.csv";
 fn run(dir: &TestDir, mode: &str) -> std::process::Output {
@@ -146,6 +148,57 @@ fn negative_raw_component_is_truncated_and_matches_r_plm() {
     true,
   )
 }
+#[test]
+fn retained_re_state_survives_reporting_and_export_collision() {
+  for collision in [false, true] {
+    let dir = TestDir::new();
+    let source = dir.path().join("vietnam.csv");
+    let output = dir.path().join(OUTPUT);
+    let input = include_str!("fixtures/mma24_household_re/interior_input.csv");
+    fs::write(&source, input).unwrap();
+    if collision {
+      fs::write(&output, "owner").unwrap();
+    }
+    let mut session = Session::new();
+    let mut retained = None;
+    for line in include_str!("../examples/mma24p1olscluster/household_re_gls.td").lines() {
+      if line.starts_with('#') || line.is_empty() {
+        continue;
+      }
+      let command = if line == "use vietnam.csv" {
+        format!("use \"{}\"", source.display())
+      } else if line == "export household_re_gls_predictions.csv" {
+        format!("export \"{}\"", output.display())
+      } else {
+        line.to_owned()
+      };
+      let result = session.execute(parse_command(&command).unwrap());
+      if collision && line.starts_with("export ") {
+        assert!(result.is_err());
+      } else {
+        result.unwrap();
+      }
+      if line.starts_with("xtreg ") {
+        retained = session.state().estimation;
+        assert!(retained.is_some());
+      } else if retained.is_some() {
+        assert_eq!(session.state().estimation, retained);
+      }
+    }
+    session
+      .execute(parse_command("predict re_after, xb").unwrap())
+      .unwrap();
+    assert_eq!(session.state().estimation, retained);
+    session.execute(parse_command("sql \"\"\"SELECT CASE WHEN COUNT(*)!=179 OR MAX(ABS(re_after-re_xb))>1e-12 OR MAX(ABS(lnexp12m-re_xb-re_residual))>1e-12 THEN error('wrong retained RE prediction') ELSE 1 END AS valid FROM active\"\"\"").unwrap()).unwrap();
+    if collision {
+      assert_eq!(fs::read_to_string(&output).unwrap(), "owner");
+    } else {
+      assert_eq!(rows(&fs::read_to_string(&output).unwrap()).len(), 179);
+    }
+    assert_eq!(fs::read_to_string(&source).unwrap(), input);
+  }
+}
+
 #[test]
 fn invalid_source_and_export_collision_preserve_owner() {
   let input = include_str!("fixtures/mma24_household_re/interior_input.csv");

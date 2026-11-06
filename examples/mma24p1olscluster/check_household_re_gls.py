@@ -52,7 +52,13 @@ def main():
   assert fit['entity_variable']=='commune' and fit['time_variable']=='source_row'
   assert fit['variance_component_method']=='unbalanced_swamy_arora'
   assert fit['covariance']=='nonrobust' and fit['reference_distribution']=='normal'
-  assert fit['covariance_parameter_names']==['intercept','lnhhexp','age','sex','hhsize','farm','educ']
+  assert fit['covariance_convention']=='quasi_demeaned_rss_over_n_minus_k'
+  assert fit['wald_reference']=='chi_square' and fit['balanced'] is False
+  assert fit['sample']=={'total_observations':5006,'dropped_observations':0}
+  names=['intercept','lnhhexp','age','sex','hhsize','farm','educ']
+  assert fit['covariance_parameter_names']==names
+  assert [c['name'] for c in fit['coefficients']]==names
+  assert all(c['ci_level']==95 for c in fit['coefficients'])
   reference=rows(ref/'reference.csv')
   assert len(reference)==108 and len({r['path'] for r in reference})==108
   for r in reference:
