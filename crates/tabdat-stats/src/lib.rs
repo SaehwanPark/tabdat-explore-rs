@@ -31,6 +31,8 @@ mod gaussian_gee;
 pub use gaussian_gee::{
   GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult, fit_gaussian_gee,
 };
+mod poisson_gee;
+pub use poisson_gee::{PoissonGeeInference, PoissonGeeOptions, PoissonGeeResult, fit_poisson_gee};
 mod conditional_poisson_bootstrap;
 mod gaussian_mle;
 mod gompertz;

@@ -168,7 +168,7 @@ fn moments(
   Ok((residual, phi, rho))
 }
 
-fn inference(
+pub(crate) fn inference(
   names: &[String],
   b: &[f64],
   covariance: Vec<Vec<f64>>,

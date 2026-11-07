@@ -1,6 +1,7 @@
-# Native patents Poisson GEE: preimplementation contract
+# Native patents Poisson GEE: bounded contract and WIP evidence
 
-**In progress, not implemented or validated as a native workflow.** High risk:
+**In progress: numerical Rust API implemented/checked; native command/workflow
+not yet implemented or validated.** High risk:
 new nonlinear estimating-equation kernel, typed model state and additive public
 command/result contracts. Current [SQL composition](exchangeable_gee.md) is
 independently validated; Gaussian native GEE must remain unchanged.
@@ -181,12 +182,14 @@ failed-fit invalidation/capability classification, not leave stale Poisson state
 membership separately enforced; (6) no PMF/LR/named snapshot is inferred from a
 Poisson working family. Generic unbalanced legacy moments and nuisance inference
 remain excluded. Supplemental multivariate/rescaling reference and direct failure
-fixtures are the next gate before kernel implementation.
+fixtures were required before kernel implementation; that numerical gate is now
+recorded below. No CLI/runtime workflow is implied.
 
 ## Reference setup evidence (pre-kernel)
 
 Current R4.6.2/gee4.13.30 reproduces the existing original source oracle under
-`/tmp/tabdat-ch23-poisson-gee/original-reference`; no native kernel implemented.
+`/tmp/tabdat-ch23-poisson-gee/original-reference`, established before native
+kernel implementation.
 Optional development-only source archive SHA256
 `65f9fe9c906a200bd89a6c053e8c33cce356b626a0de639cc69d804bc3326b95`.
 No production R/Fortran dependency. On this host R's FLIBS referenced Darwin27,
@@ -208,8 +211,45 @@ now freezes [multivariate/rescaling controls](../../crates/tabdat-stats/tests/fi
 predictions/three-vector group scores per case, explicitly17 digits. Dense block
 V/score/bread solutions agree with R gee; natural coefficient/SE/CI/full-covariance
 rescaling identities pass. These are pre-kernel oracles, not native evidence.
-Direct native numerical/failure tests, kernel and the remaining integration/
-workflow checks are still pending. Do not merge this reference-only checkpoint.
+## Numerical Rust API evidence (not a completed workflow)
+
+`tabdat-stats::fit_poisson_gee` now implements the bounded contract with owned
+sample/result, compensated Pearson moments, symmetric whitening and QR expected
+Fisher steps. It returns both full raw-coordinate normal/chi-square inferences.
+The only Gaussian code change makes its existing covariance-only normal inference
+helper crate-visible; Gaussian moments/covariance correction/wires stay unchanged.
+
+- First focused run:2 passed/5 failed because the ordinary Poisson starter correctly
+  rejected attached cluster metadata. Fixed by detaching only cluster metadata on
+  an owned starter copy; original GEE sample/groups remain unchanged. No tolerance
+  change. Corrected full7-case integration run passed; a later additional resource/
+  shape case passed separately (seven filtered previously passed), not a fresh
+  all-eight run. Positive/negative legacy controls now include all group scores.
+- Eight integration cases cover two66-field dense-R controls, every prediction/
+  group score, natural rescaling/permutation, exact original-row sample mapping,
+  retained zero-total groups, both27-field legacy controls and20 malformed/count/
+  weight/sample/rank problems, forced iteration bounds, exact correlation bounds,
+  singletons,10001 groups and row*K² cap. Three private equation tests separately
+  exercise near-SPD boundaries on either side, Pearson roundoff/index escape and
+  positive-but-roundoff-sized sandwich variance. All passed in focused runs.
+- Gaussian direct regression3/3 passed. Scoped stats library/new/Gaussian test
+  Clippy passed after its new constant-chunk lint was corrected with as_chunks and
+  explicit remainder assertion. Fmt/diff checks passed. No broad stats/workspace
+  or doctest pass claimed at this checkpoint.
+- Temporary direct Rust API probe against fresh original R reference passes
+  **33 quantities** (legacy27 plus six base-R normal/Wald tails), all1730 source
+  model fields/keys/means/residuals and all346 two-vector group scores; all22 zero
+  firms retained. Fixed original gates unchanged, new nonzero p relative1e-8.
+  Intercept2.06751524798454689, slope.55953007037554769,
+  rho.89836667589854957;16 full steps, scaled score4.57e-13/step6.33e-13.
+  Probe/evidence under `/tmp/tabdat-ch23-poisson-gee/`; this is numerical API
+  validation, **not** installed-command/source-script/state/file validation.
+
+Next: additive domain command/result/state/family and Gaussian wire freezes,
+parser, execution/invalidation/owned prediction, reporting/discovery goldens,
+actual native source script/auditor/forgeries and current cross-cutting workspace
+regression. SPEC/ledger public capability remains unchanged until that workflow is
+actually delivered. Do not merge this kernel-only checkpoint.
 
 I-DETAIL/frequency/graphics, historical ML/URBAN/MEDEXP/LNHHEXP discrepancies,
 remaining normal-RE/bootstrap/method illustrations and full book inventory remain
