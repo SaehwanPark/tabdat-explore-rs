@@ -25,7 +25,8 @@ Acceptance cases:
    residual aggregates, signed score/LM/p against pooled R QR and plm; DTA LM
    matches the author's 432.75 to half a printed digit without widening tolerance.
 2. Balanced and unbalanced/singleton controls agree with independently generated
-   R QR/plm; balanced formula reduces to the usual N*T/(2*(T−1)) multiplier.
+   R QR/plm; balanced formula reduces to N/(2*(T−1)) times (Q/R−1)²,
+   where N is the total observation count (not the number of groups).
 3. Negative signed-score control preserves sign and uses the documented squared
    reference, not a silent positive-part boundary test.
 4. JSON/text exports agree; predictions and reporting retain pooled OLS.
