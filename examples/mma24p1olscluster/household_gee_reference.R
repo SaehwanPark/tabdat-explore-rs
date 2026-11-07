@@ -126,7 +126,9 @@ for(j in seq_len(K)) {
 stopifnot(!anyDuplicated(vapply(refs,function(x)x$path,'')))
 if(!dir.create(a[2],recursive=TRUE)) stop('cannot create reference directory')
 write.csv(do.call(rbind,refs),file.path(a[2],'reference.csv'),row.names=FALSE)
-write.csv(source,file.path(a[2],'input.csv'),row.names=FALSE,na='')
+# Model inputs must roundtrip exactly for independent source/sample audits.
+precise_source <- as.data.frame(lapply(source,function(v)ifelse(is.na(v),NA_character_,sprintf('%.17g',v))))
+write.csv(precise_source,file.path(a[2],'input.csv'),row.names=FALSE,quote=FALSE,na='')
 write.csv(predictions,file.path(a[2],'predictions.csv'),row.names=FALSE,na='')
 write.csv(unit,file.path(a[2],'units.csv'),row.names=FALSE)
 cat('Validated',length(refs),'quantities;',N,'cases;',G,'groups; dense/geeM iterations',

@@ -956,8 +956,8 @@ fn get_command_schema(
       ],
       help_topic,
       name: "estimates".into(),
-      options: vec![],
-      syntax: "estimates store NAME | estimates table NAME [NAME ...] | estimates drop NAME [NAME ...]".into(),
+      options: vec![OptionDescriptor { name: "covariance".into(), required: false }],
+      syntax: "estimates store NAME [, covariance(working|sandwich)] | estimates table NAME [NAME ...] | estimates drop NAME [NAME ...]".into(),
     }),
     "exit" => Ok(CommandSchemaResult {
       arguments: vec![],

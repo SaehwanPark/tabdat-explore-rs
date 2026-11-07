@@ -378,6 +378,62 @@ fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
 }
 
 #[test]
+fn mixed_panel_reporting_discovery_requires_explicit_gee_covariance_and_honest_inference() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "estimates"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert!(
+    envelope["data"]["syntax"]
+      .as_str()
+      .unwrap()
+      .contains("covariance(working|sandwich)")
+  );
+  assert_eq!(
+    envelope["data"]["options"],
+    serde_json::json!([{"name":"covariance","required":false}])
+  );
+  for (topic, phrases) in [
+    (
+      "estimates",
+      vec![
+        "covariance(working)",
+        "covariance(sandwich)",
+        "Student t(N-G-p)",
+        "uncorrected unit sandwich",
+        "actual marginal Gaussian",
+      ],
+    ),
+    (
+      "xtgee",
+      vec!["explicit covariance choice", "Plain store is rejected"],
+    ),
+    (
+      "xtreg",
+      vec!["Model-based FE supports", "clustered RE reports remain"],
+    ),
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--help-topic", topic])
+      .output()
+      .unwrap();
+    assert!(output.status.success());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let text = envelope["data"]["text"]
+      .as_str()
+      .unwrap()
+      .split_whitespace()
+      .collect::<Vec<_>>()
+      .join(" ");
+    for phrase in phrases {
+      assert!(text.contains(phrase), "{topic}: missing {phrase}");
+    }
+  }
+}
+
+#[test]
 fn panel_hausman_help_distinguishes_joint_equal_group_and_legacy_scalar_limits() {
   for (topic, phrases) in [
     (

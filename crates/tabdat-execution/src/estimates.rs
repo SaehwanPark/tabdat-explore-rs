@@ -6,12 +6,78 @@ fn failure(message: impl Into<String>) -> RuntimeError {
   }
 }
 
-fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, RuntimeError> {
+fn validate_panel_report(report: &EstimateSnapshot) -> Result<(), RuntimeError> {
+  let Some(panel) = &report.panel else {
+    return Ok(());
+  };
+  let sample = &report.sample;
+  let groups = sample
+    .cluster_groups
+    .as_ref()
+    .ok_or_else(|| failure("panel group provenance is unavailable; refit before storing"))?;
+  let k = report.coefficients.len();
+  if sample.weights.is_some()
+    || sample.retained_indices.len() != report.observation_count
+    || sample
+      .retained_indices
+      .len()
+      .checked_add(sample.dropped_observations)
+      != Some(sample.total_observations)
+    || sample
+      .retained_indices
+      .iter()
+      .any(|i| *i >= sample.total_observations)
+    || sample
+      .retained_indices
+      .iter()
+      .collect::<BTreeSet<_>>()
+      .len()
+      != report.observation_count
+    || groups.len() != report.observation_count
+    || groups.iter().collect::<BTreeSet<_>>().len() != panel.group_count
+    || panel.group_count < 2
+    || panel.entity_variable.is_empty()
+    || panel.time_variable.as_ref().is_some_and(String::is_empty)
+    || report.coefficients.iter().any(|c| !c.value.is_finite())
+    || report.covariance_matrix.len() != k
+    || report
+      .covariance_matrix
+      .iter()
+      .enumerate()
+      .any(|(i, row)| row.len() != k || row.iter().any(|v| !v.is_finite()) || row[i] < 0.0)
+    || report.covariance_parameter_names
+      != report
+        .coefficients
+        .iter()
+        .map(|c| c.name.clone())
+        .collect::<Vec<_>>()
+    || report.covariance_parameter_names
+      != std::iter::once("intercept".to_owned())
+        .chain(report.predictors.iter().cloned())
+        .collect::<Vec<_>>()
+  {
+    return Err(failure(
+      "panel report provenance/dimensions are inconsistent or weighted; refit an unweighted supported model before storing",
+    ));
+  }
+  Ok(())
+}
+
+fn snapshot(
+  name: &str,
+  state: &EstimationState,
+  selection: Option<GaussianGeeReportCovariance>,
+) -> Result<EstimateSnapshot, RuntimeError> {
+  if selection.is_some() && !matches!(state, EstimationState::GaussianGee(_)) {
+    return Err(failure(
+      "covariance(working|sandwich) is only available for Gaussian GEE reports",
+    ));
+  }
   let mut report = match state {
     EstimationState::Linear(state) => {
       if state.estimator.as_deref() != Some("ols") {
         return Err(failure(
-          "store supports unweighted OLS, logit, probit, Poisson and NLS only; refit if estimator provenance is unavailable",
+          "store supports unweighted OLS for linear reports; refit if estimator provenance is unavailable",
         ));
       }
       let result = &state.result;
@@ -45,6 +111,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         .log_likelihood
         .filter(|value| value.is_finite());
       EstimateSnapshot {
+        panel: None,
         name: name.into(),
         estimator: "ols".into(),
         outcome: state.outcome.clone(),
@@ -105,6 +172,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         "model_based_observed_information"
       };
       EstimateSnapshot {
+        panel: None,
         name: name.into(),
         estimator: estimator.into(),
         outcome: result.outcome.clone(),
@@ -192,6 +260,7 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         ("model_based_poisson_information", 1.0)
       };
       EstimateSnapshot {
+        panel: None,
         name: name.into(),
         estimator: "poisson".into(),
         outcome: result.outcome.clone(),
@@ -248,8 +317,249 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
         df_residual: Some(result.df_residual),
       }
     }
+    EstimationState::FixedEffects(state) => {
+      let result = &state.result;
+      let fit = &result.within;
+      if fit.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust {
+        return Err(failure(
+          "panel FE reports currently require model-based covariance and normalized common-intercept inference",
+        ));
+      }
+      let model = result.normalized_level.as_ref().ok_or_else(|| failure("FE normalized common-intercept inference is unavailable; refit a supported model before storing"))?;
+      if model.parameters.len() != fit.coefficients.len() + 1
+        || model.parameter_names.first().map(String::as_str) != Some("_cons")
+        || model.parameter_names[1..] != fit.parameter_names
+        || model.parameters[0] != result.common_intercept
+        || model.parameters[1..] != fit.coefficients.iter().map(|c| c.value).collect::<Vec<_>>()
+        || model.degrees_of_freedom != fit.degrees_of_freedom()
+        || model.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust
+        || model.covariance.parameter_names != model.parameter_names
+        || model.parameters.iter().any(|v| !v.is_finite())
+        || model.covariance.matrix.len() != model.parameters.len()
+        || model.covariance.matrix.iter().enumerate().any(|(i, row)| {
+          row.len() != model.parameters.len() || row.iter().any(|v| !v.is_finite()) || row[i] < 0.0
+        })
+      {
+        return Err(failure(
+          "FE normalized coefficient provenance is inconsistent; refit before storing",
+        ));
+      }
+      // This is the same retained normalization used by native FE reporting,
+      // not a pooled refit or a replacement inference for the within slopes.
+      let mut weights = vec![0.0; model.parameters.len()];
+      weights[0] = 1.0;
+      let common = model
+        .linear_combination_with_inference(&weights, 0.0, 95.0)
+        .map_err(|e| failure(format!("FE common-intercept inference unavailable: {e}")))?;
+      let mut coefficients = vec![tabdat_stats::CoefficientEstimate {
+        name: "intercept".into(),
+        value: common.estimate,
+        standard_error: Some(common.standard_error),
+        statistic: common.statistic,
+        p_value: Some(common.p_value),
+      }];
+      coefficients.extend(fit.coefficients.clone());
+      EstimateSnapshot {
+        panel: Some(PanelEstimateProvenance {
+          entity_variable: result.entity_variable.clone(),
+          time_variable: Some(state.time_variable.clone()),
+          group_count: result.effects.len(),
+          intercept_convention: "observation_weighted_zero_effects".into(),
+        }),
+        name: name.into(),
+        estimator: "within_fixed_effects".into(),
+        outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
+        predictors: fit.parameter_names.clone(),
+        include_intercept: true,
+        covariance: "model_based_within_fe_normalized_levels".into(),
+        cluster_variable: None,
+        cluster_count: None,
+        covariance_parameter_names: coefficients.iter().map(|c| c.name.clone()).collect(),
+        covariance_matrix: model.covariance.matrix.clone(),
+        coefficients,
+        observation_count: fit.observation_count(),
+        event_count: None,
+        sample: fit
+          .sample
+          .clone()
+          .ok_or_else(|| failure("FE fit sample is unavailable; refit before storing"))?,
+        reference_distribution: "student_t".into(),
+        inference_degrees_of_freedom: Some(fit.degrees_of_freedom()),
+        log_likelihood: None,
+        log_likelihood_convention: None,
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: Some(fit.degrees_of_freedom()),
+      }
+    }
+    EstimationState::RandomEffects(state) => {
+      use tabdat_stats::RandomEffectsComponentMethod as Method;
+      let result = &state.result;
+      let fit = &result.gls;
+      if fit.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust
+        || result.ml.as_ref().is_some_and(|ml| ml.cluster.is_some())
+      {
+        return Err(failure(
+          "panel RE reports currently require model-based covariance",
+        ));
+      }
+      if fit.parameter_names.first().map(String::as_str) != Some("intercept")
+        || (result.ml.is_some() != (result.component_method == Method::GaussianMarginalMl))
+        || result
+          .ml
+          .as_ref()
+          .is_some_and(|ml| !ml.log_likelihood.is_finite())
+      {
+        return Err(failure(
+          "RE method/intercept provenance is unavailable or inconsistent; refit before storing",
+        ));
+      }
+      let estimator = match result.component_method {
+        Method::SwamyArora => "swamy_arora_random_effects_gls",
+        Method::EqualGroupBetween => "equal_group_between_random_effects_gls",
+        Method::GaussianMarginalMl => "gaussian_random_intercept_marginal_ml",
+      };
+      EstimateSnapshot {
+        panel: Some(PanelEstimateProvenance {
+          entity_variable: result.entity_variable.clone(),
+          time_variable: Some(state.time_variable.clone()),
+          group_count: result.group_count,
+          intercept_convention: "population_mean_intercept".into(),
+        }),
+        name: name.into(),
+        estimator: estimator.into(),
+        outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
+        predictors: result.predictor_names.clone(),
+        include_intercept: true,
+        covariance: if result.ml.is_some() {
+          "model_based_observed_marginal_information"
+        } else {
+          "model_based_quasi_gls_rss_over_n_minus_k"
+        }
+        .into(),
+        cluster_variable: None,
+        cluster_count: None,
+        covariance_parameter_names: fit.covariance.parameter_names.clone(),
+        covariance_matrix: fit.covariance.matrix.clone(),
+        coefficients: fit.coefficients.clone(),
+        observation_count: fit.observation_count(),
+        event_count: None,
+        sample: fit
+          .sample
+          .clone()
+          .ok_or_else(|| failure("RE fit sample is unavailable; refit before storing"))?,
+        reference_distribution: "asymptotic_standard_normal".into(),
+        inference_degrees_of_freedom: None,
+        log_likelihood: result.ml.as_ref().map(|ml| ml.log_likelihood),
+        log_likelihood_convention: result
+          .ml
+          .as_ref()
+          .map(|_| "gaussian_random_intercept_marginal_ml_full_constants".into()),
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: Some(fit.degrees_of_freedom()),
+      }
+    }
+    EstimationState::GaussianGee(result) => {
+      let selected = selection.ok_or_else(|| failure("Gaussian GEE has two covariance inferences; use estimates store NAME, covariance(working) or covariance(sandwich)"))?;
+      let (inference, covariance, clustered) = match selected {
+        GaussianGeeReportCovariance::Working => {
+          (&result.working, "working_gaussian_exchangeable", false)
+        }
+        GaussianGeeReportCovariance::Sandwich => {
+          (&result.sandwich, "unit_sandwich_uncorrected", true)
+        }
+      };
+      if inference.coefficients.first().map(|c| c.name.as_str()) != Some("_cons") {
+        return Err(failure(
+          "Gaussian GEE intercept provenance is unavailable; refit before storing",
+        ));
+      }
+      let coefficients: Vec<_> = inference
+        .coefficients
+        .iter()
+        .enumerate()
+        .map(|(i, c)| tabdat_stats::CoefficientEstimate {
+          name: if i == 0 {
+            "intercept".into()
+          } else {
+            c.name.clone()
+          },
+          value: c.value,
+          standard_error: Some(c.standard_error),
+          statistic: Some(c.statistic),
+          p_value: Some(c.p_value),
+        })
+        .collect();
+      EstimateSnapshot {
+        panel: Some(PanelEstimateProvenance {
+          entity_variable: result.entity_variable.clone(),
+          time_variable: None,
+          group_count: result.group_count,
+          intercept_convention: "population_mean_intercept".into(),
+        }),
+        name: name.into(),
+        estimator: "gaussian_exchangeable_gee".into(),
+        outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
+        predictors: result.predictor_names.clone(),
+        include_intercept: true,
+        covariance: covariance.into(),
+        cluster_variable: clustered.then(|| result.entity_variable.clone()),
+        cluster_count: clustered.then_some(result.group_count),
+        covariance_parameter_names: coefficients.iter().map(|c| c.name.clone()).collect(),
+        covariance_matrix: inference.covariance.clone(),
+        coefficients,
+        observation_count: result.observation_count,
+        event_count: None,
+        sample: result.sample.clone(),
+        reference_distribution: "asymptotic_standard_normal".into(),
+        inference_degrees_of_freedom: None,
+        log_likelihood: None,
+        log_likelihood_convention: None,
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: None,
+      }
+    }
     EstimationState::NonlinearFit(result) => {
       EstimateSnapshot {
+        panel: None,
         name: name.into(),
         estimator: "nls".into(),
         outcome: result.model.outcome.clone(),
@@ -304,10 +614,11 @@ fn snapshot(name: &str, state: &EstimationState) -> Result<EstimateSnapshot, Run
     }
     _ => {
       return Err(failure(
-        "store supports unweighted OLS, logit, probit, Poisson and NLS only",
+        "store supports unweighted OLS, logit, probit, Poisson, NLS, model-based FE/RE, and explicitly selected Gaussian GEE reports",
       ));
     }
   };
+  validate_panel_report(&report)?;
   for coefficient in &mut report.coefficients {
     coefficient.standard_error = coefficient.standard_error.filter(|v| v.is_finite());
     coefficient.statistic = coefficient.statistic.filter(|v| v.is_finite());
@@ -338,7 +649,7 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     command.validate().map_err(failure)?;
     match command {
-      EstimatesCommand::Store(name) => {
+      EstimatesCommand::Store(name) | EstimatesCommand::StoreGaussianGee { name, .. } => {
         if self.stored_estimates.contains_key(name) {
           return Err(failure(
             "name already stored; use estimates drop NAME before deliberately reusing it",
@@ -350,9 +661,13 @@ impl Session {
           ));
         }
         let state = self.estimation.as_ref().ok_or_else(|| {
-          failure("store requires a successful current OLS, logit, probit, Poisson or NLS fit")
+          failure("store requires a successful current supported fit; Gaussian GEE additionally requires covariance(working|sandwich)")
         })?;
-        let report = snapshot(name, state)?;
+        let selection = match command {
+          EstimatesCommand::StoreGaussianGee { covariance, .. } => Some(*covariance),
+          _ => None,
+        };
+        let report = snapshot(name, state, selection)?;
         let estimator = report.estimator.clone();
         self.stored_estimates.insert(name.clone(), report);
         Ok(ExecutionResult::EstimateStore(EstimateStoreResult {
@@ -400,6 +715,187 @@ impl Session {
           models,
           parameter_names,
         }))
+      }
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn problem() -> tabdat_stats::EstimationProblem {
+    let rows: Vec<_> =
+      include_str!("../../../tests/fixtures/mma24_household_mixed_report/balanced/input.csv")
+        .lines()
+        .skip(1)
+        .map(|l| l.split(',').collect::<Vec<_>>())
+        .collect();
+    let sample = tabdat_stats::EstimationSample::new(
+      (0..rows.len()).collect(),
+      rows.len(),
+      0,
+      None,
+      Some(rows.iter().map(|r| r[8].to_owned()).collect()),
+    )
+    .unwrap();
+    tabdat_stats::EstimationProblem::new(
+      "lnexp12m",
+      ["lnhhexp", "age", "sex", "hhsize", "farm", "educ"]
+        .map(str::to_owned)
+        .to_vec(),
+      rows.iter().map(|r| r[1].parse().unwrap()).collect(),
+      rows
+        .iter()
+        .map(|r| [7, 2, 3, 4, 5, 6].map(|j| r[j].parse().unwrap()).to_vec())
+        .collect(),
+    )
+    .unwrap()
+    .with_sample(sample)
+  }
+  fn states() -> Vec<EstimationState> {
+    let p = problem();
+    vec![
+      EstimationState::FixedEffects(Box::new(FixedEffectsState {
+        time_variable: "source_row".into(),
+        entity_data_type: "BIGINT".into(),
+        result: tabdat_stats::fit_fixed_effects(&p, "commune", false).unwrap(),
+      })),
+      EstimationState::RandomEffects(Box::new(RandomEffectsState {
+        time_variable: "source_row".into(),
+        entity_data_type: "BIGINT".into(),
+        result: tabdat_stats::fit_random_effects_equal_group_between(&p, "commune").unwrap(),
+        hausman_problem: None,
+      })),
+      // Match the installed GEE frontend's explicit intercept label.
+      EstimationState::GaussianGee(Box::new(
+        tabdat_stats::fit_gaussian_gee(
+          &p.clone().with_intercept_name("_cons"),
+          "commune",
+          &Default::default(),
+        )
+        .unwrap(),
+      )),
+    ]
+  }
+  fn request(state: &EstimationState) -> EstimatesCommand {
+    if matches!(state, EstimationState::GaussianGee(_)) {
+      EstimatesCommand::StoreGaussianGee {
+        name: "owned".into(),
+        covariance: GaussianGeeReportCovariance::Working,
+      }
+    } else {
+      EstimatesCommand::Store("owned".into())
+    }
+  }
+  #[test]
+  fn owned_panel_store_and_table_need_no_active_data_or_backend() {
+    for state in states() {
+      let command = request(&state);
+      let mut s = Session::new();
+      s.estimation = Some(state);
+      let before = s.state();
+      s.execute(Command::Estimates { command }).unwrap();
+      assert_eq!(s.state().estimation, before.estimation);
+      assert_eq!(s.state().active_dataset, before.active_dataset);
+      s.estimation = None;
+      let before = s.state();
+      let ExecutionResult::EstimateTable(table) = s
+        .execute(Command::Estimates {
+          command: EstimatesCommand::Table(vec!["owned".into()]),
+        })
+        .unwrap()
+      else {
+        panic!()
+      };
+      assert_eq!(table.models[0].observation_count, 192);
+      assert_eq!(s.state(), before);
+      assert!(s.backend.is_none());
+    }
+  }
+  #[test]
+  fn missing_or_inconsistent_panel_provenance_fails_before_registry_effects() {
+    for original in states() {
+      for mode in 0..8 {
+        let mut state = original.clone();
+        match &mut state {
+          EstimationState::FixedEffects(s) => match mode {
+            0 => s.result.normalized_level = None,
+            1 => {
+              s.result
+                .normalized_level
+                .as_mut()
+                .unwrap()
+                .covariance
+                .matrix
+                .pop();
+            }
+            2 => {
+              s.result
+                .normalized_level
+                .as_mut()
+                .unwrap()
+                .degrees_of_freedom += 1
+            }
+            3 => s.result.within.sample.as_mut().unwrap().cluster_groups = None,
+            4 => s.result.within.sample.as_mut().unwrap().retained_indices[0] = usize::MAX,
+            5 => s.result.within.sample.as_mut().unwrap().weights = Some(vec![1.0; 192]),
+            6 => {
+              s.result
+                .normalized_level
+                .as_mut()
+                .unwrap()
+                .covariance
+                .parameter_names[0] = "wrong".into()
+            }
+            _ => {
+              s.result
+                .normalized_level
+                .as_mut()
+                .unwrap()
+                .covariance
+                .matrix[0][0] = -1.0
+            }
+          },
+          EstimationState::RandomEffects(s) => match mode {
+            0 => {
+              s.result.component_method =
+                tabdat_stats::RandomEffectsComponentMethod::GaussianMarginalMl
+            }
+            1 => s.result.gls.sample = None,
+            2 => {
+              s.result.gls.covariance.matrix.pop();
+            }
+            3 => s.result.gls.sample.as_mut().unwrap().cluster_groups = None,
+            4 => s.result.gls.sample.as_mut().unwrap().retained_indices[0] = usize::MAX,
+            5 => s.result.gls.sample.as_mut().unwrap().weights = Some(vec![1.0; 192]),
+            6 => s.result.predictor_names.reverse(),
+            _ => s.result.gls.covariance.matrix[0][0] = -1.0,
+          },
+          EstimationState::GaussianGee(s) => match mode {
+            0 => s.working.coefficients[0].name = "wrong".into(),
+            1 => {
+              s.working.covariance.pop();
+            }
+            2 => s.sample.total_observations += 1,
+            3 => s.sample.cluster_groups = None,
+            4 => s.sample.retained_indices[0] = usize::MAX,
+            5 => s.sample.weights = Some(vec![1.0; 192]),
+            6 => s.group_count += 1,
+            _ => s.working.covariance[0][0] = -1.0,
+          },
+          _ => unreachable!(),
+        }
+        let command = request(&state);
+        let mut s = Session::new();
+        s.estimation = Some(state);
+        let before = s.state();
+        assert!(
+          s.execute(Command::Estimates { command }).is_err(),
+          "mode {mode}"
+        );
+        assert_eq!(s.state(), before);
+        assert!(s.backend.is_none());
       }
     }
   }

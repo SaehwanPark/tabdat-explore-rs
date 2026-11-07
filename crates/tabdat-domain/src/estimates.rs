@@ -6,10 +6,22 @@ pub const MAX_STORED_ESTIMATES: usize = 32;
 pub const MAX_COMPARISON_MODELS: usize = 8;
 pub const MAX_COMPARISON_TERMS: usize = 64;
 
+/// Gaussian GEE retains two inferences; storing one requires an explicit choice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GaussianGeeReportCovariance {
+  Working,
+  Sandwich,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "action", content = "names", rename_all = "snake_case")]
 pub enum EstimatesCommand {
   Store(String),
+  StoreGaussianGee {
+    name: String,
+    covariance: GaussianGeeReportCovariance,
+  },
   Table(Vec<String>),
   Drop(Vec<String>),
 }
@@ -18,7 +30,7 @@ impl EstimatesCommand {
   /// Validate typed callers as well as parsed commands, before registry effects.
   pub fn validate(&self) -> Result<(), String> {
     let names: Vec<&str> = match self {
-      Self::Store(name) => vec![name],
+      Self::Store(name) | Self::StoreGaussianGee { name, .. } => vec![name],
       Self::Table(names) | Self::Drop(names) => names.iter().map(String::as_str).collect(),
     };
     let limit = if matches!(self, Self::Table(_)) {
@@ -53,9 +65,20 @@ impl EstimatesCommand {
   }
 }
 
-/// Selected coefficient inference is copied from a fit, never recomputed here.
+/// Panel keys describe the fitted design, not current-data identity or calendar time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PanelEstimateProvenance {
+  pub entity_variable: String,
+  pub time_variable: Option<String>,
+  pub group_count: usize,
+  pub intercept_convention: String,
+}
+
+/// Reporting uses retained inference, never refits or current-data reconstruction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EstimateSnapshot {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub panel: Option<PanelEstimateProvenance>,
   pub name: String,
   pub estimator: String,
   pub outcome: String,
@@ -170,9 +193,33 @@ mod tests {
   }
 
   #[test]
+  fn gaussian_selector_validates_names_and_preserves_legacy_store_wire() {
+    assert_eq!(
+      serde_json::to_value(EstimatesCommand::Store("one".into())).unwrap(),
+      serde_json::json!({"action":"store","names":"one"})
+    );
+    assert!(
+      EstimatesCommand::StoreGaussianGee {
+        name: "".into(),
+        covariance: GaussianGeeReportCovariance::Working
+      }
+      .validate()
+      .is_err()
+    );
+  }
+
+  #[test]
   fn requests_roundtrip_without_implicit_actions() {
     for command in [
       EstimatesCommand::Store("one".into()),
+      EstimatesCommand::StoreGaussianGee {
+        name: "pa".into(),
+        covariance: GaussianGeeReportCovariance::Working,
+      },
+      EstimatesCommand::StoreGaussianGee {
+        name: "pa_sandwich".into(),
+        covariance: GaussianGeeReportCovariance::Sandwich,
+      },
       EstimatesCommand::Table(vec!["two".into(), "one".into()]),
       EstimatesCommand::Drop(vec!["one".into()]),
     ] {

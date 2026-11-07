@@ -490,23 +490,38 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
 }
 
 fn parse_estimates_command(body: &str) -> Result<Command, ParseError> {
-  let tokens: Vec<_> = body
+  use tabdat_domain::GaussianGeeReportCovariance;
+  let (head, option) = body
+    .split_once(',')
+    .map_or((body, None), |(h, o)| (h, Some(o.trim())));
+  let tokens: Vec<_> = head
     .split(is_command_whitespace)
     .filter(|s| !s.is_empty())
     .collect();
   let syntax = || {
     ParseError::new(
-      "estimates expects store NAME, table NAME [NAME ...], or drop NAME [NAME ...]; options/restore are not installed",
+      "estimates expects store NAME [, covariance(working|sandwich)], table NAME [NAME ...], or drop NAME [NAME ...]; covariance() requires Gaussian GEE; restore is not installed",
     )
   };
   let Some(action) = tokens.first() else {
     return Err(syntax());
   };
   let names: Vec<String> = tokens[1..].iter().map(|s| (*s).to_owned()).collect();
-  let command = match action.to_ascii_lowercase().as_str() {
-    "store" if names.len() == 1 => EstimatesCommand::Store(names[0].clone()),
-    "table" => EstimatesCommand::Table(names),
-    "drop" => EstimatesCommand::Drop(names),
+  let command = match (action.to_ascii_lowercase().as_str(), option) {
+    ("store", Some(option)) if names.len() == 1 => {
+      let covariance = match option.to_ascii_lowercase().as_str() {
+        "covariance(working)" => GaussianGeeReportCovariance::Working,
+        "covariance(sandwich)" => GaussianGeeReportCovariance::Sandwich,
+        _ => return Err(syntax()),
+      };
+      EstimatesCommand::StoreGaussianGee {
+        name: names[0].clone(),
+        covariance,
+      }
+    }
+    ("store", None) if names.len() == 1 => EstimatesCommand::Store(names[0].clone()),
+    ("table", None) => EstimatesCommand::Table(names),
+    ("drop", None) => EstimatesCommand::Drop(names),
     _ => return Err(syntax()),
   };
   command.validate().map_err(ParseError::new)?;

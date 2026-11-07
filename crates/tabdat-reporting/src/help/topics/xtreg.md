@@ -84,8 +84,11 @@ Current-data prediction (retained slopes and unit centers, never refitted):
   stale estimation without modifying data; syntax errors preserve the old fit.
 
 Not installed: general between/two-way effects, weights, factors/interactions,
-if filters, arbitrary cluster variables, FE named report snapshots, persistent
-panel state, bootstrap, panel-specific diagnostics or prediction intervals.
+if filters, arbitrary cluster variables, clustered FE named report snapshots,
+persistent panel state, bootstrap, panel-specific diagnostics or prediction intervals.
+Model-based FE supports `estimates store NAME` when classical normalized
+common-intercept inference is available; comparison preserves Student t(N-G-p),
+full covariance and optional panel provenance. See `help estimates`.
 Legacy bare `xtreg ..., fe` remains parseable but needs explicit keys to execute;
 `re` without explicit keys remains unsupported. See examples/mma21p1panel/README.md for the
 independently audited Table21.2 Within slope/conditional-prediction portion, not
@@ -144,7 +147,10 @@ Random-effects GLS (balanced and unbalanced):
   missing/non-numeric required columns or unsupported modes fail atomically.
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
-  Unit effects/conditional predictions and named RE reports remain uninstalled.
+  Unit effects/conditional predictions remain uninstalled. Model-based native
+  RE-GLS/ML supports immutable `estimates store/table/drop` reports with selected
+  normal inference and component-method labels; clustered RE reports remain
+  unsupported. No GLS likelihood/common R² or fit restoration is invented.
   `estat hausman` preserves the balanced nonclustered one-slope Swamy–Arora
   scalar path and adds a separately labelled joint equal-group-between path
   for1..16 slopes/N<=40000 on balanced or unbalanced groups. It refits on the
@@ -172,7 +178,9 @@ Gaussian marginal ML:
   joint-finite sample and population `xb`/`residuals` prediction rules. Requires
   G>p+1, positive within residual DF, full within rank, at least one slope and
   no weights. Unequal retained counts and singletons are allowed. Time-invariant predictors, general restrictions
-  and named RE reports are unsupported. `mle` is exclusive of `fe`/`re`.
+  and clustered RE report snapshots are unsupported. Model-based ML snapshots
+  retain actual marginal likelihood and normal beta covariance, not quasi-OLS
+  t/likelihood. `mle` is exclusive of `fe`/`re`.
 - Gaussian marginal likelihood integrates the random intercept; this is ML,
   not REML. Unit effects must be exogenous to X and units independent, with the
   specified Gaussian error-components covariance. Model-based interior inference uses the beta block

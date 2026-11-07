@@ -2,11 +2,13 @@
 
 Installed syntax:
 - `estimates store NAME`
+- `estimates store NAME, covariance(working)` or `covariance(sandwich)` (Gaussian GEE only)
 - `estimates table NAME [NAME ...]`
 - `estimates drop NAME [NAME ...]`
 
 Keep immutable reporting snapshots of successful current unweighted OLS, logit,
-probit, Poisson, or explicit-formula NLS fits, and compare them without refitting. Example:
+probit, Poisson, explicit-formula NLS, model-based FE/RE fits, or an explicitly
+selected Gaussian GEE inference, and compare them without refitting. Example:
 
 ```
 regress outcome score
@@ -26,6 +28,31 @@ reusing it. A multi-name drop validates the entire request before deleting any.
 Store copies selected coefficients, SEs, test statistics/p-values, full selected
 covariance/parameter order, fit-time sample positions/counts/groups and applicable
 fit statistics. It does not store predictor designs, fitted values or residuals.
+
+Panel reports retain entity name, optional key name, group count and intercept
+convention in additive optional JSON `panel` metadata. FE requires model-based
+covariance and available classical normalized common-intercept inference; old
+states without it require refitting. It copies within slopes and uses the same
+retained normalization/linear-combination inference as native FE reporting for
+the common intercept: Student t(N-G-p), not pooled inference. Native `_cons`
+(FE/GEE) is aligned to `intercept` in comparisons; conflicting predictor names
+are rejected rather than silently merged. FE uses observation-weighted zero
+effects; RE/GEE population-mean intercepts have a distinct convention.
+
+Model-based RE reports copy native GLS/ML beta covariance and **normal z**,
+never quasi-regression t. Swamy–Arora/equal-group-between/marginal Gaussian ML
+are labelled separately. Only ML supplies its actual marginal Gaussian
+likelihood; GLS does not inherit a transformed-OLS likelihood. Clustered FE/RE
+report snapshots remain unsupported (native clustered fits/predictions still work).
+
+Gaussian GEE always retains both inference variants, so **plain store is an
+error**, not an implicit default. Choose `covariance(working)` for inverse working
+bread or `covariance(sandwich)` for the uncorrected unit sandwich (multiplier1).
+Both use asymptotic normal z, not G-1 t or CR1. This selector is invalid for other
+estimators. It does not refit GEE, force positive working correlation or select
+a covariance for subsequent active-model operations. Missing provenance,
+malformed dimensions and weighted panel states fail without registry effects.
+
 NLS reports additionally retain the explicit typed mean expression and its ordered
 parameter/predictor bindings, its Gauss–Newton covariance correction, plus
 centered response-scale R-squared when defined. NLS inference assumes
@@ -34,8 +61,9 @@ assumes homoskedasticity, while HC1 permits heteroskedasticity.
 NLS `include_intercept` is false because no intercept is inserted implicitly;
 an intercept-like term may still appear in the explicit formula. Transformed
 responses and scale columns remain named as fitted, not relabeled as weighted
-original-scale estimates. WLS/GLS/IV and unknown estimator provenance are
-rejected, not guessed as OLS.
+original-scale estimates. Generic WLS/diagonal-GLS/IV and unknown linear
+estimator provenance are rejected, not guessed as OLS; native RE-GLS above is a
+distinct supported model.
 Poisson reports retain the fixed offset variable (coefficient one), count-likelihood
 coefficient, null-model likelihood/convention, zero/total counts, McFadden
 pseudo-R-squared and selected covariance
@@ -51,10 +79,15 @@ Tables preserve requested model order and align coefficients by exact name in
 first-seen order. Missing terms/statistics are NA/null, never zero. Binary
 and Poisson statistics are normal z; OLS statistics use Student t with residual df, or G−1
 for one-way clustered OLS; NLS uses its approximate Student t with N−P df.
-Selected covariance and reference are disclosed per column. No coefficient inference is recomputed, and no cross-model test is made.
+Selected covariance and reference are disclosed per column. No model is refitted
+and no cross-model test is made; FE common-intercept inference uses its retained
+normalized model, never current data.
 OLS R-squared, NLS centered response-scale R-squared and binary/Poisson
 McFadden pseudo-R-squared are different measures; transformed NLS R-squared refers to
-the transformed response.
+the transformed response. Panel reports leave the common OLS-labelled R-squared
+row unavailable rather than substituting within/conditional/quasi-GLS measures.
+No panel key asserts calendar-time semantics. Gaussian marginal ML likelihood
+cannot be compared as if it were GEE or FE likelihood.
 Gaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a
 cross-family or robust likelihood-ratio test. Zero/nonfinite OLS variance has
 no reported likelihood or convention.
