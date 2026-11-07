@@ -9,7 +9,7 @@ import statistics
 import subprocess
 import tempfile
 import unittest
-from check_native_conditional_fe import audit, rows, EXPORT, Z95
+from check_native_conditional_fe import audit, independent_equations, rows, EXPORT, Z95
 
 ROOT=Path(__file__).resolve().parents[2]
 REFERENCE=ROOT/'tests/fixtures/mma23_conditional_fe'
@@ -48,6 +48,20 @@ def rescale_inference(data,lookup,factor):
 
 
 class NativeConditionalFeAudit(unittest.TestCase):
+  def test_equations_keep_finite_log_likelihood_when_probability_underflows(self):
+    # Constructed identity, not a native/R fit: one degenerate probability block
+    # has zero observed counts at underflowed probabilities; the other has info.
+    beta=1000.;a=math.log(2)/beta;exported=[]
+    for i in range(5):
+      exported.append({'id':'1','logr':str(float(i)),'pat':str(10 if i==4 else 0),'native_fe_mean':str(10 if i==4 else 0)})
+      exported.append({'id':'2','logr':str(i*a),'pat':str(2**i),'native_fe_mean':str(2**i)})
+    constant=math.lgamma(32)-sum(math.lgamma(2**i+1) for i in range(5))
+    ll=constant+sum(2**i*math.log(2**i/31) for i in range(5));null=constant-41*math.log(5)
+    center=sum(2**i*i*a/31 for i in range(5));info=sum(2**i*(i*a-center)**2 for i in range(5));lr=2*(ll-null)
+    data={'coefficients':[{'value':beta}],'covariance_matrix':[[1/info]],'conditional_log_likelihood':ll,
+      'null_conditional_log_likelihood':null,'likelihood_ratio':lr,'likelihood_ratio_p_value':math.erfc(math.sqrt(lr/2))}
+    independent_equations(data,exported)
+
   def test_actual_source_reflection_permutation_and_missing_metadata(self):
     with tempfile.TemporaryDirectory() as tmp:
       root=Path(tmp);native=root/'baseline';prepare(native);run(native);self.assertEqual(audit(native,REFERENCE,SOURCE,False),(60,50,10,14))

@@ -1,139 +1,153 @@
-# Native patents conditional Poisson FE: bounded contract
+# Chapter23 patents: native conditional Poisson firm FE
 
-**WIP: guarded source script/auditor and focused acceptance tests now pass;
-final documentation reconciliation/review and regression accounting remain
-pending. Not merge-ready.** Deliver an actual owned native fit rather than another
-SQL-only solver. No production kernel/parser/runtime/API/schema/dependency change
-is planned. Existing source/reference artifacts and Chapter24 native semantics
-are authoritative. Risk is moderate: source selection, likelihood conventions,
-retained normalization and file/state failures, not a new estimator.
+This bounded companion to the [SQL composition](conditional_fe.md) runs the
+installed `xtpoisson pat logr, fe id(id)` and retains actual owned conditional-FE
+state for later predictions. It validates Cameron–Trivedi (2005), §23.3/Table23.1's
+model-based conditional-FE portion against the unchanged independent R oracle.
+No production Rust kernel/parser/API/runtime/dependency change was needed.
+It does not complete Table23.1, the nonlinear-panel chapter or the book inventory.
 
-## Exact outcome and statistical sample
+## Sample, model and inference
 
-Cameron–Trivedi (2005) §23.3/Table23.1 conditional-FE Poisson column, supplied
-`patr7079.asc` SHA256
+The pinned `patr7079.asc` SHA256 is
 `87525a1ae9112c235326bf3197cb57dced73c6f166d84e261395a737a390fee8`.
-Load/audit canonical prepared source → specify native `xtpoisson pat logr, fe
-id(id)` → inspect model-based inference/exclusion/convergence → owned n/xb/
-residuals → summaries, scope, text/JSON and no-clobber export/reproduction.
+Source ordinal ID is not CUSIP. All1730 observations/346 firms/five years1975–79
+remain in the exported source; nullable nonmodel ARDSSIC and SUMPAT metadata
+never select the fit. The22 zero-total firms/110 observations carry no slope
+information and are excluded, leaving **1620 observations/324 positive-total
+firms**. All model fields must be available in this source-specific workflow;
+there is no additional complete-case loss. One LOGR slope, no common intercept,
+year dummies, weights or offsets.
 
-Original1730 firm-years/346 firms/1975–79;22 zero-total firms/110 rows excluded
-from slope estimation, retaining1620 rows/324 positive-total firms. Intercept is
-conditioned out; exactly one LOGR slope, no year effects, weights or offsets.
-ID is source ordinal, not CUSIP. All original fields/rows, including nonmodel
-missing ARDSSIC, stay in sorted source export with selected totals and membership.
-SUMPAT is source metadata, not an estimation filter or substitute selected total.
+Condition on each positive firm's selected count total S_g. With
+p_it=exp(b*x_it)/sum_s exp(b*x_is), the conditional likelihood is multinomial and
+includes log(S_g!)-sum_t log(y_it!) constants. Native variance is inverse
+conditional information; normal95/z/two-sided p, same-selected-sample zero-slope
+null/LR and slope-Wald chi-square inference are distinct reported quantities.
+This is **model-based**, not cluster-robust, survey-design or causal inference.
+No nuisance-unit-effect uncertainty or unconditional/new-firm forecast is implied.
 
-The native model conditions on selected positive-group count totals. Full scalar
-inverse conditional information, normal95/z/two-sided p, conditional multinomial
-log likelihood (including factorial constants), same-sample zero-slope null/LR
-and chi-square Wald are available. No clustered/robust/survey/causal or nuisance
-intercept uncertainty. Native numerical method/limits remain unchanged; do not
-impose the old SQL scalar bisection bracket or p-withholding convention on it.
-Source additionally guards BIGINT id1..346/year1975..79, all five unique years,
-finite integer PAT0..1000, finite |LOGR|<=20 and finite metadata except nullable
-ARDSSIC; at least two positive-total groups must survive. No model-field missing
-case is admitted in this source-specific workflow.
+| Original float64 source | Native value |
+| --- | ---: |
+| LOGR coefficient | −0.0377642353572117 |
+| Standard error | 0.03255176135039196 |
+| Conditional log-likelihood | −3659.592559128101 |
+| Native updates | 3 |
 
-**Correction to preceding handoff:** the existing SQL composition and its R
-reference already use NULL means/residuals for excluded zero-total groups, not
-zeros. Preserve this existing convention; do not change production to satisfy
-the mistaken handoff. Slope-only xb is finite on all complete-X source rows,
-including excluded groups. Native n/residuals use each fitted positive group's
-retained anchor/normalization, not a fresh normalization of the current subset.
-Totals reproduce on the estimation design, not after arbitrary data changes.
-Unseen/missing/zero-total IDs have NULL n/residuals; xb needs no current ID.
-Current y is needed only for residuals. Group logical types must match.
+Four selected printed author facts (coefficient−.0377642, SE.0325518, p.246,
+likelihood−3659.5926) pass half-last-printed-digit gates. This is not whole-output,
+optimizer/stopping, bootstrap or historical platform parity.
 
-Retained state must be actual ConditionalPoisson, not pooled Poisson or a report.
-Failed new fits clear stale estimation while preserving data/labels/stored reports;
-parser/prediction errors preserve prior state. Prediction/column and export/file
-collisions are atomic. Script is ordered, not whole-transactional. No automatic
-bootstrap, named snapshots, unit-effect uncertainty or new general capabilities.
-Existing SQL source/bootstrap and all unresolved historical/table/book requirements
-remain separate; no whole-column/table/chapter/book parity from this bridge.
+## Guarded source script and prediction semantics
 
-## Five acceptance cases
+`native_conditional_fe.td` loads canonical `patents.csv`, validates unique ID/year
+keys, BIGINT IDs1..346 and years1975..79, exactly five distinct years per firm,
+finite integer PAT0..1000, finite |LOGR|<=20 and finite numeric metadata except
+nullable ARDSSIC. It retains2..346 firms, computes selected totals/membership in
+canonical ID/year order, then invokes native FE. Native strict identification/
+convergence/resource checks remain authoritative; at least two positive-total
+firms and full-rank within information are required. All-zero outcomes, a single
+positive group, constant within-X, bad keys/years/counts/metadata fail rather than
+produce a false native result or prediction/export. The old SQL slope bracket
+and |z|<=3 p-value withholding are **not** imposed on the native estimator.
+The existing R oracle's scalar bracket validates the supplied original/controls,
+not every custom dataset accepted by the wider native method.
 
-1. Actual original source: existing unchanged R dummy-GLM/direct conditional
-   reference14 quantities, full scalar covariance/information, all source fields/
-   membership/prediction records, exact exclusion counts/IDs and positive-group
-   total identities. Independently recompute score, conditional/null likelihood,
-   LR, normal/Wald tails and conditional normalized means from raw source. Fixed
-   scalar `1e-9+1e-10*abs(ref)`, nonzero p relative1e-8, score1e-8 plus existing
-   scale-relative propagation guard. No tolerance widening or native oracle.
-2. Existing12-firm synthetic source/reference plus positive/negative slope or
-   near-bracket controls where useful: included/excluded samples, independent
-   full information/mean checks, canonical permutation and all-null ARDSSIC.
-   Reuse existing inspectable fixtures/R generator; do not expand public APIs.
-3. CLI text/JSON actual script and byte-identical source exports; every original
-   field/order/member and defined/NULL pattern checked. Source output has nine
-   original fields then selected_firm_total,included_in_native_fe,native_fe_mean,
-   native_fe_xb,native_fe_residual. Final table native_conditional_fe_cohort.
-4. Owned repeated predictions/labels/read-only summaries; current subset preserves
-   fitted-row mean values (not re-normalizing); xb with no current ID, n needs
-   retained matching groups, unknown IDs/zero groups are NULL; no accidental refit.
-   Export/column owner collisions preserve state/files and source bytes. Preserve
-   established failed-fit behavior rather than invent a source-specific policy.
-5. Exact invalid keys/counts/metadata/missing years/all-zero/rank/single-positive-
-   group failures: no false ConditionalPoissonResult or partial export/prediction.
-   Auditor rejects forged source/member/NULL/mean and self-consistent wrong
-   native/R covariance/SE/CI, probability, likelihood and group-normalization
-   artifacts through additional raw-source equations, not equality alone.
+The final active table is `native_conditional_fe_cohort`, exported without
+clobbering as `native_conditional_fe_predictions.csv`. Its columns are the nine
+unchanged originals (`id,year,cusip,ardssic,scisect,logk,sumpat,logr,pat`) followed by
+`selected_firm_total,included_in_native_fe,native_fe_mean,native_fe_xb,native_fe_residual`.
+Summaries use1620 defined means/residuals; exported source and finite slope-only
+indices still cover1730 observations.
 
-## Ordered implementation and evidence
+For positive groups, native mean is S_g*exp[b*(x_current-c_g)] divided by the
+**retained estimation-design** sum_s exp[b*(x_fit,s-c_g)], with a saved anchor c_g.
+Thus estimation-design predictions reproduce each positive group's observed
+total; arbitrary current subsets do not get re-normalized to the full total.
+The group is required for n/residuals; slope-only xb=b*x needs no current ID.
+Current outcome is needed only for residuals. Unseen/missing/zero-total IDs have
+NULL means/residuals; their complete-X indices remain defined. Group logical
+types must match. The existing SQL/R composition already has NULL excluded
+means/residuals too; the earlier handoff's claim that it used zeros was incorrect.
 
-1. Before source implementation, inspect native/SQL/R sample and normalization
-   contracts and establish reference feasibility. Fresh R4.6.2 original oracle
-   already reproduces1620/324 and14 quantities under
-   `/tmp/tabdat-ch23-native-fe/original-reference`. Existing old SQL/R NULL pattern
-   and native Chapter24 semantics agree; the handoff's zero claim was corrected.
-   An ad-hoc existing-native CLI probe passes all14 original R quantities, all1730
-   key/index/mean/residual records and exact110 NULL exclusions before writing
-   the guarded source companion. Native slope−.0377642353572117,
-   SE.03255176135039196, conditional LL−3659.592559128101;three updates.
-   This establishes feasibility, not committed source guards/auditor/failures.
-2. Open draft PR early; implement one guarded source script/guide/auditor and
-   forgery checks, plus focused actual-script Rust acceptance/failure tests.
-   Existing native estimator, SQL/R source solver and fixtures stay unchanged.
-3. Run newly added/modified tests explicitly first, independently audit original
-   and controls, then affected/reverse-consumer checks. Current main0ecc960 has
-   a fresh2105-case/393-binary workspace pass/two pre-existing skips; do not rerun
-   unchanged baselines without an affected boundary. If production/shared code
-   must change, stop to reassess risk/reference/scope and broaden validation.
-4. Reconcile SPEC/roadmap/ledger/SQL guide without closing required whole-table
-   or historical gaps. Review final diff/evidence, commit/push, merge only the
-   complete usable source workflow and verify merged tree/prune both branches.
+Fit/prediction/report/export retain actual ConditionalPoisson state. Read-only
+summaries preserve labels/model. Existing destination columns and export owners
+are not overwritten. A prediction error preserves state; a failed new fit clears
+stale estimation while preserving data/labels/stored reports, per existing count
+handlers. The script is ordered, **not whole-transactional**: an export collision
+does not roll back an earlier valid fit/predictions/tables. Use a fresh output
+directory or choose a new destination rather than deleting someone else's file.
 
-Implement exactly this bounded source bridge. Do not broaden into native
-bootstrap/general estimator changes or silently change retained means, likelihood
-constants, exclusions, error state or reference tolerance. Stop/report conflicting
-source/native semantics or unavailable essential evidence. Report changed files,
-checks, deviations and remaining requirements. Overall goal/inventory stays open.
+## Independent reproduction
 
-## WIP checkpoint before quota wait
+R/Python are optional development tools, not production dependencies. The
+unchanged R generator uses base R `glm` with firm dummies plus an independent
+conditional-score root/information check; no additional R packages are needed.
 
-- Guarded script `native_conditional_fe.td`, independent raw-source/R/equation
-  auditor `check_native_conditional_fe.py`, Python controls/31 forgeries, and
-  `tests/mma23_native_conditional_fe_workflow.rs` implemented; production and
-  existing SQL/R/fixtures unchanged.
-- Five actual-script Rust tests pass:14 frozen R fields/all60 control source and
-  prediction rows/10 zero-group NULLs; JSON/text identical; permutation/all-null
-  ARDSSIC;27 invalid/singular sources; actual model/labels/repeated predictions,
-  current-subset retained normalization, unknown/no IDs, no current outcome for
-  means, prediction errors preserving state and failed refit clearing only model;
-  existing export and prediction column owners preserved. Python2/2 passes,
-  including negative/positive sign-reflection identity of the frozen R model,
-  not a claimed fresh independent R second fit;31 forgeries include shared
-  wrong native/R covariance/inference, likelihood and within-firm allocation.
-- Actual original guarded workflow passes14 R quantities/all1730 source/member/
-  prediction rows/324 positive-group total identities and independent score,
-  information inverse, conditional/null likelihood and LR/normal/Wald identities.
-  JSON/text CSVs byte-identical. Scoped new-root-target Clippy/fmt/diff pass.
-- Logs/artifacts: `/tmp/tabdat-ch23-native-fe/{python-focused.log,root-focused.log,
-  root-clippy.log,original-reference,workflows/original-{json,text}}`.
-- Session quota92% used, weekly29%; policy wait to2026-11-07T18:17:15Z (reset plus
-  two minutes), no verification relaxation/merge. Resume by inspecting clean
-  branch/PR436 and finishing docs, final review and scoped regression accounting.
-  Main's unchanged2105-test baseline is retained evidence, not a fresh2110-case
-  broad pass. Doctests/CI/platform/release/independent review not claimed.
+```sh
+repo=/absolute/path/to/tabdat-explore-rs
+work=/absolute/path/to/fresh-work-directory
+mkdir "$work"
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/patr7079.asc -o "$work/patr7079.asc"
+(cd "$repo" && cargo build --locked --bin tabdat-explore-rs)
+sh "$repo/examples/mma23p1pannonlin/prepare.sh" "$work/patr7079.asc" "$work/patents.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma23p1pannonlin/native_conditional_fe.td" > result.jsonl)
+Rscript "$repo/examples/mma23p1pannonlin/conditional_fe_reference.R" "$work/patr7079.asc" "$work/r-reference"
+python3 "$repo/examples/mma23p1pannonlin/check_native_conditional_fe.py" "$work" "$work/r-reference" "$work/patr7079.asc"
+```
+
+Fresh R4.6.2 reproduces all14 primary fields, including all sample/exclusion
+counts, slope/SE/z/p/CI, conditional likelihood and scalar information. Native
+and R comparisons use fixed `1e-9+1e-10*abs(reference)`, with nonzero p relative
+1e-8; no tolerance widening. Every original field/member/key/order and all1730
+mean/index/residual defined/NULL records are audited against raw source and R.
+Text/JSON source exports are byte-identical. Independent raw-source equations
+check score, scalar information*covariance identity, conditional/null likelihood,
+LR/normal/Wald tails, normalized means, residuals, positive-group totals and
+summary statistics. Score tolerance is1e-8+1e-10*sum(abs(group scores)). Anchored
+log-softmax evaluates likelihood directly even when a zero-count cell's
+probability underflows, without log(0) or clipping.
+
+## Focused tests and verification scope
+
+- Five actual-script Rust tests pass:14 frozen R fields/all60 synthetic source/
+  prediction rows/10 NULL exclusions; JSON/text equality, permutation and
+  all-null ARDSSIC;27 invalid/singular inputs; actual model/labels/repeated
+  predictions and retained-subset normalization without current y; unseen/no
+  IDs, prediction atomicity/failed-fit invalidation and file/column ownership.
+- Three Python tests pass: actual controls, sign reflection of the frozen R
+  model (an exact identity, **not** a claimed fresh independent second R fit),
+  permutation/null metadata;31 rejected forgeries; constructed finite-likelihood
+  identity under probability underflow. Shared wrong native/R covariance with
+  consistent SE/z/p/CI, likelihood, scaled means and total-preserving false
+  within-firm allocation are rejected by raw equations, not artifact equality.
+- Commands: `cargo nextest run --locked -p tabdat-explore-rs --test
+  mma23_native_conditional_fe_workflow --no-tests fail`; `python3 -m unittest
+  discover -s examples/mma23p1pannonlin -p test_check_native_conditional_fe.py -v`;
+  scoped new-root-target Clippy `-D warnings`, fmt and diff checks pass.
+- Main0ecc960's fresh2105-test/393-binary/two-pre-existing-skip workspace run
+  remains evidence for unchanged production/consumers/old tests; the five new
+  Rust cases pass separately. This is **not a fresh2110-case broad run**.
+  Only this independent source guide/script/auditor/tests and documentation
+  links changed; no shared/API changes warrant rerunning the unchanged baseline.
+  No Rust documentation example changed; doctests not rerun. Hosted CI is
+  disabled; no CI/platform/release or independent code-review claim.
+
+Evidence/logs are under `/tmp/tabdat-ch23-native-fe/` (original-reference,
+workflows/original-json and original-text, root-focused.log, python-reviewed.log,
+root-clippy.log). The probability-underflow auditor defect found in author review
+was corrected with a dedicated constructed-identity regression; production
+estimation behavior and fixed gates were unchanged.
+
+## Separate required work
+
+The [SQL whole-firm FE bootstrap](conditional_fe_bootstrap.md) remains the
+validated original324-firm route; the separate native bootstrap caps G at256
+and does not admit this original sample. Native generic weighted/offset/cluster
+FE inference is not added here. [Native gamma RE](native_gamma_re.md),
+[native balanced Poisson GEE](native_poisson_gee.md) and the
+[normal-RE composition](normal_re_poisson.md) remain different methods with
+explicit assumptions/historical limits. General/unbalanced GEE, native normal
+RE, normal-RE bootstrap, other required illustrations and historical source/
+stopping/bootstrap reconciliation stay open. No unresolved required entry is
+silently excluded or marked complete by this source replay.

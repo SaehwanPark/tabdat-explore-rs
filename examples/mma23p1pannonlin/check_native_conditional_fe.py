@@ -23,11 +23,12 @@ def independent_equations(data,exported):
   for group in groups.values():
     y=[float(row['pat']) for row in group];total=math.fsum(y)
     if not total: continue
-    x=[float(row['logr']) for row in group];eta=[beta*v for v in x];shift=max(eta)
+    x=[float(row['logr']) for row in group];eta=[beta*(v-x[0]) for v in x];shift=max(eta)
     weights=[math.exp(v-shift) for v in eta];normalizer=math.fsum(weights);prob=[v/normalizer for v in weights]
+    log_prob=[(v-shift)-math.log(normalizer) for v in eta]
     center=math.fsum(p*v for p,v in zip(prob,x));mu=[total*p for p in prob]
     constant=math.lgamma(total+1)-math.fsum(math.lgamma(v+1) for v in y)
-    ll.append(constant+math.fsum(v*math.log(p) for v,p in zip(y,prob)))
+    ll.append(constant+math.fsum(v*p for v,p in zip(y,log_prob)))
     null.append(constant-total*math.log(len(group)))
     score.append(math.fsum((v-m)*(z-center) for v,m,z in zip(y,mu,x)))
     info.append(total*math.fsum(p*(v-center)**2 for p,v in zip(prob,x)))

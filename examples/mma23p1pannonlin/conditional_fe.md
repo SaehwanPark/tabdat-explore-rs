@@ -4,7 +4,12 @@ This bounded **composed SQL workflow** reproduces the model-based Poisson-FE
 column of Cameron and Trivedi (2005), §23.3, Table 23.1 (p.794), from the
 March 2005 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.do)
 and [output](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.txt).
-It does **not** install a general native `xtpoisson` command. The script guards
+This guide describes the unchanged SQL composition, not the installed native
+estimator. The separate [native patents replay](native_conditional_fe.md) now
+validates the same sample, model-based inference and original predictions using
+actual owned `xtpoisson ..., fe id(id)` state for later fitted-group predictions;
+it does not add a new general kernel/API or original-sample native bootstrap.
+The script here guards
 and selects the panel, solves one conditional score equation, reports the
 coefficient/inference and conditional likelihood, and exports the original rows
 with fit status, model metadata and in-sample means/residuals. Text and CLI-v1
@@ -108,7 +113,9 @@ absolute. R/Python are development-only; author data/program are not bundled.
 The separate [whole-firm conditional-FE bootstrap](conditional_fe_bootstrap.md)
 validates 500 refits against independent R with an explicit non-Stata RNG.
 [Exponential NLS](exponential_nls.md) and bounded [exchangeable Poisson GEE](exchangeable_gee.md)
-are also separate. [Gamma-RE Poisson](gamma_re_poisson.md) is separately validated; normal-RE Poisson, general GEE, their other bootstraps,
-Figure23.1 and remaining Table23.1 outputs remain required. Neither this bounded
+are also separate. [Native gamma RE](native_gamma_re.md), [native balanced Poisson GEE](native_poisson_gee.md)
+and the [normal-RE composition](normal_re_poisson.md) are separately validated.
+Native normal RE, general/unbalanced GEE, other required bootstraps, historical
+Figure23.1 reconciliation and remaining Table23.1 outputs remain required. Neither this bounded
 composition nor the [pooled Poisson column](pooled_poisson.md) completes the
 nonlinear-panel chapter, graduate-method target or book inventory.
