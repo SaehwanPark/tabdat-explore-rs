@@ -1,0 +1,2 @@
+observations,communes,minimum_group_size,maximum_group_size,singleton_groups,sum_group_size_squared,group_residual_sum_squares,residual_sum_of_squares,centered_outcome_sum_squares,signed_score,lm_statistic,df,p_value
+128,16,8,8,0,1024,8.8260868018855068e-06,60.321215554240617,87.589497320353985,-3.0237153416494116,9.1428544673260177,1,0.0024969125663213991
