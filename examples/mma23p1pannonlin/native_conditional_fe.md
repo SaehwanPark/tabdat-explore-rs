@@ -1,7 +1,8 @@
 # Native patents conditional Poisson FE: bounded contract
 
-**WIP: native method is installed, but this Chapter23 source replay is not yet
-implemented/validated.** Deliver an actual owned native fit rather than another
+**WIP: guarded source script/auditor and focused acceptance tests now pass;
+final documentation reconciliation/review and regression accounting remain
+pending. Not merge-ready.** Deliver an actual owned native fit rather than another
 SQL-only solver. No production kernel/parser/runtime/API/schema/dependency change
 is planned. Existing source/reference artifacts and Chapter24 native semantics
 are authoritative. Risk is moderate: source selection, likelihood conventions,
@@ -109,3 +110,30 @@ bootstrap/general estimator changes or silently change retained means, likelihoo
 constants, exclusions, error state or reference tolerance. Stop/report conflicting
 source/native semantics or unavailable essential evidence. Report changed files,
 checks, deviations and remaining requirements. Overall goal/inventory stays open.
+
+## WIP checkpoint before quota wait
+
+- Guarded script `native_conditional_fe.td`, independent raw-source/R/equation
+  auditor `check_native_conditional_fe.py`, Python controls/31 forgeries, and
+  `tests/mma23_native_conditional_fe_workflow.rs` implemented; production and
+  existing SQL/R/fixtures unchanged.
+- Five actual-script Rust tests pass:14 frozen R fields/all60 control source and
+  prediction rows/10 zero-group NULLs; JSON/text identical; permutation/all-null
+  ARDSSIC;27 invalid/singular sources; actual model/labels/repeated predictions,
+  current-subset retained normalization, unknown/no IDs, no current outcome for
+  means, prediction errors preserving state and failed refit clearing only model;
+  existing export and prediction column owners preserved. Python2/2 passes,
+  including negative/positive sign-reflection identity of the frozen R model,
+  not a claimed fresh independent R second fit;31 forgeries include shared
+  wrong native/R covariance/inference, likelihood and within-firm allocation.
+- Actual original guarded workflow passes14 R quantities/all1730 source/member/
+  prediction rows/324 positive-group total identities and independent score,
+  information inverse, conditional/null likelihood and LR/normal/Wald identities.
+  JSON/text CSVs byte-identical. Scoped new-root-target Clippy/fmt/diff pass.
+- Logs/artifacts: `/tmp/tabdat-ch23-native-fe/{python-focused.log,root-focused.log,
+  root-clippy.log,original-reference,workflows/original-{json,text}}`.
+- Session quota92% used, weekly29%; policy wait to2026-11-07T18:17:15Z (reset plus
+  two minutes), no verification relaxation/merge. Resume by inspecting clean
+  branch/PR436 and finishing docs, final review and scoped regression accounting.
+  Main's unchanged2105-test baseline is retained evidence, not a fresh2110-case
+  broad pass. Doctests/CI/platform/release/independent review not claimed.
