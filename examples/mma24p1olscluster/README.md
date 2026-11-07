@@ -35,6 +35,11 @@ explicit. Other RE diagnostics and genuine survey weights/strata remain required
 the [individual Poisson workflows](../mma24p2poiscluster/README.md) cover separate
 portions of Table24.6, including pooled, FE and shared-gamma RE bootstraps.
 
+The [source-pinned companion inventory](inventory.md) maps both Chapter24
+programs, including still-open descriptive, graphical, RE-diagnostic and
+comparison outputs. Existing bounded workflows do not establish whole-table
+or whole-chapter coverage.
+
 ## Source and preparation
 
 Download publisher [`vietnam_ex1.asc`](https://cameron.econ.ucdavis.edu/mmabook/vietnam_ex1.asc)

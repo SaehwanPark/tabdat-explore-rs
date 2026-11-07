@@ -252,8 +252,13 @@ Extend the same workflow/validation standard to:
   source/prediction rows on ASCII/precise DTA, with interior and boundary
   controls. All seven printed author coefficient points and two SEs match;
   five coefficient and two component-SD printed SE discrepancies remain
-  unexplained. Other household RE diagnostics, other GEE workflows and full
-  survey methods remain required.
+  unexplained. The [source-pinned Chapter24 companion inventory](../examples/mma24p1olscluster/inventory.md)
+  maps34 analytical/preparation/report blocks, separating bounded methods from
+  open source summaries, frequency/histogram, Breusch–Pagan LM, classical Hausman
+  and unified mixed comparisons. The next recommended statistical slice is the
+  exact household unbalanced RE LM diagnostic, not substitution of the existing
+  ML boundary LR. Other GEE workflows, printed-table discrepancies and full
+  survey methods remain required; this is not whole-chapter/book coverage.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
