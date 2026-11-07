@@ -378,6 +378,44 @@ fn cli_json_post_estimation_help_topics_and_discovery_links_are_available() {
 }
 
 #[test]
+fn panel_hausman_help_distinguishes_joint_equal_group_and_legacy_scalar_limits() {
+  for (topic, phrases) in [
+    (
+      "estat",
+      vec![
+        "JointPanelHausmanResult",
+        "ClassicalPanelHausmanResult",
+        "separate native",
+        "128 machine epsilons",
+        "default Swamy–Arora",
+        "does not establish exogeneity",
+      ],
+    ),
+    (
+      "xtreg",
+      vec![
+        "joint `estat hausman`",
+        "N<=40000",
+        "multivariate/unbalanced comparisons remain unsupported",
+      ],
+    ),
+  ] {
+    let output = tabdat_bin()
+      .args(["--json", "--help-topic", topic])
+      .output()
+      .unwrap();
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["result_type"], "HelpTopicResult");
+    let text = envelope["data"]["text"].as_str().unwrap();
+    for phrase in phrases {
+      assert!(text.contains(phrase), "{topic}: missing {phrase}");
+    }
+  }
+}
+
+#[test]
 fn ttest_discovery_describes_the_installed_comparisons_and_variance_flags() {
   let output = tabdat_bin()
     .args(["--json", "--describe-command", "TTEST"])

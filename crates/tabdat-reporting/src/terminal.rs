@@ -1190,11 +1190,10 @@ fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult, whole_cluster: b
   text
 }
 
-/// Render owned execution results without recomputing data or statistics.
-/// Exhaustive matching makes a new result variant require an explicit display decision.
+// Keep the complete ordered matrices beside their separate scale/DF labels.
 fn joint_panel_hausman(result: &tabdat_stats::JointPanelHausmanResult) -> String {
   let mut output = format!(
-    "Classical joint panel FE–RE Hausman covariance-difference test\nOutcome: {}; groups({}) = {}; N = {}; selected group size {}..{}; singletons = {}\nRE component method: {:?}; covariance scale: {}\nFE residual scale = {} (DF {}); RE residual scale = {} (DF {})\n",
+    "Classical joint panel FE–RE Hausman covariance-difference test\nOutcome: {}; groups({}) = {}; N = {}; selected group size {}..{}; singletons = {}\nOriginal-design candidate N = {}; excluded = {}\nRE component method: {:?}; covariance scale: {}\nFE residual scale = {} (DF {}); RE residual scale = {} (DF {})\n",
     result.outcome.escape_debug(),
     result.entity_variable.escape_debug(),
     result.group_count,
@@ -1202,6 +1201,8 @@ fn joint_panel_hausman(result: &tabdat_stats::JointPanelHausmanResult) -> String
     result.minimum_group_size,
     result.maximum_group_size,
     result.singleton_groups,
+    result.candidate_observation_count,
+    result.dropped_observation_count,
     result.re_component_method,
     result.covariance_scale_convention,
     result.fe_residual_scale,
@@ -1253,6 +1254,8 @@ fn joint_panel_hausman(result: &tabdat_stats::JointPanelHausmanResult) -> String
   output
 }
 
+/// Render owned execution results without recomputing data or statistics.
+/// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
   match result {
     ExecutionResult::EstimateStore(result) => format!(

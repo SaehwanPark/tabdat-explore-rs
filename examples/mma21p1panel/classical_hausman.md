@@ -15,9 +15,9 @@ cancellation-dominated v is an error: no pseudoinverse, ridge or absolute
 value. Estimates, both variances, sample/group counts, df, statistic, p-value
 and assumptions are reported. The diagnostic does not mutate the fit or data.
 
-Only a balanced model-based nonclustered Swamy–Arora fit with an intercept and
-one slope is supported. ML, robust/clustered, unbalanced and multiple-slope fits
-are rejected. Older serialized RE states without the owned design are readable;
+This legacy scalar path supports a balanced model-based nonclustered
+Swamy–Arora fit with an intercept and one slope. ML, robust/clustered, and
+default Swamy–Arora unbalanced/multiple-slope comparisons are rejected. Older serialized RE states without the owned design are readable;
 refit the supported RE model before this diagnostic. The unit variance may be
 at zero; the covariance-difference guard still applies. No named-pair or general
 multi-parameter test, covariance rescaling or automatic model selection is
@@ -25,7 +25,11 @@ provided. The conventional test assumes RE efficiency under the null; remaining
 within-person correlation can invalidate it, as the author warns. It is not
 cluster robust, and failure to reject does not establish exogeneity. The
 [separate robust auxiliary comparison](README.md#robust-auxiliary-hausman-comparison--2143-p719)
-is a distinct method, not a robust covariance substituted here.
+is a distinct method, not a robust covariance substituted here. The separate
+[Chapter24 joint equal-group-between workflow](../mma24p1olscluster/household_hausman.md)
+adds bounded balanced/unbalanced1..16-slope comparison with a different component
+method and output type; it does not change this scalar result or install a
+general multivariate default-Swamy–Arora diagnostic.
 
 ## Reference and reproduction
 

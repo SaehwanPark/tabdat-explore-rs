@@ -113,7 +113,10 @@ Random-effects GLS (balanced and unbalanced):
   It matches the Chapter24 household author's printed coefficient/SE facts on
   the pinned DTA, but is not a general Stata-compatibility mode.
   `vcmethod()` is invalid with FE/ML; `equal_group_between` rejects robust/cluster
-  options and does not install Hausman or component-uncertainty inference.
+  options. It additionally supports bounded joint `estat hausman` after a
+  model-based fit with1..16 slopes and N<=40000, using separate FE/RE covariance
+  scales and an SPD-only covariance difference. GLS component-uncertainty
+  inference remains uninstalled; see `help estat`.
   Terminal output and JSON `variance_component_method` identify the method;
   JSON retains `RandomEffectsResult` or `UnbalancedRandomEffectsGlsResult`
   according to the sample's group sizes.
@@ -142,9 +145,12 @@ Random-effects GLS (balanced and unbalanced):
 - Failed explicit-key RE fit attempts clear the old fit while preserving data;
   parser errors and legacy bare RE unsupported errors preserve the old fit.
   Unit effects/conditional predictions and named RE reports remain uninstalled.
-  `estat hausman` supports only balanced, nonclustered Swamy–Arora RE-GLS with one slope;
-  it refits FE on the original retained sample and is not cluster robust. See
-  `help estat` for numerical failure conditions and assumptions.
+  `estat hausman` preserves the balanced nonclustered one-slope Swamy–Arora
+  scalar path and adds a separately labelled joint equal-group-between path
+  for1..16 slopes/N<=40000 on balanced or unbalanced groups. It refits on the
+  original owned sample and is not cluster robust. General default-Swamy–Arora
+  multivariate/unbalanced comparisons remain unsupported. See `help estat`
+  for numerical failure conditions and assumptions.
 
 RE unit-cluster inference:
 - `xtreg y xvars, re id(unit) time(year) cluster(unit)` or `robust` uses the same

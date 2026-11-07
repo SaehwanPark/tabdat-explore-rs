@@ -1978,6 +1978,116 @@ fn python_bytes_repr(value: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
   use super::decode_hex;
+  use crate::{
+    Command, EstatCommand, EstatSubcommand, EstimationState, ExecutionResult, RandomEffectsState,
+    Session,
+  };
+
+  fn equal_group_state() -> RandomEffectsState {
+    let rows: Vec<_> = include_str!(
+      "../../tabdat-stats/tests/fixtures/panel_joint_equal_group_hausman/balanced_input.csv"
+    )
+    .lines()
+    .skip(1)
+    .map(|l| l.split(',').collect::<Vec<_>>())
+    .collect();
+    let n = rows.len();
+    let sample = tabdat_stats::EstimationSample::new(
+      (0..n).collect(),
+      n,
+      0,
+      None,
+      Some(rows.iter().map(|r| r[8].to_owned()).collect()),
+    )
+    .unwrap();
+    let problem = tabdat_stats::EstimationProblem::new(
+      "lnexp12m",
+      ["lnhhexp", "age", "sex", "hhsize", "farm", "educ"]
+        .map(str::to_owned)
+        .to_vec(),
+      rows.iter().map(|r| r[1].parse().unwrap()).collect(),
+      rows
+        .iter()
+        .map(|r| [7, 2, 3, 4, 5, 6].map(|j| r[j].parse().unwrap()).to_vec())
+        .collect(),
+    )
+    .unwrap()
+    .with_sample(sample);
+    let result = tabdat_stats::fit_random_effects_equal_group_between(&problem, "commune").unwrap();
+    RandomEffectsState {
+      time_variable: "source_row".into(),
+      entity_data_type: "BIGINT".into(),
+      result,
+      hausman_problem: Some(problem),
+    }
+  }
+  fn hausman() -> Command {
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Hausman,
+      },
+    }
+  }
+
+  #[test]
+  fn owned_joint_comparison_needs_no_active_data_or_backend_and_is_read_only() {
+    let mut session = Session::new();
+    session.estimation = Some(EstimationState::RandomEffects(
+      Box::new(equal_group_state()),
+    ));
+    let before = session.state();
+    let ExecutionResult::JointPanelHausman(h) = session.execute(hausman()).unwrap() else {
+      panic!()
+    };
+    assert_eq!((h.observation_count, h.group_count, h.df), (192, 32, 6));
+    assert_eq!(session.state(), before);
+    assert!(session.backend.is_none());
+  }
+
+  #[test]
+  fn joint_legacy_missing_and_forged_design_or_model_fail_without_mutation() {
+    let original = equal_group_state();
+    // Domain wire tests separately verify that old snapshots decode this way.
+    let mut old = original.clone();
+    old.hausman_problem = None;
+    let mut variants = vec![old];
+    let mut bad = original.clone();
+    bad.result.gls.coefficients[0].value += 0.1;
+    variants.push(bad);
+    let mut bad = original.clone();
+    bad.result.gls.covariance.matrix[1][1] *= 1.2;
+    variants.push(bad);
+    let mut bad = original.clone();
+    bad
+      .result
+      .gls
+      .sample
+      .as_mut()
+      .unwrap()
+      .retained_indices
+      .swap(0, 1);
+    variants.push(bad);
+    let mut bad = original.clone();
+    bad.hausman_problem.as_mut().unwrap().response[0] += 0.1;
+    variants.push(bad);
+    let mut bad = original.clone();
+    bad.result.predictor_names = vec!["x".into(); 17];
+    variants.push(bad);
+    let mut bad = original.clone();
+    bad.result.gls.fit_statistics.observation_count = 40001;
+    variants.push(bad);
+    let mut bad = original;
+    bad.result.gls.covariance.covariance_type = tabdat_stats::CovarianceType::RobustHc1;
+    variants.push(bad);
+    for (i, state) in variants.into_iter().enumerate() {
+      let mut session = Session::new();
+      session.estimation = Some(EstimationState::RandomEffects(Box::new(state)));
+      let before = session.state();
+      assert!(session.execute(hausman()).is_err(), "forgery {i} accepted");
+      assert_eq!(session.state(), before, "forgery {i}");
+      assert!(session.backend.is_none());
+    }
+  }
 
   #[test]
   fn hex_decoding_requires_complete_valid_pairs() {

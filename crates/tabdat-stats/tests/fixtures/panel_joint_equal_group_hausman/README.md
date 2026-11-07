@@ -26,8 +26,9 @@ dominated differences even when both parent covariances are SPD and diagonal
 differences are positive. The older household RE interior and BP balanced
 fixtures also yielded indefinite differences in R probes; they are not valid
 positive-Hausman references and were not made to pass by changing scales or
-tolerances. Rejection coverage for these actual fits remains part of integration
-verification before the complete slice is merged.
+tolerances. The root workflow test verifies actual rejection and unchanged RE/
+data state for the older household RE interior fit; the BP control is a recorded
+reference probe, not an additional frozen positive case.
 
 Regenerate into a new directory:
 
