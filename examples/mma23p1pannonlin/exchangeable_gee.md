@@ -2,7 +2,12 @@
 
 This bounded SQL workflow reproduces the §23.3/Table 23.1 exchangeable
 Poisson population-averaged fit and its working and firm-robust inference. It
-is **not** a general native `xtgee` command. The [author program](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.do)
+is **not** a general native `xtgee` command. The separate
+[native balanced Poisson GEE workflow](native_poisson_gee.md) now retains actual
+Poisson/log GEE for later marginal predictions, with independently validated
+working and G/(G-1) sandwich inference. This SQL composition/bootstrap remains
+unchanged and retains its pooled start; native unbalanced/general GEE and the
+historical slope/bootstrap discrepancies remain required. The [author program](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.do)
 and [log](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.txt)
 provide historical comparisons. CLI text and JSON report the same results;
 `exchangeable_gee_predictions.csv` is sorted by `(id,year)` and includes the

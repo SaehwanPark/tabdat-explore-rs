@@ -112,6 +112,47 @@ fn failed_new_fit_clears_stale_estimation_but_preserves_data_labels_and_reports(
   run(&mut s, "estimates table starter");
 }
 #[test]
+fn selected_counts_and_balanced_joint_finite_membership_are_explicit() {
+  let mut s = fixture();
+  run(
+    &mut s,
+    "sql SELECT id,period,CASE WHEN period=1 THEN NULL ELSE x1 END AS x1,x2,CASE WHEN period=1 THEN 0.5 ELSE y END AS y FROM active ORDER BY id,period into partial_cohort",
+  );
+  let r = fit(&mut s);
+  assert_eq!(r.observation_count, 48);
+  assert_eq!(r.group_count, 12);
+  assert_eq!(r.group_size, 4);
+  assert_eq!(r.sample.total_observations, 60);
+  assert_eq!(r.sample.dropped_observations, 12);
+  assert_eq!(
+    r.sample.retained_indices,
+    (0..60).filter(|i| i % 5 != 0).collect::<Vec<_>>()
+  );
+  assert_eq!(r.zero_total_group_count, 2);
+  run(&mut s, "sql SELECT x1,x2 FROM active into predictors_only");
+  let owned = s.state().estimation;
+  run(&mut s, "predict mean_without_outcome, n");
+  assert_eq!(s.state().estimation, owned);
+  rejected(&mut s, "predict denied_residual, residuals");
+}
+
+#[test]
+fn one_missing_outcome_cannot_silently_select_complete_firms() {
+  let mut s = fixture();
+  run(
+    &mut s,
+    "sql SELECT id,period,x1,x2,CASE WHEN id=1 AND period=1 THEN NULL ELSE y END AS y FROM active ORDER BY id,period into unbalanced_cohort",
+  );
+  let before = s.state();
+  let error = s.execute(parse_command(FIT).unwrap()).unwrap_err();
+  assert!(
+    error.to_string().contains("balanced selected groups"),
+    "{error}"
+  );
+  assert_eq!(s.state(), before);
+}
+
+#[test]
 fn current_ids_are_not_needed_and_failed_overflow_is_atomic() {
   let mut s = fixture();
   fit(&mut s);

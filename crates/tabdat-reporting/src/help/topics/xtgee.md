@@ -70,4 +70,6 @@ PMF/CDF, prediction intervals/std or saved draws. Named estimate snapshots and
 covariance selectors are not supported for this family. A failed new Poisson
 GEE fit clears stale estimation but preserves data/labels/stored reports; parser,
 prediction and store errors preserve the current fit. Gaussian behavior is not
-changed. Full original patents workflow validation is still in progress.
+changed. The bounded original patents companion is independently validated;
+historical slope/stopping/bootstrap and remaining textbook illustrations are
+separate unresolved requirements.
