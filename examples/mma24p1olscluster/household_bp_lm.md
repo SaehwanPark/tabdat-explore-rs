@@ -38,4 +38,85 @@ selected groups beyond10,000, fewer than two selected groups/no pair, nonfinite
 aggregates and residual RSS <=1e-20 times centered outcome sum of squares.
 These are explicit bounded-work/numerical guards, not general estimator limits.
 No Hausman test, native generic `estat` API, one-sided LM or whole-table parity
-is part of this slice. Implementation and evidence are in progress.
+is part of this slice.
+
+## Sample, state and output
+
+The [household README](README.md) pins publisher hashes, numeric code mappings
+and conversion. The script requires positive unique BIGINT `source_row`, positive
+BIGINT commune IDs, finite nonmissing six predictors and finite nonmissing
+outcomes before selection; only NULL outcomes are dropped. FARM/EDUC are numeric
+codes, not factors. Zero log-outcomes remain. The complete-case cohort is ordered
+by source_row and fitted with an intercept plus six slopes. A missing predictor
+or invalid group key on an excluded-outcome row is still an input error.
+
+`household_bp_diagnostic.csv` contains13 numerical fields: N/G, minimum/maximum
+sizes, singleton count, M, Q, RSS, centered outcome sum of squares, signed score,
+LM, reference DF1 and p. Additional fields name the method, legacy reference and
+assumptions. `household_bp_predictions.csv` contains all selected source fields,
+population `bp_xb` and `bp_residual=y−xb`, in source order. The diagnostic is also
+emitted as a labelled table in JSON/text. Population predictions are pooled OLS,
+not posterior/commune-effect predictions. The retained model remains the pooled
+OLS fit after aggregate reporting, reactivation and exports; no RE model is fitted.
+
+Both exports refuse existing destinations. A first export can succeed before a
+second fails; prior model/table/output effects are not rolled back. Run in a
+fresh work directory. Source files are not overwritten; failed exports preserve
+the existing owner and retained pooled fit. The scripts add columns to the named
+selected cohort, not to the source file.
+
+## Reproduce and audit
+
+Build `target/debug/tabdat-explore-rs`, set `repo` to this repository and prepare
+`vietnam.csv` in a new `work` directory as in the household README:
+
+```sh
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_bp_lm.td" > result.jsonl)
+Rscript "$repo/examples/mma24p1olscluster/household_bp_lm_reference.R" /path/to/vietnam_ex1.asc "$work/reference"
+python3 "$repo/examples/mma24p1olscluster/check_household_bp_lm.py" "$work" "$work/reference" /path/to/vietnam_ex1.asc
+```
+
+Use `--text` instead of `--json` in a separate fresh directory for readable
+output. Both modes produce byte-identical diagnostic/prediction CSVs.
+
+For precise DTA, in another new work directory:
+
+```sh
+Rscript "$repo/examples/mma24p1olscluster/dta_reference.R" /path/to/vietnam_ex1.dta "$work/vietnam.csv" --precise
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_bp_lm.td" > result.jsonl)
+Rscript "$repo/examples/mma24p1olscluster/household_bp_lm_reference.R" /path/to/vietnam_ex1.dta "$work/reference" --dta
+python3 "$repo/examples/mma24p1olscluster/check_household_bp_lm.py" "$work" "$work/reference" /path/to/vietnam_ex1.dta --dta /path/to/mma24p1olscluster.txt
+```
+
+R4.6.2/plm2.6.7 independently checks69 quantities: seven pooled coefficients,
+49 covariance entries and13 residual/sample/LM fields, plus every source and
+selected prediction row. Base-R QR residual moments and the separately fitted
+[`plmtest`](https://rdrr.io/cran/plm/man/plmtest.html) BP statistic and Honda
+signed score agree. Optional Python `math.erfc` independently checks the native
+normal-tail calculation. Fixed absolute1e-9 numerical/prediction tolerance and
+relative1e-8 for nonzero p-values are used; reference zero must equal zero.
+All original source fields/keys and row membership are compared exactly.
+DTA source parsing uses `foreign::read.dta(convert.factors=FALSE)` directly;
+allowing factor conversion changes the design and yields a different LM.
+
+Original ASCII LM **432.7481623551**, p **4.0997287399e-96**; precise-DTA LM
+**432.7480997699**, p **4.0998573282e-96**. Both complete audits pass. The DTA
+statistic matches the pinned author log's **432.75** within half its printed
+last digit. This author fact does not establish full Table24.4 parity or resolve
+the separate ML SE discrepancies.
+
+Three [frozen synthetic controls](../../tests/fixtures/mma24_household_bp_lm/README.md)
+validate all69 quantities and every prediction row for balanced N128, unbalanced
+N150 with one singleton/missing source outcome, and balanced negative-score N128.
+Five actual-script Rust tests cover those references/JSON-text exports, model
+ownership and both export collisions, plus invalid keys/missing predictors,
+no pairs/one group, collinearity and constant/nearly-perfect outcomes. Optional
+`python3 examples/mma24p1olscluster/test_check_household_bp_lm.py` rejects14
+forged artifacts, including shared native/reference score-sign corruption.
+Python/R are development validation/conversion tools, not production dependencies.
+
+Remaining classical Hausman, descriptive/graphical and unified comparison
+requirements stay open; see the inventory. In particular, a small legacy BP
+p-value with a negative signed score is not a positive-variance alternative test.
+Neither robust error assumptions nor survey-design validity follow from this
+classical diagnostic.

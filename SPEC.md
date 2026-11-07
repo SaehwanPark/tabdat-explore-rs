@@ -52,7 +52,12 @@ The [Chapter24 companion inventory](examples/mma24p1olscluster/inventory.md)
 now maps34 analytical/preparation/report blocks across both source programs,
 linking bounded validation and explicitly retaining descriptive, graphical,
 RE-diagnostic and mixed-report gaps. This is source-scoped inventory progress,
-not whole-chapter/book coverage or additional runtime capability.
+not whole-chapter/book coverage. A separate [household BP LM composition](examples/mma24p1olscluster/household_bp_lm.md)
+now validates the classical unbalanced pooled-residual squared-score chi-square1
+diagnostic against R/plm on all source/prediction rows. It retains pooled OLS,
+not RE, and is neither a generic native post-estimation API nor the ML boundary
+LR or one-sided variance test; classical Hausman and remaining source outputs
+remain required.
 
 ## Implemented and deferred capabilities
 

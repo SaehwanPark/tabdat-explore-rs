@@ -82,7 +82,7 @@ tests or change their evidence.
 | H-RE-GLS / 96–100 | Random-intercept feasible GLS, coefficient/SE/z, components/theta, stored refgls | Validated bounded [equal-group-between workflow](household_equal_group_re.md), [script](household_equal_group_re.td): direct R/full covariance and 14 printed DTA coefficient/SE facts. Default [trace-corrected Swamy–Arora](household_re_gls.md) is independently validated but uses a different unbalanced component convention. |
 | H-FE / 105–107 | Within commune FE, normalized intercept, slope inference, stored fe | Validated bounded [FE workflow](household_fe.md), [script](household_fe.td): full-dummy R QR/common-intercept covariance, all source and population/unit-specific predictions. |
 | H-RE-ML / 112–116 | Gaussian marginal ML, joint information, components, likelihood/LR, stored remle | Validated bounded [ML workflow](household_re_ml.md), [script](household_re_ml.td): R profile/analytic joint information/nlme, 210 quantities and all predictions. Historical five coefficient-SE and both component-SD-SE differences remain unresolved; do not mark printed inference parity. |
-| H-BP / 118–121 | Refit RE then Breusch–Pagan random-effect LM diagnostic | Open: independently define/validate the unbalanced pooled-residual LM statistic, boundary null/reference and source convention. The log reports chi2(1)=432.75; the ML unit-variance boundary LR is a different test and does not close this entry. |
+| H-BP / 118–121 | Refit RE then Breusch–Pagan random-effect LM diagnostic | Validated bounded [BP LM workflow](household_bp_lm.md), [script](household_bp_lm.td): 69 independent R QR/plm quantities and all source/prediction rows on ASCII/precise DTA; balanced, unbalanced/singleton and negative-score controls. Uses the legacy squared-score chi-square1 reference, not a one-sided variance test or ML boundary LR; DTA LM matches logged432.75. Native workflow retains pooled OLS and does not need an RE fit. |
 | H-HAUSMAN / 123–127 | Classical FE-vs-RE slope specification test | Open: same-cohort aligned coefficients/full covariance difference, variance-scaling convention, rank/indefinite-difference policy and independent reference required. Source expressly assumes IID errors after commune effects; this is not robust or survey inference. |
 | H-GEE / 129–133 | Gaussian identity exchangeable population-averaged fit, working inference, stored pa | Validated bounded [GEE workflow](household_gee.md), [script](household_gee.td): dense R/geeM and 16 printed DTA facts; RSS/N/pair moments/normal inference. Native uncorrected commune sandwich is an additional separate uncertainty choice. |
 | H-REPORT-OLS / 135–138 | Named olsiid/olshet/olsclust coefficient/t/R²/N comparison | Partial: [household_ols.td](household_ols.td) produces the independently audited three-fit named comparison, not literal Stata formatting. Full printed-table reconciliation remains distinct. |
@@ -135,10 +135,9 @@ tests or change their evidence.
   of valid finite-sample t tests. Current B−1 covariance/percentile evidence does
   not automatically validate those separate displays or their historical RNG.
 
-**Next recommended statistical slice:** H-BP, after freezing the exact
-unbalanced LM formula and boundary reference against an independent source,
-with this household cohort plus balanced, singleton/unbalanced and zero-component
-controls and a retained-state failure case. H-HAUSMAN follows only with an
-explicit scaling/rank policy. Descriptive/frequency/graphical and mixed-report
-entries above also remain required. This inventory closes neither Chapter24 nor
+**Next recommended statistical slice:** H-HAUSMAN, after freezing an explicit
+variance-scaling/rank policy and independent reference on the exact household
+cohort. H-BP now independently validates the legacy squared-score convention;
+it does not supply a one-sided boundary test. Descriptive/frequency/graphical
+and mixed-report entries above also remain required. This inventory closes neither Chapter24 nor
 the full-book inventory requirement; no required illustration is excluded.
