@@ -36,6 +36,18 @@ write.csv(data.frame(model='fe', path=names(fields), value=unname(fields)),
   '/tmp/forged_normalization.csv', row.names=FALSE, quote=FALSE)
 ```
 
-No native outputs or tolerances were used to create either new reference block.
+`student_t_tails.csv` freezes30 independent base-R two-sided t tails, df7/159/
+1383 and ten statistics including near zero, both actual common-intercept t
+values and40. It checks the auditor-only incomplete-beta implementation at
+unchanged relative1e-9, including complement cancellation near t=0:
+
+```r
+d <- expand.grid(df=c(7,159,1383),
+  statistic=c(0,1e-6,.1,1,1.96,5,20,23.91854386526995,25.65713523504,40))
+d$p_value <- 2*pt(-abs(d$statistic), d$df)
+write.csv(d, '/tmp/student_t_tails.csv', row.names=FALSE, quote=FALSE)
+```
+
+No native outputs or tolerances were used to create the new reference blocks.
 R/Python are development tools only; no production dependency or whole-table
 historical/RNG/optimizer parity is implied by this fixture.
