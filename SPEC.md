@@ -48,6 +48,14 @@ adds original-theta IID/HC1/person-CR1 matrices/both coefficient intervals and
 population/quasi predictions, with independent120-field R/plm evidence and
 explicit negative-raw-component truncation, intercept scaling and normal/t references.
 
+The [Chapter23 patents companion inventory](examples/mma23p1pannonlin/inventory.md)
+now maps37 preparation/graph/model/bootstrap/report blocks with pinned source
+lines and linked independent evidence. Full-decade derived data/summaries,
+original linear FE intercept-SE and named-report/historical gaps stay open;
+the PA bootstrap's500 nominal versus338 usable values and missing primary
+normal-RE SEs are explicit, not silently promoted to successful fits/zero SEs.
+This adds no runtime capability or whole-chapter/book completion claim.
+
 The [Chapter24 companion inventory](examples/mma24p1olscluster/inventory.md)
 now maps34 analytical/preparation/report blocks across both source programs,
 linking bounded validation and explicitly retaining descriptive, graphical,
