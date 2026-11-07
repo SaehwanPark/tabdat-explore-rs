@@ -1,0 +1,1 @@
+R version 4.6.2 (2026-10-29) ; gee 4.13.30 ; mode rescaled ; dense block variance/score/inverse; fixed scale1/legacy Pearson; no native input

@@ -168,6 +168,21 @@ method. New dependencies, unrelated generic-GEE frameworks, guessed historical
 behavior and broad refactors are excluded. Report changed files, exact checks,
 deviations, limitations and the next priority; required inventory remains open.
 
+## Pre-kernel author plan review
+
+Reviewed the contract against Gaussian stats/execution/parser/state/capabilities
+and the package/base-R source equations. No independent code review is claimed.
+Resolved before implementation: (1) separate variance scale1 from correlation
+normalizer S2/N; (2) B is expected sensitivity, so finite-differencing observed U
+must not incorrectly substitute its derivative as bread; (3) Gaussian command
+wire stays unchanged via additive typed dispatch; (4) the new command must join
+failed-fit invalidation/capability classification, not leave stale Poisson state;
+(5) selected balance is checked after joint-finite selection, with source-all-row
+membership separately enforced; (6) no PMF/LR/named snapshot is inferred from a
+Poisson working family. Generic unbalanced legacy moments and nuisance inference
+remain excluded. Supplemental multivariate/rescaling reference and direct failure
+fixtures are the next gate before kernel implementation.
+
 ## Reference setup evidence (pre-kernel)
 
 Current R4.6.2/gee4.13.30 reproduces the existing original source oracle under
@@ -179,7 +194,22 @@ but installed gfortran16.2 resolves its private libraries under Darwin25; defaul
 install failed with missing emutls_w. A per-install R_MAKEVARS_USER FLIBS override
 using gfortran `-print-file-name` paths installs successfully without editing
 global R configuration or changing package code. Both logs are preserved in the
-temporary evidence directory. Do not hardcode these host paths in production.
+temporary evidence directory. If this exact Homebrew/macOS mismatch recurs,
+compare `R CMD config FLIBS` with `gfortran -print-file-name=libemutls_w.a` and
+`gfortran -print-file-name=libgfortran.dylib`; use the compiler-resolved directories
+in a temporary Makevars, never edit global R Makeconf. Check both files exist
+before replacing FLIBS; this is not a workaround for arbitrary linker failures.
+Do not hardcode these host paths in production.
+
+Fresh positive/negative12-firm package/base-R runs match every existing frozen
+report/prediction/score field. Separate [supplemental R generator](native_poisson_gee_reference.R)
+now freezes [multivariate/rescaling controls](../../crates/tabdat-stats/tests/fixtures/poisson_gee/README.md):
+60 rows/12 groups, three coefficients,66 fields/both full3x3 matrices, all
+predictions/three-vector group scores per case, explicitly17 digits. Dense block
+V/score/bread solutions agree with R gee; natural coefficient/SE/CI/full-covariance
+rescaling identities pass. These are pre-kernel oracles, not native evidence.
+Direct native numerical/failure tests, kernel and the remaining integration/
+workflow checks are still pending. Do not merge this reference-only checkpoint.
 
 I-DETAIL/frequency/graphics, historical ML/URBAN/MEDEXP/LNHHEXP discrepancies,
 remaining normal-RE/bootstrap/method illustrations and full book inventory remain
