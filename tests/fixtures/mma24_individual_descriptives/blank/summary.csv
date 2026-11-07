@@ -1,0 +1,13 @@
+variable,count,mean,std_dev,minimum,maximum
+pharvis,0,,,,
+lnhhexp,0,,,,
+age,0,,,,
+sex,0,,,,
+married,0,,,,
+educ,0,,,,
+illness,0,,,,
+injury,0,,,,
+illdays,0,,,,
+actdays,0,,,,
+insurance,0,,,,
+commune,0,,,,

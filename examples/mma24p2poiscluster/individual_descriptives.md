@@ -71,3 +71,14 @@ relevant integration checks, scoped Clippy/fmt/diff and final PR review. No
 Rust documentation examples or statistical-kernel changes intended. If essential
 source evidence cannot be obtained, record it and request a decision rather
 than pretending that an unresolved required entry is complete.
+
+## Implementation checkpoint (not merge-ready)
+
+Native script, independent R reference and source/statistic auditor now run on
+both synthetic controls and both pinned original modes. Each case passes60 R
+fields, exact source/prepared rows and membership. Original modes retain27766
+records, including the entirely missing27734, with333180 available variable/key
+pairs; precise DTA additionally passes all60 printed companion-log fields.
+No tolerance widening or kernel change. This is manual feasibility evidence:
+automated actual-script/state/failure/forgery tests, JSON/text export comparison,
+broader root validation and final specification/ledger reconciliation remain.
