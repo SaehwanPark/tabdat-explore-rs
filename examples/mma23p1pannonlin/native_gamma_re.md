@@ -1,130 +1,150 @@
-# Patents native shared-gamma RE workflow: preimplementation contract
+# Patents: native shared-gamma random-effects Poisson
 
-**In progress, not fully verified/delivered yet.** Medium risk: new source workflow
-and artifact/state contracts on an existing estimator; no numerical kernel,
-public Rust/CLI schema, dependency or existing composition change expected.
+**Implemented, independently validated bounded workflow.** Connects existing
+native `xtpoisson` to Cameron–Trivedi (2005), §23.3/Table23.1. No estimator,
+parser/runtime/schema/dependency change. Medium-risk source/state integration;
+not whole-table/chapter/book coverage or literal historical parity.
 
-## Decision and exact outcome
+The [script](native_gamma_re.td) gives graduate panel-count users load/audit →
+ordered preparation → joint native fit/diagnostic LR → owned prediction/
+interpretation → terminal/JSON report/CSV reproduction. Unlike the older
+[SQL composition](gamma_re_poisson.md), whose retained model is pooled Poisson,
+this workflow retains the **actual shared-gamma RE fit** for later native
+prediction. The composition remains unchanged as independent diagnostic evidence.
 
-Following PR433, prioritize a practical graduate panel-count workflow rather
-than requiring the remaining descriptive entries to precede estimation work.
-The §23.3/Table23.1 [SQL gamma-RE composition](gamma_re_poisson.md) already has
-an independent oracle but leaves the *pooled Poisson* model retained. Connect
-the existing native `xtpoisson pat logr, re id(id)` to this exact illustration:
-load/audit → source-key-ordered preparation → native joint fit/diagnostic LR →
-owned marginal prediction/interpretation → text/JSON report/CSV reproduce.
-After success the retained model must be **shared-gamma RE**, so subsequent
-native prediction uses RE rather than the earlier pooled starting fit.
+## Source, sample and model
 
-This is not a new estimator family or whole-table parity. The old composition
-remains unchanged as independent method/diagnostic evidence, with its state
-limitation clearly distinguished from this native workflow.
-
-## Source, design and inference
-
-Use existing `prepare.sh` and `patents.csv` projection of `patr7079.asc`, SHA256
+`patr7079.asc` SHA256
 `87525a1ae9112c235326bf3197cb57dced73c6f166d84e261395a737a390fee8`.
-Nine fields, `id year cusip ardssic scisect logk sumpat logr pat`; original id is
-source-record ordinal, not CUSIP. Retain all346 firms/1730 observations in
-1975–79, including22 zero-total firms and missing nonmodel ARDSSIC. `sumpat`
-is preserved metadata, not silently replaced by the selected five-year total.
+Existing `prepare.sh` projects nine columns:
+`id year cusip ardssic scisect logk sumpat logr pat`.
+ID is source-record ordinal, not CUSIP. All **346 firms /1730 firm-years** in
+1975–79 remain, including22 all-zero firms and missing nonmodel ARDSSIC.
+ARDSSIC is also allowed entirely NULL despite CSV VARCHAR inference. No metadata
+missingness filter; no zero-total exclusion. Preserve `sumpat` as source metadata,
+not a replacement selected-five-year total. Counts imported from decimal-form
+canonical CSV may be DOUBLE; validate integer values rather than round them.
 
-The bounded script admits2..346 firms, each with the five unique years,
-positive exact integer id<=346, pat finite nonnegative integer<=1000 and
-finite |logr|<=20. Preserve original numeric source values/missingness; canonical
-CSV pat may be imported DOUBLE because prepare.sh writes decimal integer
-values. Validate integer-valued counts without silently rounding. No missing
-model rows are silently removed by this workflow. Source fields remain intact,
-new selected-firm-total/RE prediction columns have distinct names; sort id/year.
-No user data or existing export owner is overwritten.
+Raw guards admit2..346 firms, exact positive BIGINT id<=346 and BIGINT years
+1975..79, unique pairs and all five years per loaded firm. The native fit also
+requires G>3 (at least four firms for its three joint parameters). Patents must be finite
+integers0..1000, LOGR finite within20; the other canonical metadata are finite,
+except nullable ARDSSIC. Every loaded record is retained or the workflow fails.
+Sort `(id,year)` before fitting. This bounded source contract is narrower than
+the existing general native estimator, not a new generic panel-data interface.
 
-Native mean exp(intercept+beta*logr), shared mean-one Gamma firm effect with
-variance alpha, alpha independent of regressors; jointly estimate intercept,
-logr and lnalpha. Include factorial constants in integrated likelihood. Use
-inverse **full joint observed information**, correction1, asymptotic normal95,
-alpha delta SE and exponentiated log-Wald interval. No G−1 t, cluster sandwich,
-row-NB substitution, weights, offset, year effects, posterior firm effects or
-causal claim. lnalpha=0 tests alpha=1, **not** zero random-effect variance.
-The native refitted same-sample pooled likelihood supplies the alpha=0 equal
-chi-square0/1 boundary-mixture LR. Distinguish numerically underflowed p=0.
-Existing bounded native convergence/failure semantics stay unchanged.
+Mean `mu_it=exp(a+b*LOGR_it)`, independent firms, shared multiplicative
+`u_i~Gamma(shape=1/alpha,rate=1/alpha)`, conditional Poisson observations.
+`E(u_i)=1`, `Var(u_i)=alpha`. This is **not** independent-row NB2 or posterior
+firm-specific prediction. No year effects, weights, offset or causal assumption
+is inferred. Alpha is independent of regressors under the fitted model.
 
-Predictions: `n` is population marginal mean, `xb` log mean, residuals pat−mean.
-Native inference/predictions and every selected source key must match independent
-R, not the old pooled predictions. Script is ordered, not whole-transactional:
-loading/preparation clears a previous fit; later export failure retains successful
-fit/data/prediction changes. A failed fit/prediction itself must preserve prior
-owned model/data/labels and no half-created destination column.
+Jointly estimate intercept/LOGR/ln(alpha), retaining factorial likelihood
+constants and the inverse **full joint observed information**, including all
+coefficient/dispersion cross terms. Normal z/two-sided p/95% intervals,
+covariance correction1; alpha delta SE and exponentiated log-Wald interval.
+No cluster-robust/few-firm/survey guarantee. `lnalpha=0` tests alpha=1,
+**not** zero heterogeneity. The separate alpha=0 LR refits pooled Poisson on the
+same sample and uses an equal chi-square0/1 boundary mixture. A printed p=0
+can be numerical tail underflow, not mathematically zero probability.
 
-## Acceptance (five observable cases)
+Original native float64: intercept2.312704994995631, LOGR.348783173620768,
+lnalpha.545469308737375, alpha1.725417946111643; log likelihood
+−5553.178728223975. Native six-step convergence reaches scaled score8.54e-15
+and scaled step2.37e-14 under existing1e-10 rules. Full rank, positive joint
+information and interior dispersion are required; no clipping/fallback.
 
-1. Original pinned source: all1730 source/prepared/prediction records and actual
-   key membership, all346 firms/22 zero-total firms, joint full covariance and
-   **37 existing independent R quantities**, plus xb reconstruction. Preserve
-   fixed `1e-9+1e-10*abs(reference)` comparisons and relative1e-9 nonzero p gates.
-   R4.6.2 base-R integrated likelihood/score/Hessian plus NB-total/multinomial
-   factorization is the oracle; reuse existing generator unchanged.
-2. Existing inspectable12-firm/60-row source/control and R reference under
-   `tests/fixtures/mma23_{conditional_fe,gamma_re}`: all source/model/prediction
-   fields, zero firms, both text/JSON and byte-identical exports; permutation
-   must restore canonical id/year ordering without changing values/model.
-3. Native retained model is GammaPoisson, not Poisson; subsequent prediction
-   after workflow success still uses owned RE coefficients. Read-only summary,
-   labels and selected active source state are preserved; collisions refuse
-   without overwriting existing columns/files or silently refitting.
-4. Invalid/missing/nonfinite/fractional/out-of-range data, duplicate keys,
-   missing year/incomplete firm and singular design fail before prediction/
-   export. A valid count sample with a noninterior dispersion optimum fails
-   without replacing the prior pooled fit/data. Do not mistake an output-file
-   collision for successful input validation.
-5. Real-script independent auditor controls and targeted source/key/sample,
-   covariance/parameterization/inference, shared wrong native/R statistic and
-   model-ownership/prediction forgeries are rejected. Fixed historical selected
-   printed gates remain separate; do not claim printed lnalpha agreement.
+## Prediction, state and files
 
-## Implementation order and verification
+- `predict ..., n`: population marginal mean exp(a+b*LOGR).
+- `predict ..., xb`: log mean.
+- `predict ..., residuals`: current PAT minus marginal mean.
 
-1. Add `native_gamma_re.td`, using existing load/isid/SQL/source guards,
-   `xtpoisson`, `predict`, `summarize` and `export`. No parser/runtime changes.
-2. Add `check_native_gamma_re.py` and real-script corruption tests; compare
-   native structured output to unchanged R, original source and row exports,
-   including full matrix/order/convergence and mean-prediction identities.
-3. Add `tests/mma23_native_gamma_re_workflow.rs` against existing tiny frozen
-   inputs/references; run it explicitly and new Python tests first. Then check
-   affected root scope/reverse consumers under the no-repeated-baseline policy,
-   scoped Clippy/fmt/diff; broaden if any existing code/helper/schema changes.
-   Reproduce original JSON/text modes with exact-source audit, update this doc,
-   README/SPEC/roadmap/ledger, review, push/merge and clean both branches.
+An RE residual mean need not be zero: original marginal mean20.0932975585 and
+residual mean14.6783787421 differ from pooled-Poisson calibration. This is not
+posterior shrinkage, a count-probability distribution, prediction interval or
+validation of mean adequacy/exogeneity/out-of-sample accuracy.
 
-Stop instead of improvising if native/reference sample, parameterization,
-likelihood, covariance or convergence disagree. Diagnose; do not widen tolerances
-or turn this bridge into a new-kernel refactor without revising the bounded plan.
-Implement exactly this plan. Do not broaden scope. Report files, tests, deviations
-and unresolved risks before merge.
+`native_gamma_re_predictions.csv` contains original nine columns plus
+`selected_firm_total,included_in_native_re,native_re_mean,native_re_xb,native_re_residual`,
+all rows in strict id/year order, including zero-total firms. The final active
+relation is `native_gamma_re_cohort`; source input bytes are untouched.
+Summary/scope are read-only. Existing destination columns and export files
+refuse collision. The whole script is ordered, **not transactional**: successful
+load/preparation/fit/predictions remain after export failure. It does not restore
+an earlier data/model session or overwrite to rerun; use a fresh directory.
 
-Historical source lnalpha .5454692 versus converged float64 .5454693087 remains
-unresolved literal parity; the prior float32 probe is not an alternative oracle.
-Remaining illustrated normal-RE/GEE/bootstrap outputs and chapter/book inventory
-work, I-DETAIL/I-FREQ/I-GRAPH, household ML SE and URBAN/MEDEXP/LNHHEXP
-reconciliation all remain required. No missing book source or unavailable Stata build is manufactured.
+Established native failure policy: a failed **new fit clears stale estimation**,
+but retains current data/labels/immutable stored reports. It must not leave a
+failed iterate or make subsequent prediction silently use an old pooled fit.
+Parser/prediction errors preserve existing state; an immutable stored Poisson
+report remains readable without restoring its model. The initial contract's
+contrary failed-fit preservation assumption was corrected from existing
+individual_gamma_re.md/runtime contracts, not by changing production semantics.
 
-## Implementation checkpoint (not merge-ready)
+## Reproduce
 
-Native script and independent auditor now pass the original1730-row/346-firm
-source and existing60-row/12-firm control, each with all37 unchanged R fields,
-full joint covariance, every source/prediction record and key/order. Additional
-Python likelihood/score/observed-information-inverse identities, normal-tail/
-alpha/LR relationships and mean/xb/residual identities also pass. No native
-kernel or reference formula/tolerance change. R4.6.2 original max score3.27e-12,
-independent factorized-likelihood difference1.00e-11; native original converges
-in6 iterations, scaled score8.54e-15 and scaled Newton step2.37e-14.
+Native CSV analysis has no R/Python dependency. Use pinned Rust1.99.1 and a fresh
+directory; review source-containing CSVs before sharing them.
 
-The first manual audit caught repeated guard/scope rows; the source statements
-now aggregate to one row (guard reports actual firm count), avoiding1730 repeated
-messages. Corrected runs live under `/tmp/tabdat-ch23-native-gamma/` as
-`original-json-v2`, `control-json` and `reference`.
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+repo="$PWD"
+work=/path/to/fresh-directory
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/patr7079.asc -o "$work/patr7079.asc"
+shasum -a 256 "$work/patr7079.asc"  # Must match above.
+sh examples/mma23p1pannonlin/prepare.sh "$work/patr7079.asc" "$work/patents.csv"
+cargo build --locked --bin tabdat-explore-rs
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma23p1pannonlin/native_gamma_re.td" > result.jsonl)
+ref=$(mktemp -d)
+Rscript examples/mma23p1pannonlin/gamma_re_poisson_reference.R "$work/patr7079.asc" "$ref/reference"
+python3 examples/mma23p1pannonlin/check_native_gamma_re.py "$work" "$ref/reference" "$work/patr7079.asc"
+```
 
-Automated script/state/failure/export/permutation tests and forged-artifact
-rejections, original text/export equivalence, historical selected gates, final
-impact-scoped checks/review and public-status reconciliation remain. Do not
-merge or claim the whole slice validated from these two positive runs alone.
+Use `--text` in another fresh directory for readable reporting; original/control
+CSV exports are byte-identical to JSON. R/base-R and standard-library Python
+are optional development validation only. No publisher raw data are committed.
+
+## Evidence and supported limits
+
+Unchanged base-R integrated-likelihood oracle, R4.6.2: BFGS plus observed-
+information score refinement, central score-Hessian check and independent
+NB-total/conditional-multinomial likelihood factorization. Original max score
+3.27e-12, factorization difference1.00e-11. Both original and existing inspectable
+12-firm/60-row control match **37 R quantities**, full joint covariance and every
+source/prediction record/key/order. Exact Decimal source identity, fixed
+`1e-9+1e-10*abs(reference)` numeric gates and relative1e-9 nonzero p gates; no
+reference formula change or tolerance widening.
+
+The auditor additionally checks score/likelihood/observed-information-inverse,
+normal tails, alpha/CI/LR and mean/xb/residual identities, actual zero-firm/sample
+membership, convergence and metadata. Original gates match **six selected printed
+author facts**, separate from R. Primary author log SHA256
+`92f68c76063cf083217724f1b1b45cfaf8ae7a8c7ce0b4a1d5f62accd86dc208`.
+Historical lnalpha .5454692 versus native converged .5454693087 **does not match**
+half a digit; prior float32 probes are explanatory evidence, not a substitute
+oracle or proof of historical internals. No whole printed-column claim.
+
+Six new Rust cases are accounted across runs: initial **5 pass/1 fail** exposed
+the wrong draft state assumption; the corrected function passes separately.
+Five untouched cases were not repeated and no second full-green six-case run is
+claimed. Coverage:37 fields/full matrix/every prepared/exported field, JSON/text,
+permutation, all-missing nonmodel metadata, owned RE repeat predictions/labels,
+no-clobber files/columns,24 invalid/singular sources, and noninterior fit with
+stale-model invalidation/data-label-registry preservation and denied prediction.
+
+`python3 examples/mma23p1pannonlin/test_check_native_gamma_re.py`: **2/2**,
+real native controls/permutation/all-missing ARDSSIC and **27 rejected forgeries**.
+Shared wrong native/R means, z statistics, covariance/SE inference and LR p are
+rejected by additional source/equation identities, not just matching artifacts.
+Source/sample/order, zero firms, prediction scope and convergence corruption
+also fail. Initial nonaggregate guard/scope repetition was caught and fixed to
+one-row aggregates before final evidence.
+
+Scoped target Clippy/fmt/diff pass. Prior unchanged root-base verification is
+carried forward; no production/shared helper/schema or existing Rust target
+changed. No fresh full-root/workspace/doctest/release/platform claim. No Rust
+documentation example changed. Remaining illustrations, native generalizations
+where needed, normal-RE/bootstrap/GEE outputs, full textbook inventory, I-DETAIL/
+I-FREQ/I-GRAPH, historical household ML SE and URBAN/MEDEXP/LNHHEXP reconciliation
+stay required; this slice does not resolve or exclude them.

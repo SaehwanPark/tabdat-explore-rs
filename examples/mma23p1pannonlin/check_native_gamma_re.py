@@ -162,6 +162,9 @@ def audit(native,reference,raw,original=True):
   assert events[-1]['data']['path']=='native_gamma_re_predictions.csv'
   assert events[-1]['data']['dataset']['row_count']==n
   independent_identity(d,exported)
+  if original:
+    for field,printed,half in [('estimate_slope',.3487832,5e-8),('estimate_intercept',2.312705,5e-7),('se_slope',.0332254,5e-8),('se_intercept',.124758,5e-7),('se_lnalpha',.0899144,5e-8),('log_likelihood',-5553.1787,5e-5)]:
+      assert abs(values[field]-printed)<=half,('printed author fact',field)
   return n,g,len(values)
 
 

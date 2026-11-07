@@ -8,6 +8,12 @@ It is **not** a general native `xtpoisson` command. Text and JSON report the
 same inference; `gamma_re_poisson_predictions.csv` contains source fields and
 marginal means/residuals in `(id,year)` order.
 
+For an owned current RE fit, prefer the separate [native workflow](native_gamma_re.md)
+([script](native_gamma_re.td)): all1730 source/prediction rows and37 unchanged R
+quantities/full joint covariance validate the installed native estimator. Later
+native prediction remains RE; the SQL composition below intentionally retains
+its historical pooled-start state semantics and remains unchanged.
+
 ## Sample, likelihood and inference
 
 The pinned `patr7079.asc` SHA-256 is

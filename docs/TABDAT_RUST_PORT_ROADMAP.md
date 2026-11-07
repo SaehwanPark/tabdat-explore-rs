@@ -588,7 +588,14 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    validates the shared-firm gamma likelihood, joint observed covariance, boundary
    LR and all1,730 marginal predictions against independent R; a float32 probe
    explains part of the historical ln(alpha) precision discrepancy without an
-   exact-parity claim. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
+   exact-parity claim. The separate [native patents RE workflow](../examples/mma23p1pannonlin/native_gamma_re.md)
+   now validates the installed estimator against37 unchanged R quantities/full
+   joint covariance and all1730 source/prediction rows, retaining all346 firms/
+   22 zero-total firms and actual owned RE state for later predictions. Six
+   printed author gates pass; historical lnalpha precision remains unresolved.
+   Missing/all-missing metadata, permutation, text/JSON, registry/labels and
+   failed-fit invalidation/export/prediction ownership are tested. No new kernel
+   or API; this bridge does not complete the table/chapter. The existing SQL [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
    validates 500 joint three-parameter R refits and173,000 independent ordered
    draws; historical repeated-ID semantics remain unresolved despite a material
    merged-ID counterfactual. The separate [normal random-intercept Poisson composition](../examples/mma23p1pannonlin/normal_re_poisson.md)
