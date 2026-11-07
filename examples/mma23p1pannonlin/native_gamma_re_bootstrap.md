@@ -90,8 +90,23 @@ crate309 pass/one pre-existing skip,58 binaries,12.531s,
 run8537766a-07a3-454c-b304-05b0421838e0. Relevant runtime contracts4/4 pass,
 runfec98e13-2b9c-4aa6-855c-4f4eaedf93d2. No full-workspace/CI claim.
 
-Pending: committed independent auditor/raw-score/empirical-forgery controls,
-small-source frozen500-vector R fixture, actual-script integration/failure/
-readable checks, lint/fmt/docs/help/ledger reconciliation and final author
+Additional verified checkpoint: committed auditor reconstructs per-replicate
+three-component raw scores using exact integer-count harmonic digamma
+differences; all3x3 empirical covariance entries, anchored means/SEs/bias/type7
+limits and original marginal predictions/information are checked independently.
+Existing40-firm/200-record control retains eight zero-total firms;31 fields/
+500 joint R vectors and20000 independently checked draws pass and are frozen.
+
+New actual-script Rust module3/3 passes,run092bcd1a-7be9-46fb-bbc6-008f09cfde78,
+6.284s: all31 R fields/500 joint vectors, original prediction ownership, JSON/
+text export equality/no-clobber, reversed/all-null metadata and a257-firm B500
+replay retaining zero totals. Python3/3 passes,2.911s,including constant joint
+vectors/zero covariance and30 rejected forgeries. Matching native/R wrong full
+covariance or shifted intercept/slope/lnalpha passes equality only with the
+relevant independent checks deliberately mocked out, then the real checks
+reject it. Original readable report matches validated numbers; JSON/text
+exports are byte-identical. Stats-all-target/new-root-target Clippy pass.
+
+Pending: final SPEC/help/roadmap/ledger/inventory reconciliation and author
 review. Do not merge WIP or claim full bootstrap/book completion.
 Artifacts `/tmp/tabdat-ch23-native-gamma-bootstrap/`.
