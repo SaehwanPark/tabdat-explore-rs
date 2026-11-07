@@ -48,6 +48,12 @@ adds original-theta IID/HC1/person-CR1 matrices/both coefficient intervals and
 population/quasi predictions, with independent120-field R/plm evidence and
 explicit negative-raw-component truncation, intercept scaling and normal/t references.
 
+The [Chapter24 companion inventory](examples/mma24p1olscluster/inventory.md)
+now maps34 analytical/preparation/report blocks across both source programs,
+linking bounded validation and explicitly retaining descriptive, graphical,
+RE-diagnostic and mixed-report gaps. This is source-scoped inventory progress,
+not whole-chapter/book coverage or additional runtime capability.
+
 ## Implemented and deferred capabilities
 
 The distinction below is intentional. Individual options, errors, edge cases,

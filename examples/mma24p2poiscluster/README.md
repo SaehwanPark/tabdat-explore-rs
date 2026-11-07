@@ -37,6 +37,11 @@ prediction rows on ASCII and precise DTA. Ten of twelve author bootstrap origina
 points match half a digit; two final-digit discrepancies and historical copy-ID
 ambiguity are explicit in the linked audit. None supplies survey-design inference.
 
+The [source-pinned companion inventory](../mma24p1olscluster/inventory.md)
+maps both Chapter24 programs and retains open descriptive/frequency/graphical
+and comparison requirements. Three sequential pooled fits are not the source's
+named comparison, and author-log matches do not establish printed-table parity.
+
 ## Source, design and execution
 
 Download publisher [`vietnam_ex2.asc`](https://cameron.econ.ucdavis.edu/mmabook/vietnam_ex2.asc)
