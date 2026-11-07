@@ -99,9 +99,9 @@ pub fn bootstrap_conditional_poisson_clustered(
     }
   }
   let g = clusters.len();
-  if !(2..=256).contains(&g) {
+  if !(2..=512).contains(&g) {
     return Err(invalid(
-      "2 to 256 retained positive-total groups are required",
+      "2 to 512 retained positive-total groups are required",
     ));
   }
   let max_rows = g

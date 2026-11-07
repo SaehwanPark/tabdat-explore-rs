@@ -68,5 +68,28 @@ named tables, historical Stata draw/duplicate-ID/bootstrap-SE/interval parity
 and the complete book inventory. The SQL bootstrap remains distinct (different
 native stream construction); no claim of all source/historical output parity.
 
-Status: preimplementation contract. No completed B500 native original audit,
-512-bound behavior or new passing test is claimed until evidence is recorded.
+## Verified implementation checkpoint (not merge-ready)
+
+The old executable reproduces the324-group rejection at256. The new source
+workflow completes all500 native refits; all162000 draw indices match the
+independent Python RNG oracle. Unchanged R4.6.2 reference validates all500 refits,
+three weighted dummy-GLM cross-checks,11 summary fields and full scalar covariance;
+maximum coefficient difference1.20e-11 at fixed absolute1e-9. Bootstrap SE is
+.10611640537009748, variance.011260691488670854, percentile95
+[-.25644527423070357,.1568733681907946]. All1730 post-bootstrap prediction rows
+are byte-identical to the independently audited original native FE baseline.
+A temporary extraction probe initially assumed integer-formatted CSV count text;
+it was corrected to validate exact integer-valued numeric tokens such as32.00000.
+No numerical tolerance or production count semantics changed.
+
+Focused modified/new kernel module4/4 passes (257/324/512 accept,513 reject,
+closed-form refits/exclusions and existing row/work/failure checks). Fresh
+affected stats-crate nextest308 pass/one pre-existing skip,58 binaries,12.440s,
+run e1f18021-59a1-49ec-9b35-767eae0c3369. Relevant runtime bootstrap contract3/3
+passes,run faa20e55-b087-42e9-81d6-5d2dcd26c4b9. No full-workspace/CI claim.
+
+Pending: committed independent bootstrap auditor/forgery controls, small-source
+frozen R fixture and actual-script integration/failure checks, readable-output
+comparison, scoped lint/fmt and final docs/help/ledger reconciliation/review.
+Current logs/reference/original JSON are `/tmp/tabdat-ch23-native-fe-bootstrap/`.
+Do not merge this WIP or claim the whole required bootstrap inventory complete.
