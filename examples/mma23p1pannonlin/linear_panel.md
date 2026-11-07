@@ -134,3 +134,38 @@ model/data/file failure invariants. R/Python and author data are development-onl
 Figure 23.1, the full set of Table 23.1 outputs, broader panel methods and the
 remaining book inventory remain required. This slice does not complete the
 chapter, graduate methods core or full textbook target.
+
+## Original normalized-intercept audit contract (WIP)
+
+Moderate validation/reproduction-only slice: fix the checker still asserting
+`normalization_point_only` even though installed classical FE correctly returns
+`classical_student_t`, then audit original normalized-intercept inference. No
+production estimator/parser/API/source-script change planned. Exact original
+sample remains1730/346/1975–79, LPAT=ln(max(PAT,0.5)) only at integer zero,
+sole LOGR slope, classical sigma²=RSS/(N−G−1), df1383, observation-weighted
+zero-mean effects; control200/40 has df159. Four acceptance cases before work:
+
+1. Independently fit full-dummy R OLS, transform baseline intercept/dummies to
+   observation-weighted normalized intercept and full2x2 intercept/slope covariance,
+   cross-check within slope/RSS, then freeze all15 new numeric reporting fields
+   (106 total versus91 unchanged originals) for the200-row control. Compare
+   fresh original R4.6.2/plm2.6.7 and selected printed intercept SE/t/CI facts.
+2. Verify native classical Student-t/common-statistics and normalized-level
+   parameter names/value/full covariance/df/level, keeping fixed existing
+   scalar1e-9+1e-10*abs(reference), nonzero-p relative1e-9. No tolerance widening.
+3. Actual CLI JSON/text/source/prediction/order/ownership/error behavior unchanged;
+   explicitly run modified Rust module and new Python forgery/acceptance tests,
+   then account for affected/reverse consumers with unchanged baselines retained.
+4. Reject stale point-only tags and shared native/R wrong normalized covariance/
+   inference through independent raw-design within/mean identities; preserve
+   df and missing/source/registry/failure semantics. Do not infer a passed p-value
+   check from JSON shape or silently drop old quantities.
+
+Important failure: if full-dummy reference, native covariance or printed source
+SEs disagree, investigate sample/normalization/df/float storage rather than change
+production mathematics or widen gates; stop/reassess scope if needed. Exact
+named three-fit reporting, nonclassical/intercept-cluster inference, Figure23.1,
+other models and historical optimizer/format/RNG parity are excluded from this
+bounded change, not removed from existing required work. Reconcile guide/SPEC/
+roadmap/ledger/inventory after evidence, review/commit/push/merge/prune only the
+complete workflow/reference correction. No entire-source/goal completion claim.
