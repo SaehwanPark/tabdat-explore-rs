@@ -1,9 +1,10 @@
 # Household mixed-fit comparison controls
 
-Development-only independent R references for the WIP
-[contract](../../../examples/mma24p1olscluster/household_mixed_report.md).
-These establish existing-fit feasibility, **not yet installed named-report
-behavior**. No publisher data are bundled.
+Development-only independent R references for the bounded
+[workflow](../../../examples/mma24p1olscluster/household_mixed_report.md).
+These establish existing-fit feasibility and independent native snapshot/
+actual-script reporting checks, not literal historical table parity. No
+publisher data are bundled.
 
 - `balanced`:192 selected/source,32 groups, copied exactly from the joint
   equal-group Hausman balanced input. Admissible negative GEE correlation;
@@ -69,5 +70,8 @@ Existing native scripts versus R passed496 numerical gates per control:
 GEE198, FE fit/common103, equal-group GLS97, ML98 including marginal likelihood.
 Absolute1e-9 and nonzero-p relative1e-8; exact-zero underflow. All192/199/179 ML
 prediction rows also match R, with exact selected source fields/keys/order and
-absolute1e-9 prediction gates. These are ad hoc feasibility checks; permanent
-new-command/wire/state and actual unified-script checks remain to implement.
+absolute1e-9 prediction gates. Permanent runtime tests now compare1218 selected
+snapshot reference fields across these controls; actual-script JSON/text tests
+check full typed reports and all570 ML prediction rows. The optional source
+auditor checks327 reporting fields per script/control and rejects24 forgeries.
+Unrestricted whole-table parity, especially printed ML SEs, remains unclaimed.

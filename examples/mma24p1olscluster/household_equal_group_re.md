@@ -50,7 +50,10 @@ ignored. A separate [joint Hausman workflow](household_hausman.md) now compares
 covariance scales and requiring a safely positive-definite covariance difference.
 Its `JointPanelHausmanResult` is not a robust/clustered or arbitrary named-fit
 comparison. GLS variance-component uncertainty, unit-effect predictions, general
-restrictions and named RE reports remain uninstalled. No weights/GEE/ML,
+restrictions remain uninstalled. Model-based native RE now supports immutable
+[named mixed-fit reports](household_mixed_report.md) with normal inference,
+component-method labels and unavailable common R²; these cannot restore fits.
+No weights/GEE/ML,
 complex-survey or causal interpretation is introduced.
 
 `re_xb` is retained intercept + current X beta, and `re_residual` is current

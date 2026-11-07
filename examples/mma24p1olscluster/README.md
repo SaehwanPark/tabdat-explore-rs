@@ -36,7 +36,7 @@ the [individual Poisson workflows](../mma24p2poiscluster/README.md) cover separa
 portions of Table24.6, including pooled, FE and shared-gamma RE bootstraps.
 
 The [source-pinned companion inventory](inventory.md) maps both Chapter24
-programs, including still-open descriptive, graphical and unified comparison
+programs, including still-open descriptive, graphical and remaining comparison
 outputs. The separate [household BP LM workflow](household_bp_lm.md)
 now validates the classical unbalanced pooled-residual squared-score diagnostic
 against R QR/plm on all source/prediction rows, including balanced, singleton and
@@ -47,8 +47,13 @@ all six FE/equal-group-between RE slopes, full covariance differences and
 separate native variance scales against139 R quantities/all source and prediction
 rows, plus20 printed DTA author facts. It requires a positive-definite covariance
 difference and retains the RE fit; it is not cluster-robust or survey inference.
-Remaining source outputs stay required. Existing bounded workflows do not
-establish whole-table or whole-chapter coverage.
+The [mixed household report](household_mixed_report.md) now stores and compares
+PA/FE/equal-group GLS/ML with327 independent R reporting gates, all source/ML
+prediction rows on both modes and JSON/text byte-identical exports. It requires
+an explicit GEE covariance choice, retains normalized FE t versus RE/GEE z and
+reports no common R² or invented GLS/GEE likelihood. The active model remains
+RE-ML. Printed historical ML SE discrepancies and remaining source outputs stay
+required. These bounded workflows do not establish whole-table/chapter coverage.
 
 ## Source and preparation
 

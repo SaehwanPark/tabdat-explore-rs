@@ -320,6 +320,18 @@ fn covariance_choice_and_unsupported_panel_covariance_fail_atomically() {
     &format!("xtreg {X}, re id(commune) time(source_row) cluster(commune)"),
   );
   rejected(&mut s, "estimates store clustered_re", "model-based");
+  let ExecutionResult::RandomEffects(swamy) = run(
+    &mut s,
+    &format!("xtreg {X}, re id(commune) time(source_row)"),
+  ) else {
+    panic!()
+  };
+  run(&mut s, "estimates store swamy");
+  let saved = table(&mut s, "swamy").models.remove(0);
+  assert_eq!(saved.estimator, "swamy_arora_random_effects_gls");
+  assert_eq!(saved.coefficients, swamy.result.gls.coefficients);
+  assert_eq!(saved.covariance_matrix, swamy.result.gls.covariance.matrix);
+  assert_eq!(saved.log_likelihood, None);
   run(&mut s, "regress lnexp12m lnhhexp");
   rejected(
     &mut s,
@@ -335,5 +347,27 @@ fn covariance_choice_and_unsupported_panel_covariance_fail_atomically() {
       .as_object()
       .unwrap()
       .contains_key("panel")
+  );
+  run(
+    &mut s,
+    "sql SELECT source_row, lnexp12m, lnhhexp AS intercept, age, sex, hhsize, farm, educ, commune FROM active into aliased",
+  );
+  run(
+    &mut s,
+    "xtgee lnexp12m intercept age sex hhsize farm educ, family(gaussian) link(identity) corr(exchangeable) id(commune)",
+  );
+  rejected(
+    &mut s,
+    "estimates store ambiguous_gee, covariance(working)",
+    "coefficient names are ambiguous",
+  );
+  run(
+    &mut s,
+    "xtreg lnexp12m intercept age sex hhsize farm educ, fe id(commune) time(source_row)",
+  );
+  rejected(
+    &mut s,
+    "estimates store ambiguous_fe",
+    "coefficient names are ambiguous",
   );
 }

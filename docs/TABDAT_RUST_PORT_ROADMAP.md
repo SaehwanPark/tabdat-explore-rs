@@ -265,9 +265,14 @@ Extend the same workflow/validation standard to:
   all source/prediction rows and20 printed DTA author facts. It uses separate
   native covariance scales, a parent-scaled SPD-only difference and owned-design
   validation; neither common-scale variants nor default multivariate/unbalanced
-  Swamy–Arora, ML or cluster-robust Hausman are implied. Unified source comparisons,
-  other GEE workflows, printed ML SE discrepancies and full survey methods remain
-  required; this is not whole-chapter/book coverage.
+  Swamy–Arora, ML or cluster-robust Hausman are implied. The [mixed household
+  named comparison](../examples/mma24p1olscluster/household_mixed_report.md)
+  now independently audits327 reporting quantities/all source and ML prediction
+  rows on ASCII/precise DTA, with explicit GEE selection, FE t versus RE/GEE z,
+  full covariance/panel provenance and unavailable common R². Historical printed
+  ML SE discrepancies, remaining individual comparisons, other GEE workflows
+  and full survey methods remain required; this is not whole-table/chapter/book
+  coverage.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
@@ -716,7 +721,7 @@ Subset forms, robust score/GMM C variants and few-cluster guarantees remain
 unsupported; these conventional tests assume valid instruments and do not
 establish exogeneity or instrument validity by failing to reject.
 
-Immutable named estimate reports now include explicit-formula NLS with its typed mean model, covariance, sample and approximate-t inference; the terminal comparison also shows standard errors. Named Poisson reports additionally retain offset identity, selected covariance correction and count-likelihood conventions. These snapshots do not restore fits. Named NB2 reports remain required. The [combined Table 5.7 source composition](../examples/mma05table57/README.md) now compares five specifications in working and robust reports with fixed first-fit weights and original-scale diagnostics; it is not a literal historical-output reproduction.
+Immutable named estimate reports now include explicit-formula NLS with its typed mean model, covariance, sample and approximate-t inference; the terminal comparison also shows standard errors. Named Poisson reports additionally retain offset identity, selected covariance correction and count-likelihood conventions. Model-based FE/RE and explicitly selected Gaussian GEE now support immutable reports with optional panel provenance, normalized FE common-intercept inference and explicit native covariance/reference conventions. Clustered FE/RE snapshots remain unsupported; GEE requires covariance(working|sandwich). These snapshots do not restore fits. Named NB2 reports remain required. The [combined Table 5.7 source composition](../examples/mma05table57/README.md) now compares five specifications in working and robust reports with fixed first-fit weights and original-scale diagnostics; it is not a literal historical-output reproduction.
 
 The [unweighted NLS model-variance calculation](../examples/mma05p2nls/model_variance.md) now supplies the source plug-in sandwich using fitted mean², independently checked against R on all original rows. It is conditional on the specified mean/variance and is not generic robust or weighted covariance; historical eight-decimal SE differences remain explicit.
 

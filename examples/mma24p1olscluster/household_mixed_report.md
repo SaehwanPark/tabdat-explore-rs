@@ -1,170 +1,154 @@
-# Household mixed-fit named comparison: implementation contract
+# Household mixed-fit named comparison
 
-**Status: native selector/snapshot adapters implemented; complete source workflow,
-auditor, help/status reconciliation and broader validation pending. Risk: high**
-(public command/result contracts and immutable reporting state).
+**Implemented and independently validated bounded native workflow.** This covers
+H-REPORT-MIXED's unified native reporting path, not literal historical Table24.4
+parity. The printed ML SE discrepancies remain required and unresolved.
 
-## Exact illustration and outcome
+## Illustration, data and sample
 
-Chapter24, Table24.4 p.851, H-REPORT-MIXED in the [source inventory](inventory.md),
-May2005 companion program lines139–140: compare `pa fe refgls remle`. Deliver a
-native four-fit reporting workflow, not literal Stata formatting or unexplained
-printed ML SE parity. The existing GEE, FE, equal-group-between GLS and marginal
-Gaussian ML workflows supply fitting and independent numerical references.
+Cameron and Trivedi (2005), Table24.4 p.851, May2005 companion program
+lines139–140 compares `pa fe refgls remle`; see the [source inventory](inventory.md).
+The [script](household_mixed_report.td) loads/audits/prepares, fits/stores all four
+models, compares inference, predicts from retained ML and exports results.
 
-Use the pinned ASCII and separately precise DTA preparations: numeric
-`lnexp12m ~ 1 + lnhhexp + age + sex + hhsize + farm + educ`, commune groups,
-source-row ordering/key audit, exclude NULL outcomes only after raw-key and
-finite-predictor validation. Original5999/selected5006,194 communes, sizes1..39,
-one singleton. Do not treat source-row keys as calendar time or factor-expand
-numeric FARM/EDUC/SEX. No weights, offsets or survey interpretation.
+Use the [household README](README.md)'s pinned ASCII or precise numeric-code DTA
+preparation. Outcome `lnexp12m`, intercept and numeric slopes in order
+`lnhhexp age sex hhsize farm educ`, grouped by `commune`. Source-row keys order
+households; they are not calendar time. FARM/EDUC/SEX are not factor-expanded.
+Original5999 rows,993 NULL outcomes,5006 selected cases,194 communes, sizes1..39
+and one singleton. Zero outcomes remain. There are no weights/offsets or survey
+semantics. Optional development R/Python are not production dependencies.
 
-## Observable reporting and compatibility decisions
+The source guard requires positive BIGINT source/commune keys, unique raw source
+keys, finite predictors even on excluded-outcome rows, and finite nonmissing
+outcomes. Raw input is capped at40000 rows; at least8 complete-case communes are
+required for the six-slope between regression. Native rank/variance/convergence
+bounds still apply. Selection and source-row sorting are explicit **before all
+four fits**: each fit/snapshot therefore has candidate N5006/dropped0, not5999/993.
+The initial source audit separately reports the original source omissions.
 
-- Reuse immutable `EstimateSnapshot`, existing named registry/table and CLI-v1
-  results. No fit restoration, new estimator framework or production dependency.
-- Add reporting support only for model-based FE with available classical
-  normalized-level inference, model-based native RE-GLS/ML and explicitly chosen
-  Gaussian GEE covariance. Other currently supported snapshot families stay
-  unchanged; panel cluster/robust snapshot expansion is outside this slice.
-- GEE has **no ambiguous covariance default**. Add
-  `estimates store pa, covariance(working)` and `covariance(sandwich)`; plain store
-  on GEE must explain the required choice. The selector is GEE-only; other fits
-  reject it without registry/model/data mutation. Preserve existing typed/wire
-  `EstimatesCommand::Store(String)`; add a concrete selector-bearing variant.
-- Snapshot GEE working or uncorrected unit-sandwich coefficients/full covariance,
-  normal inference, and label the selection explicitly. Never silently copy one
-  while labelling the other. Sandwich uses commune clusters with multiplier1,
-  not G−1 Student t or CR1.
-- FE uses existing native normalized common-intercept/slopes covariance and
-  slope coefficient inference, Student t(N−G−p). Evaluate only its existing
-  retained common-intercept linear combination as native FE reporting does;
-  never refit or reconstruct from current data. Canonicalize this normalized
-  `_cons` and GEE's `_cons` to `intercept` for comparison with RE, keeping ordered
-  six slopes and the corresponding matrix order. Reject ambiguous names or
-  unavailable normalized inference rather than inventing a common-intercept SE.
-- RE copies the selected native beta coefficients/covariance and normal
-  inference, not transformed-OLS Student t. Label Swamy–Arora versus explicit
-  equal-group-between versus Gaussian marginal ML. Source `refgls` uses explicit
-  equal-group-between. ML copies actual marginal log likelihood only, with an
-  explicit convention; GLS/GEE/FE do not acquire pseudo likelihoods.
-- Existing generic `r_squared` remains OLS-labelled. All four new snapshot
-  families leave it unavailable; do not substitute FE within/conditional R²,
-  quasi-GLS R², pseudo-R² or squared correlation. No common-R² claim.
-- Add optional panel provenance on snapshots (absent/omitted for old snapshots):
-  entity variable, optional explicit time/key variable, group count and common-
-  intercept convention. GEE has no time variable; FE uses observation-weighted
-  zero-effect normalization, the other models population-mean intercepts.
-  Existing sample provenance remains candidate positions, not a cross-dataset
-  identity/fingerprint or a promise that differing fits share the same cohort.
-- Comparison is a first-seen parameter union in requested model order, with
-  unavailable cells, explicit covariance/reference/DF/N and panel provenance.
-  Preserve existing table fields/format when no panel snapshot is present.
-  Source script requests exactly `pa fe refgls remle`; no artificial model order.
+## What the comparison means
 
-## Acceptance cases and failure boundary
+- `pa`: native Gaussian exchangeable GEE; explicitly
+  `estimates store pa, covariance(working)`. GEE retains both working and
+  uncorrected unit-sandwich inference, with no ambiguous selected default.
+  `covariance(sandwich)` is separately supported for reporting, multiplier1,
+  normal z (not CR1/G−1 t). Plain GEE store errors with the two choices;
+  selectors on non-GEE fits fail atomically. Negative admissible correlation
+  is not forced into a positive-variance random-effects model.
+- `fe`: model-based within FE, using its existing observation-weighted zero-
+  effect normalization and joint common-intercept/slopes covariance. Slopes
+  are copied; the common intercept uses the same retained linear-combination
+  inference as native FE reporting. Student t(N−G−6)=t(4806), not pooled t.
+- `refgls`: model-based explicit **equal-group-between** RE-GLS, not default
+  unbalanced Swamy–Arora. Copy native selected beta covariance/normal z.
+- `remle`: model-based Gaussian marginal ML; copy native observed-information
+  beta covariance/normal z and actual marginal log likelihood. Zero-unit-variance
+  boundary fits remain labelled ML, not silently replaced by OLS or GEE.
 
-1. Actual script on pinned ASCII/precise DTA and small balanced/unbalanced controls
-   fits/stores all four models, reports the requested order/full matrices and
-   correct normal-versus-FE-t inference. Independently audit every selected
-   coefficient/SE/statistic/p/covariance, N/sample, FE normalization and ML
-   likelihood against the existing R QR/GEE/marginal-ML references. Source
-   rounding gates are separate; known ML SE discrepancies remain explicit.
-2. Both GEE selectors faithfully snapshot their own native matrices/inference.
-   Plain GEE store and selectors on non-GEE fits fail atomically with actionable
-   errors. Invalid/duplicate options and malformed typed requests fail before
-   effects. Legacy plain store parsing and wire shape remain supported.
-3. Named snapshots survive current-data replacement, later model fits and missing
-   active data. Table/store/drop must not refit, alter retained predictions,
-   labels or data. Source workflow ends with RE-ML-owned population predictions;
-   JSON/text exports are byte-identical and existing owners are not clobbered.
-4. Old snapshot serde defaults omit panel provenance; new snapshots roundtrip
-   losslessly. Verify missing FE normalized inference, ambiguous parameter names,
-   missing/inconsistent sample/model provenance, registry capacity and unsupported
-   covariance failures leave registry and fit/data unchanged.
-5. JSON/text/help/discovery agree on installed forms, inference and unavailable
-   statistics. Regression checks preserve OLS/binary/Poisson/NLS named reporting.
+FE/GEE `_cons` is canonically aligned to `intercept` without changing matrix
+order. Conflicting predictor names are rejected; rename/refit rather than merge
+ambiguous terms. Normalized FE and population-mean intercepts have different
+conventions. Optional snapshot `panel` provenance records entity, optional key,
+group count and intercept convention; it is not a dataset fingerprint.
 
-Fixed tolerances inherit independently justified existing references (typically
-absolute1e-9, nonzero-p relative1e-8, exact source fields/keys/order/membership).
-Investigate discrepancies before deciding tolerances; no widening for convenience.
-Choose synthetic inputs that genuinely identify all four fits and verify them
-with independent R before freezing controls; stop if this assumption fails.
+The OLS-labelled common R² row is **NA for all four models**. No within/conditional/
+quasi-GLS R² is substituted; GEE/FE/GLS do not acquire a fake likelihood. There is
+no cross-family LR test, arbitrary model-selection test, survey or causal claim.
+The script's earlier native fit outputs retain their own available diagnostics.
+Historical ML coefficient/component-SD SE differences are not hidden by a common
+inference label or widened tolerance.
 
-## Implementation checkpoint
+## Run and independently audit
 
-The additive typed/parser GEE selector, optional four-field panel provenance,
-model-based FE/RE and selected-GEE snapshot adapters and conditional text rows
-are implemented. Legacy plain-store wire and non-panel snapshot omissions are
-preserved. Domain3/parser3/execution2 focused tests and runtime11 named-report
-tests pass (including the two new panel tests). The new snapshots pass1218
-frozen independent R gates across all three controls: both GEE selections,
-normalized FE full covariance/inference, GLS and ML beta inference/matrices and
-actual ML marginal likelihood. Private tests reject24 missing/malformed/weighted/
-negative-variance variants atomically, exercise owned store without active data/
-backend, and table after clearing the active model. Scoped all-target Clippy passes for domain, language,
-execution, reporting and runtime; fmt/diff checks pass.
+Build with the pinned toolchain (`export PATH="$HOME/.cargo/bin:$PATH"`):
 
-This is not the finished illustration: unified actual-script JSON/text exports,
-original-source/forgery auditor, remaining failure/wire/help tests, affected-crate/
-reverse-consumer suites and SPEC/ledger/help reconciliation remain required
-before ready/merge. Do not count the kernel/adapter checkpoint as source workflow
-completion. Printed ML SE discrepancies are still required and not repaired here.
+```sh
+cargo build --locked --bin tabdat-explore-rs
+```
 
-## Feasibility checkpoint (before schema implementation)
+For precise DTA, from the repository root, in a fresh working directory:
 
-Existing native scripts and all four independent R generators succeed on three
-controls: balanced192 and unbalanced199/200-source with singleton (the existing
-joint Hausman dyadics), plus179/180-source with16 groups and positive ML unit
-variance (existing RE-interior input rounded to multiples of1/64).
-An ad hoc native/reference audit passes496 numerical gates per control: GEE198,
-FE103 (fit and common intercept, not separate linear restrictions), GLS97 and
-ML98 (coefficient inference/full matrices, counts/scales and marginal likelihood).
-Fixed absolute1e-9 and nonzero-p relative1e-8, exact-zero underflow; no widening.
-These are existing-fit feasibility checks, not evidence for the not-yet-installed
-named comparison. ML prediction exports also match R on all192/199/179 rows, with exact selected
-source fields/order and absolute1e-9 prediction gates. New unified workflow,
-original-publisher source and state/wire checks remain to implement. Frozen
-controls and reproduction are in the [fixture README](../../tests/fixtures/mma24_household_mixed_report/README.md).
+```bash
+repo="$PWD"
+raw=/path/to/vietnam_ex1.dta
+work=$(mktemp -d)
+Rscript "$repo/examples/mma24p1olscluster/dta_reference.R" "$raw" "$work/vietnam.csv" --precise
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_mixed_report.td" > result.jsonl)
+ref=$(mktemp -d)
+flags=(--dta)
+for kind in gee fe re_gls re_ml; do
+  extra=()
+  if [ "$kind" = re_gls ]; then extra=(--equal-group-between); fi
+  Rscript "$repo/examples/mma24p1olscluster/household_${kind}_reference.R" "$raw" "$ref/$kind" "${flags[@]}" "${extra[@]}"
+done
+python3 "$repo/examples/mma24p1olscluster/check_household_mixed_report.py" "$work" "$ref" "$raw" --dta
+```
 
-Both Hausman-derived controls have negative admissible GEE correlation and
-zero-boundary ML unit variance; the third has GEE rho about.67688 and interior
-ML unit variance about1.70115. Keep these distinct, rather than forcing GEE to
-match an RE covariance or silently replacing boundary fits. GEE and FE both use
-native `_cons` names, so both require explicit common-row canonicalization.
-Optional R `geeM0.10.1` was installed in a dedicated validation library; set
-`R_LIBS` when reproducing. R4.6.2; no production dependency change.
+For ASCII, prepare `vietnam.csv` in a separate fresh `$work` using the household
+README, set `$raw` to the pinned `.asc`, use `flags=()` in the reference loop and
+omit the auditor's `--dta`. FE/GLS direct-DTA reference input uses
+`convert.factors=FALSE`; do not round-trip through15-digit CSV to create a
+supposedly independent DTA design. Set `R_LIBS` for a non-default validation
+library if needed (R4.6.2, geeM0.10.1, Matrix1.7.6, foreign0.8.92 locally).
+Reference source artifacts use17 digits so exact binary fields can be checked.
+Reference quantity formulas are unchanged; the existing balanced CSV quantities
+reproduce byte-for-byte after this source-artifact precision correction.
 
-## Ordered implementation and verification scope
+Use `--text` instead of `--json` for readable output. JSON's
+`EstimateTableResult` retains every selected7x7 covariance matrix and full sample
+provenance. Text keeps the existing coefficient/SE/statistic/p comparison with
+model/covariance/reference/DF/N, conditional panel provenance and honest NA rows;
+it is not a configurable publication layout or full-matrix text export.
+`household_mixed_report_predictions.csv` contains selected source fields plus
+`ml_xb` and `ml_residual=y−xb`, population predictions rather than posterior unit
+effects. Existing output owners are never overwritten. Use a fresh directory
+for each successful run; JSON/text runs export byte-identical predictions.
 
-1. Inspect direct consumers of `EstimatesCommand`/`EstimateSnapshot`, existing
-   native FE common-intercept reporting and R reference layouts. Confirm source
-   and suitable synthetic four-fit cohorts before implementing schema changes.
-2. Extend domain/parser with the additive GEE selector and optional panel
-   provenance; adapt execution snapshots and conditional reporting rows. Likely
-   files: `crates/tabdat-{domain,language,execution,reporting}/src/estimates*`,
-   language command parsing, reporting help/catalog and direct match consumers.
-3. Add executable `household_mixed_report.td`, source/reference auditor, frozen
-   controls and focused parser/domain/runtime/CLI actual-script tests; expand
-   to affected crates and reverse consumers for shared API changes. Explicitly
-   select all new/modified tests before broader testing. No empty selections.
-4. Reconcile SPEC/roadmap/ledger/inventory, document evidence in the draft PR,
-   review final diff/checks, then merge and safely prune only the complete slice.
+## Ownership, compatibility and failure behavior
 
-Run focused named tests first (`cargo nextest run --locked -p <package>
---test <target> --no-tests fail`), then affected packages/integration consumers,
-relevant Clippy, fmt and diff checks. Workspace all-target Clippy currently has
-an unrelated baseline excessive-precision literal in
-`tests/mma05_table57_comparison_workflow.rs:54`; do not change that fixture merely
-to make a broad check green. Expand checks proportionally; no new Rust doc examples
-means no automatic doctest rerun requirement.
+Named snapshots are immutable reports, not restorable designs/models. No silent
+refit occurs, including after current-data replacement or with no active data/
+backend. Tables still work after the current fit is cleared. Candidate positions
+refer to fit-time rows; equal N alone does not establish the same observations.
+Later prediction uses the ordinary current active model, not a stored name.
 
-No broader covariance-selector language, arbitrary panel/named-model testing,
-restoration, printed ML SE repair, bootstrap/GEE/survey expansion or whole-table/
-chapter completion. Keep unresolved required inventory entries required. Stop
-on contradictory inference/reference semantics, essential missing data/reference
-or a required product-scope decision rather than improvising.
+Store/table/drop preserve the active model, data and labels. Unsupported
+covariance/ambiguous names/malformed provenance fail before registry effects.
+Old plain-store wire is unchanged; absent optional panel metadata decodes to
+None and stays omitted. Old states lacking normalized FE inference or required
+provenance require refitting. Existing registry bounds remain32 reports,
+8 requested models and64 terms/union. Clustered FE/RE snapshots are not installed;
+the native clustered fit/prediction workflows are unchanged.
 
-Implement exactly this plan. Do not broaden scope. If the plan conflicts with
-the codebase, stop and report the conflict instead of improvising. Report files
-changed, tests run, deviations and unresolved risks in the PR/handoff.
+Scripts are ordered, **not whole-script transactions**. Export failure preserves
+its file owner and the last ML model, not a pre-script state. New-fit failures
+retain established policies: GEE preserves its previous fit; failed explicit
+FE/RE fit attempts clear the active fit. Neither deletes already stored reports.
+No fit restoration, arbitrary named-fit post-estimation, new weights or general
+survey inference is installed.
+
+## Evidence and limits
+
+Both pinned original modes pass **327 independent R reporting gates**, including
+all four selected coefficient/SE/statistic/p vectors, full covariance matrices,
+counts/DF and actual ML likelihood. All5999 source and5006 prediction rows are
+audited, including exact source fields/keys/order/membership. Absolute1e-9,
+nonzero-p relative1e-8 and exact-zero underflow; no tolerance widening.
+
+[Three frozen controls](../../tests/fixtures/mma24_household_mixed_report/README.md)
+cover balanced192, unbalanced199/200 with singleton, and positive-interior ML179/
+180-source cases. The first two have negative admissible GEE correlation and
+zero-boundary ML unit variance; the third has positive GEE correlation/interior
+ML variance. Runtime snapshots pass1218 independent R gates (including the
+separate GEE sandwich choice). Actual-script tests cover full typed reports/all
+570 frozen prediction rows, JSON/text/valid export collision, labels/current-data/
+ML ownership and nine raw-source/fit failure cases. Private tests reject24
+malformed/weighted/negative-variance states without backend or registry effects;
+wire/parser/regression checks preserve existing named model families. The optional
+`python3 examples/mma24p1olscluster/test_check_household_mixed_report.py` rejects24
+forgeries, including a shared native/reference wrong statistic.
+
+Full Table24.4 parity remains **partial**: the printed historical ML SEs are
+unresolved. No whole-chapter/book, platform or release claim follows from this
+bounded workflow. See the inventory/coverage ledger for all still-required work.

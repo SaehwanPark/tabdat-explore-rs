@@ -1,11 +1,16 @@
 # Independent full-dummy QR for commune FE, including normalized intercept.
 options(digits=17)
 a <- commandArgs(trailingOnly=TRUE)
-if (!(length(a) %in% c(2,3)) || (length(a)==3 && a[3]!='--csv'))
-  stop('usage: household_fe_reference.R source output-directory [--csv]')
+if (!(length(a) %in% c(2,3)) || (length(a)==3 && !a[3]%in%c('--csv','--dta')))
+  stop('usage: household_fe_reference.R source output-directory [--csv|--dta]')
 if (file.exists(a[2])) stop('reference directory already exists')
-if (length(a)==3) {
+if (length(a)==3 && a[3]=='--csv') {
   source <- read.csv(a[1])
+} else if (length(a)==3 && a[3]=='--dta') {
+  raw <- foreign::read.dta(a[1],convert.factors=FALSE)
+  source <- data.frame(source_row=seq_len(nrow(raw)),lnexp12m=raw$lhhex12m,
+    age=raw$age,sex=raw$sex,hhsize=raw$hhsize,farm=raw$farm,
+    educ=raw$comped98,lnhhexp=raw$lhhexp1,commune=raw$commune)
 } else {
   tokens <- scan(a[1],what=character(),quote='"',quiet=TRUE)
   stopifnot(length(tokens)==5999*8)
@@ -74,7 +79,9 @@ emit('joint','/statistic',w);emit('joint','/p_value',pf(w,2,df,lower.tail=FALSE)
 emit('joint','/df',2);emit('joint','/df_residual',df)
 dir.create(a[2])
 write.csv(do.call(rbind,refs),file.path(a[2],'reference.csv'),row.names=FALSE,quote=FALSE)
-write.csv(source,file.path(a[2],'source.csv'),row.names=FALSE,quote=FALSE,na='')
+# Preserve original binary values for exact source audits, including numeric DTA codes.
+precise_source <- as.data.frame(lapply(source,function(v)ifelse(is.na(v),NA_character_,sprintf('%.17g',v))))
+write.csv(precise_source,file.path(a[2],'source.csv'),row.names=FALSE,quote=FALSE,na='')
 d$fe_xb <- drop(X%*%b); d$fe_xbu <- fit$fitted.values
 d$fe_u <- fit$fitted.values-d$fe_xb; d$fe_residual <- fit$residuals
 write.csv(d,file.path(a[2],'predictions.csv'),row.names=FALSE,quote=FALSE,na='')

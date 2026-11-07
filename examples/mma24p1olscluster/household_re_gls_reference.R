@@ -2,12 +2,17 @@
 options(digits=17)
 a <- commandArgs(trailingOnly=TRUE)
 if (length(a)<2 || length(a)>4 || anyDuplicated(a[-c(1,2)]) ||
-    any(!a[-c(1,2)]%in%c('--csv','--equal-group-between')))
-  stop('usage: household_re_gls_reference.R source output-directory [--csv] [--equal-group-between]')
+    any(!a[-c(1,2)]%in%c('--csv','--dta','--equal-group-between')) || all(c('--csv','--dta')%in%a))
+  stop('usage: household_re_gls_reference.R source output-directory [--csv|--dta] [--equal-group-between]')
 equal_group <- '--equal-group-between'%in%a
 if (file.exists(a[2])) stop('reference directory already exists')
 if ('--csv'%in%a) {
   source <- read.csv(a[1])
+} else if ('--dta'%in%a) {
+  raw <- foreign::read.dta(a[1],convert.factors=FALSE)
+  source <- data.frame(source_row=seq_len(nrow(raw)),lnexp12m=raw$lhhex12m,
+    age=raw$age,sex=raw$sex,hhsize=raw$hhsize,farm=raw$farm,
+    educ=raw$comped98,lnhhexp=raw$lhhexp1,commune=raw$commune)
 } else {
   tokens <- scan(a[1],what=character(),quote='"',quiet=TRUE)
   stopifnot(length(tokens)==5999*8)
@@ -79,7 +84,9 @@ author <- data.frame(parameter=c('intercept','lnhhexp','age','sex','hhsize','far
 dir.create(a[2])
 write.csv(author,file.path(a[2],'author_hypothesis.csv'),row.names=FALSE,quote=FALSE)
 write.csv(do.call(rbind,refs),file.path(a[2],'reference.csv'),row.names=FALSE,quote=FALSE)
-write.csv(source,file.path(a[2],'source.csv'),row.names=FALSE,quote=FALSE,na='')
+# Keep source auditing exact instead of rounding DTA binary values to15 digits.
+precise_source <- as.data.frame(lapply(source,function(v)ifelse(is.na(v),NA_character_,sprintf('%.17g',v))))
+write.csv(precise_source,file.path(a[2],'source.csv'),row.names=FALSE,quote=FALSE,na='')
 d$re_xb <- drop(X%*%b);d$re_residual <- y-d$re_xb
 write.csv(d,file.path(a[2],'predictions.csv'),row.names=FALSE,quote=FALSE,na='')
 cat(R.version.string,';',if (equal_group) 'direct equal-group-between / quasi-QR' else paste('plm',packageVersion('plm')),';',N,'observations;',g,'communes;',length(refs),'quantities\n')

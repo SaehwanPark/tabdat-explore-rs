@@ -26,3 +26,10 @@ owned marginal mean model and current predictor values; mean and index coincide
 under the identity link. Residuals also require current y. Group IDs are not
 needed for prediction; no posterior group effects or prediction uncertainty are
 provided. A failed GEE fit leaves the previous estimation state unchanged.
+
+Immutable reports require an explicit covariance choice:
+`estimates store pa, covariance(working)` or
+`estimates store pa_robust, covariance(sandwich)`. Plain store is rejected because
+both inference variants are retained, not implicitly selected. Table comparison
+labels normal inference and the covariance; it supplies no GEE likelihood/R² or
+fit restoration. The active GEE model/predictions are unchanged. See `help estimates`.
