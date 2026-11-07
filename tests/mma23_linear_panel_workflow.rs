@@ -69,6 +69,27 @@ fn check_results(ev: &[Value]) {
   assert_eq!(pools[0]["covariance"], "cluster(id)");
   assert_eq!(fes[0]["covariance"], "nonrobust");
   assert_eq!(fes[0]["common_intercept_inference"], "classical_student_t");
+  let common = &fes[0]["common_intercept_statistics"];
+  let level = &fes[0]["normalized_level"];
+  assert_eq!(common["name"], "_cons");
+  assert_eq!(common["confidence_level"], 95.0);
+  assert_eq!(common["degrees_of_freedom"], 159);
+  assert_eq!(common["value"], fes[0]["common_intercept"]);
+  assert_eq!(
+    level["parameter_names"],
+    serde_json::json!(["_cons", "logr"])
+  );
+  assert_eq!(level["reference_distribution"], "student_t");
+  assert_eq!(level["inference_df"], 159);
+  assert_eq!(level["parameters"].as_array().unwrap().len(), 2);
+  assert_eq!(level["covariance_matrix"].as_array().unwrap().len(), 2);
+  for row in level["covariance_matrix"].as_array().unwrap() {
+    assert_eq!(row.as_array().unwrap().len(), 2);
+  }
+  assert_eq!(
+    level["covariance_matrix"][1][1],
+    fes[0]["covariance_matrix"][0][0]
+  );
   assert_eq!(
     res[0]["estimator"],
     "balanced_swamy_arora_random_effects_gls"
@@ -110,7 +131,7 @@ fn check_results(ev: &[Value]) {
     }
     n += 1;
   }
-  assert_eq!(n, 91);
+  assert_eq!(n, 106);
 }
 fn check_predictions(text: &str, input: &str) {
   let mut rows = text.lines();

@@ -1,0 +1,16 @@
+model,path,value
+fe,/common_intercept_statistics/value,0.9432770469863
+fe,/common_intercept_statistics/standard_error,0.0411041914725548
+fe,/common_intercept_statistics/statistic,22.9484393973818
+fe,/common_intercept_statistics/p_value,2.50569068540077e-52
+fe,/common_intercept_statistics/ci_lower,0.862096424499135
+fe,/common_intercept_statistics/ci_upper,1.02445766947346
+fe,/common_intercept_statistics/confidence_level,95
+fe,/common_intercept_statistics/degrees_of_freedom,159
+fe,/normalized_level/parameters/0,0.9432770469863
+fe,/normalized_level/parameters/1,0.108742056044162
+fe,/normalized_level/covariance_matrix/0/0,0.00168955455661244
+fe,/normalized_level/covariance_matrix/0/1,-0.00265537822267934
+fe,/normalized_level/covariance_matrix/1/0,-0.00265537822267934
+fe,/normalized_level/covariance_matrix/1/1,0.00431768816695828
+fe,/normalized_level/inference_df,159
