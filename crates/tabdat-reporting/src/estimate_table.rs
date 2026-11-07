@@ -70,6 +70,29 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
   row(&mut output, "Estimator", models, |m| m.estimator.clone());
   row(&mut output, "Outcome", models, |m| m.outcome.clone());
   row(&mut output, "Covariance", models, |m| m.covariance.clone());
+  if models.iter().any(|m| m.panel.is_some()) {
+    row(&mut output, "Panel entity", models, |m| {
+      m.panel
+        .as_ref()
+        .map_or("NA".into(), |p| p.entity_variable.clone())
+    });
+    row(&mut output, "Panel key", models, |m| {
+      m.panel
+        .as_ref()
+        .and_then(|p| p.time_variable.clone())
+        .unwrap_or("NA".into())
+    });
+    row(&mut output, "Panel groups", models, |m| {
+      m.panel
+        .as_ref()
+        .map_or("NA".into(), |p| p.group_count.to_string())
+    });
+    row(&mut output, "Intercept convention", models, |m| {
+      m.panel
+        .as_ref()
+        .map_or("NA".into(), |p| p.intercept_convention.clone())
+    });
+  }
   if models.iter().any(|m| m.nls_model.is_some()) {
     row(&mut output, "NLS covariance correction", models, |m| {
       number(m.nls_covariance_correction)
@@ -182,6 +205,9 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
     |m| number(m.mcfadden_r_squared),
   );
   output.push_str("Statistics use each model's selected covariance/reference: binary/Poisson normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  if models.iter().any(|m| m.panel.is_some()) {
+    output.push_str("Panel FE uses classical Student t(N-G-p); RE and selected Gaussian GEE use asymptotic normal z, not residual-DF t. GEE unit-sandwich is uncorrected (multiplier 1), not CR1 or few-cluster inference. Working GEE relies on its specified covariance.\nPanel keys do not assert calendar time. FE common intercept uses observation-weighted zero effects; population-mean intercepts have a different convention. Panel within/conditional or quasi-GLS R-squared is not substituted for OLS R-squared. Only ML supplies the Gaussian random-intercept marginal likelihood, not quasi-GLS or GEE likelihood.\n");
+  }
   output
 }
 

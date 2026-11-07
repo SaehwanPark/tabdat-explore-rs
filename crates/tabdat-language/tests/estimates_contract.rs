@@ -24,6 +24,32 @@ fn explicit_report_requests_parse_and_roundtrip() {
 }
 
 #[test]
+fn gaussian_gee_report_covariance_is_explicit_and_roundtrips() {
+  use tabdat_domain::{CommandEffect, GaussianGeeReportCovariance as C};
+  for (text, covariance) in [
+    ("estimates store pa, covariance(working)", C::Working),
+    ("ESTIMATES STORE pa,COVARIANCE(SANDWICH)", C::Sandwich),
+  ] {
+    let command = parse_command(text).unwrap();
+    assert_eq!(
+      command,
+      Command::Estimates {
+        command: EstimatesCommand::StoreGaussianGee {
+          name: "pa".into(),
+          covariance
+        }
+      }
+    );
+    assert_eq!(
+      serde_json::from_str::<Command>(&serde_json::to_string(&command).unwrap()).unwrap(),
+      command
+    );
+    assert!(command.requirements().is_empty());
+    assert_eq!(command.effects(), &[CommandEffect::Control]);
+  }
+}
+
+#[test]
 fn invalid_implicit_and_unsupported_requests_do_not_parse() {
   for text in [
     "estimates",
@@ -38,6 +64,14 @@ fn invalid_implicit_and_unsupported_requests_do_not_parse() {
     "estimates store Δ",
     "estimates store \"quoted\"",
     "estimates store a, replace",
+    "estimates store a, covariance(robust)",
+    "estimates store a, covariance()",
+    "estimates store a, covariance(working) covariance(sandwich)",
+    "estimates store a, covariance(working), covariance(working)",
+    "estimates store a b, covariance(working)",
+    "estimates table a, covariance(working)",
+    "estimates drop a, covariance(working)",
+    "estimates store 1bad, covariance(sandwich)",
     "estimates restore a",
     "estimates table a, b",
     "estimates table a b c d e f g h i",

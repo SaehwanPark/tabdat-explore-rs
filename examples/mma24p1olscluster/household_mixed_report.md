@@ -1,6 +1,7 @@
 # Household mixed-fit named comparison: implementation contract
 
-**Status: preimplementation; no new execution capability yet. Risk: high**
+**Status: native selector/snapshot adapters implemented; complete source workflow,
+auditor, help/status reconciliation and broader validation pending. Risk: high**
 (public command/result contracts and immutable reporting state).
 
 ## Exact illustration and outcome
@@ -89,6 +90,26 @@ absolute1e-9, nonzero-p relative1e-8, exact source fields/keys/order/membership)
 Investigate discrepancies before deciding tolerances; no widening for convenience.
 Choose synthetic inputs that genuinely identify all four fits and verify them
 with independent R before freezing controls; stop if this assumption fails.
+
+## Implementation checkpoint
+
+The additive typed/parser GEE selector, optional four-field panel provenance,
+model-based FE/RE and selected-GEE snapshot adapters and conditional text rows
+are implemented. Legacy plain-store wire and non-panel snapshot omissions are
+preserved. Domain3/parser3/execution2 focused tests and runtime11 named-report
+tests pass (including the two new panel tests). The new snapshots pass1218
+frozen independent R gates across all three controls: both GEE selections,
+normalized FE full covariance/inference, GLS and ML beta inference/matrices and
+actual ML marginal likelihood. Private tests reject24 missing/malformed/weighted/
+negative-variance variants atomically, exercise owned store without active data/
+backend, and table after clearing the active model. Scoped all-target Clippy passes for domain, language,
+execution, reporting and runtime; fmt/diff checks pass.
+
+This is not the finished illustration: unified actual-script JSON/text exports,
+original-source/forgery auditor, remaining failure/wire/help tests, affected-crate/
+reverse-consumer suites and SPEC/ledger/help reconciliation remain required
+before ready/merge. Do not count the kernel/adapter checkpoint as source workflow
+completion. Printed ML SE discrepancies are still required and not repaired here.
 
 ## Feasibility checkpoint (before schema implementation)
 
