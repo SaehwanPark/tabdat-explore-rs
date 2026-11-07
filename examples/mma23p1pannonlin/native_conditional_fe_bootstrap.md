@@ -88,8 +88,19 @@ affected stats-crate nextest308 pass/one pre-existing skip,58 binaries,12.440s,
 run e1f18021-59a1-49ec-9b35-767eae0c3369. Relevant runtime bootstrap contract3/3
 passes,run faa20e55-b087-42e9-81d6-5d2dcd26c4b9. No full-workspace/CI claim.
 
-Pending: committed independent bootstrap auditor/forgery controls, small-source
-frozen R fixture and actual-script integration/failure checks, readable-output
-comparison, scoped lint/fmt and final docs/help/ledger reconciliation/review.
+Additional checkpoint: independent committed auditor checks raw replicate
+scores, all RNG draws, full empirical covariance/type7 identities and original
+source/prediction normalization. The shared60-row/12-firm control retains50
+rows/ten positive firms; frozen11 R fields/all500 refits and three dummy-GLM
+checks pass, with5000 independently checked draws. New actual-script Rust
+module3/3 passes,run2b37887a-1345-4dda-abdf-c5341ec74e0f,3.753s: full R fields/
+refits, original-owned prediction equality, JSON/text export equality, file
+collision, reversed/all-null metadata and a257-positive-firm B500 workflow with
+all draws/refits retained. Python2/2 passes with26 rejected forgeries, including
+matching native/R wrong variance and shifted coefficients rejected by independent
+empirical/raw-score checks. Scoped new-root-target Clippy passes.
+
+Pending: original readable-output comparison, stats-target lint and final
+SPEC/help/roadmap/ledger/inventory reconciliation and author review.
 Current logs/reference/original JSON are `/tmp/tabdat-ch23-native-fe-bootstrap/`.
 Do not merge this WIP or claim the whole required bootstrap inventory complete.
