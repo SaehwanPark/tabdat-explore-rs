@@ -566,7 +566,14 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    A separate [bounded conditional-FE Poisson SQL composition](../examples/mma23p1pannonlin/conditional_fe.md)
    validates the 1,620-row/324-firm positive-total sample against14 R quantities
    and48,440 export cells; this model-based one-slope test is not cluster robust
-   or a general native panel estimator. Its [whole-firm bootstrap](../examples/mma23p1pannonlin/conditional_fe_bootstrap.md)
+   or a general native panel estimator. The separate [native conditional-FE replay](../examples/mma23p1pannonlin/native_conditional_fe.md)
+   now owns the installed conditional model and positive-group normalization for
+   later n/xb/residuals, validating14 unchanged R quantities/full scalar variance
+   and all1730 source/prediction records with110 NULL excluded predictions. Both
+   routes exclude22 zero-total firms, retain1620/324, and use model-based inference;
+   no production kernel/API change. Raw score/information/likelihood/LR identities,
+   retained-subset predictions, metadata/order/labels/file failures and31 rejected
+   forgeries supplement R comparisons; text/JSON exports match. Its [whole-firm bootstrap](../examples/mma23p1pannonlin/conditional_fe_bootstrap.md)
    separately validates 500 R refits and 162,000 ordered independent-oracle draws;
    the explicit RNG differs from Stata. The separate [exponential-mean NLS](../examples/mma23p1pannonlin/exponential_nls.md)
    uses native `nl` and a firm-score SQL sandwich; R validates all1,730 source
@@ -613,8 +620,10 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    independent direct R integration, with guarded quadrature and full joint
    information. The historical normal-RE result has missing SEs and materially
    differs from the integrated likelihood; it is not counted as exact parity.
-   General conditional FE, normal-RE bootstrap, general GEE, other firm
-   bootstraps and Figure23.1 remain separate required work.
+   Broader conditional-FE inference, native normal RE, normal-RE bootstrap,
+   general GEE, other firm bootstraps and historical Figure23.1 reconciliation
+   remain separate required work. The native FE bootstrap's256-group cap excludes
+   this324-positive-firm original; its validated SQL bootstrap remains distinct.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
