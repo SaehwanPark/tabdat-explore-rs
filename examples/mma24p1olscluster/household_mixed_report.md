@@ -39,9 +39,9 @@ numeric FARM/EDUC/SEX. No weights, offsets or survey interpretation.
   slope coefficient inference, Student t(N−G−p). Evaluate only its existing
   retained common-intercept linear combination as native FE reporting does;
   never refit or reconstruct from current data. Canonicalize this normalized
-  `_cons` to `intercept` for comparison with the other models, keeping ordered
-  six slopes. Reject ambiguous names or unavailable normalized inference rather
-  than inventing a common-intercept SE.
+  `_cons` and GEE's `_cons` to `intercept` for comparison with RE, keeping ordered
+  six slopes and the corresponding matrix order. Reject ambiguous names or
+  unavailable normalized inference rather than inventing a common-intercept SE.
 - RE copies the selected native beta coefficients/covariance and normal
   inference, not transformed-OLS Student t. Label Swamy–Arora versus explicit
   equal-group-between versus Gaussian marginal ML. Source `refgls` uses explicit
@@ -89,6 +89,30 @@ absolute1e-9, nonzero-p relative1e-8, exact source fields/keys/order/membership)
 Investigate discrepancies before deciding tolerances; no widening for convenience.
 Choose synthetic inputs that genuinely identify all four fits and verify them
 with independent R before freezing controls; stop if this assumption fails.
+
+## Feasibility checkpoint (before schema implementation)
+
+Existing native scripts and all four independent R generators succeed on three
+controls: balanced192 and unbalanced199/200-source with singleton (the existing
+joint Hausman dyadics), plus179/180-source with16 groups and positive ML unit
+variance (existing RE-interior input rounded to multiples of1/64).
+An ad hoc native/reference audit passes496 numerical gates per control: GEE198,
+FE103 (fit and common intercept, not separate linear restrictions), GLS97 and
+ML98 (coefficient inference/full matrices, counts/scales and marginal likelihood).
+Fixed absolute1e-9 and nonzero-p relative1e-8, exact-zero underflow; no widening.
+These are existing-fit feasibility checks, not evidence for the not-yet-installed
+named comparison. ML prediction exports also match R on all192/199/179 rows, with exact selected
+source fields/order and absolute1e-9 prediction gates. New unified workflow,
+original-publisher source and state/wire checks remain to implement. Frozen
+controls and reproduction are in the [fixture README](../../tests/fixtures/mma24_household_mixed_report/README.md).
+
+Both Hausman-derived controls have negative admissible GEE correlation and
+zero-boundary ML unit variance; the third has GEE rho about.67688 and interior
+ML unit variance about1.70115. Keep these distinct, rather than forcing GEE to
+match an RE covariance or silently replacing boundary fits. GEE and FE both use
+native `_cons` names, so both require explicit common-row canonicalization.
+Optional R `geeM0.10.1` was installed in a dedicated validation library; set
+`R_LIBS` when reproducing. R4.6.2; no production dependency change.
 
 ## Ordered implementation and verification scope
 
