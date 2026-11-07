@@ -46,7 +46,7 @@ coverage guarantee. No analytic bootstrap p-value, BCa/studentized interval,
 offset, weight, survey, random-effects or causal inference is provided.
 
 Bounds: exact integer selected counts 0..100000; 1..16 unique slopes, no common
-intercept, B2..500, G<=256 with G>K, G*largest_group_size<=40000, and
+intercept, B2..500, G<=512 with G>K, G*largest_group_size<=40000, and
 G*largest_group_size*B*K²<=2500000000 using checked arithmetic. The original FE
 fit also audits raw key identity and enforces its own 40000 candidate-row,
 rows*K²<=20 million, convergence, scaling and information conditions. Raw keys

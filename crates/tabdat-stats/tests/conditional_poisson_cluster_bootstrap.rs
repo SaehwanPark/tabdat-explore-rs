@@ -57,12 +57,38 @@ fn every_refit_matches_closed_form_and_zero_groups_are_excluded() {
 }
 
 #[test]
+fn source_sized_and_boundary_group_counts_preserve_refits_and_exclusions() {
+  for groups in [257, 324, 512] {
+    let problem = sample(groups, false);
+    let report = bootstrap_conditional_poisson_clustered(&problem, "id", 2, 10001).unwrap();
+    assert_eq!(report.observation_count, 2 * groups);
+    assert_eq!(report.candidate_group_count, groups + 1);
+    assert_eq!(report.zero_total_group_count, 1);
+    assert_eq!(report.zero_total_observation_count, 2);
+    assert_eq!(report.cluster_labels.len(), groups);
+    assert_eq!(
+      report.cluster_labels.last().unwrap(),
+      &format!("g{}", groups - 1)
+    );
+    assert!(report.cluster_sizes.iter().all(|&n| n == 2));
+    for (replicate, draws) in report.replicate_cluster_indices.iter().enumerate() {
+      assert_eq!(draws.len(), groups);
+      assert!(draws.iter().all(|&index| index < groups));
+      let total: usize = draws.iter().map(|&index| 2 + index % 3).sum();
+      let expected = (total as f64 / groups as f64).ln();
+      assert!((report.replicate_coefficients[replicate][0] - expected).abs() < 1e-9);
+      assert_eq!(report.replicate_observation_counts[replicate], 2 * groups);
+    }
+  }
+}
+
+#[test]
 fn rejects_group_and_conservative_work_caps() {
-  let too_many = sample(257, false);
+  let too_many = sample(513, false);
   let err = bootstrap_conditional_poisson_clustered(&too_many, "id", 2, 0)
     .unwrap_err()
     .to_string();
-  assert!(err.contains("2 to 256 retained"), "{err}");
+  assert!(err.contains("2 to 512 retained"), "{err}");
 
   let mut too_large = sample(32, false);
   for i in 0..1250 {

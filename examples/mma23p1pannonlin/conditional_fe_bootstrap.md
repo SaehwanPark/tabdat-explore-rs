@@ -8,6 +8,10 @@ replicate's slope. It does not create restorable estimation state. See the
 [conditional-FE analysis](conditional_fe.md) for the model and the
 [author program](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.do)
 and [log](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.txt).
+The separate [native bootstrap](native_conditional_fe_bootstrap.md) now also
+supports the original324 positive firms, with independently validated native
+continuous-stream draws/refits and retained original model predictions. Neither
+route claims the other's stream or historical Stata bootstrap parity.
 
 ## Sample, inference and reproducibility
 
