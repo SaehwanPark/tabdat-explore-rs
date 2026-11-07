@@ -276,8 +276,13 @@ Extend the same workflow/validation standard to:
   separately checks45 R fields/all5999 source and prepared records/memberships,
   plus45 DTA author-log facts, with DOUBLE EXP-generated HHEXP. Outcome N5006
   differs deliberately from other source-variable N5999; no joint-cohort filter
-  or survey estimand is substituted. The book's URBAN/source discrepancies
-  remain; this is not whole-table/chapter/book coverage.
+  or survey estimand is substituted. The separate [individual source summaries](../examples/mma24p2poiscluster/individual_descriptives.md)
+  check60 R fields/all27766 records and333180 available variable/key pairs on
+  both modes, plus60 DTA printed facts; retain wholly missing27734 rather than
+  replacing source N by a model cohort. Partial/whole missingness, N0/N1,
+  typed JSON/text and read-only cached-Poisson/export/failure controls are tested.
+  The book's URBAN/MEDEXP/LNHHEXP source discrepancies remain; this is not
+  whole-table/chapter/book coverage.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

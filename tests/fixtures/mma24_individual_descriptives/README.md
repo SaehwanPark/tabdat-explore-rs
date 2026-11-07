@@ -1,7 +1,7 @@
-# Individual descriptive source controls (WIP)
+# Individual descriptive source controls
 
 Synthetic development-only inputs/references for the
-[individual variable-wise contract](../../../examples/mma24p2poiscluster/individual_descriptives.md).
+[individual variable-wise workflow](../../../examples/mma24p2poiscluster/individual_descriptives.md).
 No publisher data are bundled. Base R4.6.2 independently selects finite values
 per variable and computes N/mean/sample SD (N−1)/min/max. Undefined quantities
 are empty CSV fields, corresponding to native null, not zero.
@@ -38,14 +38,20 @@ for case in missing blank; do
 done
 ```
 
-Checkpoint: actual native JSON runs and the auditor pass60 R fields plus all
+Actual native JSON/text runs and the auditor pass60 R fields plus all
 source/prepared fields/keys/order/membership on both controls. Both pinned
 original modes also pass on all27766 source records (including the wholly missing
 27734), each with333180 available variable/key pairs; all60 precise-DTA printed
 companion-log fields pass separate half-printed-digit gates. Fixed absolute1e-9
 statistics tolerance; exact counts, undefined patterns and source fields.
 
-This is source feasibility evidence, **not slice completion**: automated actual-
-script/state/error/export/forgery tests, JSON/text export comparison, broader
-validation and final public status reconciliation remain. Printed-book LNHHEXP
-and absent MEDEXP differences remain required; no whole-table/chapter claim.
+Actual-script integration tests pass5/5: typed summaries and every prepared
+field/order, JSON/text byte-identical exports, permutation, final source ownership,
+read-only labels/cached Poisson with different variable samples,21 invalid sources
+and both export collisions. Python regressions pass2/2, including both controls/
+permutation and20 rejected forgeries (shared wrong native/R means, dropped missing
+records and metadata/sample/undefined-statistic corruptions). Invalid-source tests
+must stop before summaries/exports so existing owners cannot hide a missed guard.
+
+This is a bounded companion workflow, not literal book parity. Printed-book
+LNHHEXP and absent MEDEXP differences remain required; no whole-table/chapter claim.

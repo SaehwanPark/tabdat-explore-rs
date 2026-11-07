@@ -70,7 +70,12 @@ The [household variable-wise source summaries](examples/mma24p1olscluster/househ
 now validate45 R summary fields, all5999 source/prepared records and memberships,
 and45 printed DTA companion-log facts; reconstructed HHEXP uses declared DOUBLE
 precision. This is not a joint estimation sample or literal book URBAN parity.
-Remaining source outputs and printed ML SE discrepancies are still required.
+The separate [individual source summaries](examples/mma24p2poiscluster/individual_descriptives.md)
+validate60 R fields/all27766 source/prepared records and333180 variable/key pairs
+on both modes, plus60 DTA log facts. Wholly missing27734 is retained and finite
+samples remain variable-wise, not the model cohort. Printed-book LNHHEXP/MEDEXP
+reconciliation remains unresolved. Remaining source outputs and printed ML SE
+discrepancies are still required.
 
 ## Implemented and deferred capabilities
 

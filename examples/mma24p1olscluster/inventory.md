@@ -96,7 +96,7 @@ tests or change their evidence.
 | ID / source lines | Analysis, inference and post-estimation/report need | Status / executable workflow and independent evidence |
 | --- | --- | --- |
 | I-LOAD / 60–69 | Read/describe original DTA, rename six fields | Partial: [preparation](../mma24p2poiscluster/README.md) audits projected source fields and labels on ASCII/DTA; full original-schema desc/sum is not independently covered. |
-| I-DESC / 71–74 | Table24.3 variable-wise source summaries | In progress: [bounded contract](../mma24p2poiscluster/individual_descriptives.md), retain all27766 source rows (including wholly missing27734), with separate available-variable N27765 and independent R/source/report controls. Source acknowledges LNHHEXP differences and absence of printed MEDEXP; literal book reconciliation remains required. |
+| I-DESC / 71–74 | Table24.3 variable-wise source summaries | Partial: validated [companion workflow](../mma24p2poiscluster/individual_descriptives.md)/[script](../mma24p2poiscluster/individual_descriptives.td),60 independent R fields, all27766 source/prepared records (retain wholly missing27734) and333180 available variable/key pairs on ASCII/precise DTA, plus60 printed DTA log facts. Per-variable N27765 is not source N27766; partial/all missing, N0/N1, permutations, JSON/text, state/export/failure/forgery controls included. Source acknowledges LNHHEXP differences and absent printed MEDEXP; literal book reconciliation remains required, not counted complete. |
 | I-DETAIL / 75 | Detailed LNHHEXP quantiles/tails | Open: native summarize detail exists but no source-specific audited workflow; historical quantile, skewness/kurtosis and extreme-value conventions must be explicit. |
 | I-FREQ / 77–79 | Table24.5 PHARVIS frequency/percent/cumulative percent | Open: source-specific all-available-outcome frequencies and independent audit required, not model-fitted countprob or selected-case summaries. Source acknowledges printed frequency differences, especially zero. |
 | I-GRAPH / 81–82 | Discrete PHARVIS histogram plus kernel-density overlay | Open: choose/document bins, density bandwidth/kernel/boundaries, native rendering/export and source-aware independent ordinate/geometry checks; no validated histogram/KDE overlay currently linked. |
@@ -143,9 +143,12 @@ the printed parameter centres; the official2005 wrapper delegates covariance to
 or compatible licensed reference run is available locally; the cause remains
 unverified. Do not change native inference or tolerances to manufacture parity.
 
-**Next independent source workflow:** I-DESC variable-wise individual summaries,
-separate from its estimation cohort, before its detail/frequency/graphical and
-named-comparison entries. Household native reports/descriptives do not close
-printed-book URBAN or ML SE reconciliation. All unresolved entries remain required;
-request a scope/reference decision when essential missing evidence blocks progress. This inventory closes neither Chapter24 nor
+**Next independent source candidate:** I-DETAIL LNHHEXP distribution, explicitly
+distinguishing native type7 percentiles from historical quantile/moment/extreme-
+value conventions. Reassess graduate-method priorities before implementation;
+this inventory is not a mandatory sequence of phase gates. Frequency/graphical
+and named-comparison entries also remain required. Native summaries do not close
+printed-book URBAN/MEDEXP/LNHHEXP or ML SE reconciliation. Request a scope/reference
+decision when essential missing evidence blocks progress; do not count it complete.
+This inventory closes neither Chapter24 nor
 the full-book inventory requirement; no required illustration is excluded.
