@@ -1,6 +1,6 @@
 # Patents native shared-gamma RE workflow: preimplementation contract
 
-**In progress, not validated/delivered yet.** Medium risk: new source workflow
+**In progress, not fully verified/delivered yet.** Medium risk: new source workflow
 and artifact/state contracts on an existing estimator; no numerical kernel,
 public Rust/CLI schema, dependency or existing composition change expected.
 
@@ -107,3 +107,24 @@ unresolved literal parity; the prior float32 probe is not an alternative oracle.
 Remaining illustrated normal-RE/GEE/bootstrap outputs and chapter/book inventory
 work, I-DETAIL/I-FREQ/I-GRAPH, household ML SE and URBAN/MEDEXP/LNHHEXP
 reconciliation all remain required. No missing book source or unavailable Stata build is manufactured.
+
+## Implementation checkpoint (not merge-ready)
+
+Native script and independent auditor now pass the original1730-row/346-firm
+source and existing60-row/12-firm control, each with all37 unchanged R fields,
+full joint covariance, every source/prediction record and key/order. Additional
+Python likelihood/score/observed-information-inverse identities, normal-tail/
+alpha/LR relationships and mean/xb/residual identities also pass. No native
+kernel or reference formula/tolerance change. R4.6.2 original max score3.27e-12,
+independent factorized-likelihood difference1.00e-11; native original converges
+in6 iterations, scaled score8.54e-15 and scaled Newton step2.37e-14.
+
+The first manual audit caught repeated guard/scope rows; the source statements
+now aggregate to one row (guard reports actual firm count), avoiding1730 repeated
+messages. Corrected runs live under `/tmp/tabdat-ch23-native-gamma/` as
+`original-json-v2`, `control-json` and `reference`.
+
+Automated script/state/failure/export/permutation tests and forged-artifact
+rejections, original text/export equivalence, historical selected gates, final
+impact-scoped checks/review and public-status reconciliation remain. Do not
+merge or claim the whole slice validated from these two positive runs alone.
