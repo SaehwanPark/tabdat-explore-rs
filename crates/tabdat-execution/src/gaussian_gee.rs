@@ -7,10 +7,10 @@ fn error(message: impl Into<String>) -> RuntimeError {
 }
 
 impl Session {
-  pub(crate) fn execute_xtgee(
+  pub(crate) fn prepare_gee_problem(
     &mut self,
     command: &XtGeeCommand,
-  ) -> Result<ExecutionResult, RuntimeError> {
+  ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
     let k = command.predictors.len() + 1;
     if !(2..=33).contains(&k) {
       return Err(error("requires1..32 numeric predictors"));
@@ -74,6 +74,14 @@ impl Session {
       .prepare_regression_problem(&regression, None, true)
       .map_err(|e| error(e.to_string()))?
       .with_intercept_name("_cons");
+    Ok(problem)
+  }
+
+  pub(crate) fn execute_xtgee(
+    &mut self,
+    command: &XtGeeCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let problem = self.prepare_gee_problem(command)?;
     let result =
       tabdat_stats::fit_gaussian_gee(&problem, &command.entity_variable, &Default::default())
         .map_err(|e| error(e.to_string()))?;

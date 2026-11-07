@@ -2803,8 +2803,7 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
 }
 
 fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
-  let syntax =
-    "xtgee expects: xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)";
+  let syntax = "xtgee expects: xtgee y xvars, family(gaussian) link(identity) or family(poisson) link(log), with corr(exchangeable) id(group)";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -2832,31 +2831,37 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
       )));
     }
   }
-  for (name, expected) in [
-    ("family", "gaussian"),
-    ("link", "identity"),
-    ("corr", "exchangeable"),
-  ] {
-    let values =
+  let mut values = Vec::new();
+  for name in ["family", "link", "corr"] {
+    let value =
       parse_identifier_option("xtgee", &options, name)?.ok_or_else(|| ParseError::new(syntax))?;
-    if values.len() != 1 || !values[0].eq_ignore_ascii_case(expected) {
+    if value.len() != 1 {
       return Err(ParseError::new(syntax));
     }
+    values.push(value[0].to_ascii_lowercase());
   }
+  let poisson = match (values[0].as_str(), values[1].as_str(), values[2].as_str()) {
+    ("gaussian", "identity", "exchangeable") => false,
+    ("poisson", "log", "exchangeable") => true,
+    _ => return Err(ParseError::new(syntax)),
+  };
   let keys =
     parse_identifier_option("xtgee", &options, "id")?.ok_or_else(|| ParseError::new(syntax))?;
   if keys.len() != 1 {
     return Err(ParseError::new(syntax));
   }
-  Ok(Command::XtGee {
-    command: XtGeeCommand {
-      outcome: parts.arguments[0].text.clone(),
-      predictors: parts.arguments[1..]
-        .iter()
-        .map(|a| a.text.clone())
-        .collect(),
-      entity_variable: keys[0].clone(),
-    },
+  let command = XtGeeCommand {
+    outcome: parts.arguments[0].text.clone(),
+    predictors: parts.arguments[1..]
+      .iter()
+      .map(|a| a.text.clone())
+      .collect(),
+    entity_variable: keys[0].clone(),
+  };
+  Ok(if poisson {
+    Command::XtGeePoisson { command }
+  } else {
+    Command::XtGee { command }
   })
 }
 

@@ -250,6 +250,8 @@ pub enum Command {
   XtPoisson { command: XtPoissonCommand },
   /// Gaussian identity-link exchangeable population-averaged GEE.
   XtGee { command: XtGeeCommand },
+  /// Balanced Poisson log-link exchangeable population-averaged GEE.
+  XtGeePoisson { command: XtGeeCommand },
   /// Fit bounded unweighted NB2 with jointly estimated log dispersion.
   Nbreg { command: NbregCommand },
   /// Fit a zero-inflated Poisson regression model (execution is deferred).
@@ -554,7 +556,7 @@ pub struct RegressCommand {
   pub include_intercept: bool,
 }
 
-/// Bounded Gaussian identity-link exchangeable GEE with explicit grouping.
+/// Shared GEE variable payload; the command variant fixes family/link semantics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtGeeCommand {
   pub outcome: String,

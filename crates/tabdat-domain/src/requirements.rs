@@ -82,6 +82,7 @@ impl Command {
       | Self::Poisson { .. }
       | Self::XtPoisson { .. }
       | Self::XtGee { .. }
+      | Self::XtGeePoisson { .. }
       | Self::Nbreg { .. }
       | Self::Zip { .. }
       | Self::Zinb { .. }

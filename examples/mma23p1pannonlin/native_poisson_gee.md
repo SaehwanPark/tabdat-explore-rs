@@ -1,7 +1,7 @@
 # Native patents Poisson GEE: bounded contract and WIP evidence
 
-**In progress: numerical Rust API implemented/checked; native command/workflow
-not yet implemented or validated.** High risk:
+**In progress: numerical Rust API and typed native command integrated/checked;
+guarded patents workflow and final cross-cutting regression still pending.** High risk:
 new nonlinear estimating-equation kernel, typed model state and additive public
 command/result contracts. Current [SQL composition](exchangeable_gee.md) is
 independently validated; Gaussian native GEE must remain unchanged.
@@ -245,11 +245,56 @@ helper crate-visible; Gaussian moments/covariance correction/wires stay unchange
   Probe/evidence under `/tmp/tabdat-ch23-poisson-gee/`; this is numerical API
   validation, **not** installed-command/source-script/state/file validation.
 
-Next: additive domain command/result/state/family and Gaussian wire freezes,
-parser, execution/invalidation/owned prediction, reporting/discovery goldens,
-actual native source script/auditor/forgeries and current cross-cutting workspace
-regression. SPEC/ledger public capability remains unchanged until that workflow is
-actually delivered. Do not merge this kernel-only checkpoint.
+## Typed native integration evidence (workflow still WIP)
+
+Added `XtGeePoisson` with unchanged shared variable payload, separate PoissonGee
+state/result/family, data requirements and canonical xtgee command name. Parser
+accepts only the Gaussian/identity or Poisson/log pairs with explicit exchangeable
+correlation/ID. Old Gaussian command and family wires are frozen; new wires are
+additive. Gaussian and Poisson share only unchanged DuckDB preflight/design
+preparation. Gaussian fitted-model/inference semantics remain unchanged.
+
+New native predictions n/xb/residuals use actual owned GEE coefficients, including
+on a current projection without IDs, with complete-column publication only after
+all rows pass. JSON/text distinguish fixed working scale1 from correlation
+normalizer and G/(G−1) sandwich. Catalog/help and exact discovery syntax golden
+are updated. Named snapshots/other covariance selectors remain unsupported.
+
+Inspection found failed-fit invalidation is explicit in fit handlers, not a
+central command classifier. New Poisson GEE clears stale estimation before
+preflight, as existing count fits do; **legacy Gaussian GEE deliberately preserves
+its prior fit on failure**, per its existing help. This exception is unchanged,
+not generalized away by shared preparation. Native Poisson failed-fit tests keep
+data/labels/stored reports, and deny prediction until a successful new fit.
+
+Validation so far:
+
+- Workspace cargo check passes (compilation, not regression). New domain wire/
+  family/capability test1/1; new parser2/2 plus legacy Gaussian parser2/2 pass.
+- New runtime initial4 cases:3 passed/1 failed because the rejection helper
+  incorrectly unwrapped parser-rejected `n std` (existing parser requires posterior
+  predictive for std). Helper now accepts parser or runtime rejection and asserts
+  complete state unchanged; corrected case1/1 passes (three filtered previously
+  passed), not a fresh full-four run. Runtime covers ownership, frozen means,
+  repeated means/index/residual identities, labels, failed-fit clear with intact
+  stored reports, unsupported store/covariance/probabilities, no-clobber columns,
+  current IDs absent and unrepresentable mean failing atomically.
+- Existing mixed-panel report runtime2/2 passes after shared preparation extraction.
+  Root exact xtgee discovery/help acceptance1/1 passes (28 unrelated cases filtered).
+  Scoped five affected libraries and three new test targets Clippy, fmt/diff pass.
+- Actual CLI JSON/text three-coefficient control: metadata/text semantics and all
+  60 R means/index/residuals pass; exports byte-identical. Ad-hoc original CLI
+  load→native fit→three predictions→export also passes33 R quantities, all1730
+  source fields/keys/mean/residual records and exp(index),346 groups/all22 zero
+  firms, with JSON/text byte-identical exports. Evidence/scripts in
+  `/tmp/tabdat-ch23-poisson-gee/cli-{smoke,original}`. This does not validate a
+  committed guarded source workflow, source failure paths or forgery auditor.
+
+Next: committed native source script/auditor/forgeries/automated workflow tests,
+remaining integration boundaries and current full cross-cutting workspace
+regression. SPEC/ledger completion stays pending until the whole bounded workflow
+is delivered. No fresh broad crate/workspace/doctest pass or independent code
+review claimed. Do not merge this unfinished workflow checkpoint.
 
 I-DETAIL/frequency/graphics, historical ML/URBAN/MEDEXP/LNHHEXP discrepancies,
 remaining normal-RE/bootstrap/method illustrations and full book inventory remain

@@ -845,6 +845,7 @@ pub enum ExecutionResult {
   GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
   /// Gaussian exchangeable GEE with both working and unit-sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
+  PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
   PoissonMarginalEffects(Box<PoissonMarginalEffects>),
   /// NB2 ML/independent-row robust fit with joint log-dispersion covariance.

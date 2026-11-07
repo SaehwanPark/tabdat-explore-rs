@@ -21,6 +21,7 @@ mod gaussian_gee;
 mod grouped_poisson;
 mod multinomial;
 mod nested_logit;
+mod poisson_gee;
 mod random_effects;
 mod row_conversion;
 use row_conversion::*;
@@ -179,6 +180,7 @@ impl Session {
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::XtPoisson { command } => self.execute_xtpoisson(&command),
       Command::XtGee { command } => self.execute_xtgee(&command),
+      Command::XtGeePoisson { command } => self.execute_xtgee_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
       Command::Nl { command } => self.execute_nls(&command),

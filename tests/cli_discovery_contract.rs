@@ -188,7 +188,7 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
       "xtgee",
-      "xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)",
+      "xtgee y xvars, (family(gaussian) link(identity) | family(poisson) link(log)) corr(exchangeable) id(group)",
       serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
       vec!["family", "link", "corr", "id"],
     ),
