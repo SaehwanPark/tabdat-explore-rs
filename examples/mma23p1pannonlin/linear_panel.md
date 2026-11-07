@@ -137,12 +137,12 @@ the fixed scalar/R gates. The audit checks all **1,730 exact
 source/design and R prediction rows** and **106** fit, full covariance,
 `lincom` and test quantities. Floating comparisons use
 `1e-9+1e-10*abs(reference)`; nonzero p-values use relative tolerance `1e-9`.
-Maximum original prediction difference is `4.0e-14`. Nineteen selected
-historical logged numbers agree at their printed precision; this is not a
-claim that all Stata storage, graphical output, named reporting or individual-
-effect uncertainty has been reproduced. Twenty-four selected author facts now
-include normalized-intercept SE/t/CI and p rounding to0.000; the actual tiny
-nonzero p is compared to R with the relative gate, not silently replaced by zero. Original text/JSON exports are byte-identical.
+Maximum original prediction difference is `4.0e-14`. Twenty-four selected
+historical logged numbers now agree at their printed precision, including
+normalized-intercept SE/t/CI and p rounding to0.000. The actual tiny nonzero p is
+compared to R with the relative gate, not silently replaced by zero. This is not
+a claim that all Stata storage, graphical output, named reporting or individual-
+effect uncertainty has been reproduced. Original text/JSON exports are byte-identical.
 
 An inspectable 40-firm fixture, including eight all-zero firms and missing
 nonmodel ARDSSIC, checks all 200 rows and106 quantities (classical FE df159), text/JSON and byte-
