@@ -66,6 +66,10 @@ PA/FE/equal-group GLS/ML, independently checking327 reporting quantities and
 all source/prediction rows on both modes. It preserves FE t versus RE/GEE z,
 explicit GEE working/sandwich selection, full JSON covariance and panel
 provenance; common R² is unavailable and only ML supplies marginal likelihood.
+The [household variable-wise source summaries](examples/mma24p1olscluster/household_descriptives.md)
+now validate45 R summary fields, all5999 source/prepared records and memberships,
+and45 printed DTA companion-log facts; reconstructed HHEXP uses declared DOUBLE
+precision. This is not a joint estimation sample or literal book URBAN parity.
 Remaining source outputs and printed ML SE discrepancies are still required.
 
 ## Implemented and deferred capabilities

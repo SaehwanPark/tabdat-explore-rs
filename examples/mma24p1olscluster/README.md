@@ -53,7 +53,12 @@ prediction rows on both modes and JSON/text byte-identical exports. It requires
 an explicit GEE covariance choice, retains normalized FE t versus RE/GEE z and
 reports no common R² or invented GLS/GEE likelihood. The active model remains
 RE-ML. Printed historical ML SE discrepancies and remaining source outputs stay
-required. These bounded workflows do not establish whole-table/chapter coverage.
+required. The separate [household variable-wise source summaries](household_descriptives.md)
+now validate45 independent R fields/all5999 source and prepared rows/memberships,
+plus45 printed DTA log facts. Outcome N5006 is not a common filter for the other
+source-variable N5999 summaries; HHEXP uses explicit DOUBLE EXP. The book's
+URBAN/source differences remain unresolved. These bounded workflows do not
+establish whole-table/chapter coverage.
 
 ## Source and preparation
 

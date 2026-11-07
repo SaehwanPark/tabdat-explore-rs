@@ -271,8 +271,13 @@ Extend the same workflow/validation standard to:
   rows on ASCII/precise DTA, with explicit GEE selection, FE t versus RE/GEE z,
   full covariance/panel provenance and unavailable common R². Historical printed
   ML SE discrepancies, remaining individual comparisons, other GEE workflows
-  and full survey methods remain required; this is not whole-table/chapter/book
-  coverage.
+  and full survey methods remain required. The [household variable-wise
+  source summary](../examples/mma24p1olscluster/household_descriptives.md)
+  separately checks45 R fields/all5999 source and prepared records/memberships,
+  plus45 DTA author-log facts, with DOUBLE EXP-generated HHEXP. Outcome N5006
+  differs deliberately from other source-variable N5999; no joint-cohort filter
+  or survey estimand is substituted. The book's URBAN/source discrepancies
+  remain; this is not whole-table/chapter/book coverage.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
