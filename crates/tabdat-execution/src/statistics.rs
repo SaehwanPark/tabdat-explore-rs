@@ -1076,9 +1076,29 @@ impl Session {
     if command.subcommand == EstatSubcommand::Hausman {
       let Some(EstimationState::RandomEffects(state)) = &self.estimation else {
         return Err(RuntimeError::EstatHausmanFailed(
-          "requires a prior balanced model-based one-slope RE-GLS fit".into(),
+          "requires a prior supported model-based RE-GLS fit: balanced one-slope Swamy–Arora or bounded equal-group-between".into(),
         ));
       };
+      if state.result.component_method
+        == tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween
+      {
+        if !(1..=16).contains(&state.result.predictor_names.len())
+          || state.result.gls.fit_statistics.observation_count > 40000
+        {
+          return Err(RuntimeError::EstatHausmanFailed(
+            "joint equal-group-between Hausman requires 1..16 slopes and N<=40000".into(),
+          ));
+        }
+        let problem = state.hausman_problem.as_ref().ok_or_else(|| {
+          RuntimeError::EstatHausmanFailed(
+            "retained original design unavailable; refit a supported equal-group-between RE model"
+              .into(),
+          )
+        })?;
+        let comparison = tabdat_stats::joint_equal_group_panel_hausman(problem, &state.result)
+          .map_err(|error| RuntimeError::EstatHausmanFailed(error.to_string()))?;
+        return Ok(ExecutionResult::JointPanelHausman(comparison));
+      }
       if state.result.ml.is_some()
         || state.result.component_method != tabdat_stats::RandomEffectsComponentMethod::SwamyArora
         || state.result.group_size == 0
@@ -1086,7 +1106,7 @@ impl Session {
         || state.result.gls.covariance.covariance_type != tabdat_stats::CovarianceType::NonRobust
       {
         return Err(RuntimeError::EstatHausmanFailed(
-          "requires balanced nonclustered one-slope Swamy–Arora RE-GLS; ML, equal-group-between and robust/cluster fits are unsupported".into(),
+          "requires balanced nonclustered one-slope Swamy–Arora RE-GLS or bounded model-based equal-group-between; ML and robust/cluster fits are unsupported".into(),
         ));
       }
       let problem = state.hausman_problem.as_ref().ok_or_else(|| {

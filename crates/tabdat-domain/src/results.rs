@@ -873,6 +873,7 @@ pub enum ExecutionResult {
   RobustEndogeneity(tabdat_stats::RobustEndogeneityResult),
   /// Conventional scalar same-sample FE versus RE covariance-difference test.
   ClassicalPanelHausman(tabdat_stats::ClassicalPanelHausmanResult),
+  JointPanelHausman(tabdat_stats::JointPanelHausmanResult),
   Quantile(Box<tabdat_stats::QuantileResult>),
   Bootstrap(Box<tabdat_stats::BootstrapOlsResult>),
   QuantileBootstrap(Box<tabdat_stats::QuantileBootstrapResult>),

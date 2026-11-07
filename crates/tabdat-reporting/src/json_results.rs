@@ -286,6 +286,12 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         json!("re_efficiency_under_null_and_independent_units; not_cluster_robust");
       (data, "ClassicalPanelHausmanResult")
     }
+    ExecutionResult::JointPanelHausman(result) => {
+      let mut data = serde_json::to_value(result).expect("finite joint panel Hausman result");
+      data["test"] = json!("joint_panel_fe_re_covariance_difference");
+      data["covariance"] = json!("model_based_nonrobust");
+      (data, "JointPanelHausmanResult")
+    }
     ExecutionResult::WuHausman(result) => {
       let mut data = serde_json::to_value(result).expect("finite Wu-Hausman result");
       data["test"] = json!("wu_hausman_augmented_regression_f");

@@ -66,6 +66,40 @@ pub struct ClassicalPanelHausmanResult {
   pub p_value: f64,
 }
 
+/// Joint slope-only comparison after model-based equal-group-between RE-GLS.
+/// Separate native FE/RE residual scales are retained; no rescaling is implied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JointPanelHausmanResult {
+  pub outcome: String,
+  pub predictor_names: Vec<String>,
+  pub entity_variable: String,
+  pub observation_count: usize,
+  pub candidate_observation_count: usize,
+  pub dropped_observation_count: usize,
+  pub group_count: usize,
+  pub minimum_group_size: usize,
+  pub maximum_group_size: usize,
+  pub singleton_groups: usize,
+  pub re_component_method: RandomEffectsComponentMethod,
+  pub fe_coefficients: Vec<f64>,
+  pub re_coefficients: Vec<f64>,
+  pub differences: Vec<f64>,
+  pub fe_covariance: Vec<Vec<f64>>,
+  pub re_covariance: Vec<Vec<f64>>,
+  pub covariance_difference: Vec<Vec<f64>>,
+  pub fe_residual_df: usize,
+  pub re_residual_df: usize,
+  pub fe_residual_scale: f64,
+  pub re_residual_scale: f64,
+  pub minimum_scaled_cholesky_pivot: f64,
+  pub statistic: f64,
+  pub df: usize,
+  pub p_value: f64,
+  pub covariance_scale_convention: String,
+  pub reference_distribution: String,
+  pub assumptions: String,
+}
+
 fn scalar_hausman(bf: f64, br: f64, vf: f64, vr: f64) -> Result<(f64, f64, f64, f64), StatsError> {
   let variance_difference = vf - vr;
   let scale = vf.abs().max(vr.abs());
@@ -127,6 +161,177 @@ pub fn classical_panel_hausman(
     statistic,
     df: 1,
     p_value,
+  })
+}
+
+fn joint_hausman_error(message: &str) -> StatsError {
+  StatsError::InvalidEstimation(format!("joint panel Hausman: {message}"))
+}
+
+// Scaling by the parent variances makes the cancellation/curvature guard
+// invariant to predictor units. Positive diagonal differences alone are not SPD.
+fn joint_hausman_quadratic(
+  difference: &[f64],
+  fe: &[Vec<f64>],
+  re: &[Vec<f64>],
+) -> Result<(Vec<Vec<f64>>, f64, f64), StatsError> {
+  let k = difference.len();
+  if k == 0
+    || fe.len() != k
+    || re.len() != k
+    || fe.iter().chain(re).any(|row| row.len() != k)
+    || difference
+      .iter()
+      .chain(fe.iter().flatten())
+      .chain(re.iter().flatten())
+      .any(|v| !v.is_finite())
+  {
+    return Err(joint_hausman_error(
+      "nonfinite or misaligned coefficient/covariance inputs",
+    ));
+  }
+  let tolerance = 128.0 * f64::EPSILON;
+  let scales: Vec<_> = (0..k).map(|i| fe[i][i].max(re[i][i]).sqrt()).collect();
+  if (0..k)
+    .any(|i| fe[i][i] <= 0.0 || re[i][i] <= 0.0 || !scales[i].is_finite() || scales[i] <= 0.0)
+  {
+    return Err(joint_hausman_error(
+      "parent variances must be finite and positive",
+    ));
+  }
+  let mut covariance = vec![vec![0.0; k]; k];
+  let mut normalized = vec![vec![0.0; k]; k];
+  for i in 0..k {
+    for j in 0..=i {
+      let f_asymmetry = (fe[i][j] - fe[j][i]).abs() / scales[i] / scales[j];
+      let r_asymmetry = (re[i][j] - re[j][i]).abs() / scales[i] / scales[j];
+      if !f_asymmetry.is_finite()
+        || !r_asymmetry.is_finite()
+        || f_asymmetry > tolerance
+        || r_asymmetry > tolerance
+      {
+        return Err(joint_hausman_error(
+          "parent covariance is not numerically symmetric",
+        ));
+      }
+      // Average only roundoff-level asymmetry; do not repair eigenvalues.
+      let value = 0.5 * (fe[i][j] - re[i][j]) + 0.5 * (fe[j][i] - re[j][i]);
+      let scaled = value / scales[i] / scales[j];
+      if !value.is_finite() || !scaled.is_finite() {
+        return Err(joint_hausman_error("nonfinite covariance difference"));
+      }
+      covariance[i][j] = value;
+      covariance[j][i] = value;
+      normalized[i][j] = scaled;
+      normalized[j][i] = scaled;
+    }
+  }
+  let mut lower = vec![vec![0.0; k]; k];
+  let mut minimum_pivot = f64::INFINITY;
+  for i in 0..k {
+    for j in 0..=i {
+      let prior: f64 = (0..j).map(|h| lower[i][h] * lower[j][h]).sum();
+      let value = normalized[i][j] - prior;
+      if i == j {
+        if !value.is_finite() || value <= tolerance {
+          return Err(joint_hausman_error(
+            "FE minus RE covariance is nonpositive definite, rank deficient or cancellation dominated",
+          ));
+        }
+        minimum_pivot = minimum_pivot.min(value);
+        lower[i][j] = value.sqrt();
+      } else {
+        lower[i][j] = value / lower[j][j];
+      }
+    }
+  }
+  let mut whitened = vec![0.0; k];
+  for i in 0..k {
+    let prior: f64 = (0..i).map(|j| lower[i][j] * whitened[j]).sum();
+    whitened[i] = (difference[i] / scales[i] - prior) / lower[i][i];
+  }
+  let statistic: f64 = whitened.iter().map(|v| v * v).sum();
+  if !statistic.is_finite() {
+    return Err(joint_hausman_error("nonfinite statistic"));
+  }
+  Ok((covariance, statistic, minimum_pivot))
+}
+
+/// Compare all slopes with FE on the retained equal-group-between GLS design.
+/// Refit/verify the complete RE result before inference, including its sample,
+/// variance components and transformed covariance. Neither current data nor a
+/// supplied snapshot's coefficients may silently define a different comparison.
+pub fn joint_equal_group_panel_hausman(
+  problem: &EstimationProblem,
+  retained_re: &RandomEffectsResult,
+) -> Result<JointPanelHausmanResult, StatsError> {
+  let k = problem.predictor_names.len();
+  let n = problem.response.len();
+  if !(1..=16).contains(&k)
+    || !problem.include_intercept
+    || n > 40000
+    || n.checked_mul(k * k).is_none_or(|work| work > 20_000_000)
+    || retained_re.component_method != RandomEffectsComponentMethod::EqualGroupBetween
+    || retained_re.ml.is_some()
+    || retained_re.gls.covariance.covariance_type != CovarianceType::NonRobust
+  {
+    return Err(joint_hausman_error(
+      "requires model-based equal-group-between RE-GLS, an intercept, 1..16 slopes, N<=40000 and N*K^2<=20million",
+    ));
+  }
+  let re = fit_random_effects_equal_group_between(problem, &retained_re.entity_variable)?;
+  if re != *retained_re {
+    return Err(joint_hausman_error(
+      "retained RE fit does not match the refitted original design",
+    ));
+  }
+  let fe = fit_fixed_effects(problem, &re.entity_variable, false)?;
+  let fe_coefficients: Vec<_> = fe.within.coefficients.iter().map(|c| c.value).collect();
+  let re_coefficients: Vec<_> = re.gls.coefficients[1..].iter().map(|c| c.value).collect();
+  let differences: Vec<_> = fe_coefficients
+    .iter()
+    .zip(&re_coefficients)
+    .map(|(f, r)| f - r)
+    .collect();
+  let fe_covariance = fe.within.covariance.matrix.clone();
+  let re_covariance: Vec<_> = re.gls.covariance.matrix[1..]
+    .iter()
+    .map(|row| row[1..].to_vec())
+    .collect();
+  let (covariance_difference, statistic, minimum_scaled_cholesky_pivot) =
+    joint_hausman_quadratic(&differences, &fe_covariance, &re_covariance)?;
+  let p_value = crate::distributions::chi_square_tail(statistic, k);
+  if !p_value.is_finite() {
+    return Err(joint_hausman_error("nonfinite probability"));
+  }
+  let sample = problem
+    .sample
+    .as_ref()
+    .ok_or_else(|| joint_hausman_error("sample unavailable"))?;
+  let mut sizes = BTreeMap::new();
+  for group in sample
+    .cluster_groups
+    .as_ref()
+    .ok_or_else(|| joint_hausman_error("groups unavailable"))?
+  {
+    *sizes.entry(group).or_insert(0_usize) += 1;
+  }
+  Ok(JointPanelHausmanResult {
+    outcome: problem.outcome.clone(), predictor_names: problem.predictor_names.clone(),
+    entity_variable: re.entity_variable.clone(), observation_count: n,
+    candidate_observation_count: sample.total_observations, dropped_observation_count: sample.dropped_observations,
+    group_count: sizes.len(), minimum_group_size: *sizes.values().min().unwrap(),
+    maximum_group_size: *sizes.values().max().unwrap(), singleton_groups: sizes.values().filter(|&&n|n==1).count(),
+    re_component_method: re.component_method, fe_coefficients,re_coefficients,differences,
+    fe_covariance,re_covariance,covariance_difference,
+    fe_residual_df: fe.within.fit_statistics.degrees_of_freedom,
+    re_residual_df: re.gls.fit_statistics.degrees_of_freedom,
+    fe_residual_scale: fe.within.fit_statistics.residual_sum_of_squares.unwrap()/fe.within.fit_statistics.degrees_of_freedom as f64,
+    re_residual_scale: re.gls.fit_statistics.residual_sum_of_squares.unwrap()/re.gls.fit_statistics.degrees_of_freedom as f64,
+    minimum_scaled_cholesky_pivot,statistic,df:k,p_value,
+    covariance_scale_convention: "separate_native_fe_and_re_residual_scales".into(),
+    reference_distribution: "chi_square".into(),
+    assumptions: "Classical model-based FE/RE comparison requires RE efficiency under H0 and IID homoskedastic idiosyncratic errors; not cluster-robust, survey or causal inference. Non-rejection does not establish exogeneity.".into(),
   })
 }
 
@@ -515,7 +720,63 @@ fn fit_random_effects_impl(
 
 #[cfg(test)]
 mod hausman_tests {
-  use super::scalar_hausman;
+  use super::{joint_hausman_quadratic, scalar_hausman};
+
+  #[test]
+  fn joint_quadratic_matches_closed_form_and_scaled_permutations() {
+    let fe = vec![vec![3.0, 0.4], vec![0.4, 2.0]];
+    let re = vec![vec![1.0, 0.2], vec![0.2, 1.0]];
+    let delta = [1.0, 2.0];
+    let (difference, statistic, pivot) = joint_hausman_quadratic(&delta, &fe, &re).unwrap();
+    assert_eq!(difference, vec![vec![2.0, 0.2], vec![0.2, 1.0]]);
+    assert!((statistic - 8.2 / 1.96).abs() < 1e-14);
+    assert!(pivot > 128.0 * f64::EPSILON);
+    for order in [[0, 1], [1, 0]] {
+      for scale in [[1e-8, -1e8], [1e8, 1e-8]] {
+        let d: Vec<_> = order
+          .iter()
+          .enumerate()
+          .map(|(i, &j)| delta[j] * scale[i])
+          .collect();
+        let transform = |matrix: &[Vec<f64>]| {
+          order
+            .iter()
+            .enumerate()
+            .map(|(i, &a)| {
+              order
+                .iter()
+                .enumerate()
+                .map(|(j, &b)| matrix[a][b] * scale[i] * scale[j])
+                .collect()
+            })
+            .collect::<Vec<Vec<f64>>>()
+        };
+        let (_, actual, _) = joint_hausman_quadratic(&d, &transform(&fe), &transform(&re)).unwrap();
+        assert!((actual - statistic).abs() < 1e-13);
+      }
+    }
+  }
+
+  #[test]
+  fn joint_quadratic_rejects_indefinite_singular_cancellation_and_invalid_inputs() {
+    let identity = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+    // Each parent is SPD and the difference has positive diagonal entries.
+    for fe in [
+      vec![vec![2.0, 1.2], vec![1.2, 2.0]],
+      vec![vec![2.0, 1.0], vec![1.0, 2.0]],
+      vec![vec![1.0 + 64.0 * f64::EPSILON, 0.0], vec![0.0, 2.0]],
+      vec![vec![2.0, 0.1], vec![0.2, 2.0]],
+      vec![vec![f64::NAN, 0.0], vec![0.0, 2.0]],
+    ] {
+      assert!(joint_hausman_quadratic(&[1.0, 2.0], &fe, &identity).is_err());
+    }
+    assert!(joint_hausman_quadratic(&[f64::INFINITY, 0.0], &identity, &identity).is_err());
+    assert!(joint_hausman_quadratic(&[], &[], &[]).is_err());
+    assert!(joint_hausman_quadratic(&[1.0], &identity, &identity).is_err());
+    assert!(joint_hausman_quadratic(&[f64::MAX], &[vec![1.0]], &[vec![0.5]]).is_err());
+    let (_, zero, _) = joint_hausman_quadratic(&[0.0], &[vec![2.0]], &[vec![1.0]]).unwrap();
+    assert_eq!(zero, 0.0);
+  }
 
   #[test]
   fn rejects_nonpositive_and_cancellation_dominated_covariance_difference() {

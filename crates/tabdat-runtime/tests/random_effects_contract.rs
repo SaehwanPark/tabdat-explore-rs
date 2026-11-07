@@ -573,7 +573,7 @@ fn ml_unit_scores_preserve_joint_sample_predictions_and_failed_refit_state() {
 }
 
 #[test]
-fn equal_group_method_sample_predictions_and_unsupported_postestimation_are_explicit() {
+fn equal_group_method_sample_predictions_and_owned_comparison_are_explicit() {
   let f = Fixture::new();
   let mut s = f.load();
   let ExecutionResult::RandomEffects(fit) = run(
@@ -591,7 +591,7 @@ fn equal_group_method_sample_predictions_and_unsupported_postestimation_are_expl
     10
   );
   assert_eq!(fit.result.group_count, 6);
-  assert!(fit.hausman_problem.is_none());
+  assert!(fit.hausman_problem.is_some());
   run(&mut s, "predict equal_xb, xb");
   run(&mut s, "predict equal_residual, residuals");
   for row in rows(&mut s, "SELECT y,x,equal_xb,equal_residual FROM active") {
@@ -605,7 +605,18 @@ fn equal_group_method_sample_predictions_and_unsupported_postestimation_are_expl
     }
   }
   let state = s.state();
-  assert!(s.execute(parse_command("estat hausman").unwrap()).is_err());
+  let ExecutionResult::JointPanelHausman(comparison) = run(&mut s, "estat hausman") else {
+    panic!("equal-group comparison must use the additive joint result type")
+  };
+  assert_eq!(comparison.observation_count, 18);
+  assert_eq!(comparison.candidate_observation_count, 28);
+  assert_eq!(comparison.dropped_observation_count, 10);
+  assert_eq!(comparison.group_count, 6);
+  assert_eq!(comparison.df, 1);
+  assert_eq!(
+    comparison.re_component_method,
+    tabdat_stats::RandomEffectsComponentMethod::EqualGroupBetween
+  );
   assert_eq!(s.state(), state);
   let Some(EstimationState::RandomEffects(retained)) = state.estimation else {
     panic!()
