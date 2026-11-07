@@ -71,5 +71,27 @@ resampling, source named tables, historical RNG/repeated-ID/SE/interval parity
 and complete illustration inventory. Existing SQL bootstrap stays distinct; its
 merged-source-ID counterfactual is sensitivity evidence, not historical proof.
 
-Status: preimplementation contract. No new512-bound behavior or original native
-B500 reference pass is claimed. Planned artifacts `/tmp/tabdat-ch23-native-gamma-bootstrap/`.
+## Verified implementation checkpoint (not merge-ready)
+
+Old executable reproduces original346-group rejection at256. Conditional FE
+remains512 and pooled remains256; only gamma cap/error text changed. New native
+original B500 completes, all173000 draw indices/rejection steps match independent
+Python RNG, and unchanged R4.6.2 validates31 fields/full3x3 covariance/all500
+three-parameter refits. Maximum intercept/slope/lnalpha differences are
+9.34e-11/1.75e-11/4.24e-11 under the fixed scalar gates. Bootstrap SEs are
+.42502508954787294/.12339690766905602/.22334598492348126. All1730 post-bootstrap
+prediction rows are byte-identical to the independently audited native gamma
+source-fit baseline, including all22 zero-total firms.
+
+Modified/new kernel module7/7 passes:257/346/512 accept with zero/singleton
+eligibility and joint refits;513 rejects; prior distinct-copy-versus-merged,
+singular/boundary aborts and row/work contracts remain. Fresh affected stats
+crate309 pass/one pre-existing skip,58 binaries,12.531s,
+run8537766a-07a3-454c-b304-05b0421838e0. Relevant runtime contracts4/4 pass,
+runfec98e13-2b9c-4aa6-855c-4f4eaedf93d2. No full-workspace/CI claim.
+
+Pending: committed independent auditor/raw-score/empirical-forgery controls,
+small-source frozen500-vector R fixture, actual-script integration/failure/
+readable checks, lint/fmt/docs/help/ledger reconciliation and final author
+review. Do not merge WIP or claim full bootstrap/book completion.
+Artifacts `/tmp/tabdat-ch23-native-gamma-bootstrap/`.

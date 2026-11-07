@@ -187,8 +187,7 @@ fn rejects_largest_possible_draw_and_joint_work_caps() {
   assert!(err.contains("3000000000"), "{err}");
 }
 
-#[test]
-fn rejects_too_many_retained_groups_before_sampling() {
+fn resized_groups(groups: usize) -> EstimationProblem {
   let original = problem();
   let keys = original
     .sample
@@ -210,7 +209,7 @@ fn rejects_too_many_retained_groups_before_sampling() {
   let mut y = vec![];
   let mut x = vec![];
   let mut out = vec![];
-  for group in 0..257 {
+  for group in 0..groups {
     for &row in &clusters[group % clusters.len()] {
       y.push(original.response[row]);
       x.push(original.design_matrix[row].clone());
@@ -218,14 +217,50 @@ fn rejects_too_many_retained_groups_before_sampling() {
     }
   }
   let n = y.len();
-  let p = EstimationProblem::new("y", original.predictor_names.clone(), y, x)
+  EstimationProblem::new("y", original.predictor_names.clone(), y, x)
     .unwrap()
     .with_intercept_name("_cons")
-    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(out)).unwrap());
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(out)).unwrap())
+}
+
+#[test]
+fn source_sized_and_boundary_group_counts_keep_zero_groups_and_joint_refits() {
+  for groups in [257, 346, 512] {
+    let p = resized_groups(groups);
+    let before = p.clone();
+    let report = bootstrap_gamma_poisson_clustered(&p, "id", 2, 10001).unwrap();
+    assert_eq!(report.cluster_labels.len(), groups);
+    assert_eq!(report.observation_count, p.response.len());
+    assert!(report.zero_total_group_count > 0);
+    assert!(report.singleton_group_count > 0);
+    assert_eq!(report.covariance_parameter_names.len(), 12);
+    assert_eq!(report.covariance_parameter_names.last().unwrap(), "lnalpha");
+    assert_eq!(report.replicate_coefficients.len(), 2);
+    for (index, draw) in report.replicate_cluster_indices.iter().enumerate() {
+      assert_eq!(draw.len(), groups);
+      assert!(draw.iter().all(|&value| value < groups));
+      assert_eq!(report.replicate_coefficients[index].len(), 12);
+      assert!(
+        report.replicate_coefficients[index]
+          .iter()
+          .all(|value| value.is_finite())
+      );
+      assert_eq!(
+        report.replicate_observation_counts[index],
+        draw.iter().map(|&i| report.cluster_sizes[i]).sum::<usize>()
+      );
+    }
+    assert_eq!(p, before);
+  }
+}
+
+#[test]
+fn rejects_too_many_retained_groups_before_sampling() {
+  let p = resized_groups(513);
   let error = bootstrap_gamma_poisson_clustered(&p, "id", 2, 0)
     .unwrap_err()
     .to_string();
-  assert!(error.contains("2 to 256 retained groups"), "{error}");
+  assert!(error.contains("2 to 512 retained groups"), "{error}");
 }
 
 #[test]
