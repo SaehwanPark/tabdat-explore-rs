@@ -118,7 +118,7 @@ are unchanged; fit xtpoisson separately for prediction.
 
 Each replication samples G original retained groups with replacement and
 refits all slopes with a distinct FE identity for each copied group. B=2..500
-(default200), G<=256 with G>K, K=1..16 slopes, G*largest_group_size<=40000,
+(default200), G<=512 with G>K, K=1..16 slopes, G*largest_group_size<=40000,
 and G*largest_group_size*B*K²<=2500000000. Checked limits are conservative;
 the underlying FE fit also enforces its original sample, rank, numerical and
 convergence guards. Any failure aborts the entire report without redraw; the
@@ -136,7 +136,11 @@ covariance, every replicate's slopes and N, and ordered zero-based group draws.
 Labels use exact internal key strings, not necessarily display formatting.
 Terminal output gives slope/mean/bias/SE/interval summaries. See
 examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md for the
-bounded Chapter24 workflow and its independent evidence.
+bounded Chapter24 workflow and its independent evidence. The source-sized
+Chapter23 patents B500 workflow (324 positive firms) is documented at
+examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md, including independent
+R refits and RNG checks. Only conditional FE permits512 groups; pooled Poisson
+and shared-gamma RE retain their256-group bounds.
 
 ## Whole-group shared-gamma Poisson RE
 

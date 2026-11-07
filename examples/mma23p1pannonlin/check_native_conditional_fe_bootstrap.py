@@ -20,7 +20,10 @@ def near(actual,expected,label=''):
 def empirical_checks(report):
   values=[row[0] for row in report['replicate_coefficients']]
   assert len(values)==500 and all(math.isfinite(v) for v in values)
-  mean=math.fsum(values)/500;variance=math.fsum((v-mean)**2 for v in values)/499
+  # Anchor the mean so identical refits retain exact zero variance; summing a
+  # large common level then dividing can introduce a one-ulp phantom spread.
+  anchor=values[0];mean=anchor+math.fsum(v-anchor for v in values)/500
+  variance=math.fsum((v-mean)**2 for v in values)/499
   covariance=report['covariance_matrix'];assert len(covariance)==len(covariance[0])==1
   if variance: assert abs(covariance[0][0]/variance-1)<=1e-9,'independent empirical covariance'
   else: assert covariance[0][0]==0

@@ -141,10 +141,12 @@ estimation behavior and fixed gates were unchanged.
 
 ## Separate required work
 
-The [SQL whole-firm FE bootstrap](conditional_fe_bootstrap.md) remains the
-validated original324-firm route; the separate native bootstrap caps G at256
-and does not admit this original sample. Native generic weighted/offset/cluster
-FE inference is not added here. [Native gamma RE](native_gamma_re.md),
+The [SQL whole-firm FE bootstrap](conditional_fe_bootstrap.md) remains a
+validated separate stream. The [native B500 workflow](native_conditional_fe_bootstrap.md)
+now admits the original324 positive firms under its conditional-only512-group
+cap, validating all500 R refits/162000 independent draws and retaining the
+original predictions. This is resampling inference, not added analytic weighted/
+offset/cluster FE covariance. Pooled/gamma bootstrap caps remain256. [Native gamma RE](native_gamma_re.md),
 [native balanced Poisson GEE](native_poisson_gee.md) and the
 [normal-RE composition](normal_re_poisson.md) remain different methods with
 explicit assumptions/historical limits. General/unbalanced GEE, native normal

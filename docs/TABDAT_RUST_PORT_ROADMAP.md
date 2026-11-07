@@ -633,8 +633,13 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    differs from the integrated likelihood; it is not counted as exact parity.
    Broader conditional-FE inference, native normal RE, normal-RE bootstrap,
    general GEE, other firm bootstraps and historical Figure23.1 reconciliation
-   remain separate required work. The native FE bootstrap's256-group cap excludes
-   this324-positive-firm original; its validated SQL bootstrap remains distinct.
+   remain separate required work. The [native FE bootstrap workflow](../examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md)
+   now admits324 positive firms under its conditional-only512-group cap while
+   preserving copied-row/work budgets and fail-abort/RNG/state contracts. All500
+   R conditional refits/three dummy-GLM cross-checks,162000 independent native
+   draws, full scalar B−1 covariance/type7 intervals and original predictions
+   pass;26 forgeries cover shared artifacts. Pooled/gamma limits stay256; the
+   validated SQL bootstrap uses a distinct stream, not historical RNG parity.
    Select one exact specification/reference before extending the estimator. The defined
    §14.2 native published-analysis workflow is now validated, including all
    source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not

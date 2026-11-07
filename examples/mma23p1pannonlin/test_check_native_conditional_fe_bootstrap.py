@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
-from check_native_conditional_fe_bootstrap import audit
+from check_native_conditional_fe_bootstrap import audit, empirical_checks
 
 ROOT=Path(__file__).resolve().parents[2]
 RAW=ROOT/'tests/fixtures/mma23_conditional_fe/source.asc'
@@ -35,6 +35,14 @@ def baseline(native):
 
 
 class NativeBootstrapAudit(unittest.TestCase):
+  def test_exact_constant_replicates_retain_zero_empirical_variance(self):
+    for value in [float.fromhex('0x1.fe1581ecd07ebp-1'),-float.fromhex('0x1.fe1581ecd07ebp-1'),0.]:
+      report={'replicate_coefficients':[[value] for _ in range(500)],'covariance_matrix':[[0.]],
+        'coefficients':[{'estimate':value,'bootstrap_mean':value,'bias':0.,'standard_error':0.,'ci_lower':value,'ci_upper':value}]}
+      empirical_checks(report)
+      report['covariance_matrix'][0][0]=1e-33
+      with self.assertRaises(AssertionError): empirical_checks(report)
+
   def test_actual_small_source_all_r_refits_draws_predictions(self):
     with tempfile.TemporaryDirectory() as tmp:
       native=Path(tmp)/'native';baseline(native)
