@@ -227,9 +227,12 @@ fn discovery_advertises_exact_actions_and_located_registry_errors_stop_scripts()
   let schema: Value = serde_json::from_slice(&output.stdout).unwrap();
   assert_eq!(
     schema["data"]["syntax"],
-    "estimates store NAME | estimates table NAME [NAME ...] | estimates drop NAME [NAME ...]"
+    "estimates store NAME [, covariance(working|sandwich)] | estimates table NAME [NAME ...] | estimates drop NAME [NAME ...]"
   );
-  assert_eq!(schema["data"]["options"], serde_json::json!([]));
+  assert_eq!(
+    schema["data"]["options"],
+    serde_json::json!([{"name":"covariance","required":false}])
+  );
   let output = fixture.run(&["--json", "--help-topic", "estimates"]);
   assert!(output.status.success());
   let help: Value = serde_json::from_slice(&output.stdout).unwrap();

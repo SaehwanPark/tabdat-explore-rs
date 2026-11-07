@@ -74,7 +74,7 @@ tests or change their evidence.
 | ID / source lines | Analysis, inference and post-estimation/report need | Status / executable workflow and independent evidence |
 | --- | --- | --- |
 | H-LOAD / 55–67 | Read/describe original DTA, rename eight fields, derive HHEXP | Partial: [preparation](README.md) independently audits projected fields and numeric labels on ASCII/DTA; native scripts use CSV, not native DTA. Original full-schema `desc`/`sum` and derived HHEXP are not covered by that projection audit. |
-| H-DESC / 69–72 | Table24.3 household source summaries, including level HHEXP and commune | In progress: [bounded contract](household_descriptives.md), variable-wise N/mean/sample SD/min/max and generated DOUBLE HHEXP, independently from the selected estimation cohort. Source says FARM replaces printed URBAN and acknowledges differences; literal printed-table parity remains required/unresolved. |
+| H-DESC / 69–72 | Table24.3 household source summaries, including level HHEXP and commune | Partial: validated [companion workflow](household_descriptives.md)/[script](household_descriptives.td),45 independent R count/mean/sample-SD/min/max fields, all5999 source/prepared records and per-variable membership on ASCII/precise DTA, plus45 printed DTA log facts. Outcome N5006 versus other source-variable N5999 is deliberate; generated HHEXP is DOUBLE, not default historical float. All-missing/singleton/permutation, JSON/text, state/export/failure/forgery controls included. Source substitutes FARM for absent printed URBAN and acknowledges differences; literal book-table reconciliation remains required, not counted complete. |
 | H-EXPORT / 74–77 | Eight-field ASCII source export, including missing outcomes and value labels | Partial: [prepare.py](prepare.py) plus [reference.R](reference.R) audit all prepared source rows; [DTA conversion](dta_reference.R) is reproducible. Recreating historical Stata `outfile` bytes/labels is not claimed. |
 | H-OLS-IID / 84–86 | OLS coefficients, classical t/F, R²/N, stored olsiid | Validated bounded [OLS workflow](README.md), [script](household_ols.td): base-R QR/full covariance and source/prediction audit. |
 | H-OLS-HC1 / 88–90 | Same OLS mean, row-HC1 t/F, stored olshet | Validated bounded [OLS workflow](README.md): R row-score sandwich; N/(N−K), t(N−K), not cluster inference. |
@@ -135,12 +135,17 @@ tests or change their evidence.
   of valid finite-sample t tests. Current B−1 covariance/percentile evidence does
   not automatically validate those separate displays or their historical RNG.
 
-**Next recommended inference investigation:** the five printed household ML
-coefficient-SE and two component-SD-SE discrepancies, testing observed versus
-expected information and historical conventions against independent references.
-Do not change native inference to historical numbers without an explicit,
-scientifically justified convention; request a decision if essential evidence
-is unavailable. H-REPORT-MIXED now supplies a native unified report, not literal
-whole-table parity. Descriptive/frequency/graphical and individual comparison
-entries also remain required. This inventory closes neither Chapter24 nor
+**Required inference follow-up:** the five printed household ML coefficient-SE
+and two component-SD-SE discrepancies. [Reference reconnaissance](https://github.com/SaehwanPark/tabdat-explore-rs/pull/431#issuecomment-6704387880)
+ruled out ordinary expected Fisher, merely changing SD coordinates and evaluating
+the printed parameter centres; the official2005 wrapper delegates covariance to
+`_XTRENORM`, whose implementation was not in the archive. No historical core/VCE
+or compatible licensed reference run is available locally; the cause remains
+unverified. Do not change native inference or tolerances to manufacture parity.
+
+**Next independent source workflow:** I-DESC variable-wise individual summaries,
+separate from its estimation cohort, before its detail/frequency/graphical and
+named-comparison entries. Household native reports/descriptives do not close
+printed-book URBAN or ML SE reconciliation. All unresolved entries remain required;
+request a scope/reference decision when essential missing evidence blocks progress. This inventory closes neither Chapter24 nor
 the full-book inventory requirement; no required illustration is excluded.

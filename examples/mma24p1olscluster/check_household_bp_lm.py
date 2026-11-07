@@ -23,7 +23,7 @@ def near(actual, expected, p=False):
   assert abs(a-b) <= tolerance, (a, b, tolerance)
 
 
-def audit_source(native, source_reference, raw, mode='--ascii'):
+def audit_source(native, source_reference, raw, mode='--ascii', minimum_rows=8):
   hashes = {'--ascii': '74cb37e8c14609e382d334e368a54f63bccd4e952d02bcbf535baf19115d4061',
             '--dta': '0ea6639f93a5bc3f53bcbd26b6865ad6908a04f41ab04d90e7c9aa4b7e9787bf'}
   if mode in hashes:
@@ -31,7 +31,7 @@ def audit_source(native, source_reference, raw, mode='--ascii'):
   source = rows(native/'vietnam.csv')
   expected_source = rows(source_reference)
   keys = ['source_row','lnexp12m','age','sex','hhsize','farm','educ','lnhhexp','commune']
-  assert len(source) == len(expected_source) > 7
+  assert len(source) == len(expected_source) >= minimum_rows
   if mode in hashes:
     assert len(source) == 5999
   if mode == '--csv':

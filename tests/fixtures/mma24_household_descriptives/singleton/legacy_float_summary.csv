@@ -1,0 +1,10 @@
+variable,count,mean,std_dev,minimum,maximum
+lnexp12m,0,,,,
+age,1,16,,16,16
+sex,1,1,,1,1
+hhsize,1,1,,1,1
+farm,1,0,,0,0
+educ,1,4,,4,4
+hhexp,1,1,,1,1
+lnhhexp,1,0,,0,0
+commune,1,9,,9,9

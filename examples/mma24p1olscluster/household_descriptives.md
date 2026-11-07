@@ -1,13 +1,14 @@
-# Household variable-wise source summaries — bounded contract
+# Household variable-wise source summaries
 
-**In progress, not yet validated.** H-DESC, companion program lines69–72,
-Table24.3 household portion p.850. This is independent of the unresolved
-historical ML SE investigation; it does not change estimation or close that gap.
+**Implemented and independently validated bounded native workflow.** H-DESC,
+companion program lines69–72, Table24.3 household portion p.850. This validates
+the companion summary, not literal printed-book parity. It is independent of
+the unresolved historical ML SE investigation; no estimator changes.
 
 ## Outcome and conventions
 
-Deliver a native load/audit → prepare → summarize/interpret → export/reproduce
-workflow for the nine variables in source order:
+The [script](household_descriptives.td) provides native load/audit → prepare →
+summarize/interpret → export/reproduce for the nine variables in source order:
 `lnexp12m age sex hhsize farm educ hhexp lnhhexp commune`.
 
 Use the pinned household README's ASCII or precise numeric-code DTA input,
@@ -17,6 +18,9 @@ the joint estimation cohort before describing the data.** Each variable has its
 own finite available-row sample. Zeros remain; sample SD uses N−1 and is undefined
 below2 observations. All-missing variables report N0/NA, not empty-data failure.
 There is no model, sampling weight, survey/causal inference or confidence interval.
+Commune means/SDs describe arbitrary numeric identifiers, not geographic location
+or cluster-size distributions. EDUC is a category code, not years of schooling;
+FARM is not a measurement of the book's URBAN variable.
 
 Preparation explicitly normalizes the seven measurement columns to DOUBLE,
 retains positive BIGINT source/commune keys (<=2^53−1 for exact independent R
@@ -36,7 +40,7 @@ at the end so subsequent modeling can explicitly choose its own cohort. The
 whole script is ordered, not transactional; an existing export owner is never
 overwritten and earlier successful effects/files are not rolled back.
 
-## Acceptance and failure cases (before implementation)
+## Verified behavior
 
 1. Both original modes: validate all5999 source/prepared rows, exact fields/keys/
    order/membership, and45 independent R count/mean/sample-SD/min/max quantities.
@@ -70,10 +74,49 @@ If an author gate differs under declared precision, investigate and document it;
 do not replace values or widen tolerance to manufacture agreement. Reassess
 scope if an unavailable essential source or new public contract is required.
 
-## Verification plan
+## Run and independently reproduce
 
-Inspect the diff before testing. Run the new script/control and forgery tests
-first; expand to root integration scope and shared source-auditor regressions.
-Use existing frozen small fixtures, R original-source audits, scoped Clippy,
-fmt/diff checks, then final review/PR evidence before merge and branch cleanup.
-No Rust documentation examples or estimator formula changes are intended.
+Graduate-level users can run the native workflow without R/Python after the
+[household README](README.md)'s pinned source preparation. Build with pinned
+Rust1.99.1 (`export PATH="$HOME/.cargo/bin:$PATH"`):
+
+```sh
+cargo build --locked --bin tabdat-explore-rs
+repo="$PWD"
+work=/path/to/fresh-working-directory  # Already contains prepared vietnam.csv.
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/mma24p1olscluster/household_descriptives.td" > result.jsonl)
+```
+
+Use `--text` for readable ordered summaries and run in a separate fresh directory
+to compare exports. Existing owners cause an error; choose a fresh directory,
+not an overwrite flag. Source reload/preparation deliberately changes the active
+data and clears any prior fit under existing load semantics. The summary itself
+is read-only, including with labels/retained OLS; this is not model restoration.
+
+For independent precise DTA validation (optional development R/Python):
+
+```sh
+ref=$(mktemp -d)
+Rscript examples/mma24p1olscluster/household_descriptives_reference.R /path/to/vietnam_ex1.dta "$ref/dta" --dta
+python3 examples/mma24p1olscluster/check_household_descriptives.py "$work" "$ref/dta" /path/to/vietnam_ex1.dta --dta /path/to/mma24p1olscluster.txt
+```
+
+For ASCII, omit `--dta` from R, use `--ascii` in Python and omit the author log;
+use separately prepared ASCII native input, not DTA numbers relabelled ASCII.
+DTA uses `foreign::read.dta(...,convert.factors=FALSE)`. Reference artifacts use17
+significant digits, base-R mean/sample-SD/extrema and independently enumerated
+per-variable source keys. A separate binary32-generation diagnostic never replaces
+the declared native DOUBLE oracle.
+
+Both original modes pass45 R fields and all5999 source/prepared row/membership
+checks; precise DTA also passes all45 printed companion-log rounding facts.
+[Two frozen synthetic controls](../../tests/fixtures/mma24_household_descriptives/README.md)
+cover N0/N1/variable-wise samples and source permutations. Actual-script tests
+pass5/5, including JSON/text byte-identical exports, final source ownership,
+read-only labels/OLS,16 invalid inputs and both export failures. The optional
+`python3 examples/mma24p1olscluster/test_check_household_descriptives.py` passes
+both controls/permutation and rejects20 forgeries (including shared native/R
+wrong means or generated levels). Shared BP/mixed-auditor regressions passed.
+Broader root-regression evidence and the corrected prior named-report schema
+golden are recorded in [PR#432](https://github.com/SaehwanPark/tabdat-explore-rs/pull/432);
+no Rust documentation examples or statistical kernel changed. Whole-book/full-survey/platform/release claims are not implied.
