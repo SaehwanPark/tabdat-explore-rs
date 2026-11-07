@@ -64,8 +64,12 @@ draw gives slope `0.5712201728` with distinct five-row copies versus
 35); see `exchangeable_gee_duplicate_probe.R`. This demonstrates material
 sensitivity, not that historical Stata used either exact convention. The
 author's printed bootstrap slope SE `.10729042` also differs from the 500-draw
-distinct-copy reference `.04188961`. RNG and/or historical panel identity and
-estimator behavior remain unresolved. The historical output and the remaining
+distinct-copy reference `.04188961`. The [pinned source inventory](inventory.md)
+records the log's **500 nominal replications but338 usable values per statistic**
+(lines1135–1157); the other four bootstrap tables show500. The mechanism behind
+that shortfall is not established. It is not evidence that all500 historical
+fits succeeded, nor permission to omit/redraw failed native fits. RNG and/or
+historical panel identity and estimator behavior remain unresolved. The historical output and the remaining
 Chapter 23 illustration requirements are not counted as completely reproduced.
 
 ## Numerical, state and file boundaries

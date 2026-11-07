@@ -557,6 +557,13 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    The [Figure23.1 source-data adaptation](../examples/mma23p1pannonlin/figure.md)
    independently validates all1,730 observations, centred-rank LOWESS and
    linear fits and SVG geometry; historical Stata tied-curve parity remains open.
+   The [source-pinned patents companion inventory](../examples/mma23p1pannonlin/inventory.md)
+   now accounts for37 preparation/graph/model/bootstrap/report blocks, including
+   full-decade transformations/xtsum and named comparisons not covered by the
+   bounded fit workflows. Its log distinguishes500 nominal PA bootstrap replications
+   from338 usable statistics and missing normal-RE primary SEs from table zeros.
+   These source facts do not resolve historical mechanisms, add runtime support
+   or complete Chapter23/book inventory; partial/open entries remain required.
    The [§23.3 pooled patent Poisson illustration](../examples/mma23p1pannonlin/pooled_poisson.md)
    now validates all1,730 original firm-years, three covariance modes,103 R
    quantities and19,030 exported cells;22 all-zero firms remain in pooled data.
