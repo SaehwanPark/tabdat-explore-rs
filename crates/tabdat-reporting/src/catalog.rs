@@ -1251,7 +1251,7 @@ fn get_command_schema(
       arguments: vec![ArgumentDescriptor { name:"outcome".into(),required:true },ArgumentDescriptor { name:"predictors".into(),required:true }],
       help_topic,name:"xtgee".into(),
       options: vec![OptionDescriptor { name:"family".into(),required:true },OptionDescriptor { name:"link".into(),required:true },OptionDescriptor { name:"corr".into(),required:true },OptionDescriptor { name:"id".into(),required:true }],
-      syntax:"xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)".into(),
+      syntax:"xtgee y xvars, (family(gaussian) link(identity) | family(poisson) link(log)) corr(exchangeable) id(group)".into(),
     }),
     "xtpoisson" => Ok(CommandSchemaResult {
       arguments:vec![ArgumentDescriptor {name:"outcome".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],

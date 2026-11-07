@@ -1957,6 +1957,28 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         "\nWARNING: fitted inclusive values violate RUM bounds; higher likelihood is not random-utility consistency."
       },
     ),
+    ExecutionResult::PoissonGee(r) => format!(
+      "Poisson log-link exchangeable GEE (population averaged)\nOutcome: {}; N = {}; groups = {}; balanced T = {}; zero-total groups retained = {}\nLegacy normalized-Pearson rho = {}; Pearson RSS/N normalizer = {} (not working variance scale)\nFixed working variance scale1; group sandwich correction G/(G-1) = {}; normal95/z and slope-Wald chi-square inference; no likelihood/LR.\nConverged in {} full updates; scaled score {:.3e}; expected-Fisher step {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nGroup sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nMarginal mean n, index xb and residuals only; no group effects/count probabilities. Independent groups and correct mean required for sandwich interpretation.",
+      r.outcome.escape_debug(),
+      r.observation_count,
+      r.group_count,
+      r.group_size,
+      r.zero_total_group_count,
+      inference_number(r.rho),
+      inference_number(r.pearson_normalizer),
+      inference_number(r.sandwich_correction),
+      r.iterations,
+      r.max_abs_scaled_score,
+      r.max_abs_scaled_newton_step,
+      r.working.wald_df,
+      inference_number(r.working.wald_statistic),
+      logit_number(r.working.wald_p_value),
+      logit_estimates(&r.working.coefficients),
+      r.sandwich.wald_df,
+      inference_number(r.sandwich.wald_statistic),
+      logit_number(r.sandwich.wald_p_value),
+      logit_estimates(&r.sandwich.coefficients)
+    ),
     ExecutionResult::GaussianGee(r) => format!(
       "Gaussian identity-link exchangeable GEE (population averaged)\nOutcome: {}; N = {}; groups = {}; group size {}..{}; singletons = {}\nPearson scale RSS/N = {}; ordered-pair-weighted correlation = {}; ordered pairs = {}\nWorking and uncorrected group sandwich covariance; normal95 coefficient inference; no finite-sample correction.\nConverged in {} updates; inverse-bread-scaled score {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nUnit-sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPredictions are population marginal means/index/residuals, not group effects.",
       r.outcome.escape_debug(),

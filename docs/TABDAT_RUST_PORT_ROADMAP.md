@@ -579,8 +579,18 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    independently validates both full covariance matrices, all1,730 predictions
    and346 firm scores against legacy R `gee` and base-R equations. A nine-step
    float32 probe supports storage/stopping as contributors to the
-   disclosed seven-decimal slope difference; native pooled Poisson, not GEE,
-   remains the retained state. Its [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/exchangeable_gee_bootstrap.md)
+   disclosed seven-decimal slope difference; this SQL composition retains
+   pooled Poisson. The separate [native Poisson GEE workflow](../examples/mma23p1pannonlin/native_poisson_gee.md)
+   now owns actual Poisson/log exchangeable GEE for later n/xb/residual prediction:
+   balanced selected groups, legacy Pearson correlation, fixed working scale1
+   and separate G/(G-1) sandwich/normal inference. It validates27 R quantities/
+   full covariance, all1730 source/prediction rows and346 firm scores, with all22
+   zero-total firms retained. Dense-R multivariate/rescaling controls, negative
+   rho, selected missingness/balance, resource/convergence/state/file boundaries
+   and33 rejected source/inference forgeries cover the bounded implementation.
+   Gaussian GEE wires/moments/uncorrected covariance and legacy failure policy
+   remain unchanged. Native unbalanced/general GEE, automatic GEE bootstrap and
+   historical slope/stopping parity remain required. The separate SQL [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/exchangeable_gee_bootstrap.md)
    validates 500 R/base-R refits and173,000 independent ordered draws; the
    author's materially different bootstrap SE and historical duplicate-ID
    handling remain unresolved, not counted as historical parity.

@@ -121,6 +121,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Clogit { .. }
     | Command::XtPoisson { .. }
     | Command::XtGee { .. }
+    | Command::XtGeePoisson { .. }
     | Command::Nlogit { .. }
     | Command::NlogitNormalizedCommon(..)
     | Command::Tobit { .. }
@@ -629,6 +630,26 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .expect("literal object")
         .extend(inference.as_object().expect("literal object").clone());
       (data, "NonNormalizedNestedLogitResult")
+    }
+    ExecutionResult::PoissonGee(r) => {
+      let mut data = serde_json::to_value(r).expect("finite Poisson GEE result");
+      data.as_object_mut().unwrap().remove("fitted_means");
+      data["predictors"] = data
+        .as_object_mut()
+        .unwrap()
+        .remove("predictor_names")
+        .unwrap();
+      data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let metadata = json!({"estimator":"poisson_log_exchangeable_gee","family":"poisson","link":"log","include_intercept":true,
+        "correlation":"legacy_balanced_normalized_pearson","working_covariance":"inverse_gee_bread_fixed_scale1",
+        "sandwich_covariance":"group_scores_G_over_G_minus_1","independent_unit":"group",
+        "reference_distribution":"asymptotic_standard_normal","joint_test_reference":"asymptotic_chi_square","confidence_level":95,
+        "missingness":"joint_finite_outcome_predictors_and_group","prediction_scope":"population_marginal_mean_log_link","converged":true});
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(metadata.as_object().unwrap().clone());
+      (data, "PoissonGeeResult")
     }
     ExecutionResult::GaussianGee(r) => {
       let mut data = serde_json::to_value(r).expect("finite Gaussian GEE result");

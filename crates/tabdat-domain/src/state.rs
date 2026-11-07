@@ -101,6 +101,7 @@ pub enum EstimationFamily {
   ConditionalPoisson,
   GammaPoisson,
   GaussianGee,
+  PoissonGee,
   NonNormalizedNestedLogit,
   NormalizedCommonNestedLogit,
   Tobit,
@@ -280,6 +281,7 @@ pub enum EstimationState {
   GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
   /// Owned population-averaged mean and working/sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
+  PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
   /// Legacy normalized placeholder, not an installed fit.
   NegativeBinomial(ModelState),
   NegativeBinomialFit(Box<NegativeBinomialFitState>),
@@ -347,6 +349,7 @@ impl EstimationState {
       Self::ConditionalPoisson(..) => EstimationFamily::ConditionalPoisson,
       Self::GammaPoisson(..) => EstimationFamily::GammaPoisson,
       Self::GaussianGee(..) => EstimationFamily::GaussianGee,
+      Self::PoissonGee(..) => EstimationFamily::PoissonGee,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,
       Self::Tobit(..) | Self::TobitFit(..) => EstimationFamily::Tobit,
