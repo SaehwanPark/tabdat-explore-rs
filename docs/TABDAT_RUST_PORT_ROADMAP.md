@@ -550,10 +550,14 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    assumptions; robust covariance does not establish distributional calibration.
    The [§23.3 log-patents linear panel workflow](../examples/mma23p1pannonlin/linear_panel.md)
    validates clustered pooled OLS, classical within FE and balanced RE-GLS on
-   all1,730 source rows and91 independent R/plm fit/test quantities;337 zeros
-   use the author's ad hoc ln(0.5); native classical common-intercept inference
-   is now available, but this Chapter23-specific original intercept-SE audit
-   remains open.
+   all1,730 source rows and106 independent R/plm/full-dummy fit/test quantities;
+   337 zeros use the author's ad hoc ln(0.5). Original classical normalized
+   intercept SE/t/nonzero p/95CI/full covariance now pass independent full-dummy
+   OLS and raw within/mean information identities, with df1383 and24 printed
+   author facts. Auditor-only Student-t checks match30 R values;26 forged
+   source/inference artifacts fail. The stale point-only checker tag is fixed;
+   no estimator/API/source-script change or widened tolerance. Exact named
+   three-fit comparison and other historical/full-inventory requirements remain.
    The [Figure23.1 source-data adaptation](../examples/mma23p1pannonlin/figure.md)
    independently validates all1,730 observations, centred-rank LOWESS and
    linear fits and SVG geometry; historical Stata tied-curve parity remains open.

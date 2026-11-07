@@ -23,6 +23,32 @@ unit<-match(d$id,units);d$pooled_xb<-pcoef[1]+pcoef[2]*d$logr;d$pooled_residual<
 d$fe_xb<-common+wb*d$logr;d$fe_xbu<-alpha[unit]+wb*d$logr;d$fe_u<-alpha[unit]-common;d$fe_residual<-d$lpat-d$fe_xbu
 d$re_xb<-rb[1]+rb[2]*d$logr;d$re_residual<-d$lpat-d$re_xb
 stopifnot(max(abs(we-d$fe_residual))<1e-10,abs(sum(d$fe_u))<1e-9)
+# Dummy OLS has a baseline-firm intercept, not the normalized common intercept.
+# Transform the full fitted covariance using observation shares, independently
+# of the native within/grand-mean covariance construction.
+dummy<-lm(lpat~logr+factor(id),data=d)
+stopifnot(dummy$rank==g+1L,df.residual(dummy)==df)
+normalize<-matrix(0,2,length(coef(dummy)));normalize[1,1]<-1
+normalize[1,-c(1,2)]<-as.numeric(table(d$id))[-1]/n;normalize[2,2]<-1
+normalized<-drop(normalize%*%coef(dummy))
+normalized_cov<-normalize%*%vcov(dummy)%*%t(normalize)
+stopifnot(max(abs(normalized-c(common,wb)))<1e-10,
+  max(abs(fitted(dummy)-d$fe_xbu))<1e-10,abs(normalized_cov[2,2]-wv[1,1])<1e-10)
+normalization_fields<-function(parameters,covariance,dof) {
+  se<-sqrt(covariance[1,1]);statistic<-parameters[1]/se
+  c('/common_intercept_statistics/value'=parameters[1],
+    '/common_intercept_statistics/standard_error'=se,
+    '/common_intercept_statistics/statistic'=statistic,
+    '/common_intercept_statistics/p_value'=2*pt(-abs(statistic),dof),
+    '/common_intercept_statistics/ci_lower'=parameters[1]-qt(.975,dof)*se,
+    '/common_intercept_statistics/ci_upper'=parameters[1]+qt(.975,dof)*se,
+    '/common_intercept_statistics/confidence_level'=95,
+    '/common_intercept_statistics/degrees_of_freedom'=dof,
+    '/normalized_level/parameters/0'=parameters[1],'/normalized_level/parameters/1'=parameters[2],
+    '/normalized_level/covariance_matrix/0/0'=covariance[1,1],'/normalized_level/covariance_matrix/0/1'=covariance[1,2],
+    '/normalized_level/covariance_matrix/1/0'=covariance[2,1],'/normalized_level/covariance_matrix/1/1'=covariance[2,2],
+    '/normalized_level/inference_df'=dof)
+}
 rows<-list();emit<-function(model,path,value)rows[[length(rows)+1L]]<<-data.frame(model,path,value=unname(value))
 for(i in 1:2){se<-sqrt(pvcov[i,i]);t<-pcoef[i]/se;for(k in c('value','standard_error','statistic','p_value')) emit('pooled',paste0('/coefficients/',i-1,'/',k),switch(k,value=pcoef[i],standard_error=se,statistic=t,p_value=2*pt(-abs(t),g-1)))
  for(j in 1:2)emit('pooled',paste0('/covariance_matrix/',i-1,'/',j-1),pvcov[i,j])}
@@ -31,6 +57,9 @@ fse<-sqrt(wv[1,1]);ft<-wb/fse;wtotal<-sum((d$lpat-ave(d$lpat,d$id))^2);rss<-sum(
 fields<-c(observation_count=n,group_count=g,absorbed_intercepts=g,df_residual=df,inference_df=df,common_intercept=common,within_r_squared=1-rss/wtotal,conditional_r_squared=1-rss/sum((d$lpat-mean(d$lpat))^2),root_mse=sqrt(rss/df),residual_sum_of_squares=rss,within_total_sum_of_squares=wtotal)
 for(k in names(fields))emit('fe',paste0('/',k),fields[k])
 for(k in c('value','standard_error','statistic','p_value'))emit('fe',paste0('/coefficients/0/',k),switch(k,value=wb,standard_error=fse,statistic=ft,p_value=2*pt(-abs(ft),df)))
+normalized_fields<-normalization_fields(normalized,normalized_cov,df)
+stopifnot(length(normalized_fields)==15L)
+for(k in names(normalized_fields))emit('fe',k,normalized_fields[k])
 emit('fe','/covariance_matrix/0/0',wv[1,1]);poolplm<-plm::plm(lpat~logr,data=d,index=c('id','year'),model='pooling');f<-plm::pFtest(within,poolplm)
 for(k in c('f_statistic','df_num','df_denom','p_value'))emit('fe',paste0('/unit_effects_f_test/',k),switch(k,f_statistic=unname(f$statistic),df_num=unname(f$parameter[1]),df_denom=unname(f$parameter[2]),p_value=unname(f$p.value)))
 for(i in 1:2){se<-sqrt(rv[i,i]);z<-rb[i]/se;for(k in c('value','standard_error','statistic','p_value','ci_lower','ci_upper'))emit('re',paste0('/coefficients/',i-1,'/',k),switch(k,value=rb[i],standard_error=se,statistic=z,p_value=2*pnorm(-abs(z)),ci_lower=rb[i]-qnorm(.975)*se,ci_upper=rb[i]+qnorm(.975)*se))

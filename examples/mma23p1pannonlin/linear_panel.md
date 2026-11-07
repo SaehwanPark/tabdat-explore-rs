@@ -39,12 +39,11 @@ cluster coefficient/linear-test inference uses t/F with **G−1=345** degrees of
 freedom. Classical FE uses `RSS/(N−G−p)` with one slope and **N−G−p=1383**
 degrees of freedom; the unit-intercept equality F has (345,1383) degrees of
 freedom. FE's common intercept is the normalization
-`mean(LPAT)−mean(LOGR)*slope`. The separate [native classical common-intercept
-increment](../mma21p1panel/classical_intercept.md) now supplies conditional SE/t/95CI
-and joint slope covariance under this normalization; individual-effect SEs and
-unit-cluster common inference remain unavailable. This workflow's91-field audit
-has not yet added the original Chapter23 common-intercept-SE comparison, so that
-part of the historical FE column remains unclaimed. RE estimates within and between
+`mean(LPAT)−mean(LOGR)*slope`. Installed [classical common-intercept
+inference](../mma21p1panel/classical_intercept.md) supplies SE/t/95CI and full
+normalized intercept/slope covariance; this source's106-field audit now validates
+it independently against full-dummy R OLS. Individual-effect SEs and unit-cluster
+common-intercept inference remain unavailable. RE estimates within and between
 variance components with the balanced Swamy–Arora convention, and uses its
 quasi-demeaned residual variance `RSS*/(N−2)` for the full two-parameter
 covariance, normal coefficient inference and a one-slope chi-square Wald test.
@@ -54,6 +53,16 @@ covariance, normal coefficient inference and a one-slope chi-square Wald test.
 | Pooled, firm-cluster | 0.8340744986 | 0.0228654911 | 0.7954785111 |
 | Within FE, classical | 0.1067504940 | 0.0560363644 | 1.7091160062 (normalization) |
 | RE-GLS, classical | 0.7202376566 | 0.0237986367 | 0.9384761387 |
+
+The original normalized FE intercept SE is `0.0714556879313966`,
+`t(1383)=23.9185438652701`, two-sided p `4.29770491815825e-106` (not zero),
+95% CI `[1.5689427573330665,1.8492892550872602]`. The full normalized covariance
+in `_cons,logr` order is
+`[[0.005105915337749138,-0.003944444904054903],[-0.003944444904054903,0.0031400741307906206]]`.
+This is classical homoskedastic fixed-design FE inference under the stated
+normalization, not uncertainty over a population distribution of unit effects.
+Native JSON distinguishes `common_intercept_statistics` and `normalized_level`
+from the slope-only within covariance; neither is a different fitted mean.
 
 FE within R² is `0.0026172160`; the classical all-equal-intercepts statistic
 is `F(345,1383)=16.9646511`. RE's `sigma_e²=0.2613158761`,
@@ -111,20 +120,32 @@ Rscript "$repo/examples/mma23p1pannonlin/linear_panel_reference.R" "$work/patr70
 python3 "$repo/examples/mma23p1pannonlin/check_linear_panel.py" "$work" "$work/r-reference" "$work/result.jsonl" "$work/patr7079.asc"
 ```
 
-Development-only R 4.6.1/`plm` 2.6.7 independently constructs the raw source
+Development-only R4.6.2/`plm`2.6.7 (original91-field reference R4.6.1)
+independently constructs the raw source
 and all three sample/designs, computes clustered OLS from firm score sums,
 within FE from `plm`, and RE from `plm` plus independently checked
-quasi-demeaning and variance components. The audit checks all **1,730 exact
-source/design and R prediction rows** and **91** fit, full covariance,
+quasi-demeaning and variance components. Full-dummy `lm(lpat ~ logr + factor(id))` independently checks FE slopes/RSS/
+fitted levels, then transforms the baseline intercept/dummies with observation
+shares to the normalized common intercept and full covariance. Fifteen new
+fields include SE/t/nonzero p/CI/level/df, both normalized parameters and all four
+matrix entries; all original91 frozen fields remain unchanged. The Python raw-
+design check separately reconstructs within slope, RSS/(N−G−1), grand means and
+the dimensionless normalized information*covariance identity, plus Student-t
+p/CI via an auditor-only incomplete-beta implementation checked against30 R
+values. Its scaled identity bound1e-9*(1+sum(abs(terms))) supplements, not widens,
+the fixed scalar/R gates. The audit checks all **1,730 exact
+source/design and R prediction rows** and **106** fit, full covariance,
 `lincom` and test quantities. Floating comparisons use
 `1e-9+1e-10*abs(reference)`; nonzero p-values use relative tolerance `1e-9`.
-Maximum original prediction difference is `4.0e-14`. Nineteen selected
-historical logged numbers agree at their printed precision; this is not a
-claim that all Stata storage, graphical output or unreported FE-intercept
-inference has been reproduced. Original text/JSON exports are byte-identical.
+Maximum original prediction difference is `4.0e-14`. Twenty-four selected
+historical logged numbers now agree at their printed precision, including
+normalized-intercept SE/t/CI and p rounding to0.000. The actual tiny nonzero p is
+compared to R with the relative gate, not silently replaced by zero. This is not
+a claim that all Stata storage, graphical output, named reporting or individual-
+effect uncertainty has been reproduced. Original text/JSON exports are byte-identical.
 
 An inspectable 40-firm fixture, including eight all-zero firms and missing
-nonmodel ARDSSIC, checks all 200 rows and 91 quantities, text/JSON and byte-
+nonmodel ARDSSIC, checks all 200 rows and106 quantities (classical FE df159), text/JSON and byte-
 identical exports, reversed ordering and no-clobber. Tests cover invalid,
 missing, duplicate, nonfinite, fractional and out-of-range model/key data,
 case-insensitive outcome/prediction-name collisions, actual singular within
@@ -134,3 +155,39 @@ model/data/file failure invariants. R/Python and author data are development-onl
 Figure 23.1, the full set of Table 23.1 outputs, broader panel methods and the
 remaining book inventory remain required. This slice does not complete the
 chapter, graduate methods core or full textbook target.
+
+## Auditor correction and verification scope
+
+The previous checker still asserted `normalization_point_only`, contradicting
+installed `classical_student_t` output. Its original reproduction failed at that
+stale assertion; it now checks classical metadata/all106 R fields and succeeds.
+No production Rust estimator/parser/API/source script or numerical result changed;
+regenerate old91-field reference directories with the current R generator.
+
+Three modified Rust integration tests pass, explicitly including all106 fields,
+JSON/text, permutations, predictions, failure/ownership and state cases. Python
+controls cover actual200-row/permuted/all-null nonmodel metadata,30 frozen R
+Student-t tails and26 rejected forgeries. Shared wrong native/R normalized
+covariance with consistent R-computed SE/t/p/CI is rejected by independent raw-
+design information, even though artifact equality alone passes in the deliberate
+check-disabled test. Shared wrong tails/normal approximations/CIs, stale tags,
+wrong names/df/level and duplicate source/reference/prediction rows also fail.
+
+Python initially passed two cases and failed an overstrong permutation-byte
+assertion: reversed QR input can change last bits, while canonical keys and the
+fixed numerical gates still pass. Only that unpromised byte-equality assertion
+was removed; the corrected actual-control test passes separately, with no
+production or tolerance change. This accounts for all three Python cases across
+runs, not a fresh all-three run. Same-input JSON/text exports are byte-identical.
+
+Focused commands: `cargo nextest run --locked -p tabdat-explore-rs --test
+mma23_linear_panel_workflow --no-tests fail`; `python3 -m unittest discover -s
+examples/mma23p1pannonlin -p test_check_linear_panel.py -v`; corrected control
+case via `PYTHONPATH=examples/mma23p1pannonlin python3 -m unittest
+test_check_linear_panel.LinearPanelAudit.test_actual_control_permutation_and_nonmodel_metadata -v`.
+Scoped modified-root-target Clippy, fmt/diff checks and actual original R/CLI
+audits pass. Unchanged production/other consumers retain the prior2105-case
+workspace baseline plus subsequent independent source-test evidence; no new full
+root/workspace, doctest or CI run is claimed. Rust doc examples did not change;
+no platform/release/independent-code-review claim. Artifacts/logs:
+`/tmp/tabdat-ch23-linear-intercept/`.

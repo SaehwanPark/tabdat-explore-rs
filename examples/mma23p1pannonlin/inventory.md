@@ -104,8 +104,8 @@ are not automatically named immutable model comparisons.
 | ID / program lines | Model, inference and post-estimation/report need | Status / executable and independent evidence |
 | --- | --- | --- |
 | P-FIG / 187–194 | Figure23.1 scatter LPAT/LOGR, LOWESS, pooled linear fit and WMF export | Partial: [SVG adaptation](figure.md)/[script](figure.td), independent R data/smoother and actual SVG geometry checks. Historical Stata tied-curve/precision/style/WMF parity remains open; corrected axis labels are deliberate. |
-| P-LIN-POOL / 197–198 | LPAT pooled OLS with firm-cluster covariance; store linolspan | Validated bounded [linear workflow](linear_panel.md)/[script](linear_panel.td):91 R/plm quantities across three fits/all source/predictions; OLS CR1 and t/F(345). Source named-table coverage is separate P-REPORT-LIN. |
-| P-LIN-FE / 201–202 | LPAT within FE, normalized intercept/classical inference; store linfe | Partial: same [linear audit](linear_panel.md) validates slope/variance/predictions, classical F and1383 residual df. Native normalized-intercept covariance is installed, but this source's91-field oracle has not added its original intercept-SE comparison. |
+| P-LIN-POOL / 197–198 | LPAT pooled OLS with firm-cluster covariance; store linolspan | Validated bounded [linear workflow](linear_panel.md)/[script](linear_panel.td):106 R/plm/full-dummy quantities across three fits/all source/predictions; OLS CR1 and t/F(345). Source named-table coverage is separate P-REPORT-LIN. |
+| P-LIN-FE / 201–202 | LPAT within FE, normalized intercept/classical inference; store linfe | Validated bounded: same [linear audit](linear_panel.md) now includes full-dummy OLS/normalized common-intercept SE/t/nonzero p/95CI/full2x2 covariance, classical F and1383 residual df.106 R quantities/all1730 rows and24 printed facts pass; independent raw covariance/tail checks and26 forgeries cover the repaired stale checker. No production change, cluster-common/unit-effect uncertainty or named-table parity. |
 | P-LIN-RE / 205–206 | LPAT balanced RE-GLS, components/theta/z; store linre | Validated bounded [linear workflow](linear_panel.md): independent plm/quasi-GLS/full covariance. Not ML, a shared Gaussian likelihood or posterior-effect uncertainty. |
 | P-POIS-IID / 217–218 | PAT pooled Poisson model covariance/normal inference; store poisiid | Validated bounded [pooled workflow](pooled_poisson.md)/[script](pooled_poisson.td):103 R quantities/19030 source/report/prediction cells across three covariance fits. |
 | P-POIS-ROB / 221–222 | Same mean, independent-row score sandwich; store poishet | Validated bounded [pooled workflow](pooled_poisson.md): N/(N−1) row correction, not OLS HC1 or firm clustering. |
@@ -130,7 +130,7 @@ are not automatically named immutable model comparisons.
 | P-BOOT-PA / 300–302 | Whole-firm PA GEE, requested B500; save poispabootse | Partial historical: [distinct-copy bootstrap](exchangeable_gee_bootstrap.md)/[script](exchangeable_gee_bootstrap.td) validates500 legacy-R/base-R refits/173000 draws with explicit fail-abort policy. Author log1135–1157 requests500 but reports338 usable values for each statistic, slope SE.1072904 versus distinct-copy.0418896. Failure/omission/duplicate-ID/RNG mechanism is unverified; no equivalence or all500-author-success claim. |
 | P-BOOT-NLS / 303–309 | Reseed; whole-firm Gaussian-log/independent NLS B500; save nlsbootse | Validated bounded [bootstrap](exponential_nls_bootstrap.md)/[script](exponential_nls_bootstrap.td):500 R two-parameter refits/full covariance/type7 intervals/173000 draws; native nl cross-checks and bounded local-root policy, not a general bootstrap or historical interval/RNG claim. |
 | P-BOOT-DISPLAY / 310–313 | List four saved bootstrap-SE matrices | Partial: linked workflows independently report corresponding native-stream SEs, but no unified audited source-order matrix display/historical uncertainty. Source lists pooled/FE/RE/PA, **not** nlsbootse; do not invent a fifth executed list. |
-| P-REPORT-LIN / 319–320 | linolspan/linfe/linre b/SE/statistic/N/ll/R²/TSS/RSS/MSS/RMSE/df comparison | Partial: [linear script](linear_panel.td) emits three independently audited fits, not this named immutable source table. Original normalized-intercept-SE audit and common/within/conditional R², transformed GLS scales/unavailable likelihood provenance must be explicit. |
+| P-REPORT-LIN / 319–320 | linolspan/linfe/linre b/SE/statistic/N/ll/R²/TSS/RSS/MSS/RMSE/df comparison | Partial: [linear script](linear_panel.td) emits three independently audited fits, not this named immutable source table. Original normalized-intercept-SE/full-covariance audit now passes; common/within/conditional R², transformed GLS scales/unavailable likelihood provenance and complete named-table evidence still must be explicit. |
 | P-REPORT-POOLED / 321–322 | poisiid/poishet/poispan named coefficient/SE/statistic/comparable-statistics table | Partial: [pooled script](pooled_poisson.td) emits three sequential independently audited covariance fits; no unified source-specific named comparison/printed Table23.1 audit. No count R²/TSS/RSS is invented for blank source cells. |
 | P-REPORT-MIXED / 323–324 | poisfe/poisre/poisrenormal/poispa/poispapan named comparison | Open exact source report: individual analytical pieces above do not validate a unified table. Different FE/full cohorts and conditional/integrated/no likelihood, nuisance parameters and missing source normal-RE SEs require typed provenance. The author summary's0.000 does not turn missing primary SEs into zero uncertainty. |
 | P-REPORT-GEE / 325–326 | poisgee/poisgeepan/nls/nlspan named mean/covariance comparison | Open exact source report: linked GEE/NLS outputs are independently audited, but no unified named working/sandwich/auxiliary-NLS report. Normal references, fixed Poisson scale1 versus Gaussian RSS/N, unavailable likelihood/R² and native nl's different default inference must not be conflated. |
@@ -167,16 +167,16 @@ are not automatically named immutable model comparisons.
   Table23.1-style “panel” labels are not a blanket firm-robust claim. Model-based
   FE/gamma RE, GEE working, group sandwich and bootstrap remain different.
 - Historical gamma lnalpha precision, GEE slope/stopping, repeated-ID/bootstrap
-  SE/interval/RNG behavior, normal-RE missing inference/unverified convergence, original linear
-  common-intercept SE, Figure23.1 tied-curve/style and named-report/statistic
+  SE/interval/RNG behavior, normal-RE missing inference/unverified convergence,
+  Figure23.1 tied-curve/style and named-report/statistic
   reconciliation remain required. Normal-RE bootstrap is not executed in this
   program; its existing roadmap requirement is not erased by this inventory.
 
-**Next analytical candidate:** a source-specific linear FE normalized-intercept
-SE/covariance audit (P-LIN-FE/P-REPORT-LIN) is now actionable with installed native
-support and an independent full-dummy reference. It should not be postponed for
-all prep/report rows. Reassess missing graduate methods and source priorities
-before selecting it; no inventory ordering is a mandatory phase gate. Full-decade
+**Completed follow-up:** the original linear FE normalized-intercept covariance/
+SE/t/CI audit (P-LIN-FE) now passes independent full-dummy R and raw-design checks;
+P-REPORT-LIN remains partial rather than being closed by those scalar/matrix
+facts. Reassess missing graduate methods and source priorities before another
+slice; no inventory ordering is a mandatory phase gate. Full-decade
 preparation/summaries and named pooled/mixed/GEE reports also remain required.
 Unavailable historical core/RNG evidence is a blocker to literal parity, not a
 reason to widen tolerances or declare those requirements complete. This37-block
