@@ -38,9 +38,15 @@ points match half a digit; two final-digit discrepancies and historical copy-ID
 ambiguity are explicit in the linked audit. None supplies survey-design inference.
 
 The [source-pinned companion inventory](../mma24p1olscluster/inventory.md)
-maps both Chapter24 programs and retains open descriptive/frequency/graphical
-and comparison requirements. Three sequential pooled fits are not the source's
-named comparison, and author-log matches do not establish printed-table parity.
+maps both Chapter24 programs and retains open detail/frequency/graphical
+and comparison requirements. The separate [individual variable-wise source
+summaries](individual_descriptives.md) now validate60 R fields/all27766 source
+and prepared records and333180 variable/key pairs on both modes, plus60 printed
+DTA log facts. The wholly missing27734 is retained; source N27766 is not a common
+finite sample. Partially missing/all-missing/singleton, state and export/forgery
+controls are included. The book's LNHHEXP and absent MEDEXP differences remain.
+Three sequential pooled fits are not the source's named comparison, and author-log
+matches do not establish printed-table parity.
 
 ## Source, design and execution
 
