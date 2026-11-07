@@ -83,7 +83,7 @@ tests or change their evidence.
 | H-FE / 105–107 | Within commune FE, normalized intercept, slope inference, stored fe | Validated bounded [FE workflow](household_fe.md), [script](household_fe.td): full-dummy R QR/common-intercept covariance, all source and population/unit-specific predictions. |
 | H-RE-ML / 112–116 | Gaussian marginal ML, joint information, components, likelihood/LR, stored remle | Validated bounded [ML workflow](household_re_ml.md), [script](household_re_ml.td): R profile/analytic joint information/nlme, 210 quantities and all predictions. Historical five coefficient-SE and both component-SD-SE differences remain unresolved; do not mark printed inference parity. |
 | H-BP / 118–121 | Refit RE then Breusch–Pagan random-effect LM diagnostic | Validated bounded [BP LM workflow](household_bp_lm.md), [script](household_bp_lm.td): 69 independent R QR/plm quantities and all source/prediction rows on ASCII/precise DTA; balanced, unbalanced/singleton and negative-score controls. Uses the legacy squared-score chi-square1 reference, not a one-sided variance test or ML boundary LR; DTA LM matches logged432.75. Native workflow retains pooled OLS and does not need an RE fit. |
-| H-HAUSMAN / 123–127 | Classical FE-vs-RE slope specification test | Open: same-cohort aligned coefficients/full covariance difference, variance-scaling convention, rank/indefinite-difference policy and independent reference required. Source expressly assumes IID errors after commune effects; this is not robust or survey inference. |
+| H-HAUSMAN / 123–127 | Classical FE-vs-RE slope specification test | Validated bounded [joint Hausman workflow](household_hausman.md), [script](household_hausman.td): all six FE/equal-group-between RE slopes, separate native covariance scales and full matrices, parent-scaled SPD-only difference,139 independent R QR quantities/all source and prediction rows on ASCII/precise DTA, plus20 printed DTA author facts. DTA17.8864248463/p.00652238245 matches17.89/.0065. Retained RE ownership, model/design mismatch, indefinite/singular/cancellation and current-data/state/export paths are tested. Classical IID assumptions only; not robust/survey, common-scale or generalized/rank-reduced inference. |
 | H-GEE / 129–133 | Gaussian identity exchangeable population-averaged fit, working inference, stored pa | Validated bounded [GEE workflow](household_gee.md), [script](household_gee.td): dense R/geeM and 16 printed DTA facts; RSS/N/pair moments/normal inference. Native uncorrected commune sandwich is an additional separate uncertainty choice. |
 | H-REPORT-OLS / 135–138 | Named olsiid/olshet/olsclust coefficient/t/R²/N comparison | Partial: [household_ols.td](household_ols.td) produces the independently audited three-fit named comparison, not literal Stata formatting. Full printed-table reconciliation remains distinct. |
 | H-REPORT-MIXED / 139–140 | Named pa/fe/refgls/remle coefficient/t/R²/N comparison | Open: fits exist separately, but no validated unified four-fit source report. Preserve estimator-specific z/t, covariance, sample, unavailable R² and likelihood meanings; do not fabricate a common statistic or silent refit. |
@@ -135,9 +135,10 @@ tests or change their evidence.
   of valid finite-sample t tests. Current B−1 covariance/percentile evidence does
   not automatically validate those separate displays or their historical RNG.
 
-**Next recommended statistical slice:** H-HAUSMAN, after freezing an explicit
-variance-scaling/rank policy and independent reference on the exact household
-cohort. H-BP now independently validates the legacy squared-score convention;
-it does not supply a one-sided boundary test. Descriptive/frequency/graphical
-and mixed-report entries above also remain required. This inventory closes neither Chapter24 nor
+**Next recommended source workflow:** unified H-REPORT-MIXED, preserving each
+fit's scale, covariance, sample and available statistics rather than inventing
+common R²/likelihood semantics. H-BP and H-HAUSMAN now have independent evidence
+for their exact legacy/classical conventions, not robust/survey alternatives.
+Descriptive/frequency/graphical and individual comparison entries also remain
+required. This inventory closes neither Chapter24 nor
 the full-book inventory requirement; no required illustration is excluded.

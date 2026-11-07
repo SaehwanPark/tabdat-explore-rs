@@ -260,10 +260,14 @@ Extend the same workflow/validation standard to:
   and precise DTA, with balanced/unbalanced-singleton/negative-score controls.
   It reports the legacy squared-score chi-square1 reference, not the existing
   ML boundary LR or one-sided variance inference, and retains pooled OLS.
-  The next household diagnostic is classical Hausman after explicit variance
-  scaling/rank semantics are frozen. Other GEE workflows, printed-table
-  discrepancies and full survey methods remain required; this is not
-  whole-chapter/book coverage.
+  The separate [joint household Hausman workflow](../examples/mma24p1olscluster/household_hausman.md)
+  now validates139 independent R QR quantities/full FE/RE/difference matrices,
+  all source/prediction rows and20 printed DTA author facts. It uses separate
+  native covariance scales, a parent-scaled SPD-only difference and owned-design
+  validation; neither common-scale variants nor default multivariate/unbalanced
+  Swamy–Arora, ML or cluster-robust Hausman are implied. Unified source comparisons,
+  other GEE workflows, printed ML SE discrepancies and full survey methods remain
+  required; this is not whole-chapter/book coverage.
 - **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
   finite-case deletion and missingness profiles alone do not satisfy it. The bounded
   [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently

@@ -33,23 +33,39 @@ Notes:
 
 ## Classical panel FE–RE Hausman comparison
 
-After `xtreg y x, re id(person) time(year)`, run `estat hausman`. This is a
-model-based covariance-difference test of the same-sample FE and RE slope, not
-`estat endogenous`'s IV Wu–Hausman test. The fit must be balanced, nonclustered
-Swamy–Arora GLS with an intercept and exactly one slope. It refits FE and RE on
-the owned joint-finite design; current dataset edits do not change the test.
-Older retained states without that design require refitting RE. Unsupported
-unbalanced, ML, robust/clustered or multiple-slope fits fail without changing
-state. Nonpositive or cancellation-dominated V_FE−V_RE is an error, not repaired
-by taking an absolute value or a generalized inverse.
+After `xtreg y x, re id(person) time(year)`, run `estat hausman`. The existing
+scalar path requires balanced, nonclustered Swamy–Arora GLS, an intercept and
+exactly one slope. It refits FE and RE on the owned joint-finite design; current
+data edits do not change the test. `ClassicalPanelHausmanResult` CLI-v1 JSON and
+text keep the same scalar slopes, variances, difference, sample/group counts,
+chi-square(1), asymptotic p and assumptions. Nonpositive or cancellation-
+dominated scalar covariance differences fail; its wire contract is unchanged.
 
-Text and `ClassicalPanelHausmanResult` CLI-v1 JSON report both slopes and
-variances, difference, group/sample counts, chi-square(1), asymptotic p-value
-and model-based assumptions. Inference requires RE efficiency under the null;
-remaining within-person correlation can invalidate it. It is not cluster robust,
-a generic model selection tool, or evidence that exogeneity holds after failure
-to reject. See the separately composed robust comparison in the Chapter 21
-example and `help xtreg` for fit and sample rules.
+After `xtreg y xvars, re id(group) time(key) vcmethod(equal_group_between)`,
+`estat hausman` additionally compares all1..16 numeric slopes jointly, with an
+intercept and N<=40000. Balanced/unbalanced groups and singletons follow the
+original model sample. It excludes the common intercept, keeps **separate native
+FE/RE residual covariance scales**, and computes d'(V_FE−V_RE)^−1d with asymptotic
+chi-square(p), p=number of slopes. This method, including the one-slope case,
+returns additive `JointPanelHausmanResult` JSON/text: both slope vectors and full
+covariances, covariance difference, group/sample counts, residual DF/scales,
+minimum parent-scaled Cholesky pivot, statistic/p and assumption/method labels.
+A safely positive-definite covariance difference is required; parent-scaled
+Cholesky pivots <=128 machine epsilons, rank deficiency, indefiniteness and
+nonfinite results are errors. No pseudoinverse, absolute value, ridge, dropped
+restrictions or common-variance rescaling is used. Only roundoff-level parent
+asymmetry is averaged, not eigenvalue-repaired.
+
+The joint path refits/verifies the complete retained RE result before comparing
+FE, independently of active data (even if no dataset is active). Older states
+without the owned design require refitting a supported model. Diagnostic
+success/failure does not mutate the fit or data. Unbalanced/multiple-slope
+**default Swamy–Arora**, ML and robust/clustered comparisons remain unsupported;
+there is no arbitrary named-fit comparison. This is not IV Wu–Hausman or the
+separate robust auxiliary comparison. Classical validity requires RE efficiency
+under H0 and IID homoskedastic idiosyncratic errors; remaining within-group
+correlation can invalidate it. Non-rejection does not establish exogeneity,
+survey validity or causal identification. See `help xtreg` for sample rules.
 
 ## Observed versus fitted count frequencies
 

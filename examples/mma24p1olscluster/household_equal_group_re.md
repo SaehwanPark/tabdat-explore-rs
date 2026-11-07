@@ -45,8 +45,12 @@ an iterative optimizer, determine numerical success.
 
 `vcmethod()` is invalid with FE/ML. This alternate method supports **model-based
 covariance only**; robust/cluster requests are rejected rather than silently
-ignored. Hausman, variance-component uncertainty, unit-effect predictions,
-general restrictions and named RE reports are not supplied. No weights/GEE/ML,
+ignored. A separate [joint Hausman workflow](household_hausman.md) now compares
+1..16 slopes/N<=40000 against FE on the owned sample, keeping separate native
+covariance scales and requiring a safely positive-definite covariance difference.
+Its `JointPanelHausmanResult` is not a robust/clustered or arbitrary named-fit
+comparison. GLS variance-component uncertainty, unit-effect predictions, general
+restrictions and named RE reports remain uninstalled. No weights/GEE/ML,
 complex-survey or causal interpretation is introduced.
 
 `re_xb` is retained intercept + current X beta, and `re_residual` is current

@@ -1190,6 +1190,70 @@ fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult, whole_cluster: b
   text
 }
 
+// Keep the complete ordered matrices beside their separate scale/DF labels.
+fn joint_panel_hausman(result: &tabdat_stats::JointPanelHausmanResult) -> String {
+  let mut output = format!(
+    "Classical joint panel FE–RE Hausman covariance-difference test\nOutcome: {}; groups({}) = {}; N = {}; selected group size {}..{}; singletons = {}\nOriginal-design candidate N = {}; excluded = {}\nRE component method: {:?}; covariance scale: {}\nFE residual scale = {} (DF {}); RE residual scale = {} (DF {})\n",
+    result.outcome.escape_debug(),
+    result.entity_variable.escape_debug(),
+    result.group_count,
+    result.observation_count,
+    result.minimum_group_size,
+    result.maximum_group_size,
+    result.singleton_groups,
+    result.candidate_observation_count,
+    result.dropped_observation_count,
+    result.re_component_method,
+    result.covariance_scale_convention,
+    result.fe_residual_scale,
+    result.fe_residual_df,
+    result.re_residual_scale,
+    result.re_residual_df,
+  );
+  output.push_str("Slope\tFE\tRE\tDifference\n");
+  for (i, name) in result.predictor_names.iter().enumerate() {
+    writeln!(
+      output,
+      "{}\t{}\t{}\t{}",
+      name.escape_debug(),
+      result.fe_coefficients[i],
+      result.re_coefficients[i],
+      result.differences[i]
+    )
+    .unwrap();
+  }
+  for (label, matrix) in [
+    ("FE covariance", &result.fe_covariance),
+    ("RE covariance", &result.re_covariance),
+    ("FE minus RE covariance", &result.covariance_difference),
+  ] {
+    writeln!(output, "{label} (slope order above):").unwrap();
+    for row in matrix {
+      writeln!(
+        output,
+        "{}",
+        row
+          .iter()
+          .map(|v| inference_number(*v))
+          .collect::<Vec<_>>()
+          .join("\t")
+      )
+      .unwrap();
+    }
+  }
+  writeln!(
+    output,
+    "Chi-square({}) = {}; asymptotic p = {}\nMinimum parent-scaled Cholesky pivot = {}\n{}",
+    result.df,
+    inference_number(result.statistic),
+    inference_number(result.p_value),
+    result.minimum_scaled_cholesky_pivot,
+    result.assumptions
+  )
+  .unwrap();
+  output
+}
+
 /// Render owned execution results without recomputing data or statistics.
 /// Exhaustive matching makes a new result variant require an explicit display decision.
 pub fn render_execution_result(result: &ExecutionResult) -> String {
@@ -1378,6 +1442,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.statistic,
       result.p_value
     ),
+    ExecutionResult::JointPanelHausman(result) => joint_panel_hausman(result),
     ExecutionResult::WuHausman(result) => format!(
       "Wu-Hausman joint endogeneity test (homoskedastic augmented-regression F)\nTested endogenous regressors: {:?}\nH0: all declared endogenous regressors are exogenous, given valid instruments and the maintained model.\nN = {}; F({}, {}) = {}; p-value = {}\nConventional strong-identification F reference; exact finite-sample F additionally requires conditional normality.\nFailure to reject does not prove exogeneity or instrument validity; not weak-IV-robust coefficient inference.\n",
       result.endogenous,

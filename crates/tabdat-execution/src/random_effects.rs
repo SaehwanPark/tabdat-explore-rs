@@ -59,12 +59,15 @@ impl Session {
     };
     let result =
       fit(&input.problem, &input.entity).map_err(|error| fit_error(error.to_string()))?;
-    let hausman_problem = (command.estimator == XtRegEstimator::RandomEffects
-      && !command.robust
-      && command.cluster_variable.is_none()
+    let legacy_hausman = command.estimator == XtRegEstimator::RandomEffects
       && !unbalanced
-      && command.predictors.len() == 1)
-      .then_some(input.problem);
+      && command.predictors.len() == 1;
+    let joint_hausman = command.estimator == XtRegEstimator::RandomEffectsEqualGroupBetween
+      && (1..=16).contains(&command.predictors.len())
+      && input.problem.response.len() <= 40000;
+    let hausman_problem =
+      ((legacy_hausman || joint_hausman) && !command.robust && command.cluster_variable.is_none())
+        .then_some(input.problem);
     let state = RandomEffectsState {
       time_variable: input.time,
       entity_data_type: input.entity_data_type,
