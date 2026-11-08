@@ -336,6 +336,17 @@ hash/link checks pass. Remaining multi-slope/unbalanced/distinct-copy
 negative controls and application/auditor/state/file contracts are required.
 No native script command/full-workspace/CI/readiness or merge claim.
 
+## Multi-slope reference input checkpoint
+
+The independent multivariate R reference now accepts optional `copied-csv` with
+exact source_row/id/year/y/x/z columns, explicit finite/count/group limits and
+fresh GLM/t0 initialization. Its legacy57-field output is byte-identical to the
+frozen control. Re-reading the existing17-digit design via CSV produces all57
+quantities within unchanged scalar and positive-p gates (max absolute1.024e-12,
+not a byte-identity claim). Actual resampled multi-slope/unbalanced/singleton
+reference generation/native matching remain pending. No production change from
+this development-only helper mode.
+
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
 and temporary128/160 feasibility JSON, both optimizer traces and R node/probe

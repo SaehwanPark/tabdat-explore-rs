@@ -1,7 +1,13 @@
 # Development-only independent multivariate/unbalanced normal-Poisson reference.
 # Existing synthetic source only; direct improper integration, never native GH.
 options(digits=17)
-args<-commandArgs(trailingOnly=TRUE);stopifnot(length(args)==2L,!file.exists(args[2]))
+args<-commandArgs(trailingOnly=TRUE);stopifnot(length(args)%in%c(2L,3L),!file.exists(args[2]))
+copied<-length(args)==3L;if(copied)stopifnot(args[3]=='copied-csv')
+if(copied){
+  d<-read.csv(args[1],check.names=FALSE)
+  stopifnot(identical(names(d),c('source_row','id','year','y','x','z')),all(is.finite(as.matrix(d))),
+    nrow(d)>0,nrow(d)<=40000,all(d$id==floor(d$id)),length(unique(d$id))>4,length(unique(d$id))<=512)
+}else{
 tokens<-scan(args[1],what=character(),quiet=TRUE);stopifnot(length(tokens)==40L*25L)
 src<-matrix(tokens,ncol=25L,byrow=TRUE)
 records<-lapply(1:40,function(id){
@@ -10,8 +16,10 @@ records<-lapply(1:40,function(id){
   z<-sin(id*.37)+(time-3)^2/4+.2*x*x
   data.frame(source_row=(id-1L)*5L+time-1L,id=id,year=1974L+time,y=y,x=x,z=z)
 })
-d<-do.call(rbind,records);X<-cbind(intercept=1,x=d$x,z=d$z);y<-d$y
-stopifnot(nrow(d)==120L,all(is.finite(X)),all(y>=0),all(y==floor(y)))
+d<-do.call(rbind,records)
+}
+X<-cbind(intercept=1,x=d$x,z=d$z);y<-d$y
+stopifnot((copied||nrow(d)==120L),all(is.finite(X)),all(y>=0),all(y<=100000),all(y==floor(y)))
 groups<-split(seq_len(nrow(d)),d$id);k<-ncol(X);q<-k+1L
 start<-c(unname(coef(glm(y~x+z,family=poisson(),data=d))),0)
 evaluate<-function(p,tol=2e-12){
@@ -87,4 +95,4 @@ exact_csv<-function(data,path){
 dir.create(args[2]);exact_csv(d,file.path(args[2],'input.csv'))
 write.csv(data.frame(field=names(fields),value=unname(fields)),file.path(args[2],'reference.csv'),row.names=FALSE,quote=FALSE)
 exact_csv(data.frame(source_row=d$source_row,id=d$id,year=d$year,y=y,x=d$x,z=d$z,marginal_mu=mu,marginal_residual=y-mu),file.path(args[2],'predictions.csv'))
-cat(R.version.string,';120 rows/40 groups/two slopes/unbalanced/singletons; direct integration; covariance Richardson difference',max(abs(V-solve((4*h2-h1)/3))),'\n')
+cat(R.version.string,';',nrow(d),'rows/',length(groups),'groups/two slopes; direct integration; covariance Richardson difference',max(abs(V-solve((4*h2-h1)/3))),'\n')
