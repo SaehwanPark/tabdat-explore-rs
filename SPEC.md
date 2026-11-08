@@ -50,12 +50,16 @@ explicit negative-raw-component truncation, intercept scaling and normal/t refer
 
 The [Chapter23 patents companion inventory](examples/mma23p1pannonlin/inventory.md)
 now maps37 preparation/graph/model/bootstrap/report blocks with pinned source
-lines and linked independent evidence. Full-decade derived data/summaries,
-named-report/historical gaps stay open; the separate original linear FE
-intercept-SE/full covariance audit now passes106 R quantities and24 printed facts;
-the PA bootstrap's500 nominal versus338 usable values and missing primary
+lines and linked independent evidence. The [full-decade preparation workflow](examples/mma23p1pannonlin/decade_preparation.md)
+validates all3460 1970–79 records/346 firms,21 derived fields including five
+pre-restriction lags, native labels and42 variable-wise full/selected summaries
+against independent raw-token R and hostile-artifact checks, while the default
+five-year converter remains unchanged. Between/within `xtsum`, historical wide
+describe/DTA/label restoration and named reports stay open; the separate original
+linear FE intercept-SE/full covariance audit passes106 R quantities and24 printed
+facts; the PA bootstrap's500 nominal versus338 usable values and missing primary
 normal-RE SEs are explicit, not silently promoted to successful fits/zero SEs.
-This adds no runtime capability or whole-chapter/book completion claim.
+This adds no new estimator/runtime command or whole-chapter/book completion claim.
 
 The [Chapter24 companion inventory](examples/mma24p1olscluster/inventory.md)
 now maps34 analytical/preparation/report blocks across both source programs,

@@ -1,4 +1,4 @@
-# Patents full-decade preparation — WIP
+# Patents full-decade preparation
 
 Bounded outcome: convert all25 raw fields into3460 keyed1970–79 records,
 derive LPAT/DPAT/RANDD, five LOGR lags and four year indicators before selecting
@@ -35,17 +35,17 @@ wise finite summaries. Source fields/keys/missingness compare exactly as parsed
 binary64; derived values and summaries use fixed1e-10+1e-12*abs(reference), not
 historical rounded-output parity. Constant/all-missing SD semantics are explicit.
 
-## Implementation checkpoint (draft PR443; not merge-ready)
+## Implementation and validation
 
-`prepare.sh RAW OUT [--full-decade]` now selects explicit ten-year conversion;
-two-argument/default AWK remains1975–79. Conversion still stages beside the
-output and publishes by no-clobber hard link only after complete validation.
+`prepare.sh RAW OUT [--full-decade]` selects explicit ten-year conversion;
+two-argument/default AWK remains1975–79. Conversion stages beside the output and
+publishes by no-clobber hard link only after complete validation.
 `decade_preparation.td` guards complete unique ten-year keys, derives all21
-fields in key order, labels native columns, summarizes/exports full history,
-then uses `keep if year>=1975` before selected summaries/export. ARDSSIC is
-explicitly cast to DOUBLE so wholly missing nonmodel metadata remains numeric
-for N0 summaries; it is never a row-selection condition. CSV does not preserve
-native label metadata. No NEWPAT temporary column is exported.
+fields in key order, labels native columns, summarizes/exports full history, then
+uses `keep if year>=1975` before selected summaries/export. ARDSSIC is explicitly
+cast to DOUBLE so wholly missing nonmodel metadata remains numeric for N0
+summaries; it is never a row-selection condition. CSV does not preserve native
+label metadata. No NEWPAT temporary column is exported.
 
 Reproduce in a fresh directory from the repository root:
 
@@ -66,29 +66,28 @@ existing `tests/fixtures/mma23_gamma_re_bootstrap/source.asc` and checker
 `--control`. Independent R direct-history indexing/log/exp/summaries plus Python
 raw-source/derived-value/empirical-summary guards validate all3460/1730 original
 and400/200 control rows,21 fields and42 variable-wise summary rows each.
-Original source hash is pinned in the checker. The first original CLI attempt
-had a duplicated binary-path typo; corrected invocation passes, not a code fix.
-The final guarded/typed script was separately replayed on both sources.
+Original source hash is pinned in the checker.
 
-New focused nextest `ec67342f-56a5-4548-99cd-42e9f62cdfea` passes3 tests:
+The focused workflow test
+`cargo nextest run --locked -p tabdat-explore-rs --test mma23_decade_preparation_workflow --no-tests fail`
+passes4 tests:
 - frozen R full/selected records and all42 summaries, text/JSON equal exports,
   no-clobber and default five-year projection equivalence;
 - shuffled source and wholly missing ARDSSIC, including numeric N0 summaries;
 - malformed converter input, owned output, missing/duplicate/out-of-range years,
-  unchanged input files and no invalid exports.
+  unchanged input files and no invalid exports;
+- independent-checker rejection of forged prepared/exported rows, result
+  summaries/exports/labels/event order, reference records, shared native/reference
+  corruption and altered raw tokens.
 
-Evidence is under `/tmp/tabdat-ch23-decade/`: `control-reference/`,
-`original-reference/`, final `control-v3/` and `original-v3/` result/export files,
-and `focused-nextest.log`. Frozen artificial R files are committed under
-`tests/fixtures/mma23_decade_preparation/` and do not require R in Cargo tests.
+Representative existing five-year reverse-consumer regressions pass21 tests across
+the log-patents linear-panel, pooled-Poisson, native gamma-RE, native
+conditional-FE and Figure23.1 workflows. The focused test also checks that default
+conversion equals the full-decade conversion filtered to1975–79, so the added
+converter branch does not alter existing output semantics.
 
-Still required before merge: independent-checker hostile-artifact tests,
-representative existing five-year reverse-consumer regressions, scoped lint/
-final author review, specification/roadmap/coverage/inventory reconciliation and
-GitHub verification. No affected-crate/workspace/Clippy/CI/platform/release or
-whole-inventory completion is claimed at this checkpoint. The source contract
-at the top preceded implementation; no tolerance was widened.
-
-Weekly quota reached97% used/3% remaining on2026-11-08. Work is safely saved as
-WIP rather than merged prematurely; resumption requires the operator's
-`/goal-resume`. No unattended weekly restart is promised.
+Scoped `cargo fmt -p tabdat-explore-rs -- --check`,
+`cargo clippy --locked -p tabdat-explore-rs --test mma23_decade_preparation_workflow -- -D warnings`,
+`git diff --check` and the final author review pass. SPEC, roadmap, coverage
+ledger and the Chapter23 inventory link this bounded evidence without claiming
+`xtsum`, historical DTA/labels, named reports or chapter completion.
