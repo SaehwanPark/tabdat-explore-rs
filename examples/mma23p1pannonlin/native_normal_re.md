@@ -171,7 +171,10 @@ fit API, sample adapter, full42-field inference or original1730-source proof.
 production Rust statistics, with validated sample provenance, complete-case
 count/group limits, RMS/QR preprocessing, detached owned pooled initialization/
 same-sample null, full joint observed covariance, normal/log-Wald inference,
-sigma delta SE/interval and boundary-mixture LR. The ln-variance coefficient
+sigma delta SE/interval and boundary-mixture LR. Positive variance must have
+pooled LR>1e-8 to distinguish it numerically from the boundary (not a significance
+cutoff); undamped information uses dimensionless whitened pivots>1e-12.
+The ln-variance coefficient
 name is `lnsigma2`; all parameter names are unique. Population means include
 the variance shift; native residual/prediction dispatch is not yet integrated.
 Invalid candidate/sample/work/keys alignment/weights/rank/options reject.
