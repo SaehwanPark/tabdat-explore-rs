@@ -114,6 +114,27 @@ Both ordinary and refined numerical paths need focused positive/negative/tiny
 increment controls and unchanged direct-R regression comparisons before any
 production adoption. Proposed precision/increment changes are not implemented.
 
+Candidate exact identity to validate, with old mu_i=exp(eta_i),v=exp(t), actual
+rounded increments d=(d_beta,dt),d_i=X_i*d_beta, and old group posterior E:
+
+```text
+h(u) = sum(y_i*d_i) - exp(u)*sum(mu_i*expm1(d_i))
+       - dt/2 - u²/(2*v)*expm1(-dt)
+A = E[h] = score_group'd - E[exp(u)]*sum(mu_i*(expm1(d_i)-d_i))
+           - E[u²]/(2*v)*(expm1(-dt)+dt)
+R = E[expm1(h)-h]
+log E[exp(h)] = A + R + (log1p(A+R)-(A+R))
+```
+
+The two parenthesized expm1-minus-linear/log1p-minus-linear functions require
+stable series near zero, not cancellation-prone direct subtraction. Sum the
+linear part via the existing global Stein score; do not replace an actual
+likelihood increment with a quadratic prediction. A useful independent
+closed-form control is h=a*Z+b*Z²+c under Z~N(0,1): the exact log ratio is
+c-log1p(-2*b)/2+a²/(2*(1-2*b)),b<.5. Standard-library decimal arithmetic can
+provide tiny positive/negative/near-cancelled controls without a new dependency.
+This is a derivation/proposed test oracle, not implemented proof of correctness.
+
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
 and temporary128/160 feasibility JSON, both optimizer traces and R node/probe
