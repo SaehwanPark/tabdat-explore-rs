@@ -54,7 +54,7 @@ importance of the convention, not what the historical software did.
 
 Bounds: raw keys must be valid even on omitted rows; exact selected counts and
 group totals 0..100000; 1..14 unique slopes, intercept and ln(alpha), B2..500,
-G<=256 with G>slopes+2, G*largest_group_size<=40000 and
+G<=512 with G>slopes+2, G*largest_group_size<=40000 and
 G*largest_group_size*B*(slopes+2)²<=3000000000 with checked arithmetic.
 Original RE candidate-row, rank, scaling, dispersion, information and
 convergence guards apply to every fit. ln(alpha) must be strictly inside

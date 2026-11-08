@@ -49,7 +49,8 @@ G*largest_group_size<=40000 and G*largest_group_size*B*K²<=2500000000.
 At most G+1024 RNG words are allowed per replication. Original fit/key/sample/
 rank/numerical/convergence guards remain in force. Only the positive-group cap
 and its error text changed; no formula, RNG, API/schema or dependency changed.
-Pooled-Poisson and gamma-RE bootstrap still cap G at256. This source replay is
+Pooled-Poisson bootstrap still caps G at256. The separate
+[native gamma-RE bootstrap](native_gamma_re_bootstrap.md) now permits512. This source replay is
 narrower than the generic bootstrap: at most346 canonical firms/1730 records
 and five years per firm. Raising the generic cap does not remove these guards.
 

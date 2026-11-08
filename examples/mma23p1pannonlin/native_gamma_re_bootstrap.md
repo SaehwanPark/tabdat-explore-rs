@@ -1,21 +1,21 @@
-# Patents native shared-gamma RE whole-firm bootstrap (WIP contract)
+# Patents native shared-gamma RE whole-firm bootstrap
 
 ## Outcome and selection rationale
 
-Native gamma RE fits the patents sample, but its bootstrap rejects346 firms at
-its256-group cap. After completing the native conditional-FE bootstrap, remove
-this separate resampling barrier through one bounded original-data workflow.
+Native gamma RE fits the patents sample, but its former256-group bootstrap
+cap rejected346 firms. This bounded original-data workflow removes that
+separate resampling barrier after the native conditional-FE bootstrap.
 Native normal-Poisson RE remains required but is a distinct higher-risk kernel
 slice; do not label it complete or postpone it behind a full inventory gate.
 
-Raise only shared-gamma RE bootstrap's group cap to512. Preserve B2..500,
+This change raises only shared-gamma RE bootstrap's group cap to512. Preserve B2..500,
 1..14 slopes/K=slopes+2<=16, G>K, G*largest_group_size<=40000 and
 G*largest_group_size*B*K²<=3000000000. Existing original-fit/raw-key/count/rank/
 interior-dispersion/convergence guards, first-seen complete-case order, one
 continuous xoshiro256++/SplitMix64/u64-rejection stream, distinct gamma-effect
 copies, fail-abort/no redraw and read-only model/data/labels/reports remain.
 Conditional FE already permits512; pooled Poisson keeps256. No formula, parser,
-API/schema, RNG or dependency change is planned.
+API/schema, RNG or dependency changed.
 
 ## Exact sample and statistical contract
 
@@ -71,7 +71,7 @@ resampling, source named tables, historical RNG/repeated-ID/SE/interval parity
 and complete illustration inventory. Existing SQL bootstrap stays distinct; its
 merged-source-ID counterfactual is sensitivity evidence, not historical proof.
 
-## Verified implementation checkpoint (not merge-ready)
+## Validation evidence
 
 Old executable reproduces original346-group rejection at256. Conditional FE
 remains512 and pooled remains256; only gamma cap/error text changed. New native
@@ -90,15 +90,15 @@ crate309 pass/one pre-existing skip,58 binaries,12.531s,
 run8537766a-07a3-454c-b304-05b0421838e0. Relevant runtime contracts4/4 pass,
 runfec98e13-2b9c-4aa6-855c-4f4eaedf93d2. No full-workspace/CI claim.
 
-Additional verified checkpoint: committed auditor reconstructs per-replicate
+The committed auditor reconstructs per-replicate
 three-component raw scores using exact integer-count harmonic digamma
 differences; all3x3 empirical covariance entries, anchored means/SEs/bias/type7
 limits and original marginal predictions/information are checked independently.
 Existing40-firm/200-record control retains eight zero-total firms;31 fields/
 500 joint R vectors and20000 independently checked draws pass and are frozen.
 
-New actual-script Rust module3/3 passes,run092bcd1a-7be9-46fb-bbc6-008f09cfde78,
-6.284s: all31 R fields/500 joint vectors, original prediction ownership, JSON/
+Final actual-script Rust module3/3 passes,run245865c7-b0df-4c7b-9957-99da843e8bff,
+6.231s: all31 R fields/500 joint vectors, original prediction ownership, JSON/
 text export equality/no-clobber, reversed/all-null metadata and a257-firm B500
 replay retaining zero totals. Python3/3 passes,2.911s,including constant joint
 vectors/zero covariance and30 rejected forgeries. Matching native/R wrong full
@@ -106,7 +106,74 @@ covariance or shifted intercept/slope/lnalpha passes equality only with the
 relevant independent checks deliberately mocked out, then the real checks
 reject it. Original readable report matches validated numbers; JSON/text
 exports are byte-identical. Stats-all-target/new-root-target Clippy pass.
+After help reconciliation, reporting58/58 (88580894-b9f1-4b54-85f0-994e17ce0be5)
+and CLI discovery29/29 (9723ddba-ed5f-4cc2-b4a1-f90d9cc30b2f) pass.
+Author review clarified that original analytic covariance is not cluster-robust
+while the bootstrap does resample whole independent firms; no actionable issues
+remain. All463 local links/19 changed files/31+500 frozen R records and no-NBSP
+checks pass.
 
-Pending: final SPEC/help/roadmap/ledger/inventory reconciliation and author
-review. Do not merge WIP or claim full bootstrap/book completion.
+SPEC/help/roadmap/ledger/inventory distinguish this bounded native workflow
+from unresolved historical output and required remaining methods. No whole
+chapter/table/book, full-workspace, CI, doctest, platform or release claim.
 Artifacts `/tmp/tabdat-ch23-native-gamma-bootstrap/`.
+
+## Original-data report and interpretation
+
+| Parameter | Original | Bootstrap mean | Bias | Bootstrap SE | Type7 percentile95 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `_cons` | 2.3127049949956313 | 2.375972363611859 | .0632673686162275 | .42502508954787294 | [1.6921272803045648,3.3457220238765575] |
+| `logr` | .3487831736207683 | .33564050203720436 | −.01314267158356397 | .12339690766905602 | [.061096529605087574,.5568849706621087] |
+| `lnalpha` | .5454693087373752 | .5527933019084071 | .0073239931710319395 | .22334598492348126 | [.10733010668411369,1.0052391719629619] |
+
+The full covariance (same order) is
+`[[.1806463267451774,−.05149464206431657,.08936152572532464],
+[−.05149464206431657,.015226796822285537,−.026466121344109316],
+[.08936152572532464,−.026466121344109316,.049883428981439916]]`.
+lnalpha=0 means alpha=1, not no heterogeneity. These empirical intervals are
+not normal/t Wald intervals or a boundary test for alpha=0. Model-based
+original inference remains separately labeled in `GammaPoissonResult`; the
+bootstrap has `GammaPoissonBootstrapResult` with every joint vector/draw and
+full covariance. It neither overwrites that original inference nor invents
+bootstrap p-values. Independent-firm assumptions and finite-B uncertainty
+still matter; no global optimum/existence guarantee is added.
+
+## Reproduce in a fresh directory
+
+R/Python are optional development references, never production dependencies.
+Publisher data stay external. Build the pinned Rust project as described in
+[CONTRIBUTING](../../CONTRIBUTING.md), then:
+
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo build --locked -p tabdat-explore-rs
+repo=$PWD
+work=$(mktemp -d)
+curl -fL https://cameron.econ.ucdavis.edu/mmabook/patr7079.asc -o "$work/patr7079.asc"
+printf '%s  %s\n' 87525a1ae9112c235326bf3197cb57dced73c6f166d84e261395a737a390fee8 "$work/patr7079.asc" | shasum -a 256 -c -
+sh examples/mma23p1pannonlin/prepare.sh "$work/patr7079.asc" "$work/patents.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma23p1pannonlin/native_gamma_re_bootstrap.td" > result.jsonl)
+python3 examples/mma23p1pannonlin/check_native_gamma_re_bootstrap.py oracle \
+  "$work" "$work/patr7079.asc" "$work/draws.csv"
+Rscript examples/mma23p1pannonlin/gamma_re_bootstrap_reference.R \
+  "$work/patr7079.asc" "$work/draws.csv" "$work/reference"
+python3 examples/mma23p1pannonlin/check_native_gamma_re_bootstrap.py check \
+  "$work" "$work/patr7079.asc" "$work/reference"
+```
+
+Use `--text` in a separate fresh prepared directory for readable output.
+The script creates `native_gamma_re_bootstrap_cohort`, checks/sorts source
+keys and exports `native_gamma_re_bootstrap_predictions.csv` with all nine
+source fields, selected firm totals, inclusion flags and original n/xb/residuals.
+Do not reuse an export path: no-clobber failure preserves the existing file.
+Smaller source/independent-reference commands are in the [fixture guide](../../tests/fixtures/mma23_native_gamma_re_bootstrap/README.md).
+
+The auditor validates all source keys, exact labels/membership and continuous
+RNG draws/rejection steps, then raw marginal shared-gamma scores
+for every joint vector, independent empirical covariance/type7 summaries,
+original likelihood/information inverse and population predictions. These
+scores integrate each shared effect separately, not condition it out as FE.
+Covariance identity tolerance is1e-9 times the empirical SD product; zero
+covariance rows stay exactly zero. Scalar R gates remain unchanged. Shared
+wrong R/native artifacts are not accepted as independent numerical evidence.
