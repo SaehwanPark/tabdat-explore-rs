@@ -1,6 +1,62 @@
-//! Adaptive shared-normal-intercept integration; native fit integration is WIP.
+//! Bounded integrated normal random-intercept Poisson, not mean-one gamma RE.
 mod nodes;
-use crate::{StatsError, matrix::add_compensated};
+use crate::{
+  EstimationProblem, EstimationSample, LogitEstimate, StatsError, fit_poisson,
+  matrix::add_compensated,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NormalPoissonOptions {
+  pub max_iterations: usize,
+}
+impl Default for NormalPoissonOptions {
+  fn default() -> Self {
+    Self {
+      max_iterations: 100,
+    }
+  }
+}
+
+/// Model-based inverse full joint observed information; population means integrate
+/// the mean-zero normal log effect, not posterior firm effects.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NormalPoissonResult {
+  pub outcome: String,
+  pub predictor_names: Vec<String>,
+  pub entity_variable: String,
+  pub observation_count: usize,
+  pub group_count: usize,
+  pub zero_total_group_count: usize,
+  pub singleton_group_count: usize,
+  pub minimum_group_size: usize,
+  pub maximum_group_size: usize,
+  pub maximum_group_count_sum: f64,
+  pub zero_count: usize,
+  pub count_sum: f64,
+  pub coefficients: Vec<LogitEstimate>,
+  pub ln_variance: LogitEstimate,
+  pub sigma: f64,
+  pub sigma_standard_error: f64,
+  pub sigma_confidence_lower: f64,
+  pub sigma_confidence_upper: f64,
+  pub covariance_parameter_names: Vec<String>,
+  pub covariance: Vec<Vec<f64>>,
+  pub log_likelihood: f64,
+  pub poisson_log_likelihood: f64,
+  pub variance_likelihood_ratio: f64,
+  pub variance_likelihood_ratio_p_value: f64,
+  pub wald_statistic: f64,
+  pub wald_df: usize,
+  pub wald_p_value: f64,
+  pub iterations: usize,
+  pub max_abs_scaled_score: f64,
+  pub max_abs_scaled_newton_step: f64,
+  pub max_relative_quadrature_difference: f64,
+  pub fitted_means: Vec<f64>,
+  pub sample: EstimationSample,
+}
 use nodes::{GH80, GH96};
 
 #[derive(Debug, Clone)]
@@ -8,12 +64,15 @@ struct Posterior {
   log_integral: f64,
   mean_exp_u: f64,
   mean_u2: f64,
+  #[cfg(test)]
   var_exp_u: f64,
   cov_exp_u_u2: f64,
   var_u2: f64,
   mean_u: f64,
   cov_exp_u_u: f64,
+  #[cfg(test)]
   mode: f64,
+  #[cfg(test)]
   curvature: f64,
   max_relative_difference: f64,
 }
@@ -159,12 +218,15 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
     log_integral: high[0],
     mean_exp_u: high[1],
     mean_u2: high[2],
+    #[cfg(test)]
     var_exp_u: high[3],
     cov_exp_u_u2: high[4],
     var_u2: high[5],
     mean_u: high[6],
     cov_exp_u_u: high[7],
+    #[cfg(test)]
     mode,
+    #[cfg(test)]
     curvature,
     max_relative_difference: discrepancy,
   })
@@ -227,6 +289,12 @@ fn evaluate(
     .collect();
   if eta.iter().any(|v| !v.is_finite() || *v < -40. || *v > 40.) {
     return Err(invalid("fixed linear predictor exceeds [-40,40]"));
+  }
+  if eta
+    .iter()
+    .any(|v| !(-700. ..=700.).contains(&(v + variance / 2.)))
+  {
+    return Err(invalid("population log mean exceeds [-700,700]"));
   }
   let mu: Vec<_> = eta.iter().map(|v| v.exp()).collect();
   let mut score = vec![0.; k + 1];
@@ -426,6 +494,262 @@ fn optimize(
   ))
 }
 
+fn estimate(name: String, value: f64, variance: f64) -> Result<LogitEstimate, StatsError> {
+  let se = variance.sqrt();
+  let statistic = value / se;
+  let critical = 1.959963984540054;
+  let p_value = crate::distributions::chi_square_tail(statistic * statistic, 1);
+  let lower = value - critical * se;
+  let upper = value + critical * se;
+  if se <= 0.
+    || [value, se, statistic, p_value, lower, upper]
+      .iter()
+      .any(|v| !v.is_finite())
+  {
+    return Err(invalid("coefficient inference is not representable"));
+  }
+  Ok(LogitEstimate {
+    name,
+    value,
+    standard_error: se,
+    statistic,
+    p_value,
+    confidence_lower: lower,
+    confidence_upper: upper,
+  })
+}
+
+/// Joint finite rows and exact raw-key validation are supplied by the adapter.
+/// All zero-total/singleton groups remain; boundary or numerical failure is not
+/// relabeled as pooled Poisson. Returned covariance includes variance cross terms.
+pub fn fit_normal_poisson(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  options: &NormalPoissonOptions,
+) -> Result<NormalPoissonResult, StatsError> {
+  problem.validate()?;
+  let n = problem.response.len();
+  let p = problem.predictor_names.len();
+  let k = p + 1;
+  let dimension = k + 1;
+  let mut names = problem.parameter_names();
+  names.push("lnsigma2".into());
+  if !problem.include_intercept
+    || problem.weights.is_some()
+    || entity_variable.trim().is_empty()
+    || !(1..=14).contains(&p)
+    || names.iter().collect::<BTreeSet<_>>().len() != dimension
+    || !(1..=100).contains(&options.max_iterations)
+  {
+    return Err(invalid(
+      "requires intercept,1..14 unique slopes/group name, no weights and1..100 iterations",
+    ));
+  }
+  let sample = problem
+    .sample
+    .as_ref()
+    .ok_or_else(|| invalid("requires sample-aligned group keys"))?;
+  let keys = sample
+    .cluster_groups
+    .as_ref()
+    .ok_or_else(|| invalid("requires sample-aligned group keys"))?;
+  if sample.weights.is_some()
+    || keys.len() != n
+    || sample.retained_indices.len() != n
+    || n.checked_add(sample.dropped_observations) != Some(sample.total_observations)
+    || sample
+      .retained_indices
+      .iter()
+      .any(|&i| i >= sample.total_observations)
+    || sample
+      .retained_indices
+      .iter()
+      .collect::<BTreeSet<_>>()
+      .len()
+      != n
+  {
+    return Err(invalid(
+      "invalid original sample mapping, weights or group-key alignment",
+    ));
+  }
+  if sample.total_observations > 40000
+    || sample
+      .total_observations
+      .checked_mul(176)
+      .and_then(|v| v.checked_mul(dimension))
+      .and_then(|v| v.checked_mul(dimension))
+      .is_none_or(|v| v > 20000000)
+  {
+    return Err(invalid(
+      "candidate rows<=40000 and176*candidate rows*(slopes+2)^2<=20000000 required",
+    ));
+  }
+  if problem
+    .response
+    .iter()
+    .any(|v| *v < 0. || *v > 100000. || v.fract() != 0.)
+  {
+    return Err(invalid("selected counts must be exact integers0..100000"));
+  }
+  let mut mapping: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+  for (i, key) in keys.iter().enumerate() {
+    mapping.entry(key).or_default().push(i);
+  }
+  let groups: Vec<_> = mapping.into_values().collect();
+  let g = groups.len();
+  if g <= dimension || g > 10000 {
+    return Err(invalid(
+      "selected groups must exceed joint parameter count and be<=10000",
+    ));
+  }
+  let totals: Vec<_> = groups
+    .iter()
+    .map(|rows| sum(rows.iter().map(|&i| problem.response[i])))
+    .collect();
+  if totals.iter().any(|v| *v > 100000.) {
+    return Err(invalid("selected group totals must be<=100000"));
+  }
+  let mut x: Vec<Vec<_>> = problem
+    .design_matrix
+    .iter()
+    .map(|row| std::iter::once(1.).chain(row.iter().copied()).collect())
+    .collect();
+  let mut scales: Vec<_> = (0..k)
+    .map(|j| x.iter().fold(0.0_f64, |a, row| a.hypot(row[j])) / (n as f64).sqrt())
+    .collect();
+  scales[0] = 1.;
+  if scales.iter().any(|v| !v.is_finite() || *v <= 0.) {
+    return Err(invalid("invalid predictor scale"));
+  }
+  for row in &mut x {
+    for (v, scale) in row.iter_mut().zip(&scales) {
+      *v /= scale;
+    }
+  }
+  crate::matrix::qr_decompose_with_response(&x, &vec![0.; n])?;
+  // Detach only owned initialization metadata; null/starter use the same selected rows.
+  let mut pooled_problem = problem.clone();
+  pooled_problem.sample.as_mut().unwrap().cluster_groups = None;
+  let pooled = fit_poisson(&pooled_problem, false)?;
+  let mut start: Vec<_> = pooled
+    .coefficients
+    .iter()
+    .zip(&scales)
+    .map(|(b, s)| b.value * s)
+    .collect();
+  start.push(0.);
+  let core = optimize(
+    &x,
+    &problem.response,
+    &groups,
+    start,
+    options.max_iterations,
+  )?;
+  scales.push(1.);
+  let values: Vec<_> = core
+    .parameters
+    .iter()
+    .zip(&scales)
+    .map(|(v, s)| v / s)
+    .collect();
+  let covariance: Vec<Vec<_>> = core
+    .inverse
+    .iter()
+    .enumerate()
+    .map(|(i, row)| {
+      row
+        .iter()
+        .enumerate()
+        .map(|(j, v)| v / g as f64 / scales[i] / scales[j])
+        .collect()
+    })
+    .collect();
+  if covariance.iter().flatten().any(|v| !v.is_finite()) {
+    return Err(invalid("covariance is not representable in original units"));
+  }
+  let mut coefficients = names
+    .iter()
+    .enumerate()
+    .map(|(i, name)| estimate(name.clone(), values[i], covariance[i][i]))
+    .collect::<Result<Vec<_>, _>>()?;
+  let ln_variance = coefficients.pop().unwrap();
+  let sigma = (ln_variance.value / 2.).exp();
+  let sigma_standard_error = sigma * ln_variance.standard_error / 2.;
+  let sigma_confidence_lower = (ln_variance.confidence_lower / 2.).exp();
+  let sigma_confidence_upper = (ln_variance.confidence_upper / 2.).exp();
+  if [
+    sigma,
+    sigma_standard_error,
+    sigma_confidence_lower,
+    sigma_confidence_upper,
+  ]
+  .iter()
+  .any(|v| !v.is_finite() || *v <= 0.)
+  {
+    return Err(invalid("sigma uncertainty is not representable"));
+  }
+  let beta_covariance: Vec<_> = covariance[..k]
+    .iter()
+    .map(|row| row[..k].to_vec())
+    .collect();
+  let wald = crate::binary::omnibus_wald(&values[..k], &beta_covariance, true, None);
+  let (Some(wald_statistic), Some(wald_p_value)) = (wald.statistic, wald.p_value) else {
+    return Err(invalid("slope Wald covariance is not full rank"));
+  };
+  let lr = 2. * (core.evaluation.log_likelihood - pooled.log_likelihood);
+  if !lr.is_finite() || lr <= 1e-8 {
+    return Err(invalid(
+      "positive variance is not distinguishable from pooled boundary",
+    ));
+  }
+  let variance = ln_variance.value.exp();
+  let fitted_means = x
+    .iter()
+    .map(|row| {
+      let eta = sum(row.iter().zip(&core.parameters).map(|(a, b)| a * b)) + variance / 2.;
+      if !eta.is_finite() || !(-700. ..=700.).contains(&eta) {
+        return Err(invalid("population log mean exceeds [-700,700]"));
+      }
+      Ok(eta.exp())
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+  Ok(NormalPoissonResult {
+    outcome: problem.outcome.clone(),
+    predictor_names: problem.predictor_names.clone(),
+    entity_variable: entity_variable.into(),
+    observation_count: n,
+    group_count: g,
+    zero_total_group_count: totals.iter().filter(|&&v| v == 0.).count(),
+    singleton_group_count: groups.iter().filter(|v| v.len() == 1).count(),
+    minimum_group_size: groups.iter().map(Vec::len).min().unwrap(),
+    maximum_group_size: groups.iter().map(Vec::len).max().unwrap(),
+    maximum_group_count_sum: totals.iter().copied().fold(0., f64::max),
+    zero_count: problem.response.iter().filter(|&&v| v == 0.).count(),
+    count_sum: sum(problem.response.iter().copied()),
+    coefficients,
+    ln_variance,
+    sigma,
+    sigma_standard_error,
+    sigma_confidence_lower,
+    sigma_confidence_upper,
+    covariance_parameter_names: names,
+    covariance,
+    log_likelihood: core.evaluation.log_likelihood,
+    poisson_log_likelihood: pooled.log_likelihood,
+    variance_likelihood_ratio: lr,
+    variance_likelihood_ratio_p_value: 0.5 * crate::distributions::chi_square_tail(lr, 1),
+    wald_statistic,
+    wald_df: p,
+    wald_p_value,
+    iterations: core.iterations,
+    max_abs_scaled_score: core.score_norm,
+    max_abs_scaled_newton_step: core.relative_step,
+    max_relative_quadrature_difference: core.evaluation.max_quadrature_difference,
+    fitted_means,
+    sample: sample.clone(),
+  })
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -448,6 +772,182 @@ mod tests {
     }
     assert_eq!((x.len(), groups.len()), (200, 40));
     (x, y, groups)
+  }
+  fn control_problem() -> EstimationProblem {
+    let (x, y, groups) = control();
+    let n = y.len();
+    let mut keys = vec![String::new(); n];
+    for (i, rows) in groups.iter().enumerate() {
+      for &row in rows {
+        keys[row] = (i + 1).to_string();
+      }
+    }
+    EstimationProblem::new(
+      "pat",
+      vec!["logr".into()],
+      y,
+      x.iter().map(|row| row[1..].to_vec()).collect(),
+    )
+    .unwrap()
+    .with_intercept_name("_cons")
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap())
+  }
+  #[test]
+  fn public_fit_matches_all42_independent_r_fields_full_covariance_and_sample() {
+    use std::collections::BTreeMap;
+    let p = control_problem();
+    let before = p.clone();
+    let r = fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap();
+    assert_eq!(p, before);
+    assert_eq!(r.sample, p.sample.clone().unwrap());
+    assert_eq!(
+      (r.observation_count, r.group_count, r.zero_total_group_count),
+      (200, 40, 8)
+    );
+    assert_eq!(r.covariance_parameter_names, ["_cons", "logr", "lnsigma2"]);
+    let reference: BTreeMap<_, _> =
+      include_str!("../../../tests/fixtures/mma23_normal_re/reference.csv")
+        .lines()
+        .skip(1)
+        .map(|line| {
+          let (k, v) = line.split_once(',').unwrap();
+          (k, v.parse::<f64>().unwrap())
+        })
+        .collect();
+    assert_eq!(reference.len(), 42);
+    let mut actual = BTreeMap::from([
+      ("candidate_rows".into(), 200.),
+      ("firms".into(), 40.),
+      ("zero_total_firms".into(), 8.),
+      ("sigma".into(), r.sigma),
+      ("log_likelihood".into(), r.log_likelihood),
+      ("poisson_log_likelihood".into(), r.poisson_log_likelihood),
+      ("lr_variance_zero".into(), r.variance_likelihood_ratio),
+      (
+        "p_lr_variance_zero".into(),
+        r.variance_likelihood_ratio_p_value,
+      ),
+      ("se_sigma".into(), r.sigma_standard_error),
+      ("lower_sigma".into(), r.sigma_confidence_lower),
+      ("upper_sigma".into(), r.sigma_confidence_upper),
+    ]);
+    let (x, y, groups) = control();
+    let values = vec![
+      r.coefficients[0].value,
+      r.coefficients[1].value,
+      r.ln_variance.value,
+    ];
+    let e = evaluate(&x, &y, &groups, &values).unwrap();
+    for (i, (name, c)) in ["intercept", "slope", "lnvariance"]
+      .iter()
+      .zip(r.coefficients.iter().chain(std::iter::once(&r.ln_variance)))
+      .enumerate()
+    {
+      for (prefix, value) in [
+        ("estimate", c.value),
+        ("se", c.standard_error),
+        ("z", c.statistic),
+        ("p", c.p_value),
+        ("lower", c.confidence_lower),
+        ("upper", c.confidence_upper),
+        ("score", e.score[i] * 40.),
+      ] {
+        actual.insert(format!("{prefix}_{name}"), value);
+      }
+    }
+    for (i, a) in ['a', 'b', 't'].iter().enumerate() {
+      for (j, b) in ['a', 'b', 't'].iter().enumerate() {
+        let (a, b) = if i <= j { (a, b) } else { (b, a) };
+        let value = reference[format!("covariance_{a}{b}").as_str()];
+        assert!((r.covariance[i][j] - value).abs() <= 1e-9 + 1e-10 * value.abs());
+        if i <= j {
+          actual.insert(format!("covariance_{a}{b}"), r.covariance[i][j]);
+        }
+      }
+    }
+    actual.insert("mean_mu".into(), sum(r.fitted_means.iter().copied()) / 200.);
+    actual.insert(
+      "min_mu".into(),
+      r.fitted_means.iter().copied().fold(f64::INFINITY, f64::min),
+    );
+    actual.insert(
+      "max_mu".into(),
+      r.fitted_means
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max),
+    );
+    actual.insert(
+      "mean_residual".into(),
+      sum(y.iter().zip(&r.fitted_means).map(|(a, b)| a - b)) / 200.,
+    );
+    assert_eq!(actual.len(), 42);
+    for (name, value) in reference {
+      let a = actual[name];
+      if name.starts_with("p_") && value > 0. {
+        assert!((a / value - 1.).abs() <= 1e-9, "{name}: {a} vs {value}");
+      } else {
+        assert!(
+          (a - value).abs() <= 1e-9 + 1e-10 * value.abs(),
+          "{name}: {a} vs {value}"
+        );
+      }
+    }
+    assert_eq!(
+      serde_json::from_str::<NormalPoissonResult>(&serde_json::to_string(&r).unwrap()).unwrap(),
+      r
+    );
+  }
+  #[test]
+  fn public_fit_preprocessing_rescaling_and_failure_contracts() {
+    let p = control_problem();
+    let base = fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap();
+    for scale in [1e-3, 1e3] {
+      let mut changed = p.clone();
+      for row in &mut changed.design_matrix {
+        row[0] *= scale;
+      }
+      let r = fit_normal_poisson(&changed, "id", &NormalPoissonOptions::default()).unwrap();
+      assert!((r.coefficients[1].value * scale - base.coefficients[1].value).abs() < 1e-9);
+      for (a, b) in r.fitted_means.iter().zip(&base.fitted_means) {
+        assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs());
+      }
+      for i in 0..3 {
+        for j in 0..3 {
+          let a = if i == 1 { scale } else { 1. };
+          let b = if j == 1 { scale } else { 1. };
+          assert!((r.covariance[i][j] * a * b - base.covariance[i][j]).abs() < 1e-9);
+        }
+      }
+    }
+    for case in 0..10 {
+      let mut bad = p.clone();
+      match case {
+        0 => bad.include_intercept = false,
+        1 => bad.weights = Some(vec![1.; 200]),
+        2 => bad.sample = None,
+        3 => bad.sample.as_mut().unwrap().retained_indices[0] = 1,
+        4 => {
+          let sample = bad.sample.as_mut().unwrap();
+          sample.total_observations = 40001;
+          sample.dropped_observations = 39801;
+        }
+        5 => bad.response[0] = 0.5,
+        6 => bad.predictor_names[0] = "lnsigma2".into(),
+        7 => bad.sample.as_mut().unwrap().cluster_groups = Some(vec!["one".into(); 200]),
+        8 => bad.design_matrix.iter_mut().for_each(|row| row[0] = 1.),
+        9 => {
+          bad.sample.as_mut().unwrap().total_observations = 13000;
+          bad.sample.as_mut().unwrap().dropped_observations = 12800;
+        }
+        _ => unreachable!(),
+      }
+      assert!(
+        fit_normal_poisson(&bad, "id", &NormalPoissonOptions::default()).is_err(),
+        "case{case}"
+      );
+    }
+    assert!(fit_normal_poisson(&p, "", &NormalPoissonOptions::default()).is_err());
   }
   #[test]
   fn optimizer_matches_independent_control_point_covariance_and_predictions() {

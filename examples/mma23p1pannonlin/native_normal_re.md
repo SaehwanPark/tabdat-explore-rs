@@ -165,10 +165,40 @@ The two new optimizer cases pass2/2 (8afad200-7398-4b8a-81ae-69092d49f917,
 remain applicable; no new final9/broad pass is claimed. This is not yet a public
 fit API, sample adapter, full42-field inference or original1730-source proof.
 
-The module is explicitly test-only until the public fit path is implemented.
-No native normal-RE parser, public fit API, state, full inference/report,
-original-sample validation or completed slice is claimed. Next implement sample/
-RMS preprocessing and public model-based inference, independent multivariate/
-reference checks, then typed execution/prediction/reporting and actual-source
-workflow. Do not
-merge this WIP. Artifacts `/tmp/tabdat-ch23-native-normal/`.
+## Public statistics API checkpoint (still not a delivered command)
+
+`fit_normal_poisson`/`NormalPoissonOptions`/`NormalPoissonResult` now exist in
+production Rust statistics, with validated sample provenance, complete-case
+count/group limits, RMS/QR preprocessing, detached owned pooled initialization/
+same-sample null, full joint observed covariance, normal/log-Wald inference,
+sigma delta SE/interval and boundary-mixture LR. The ln-variance coefficient
+name is `lnsigma2`; all parameter names are unique. Population means include
+the variance shift; native residual/prediction dispatch is not yet integrated.
+Invalid candidate/sample/work/keys alignment/weights/rank/options reject.
+
+New API2/2 (8cca57ca-c29a-4bde-882b-fc32ceb1a158) validates all42 existing
+independent R fields/full covariance on200 records/40 firms, input/sample
+immutability and serde round-trip; rescaling1e-3/1e3 preserves predictions/
+transformed covariance, with ten explicit invalid contracts. Fresh affected
+stats320 pass/58 binaries/one pre-existing skip,12.591s,
+59af8cf8-104e-4a46-af1d-ca87e20145e4; stats-all-target Clippy passes. The
+candidate-row failure control was then hardened to keep sample mapping valid
+so it reaches the actual row bound; that modified case separately passes1/1
+(b4ec09ec-9394-4bb4-a70f-c41d6e100ece), not a new final320 run.
+
+A temporary locked Rust API probe on original1730/346/22-zero-firm data and
+fresh R4.6.2 direct integration validates39 observable R fields/full covariance
+and all1730 population mean/residual/key/design records. Three signed scores
+are not API-exposed and not compared by that probe; control unit tests compare
+them internally. Original point is(1.414253125154783,.2929878940875187,
+.9897262362097311), loglik−5554.017060213401, seven evaluations; score/relative
+step/final paired-rule difference6.74e-16/1.09e-15/3.36e-11. A first temporary
+probe wrongly assumed25 tokens per physical line; publisher records wrap.
+Corrected to25-token records, with no statistical code/tolerance change. No
+publisher data or temporary example is committed.
+
+No parser/execution/owned state/application reports, full original-source audit
+or completed slice is claimed. Next independent multivariate/unbalanced/
+singleton reference controls, then typed execution/prediction/reporting and
+actual-source workflow. Do not merge this kernel-only WIP.
+Artifacts `/tmp/tabdat-ch23-native-normal/`.
