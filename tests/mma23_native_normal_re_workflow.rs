@@ -313,6 +313,7 @@ fn reference_full_covariance_population_exports_json_text_and_metadata_permutati
       let text = String::from_utf8(out.stdout).unwrap();
       for phrase in [
         "Normal random-intercept Poisson",
+        " iterations; scaled score",
         "lnsigma2",
         "not an error bound",
         "population n=exp(Xbeta+variance/2)",

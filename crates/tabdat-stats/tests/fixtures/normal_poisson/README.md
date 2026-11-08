@@ -1,4 +1,4 @@
-# Normal-intercept Poisson posterior integration controls (WIP)
+# Normal-intercept Poisson posterior integration controls
 
 `posterior.csv` contains six artificial `(total,mean_sum,log_variance)` cases
 and eight independent posterior quantities per case: log integrated factor,
@@ -38,6 +38,8 @@ information after multiplication. The check remains
 `abs(high-low)/(1+abs(high))<=1e-9`, a discrepancy check, not an error bound. High-variance t=2
 R-GLM starts on the existing40-firm source actually trigger rejection.
 
-These are test-only quadrature primitives, not a fitted normal-RE model,
-validated whole estimator, native prediction state or historical replication.
-R/Python remain development references, never production dependencies.
+These fixtures isolate the posterior integration component. The production
+normal-RE fitter additionally has full-inference/sample controls in the
+multivariate fixture and the Chapter23 native workflow; posterior controls alone
+do not establish whole-estimator or historical replication. R/Python remain
+development references, never production dependencies.

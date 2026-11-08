@@ -194,9 +194,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ),
     (
       "xtpoisson",
-      "xtpoisson y xvars, fe|re id(group)",
+      "xtpoisson y xvars, fe|re id(group) [distribution(gamma|normal) for re]",
       serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
-      vec!["fe", "re", "id"],
+      vec!["fe", "re", "id", "distribution"],
     ),
     (
       "xtreg",
@@ -256,6 +256,19 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     let topic: serde_json::Value = serde_json::from_slice(&help.stdout).unwrap();
     let text = topic["data"]["text"].as_str().unwrap();
     assert!(text.contains("bounded"), "{name}");
+    if name == "xtpoisson" {
+      for phrase in [
+        "distribution(normal)",
+        "Default `re` is still gamma",
+        "lnsigma2",
+        "variance=1, NOT variance=0",
+        "exp(X beta+variance/2)",
+        "not an error",
+        "No ridge",
+      ] {
+        assert!(text.contains(phrase), "{phrase}");
+      }
+    }
     if name == "tabulate" {
       assert!(text.contains("values()`/`stat()` aggregation"));
       assert!(text.contains("parser-only/unsupported"));
@@ -266,6 +279,8 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
 #[test]
 fn conditional_discovery_examples_preview_without_data_and_reject_malformed_syntax() {
   for (name, source) in [
+    ("xtpoisson", "xtpoisson y x, re distribution(normal) id(i)"),
+    ("xtpoisson", "xtpoisson y x, re distribution(gamma) id(i)"),
     ("count", "count if eligible == 1"),
     ("summarize", "summarize x if eligible == 1"),
     ("regress", "regress y x if eligible == 1, robust"),
@@ -303,6 +318,8 @@ fn conditional_discovery_examples_preview_without_data_and_reject_malformed_synt
     "regress y x if",
     "regress y",
     "regress y if eligible == 1",
+    "xtpoisson y x, fe distribution(normal) id(i)",
+    "xtpoisson y x, re distribution(lognormal) id(i)",
     "xtgee y x, family(gaussian) link(identity) corr(exchangeable)",
     "tabulate x if",
   ] {
