@@ -140,9 +140,21 @@ the fitter.44 independent400-digit Decimal remainder cases at actual binary64
 inputs and12 Gaussian quadratic closed-form cases (including positive/negative
 ~1e-24 changes and near cancellation) pass. Invalid inputs reject without
 clipping/renormalization. Focused3/3 tests pass (74c0e82a-0cc1-4adf-8bf7-e8538a0dd729);
-stats all-target Clippy passes. This validates the arithmetic, not the Poisson
-posterior/Stein construction or source-copy optimizer. No full-crate test rerun
+stats all-target Clippy passes. This first stage validates arithmetic, not the
+Poisson posterior/Stein construction or source-copy optimizer. No full-crate test rerun
 or production numerical-contract change is claimed at this checkpoint.
+
+The next cfg(test)-only group helper now also matches18 independent R direct
+improper-integral directional-score/log-ratio controls across singleton/3/5-row,
+zero-total/100000-count/tiny-mean shapes and both shift signs down to1e-12.
+R integrates complete-data scores, not the native Stein identity, and forms the
+ratio inside the integral, not by subtracting log-likelihood levels. Fixed
+relative1e-9 plus1e-24 tests preserve tiny signs. New test1/1 passes separately
+(b0a27f39-1362-4429-a48d-92dfb52f0275), not a fresh combined4-test run; updated
+stats all-target Clippy passes. Old96-node posterior moments and ratio points
+are deliberately matched here. Any refined fitter path must parameterize both
+together before using this helper. No production no-op/optimizer fix or
+copied-source replay is yet claimed.
 
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
@@ -152,7 +164,7 @@ normal_poisson.rs was restored byte-identically to merged7fbeb1e after the
 prototypes; its only subsequent change registers the cfg(test)-only arithmetic
 module. Production fitting logic remains unchanged.
 
-WIP: contract, two diagnosed numerical barriers and isolated test-only arithmetic
-controls; no production bootstrap parser/kernel/result or all500 feasibility
-claim. Normal bootstrap/historical issues and the
+WIP: contract, two diagnosed numerical barriers and isolated test-only arithmetic/
+Poisson-group controls; no production bootstrap parser/kernel/result or all500
+feasibility claim. Normal bootstrap/historical issues and the
 complete roadmap remain required.

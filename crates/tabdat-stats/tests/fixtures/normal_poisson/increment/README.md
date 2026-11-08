@@ -17,11 +17,26 @@ reference digits in the order1e-300 remainder.
   Signs are mandatory above that explicit noise floor. Near-exact cancellation
   below it is not represented as a trustworthy sign decision.
 
-The new helper is currently **test-only and not wired into the fitter**. It
-computes only the nonlinear correction given a separately stabilized E[h].
-These controls validate remainder/cumulant arithmetic, not the Poisson posterior,
-Stein first-moment construction, fit convergence or all500 bootstrap replicates.
-Those require direct-R/posterior/source replay before production integration.
+`Rscript posterior_reference.R NEW_OUTPUT_DIR` separately generates18 direct
+improper-integral Poisson group controls: six old posterior shapes (zero totals,
+singletons/3/5 rows, total100000 and mean1e-5) times positive/negative1e-3 and
+positive1e-12 parameter shifts. Exact17-digit row inputs preserve physical
+binary64 y/mu/delta values. R integrates complete-data directional scores and
+expm1(log density ratio) inside the old posterior; it does not use GH, native
+moments or the Stein first-moment identity. Centered curvature coordinates avoid
+large marginal-level subtraction. R4.6.2 reports maximum quadrature abs.error
+1.69e-12 (across normalized mass/score/ratio integrals, not a certified ratio
+error bound); requested relative tolerance2e-12. Fixed Rust directional-score/
+log-ratio gate1e-9*abs(reference)+1e-24 allows quadrature/moment propagation while
+retaining meaningful relative tests for the~1e-12 changes. All18 signs must match.
+
+The helper is currently **test-only and not wired into the fitter**. Cumulant
+arithmetic takes a separately stabilized E[h]; the group helper constructs that
+mean using the Poisson/Stein/remainder identities and the existing96-node rule.
+These controls validate that group construction against independent integration,
+not fit convergence or all500 bootstrap replicates. Source replay, ordinary/
+refined-rule regressions and no-progress rejection remain before production
+integration.
 Invalid/non-normalized/negative/nonfinite inputs and log-domain/overflow cases
 must reject rather than clip or silently renormalize. No statistical fit gate
 has changed and no public bootstrap command is implemented.
