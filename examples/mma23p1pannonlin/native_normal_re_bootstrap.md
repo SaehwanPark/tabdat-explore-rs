@@ -1,12 +1,14 @@
-# Native normal-RE whole-firm bootstrap — WIP contract and evidence
+# Native normal-RE whole-firm bootstrap — workflow and validation
 
-Current status: ordinary-normal stable-increment/no-op refinements remain.
-Native Rust bootstrap kernel/API uses fixed176/208 copied quadrature and the
-original joint raw warm point; all500 source and control refits/empirical
-quantities match independent R. Multi-slope/unbalanced/singleton and merged-ID
-negative kernel controls now pass too. Application/parser/result/report/script/
-state/file/auditor workflow and final review remain WIP. Earlier profile/prototype evidence below is
-chronological, not the currently selected copied rule.
+Current status: Rust kernel, parser, read-only execution, terminal/CLI-v1 report,
+script/export and independent raw-equation auditor are implemented. All500 source
+and control joint refits/empirical quantities match independent R, with all
+ordered draws regenerated and every copied-fit score independently integrated.
+Multi-slope/unbalanced/singleton and merged-ID negative controls pass.
+Cross-crate regressions are verified as recorded below; final author review
+remains pending and PR stays draft.
+Earlier profile/prototype checkpoints below are chronological, not current
+capability or the currently selected copied rule (fixed176/208 for every copy).
 
 ## Bounded outcome / source status
 
@@ -18,7 +20,7 @@ bootstrap.** This is a required native resampling extension, not a sixth source
 bootstrap block or historical RNG/interval/SE parity. The five actual source
 bootstrap blocks remain as inventoried.
 
-Proposed selector: `bootstrap pat logr, model(normal_poisson_re) cluster(id) reps(500) seed(10001)`. Reuse existing bootstrap summaries/RNG/draw helper and
+Selector: `bootstrap pat logr, model(normal_poisson_re) cluster(id) reps(500) seed(10001)`. Reuse existing bootstrap summaries/RNG/draw helper and
 existing validated normal fitter. No dependency, FFI, production R/Python,
 bootstrap framework or change to other estimator/default/wire contracts.
 
@@ -44,12 +46,11 @@ dropped failures or partial-success report.
 
 Bounds: intercept+1..14 slopes,2..500 replicates,<=512 selected groups, existing
 normal row/group/count/quad/design limits. Worst copied N=G*largest selected
-group size must be<=40000 and satisfy normal176*N*(slopes+2)^2<=20m; conservative
-aggregate176*worstN*B*(slopes+2)^2<=3b. No quadrature threshold change or fit
-fallback is planned. A feasibility probe must check all500 original-source
-replicates before public integration. If existing strict80/96 GH fails on a
-valid copy, preserve the failure and revise the numerical contract explicitly
-with independent evidence, never widen tolerances to force completion.
+group size must be<=40000 and satisfy384*worstN*(slopes+2)^2<=20m; conservative
+aggregate384*worstN*B*(slopes+2)^2<=3b. Every copy uses176/208 nodes. Quadrature
+discrepancy<=1e-9, score<=1e-10, undamped relative step<=1e-12 and strict SPD
+remain unchanged. Source/control500 feasibility and independent R comparisons
+preceded public integration; rejected profile investigations are retained below.
 
 ## Acceptance cases / independent reference
 
@@ -384,7 +385,81 @@ uses the validated Rust increment helper in production ordinary fits; the
 normal API, model/inference/sample/prediction semantics,80/96 rules,176 work
 factor and all statistical convergence/SPD/quadrature gates remain unchanged.
 
-WIP: ordinary stable numerical comparisons, private refined/warm copied-fit
-feasibility and independent controls; no production bootstrap parser/kernel/
-result or independent all500 uncertainty/workflow validation yet. Normal bootstrap/historical issues and the
-complete roadmap remain required.
+The immediately preceding artifact/prototype descriptions preserve historical
+investigation context. The selected copied176/208 rule and original-joint raw
+initializer are now production kernel behavior; ordinary80/96 remains unchanged.
+Historical normal-RE discrepancies and the complete roadmap remain unresolved.
+
+## Terminal workflow and independent audit
+
+From the repository root, with the pinned Rust toolchain and R development
+reference prerequisites from earlier sections:
+
+```sh
+cargo build --locked --bin tabdat-explore-rs
+mkdir native-normal-bootstrap
+sh examples/mma23p1pannonlin/prepare.sh /path/patr7079.asc native-normal-bootstrap/patents.csv
+(cd native-normal-bootstrap && ../target/debug/tabdat-explore-rs --json \
+  -f ../examples/mma23p1pannonlin/native_normal_re_bootstrap.td > result.jsonl)
+python3 examples/mma23p1pannonlin/check_native_normal_re_bootstrap.py \
+  native-normal-bootstrap /path/patr7079.asc /path/bootstrap-reference /path/original-normal-reference
+```
+
+The bootstrap reference directory contains `fits.csv` and31-field `reference.csv`
+from `native_normal_re_bootstrap_reference.py`; the original-normal reference
+contains42-field `reference.csv` and `predictions.csv` from the existing
+`normal_re_poisson_reference.R` full-inference mode. Artificial control adds
+`--control` and uses `tests/fixtures/mma23_gamma_re_bootstrap/source.asc`,
+`tests/fixtures/mma23_native_normal_re_bootstrap` and `tests/fixtures/mma23_normal_re`
+for those three reference/source arguments. Run text mode in a separate prepared
+directory: exports are deliberately no-clobber. The script retains the original
+normal fit for subsequent population n/xb/residuals; bootstrap never installs
+its last copy or changes stored reports, labels or data.
+
+Current copied work uses both rules:384*worstN*K²<=20million and
+384*worstN*B*K²<=3billion, worstN=G*largest selected group. B2..500, G<=512,
+worstN<=40000; actual source work2989440000. Earlier176/288/352 proposals are
+superseded. Every copy has distinct effects, the same fixed176/208 profile and
+same original raw joint initializer converted to its RMS design; no adaptive
+retry, dropped copy, R coefficient input or convergence/SPD gate relaxation.
+
+Application focused6 tests and script focused3 pass. Actual source1730/346/22-zero
+and control200/40 terminal scripts pass all500 joint R refits/31 bootstrap fields,
+full3x3 empirical covariance/type7 intervals and unchanged original predictions.
+Auditor reuses all42 original-model R fields and raw observed-information/null
+identities, regenerates all173000/20000 draw indices, then independently checks
+every copied-fit complete-data score using adaptive Simpson first moments,
+not native GH/Stein or reported R scores. Four local processes reduce measured
+control audit from a300-second serial timeout to80.595s; source audit669.471s.
+No tolerance changed and the timed-out attempt is not a pass.
+
+Python new2 tests pass (93.806s), including actual control500, six direct-R
+posterior first-moment controls,20 metadata/draw/point/inference forgeries and
+coherent wrong native/R covariance or refit/uncertainty cases. Mocked-guard
+counterfactuals pass only with the relevant empirical/raw-score guards disabled;
+actual guards reject them. Existing original-normal auditor3 tests also pass.
+Logs are in `/tmp/tabdat-ch23-native-normal-bootstrap/` under
+`application-*-focused.log`, `*-cli-audit*.log`,
+`bootstrap-auditor-forgeries.log`, and `normal-auditor-regression.log`.
+
+### Cross-crate verification checkpoint
+
+Fresh workspace nextest run `8dd65626-0e0f-4c87-afa5-9892dff1bc2a` selected2160
+across404 binaries/two pre-existing skips:2159 passed, one bootstrap discovery
+failure. A catalog expansion had changed the pinned syntax string. It is now
+restored; `model` is an additive option and selector syntax stays in help.
+Subsequent affected reporting/discovery/old-bootstrap regression run
+`3c667b38-2fbe-483b-b366-294e419e55e2` passes91 across7 binaries. This is separate
+run accounting, not a fresh combined2160-pass claim. Initial new discovery test
+also used an unsupported batch help invocation; corrected to `--help-topic`.
+
+Pinned Rust1.99.1 `cargo fmt --all -- --check`, diff checks and all-target Clippy
+for stats/domain/language/execution/reporting/runtime/shell/MCP pass; root bin
+and the new workflow/discovery test targets pass Clippy separately. Unrestricted
+root all-target Clippy remains unclaimed because of the known unrelated
+Table5.7 excessive-precision warning. Inventory validator passes all three
+publisher hashes/37 blocks/117 lines/450 links/noNBSP. Final author review remains
+pending; no independent/delegated review, new doctest, platform or release claim.
+
+This native extension is not a publisher bootstrap block, historical Stata RNG,
+historical normal fit, complete Table23.1/chapter or full-roadmap completion.

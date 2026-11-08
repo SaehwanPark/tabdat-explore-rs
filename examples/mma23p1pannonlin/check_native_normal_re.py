@@ -26,7 +26,7 @@ def adaptive_integral(function, left, right):
 
 
 @lru_cache(maxsize=4096)
-def posterior(s,m,v):
+def posterior(s,m,v,covariance=True):
   left,right=-100.,100.
   for _ in range(100):
     u=(left+right)/2
@@ -55,6 +55,8 @@ def posterior(s,m,v):
   em/=den;ez/=den;ez2/=den
   multiplier=math.exp(mode);eu=multiplier*(1+em)
   u2=mode*mode+2*mode*scale*ez+scale*scale*ez2
+  logz=anchor+math.log(den*scale)-math.log(2*math.pi*v)/2
+  if not covariance:return logz,eu,u2
   def centered(z):
     _,w=weight(z);dx=math.expm1(scale*z)-em
     # Dimensionless prior/intensity units keep the adaptive error budget
@@ -62,7 +64,7 @@ def posterior(s,m,v):
     du=(2*mode*scale*(z-ez)+scale*scale*(z*z-ez2))/v
     return [w*dx*dx,w*du*du,w*dx*du]
   vex,vu2,cross=[a/den for a in adaptive_integral(centered,-extent,extent)]
-  return anchor+math.log(den*scale)-math.log(2*math.pi*v)/2,eu,u2,vex*multiplier*multiplier,vu2*v*v,cross*multiplier*v
+  return logz,eu,u2,vex*multiplier*multiplier,vu2*v*v,cross*multiplier*v
 
 
 def independent_identity(data,exported):
@@ -106,7 +108,7 @@ def independent_identity(data,exported):
   return score
 
 
-def audit(native,reference,raw,original=True):
+def audit(native,reference,raw,original=True,bootstrap=False):
   expected=raw_source(raw,original);source=rows(native/'patents.csv');n=len(source);g=n//5
   assert len(expected)==n
   seen=set()
@@ -114,13 +116,19 @@ def audit(native,reference,raw,original=True):
     assert list(row)==SOURCE;key=(int(row['id']),int(row['year']));assert key not in seen;seen.add(key);source_equal(row,expected[key])
   assert seen==set(expected)
   events=[json.loads(s) for s in (native/'result.jsonl').read_text().splitlines()]
+  if bootstrap:
+    assert len(events)==13 and events[6]['result_type']=='NormalPoissonBootstrapResult'
+    assert events[6]['schema_version']==1 and 'error' not in events[6]
+    events=events[:6]+events[7:]
+  cohort='native_normal_re_bootstrap_cohort' if bootstrap else 'native_normal_re_cohort'
+  export='native_normal_re_bootstrap_predictions.csv' if bootstrap else 'native_normal_re_predictions.csv'
   assert [e['result_type'] for e in events]==['LoadResult','IsidResult','TableResult','TableResult','SqlCreateResult','NormalPoissonResult','PredictionResult','PredictionResult','PredictionResult','SummarizeResult','TableResult','ExportResult']
   assert all(e['schema_version']==1 and 'error' not in e for e in events)
   assert events[0]['data']['dataset']['row_count']==n
   assert events[1]['data']=={'variables':['id','year'],'missok':False,'missing_key_rows':0,'total_rows':n,'unique_groups':n}
   assert events[2]['data']=={'headers':['source_rows','source_firms','missing_nonmodel_ardssic'],'rows':[[n,g,sum(r['ardssic']=='' for r in source)]]}
   assert events[3]['data']=={'headers':['five_year_firms'],'rows':[[g]]}
-  assert events[4]['data']['table_name']=='native_normal_re_cohort' and events[4]['data']['dataset']['row_count']==n
+  assert events[4]['data']['table_name']==cohort and events[4]['data']['dataset']['row_count']==n
   d=events[5]['data'];coef=d['coefficients'];assert len(coef)==2 and [c['name'] for c in coef]==['_cons','logr'];assert d['ln_variance']['name']=='lnsigma2'
   assert d['covariance_parameter_names']==['_cons','logr','lnsigma2']
   for key,value in {'outcome':'pat','predictors':['logr'],'entity_variable':'id','include_intercept':True,'estimator':'normal_random_intercept_poisson_re',
@@ -143,7 +151,7 @@ def audit(native,reference,raw,original=True):
   near(d['sigma_confidence_lower'],math.exp(t['confidence_lower']/2));near(d['sigma_confidence_upper'],math.exp(t['confidence_upper']/2))
   near(d['variance_likelihood_ratio'],2*(d['log_likelihood']-d['poisson_log_likelihood']));near(d['variance_likelihood_ratio_p_value'],.5*math.erfc(math.sqrt(d['variance_likelihood_ratio']/2)),'p_lr_mixture')
   near(d['wald_statistic'],coef[1]['statistic']**2);assert d['wald_df']==1;near(d['wald_p_value'],coef[1]['p_value'],'p_wald')
-  exported=rows(native/'native_normal_re_predictions.csv');predicted=rows(reference/'predictions.csv');assert len(exported)==len(predicted)==n
+  exported=rows(native/export);predicted=rows(reference/'predictions.csv');assert len(exported)==len(predicted)==n
   totals={i:sum(float(v['pat']) for k,v in expected.items() if k[0]==i) for i in range(1,g+1)}
   for row,independent,key in zip(exported,predicted,sorted(expected)):
     assert list(row)==SOURCE+EXTRA;assert (int(row['id']),int(row['year']))==key;source_equal(row,expected[key]);assert row['included_in_native_re']=='true';near(row['selected_firm_total'],totals[key[0]])
@@ -158,7 +166,7 @@ def audit(native,reference,raw,original=True):
     samples=[float(r[field]) for r in exported];assert result['count']==n
     for label,value in [('mean',statistics.fmean(samples)),('std_dev',statistics.stdev(samples)),('minimum',min(samples)),('maximum',max(samples))]:near(result[label],value)
   assert events[10]['data']['headers']==['scope'] and len(events[10]['data']['rows'])==1
-  assert events[-1]['data']['path']=='native_normal_re_predictions.csv' and events[-1]['data']['dataset']['row_count']==n
+  assert events[-1]['data']['path']==export and events[-1]['data']['dataset']['row_count']==n
   score=independent_identity(d,exported)
   values={'candidate_rows':n,'firms':g,'zero_total_firms':d['zero_total_group_count'],'sigma':d['sigma'],'se_sigma':d['sigma_standard_error'],'lower_sigma':d['sigma_confidence_lower'],'upper_sigma':d['sigma_confidence_upper'],
     'log_likelihood':d['log_likelihood'],'poisson_log_likelihood':d['poisson_log_likelihood'],'lr_variance_zero':d['variance_likelihood_ratio'],'p_lr_variance_zero':d['variance_likelihood_ratio_p_value'],

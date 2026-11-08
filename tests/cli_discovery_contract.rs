@@ -7,6 +7,43 @@ fn tabdat_bin() -> Command {
 }
 
 #[test]
+fn normal_poisson_bootstrap_is_discoverable() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "bootstrap"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert!(
+    envelope["data"]["syntax"]
+      .as_str()
+      .unwrap()
+      .contains("seed(integer)")
+  );
+  assert!(
+    envelope["data"]["options"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .any(|v| v["name"] == "model")
+  );
+  let help = tabdat_bin()
+    .args(["--json", "--help-topic", "bootstrap"])
+    .output()
+    .unwrap();
+  assert!(help.status.success());
+  let topic: serde_json::Value = serde_json::from_slice(&help.stdout).unwrap();
+  let text = topic["data"]["text"].as_str().unwrap();
+  for required in [
+    "normal_poisson_re",
+    "176/208",
+    "original_joint_estimate_raw_to_copy_rms",
+  ] {
+    assert!(text.contains(required), "missing {required}");
+  }
+}
+
+#[test]
 fn cli_json_lists_commands() {
   let output = tabdat_bin()
     .args(["--json", "--list-commands"])

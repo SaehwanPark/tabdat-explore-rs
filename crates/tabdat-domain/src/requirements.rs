@@ -65,6 +65,7 @@ impl Command {
       | Self::PoissonBootstrap { .. }
       | Self::ConditionalPoissonBootstrap { .. }
       | Self::GammaPoissonBootstrap { .. }
+      | Self::NormalPoissonBootstrap { .. }
       | Self::XtReg { .. }
       | Self::XtAbond { .. }
       | Self::XtLogit { .. }

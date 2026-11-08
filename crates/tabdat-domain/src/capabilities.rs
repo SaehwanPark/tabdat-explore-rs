@@ -108,6 +108,7 @@ impl Command {
       | Command::PoissonBootstrap { .. }
       | Command::ConditionalPoissonBootstrap { .. }
       | Command::GammaPoissonBootstrap { .. }
+      | Command::NormalPoissonBootstrap { .. }
       | Command::QuantileBootstrap { .. } => "bootstrap",
       Command::Logit { .. } => "logit",
       Command::Probit { .. } => "probit",
@@ -225,6 +226,7 @@ impl Command {
       | Command::PoissonBootstrap { .. }
       | Command::ConditionalPoissonBootstrap { .. }
       | Command::GammaPoissonBootstrap { .. }
+      | Command::NormalPoissonBootstrap { .. }
       | Command::QuantileBootstrap { .. } => &[CommandEffect::Read],
       Command::Logit { .. } => &[CommandEffect::Read],
       Command::Probit { .. } => &[CommandEffect::Read],
