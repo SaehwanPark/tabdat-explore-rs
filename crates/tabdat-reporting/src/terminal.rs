@@ -1350,6 +1350,27 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text
     }
     ExecutionResult::Bootstrap(result) => bootstrap_report(result, false),
+    ExecutionResult::NormalPoissonBootstrap(result) => {
+      let mut text = format!(
+        "Whole-group pairs-bootstrap normal-log-effect Poisson RE: {}\nN = {}; groups = {}; zero-total groups = {}; singleton groups = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\nOriginal quadrature = {:?}; copied-refit quadrature = {:?}; initializer = {}\n",
+        result.outcome.escape_debug(),
+        result.observation_count,
+        result.cluster_labels.len(),
+        result.zero_total_group_count,
+        result.singleton_group_count,
+        result.replications,
+        result.seed,
+        result.rng,
+        result.original_quadrature_nodes,
+        result.refit_quadrature_nodes,
+        result.refit_initializer
+      );
+      for b in &result.coefficients {
+        writeln!(text, "{}: estimate = {}; bootstrap mean = {}; bias = {}; SE = {}; 95% percentile CI = [{}, {}]", b.name.escape_debug(), inference_number(b.estimate), inference_number(b.bootstrap_mean), inference_number(b.bias), inference_number(b.standard_error), inference_number(b.ci_lower), inference_number(b.ci_upper)).unwrap();
+      }
+      text.push_str("Resamples complete groups including zero-total and singleton groups; each copy has a distinct mean-zero Gaussian log effect. Joint regression/log-variance refits; lnsigma2 = 0 means variance = 1, not no heterogeneity. Failed refits abort without redraw. Not mean-one gamma, FE, survey, residual or wild bootstrap. Data, reports and the retained fit are unchanged.\n");
+      text
+    }
     ExecutionResult::GammaPoissonBootstrap(result) => {
       let mut text = format!(
         "Whole-group pairs-bootstrap shared-gamma Poisson RE: {}\nN = {}; groups = {}; zero-total groups = {}; singleton groups = {}; replications = {}; seed = {}; RNG = {}\n95% percentile intervals (R type7); no analytic t/normal p-values\n",

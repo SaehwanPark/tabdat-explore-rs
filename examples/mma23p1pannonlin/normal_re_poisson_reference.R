@@ -1,6 +1,6 @@
 # Development-only independent base-R adaptive-integration normal-RE reference.
 options(digits=17)
-a<-commandArgs(trailingOnly=TRUE);stopifnot(length(a)%in%c(2L,3L),!file.exists(a[2]));if(length(a)==3L)stopifnot(a[3]=='historical')
+a<-commandArgs(trailingOnly=TRUE);stopifnot(length(a)%in%c(2L,3L),!file.exists(a[2]));if(length(a)==3L)stopifnot(a[3]%in%c('historical','bootstrap-point'))
 src<-matrix(scan(a[1],what=character(),quiet=TRUE),ncol=25,byrow=TRUE)
 stopifnot(all(which(src=='.',arr.ind=TRUE)[,2]==2L))
 v<-suppressWarnings(matrix(as.numeric(src),ncol=25));stopifnot(!anyNA(v[,-2L]),all(is.finite(v[,-2L])))
@@ -10,10 +10,10 @@ stopifnot(all(abs(X)<=20),all(Y>=0),all(Y<=1000),all(Y==floor(Y)))
 S<-rowSums(Y);YX<-rowSums(Y*X);F<-rowSums(lgamma(Y+1));x<-as.vector(t(X));y<-as.vector(t(Y))
 start<-c(unname(coef(glm(y~x,family=poisson()))),0)
 # Direct improper integration after posterior-mode centering, not Gauss-Hermite.
-evaluate<-function(p,tol=2e-12){
+evaluate<-function(p,tol=2e-12,point_only=FALSE){
   if(any(!is.finite(p))||max(abs(p[1:2]))>20||abs(p[3])>=8||max(abs(p[1]+p[2]*X))>40)stop('parameter outside independent reference bounds')
   v<-exp(p[3]);means<-exp(p[1]+p[2]*X);M<-rowSums(means);H<-rowSums(means*X);J<-rowSums(means*X*X)
-  rows<-matrix(0,g,10)
+  rows<-matrix(0,g,if(point_only)4L else 10L)
   for(i in seq_len(g)){
     logkernel<-function(u) S[i]*u-M[i]*exp(u)-u*u/(2*v)
     mode<-uniroot(function(u)S[i]-M[i]*exp(u)-u/v,c(-100,100),tol=1e-13)$root
@@ -26,6 +26,8 @@ evaluate<-function(p,tol=2e-12){
       integrate(fn,-Inf,Inf,rel.tol=tol,abs.tol=1e-13,subdivisions=300,stop.on.error=TRUE)$value
     }
     den<-integrate_moment(1);ex<-integrate_moment(2)/den;u2<-integrate_moment(3)/den
+    rows[i,1:4]<-c(S[i]*p[1]+YX[i]*p[2]-F[i]+base+log(den*scale)-.5*log(2*pi*v),S[i]-M[i]*ex,YX[i]-H[i]*ex,(u2/v-1)/2)
+    if(point_only)next
     centered<-function(k){
       fn<-function(z){
         u<-mode+scale*z;logw<-logkernel(u)-base;out<-numeric(length(u));ok<-is.finite(logw)&logw> -700&u<300
@@ -35,14 +37,14 @@ evaluate<-function(p,tol=2e-12){
       integrate(fn,-Inf,Inf,rel.tol=tol,abs.tol=1e-13,subdivisions=300,stop.on.error=TRUE)$value/den
     }
     exvar<-centered(1);u2var<-centered(2);cross<-centered(3)
-    rows[i,]<-c(S[i]*p[1]+YX[i]*p[2]-F[i]+base+log(den*scale)-.5*log(2*pi*v),S[i]-M[i]*ex,YX[i]-H[i]*ex,(u2/v-1)/2,
-      M[i]*ex-M[i]^2*exvar,H[i]*ex-M[i]*H[i]*exvar,M[i]*cross/(2*v),
+    rows[i,5:10]<-c(M[i]*ex-M[i]^2*exvar,H[i]*ex-M[i]*H[i]*exvar,M[i]*cross/(2*v),
       J[i]*ex-H[i]^2*exvar,H[i]*cross/(2*v),u2/(2*v)-u2var/(4*v^2))
   }
+  if(point_only)return(list(ll=sum(rows[,1]),score=colSums(rows[,2:4,drop=FALSE]),information=NULL,rows=rows))
   info<-colSums(rows[,5:10,drop=FALSE]);info<-matrix(info[c(1,2,3,2,4,5,3,5,6)],3,3)
   list(ll=sum(rows[,1]),score=colSums(rows[,2:4,drop=FALSE]),information=info,rows=rows)
 }
-if(length(a)==3L){
+if(length(a)==3L&&a[3]=='historical'){
   # Printed values are rounded; this is a diagnostic, not an exact Stata replay.
   historical<-evaluate(c(1.156293,0.815977,-1.310299))
   write.csv(data.frame(field=c('log_likelihood','score_intercept','score_slope','score_lnvariance'),
@@ -51,7 +53,9 @@ if(length(a)==3L){
 }
 # Cache function/gradient at the same BFGS parameter vector.
 last<-NULL;last_eval<-NULL
-cached<-function(p){if(is.null(last)||!identical(last,p)){last<<-p;last_eval<<-tryCatch(evaluate(p),error=function(e)NULL)};last_eval}
+# BFGS needs only likelihood/score; bootstrap-point avoids unused covariance
+# integrals here. Every Newton/final evaluation still computes full information.
+cached<-function(p){if(is.null(last)||!identical(last,p)){last<<-p;last_eval<<-tryCatch(evaluate(p,point_only=length(a)==3L&&a[3]=='bootstrap-point'),error=function(e)NULL)};last_eval}
 objective<-function(p){z<-cached(p);if(is.null(z))1e100 else -z$ll}
 gradient<-function(p){z<-cached(p);if(is.null(z))rep(0,3) else -z$score}
 o<-optim(start,objective,gradient,method='BFGS',control=list(reltol=1e-13,maxit=500))
@@ -62,7 +66,19 @@ numerical_info<-function(p,eps){
   -(h+t(h))/2
 }
 for(i in 1:5){e<-evaluate(p);stopifnot(min(eigen(e$information,symmetric=TRUE)$values)>0);step<-solve(e$information,e$score);p<-p+step;if(max(abs(step)/(1+abs(p)))<1e-12)break}
-e<-evaluate(p);h<-numerical_info(p,1e-4);h2<-numerical_info(p,5e-5);h3<-numerical_info(p,2.5e-5)
+e<-evaluate(p)
+stopifnot(max(abs(e$score))<1e-8,min(eigen(e$information,symmetric=TRUE)$values)>0)
+if(length(a)==3L&&a[3]=='bootstrap-point'){
+  # Bootstrap uncertainty uses empirical joint refits, not per-copy Wald covariance.
+  fields<-c(estimate_intercept=p[1],estimate_slope=p[2],estimate_lnvariance=p[3],
+    log_likelihood=e$ll,poisson_log_likelihood=sum(dpois(y,exp(start[1]+start[2]*x),log=TRUE)),
+    score_intercept=e$score[1],score_slope=e$score[2],score_lnvariance=e$score[3])
+  names(fields)<-sub('\\.(intercept|x)$','',names(fields))
+  dir.create(a[2]);writeLines(c('field,value',sprintf('%s,%.17g',names(fields),unname(fields))),file.path(a[2],'point.csv'))
+  cat(R.version.string,';',g,'firms; independent bootstrap point; max raw score',max(abs(e$score)),'\n')
+  quit(save='no')
+}
+h<-numerical_info(p,1e-4);h2<-numerical_info(p,5e-5);h3<-numerical_info(p,2.5e-5)
 h_richardson<-(4*h2-h)/3;h_check<-(4*h3-h2)/3
 stopifnot(max(abs(e$score))<1e-8,min(eigen(e$information,symmetric=TRUE)$values)>0)
 vcov<-solve(e$information);stopifnot(max(abs(solve(h_richardson)-vcov))<1e-10,max(abs(solve(h_check)-vcov))<1e-10);se<-sqrt(diag(vcov));sigma<-exp(p[3]/2);mu<-exp(p[1]+p[2]*x+exp(p[3])/2)

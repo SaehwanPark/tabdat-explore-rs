@@ -67,8 +67,9 @@ population residuals need not sum to zero. Missing inputs give NULL. Overflow
 or unsupported prediction/store options fail without changing model/data.
 A failed **new fit** clears stale estimation, preserving data, labels and stored
 reports. Normal named snapshots, posterior predictions, general test/lincom,
-robust covariance and automatic bootstrap are not supported. Normal bootstrap
-and remaining named comparisons are required separate work.
+robust covariance and automatic bootstrap inside this fit command are not
+supported. The separate read-only [normal bootstrap](native_normal_re_bootstrap.md)
+now provides bounded pairs uncertainty; remaining named comparisons are required.
 
 ## Supported limits and failure recovery
 
@@ -138,5 +139,11 @@ new-workflow/discovery Clippy, fmt and diff checks pass. These later focused
 runs are not a second workspace pass. No actionable review findings remain.
 This is author review, not delegated/independent code review; numerical oracles
 are independent. CI is disabled; no doctest/platform/release or whole-book
-completion claim. Normal bootstrap and unresolved inventory entries remain
-required.
+completion claim. The [normal-bootstrap extension](native_normal_re_bootstrap.md)
+now delivers a separate validated read-only command, actual source/control500
+R comparisons and raw-equation/forgery audit with fixed copied176/208 rules.
+Ordinary normal model/inference/sample/prediction/rule/bound contracts remain;
+numerical comparison now preserves tiny likelihood gains with stable posterior
+ratios and rejects rounded no-op trials, without relaxing convergence or
+accepting epsilon-sized declines. Historical discrepancies, broader resampling
+and unresolved inventory entries remain required.

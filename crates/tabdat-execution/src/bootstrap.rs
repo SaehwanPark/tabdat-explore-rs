@@ -1,6 +1,39 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_normal_poisson_bootstrap(
+    &self,
+    command: &PoissonBootstrapCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let p = command.predictors.len();
+    if !(1..=14).contains(&p) {
+      return Err(RuntimeError::BootstrapFailed(
+        "normal Poisson RE requires 1 to 14 slopes".into(),
+      ));
+    }
+    self
+      .validate_xtpoisson_group_structure(&command.cluster_variable, p + 2, 176)
+      .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    let (problem, _) = self
+      .count_problem(
+        crate::count::CountFamily::NormalPoisson,
+        &command.outcome,
+        &command.predictors,
+        true,
+        Some(&command.cluster_variable),
+        None,
+      )
+      .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    let result = tabdat_stats::bootstrap_normal_poisson_clustered(
+      &problem.with_intercept_name("_cons"),
+      &command.cluster_variable,
+      command.replications,
+      command.seed,
+    )
+    .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
+    Ok(ExecutionResult::NormalPoissonBootstrap(Box::new(result)))
+  }
+
   pub(crate) fn execute_gamma_poisson_bootstrap(
     &self,
     command: &PoissonBootstrapCommand,

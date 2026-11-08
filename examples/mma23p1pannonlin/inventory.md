@@ -172,6 +172,17 @@ are not automatically named immutable model comparisons.
   reconciliation remain required. Normal-RE bootstrap is not executed in this
   program; its existing roadmap requirement is not erased by this inventory.
 
+**Native extension (not a source block):** the separate
+[normal-RE whole-firm bootstrap](native_normal_re_bootstrap.md) now runs through
+parser/terminal/script/CLI-v1/export with read-only retained state. Source1730/346
+and control200/40 match all500 direct-R joint refits/31 bootstrap fields/full
+covariance/type7 intervals and every regenerated draw, with every copied-fit
+raw score independently integrated. Original42-field inference and predictions
+remain unchanged; multivariate/unbalanced/singleton/distinct-effect controls and
+20 forgeries pass. Cross-crate regressions and final author review are complete.
+It does
+not resolve missing historical normal SEs or add a sixth publisher bootstrap.
+
 **Completed follow-up:** the original linear FE normalized-intercept covariance/
 SE/t/CI audit (P-LIN-FE) now passes independent full-dummy R and raw-design checks;
 P-REPORT-LIN remains partial rather than being closed by those scalar/matrix

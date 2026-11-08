@@ -157,6 +157,8 @@ pub enum Command {
   ConditionalPoissonBootstrap { command: PoissonBootstrapCommand },
   /// Read-only whole-group pairs-bootstrap shared-gamma Poisson RE report.
   GammaPoissonBootstrap { command: PoissonBootstrapCommand },
+  /// Read-only whole-group pairs-bootstrap normal-log-effect Poisson RE report.
+  NormalPoissonBootstrap { command: PoissonBootstrapCommand },
   /// Read-only joint IID pairs-bootstrap quantiles, sharing draws across quantiles.
   QuantileBootstrap { command: QuantileBootstrapCommand },
   /// Fit a fixed- or random-effects panel model (execution is deferred).

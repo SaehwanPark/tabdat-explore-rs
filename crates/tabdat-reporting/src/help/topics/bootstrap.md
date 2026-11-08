@@ -186,6 +186,50 @@ joint refits/full covariance and raw-score/RNG/empirical identities validate
 all three parameters, including nuisance ln(alpha). Historical RNG/SE/interval
 parity is not claimed.
 
+## Whole-group normal-log-effect Poisson RE
+
+`bootstrap y xvars, model(normal_poisson_re) cluster(unit) seed(integer) [reps(200)]`
+
+Read-only joint coefficient/log-variance pairs bootstrap of the mean-zero Gaussian
+log-effect model, not mean-one gamma RE or conditional FE. cluster(unit) defines
+both the shared effect and resampling unit. Every repeated selection has a fresh
+independent effect; zero-total and singleton groups remain. Joint-finite y/X
+cases define the frame; every raw key must still be nonmissing/finite, even on
+omitted rows. Exact numeric, boolean and text group identities are preserved.
+No offsets/weights/noconstant/quantile/contrast/robust options. Counts and group
+totals must be exact integers0..100000. Fit `xtpoisson ..., re distribution(normal)
+id(unit)` separately when owned population predictions are wanted.
+
+B=2..500 (default200),1..14 slopes, joint K=slopes+2, G>K and G<=512. Original
+normal fit uses80/96 GH nodes and all its existing bounds: candidateN<=40000,
+176*candidateN*K²<=20000000, full design rank, log variance strictly(-8,8),
+linear predictors[-40,40], representable population means and strict joint
+score/undamped-step/positive observed-information/paired-quadrature gates.
+Every copy uses the fixed176/208 pair and the original joint raw coefficient/
+log-variance point converted to its own RMS design. This is one deterministic
+initializer, not a failed-fit retry, prior retained model or precision option.
+Conservative guards BEFORE fitting require G*largest_group_size<=40000,
+384*G*largest_group_size*K²<=20000000 and the same work times B<=3000000000.
+These are workload guards, not exact CPU operation counts. No tolerance is
+relaxed for resampling; any failed original/copy aborts without partial report,
+redraw, failed-copy dropping, covariance repair or pooled fallback.
+
+CLI-v1 `NormalPoissonBootstrapResult` has ordered zero-based draw indices,
+first-seen complete-case labels/sizes, every joint replicate coefficient/N,
+full B-1 covariance and original point/mean/bias/SE/marginal type7 percentile95
+intervals. Profiles and `original_joint_estimate_raw_to_copy_rms` initializer
+are explicit. lnsigma2=0 means variance1, not no heterogeneity; its percentile
+interval is not an invented natural-sigma interval. There are no analytic
+bootstrap p-values, BCa/studentized intervals, survey/few-group/causal guarantees.
+Finite B has Monte Carlo error. Data/labels/named reports/retained fit remain
+unchanged on success AND failure; bootstrap does not become the prediction model.
+
+The bounded patents source/control workflow, independent R evidence and current
+raw-equation audit status are documented at
+examples/mma23p1pannonlin/native_normal_re_bootstrap.md.
+This is a native resampling extension of the normal model, not one of the five
+bootstrap blocks in the author program or historical/table/chapter parity.
+
 ## Joint conditional quantiles
 
 `bootstrap y xvars, quantiles(.25 .5 .75) [contrast(x)] seed(integer) [reps(200) noconstant]`

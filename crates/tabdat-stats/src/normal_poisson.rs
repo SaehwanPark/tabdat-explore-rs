@@ -1,5 +1,7 @@
 //! Bounded integrated normal random-intercept Poisson, not mean-one gamma RE.
+mod increment;
 mod nodes;
+mod refined_nodes;
 use crate::{
   EstimationProblem, EstimationSample, LogitEstimate, StatsError, fit_poisson,
   matrix::add_compensated,
@@ -58,6 +60,21 @@ pub struct NormalPoissonResult {
   pub sample: EstimationSample,
 }
 use nodes::{GH80, GH96};
+
+#[derive(Clone, Copy)]
+struct Quadrature {
+  low: &'static [(f64, f64)],
+  high: &'static [(f64, f64)],
+}
+const ORDINARY: Quadrature = Quadrature {
+  low: &GH80,
+  high: &GH96,
+};
+const REFINED: Quadrature = Quadrature {
+  low: &refined_nodes::GH176,
+  high: &refined_nodes::GH208,
+};
+pub(crate) const COPIED_QUADRATURE_NODES: [usize; 2] = [REFINED.low.len(), REFINED.high.len()];
 
 #[derive(Debug, Clone)]
 struct Posterior {
@@ -177,7 +194,16 @@ fn integrate_rule(
   }
   Ok(result)
 }
+#[cfg(test)]
 fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, StatsError> {
+  posterior_with_rule(total, mean_sum, log_variance, ORDINARY)
+}
+fn posterior_with_rule(
+  total: f64,
+  mean_sum: f64,
+  log_variance: f64,
+  quadrature: Quadrature,
+) -> Result<Posterior, StatsError> {
   if !total.is_finite()
     || total < 0.
     || total > 100000.
@@ -191,8 +217,8 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
   }
   let variance = log_variance.exp();
   let (mode, curvature) = mode(total, mean_sum, variance)?;
-  let high = integrate_rule(total, mean_sum, variance, mode, curvature, &GH96)?;
-  let low = integrate_rule(total, mean_sum, variance, mode, curvature, &GH80)?;
+  let high = integrate_rule(total, mean_sum, variance, mode, curvature, quadrature.high)?;
+  let low = integrate_rule(total, mean_sum, variance, mode, curvature, quadrature.low)?;
   // Check intensity and prior-score units, not tiny unscaled exp(u) moments:
   // regression/information multiply these by M and inverse variance.
   let units = [
@@ -212,7 +238,11 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
     .map(|((a, b), scale)| ((a - b) * scale).abs() / (1. + (a * scale).abs()))
     .fold(0., f64::max);
   if discrepancy > 1e-9 {
-    return Err(invalid("80/96-node quadrature disagreement exceeds1e-9"));
+    return Err(invalid(&format!(
+      "{}/{}-node quadrature disagreement exceeds1e-9",
+      quadrature.low.len(),
+      quadrature.high.len()
+    )));
   }
   Ok(Posterior {
     log_integral: high[0],
@@ -240,11 +270,21 @@ struct Evaluation {
   max_quadrature_difference: f64,
 }
 
+#[cfg(test)]
 fn evaluate(
   x: &[Vec<f64>],
   y: &[f64],
   groups: &[Vec<usize>],
   parameters: &[f64],
+) -> Result<Evaluation, StatsError> {
+  evaluate_with_rule(x, y, groups, parameters, ORDINARY)
+}
+fn evaluate_with_rule(
+  x: &[Vec<f64>],
+  y: &[f64],
+  groups: &[Vec<usize>],
+  parameters: &[f64],
+  quadrature: Quadrature,
 ) -> Result<Evaluation, StatsError> {
   let k = parameters
     .len()
@@ -305,7 +345,7 @@ fn evaluate(
   for group in groups {
     let total = sum(group.iter().map(|&i| y[i]));
     let m = sum(group.iter().map(|&i| mu[i]));
-    let post = posterior(total, m, t)?;
+    let post = posterior_with_rule(total, m, t, quadrature)?;
     max_difference = max_difference.max(post.max_relative_difference);
     let mut center: Vec<_> = (0..k)
       .map(|j| sum(group.iter().map(|&i| mu[i] / m * x[i][j])))
@@ -432,18 +472,29 @@ fn scaled_inverse(information: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
       .collect()
   })
 }
+#[cfg(test)]
 fn optimize(
+  x: &[Vec<f64>],
+  y: &[f64],
+  groups: &[Vec<usize>],
+  parameters: Vec<f64>,
+  max_iterations: usize,
+) -> Result<CoreFit, StatsError> {
+  optimize_with_rule(x, y, groups, parameters, max_iterations, ORDINARY)
+}
+fn optimize_with_rule(
   x: &[Vec<f64>],
   y: &[f64],
   groups: &[Vec<usize>],
   mut parameters: Vec<f64>,
   max_iterations: usize,
+  quadrature: Quadrature,
 ) -> Result<CoreFit, StatsError> {
   if max_iterations == 0 || max_iterations > 100 {
     return Err(invalid("iteration limit must be1..100"));
   }
   for iteration in 1..=max_iterations {
-    let current = evaluate(x, y, groups, &parameters)?;
+    let current = evaluate_with_rule(x, y, groups, &parameters, quadrature)?;
     let inverse = scaled_inverse(&current.information)
       .ok_or_else(|| invalid("joint undamped information is not positive definite"))?;
     let step: Vec<_> = inverse
@@ -478,11 +529,26 @@ fn optimize(
         .zip(&step)
         .map(|(b, d)| b + fraction * d)
         .collect();
-      if let Ok(next) = evaluate(x, y, groups, &trial)
-        && next.log_likelihood >= current.log_likelihood
+      if trial != parameters
+        && let Ok(next) = evaluate_with_rule(x, y, groups, &trial, quadrature)
       {
-        accepted = Some(trial);
-        break;
+        let nondecreasing = match increment::stable_likelihood_increment(
+          x,
+          y,
+          groups,
+          &parameters,
+          &trial,
+          &current.score,
+          quadrature,
+        ) {
+          Ok(Some(change)) => change >= 0.,
+          Ok(None) => next.log_likelihood >= current.log_likelihood,
+          Err(_) => false,
+        };
+        if nondecreasing {
+          accepted = Some(trial);
+          break;
+        }
       }
       fraction *= 0.5;
     }
@@ -526,6 +592,31 @@ pub fn fit_normal_poisson(
   problem: &EstimationProblem,
   entity_variable: &str,
   options: &NormalPoissonOptions,
+) -> Result<NormalPoissonResult, StatsError> {
+  fit_with_rule(problem, entity_variable, options, ORDINARY, None)
+}
+// One deterministic original-normal initializer, not an error-triggered retry.
+// Each copied frame rescales the raw coefficients into its own RMS units.
+pub(crate) fn fit_normal_poisson_copied(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  original_raw_parameters: &[f64],
+) -> Result<NormalPoissonResult, StatsError> {
+  fit_with_rule(
+    problem,
+    entity_variable,
+    &NormalPoissonOptions::default(),
+    REFINED,
+    Some(original_raw_parameters),
+  )
+}
+
+fn fit_with_rule(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  options: &NormalPoissonOptions,
+  quadrature: Quadrature,
+  initial_raw_parameters: Option<&[f64]>,
 ) -> Result<NormalPoissonResult, StatsError> {
   problem.validate()?;
   let n = problem.response.len();
@@ -575,14 +666,15 @@ pub fn fit_normal_poisson(
   if sample.total_observations > 40000
     || sample
       .total_observations
-      .checked_mul(176)
+      .checked_mul(quadrature.low.len() + quadrature.high.len())
       .and_then(|v| v.checked_mul(dimension))
       .and_then(|v| v.checked_mul(dimension))
       .is_none_or(|v| v > 20000000)
   {
-    return Err(invalid(
-      "candidate rows<=40000 and176*candidate rows*(slopes+2)^2<=20000000 required",
-    ));
+    return Err(invalid(&format!(
+      "candidate rows<=40000 and{}*candidate rows*(slopes+2)^2<=20000000 required",
+      quadrature.low.len() + quadrature.high.len(),
+    )));
   }
   if problem
     .response
@@ -631,19 +723,34 @@ pub fn fit_normal_poisson(
   let mut pooled_problem = problem.clone();
   pooled_problem.sample.as_mut().unwrap().cluster_groups = None;
   let pooled = fit_poisson(&pooled_problem, false)?;
-  let mut start: Vec<_> = pooled
-    .coefficients
-    .iter()
-    .zip(&scales)
-    .map(|(b, s)| b.value * s)
-    .collect();
-  start.push(0.);
-  let core = optimize(
+  let start: Vec<_> = if let Some(raw) = initial_raw_parameters {
+    if raw.len() != dimension || raw.iter().any(|v| !v.is_finite()) {
+      return Err(invalid(
+        "copied initializer requires finite raw joint parameters",
+      ));
+    }
+    raw[..k]
+      .iter()
+      .zip(&scales)
+      .map(|(b, s)| b * s)
+      .chain(std::iter::once(raw[k]))
+      .collect()
+  } else {
+    pooled
+      .coefficients
+      .iter()
+      .zip(&scales)
+      .map(|(b, s)| b.value * s)
+      .chain(std::iter::once(0.))
+      .collect()
+  };
+  let core = optimize_with_rule(
     &x,
     &problem.response,
     &groups,
     start,
     options.max_iterations,
+    quadrature,
   )?;
   scales.push(1.);
   let values: Vec<_> = core
@@ -797,106 +904,124 @@ mod tests {
     use std::collections::BTreeMap;
     let p = control_problem();
     let before = p.clone();
-    let r = fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap();
-    assert_eq!(p, before);
-    assert_eq!(r.sample, p.sample.clone().unwrap());
-    assert_eq!(
-      (r.observation_count, r.group_count, r.zero_total_group_count),
-      (200, 40, 8)
-    );
-    assert_eq!(r.covariance_parameter_names, ["_cons", "logr", "lnsigma2"]);
-    let reference: BTreeMap<_, _> =
-      include_str!("../../../tests/fixtures/mma23_normal_re/reference.csv")
-        .lines()
-        .skip(1)
-        .map(|line| {
-          let (k, v) = line.split_once(',').unwrap();
-          (k, v.parse::<f64>().unwrap())
-        })
-        .collect();
-    assert_eq!(reference.len(), 42);
-    let mut actual = BTreeMap::from([
-      ("candidate_rows".into(), 200.),
-      ("firms".into(), 40.),
-      ("zero_total_firms".into(), 8.),
-      ("sigma".into(), r.sigma),
-      ("log_likelihood".into(), r.log_likelihood),
-      ("poisson_log_likelihood".into(), r.poisson_log_likelihood),
-      ("lr_variance_zero".into(), r.variance_likelihood_ratio),
+    for (quadrature, r) in [
       (
-        "p_lr_variance_zero".into(),
-        r.variance_likelihood_ratio_p_value,
+        ORDINARY,
+        fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap(),
       ),
-      ("se_sigma".into(), r.sigma_standard_error),
-      ("lower_sigma".into(), r.sigma_confidence_lower),
-      ("upper_sigma".into(), r.sigma_confidence_upper),
-    ]);
-    let (x, y, groups) = control();
-    let values = vec![
-      r.coefficients[0].value,
-      r.coefficients[1].value,
-      r.ln_variance.value,
-    ];
-    let e = evaluate(&x, &y, &groups, &values).unwrap();
-    for (i, (name, c)) in ["intercept", "slope", "lnvariance"]
-      .iter()
-      .zip(r.coefficients.iter().chain(std::iter::once(&r.ln_variance)))
-      .enumerate()
-    {
-      for (prefix, value) in [
-        ("estimate", c.value),
-        ("se", c.standard_error),
-        ("z", c.statistic),
-        ("p", c.p_value),
-        ("lower", c.confidence_lower),
-        ("upper", c.confidence_upper),
-        ("score", e.score[i] * 40.),
-      ] {
-        actual.insert(format!("{prefix}_{name}"), value);
-      }
-    }
-    for (i, a) in ['a', 'b', 't'].iter().enumerate() {
-      for (j, b) in ['a', 'b', 't'].iter().enumerate() {
-        let (a, b) = if i <= j { (a, b) } else { (b, a) };
-        let value = reference[format!("covariance_{a}{b}").as_str()];
-        assert!((r.covariance[i][j] - value).abs() <= 1e-9 + 1e-10 * value.abs());
-        if i <= j {
-          actual.insert(format!("covariance_{a}{b}"), r.covariance[i][j]);
+      (
+        REFINED,
+        fit_with_rule(&p, "id", &NormalPoissonOptions::default(), REFINED, None).unwrap(),
+      ),
+    ] {
+      assert_eq!(p, before);
+      assert_eq!(r.sample, p.sample.clone().unwrap());
+      assert_eq!(
+        (r.observation_count, r.group_count, r.zero_total_group_count),
+        (200, 40, 8)
+      );
+      assert_eq!(r.covariance_parameter_names, ["_cons", "logr", "lnsigma2"]);
+      let reference: BTreeMap<_, _> =
+        include_str!("../../../tests/fixtures/mma23_normal_re/reference.csv")
+          .lines()
+          .skip(1)
+          .map(|line| {
+            let (k, v) = line.split_once(',').unwrap();
+            (k, v.parse::<f64>().unwrap())
+          })
+          .collect();
+      assert_eq!(reference.len(), 42);
+      let mut actual = BTreeMap::from([
+        ("candidate_rows".into(), 200.),
+        ("firms".into(), 40.),
+        ("zero_total_firms".into(), 8.),
+        ("sigma".into(), r.sigma),
+        ("log_likelihood".into(), r.log_likelihood),
+        ("poisson_log_likelihood".into(), r.poisson_log_likelihood),
+        ("lr_variance_zero".into(), r.variance_likelihood_ratio),
+        (
+          "p_lr_variance_zero".into(),
+          r.variance_likelihood_ratio_p_value,
+        ),
+        ("se_sigma".into(), r.sigma_standard_error),
+        ("lower_sigma".into(), r.sigma_confidence_lower),
+        ("upper_sigma".into(), r.sigma_confidence_upper),
+      ]);
+      let (x, y, groups) = control();
+      let values = vec![
+        r.coefficients[0].value,
+        r.coefficients[1].value,
+        r.ln_variance.value,
+      ];
+      let e = evaluate_with_rule(&x, &y, &groups, &values, quadrature).unwrap();
+      for (i, (name, c)) in ["intercept", "slope", "lnvariance"]
+        .iter()
+        .zip(r.coefficients.iter().chain(std::iter::once(&r.ln_variance)))
+        .enumerate()
+      {
+        for (prefix, value) in [
+          ("estimate", c.value),
+          ("se", c.standard_error),
+          ("z", c.statistic),
+          ("p", c.p_value),
+          ("lower", c.confidence_lower),
+          ("upper", c.confidence_upper),
+          ("score", e.score[i] * 40.),
+        ] {
+          actual.insert(format!("{prefix}_{name}"), value);
         }
       }
-    }
-    actual.insert("mean_mu".into(), sum(r.fitted_means.iter().copied()) / 200.);
-    actual.insert(
-      "min_mu".into(),
-      r.fitted_means.iter().copied().fold(f64::INFINITY, f64::min),
-    );
-    actual.insert(
-      "max_mu".into(),
-      r.fitted_means
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max),
-    );
-    actual.insert(
-      "mean_residual".into(),
-      sum(y.iter().zip(&r.fitted_means).map(|(a, b)| a - b)) / 200.,
-    );
-    assert_eq!(actual.len(), 42);
-    for (name, value) in reference {
-      let a = actual[name];
-      if name.starts_with("p_") && value > 0. {
-        assert!((a / value - 1.).abs() <= 1e-9, "{name}: {a} vs {value}");
-      } else {
-        assert!(
-          (a - value).abs() <= 1e-9 + 1e-10 * value.abs(),
-          "{name}: {a} vs {value}"
-        );
+      for (i, a) in ['a', 'b', 't'].iter().enumerate() {
+        for (j, b) in ['a', 'b', 't'].iter().enumerate() {
+          let (a, b) = if i <= j { (a, b) } else { (b, a) };
+          let value = reference[format!("covariance_{a}{b}").as_str()];
+          assert!((r.covariance[i][j] - value).abs() <= 1e-9 + 1e-10 * value.abs());
+          if i <= j {
+            actual.insert(format!("covariance_{a}{b}"), r.covariance[i][j]);
+          }
+        }
+      }
+      actual.insert("mean_mu".into(), sum(r.fitted_means.iter().copied()) / 200.);
+      actual.insert(
+        "min_mu".into(),
+        r.fitted_means.iter().copied().fold(f64::INFINITY, f64::min),
+      );
+      actual.insert(
+        "max_mu".into(),
+        r.fitted_means
+          .iter()
+          .copied()
+          .fold(f64::NEG_INFINITY, f64::max),
+      );
+      actual.insert(
+        "mean_residual".into(),
+        sum(y.iter().zip(&r.fitted_means).map(|(a, b)| a - b)) / 200.,
+      );
+      assert_eq!(actual.len(), 42);
+      for (name, value) in reference {
+        let a = actual[name];
+        if name.starts_with("p_") && value > 0. {
+          assert!((a / value - 1.).abs() <= 1e-9, "{name}: {a} vs {value}");
+        } else {
+          assert!(
+            (a - value).abs() <= 1e-9 + 1e-10 * value.abs(),
+            "{name}: {a} vs {value}"
+          );
+        }
+      }
+      assert_eq!(
+        serde_json::from_str::<NormalPoissonResult>(&serde_json::to_string(&r).unwrap()).unwrap(),
+        r
+      );
+      for (actual, line) in r.fitted_means.iter().zip(
+        include_str!("../../../tests/fixtures/mma23_normal_re/predictions.csv")
+          .lines()
+          .skip(1),
+      ) {
+        let expected: f64 = line.split(',').nth(4).unwrap().parse().unwrap();
+        assert!((actual - expected).abs() <= 1e-9 + 1e-10 * expected.abs());
       }
     }
-    assert_eq!(
-      serde_json::from_str::<NormalPoissonResult>(&serde_json::to_string(&r).unwrap()).unwrap(),
-      r
-    );
   }
   #[test]
   fn multivariate_unbalanced_singletons_match_all57_direct_r_fields_and_predictions() {
@@ -1144,6 +1269,140 @@ mod tests {
     assert!(fit_normal_poisson(&p, "", &NormalPoissonOptions::default()).is_err());
   }
   #[test]
+  fn copied_raw_initializer_preserves_rms_units_and_rejects_invalid_frames() {
+    let original = control_problem();
+    let base = fit_normal_poisson(&original, "id", &NormalPoissonOptions::default()).unwrap();
+    let raw = [
+      base.coefficients[0].value,
+      base.coefficients[1].value,
+      base.ln_variance.value,
+    ];
+    for unit in [1., 1e3, 1e-3] {
+      let mut p = original.clone();
+      for row in &mut p.design_matrix {
+        row[0] *= unit;
+      }
+      let warm = [raw[0], raw[1] / unit, raw[2]];
+      let fit = fit_with_rule(
+        &p,
+        "id",
+        &NormalPoissonOptions::default(),
+        REFINED,
+        Some(&warm),
+      )
+      .unwrap();
+      assert_eq!(p.sample, original.sample);
+      assert!(fit.iterations <= 2);
+      assert!((fit.coefficients[0].value - raw[0]).abs() < 1e-9);
+      assert!((fit.coefficients[1].value * unit - raw[1]).abs() < 1e-9);
+      assert!((fit.ln_variance.value - raw[2]).abs() < 1e-9);
+      for i in 0..3 {
+        for j in 0..3 {
+          let a = if i == 1 { unit } else { 1. };
+          let b = if j == 1 { unit } else { 1. };
+          assert!((fit.covariance[i][j] * a * b - base.covariance[i][j]).abs() < 1e-9);
+        }
+      }
+    }
+    for invalid in [
+      vec![],
+      vec![0., 0.],
+      vec![0., f64::NAN, 0.],
+      vec![0., 0., 9.],
+    ] {
+      assert!(
+        fit_with_rule(
+          &original,
+          "id",
+          &NormalPoissonOptions::default(),
+          REFINED,
+          Some(&invalid)
+        )
+        .is_err()
+      );
+    }
+  }
+
+  #[test]
+  fn stable_full_increment_matches_resolved_levels_and_rejects_rounded_noops() {
+    let (x, y, groups) = control();
+    let parameters = vec![1.2479608264839344, 0.5673452307402028, 0.];
+    let current = evaluate(&x, &y, &groups, &parameters).unwrap();
+    for multiplier in [-1., 1.] {
+      let trial: Vec<_> = parameters
+        .iter()
+        .zip([1e-6, -2e-6, 1e-6])
+        .map(|(b, d)| b + multiplier * d)
+        .collect();
+      let next = evaluate(&x, &y, &groups, &trial).unwrap();
+      let delta = increment::stable_likelihood_increment(
+        &x,
+        &y,
+        &groups,
+        &parameters,
+        &trial,
+        &current.score,
+        ORDINARY,
+      )
+      .unwrap()
+      .unwrap();
+      assert!((delta - (next.log_likelihood - current.log_likelihood)).abs() < 2e-10);
+      assert_eq!(
+        delta.is_sign_positive(),
+        (next.log_likelihood - current.log_likelihood).is_sign_positive()
+      );
+    }
+    assert!(
+      increment::stable_likelihood_increment(
+        &x,
+        &y,
+        &groups,
+        &parameters,
+        &parameters,
+        &current.score,
+        ORDINARY,
+      )
+      .unwrap_err()
+      .to_string()
+      .contains("no parameter progress")
+    );
+    for (dt, small) in [
+      (1e-4, true),
+      (f64::from_bits(1e-4_f64.to_bits() + 1), false),
+    ] {
+      let trial = vec![parameters[0], parameters[1], dt];
+      assert_eq!(
+        increment::stable_likelihood_increment(
+          &x,
+          &y,
+          &groups,
+          &parameters,
+          &trial,
+          &current.score,
+          ORDINARY
+        )
+        .unwrap()
+        .is_some(),
+        small
+      );
+    }
+    let large = vec![parameters[0] + 0.01, parameters[1], parameters[2]];
+    assert!(
+      increment::stable_likelihood_increment(
+        &x,
+        &y,
+        &groups,
+        &parameters,
+        &large,
+        &current.score,
+        ORDINARY
+      )
+      .unwrap()
+      .is_none()
+    );
+  }
+
+  #[test]
   fn optimizer_matches_independent_control_point_covariance_and_predictions() {
     let (x, y, groups) = control();
     let fit = optimize(
@@ -1228,7 +1487,12 @@ mod tests {
   }
   #[test]
   fn fixed_rules_have_positive_tail_weights_and_independent_gaussian_moments() {
-    for rule in [&GH80[..], &GH96[..]] {
+    for rule in [
+      &GH80[..],
+      &GH96[..],
+      &refined_nodes::GH176[..],
+      &refined_nodes::GH208[..],
+    ] {
       assert!(
         rule
           .iter()
@@ -1260,25 +1524,29 @@ mod tests {
     for line in cases {
       let v: Vec<f64> = line.split(',').map(|s| s.parse().unwrap()).collect();
       assert_eq!(v.len(), 11);
-      let p = posterior(v[0], v[1], v[2]).unwrap();
-      let actual = [
-        p.log_integral,
-        p.mean_exp_u,
-        p.mean_u2,
-        p.var_exp_u,
-        p.cov_exp_u_u2,
-        p.var_u2,
-        p.mean_u,
-        p.cov_exp_u_u,
-      ];
-      for (&a, &b) in actual.iter().zip(&v[3..]) {
-        assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs(), "{v:?}: {a} vs {b}");
+      for quadrature in [ORDINARY, REFINED] {
+        let p = posterior_with_rule(v[0], v[1], v[2], quadrature).unwrap();
+        let actual = [
+          p.log_integral,
+          p.mean_exp_u,
+          p.mean_u2,
+          p.var_exp_u,
+          p.cov_exp_u_u2,
+          p.var_u2,
+          p.mean_u,
+          p.cov_exp_u_u,
+        ];
+        for (&a, &b) in actual.iter().zip(&v[3..]) {
+          assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs(), "{v:?}: {a} vs {b}");
+        }
+        assert!(p.max_relative_difference <= 1e-9);
+        let variance = v[2].exp();
+        let score = v[0] - v[1] * p.mode.exp() - p.mode / variance;
+        assert!(
+          score.abs() <= 1e-10 * (1. + v[0] + v[1] * p.mode.exp() + (p.mode / variance).abs())
+        );
+        assert_eq!(p.curvature, v[1] * p.mode.exp() + 1. / variance);
       }
-      assert!(p.max_relative_difference <= 1e-9);
-      let variance = v[2].exp();
-      let score = v[0] - v[1] * p.mode.exp() - p.mode / variance;
-      assert!(score.abs() <= 1e-10 * (1. + v[0] + v[1] * p.mode.exp() + (p.mode / variance).abs()));
-      assert_eq!(p.curvature, v[1] * p.mode.exp() + 1. / variance);
     }
   }
   #[test]

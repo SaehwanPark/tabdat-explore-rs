@@ -2573,10 +2573,11 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     if model.len() != 1
       || !(model[0].eq_ignore_ascii_case("poisson")
         || model[0].eq_ignore_ascii_case("conditional_poisson")
-        || model[0].eq_ignore_ascii_case("gamma_poisson_re"))
+        || model[0].eq_ignore_ascii_case("gamma_poisson_re")
+        || model[0].eq_ignore_ascii_case("normal_poisson_re"))
     {
       return Err(ParseError::new(
-        "bootstrap model supports only poisson, conditional_poisson or gamma_poisson_re",
+        "bootstrap model supports only poisson, conditional_poisson, gamma_poisson_re or normal_poisson_re",
       ));
     }
     if options
@@ -2612,8 +2613,10 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
       Command::PoissonBootstrap { command }
     } else if model[0].eq_ignore_ascii_case("conditional_poisson") {
       Command::ConditionalPoissonBootstrap { command }
-    } else {
+    } else if model[0].eq_ignore_ascii_case("gamma_poisson_re") {
       Command::GammaPoissonBootstrap { command }
+    } else {
+      Command::NormalPoissonBootstrap { command }
     });
   }
   let command = tabdat_domain::BootstrapCommand {

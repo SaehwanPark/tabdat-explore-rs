@@ -114,6 +114,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::PoissonBootstrap { .. }
     | Command::ConditionalPoissonBootstrap { .. }
     | Command::GammaPoissonBootstrap { .. }
+    | Command::NormalPoissonBootstrap { .. }
     | Command::QuantileBootstrap { .. }
     | Command::Logit { .. }
     | Command::Probit { .. }
@@ -212,6 +213,18 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["covariance_convention"] = json!("common_iid_pairs_b_minus_1");
       data["simultaneous_coverage"] = json!(false);
       (data, "QuantileBootstrapResult")
+    }
+    ExecutionResult::NormalPoissonBootstrap(result) => {
+      let mut data = serde_json::to_value(result).expect("finite normal Poisson bootstrap result");
+      data["estimator"] = json!("cluster_pairs_bootstrap_normal_poisson_re");
+      data["random_effect_distribution"] = json!("mean_zero_normal_log_effect");
+      data["seed"] = json!(result.seed.to_string());
+      data["sample"] = json!({"total_observations":result.sample.total_observations,"dropped_observations":result.sample.dropped_observations});
+      data["cluster_count"] = json!(result.cluster_labels.len());
+      data["cluster_order"] = json!("first_seen_complete_case");
+      data["cluster_index_base"] = json!(0);
+      data["covariance_convention"] = json!("whole_cluster_pairs_b_minus_1");
+      (data, "NormalPoissonBootstrapResult")
     }
     ExecutionResult::GammaPoissonBootstrap(result) => {
       let mut data = serde_json::to_value(result).expect("finite shared-gamma bootstrap result");

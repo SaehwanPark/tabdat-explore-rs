@@ -642,7 +642,20 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    gamma/FE and SQL composition remain distinct. Help/discovery, failure-state
    and file/column ownership contracts are covered; this completes the bounded
    native normal-RE workflow, not historical/table/chapter parity.
-   Broader conditional-FE inference, normal-RE bootstrap,
+   A separate [native normal-RE bootstrap](../examples/mma23p1pannonlin/native_normal_re_bootstrap.md)
+   now delivers read-only terminal/script/CLI-v1 uncertainty: source1730/346/22
+   zero-total groups and control200/40 match all500 independent R joint refits,
+   31 empirical fields/full3x3 covariance/type7 intervals and every ordered draw.
+   Raw adaptive-Simpson scores check every copied fit; original42-field inference,
+   information/null equations and owned predictions remain unchanged. Two-slope/
+   unbalanced/singleton/distinct-versus-merged effects,20 forged-artifact cases
+   and state/file ownership contracts pass. Fixed copied176/208 rules and the
+   original raw joint initializer preserve strict numerical gates, with no
+   adaptive retry/redraw; conservative384-node work is bounded explicitly.
+   Cross-crate regressions are verified with separate run accounting and final
+   author review is complete. This native extension
+   is not requested by the publisher's five bootstrap blocks or historical parity.
+   Broader conditional-FE inference,
    general GEE, other firm bootstraps and historical Figure23.1 reconciliation
    remain separate required work. The [native FE bootstrap workflow](../examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md)
    now admits324 positive firms under its conditional-specific512-group cap while
