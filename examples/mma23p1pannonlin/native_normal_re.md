@@ -254,7 +254,62 @@ either rejection while checking unchanged state, then modified case1/1 and
 fresh affected978 pass. No statistical code/tolerance change. No new full
 workspace test, root CLI/source workflow or completed slice is claimed.
 
-Next actual-source CLI/text/JSON/export workflow, raw-identity/forgery audit,
-help/discovery reconciliation and final cross-cutting verification/review.
-Do not merge this unfinished application-integration WIP. Do not merge this kernel-only WIP.
+### Native script/source audit checkpoint (still WIP)
+
+[`native_normal_re.td`](native_normal_re.td) now loads the prepared canonical
+patents CSV, validates exact source keys/counts/finite variables and balanced
+five-year membership without dropping nullable nonmodel ARDSSIC, fits actual
+normal RE, predicts n/xb/residuals, summarizes and exports. Its scope explicitly
+states mean-zero log effects, lnsigma2=0 meaning variance1, boundary LR,
+population rather than posterior means and ordered/nontransactional script
+execution. Native gamma/FE and SQL compositions remain unchanged.
+
+Actual publisher1730-row/346-firm/22-zero-firm JSON and text runs succeed;
+exports are byte-identical. The existing fresh direct-R improper-integral
+reference matches all42 quantities/full3x3 covariance/all1730 source/design/
+mean/residual rows. Of42,39 are report-observable; the three signed scores
+are independently recomputed by the auditor, not newly exposed native fields.
+Point (intercept,slope,lnvariance)=1.414253125154783/.2929878940875187/
+.9897262362097311; LL=-5554.017060213401. Historical author estimates/SE absence
+remain unexplained, not parity. No posterior/bootstrap or general named
+snapshot capability is added.
+
+[`check_native_normal_re.py`](check_native_normal_re.py) reuses only canonical
+raw-source/count/metadata helpers from the gamma auditor, not gamma likelihood.
+It independently integrates with vector adaptive Simpson in a mode-centered
+window whose boundary log weights are checked below-90; this is a separate
+development equation defense, not the native GH rule or a certified error
+bound. Complete-data derivative expectations/centered covariances reconstruct
+raw likelihood, joint scores and observed-information inverse; a new raw
+Poisson Newton refit checks the same-source null, not R agreement alone.
+All six existing direct-R posterior stress controls (including100000 counts,
+zero totals and tiny mean) check six moments each. Fixed Simpson tolerance
+2e-13, oracle comparisons1e-9+1e-10*abs(reference), positive-p relative1e-9,
+score and inverse-identity gates remain unchanged.
+
+Initial Simpson raw kernel subtraction caused subdivision exhaustion from
+roundoff in tiny panels. Stable expm1/Taylor differences fix that without
+changing equations/tolerance. The stress control then exposed unscaled raw
+moments in the local error budget; mode-centered z/intensity/prior units fix
+that, again without tolerance or production changes. Fresh Python3/3 passes,
+including real control/permutation/wholly missing metadata and31 forgeries.
+Later explicit t/marginal-logmean bound assertions were added to the auditor;
+the two affected audit/forgery cases separately pass2/2 (posterior helper
+unchanged), not another fresh3 run.
+Coherent wrong native/R intercept covariance/inference and pooled-null/LR/p
+artifacts pass with the raw-equation guard mocked, then fail the actual guard.
+
+Root workflow tests use the existing frozen40-firm/200-record source and R42
+reference: report39/full covariance/all200 source/predictions, JSON/text,
+canonical reordering/NULL metadata, immutable labels/model, unsupported store,
+prediction/export collisions/no-clobber and24 invalid/singular source cases.
+Initial3-test run passed2, with one mistaken bit-exact covariance-symmetry
+assertion failing on1.4e-17 sequential unwhitening roundoff; the established
+numerical comparison (not a changed oracle tolerance) replaces that assertion.
+Modified test passes1/1,7732d5c7-cd21-46ee-a416-3871fec951eb; retained2+1 are not
+a fresh final3 run. Root bin/new-test Clippy and fmt/diff pass. No production
+statistical code changed during this source/auditor milestone.
+
+Next help/discovery reconciliation, fresh final cross-cutting tests and author
+review of the complete PR. Do not merge before those remaining checks. Do not merge this kernel-only WIP.
 Artifacts `/tmp/tabdat-ch23-native-normal/`.
