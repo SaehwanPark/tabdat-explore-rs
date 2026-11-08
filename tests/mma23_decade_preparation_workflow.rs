@@ -1,7 +1,11 @@
 mod common;
 use common::{TestDir, tabdat_bin};
 use serde_json::Value;
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+  fs,
+  path::{Path, PathBuf},
+  process::Command,
+};
 const RAW: &str = include_str!("fixtures/mma23_gamma_re_bootstrap/source.asc");
 fn root() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -121,6 +125,85 @@ fn events(out: &std::process::Output) -> Vec<Value> {
     .map(|l| serde_json::from_str(l).unwrap())
     .collect()
 }
+fn reference(d: &TestDir) -> PathBuf {
+  let path = d.path().join("reference");
+  fs::create_dir(&path).unwrap();
+  for (name, text) in [
+    (
+      "full.csv",
+      include_str!("fixtures/mma23_decade_preparation/full.csv"),
+    ),
+    (
+      "selected.csv",
+      include_str!("fixtures/mma23_decade_preparation/selected.csv"),
+    ),
+    (
+      "summaries.csv",
+      include_str!("fixtures/mma23_decade_preparation/summaries.csv"),
+    ),
+  ] {
+    fs::write(path.join(name), text).unwrap();
+  }
+  path
+}
+fn checker(d: &TestDir, raw: &Path, reference: &Path) -> std::process::Output {
+  Command::new("python3")
+    .arg(root().join("examples/mma23p1pannonlin/check_decade_preparation.py"))
+    .arg(d.path())
+    .arg(raw)
+    .arg(reference)
+    .arg("--control")
+    .output()
+    .unwrap()
+}
+fn audit(d: &TestDir, raw: &Path, reference: &Path) {
+  let out = checker(d, raw, reference);
+  assert!(
+    out.status.success(),
+    "{}",
+    String::from_utf8_lossy(&out.stderr)
+  );
+}
+fn reject(d: &TestDir, raw: &Path, reference: &Path) {
+  let out = checker(d, raw, reference);
+  assert!(
+    !out.status.success(),
+    "checker accepted forged artifacts without an error"
+  );
+}
+fn set_field(path: &Path, row: usize, field: usize, value: &str) {
+  let text = fs::read_to_string(path).unwrap();
+  let mut lines: Vec<String> = text.lines().map(str::to_owned).collect();
+  let mut cells: Vec<String> = lines[row].split(',').map(str::to_owned).collect();
+  cells[field] = value.to_owned();
+  lines[row] = cells.join(",");
+  fs::write(path, format!("{}\n", lines.join("\n"))).unwrap();
+}
+// Change a numeric field substantially enough to exceed the declared tolerance.
+fn forge_field(path: &Path, row: usize, field: usize) -> String {
+  let text = fs::read_to_string(path).unwrap();
+  let old = text
+    .lines()
+    .nth(row)
+    .unwrap()
+    .split(',')
+    .nth(field)
+    .unwrap();
+  let wrong = (old.parse::<f64>().unwrap() * 1.1 + 0.125).to_string();
+  set_field(path, row, field, &wrong);
+  wrong
+}
+fn forge_events(d: &TestDir, forge: impl FnOnce(&mut Vec<Value>)) {
+  let path = d.path().join("result.jsonl");
+  let original = fs::read_to_string(&path).unwrap();
+  let mut events: Vec<Value> = original
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  forge(&mut events);
+  let lines: Vec<_> = events.iter().map(Value::to_string).collect();
+  fs::write(path, format!("{}\n", lines.join("\n"))).unwrap();
+}
 #[test]
 fn full_history_selected_lags_and_summaries_match_r_text_and_no_clobber() {
   let d = TestDir::new();
@@ -221,4 +304,89 @@ fn raw_and_key_failures_never_publish_invalid_exports_or_overwrite_inputs() {
     assert!(!d.path().join("patents_decade_prepared.csv").exists());
     assert!(!d.path().join("patents_decade_analysis.csv").exists());
   }
+}
+#[test]
+fn independent_checker_rejects_forged_source_exports_results_references_and_raw_tokens() {
+  let d = TestDir::new();
+  assert!(prepare(&d, RAW, true).status.success());
+  let out = run(&d, "--json");
+  assert_eq!(events(&out).len(), 21);
+  fs::write(d.path().join("result.jsonl"), &out.stdout).unwrap();
+  let raw = d.path().join("raw.asc");
+  let reference = reference(&d);
+  audit(&d, &raw, &reference);
+  for (name, row, field) in [
+    ("patents_decade.csv", 1, 7),
+    ("patents_decade_prepared.csv", 1, 11),
+    ("patents_decade_analysis.csv", 1, 8),
+  ] {
+    let path = d.path().join(name);
+    let original = fs::read_to_string(&path).unwrap();
+    forge_field(&path, row, field);
+    reject(&d, &raw, &reference);
+    fs::write(path, original).unwrap();
+  }
+  for (name, row, field) in [
+    ("full.csv", 1, 11),
+    ("selected.csv", 1, 8),
+    ("summaries.csv", 1, 3),
+  ] {
+    let path = reference.join(name);
+    let original = fs::read_to_string(&path).unwrap();
+    forge_field(&path, row, field);
+    reject(&d, &raw, &reference);
+    fs::write(path, original).unwrap();
+  }
+  let result = fs::read_to_string(d.path().join("result.jsonl")).unwrap();
+  forge_events(&d, |events| {
+    events[16]["data"]["rows"][0]["mean"] = serde_json::json!(999.0)
+  });
+  reject(&d, &raw, &reference);
+  fs::write(d.path().join("result.jsonl"), &result).unwrap();
+  forge_events(&d, |events| {
+    events[17]["data"]["dataset"]["row_count"] = serde_json::json!(399)
+  });
+  reject(&d, &raw, &reference);
+  fs::write(d.path().join("result.jsonl"), &result).unwrap();
+  forge_events(&d, |events| {
+    events[15]["data"]["metadata"]["variable_labels"][0][1] = serde_json::json!("Wrong")
+  });
+  reject(&d, &raw, &reference);
+  fs::write(d.path().join("result.jsonl"), &result).unwrap();
+  forge_events(&d, |events| {
+    events.remove(5);
+  });
+  reject(&d, &raw, &reference);
+  fs::write(d.path().join("result.jsonl"), &result).unwrap();
+  // Shared native/reference corruption must still fail raw empirical reconstruction.
+  let summaries = reference.join("summaries.csv");
+  let original_summaries = fs::read_to_string(&summaries).unwrap();
+  let wrong: f64 = forge_field(&summaries, 1, 3).parse().unwrap();
+  forge_events(&d, |events| {
+    events[16]["data"]["rows"][0]["mean"] = serde_json::json!(wrong)
+  });
+  reject(&d, &raw, &reference);
+  fs::write(&summaries, original_summaries).unwrap();
+  fs::write(d.path().join("result.jsonl"), &result).unwrap();
+  // Shared export/reference corruption must still fail source/derived reconstruction.
+  for (native, reference_file, row, field) in [
+    ("patents_decade_prepared.csv", "full.csv", 1, 11),
+    ("patents_decade_analysis.csv", "selected.csv", 1, 8),
+  ] {
+    let native_path = d.path().join(native);
+    let reference_path = reference.join(reference_file);
+    let native_original = fs::read_to_string(&native_path).unwrap();
+    let reference_original = fs::read_to_string(&reference_path).unwrap();
+    let wrong = forge_field(&native_path, row, field);
+    set_field(&reference_path, row, field, &wrong);
+    reject(&d, &raw, &reference);
+    fs::write(native_path, native_original).unwrap();
+    fs::write(reference_path, reference_original).unwrap();
+  }
+  // Raw-token corruption changes independently derived expectations.
+  let mut changed: Vec<_> = RAW.split_whitespace().collect();
+  changed[5] = "1.5";
+  fs::write(d.path().join("raw-forged.asc"), changed.join(" ")).unwrap();
+  reject(&d, &d.path().join("raw-forged.asc"), &reference);
+  audit(&d, &raw, &reference);
 }

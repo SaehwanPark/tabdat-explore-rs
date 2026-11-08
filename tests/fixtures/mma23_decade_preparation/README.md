@@ -19,7 +19,8 @@ numeric CSV preserves binary64 values; blank cells mean missing, including the
 first j years of lag j. Source numeric fields/keys/missingness compare exactly;
 derived values/summaries use1e-10+1e-12*abs(reference). Native labels and explicit
 DOUBLE ARDSSIC are semantic adaptations, not historical Stata storage parity.
-Cargo tests consume these frozen files without an R/Python runtime dependency.
+The numerical Cargo tests consume these frozen files without an R runtime; the
+separate hostile-artifact test invokes Python for the independent checker.
 
-The workflow and remaining WIP gates are described in
+The workflow and bounded validation are described in
 [preparation notes](../../../examples/mma23p1pannonlin/decade_preparation.md).
