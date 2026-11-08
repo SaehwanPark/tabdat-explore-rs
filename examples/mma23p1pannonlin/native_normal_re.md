@@ -138,5 +138,7 @@ new-workflow/discovery Clippy, fmt and diff checks pass. These later focused
 runs are not a second workspace pass. No actionable review findings remain.
 This is author review, not delegated/independent code review; numerical oracles
 are independent. CI is disabled; no doctest/platform/release or whole-book
-completion claim. Normal bootstrap and unresolved inventory entries remain
-required.
+completion claim. The [normal-bootstrap extension](native_normal_re_bootstrap.md)
+is WIP: exact copied-source feasibility has exposed numerical limitations,
+not a validated bootstrap command. Ordinary normal fits remain unchanged;
+bootstrap and unresolved inventory entries remain required.
