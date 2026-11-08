@@ -2001,6 +2001,36 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       logit_number(r.sandwich.wald_p_value),
       logit_estimates(&r.sandwich.coefficients)
     ),
+    ExecutionResult::NormalPoisson(r) => {
+      let mut estimates = r.coefficients.clone();
+      estimates.push(r.ln_variance.clone());
+      format!(
+        "Normal random-intercept Poisson (model-based)\nOutcome: {}; N = {}; groups = {}; group size {}..{}\nAll zero-total groups retained = {}; singletons = {}\nMean-zero Gaussian log effects; variance is not mean-one gamma mixing.\nInverse full joint observed information without DF correction; normal95 inference. lnsigma2 z tests variance=1, not zero variance.\nLog likelihood = {}; same-sample pooled Poisson = {}\nVariance boundary LR = {}; 50:50 chi-square(0,1) p = {}\nSlope Wald chi2({}) = {}; p = {}\nsigma = {}; delta SE = {}; log-Wald95 CI [{}, {}]\nConverged in {} information evaluations; scaled score {:.3e}, undamped step {:.3e}\nAdaptive80/96 GH maximum relative discrepancy {:.3e} (not an error bound).\nPredictions: xb=Xbeta; population n=exp(Xbeta+variance/2), not posterior group effects.\n{}",
+        r.outcome.escape_debug(),
+        r.observation_count,
+        r.group_count,
+        r.minimum_group_size,
+        r.maximum_group_size,
+        r.zero_total_group_count,
+        r.singleton_group_count,
+        inference_number(r.log_likelihood),
+        inference_number(r.poisson_log_likelihood),
+        inference_number(r.variance_likelihood_ratio),
+        logit_number(r.variance_likelihood_ratio_p_value),
+        r.wald_df,
+        inference_number(r.wald_statistic),
+        logit_number(r.wald_p_value),
+        inference_number(r.sigma),
+        inference_number(r.sigma_standard_error),
+        inference_number(r.sigma_confidence_lower),
+        inference_number(r.sigma_confidence_upper),
+        r.iterations,
+        r.max_abs_scaled_score,
+        r.max_abs_scaled_newton_step,
+        r.max_relative_quadrature_difference,
+        logit_estimates(&estimates)
+      )
+    }
     ExecutionResult::GammaPoisson(r) => {
       let mut estimates = r.coefficients.clone();
       estimates.push(r.ln_alpha.clone());

@@ -629,6 +629,7 @@ pub enum XtPoissonEstimator {
   #[default]
   ConditionalFe,
   SharedGammaRe,
+  NormalRe,
 }
 
 /// Explicit-key grouped counts, without persistent panel declarations.

@@ -1342,8 +1342,11 @@ impl Session {
     ) {
       return self.execute_conditional_poisson_prediction(command);
     }
-    if matches!(self.estimation, Some(EstimationState::GammaPoisson(_))) {
-      return self.execute_gamma_poisson_prediction(command);
+    if matches!(
+      self.estimation,
+      Some(EstimationState::GammaPoisson(_) | EstimationState::NormalPoisson(_))
+    ) {
+      return self.execute_poisson_re_prediction(command);
     }
     if matches!(self.estimation, Some(EstimationState::PoissonGee(_))) {
       return self.execute_poisson_gee_prediction(command);

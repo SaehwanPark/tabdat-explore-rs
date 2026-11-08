@@ -8,19 +8,20 @@ pub(crate) enum CountFamily {
   Nb2,
   ConditionalPoisson,
   GammaPoisson,
+  NormalPoisson,
 }
 impl CountFamily {
   fn command(self) -> &'static str {
     match self {
       Self::Poisson => "poisson",
       Self::Nb2 => "nbreg",
-      Self::ConditionalPoisson | Self::GammaPoisson => "xtpoisson",
+      Self::ConditionalPoisson | Self::GammaPoisson | Self::NormalPoisson => "xtpoisson",
     }
   }
   fn maximum(self) -> i128 {
     match self {
       Self::Poisson => 9_007_199_254_740_991,
-      Self::Nb2 | Self::ConditionalPoisson | Self::GammaPoisson => 100_000,
+      Self::Nb2 | Self::ConditionalPoisson | Self::GammaPoisson | Self::NormalPoisson => 100_000,
     }
   }
   pub(crate) fn error(self, message: impl Into<String>) -> RuntimeError {
@@ -31,9 +32,11 @@ impl CountFamily {
       Self::Nb2 => RuntimeError::NbregFailed {
         message: message.into(),
       },
-      Self::ConditionalPoisson | Self::GammaPoisson => RuntimeError::XtPoissonFailed {
-        message: message.into(),
-      },
+      Self::ConditionalPoisson | Self::GammaPoisson | Self::NormalPoisson => {
+        RuntimeError::XtPoissonFailed {
+          message: message.into(),
+        }
+      }
     }
   }
   fn count_error(self) -> RuntimeError {
@@ -42,6 +45,7 @@ impl CountFamily {
       Self::Nb2 => "NB2 outcome must be an exact nonnegative integer in 0..100000 on the complete finite estimation sample",
       Self::ConditionalPoisson => "conditional Poisson outcome must be an exact nonnegative integer in 0..100000 on the complete finite estimation sample",
       Self::GammaPoisson => "gamma RE Poisson outcome must be an exact nonnegative integer in 0..100000 on the complete finite estimation sample",
+      Self::NormalPoisson => "normal RE Poisson outcome must be an exact nonnegative integer in 0..100000 on the complete finite estimation sample",
     })
   }
   fn prediction_error(self) -> RuntimeError {
@@ -53,6 +57,9 @@ impl CountFamily {
       }
       Self::GammaPoisson => {
         self.error("gamma RE Poisson supports marginal xb, n or residuals only")
+      }
+      Self::NormalPoisson => {
+        self.error("normal RE Poisson supports fixed xb, marginal n or residuals only")
       }
     }
   }
@@ -485,6 +492,7 @@ fn exact_counts_reject_fractional_decimal_and_wide_integer_rounding_for_each_fam
     CountFamily::Nb2,
     CountFamily::ConditionalPoisson,
     CountFamily::GammaPoisson,
+    CountFamily::NormalPoisson,
   ] {
     let maximum = family.maximum();
     assert_eq!(exact_count(&CellValue::Float(-0.0), maximum), Some(0.0));

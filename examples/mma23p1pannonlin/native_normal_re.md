@@ -212,7 +212,49 @@ Wald and predictions. Modified/new case passes1/1
 (84c1d558-3469-4be4-b327-fab82bdc8e2a), stats-all-target Clippy passes.
 The retained320-test baseline plus this new case is not a fresh321 run.
 
-No parser/execution/owned state/application reports, full original-source audit
-or completed slice is claimed. Next typed execution/prediction/reporting and
-actual-source workflow. Do not merge this kernel-only WIP.
+### Typed application integration checkpoint (still WIP)
+
+`xtpoisson y xvars, re distribution(normal) id(group)` now selects additive
+`NormalRe`, `NormalPoissonResult` and owned `NormalPoisson` state/family.
+Default `re` remains gamma; explicit `distribution(gamma)` is equivalent.
+Distribution with FE, duplicates, unknown values, weights/robust/offset or
+posterior options are rejected. Legacy FE/default/explicit gamma wire fixtures
+remain exact. Native normal preprocessing validates every raw key before
+joint-finite selection, including rows omitted for missing y/X; raw traversal
+applies the declared176*N*(slopes+2)^2 work bound. Count conversion includes
+exact decimal/wide-integer checks before float rounding.
+
+Current-data predictions share the existing gamma population reader without
+changing gamma's zero mean shift. Normal uses owned variance/2, not current
+columns or a pooled fit: xb=Xbeta; n=exp(Xbeta+variance/2). n/xb need no y or
+IDs, residuals need y; incomplete numeric predictors give NULL, overflow or
+out-of-range normal marginal logmean fails before adding a column. Named
+snapshots remain unsupported, not silently stored as pooled Poisson. Terminal
+and CLI-v1 render paths now compile with explicit Gaussian-log-effect/full
+observed covariance, lnsigma2=0 meaning variance1, boundary mixture and
+quadrature-discrepancy-not-error-bound metadata; actual CLI report validation
+remains pending.
+
+Runtime120-row/two-slope/unbalanced/singleton controls compare every R mean,
+retain distinct owned state through prediction and changed current data with
+no y/IDs, preserve model/data on parse/prediction/store/collision/overflow
+errors, verify NULL forecasts, joint-finite119/120 membership and raw-missing
+key rejection even on omitted rows. New failed fits clear stale estimation
+but preserve data, labels and stored pooled reports. This loaded120-row table
+has candidateN120/dropped0; the statistics-only fixture's200/80 provenance is
+not fabricated in execution.
+
+Fresh affected domain/language/execution/reporting/runtime all-target tests:
+978 pass/152 binaries/one pre-existing skip,20.669s,
+efab10e4-c7c2-4e4d-9b5a-dbe34d371cb0.
+All five affected-crate all-target Clippy checks and workspace-all-target
+compilation pass. Initial focused runtime run had2 passes/one helper failure:
+`predict n std` rejects at parse, not execution; helper corrected to accept
+either rejection while checking unchanged state, then modified case1/1 and
+fresh affected978 pass. No statistical code/tolerance change. No new full
+workspace test, root CLI/source workflow or completed slice is claimed.
+
+Next actual-source CLI/text/JSON/export workflow, raw-identity/forgery audit,
+help/discovery reconciliation and final cross-cutting verification/review.
+Do not merge this unfinished application-integration WIP. Do not merge this kernel-only WIP.
 Artifacts `/tmp/tabdat-ch23-native-normal/`.

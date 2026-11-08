@@ -675,6 +675,34 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .extend(metadata.as_object().unwrap().clone());
       (data, "GaussianGeeResult")
     }
+    ExecutionResult::NormalPoisson(r) => {
+      let mut data = serde_json::to_value(r).expect("finite normal RE result");
+      data.as_object_mut().unwrap().remove("fitted_means");
+      data["predictors"] = data
+        .as_object_mut()
+        .unwrap()
+        .remove("predictor_names")
+        .unwrap();
+      data["covariance_matrix"] = data["covariance"].take();
+      data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let metadata = json!({
+        "estimator":"normal_random_intercept_poisson_re","include_intercept":true,"likelihood":"integrated_mean_zero_gaussian_log_effect_poisson",
+        "random_effects_distribution":"mean_zero_gaussian_log_intercept","variance_parameterization":"lnsigma2_is_log_variance_of_gaussian_log_effect",
+        "covariance":"inverse_full_joint_observed_information","covariance_correction":1.0,"reference_distribution":"asymptotic_standard_normal","confidence_level":95,
+        "coefficient_test_null":0.0,"ln_variance_test_null":"lnsigma2=0_equivalently_variance=1_not_zero_variance",
+        "sigma_standard_error_method":"delta_sigma_over_two_times_se_lnvariance","sigma_interval_method":"exponentiated_lnvariance_normal_interval_over_two",
+        "joint_test_reference":"asymptotic_chi_square","variance_likelihood_ratio_null":"variance=0_same_sample_refitted_pooled_poisson",
+        "variance_likelihood_ratio_reference":"equal_mixture_chi_square_0_1","missingness":"joint_finite_rows_all_groups_retained_after_raw_key_validation",
+        "prediction_scope":"population_marginal_exp_xbeta_plus_variance_over_two_not_posterior_group_effects","converged":true,
+        "convergence_absolute_tolerance":1e-10,"convergence_relative_step_tolerance":1e-12,"convergence_coordinate_system":"raw_predictor_rms_and_log_variance_per_group_score",
+        "quadrature":"posterior_adaptive_paired_physicists_gauss_hermite_80_96","quadrature_relative_discrepancy_limit":1e-9,"quadrature_discrepancy_is_error_bound":false
+      });
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(metadata.as_object().unwrap().clone());
+      (data, "NormalPoissonResult")
+    }
     ExecutionResult::GammaPoisson(r) => {
       let mut data = serde_json::to_value(r).expect("finite gamma RE result");
       data.as_object_mut().unwrap().remove("fitted_means");

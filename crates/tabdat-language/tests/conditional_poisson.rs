@@ -29,6 +29,21 @@ fn explicit_gamma_re_is_typed_and_not_conditional_fe_or_row_nb() {
 }
 
 #[test]
+fn explicit_normal_re_is_distinct_and_gamma_remains_default() {
+  let Command::XtPoisson { command } =
+    parse_command("xtpoisson y x z, re distribution(normal) id(i)").unwrap()
+  else {
+    panic!()
+  };
+  assert_eq!(command.estimator, XtPoissonEstimator::NormalRe);
+  assert_eq!(command.predictors, ["x", "z"]);
+  assert_eq!(command.entity_variable, "i");
+  assert_eq!(
+    parse_command("xtpoisson y x, re id(i)").unwrap(),
+    parse_command("xtpoisson y x, re id(i) distribution(gamma)").unwrap()
+  );
+}
+#[test]
 fn unsupported_and_ambiguous_count_panel_forms_are_rejected() {
   for text in [
     "xtpoisson y x",
@@ -37,7 +52,13 @@ fn unsupported_and_ambiguous_count_panel_forms_are_rejected() {
     "xtpoisson y x, re re id(i)",
     "xtpoisson y x, re(1) id(i)",
     "xtpoisson y x, re id(i) robust",
-    "xtpoisson y x, re id(i) distribution(normal)",
+    "xtpoisson y x, fe id(i) distribution(normal)",
+    "xtpoisson y x, fe id(i) distribution(gamma)",
+    "xtpoisson y x, re id(i) distribution(lognormal)",
+    "xtpoisson y x, re id(i) distribution(normal gamma)",
+    "xtpoisson y x, re id(i) distribution()",
+    "xtpoisson y x, re id(i) distribution",
+    "xtpoisson y x, re id(i) distribution(normal) distribution(gamma)",
     "xtpoisson y x, fe",
     "xtpoisson y x, fe id()",
     "xtpoisson y x, fe id(i j)",

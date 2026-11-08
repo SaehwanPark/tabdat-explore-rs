@@ -2866,7 +2866,8 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "xtpoisson expects: xtpoisson y xvars, fe|re id(group)";
+  let syntax =
+    "xtpoisson expects: xtpoisson y xvars, fe|re id(group) [distribution(gamma|normal) for re]";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -2881,9 +2882,9 @@ fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
   }
   let options = parse_use_options(&body[i + 1..])?;
   for option in &options {
-    if !matches!(option.name.as_str(), "fe" | "re" | "id") {
+    if !matches!(option.name.as_str(), "fe" | "re" | "id" | "distribution") {
       return Err(ParseError::new(format!(
-        "xtpoisson unsupported option: {}; only model-based conditional FE or shared-gamma RE is implemented",
+        "xtpoisson unsupported option: {}; only model-based conditional FE or gamma/normal RE is implemented",
         option.name
       )));
     }
@@ -2901,10 +2902,22 @@ fn parse_xtpoisson_command(body: &str) -> Result<Command, ParseError> {
   if methods.len() != 1 || methods[0].value != UseOptionValue::Flag {
     return Err(ParseError::new(syntax));
   }
-  let estimator = if methods[0].name == "fe" {
-    XtPoissonEstimator::ConditionalFe
-  } else {
-    XtPoissonEstimator::SharedGammaRe
+  let distribution = parse_identifier_option("xtpoisson", &options, "distribution")?;
+  if methods[0].name == "fe" && distribution.is_some() {
+    return Err(ParseError::new(
+      "xtpoisson distribution() is only available with re",
+    ));
+  }
+  let estimator = match (methods[0].name.as_str(), distribution.as_deref()) {
+    ("fe", None) => XtPoissonEstimator::ConditionalFe,
+    ("re", None) => XtPoissonEstimator::SharedGammaRe,
+    ("re", Some([name])) if name == "gamma" => XtPoissonEstimator::SharedGammaRe,
+    ("re", Some([name])) if name == "normal" => XtPoissonEstimator::NormalRe,
+    _ => {
+      return Err(ParseError::new(
+        "xtpoisson distribution() expects gamma or normal",
+      ));
+    }
   };
   let keys =
     parse_identifier_option("xtpoisson", &options, "id")?.ok_or_else(|| ParseError::new(syntax))?;

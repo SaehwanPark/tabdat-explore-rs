@@ -100,6 +100,7 @@ pub enum EstimationFamily {
   ConditionalLogit,
   ConditionalPoisson,
   GammaPoisson,
+  NormalPoisson,
   GaussianGee,
   PoissonGee,
   NonNormalizedNestedLogit,
@@ -279,6 +280,7 @@ pub enum EstimationState {
   PoissonFit(Box<PoissonFitState>),
   ConditionalPoisson(Box<ConditionalPoissonState>),
   GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
+  NormalPoisson(Box<tabdat_stats::NormalPoissonResult>),
   /// Owned population-averaged mean and working/sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
   PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
@@ -348,6 +350,7 @@ impl EstimationState {
       Self::ConditionalLogit(..) => EstimationFamily::ConditionalLogit,
       Self::ConditionalPoisson(..) => EstimationFamily::ConditionalPoisson,
       Self::GammaPoisson(..) => EstimationFamily::GammaPoisson,
+      Self::NormalPoisson(..) => EstimationFamily::NormalPoisson,
       Self::GaussianGee(..) => EstimationFamily::GaussianGee,
       Self::PoissonGee(..) => EstimationFamily::PoissonGee,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,

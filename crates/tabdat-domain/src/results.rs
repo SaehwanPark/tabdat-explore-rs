@@ -843,6 +843,7 @@ pub enum ExecutionResult {
   /// Model-based conditional Poisson FE, including explicit zero-total exclusions.
   ConditionalPoisson(Box<tabdat_stats::ConditionalPoissonResult>),
   GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),
+  NormalPoisson(Box<tabdat_stats::NormalPoissonResult>),
   /// Gaussian exchangeable GEE with both working and unit-sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
   PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
