@@ -5,6 +5,7 @@ BEGIN {
   count = 0
   records = 0
   failed = 0
+  first_period = full_decade == "yes" ? 0 : 5
 }
 {
   sub(/\r$/, "")
@@ -34,7 +35,7 @@ BEGIN {
       }
       id = ++records
       sector = value[2] == "." ? "" : value[2]
-      for (j = 5; j <= 9; j++) {
+      for (j = first_period; j <= 9; j++) {
         printf "%d,%d,%s,%s,%s,%s,%s,%s,%s\n", id, 1970+j, value[1], sector,
           value[3], value[4], value[5], value[6+j], value[16+j]
       }

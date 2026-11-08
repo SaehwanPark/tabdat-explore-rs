@@ -1,8 +1,8 @@
 #!/bin/sh
 # Stage beside the destination; publish only after a complete successful conversion.
 set -eu
-if [ "$#" -ne 2 ]; then
-  echo "usage: sh prepare.sh patr7079.asc output.csv" >&2
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ] || { [ "$#" -eq 3 ] && [ "$3" != "--full-decade" ]; }; then
+  echo "usage: sh prepare.sh patr7079.asc output.csv [--full-decade]" >&2
   exit 1
 fi
 here=$(CDPATH= cd "$(dirname "$0")" && pwd)
@@ -15,5 +15,7 @@ fi
 tmp=$(mktemp "$output.tmp.XXXXXX")
 trap 'rm -f "$tmp"' 0
 trap 'exit 1' 1 2 15
-awk -f "$here/patents_to_csv.awk" "$input" > "$tmp"
+full_decade=no
+if [ "$#" -eq 3 ]; then full_decade=yes; fi
+awk -v full_decade="$full_decade" -f "$here/patents_to_csv.awk" "$input" > "$tmp"
 ln "$tmp" "$output"
