@@ -1,4 +1,6 @@
 //! Bounded integrated normal random-intercept Poisson, not mean-one gamma RE.
+#[cfg(test)]
+mod increment;
 mod nodes;
 use crate::{
   EstimationProblem, EstimationSample, LogitEstimate, StatsError, fit_poisson,

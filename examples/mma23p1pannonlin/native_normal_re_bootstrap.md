@@ -112,7 +112,8 @@ gates and explicit failure on unsupported inputs; it is not permission to
 accept declines within an epsilon or substitute a damped-step convergence test.
 Both ordinary and refined numerical paths need focused positive/negative/tiny
 increment controls and unchanged direct-R regression comparisons before any
-production adoption. Proposed precision/increment changes are not implemented.
+production adoption. Proposed production precision/increment changes are not
+implemented.
 
 Candidate exact identity to validate, with old mu_i=exp(eta_i),v=exp(t), actual
 rounded increments d=(d_beta,dt),d_i=X_i*d_beta, and old group posterior E:
@@ -133,14 +134,25 @@ likelihood increment with a quadratic prediction. A useful independent
 closed-form control is h=a*Z+b*Z²+c under Z~N(0,1): the exact log ratio is
 c-log1p(-2*b)/2+a²/(2*(1-2*b)),b<.5. Standard-library decimal arithmetic can
 provide tiny positive/negative/near-cancelled controls without a new dependency.
-This is a derivation/proposed test oracle, not implemented proof of correctness.
+The [isolated arithmetic controls](../../crates/tabdat-stats/tests/fixtures/normal_poisson/increment/README.md)
+now implement these remainder/cumulant helpers **under cfg(test) only**, not in
+the fitter.44 independent400-digit Decimal remainder cases at actual binary64
+inputs and12 Gaussian quadratic closed-form cases (including positive/negative
+~1e-24 changes and near cancellation) pass. Invalid inputs reject without
+clipping/renormalization. Focused3/3 tests pass (74c0e82a-0cc1-4adf-8bf7-e8538a0dd729);
+stats all-target Clippy passes. This validates the arithmetic, not the Poisson
+posterior/Stein construction or source-copy optimizer. No full-crate test rerun
+or production numerical-contract change is claimed at this checkpoint.
 
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
 and temporary128/160 feasibility JSON, both optimizer traces and R node/probe
 generators. No raw source or transient example/trace is committed. Production
-normal_poisson.rs is restored byte-identically to merged7fbeb1e.
+normal_poisson.rs was restored byte-identically to merged7fbeb1e after the
+prototypes; its only subsequent change registers the cfg(test)-only arithmetic
+module. Production fitting logic remains unchanged.
 
-WIP: only contract and two diagnosed numerical barriers; no bootstrap
-parser/kernel/result or all500 feasibility claim. Normal bootstrap/historical issues and the
+WIP: contract, two diagnosed numerical barriers and isolated test-only arithmetic
+controls; no production bootstrap parser/kernel/result or all500 feasibility
+claim. Normal bootstrap/historical issues and the
 complete roadmap remain required.
