@@ -3,9 +3,9 @@
 Current status: ordinary-normal stable-increment/no-op refinements remain.
 Native Rust bootstrap kernel/API uses fixed176/208 copied quadrature and the
 original joint raw warm point; all500 source and control refits/empirical
-quantities match independent R. The remaining multi-slope/unbalanced kernel
-controls, application/parser/result/report/script/state/file/auditor workflow
-and final review remain WIP. Earlier profile/prototype evidence below is
+quantities match independent R. Multi-slope/unbalanced/singleton and merged-ID
+negative kernel controls now pass too. Application/parser/result/report/script/
+state/file/auditor workflow and final review remain WIP. Earlier profile/prototype evidence below is
 chronological, not the currently selected copied rule.
 
 ## Bounded outcome / source status
@@ -346,6 +346,33 @@ quantities within unchanged scalar and positive-p gates (max absolute1.024e-12,
 not a byte-identity claim). Actual resampled multi-slope/unbalanced/singleton
 reference generation/native matching remain pending. No production change from
 this development-only helper mode.
+
+## Multi-slope/unbalanced/singleton kernel validation
+
+Actual R copies1/2 use the existing120-row/40-group/two-slope design and the
+independently verified seed10001 stream, copying existing x/z rather than
+recomputing design from new IDs. They contain127/121 observations and40 distinct
+effects. Independent cold-start GLM/t0/direct integration/full4x4 information and
+two Richardson refinements produce57 quantities each (covariance discrepancies
+2.917e-11/1.977e-12, unchanged1e-10 gate). Original200-candidate/80-omitted
+mapping/eight singleton groups remain in the native report. All four joint
+coefficients, sample sizes and full4x4 empirical covariance/bias/type7 match.
+
+Counterfactual merged copy1 has identical127 rows/design but23 effects. Its R
+and ordinary-native joint point agree; lnvariance.974796580554228 differs from
+the distinct-copy.530350602001616 by>.4. This explicit negative control prevents
+silently treating repeated original IDs as one effect. Frozen references and
+reproduction notes are under the artificial bootstrap fixture's `multivariate/`.
+Initial test compile rejected three leading-dot literals; corrected syntax,
+not numerical gates. Focused new1 passes2f112c67-4910-4735-8a0f-7d9dedf6c1d6;
+then fresh stats333/59 binaries/one pre-existing skip pass
+29c3edb9-e9e7-4400-9e4e-ff8056c34ff9 (13.063s), all-target stats Clippy/fmt/diff
+pass. No production code changed in this validation checkpoint.
+
+Quota policy honored: actual9483.599493s wait11:49:43.400507Z→14:27:47.022894Z
+(2026-11-08), reset14:25:47 plus2min. Session usage0%/weekly86% verified after
+wait and clean pushed dd9aec6 rechecked. No scheduling/restart promise substituted
+for this wait. Application/auditor/state/file integration and review remain next.
 
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility

@@ -111,6 +111,146 @@ fn accepts512_groups_for_bounded_replay_and_rejects513() {
   );
 }
 
+fn multivariate_problem() -> EstimationProblem {
+  let mut x = vec![];
+  let mut y = vec![];
+  let mut keys = vec![];
+  let mut kept = vec![];
+  for line in include_str!("fixtures/normal_poisson/multivariate/input.csv")
+    .lines()
+    .skip(1)
+  {
+    let v: Vec<_> = line.split(',').collect();
+    kept.push(v[0].parse().unwrap());
+    keys.push(v[1].into());
+    y.push(v[3].parse().unwrap());
+    x.push(vec![v[4].parse().unwrap(), v[5].parse().unwrap()]);
+  }
+  let dropped = 200 - y.len();
+  EstimationProblem::new("y", vec!["x".into(), "z".into()], y, x)
+    .unwrap()
+    .with_intercept_name("_cons")
+    .with_sample(EstimationSample::new(kept, 200, dropped, None, Some(keys)).unwrap())
+}
+fn reference(text: &str) -> HashMap<&str, f64> {
+  text
+    .lines()
+    .skip(1)
+    .map(|line| {
+      let (k, v) = line.split_once(',').unwrap();
+      (k, v.parse().unwrap())
+    })
+    .collect()
+}
+#[test]
+fn multivariate_unbalanced_singletons_match_r_and_not_merged_effects() {
+  let p = multivariate_problem();
+  let before = p.clone();
+  let report = bootstrap_normal_poisson_clustered(&p, "id", 2, 10001).unwrap();
+  assert_eq!(p, before);
+  assert_eq!(report.sample.total_observations, 200);
+  assert_eq!(report.sample.dropped_observations, 80);
+  assert_eq!(report.observation_count, 120);
+  assert_eq!(report.singleton_group_count, 8);
+  assert_eq!(report.replicate_observation_counts, [127, 121]);
+  assert_eq!(
+    report.covariance_parameter_names,
+    ["_cons", "x", "z", "lnsigma2"]
+  );
+  let labels = ["intercept", "x", "z", "lnvariance"];
+  for (rep, text) in [
+    include_str!(
+      "../../../tests/fixtures/mma23_native_normal_re_bootstrap/multivariate/replicate001.csv"
+    ),
+    include_str!(
+      "../../../tests/fixtures/mma23_native_normal_re_bootstrap/multivariate/replicate002.csv"
+    ),
+  ]
+  .iter()
+  .enumerate()
+  {
+    let r = reference(text);
+    assert_eq!(r.len(), 57);
+    for (j, label) in labels.iter().enumerate() {
+      near(
+        report.replicate_coefficients[rep][j],
+        r[format!("estimate_{label}").as_str()],
+      );
+    }
+    near(
+      report.replicate_observation_counts[rep] as f64,
+      r["observations"],
+    );
+  }
+  let original = reference(include_str!(
+    "fixtures/normal_poisson/multivariate/reference.csv"
+  ));
+  for (j, label) in labels.iter().enumerate() {
+    let a = report.replicate_coefficients[0][j];
+    let b = report.replicate_coefficients[1][j];
+    let mean = (a + b) / 2.;
+    let c = &report.coefficients[j];
+    near(c.estimate, original[format!("estimate_{label}").as_str()]);
+    near(c.bootstrap_mean, mean);
+    near(c.bias, mean - c.estimate);
+    near(c.ci_lower, a.min(b) + 0.025 * (a - b).abs());
+    near(c.ci_upper, a.min(b) + 0.975 * (a - b).abs());
+    for k in 0..4 {
+      near(
+        report.covariance_matrix[j][k],
+        (a - b) * (report.replicate_coefficients[0][k] - report.replicate_coefficients[1][k]) / 2.,
+      );
+    }
+  }
+  let mut groups: HashMap<&str, Vec<usize>> = HashMap::new();
+  for (i, key) in p
+    .sample
+    .as_ref()
+    .unwrap()
+    .cluster_groups
+    .as_ref()
+    .unwrap()
+    .iter()
+    .enumerate()
+  {
+    groups.entry(key).or_default().push(i);
+  }
+  let mut x = vec![];
+  let mut y = vec![];
+  let mut keys = vec![];
+  for &index in &report.replicate_cluster_indices[0] {
+    let label = &report.cluster_labels[index];
+    for &row in &groups[label.as_str()] {
+      x.push(p.design_matrix[row].clone());
+      y.push(p.response[row]);
+      keys.push(label.clone());
+    }
+  }
+  let n = y.len();
+  let merged = EstimationProblem::new("y", p.predictor_names.clone(), y, x)
+    .unwrap()
+    .with_intercept_name("_cons")
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap());
+  let fit = fit_normal_poisson(&merged, "id", &Default::default()).unwrap();
+  let r = reference(include_str!(
+    "../../../tests/fixtures/mma23_native_normal_re_bootstrap/multivariate/merged001.csv"
+  ));
+  assert_eq!(fit.group_count, 23);
+  for (j, value) in fit
+    .coefficients
+    .iter()
+    .map(|v| v.value)
+    .chain(std::iter::once(fit.ln_variance.value))
+    .enumerate()
+  {
+    near(value, r[format!("estimate_{}", labels[j]).as_str()]);
+  }
+  assert!(
+    (fit.ln_variance.value - report.replicate_coefficients[0][3]).abs() > 0.4,
+    "merged repeated IDs must not become one effect"
+  );
+}
+
 #[test]
 fn all500_control_joint_refits_and_empirical_inference_match_independent_r() {
   let p = problem();
