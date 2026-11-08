@@ -1,8 +1,8 @@
 # Normal-intercept Poisson posterior integration controls (WIP)
 
 `posterior.csv` contains six artificial `(total,mean_sum,log_variance)` cases
-and six independent posterior quantities per case: log integrated factor,
-E(exp(u)),E(u²),Var(exp(u)),Cov(exp(u),u²),Var(u²). The integrated factor is
+and eight independent posterior quantities per case: log integrated factor,
+E(exp(u)),E(u²),Var(exp(u)),Cov(exp(u),u²),Var(u²),E(u),Cov(exp(u),u). The integrated factor is
 E_normal[exp(total*u−mean_sum*exp(u))]; row-level y*Xbeta−log(y!) constants
 are not included. The cases cover zero totals, small/large intensities,100000
 counts, different variances and posterior concentration.
@@ -28,7 +28,11 @@ R17-digit values. Unit checks validate positive/ordered rules and exact
 Gaussian moments through degree25, rather than trusting the generated file.
 
 Paired-rule differences are checked in intensity/prior-score units:
-`[log_integral,M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²]`.
+`[log_integral,M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²,Eu/v,M*CovExpUu/v]`.
+Integration-by-parts identities give stable count-total score Eu/v and
+information M*Cov(exp(u),u)/v instead of subtracting O(total) intensity moments.
+Independent direct-R values plus Richardson score differentiation check the
+identity up to100000 counts; no statistical parameterization changed.
 An absolute gate on tiny unscaled exp(u) moments would not adequately control
 information after multiplication. The check remains
 `abs(high-low)/(1+abs(high))<=1e-9`, a discrepancy check, not an error bound. High-variance t=2

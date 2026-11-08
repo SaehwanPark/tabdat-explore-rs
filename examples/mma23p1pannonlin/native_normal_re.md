@@ -57,7 +57,8 @@ bracketed[-60,60]/55 bisections with root check, scale from posterior curvature.
 Log-sum-exp weights and centered posterior covariance moments avoid raw-second-
 moment cancellation. Compare both levels for every firm's log integral and
 required posterior means/centered covariances in intensity/prior-score units
-(M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²) at every evaluated fit; reject
+(M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²,Eu/v,M*CovExpUu/v)
+at every evaluated fit; reject
 relative discrepancy>1e-9, not silently choose one rule as exact.
 
 RMS-preconditioned beta plus t, full joint observed-information Newton steps,
@@ -135,6 +136,21 @@ filtered out), with stats lib/tests Clippy. After adding explicit six-case/
 nine-column fixture-count assertions, that modified case separately passes1/1
 (ee1ecbef-172d-49d8-8c30-70c5a4cd72e3); this is not a new broad/final4 run.
 No broad baseline rerun claimed.
+
+Further test-only joint-likelihood checkpoint: independent R controls now
+include E(u)/Cov(exp(u),u), eight quantities per group. Integration by parts
+supplies count-total score Eu/v and curvature Cov(lambda,u)/v, avoiding the
+large-count E(lambda)−Var(lambda) subtraction without changing the likelihood.
+General multivariate integrated scores/full joint information are implemented
+and checked against Richardson likelihood/score derivatives on unbalanced/
+singleton groups; malformed partitions/designs fail. Seven focused tests pass
+(d761f3c9-55aa-4620-ae39-8273f075ffe1,0.024s),77 unrelated filtered.
+Clippy exposed a needless-index loop in information normalization; iterator/
+split-borrow symmetry construction replaces it without changing mathematics.
+The two affected evaluator cases pass separately2/2
+(41cdb9af-efb6-4f4e-87b2-1c3cc1abb95b), and final stats lib/tests Clippy passes.
+Earlier other five passing tests remain applicable; no fresh final7/broad run
+is claimed. No optimizer/fitted inference/source-native workflow is claimed.
 
 The module is explicitly test-only until the fit path is implemented. No
 native normal-RE parser, fitted kernel, state, inference/report, original-

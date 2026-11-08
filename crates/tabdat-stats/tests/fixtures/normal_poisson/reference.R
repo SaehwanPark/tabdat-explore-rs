@@ -21,12 +21,13 @@ evaluate<-function(s,m,t){
     },-Inf,Inf,rel.tol=1e-12,abs.tol=1e-12,subdivisions=2000L,stop.on.error=TRUE)$value
   }
   mass<-integral(function(u)rep(1,length(u)))
-  e<-integral(exp)/mass;u2<-integral(function(u)u*u)/mass
+  e<-integral(exp)/mass;u2<-integral(function(u)u*u)/mass;mean_u<-integral(identity)/mass
   c(log_integral=log(scale)+anchor+log(mass)-log(2*pi*variance)/2,
     mean_exp_u=e,mean_u2=u2,var_exp_u=integral(function(u)(exp(u)-e)^2)/mass,
     cov_exp_u_u2=integral(function(u)(exp(u)-e)*(u*u-u2))/mass,
-    var_u2=integral(function(u)(u*u-u2)^2)/mass)
+    var_u2=integral(function(u)(u*u-u2)^2)/mass,
+    mean_u=mean_u,cov_exp_u_u=integral(function(u)(exp(u)-e)*(u-mean_u))/mass)
 }
-values<-t(vapply(seq_len(nrow(cases)),function(i)evaluate(cases$total[i],cases$mean_sum[i],cases$log_variance[i]),numeric(6)))
+values<-t(vapply(seq_len(nrow(cases)),function(i)evaluate(cases$total[i],cases$mean_sum[i],cases$log_variance[i]),numeric(8)))
 write.csv(cbind(cases,values),args[1],row.names=FALSE,quote=FALSE)
 cat(R.version.string,'; six direct adaptive improper-integral posterior controls\n')

@@ -11,6 +11,8 @@ struct Posterior {
   var_exp_u: f64,
   cov_exp_u_u2: f64,
   var_u2: f64,
+  mean_u: f64,
+  cov_exp_u_u: f64,
   mode: f64,
   curvature: f64,
   max_relative_difference: f64,
@@ -53,7 +55,7 @@ fn integrate_rule(
   center: f64,
   curvature: f64,
   rule: &[(f64, f64)],
-) -> Result<[f64; 6], StatsError> {
+) -> Result<[f64; 8], StatsError> {
   let scale = (2. / curvature).sqrt();
   let mut values = Vec::with_capacity(rule.len());
   for &(z, weight) in rule {
@@ -66,13 +68,20 @@ fn integrate_rule(
     if !log_weight.is_finite() {
       return Err(invalid("nonfinite quadrature integrand"));
     }
-    values.push((log_weight, exp_u, u * u));
+    values.push((log_weight, exp_u, u * u, u));
   }
   let anchor = values.iter().map(|v| v.0).fold(f64::NEG_INFINITY, f64::max);
   let weights: Vec<_> = values.iter().map(|v| (v.0 - anchor).exp()).collect();
   let denominator = sum(weights.iter().copied());
   let mean_exp = sum(values.iter().zip(&weights).map(|(v, w)| w * v.1)) / denominator;
   let mean_u2 = sum(values.iter().zip(&weights).map(|(v, w)| w * v.2)) / denominator;
+  let mean_u = sum(values.iter().zip(&weights).map(|(v, w)| w * v.3)) / denominator;
+  let cov_u = sum(
+    values
+      .iter()
+      .zip(&weights)
+      .map(|(v, w)| w * (v.1 - mean_exp) * (v.3 - mean_u)),
+  ) / denominator;
   // Centered products retain small posterior covariances at high count totals.
   let var_exp = sum(
     values
@@ -94,7 +103,16 @@ fn integrate_rule(
   ) / denominator;
   let log_integral =
     scale.ln() + anchor + denominator.ln() - (2. * std::f64::consts::PI * variance).ln() / 2.;
-  let result = [log_integral, mean_exp, mean_u2, var_exp, cov, var_u2];
+  let result = [
+    log_integral,
+    mean_exp,
+    mean_u2,
+    var_exp,
+    cov,
+    var_u2,
+    mean_u,
+    cov_u,
+  ];
   if result.iter().any(|v| !v.is_finite()) {
     return Err(invalid("nonfinite posterior moments"));
   }
@@ -125,6 +143,8 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
     mean_sum.powi(2),
     mean_sum / variance,
     1. / variance.powi(2),
+    1. / variance,
+    mean_sum / variance,
   ];
   let discrepancy = high
     .iter()
@@ -142,9 +162,159 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
     var_exp_u: high[3],
     cov_exp_u_u2: high[4],
     var_u2: high[5],
+    mean_u: high[6],
+    cov_exp_u_u: high[7],
     mode,
     curvature,
     max_relative_difference: discrepancy,
+  })
+}
+
+struct Evaluation {
+  log_likelihood: f64,
+  score: Vec<f64>,
+  information: Vec<Vec<f64>>,
+  max_quadrature_difference: f64,
+}
+
+fn evaluate(
+  x: &[Vec<f64>],
+  y: &[f64],
+  groups: &[Vec<usize>],
+  parameters: &[f64],
+) -> Result<Evaluation, StatsError> {
+  let k = parameters
+    .len()
+    .checked_sub(1)
+    .ok_or_else(|| invalid("empty parameters"))?;
+  if !(2..=15).contains(&k)
+    || x.len() != y.len()
+    || y.is_empty()
+    || groups.is_empty()
+    || x
+      .iter()
+      .any(|row| row.len() != k || row[0] != 1. || row.iter().any(|v| !v.is_finite()))
+    || y
+      .iter()
+      .any(|v| !v.is_finite() || *v < 0. || *v > 100000. || v.fract() != 0.)
+  {
+    return Err(invalid("inconsistent complete-case group design"));
+  }
+  let t = parameters[k];
+  if !t.is_finite() || t.abs() >= 8. {
+    return Err(invalid("log variance must be strictly inside (-8,8)"));
+  }
+  let variance = t.exp();
+  let mut seen = vec![false; y.len()];
+  for group in groups {
+    if group.is_empty() {
+      return Err(invalid("empty group"));
+    }
+    for &row in group {
+      if row >= y.len() || seen[row] {
+        return Err(invalid("group frame must partition rows exactly"));
+      }
+      seen[row] = true;
+    }
+  }
+  if seen.iter().any(|v| !*v) {
+    return Err(invalid("group frame omitted rows"));
+  }
+  let eta: Vec<_> = x
+    .iter()
+    .map(|row| sum(row.iter().zip(parameters).map(|(a, b)| a * b)))
+    .collect();
+  if eta.iter().any(|v| !v.is_finite() || *v < -40. || *v > 40.) {
+    return Err(invalid("fixed linear predictor exceeds [-40,40]"));
+  }
+  let mu: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+  let mut score = vec![0.; k + 1];
+  let mut sc = score.clone();
+  let mut information = vec![vec![0.; k + 1]; k + 1];
+  let mut ic = information.clone();
+  let (mut ll, mut lc, mut max_difference) = (0., 0., 0.0_f64);
+  for group in groups {
+    let total = sum(group.iter().map(|&i| y[i]));
+    let m = sum(group.iter().map(|&i| mu[i]));
+    let post = posterior(total, m, t)?;
+    max_difference = max_difference.max(post.max_relative_difference);
+    let mut center: Vec<_> = (0..k)
+      .map(|j| sum(group.iter().map(|&i| mu[i] / m * x[i][j])))
+      .collect();
+    center[0] = 1.;
+    let lambda_mean = m * post.mean_exp_u;
+    // Stein identities stabilize count-total score/curvature. In particular,
+    // Cov(lambda,u)/v replaces E(lambda)-Var(lambda), avoiding large-count subtraction.
+    let eta_score = post.mean_u / variance;
+    let eta_information = m * post.cov_exp_u_u / variance;
+    for j in 0..k {
+      let conditional_score = sum(group.iter().map(|&i| y[i] * (x[i][j] - center[j])));
+      add_compensated(
+        &mut score[j],
+        &mut sc[j],
+        conditional_score + center[j] * eta_score,
+      );
+      for l in j..k {
+        let within = sum(
+          group
+            .iter()
+            .map(|&i| mu[i] / m * (x[i][j] - center[j]) * (x[i][l] - center[l])),
+        );
+        add_compensated(
+          &mut information[j][l],
+          &mut ic[j][l],
+          lambda_mean * within + eta_information * center[j] * center[l],
+        );
+      }
+      add_compensated(
+        &mut information[j][k],
+        &mut ic[j][k],
+        center[j] * m * post.cov_exp_u_u2 / (2. * variance),
+      );
+    }
+    add_compensated(
+      &mut score[k],
+      &mut sc[k],
+      post.mean_u2 / (2. * variance) - 0.5,
+    );
+    add_compensated(
+      &mut information[k][k],
+      &mut ic[k][k],
+      post.mean_u2 / (2. * variance) - post.var_u2 / (4. * variance * variance),
+    );
+    let constant = sum(
+      group
+        .iter()
+        .map(|&i| y[i] * eta[i] - crate::matrix::lgamma(y[i] + 1.)),
+    );
+    add_compensated(&mut ll, &mut lc, constant + post.log_integral);
+  }
+  let g = groups.len() as f64;
+  for value in &mut score {
+    *value /= g;
+  }
+  for row in &mut information {
+    for value in row {
+      *value /= g;
+    }
+  }
+  for j in 0..information.len() {
+    let (earlier, remaining) = information.split_at_mut(j);
+    for (l, row) in earlier.iter().enumerate() {
+      remaining[0][l] = row[j];
+    }
+  }
+  if !ll.is_finite()
+    || score.iter().any(|v| !v.is_finite())
+    || information.iter().flatten().any(|v| !v.is_finite())
+  {
+    return Err(invalid("nonfinite integrated likelihood derivatives"));
+  }
+  Ok(Evaluation {
+    log_likelihood: ll,
+    score,
+    information,
+    max_quadrature_difference: max_difference,
   })
 }
 
@@ -184,7 +354,7 @@ mod tests {
     assert_eq!(cases.len(), 6);
     for line in cases {
       let v: Vec<f64> = line.split(',').map(|s| s.parse().unwrap()).collect();
-      assert_eq!(v.len(), 9);
+      assert_eq!(v.len(), 11);
       let p = posterior(v[0], v[1], v[2]).unwrap();
       let actual = [
         p.log_integral,
@@ -193,6 +363,8 @@ mod tests {
         p.var_exp_u,
         p.cov_exp_u_u2,
         p.var_u2,
+        p.mean_u,
+        p.cov_exp_u_u,
       ];
       for (&a, &b) in actual.iter().zip(&v[3..]) {
         assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs(), "{v:?}: {a} vs {b}");
@@ -202,6 +374,105 @@ mod tests {
       let score = v[0] - v[1] * p.mode.exp() - p.mode / variance;
       assert!(score.abs() <= 1e-10 * (1. + v[0] + v[1] * p.mode.exp() + (p.mode / variance).abs()));
       assert_eq!(p.curvature, v[1] * p.mode.exp() + 1. / variance);
+    }
+  }
+  #[test]
+  fn joint_multivariate_scores_and_information_match_richardson_differences() {
+    let x = vec![
+      vec![1., -1., 0.2],
+      vec![1., 0.3, -0.8],
+      vec![1., 1.2, 0.1],
+      vec![1., -0.4, 0.7],
+      vec![1., 0.2, -1.],
+      vec![1., 1.1, 0.8],
+      vec![1., -0.9, 0.5],
+    ];
+    let y = vec![0., 3., 5., 1., 4., 2., 8.];
+    let groups = vec![vec![0, 1, 2], vec![3], vec![4, 5, 6]];
+    let parameters = vec![0.2, 0.4, -0.3, 0.6];
+    let e = evaluate(&x, &y, &groups, &parameters).unwrap();
+    assert!(e.max_quadrature_difference <= 1e-9);
+    for j in 0..4 {
+      let difference = |h: f64| {
+        let mut plus = parameters.clone();
+        plus[j] += h;
+        let a = evaluate(&x, &y, &groups, &plus).unwrap();
+        let mut minus = parameters.clone();
+        minus[j] -= h;
+        let b = evaluate(&x, &y, &groups, &minus).unwrap();
+        (
+          (a.log_likelihood - b.log_likelihood) / (2. * h * groups.len() as f64),
+          a.score
+            .iter()
+            .zip(b.score)
+            .map(|(u, v)| -(u - v) / (2. * h))
+            .collect::<Vec<_>>(),
+        )
+      };
+      let (d1, i1) = difference(2e-4);
+      let (d2, i2) = difference(1e-4);
+      let derivative = (4. * d2 - d1) / 3.;
+      assert!(
+        (e.score[j] - derivative).abs() <= 1e-8 * (1. + e.score[j].abs()),
+        "score{j}: {} vs {derivative}",
+        e.score[j]
+      );
+      for i in 0..4 {
+        let numeric = (4. * i2[i] - i1[i]) / 3.;
+        assert!(
+          (e.information[i][j] - numeric).abs() <= 1e-8 * (1. + e.information[i][j].abs()),
+          "information{i},{j}: {} vs {numeric}",
+          e.information[i][j]
+        );
+        assert_eq!(e.information[i][j], e.information[j][i]);
+      }
+    }
+  }
+  #[test]
+  fn invalid_group_frames_and_fixed_predictors_reject_without_panics() {
+    let x = vec![vec![1., 0.], vec![1., 1.]];
+    let y = vec![0., 2.];
+    let p = [0., 1., 0.];
+    for groups in [
+      vec![],
+      vec![vec![]],
+      vec![vec![0]],
+      vec![vec![0, 1, 2]],
+      vec![vec![0, 0, 1]],
+    ] {
+      assert!(evaluate(&x, &y, &groups, &p).is_err());
+    }
+    assert!(evaluate(&x, &y, &[vec![0, 1]], &[0., 41., 0.]).is_err());
+    assert!(evaluate(&[vec![], vec![]], &y, &[vec![0, 1]], &p).is_err());
+  }
+  #[test]
+  fn stein_score_and_information_avoid_high_count_subtraction() {
+    for line in include_str!("../tests/fixtures/normal_poisson/posterior.csv")
+      .lines()
+      .skip(1)
+    {
+      let v: Vec<f64> = line.split(',').map(|s| s.parse().unwrap()).collect();
+      let (s, m, t) = (v[0], v[1], v[2]);
+      let variance = t.exp();
+      let p = posterior(s, m, t).unwrap();
+      // Integration by parts: S-E(lambda)=E(u)/v and
+      // E(lambda)-Var(lambda)=Cov(lambda,u)/v. The latter avoids O(S) cancellation.
+      let score = p.mean_u / variance;
+      assert!(
+        (score - (s - m * p.mean_exp_u)).abs() <= 1e-9 + 1e-10 * (s + (m * p.mean_exp_u).abs())
+      );
+      let information = m * p.cov_exp_u_u / variance;
+      assert!(information > 0. && information.is_finite());
+      let difference = |h: f64| {
+        let plus = posterior(s, m * h.exp(), t).unwrap();
+        let minus = posterior(s, m * (-h).exp(), t).unwrap();
+        -(plus.mean_u - minus.mean_u) / (2. * h * variance)
+      };
+      let derivative = (4. * difference(1e-4) - difference(2e-4)) / 3.;
+      assert!(
+        (information - derivative).abs() <= 1e-8 * (1. + information.abs()),
+        "{v:?}: {information} vs {derivative}"
+      );
     }
   }
   #[test]
