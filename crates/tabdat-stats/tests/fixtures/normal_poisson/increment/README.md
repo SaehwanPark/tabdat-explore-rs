@@ -43,9 +43,10 @@ or convergence threshold. Large moves retain the usual marginal-level test.
 Native Rust bootstrap API source/control500 points and empirical quantities
 now match independent cold-start direct-R refits at fixed gates (source max
 parameter delta4.9e-12). Fixed176/208 uses384-node work and no adaptive retry.
-This validates the kernel, not a public terminal/bootstrap command. Multi-slope/
-unbalanced controls, application/state/file/report tests and raw-equation/forgery
-auditing remain pending.
-Invalid/non-normalized/negative/nonfinite inputs and log-domain/overflow cases
-must reject rather than clip or silently renormalize. No statistical fit gate
-has changed and no public bootstrap command is implemented.
+These component controls validate the kernel; the separate
+[terminal workflow](../../../../../../examples/mma23p1pannonlin/native_normal_re_bootstrap.md)
+now supplies multi-slope/unbalanced controls, application/state/file/report tests
+and all500 raw-score/empirical/forgery audits. Component controls alone do not
+establish that full workflow. Invalid/non-normalized/negative/nonfinite inputs
+and log-domain/overflow cases must reject rather than clip or silently
+renormalize. No statistical fit gate has changed.

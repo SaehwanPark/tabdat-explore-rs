@@ -5,8 +5,7 @@ script/export and independent raw-equation auditor are implemented. All500 sourc
 and control joint refits/empirical quantities match independent R, with all
 ordered draws regenerated and every copied-fit score independently integrated.
 Multi-slope/unbalanced/singleton and merged-ID negative controls pass.
-Cross-crate regressions are verified as recorded below; final author review
-remains pending and PR stays draft.
+Cross-crate regressions and final author review are complete as recorded below.
 Earlier profile/prototype checkpoints below are chronological, not current
 capability or the currently selected copied rule (fixed176/208 for every copy).
 
@@ -458,8 +457,24 @@ for stats/domain/language/execution/reporting/runtime/shell/MCP pass; root bin
 and the new workflow/discovery test targets pass Clippy separately. Unrestricted
 root all-target Clippy remains unclaimed because of the known unrelated
 Table5.7 excessive-precision warning. Inventory validator passes all three
-publisher hashes/37 blocks/117 lines/450 links/noNBSP. Final author review remains
-pending; no independent/delegated review, new doctest, platform or release claim.
+publisher hashes/37 blocks/117 lines/453 links/noNBSP after final documentation
+corrections. Final author review is complete as detailed below; no independent/delegated review, new doctest,
+platform or release claim.
+
+### Final author review
+
+Reviewed the numerical fitter diff, stable-ratio derivation and independent
+Decimal/direct-R controls, generated-rule provenance/moment checks, bootstrap
+frame/work bounds/distinct effects/RNG/failure paths, immutable application
+ownership and wire/report/script contracts, reference inputs/publication failures,
+and raw-score/empirical coherent-forgery defenses. No actionable code issues
+remain. Review found stale pre-integration limitations in the ordinary workflow
+and component/fixture guides; those now link the validated separate command.
+Historical feasibility checkpoints above remain explicitly chronological.
+No estimator or numerical gate changed during final review, so prior passing
+numerical/application evidence remains valid. Only documentation/link/diff/fmt
+checks were required after these documentation corrections. This is author
+review, not independent code review; R and raw-equation oracles are independent.
 
 This native extension is not a publisher bootstrap block, historical Stata RNG,
 historical normal fit, complete Table23.1/chapter or full-roadmap completion.

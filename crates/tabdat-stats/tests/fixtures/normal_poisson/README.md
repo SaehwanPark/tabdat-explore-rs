@@ -34,8 +34,10 @@ tail checks.128/160 and160/192 prototypes failed the unchanged1e-9 comparison
 before control copy105 reached its independent R optimum; no tolerance was
 widened. Ordinary public normal fits still use80/96 and176 work factor.
 Copied fits use384 and one original-normal raw warm start converted to each
-copy RMS design. This is not a public precision option or terminal/bootstrap
-command yet; the stats API is validated separately from application integration.
+copy RMS design. This is not a public precision option; the separate
+`bootstrap ..., model(normal_poisson_re)` report now records both rule profiles
+and supplies tested terminal/script/application integration. Component/API
+validation alone is not evidence for every application contract.
 
 Paired-rule differences are checked in intensity/prior-score units:
 `[log_integral,M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²,Eu/v,M*CovExpUu/v]`.

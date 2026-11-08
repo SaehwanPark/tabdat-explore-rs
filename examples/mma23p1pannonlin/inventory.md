@@ -179,8 +179,8 @@ and control200/40 match all500 direct-R joint refits/31 bootstrap fields/full
 covariance/type7 intervals and every regenerated draw, with every copied-fit
 raw score independently integrated. Original42-field inference and predictions
 remain unchanged; multivariate/unbalanced/singleton/distinct-effect controls and
-20 forgeries pass. Cross-crate regressions are verified; final author review
-remains pending. It does
+20 forgeries pass. Cross-crate regressions and final author review are complete.
+It does
 not resolve missing historical normal SEs or add a sixth publisher bootstrap.
 
 **Completed follow-up:** the original linear FE normalized-intercept covariance/

@@ -39,4 +39,7 @@ verified t2.0836168535458266 optimum. No gate relaxation/redraw. All500 native
 joint triples and empirical covariance/bias/SE/type7 match fixed scalar gates
 1e-9+1e-10*abs(reference); separate development empirical checks also use scale-
 relative covariance identities. These frozen fixtures have no R/Python runtime dependency
-in Cargo tests. The public terminal/script workflow is still WIP.
+in Cargo tests. The separate
+[terminal/script workflow](../../../examples/mma23p1pannonlin/native_normal_re_bootstrap.md)
+now validates read-only state/file/report behavior and every copied-fit raw score;
+20 bootstrap forgeries include coherent wrong native/R artifacts.

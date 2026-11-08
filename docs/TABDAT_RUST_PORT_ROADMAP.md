@@ -652,8 +652,8 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    and state/file ownership contracts pass. Fixed copied176/208 rules and the
    original raw joint initializer preserve strict numerical gates, with no
    adaptive retry/redraw; conservative384-node work is bounded explicitly.
-   Cross-crate regressions are verified with separate run accounting; final
-   author review remains pending. This native extension
+   Cross-crate regressions are verified with separate run accounting and final
+   author review is complete. This native extension
    is not requested by the publisher's five bootstrap blocks or historical parity.
    Broader conditional-FE inference,
    general GEE, other firm bootstraps and historical Figure23.1 reconciliation
