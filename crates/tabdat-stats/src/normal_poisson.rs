@@ -1,7 +1,6 @@
 //! Bounded integrated normal random-intercept Poisson, not mean-one gamma RE.
 mod increment;
 mod nodes;
-#[cfg(test)]
 mod refined_nodes;
 use crate::{
   EstimationProblem, EstimationSample, LogitEstimate, StatsError, fit_poisson,
@@ -71,11 +70,11 @@ const ORDINARY: Quadrature = Quadrature {
   low: &GH80,
   high: &GH96,
 };
-#[cfg(test)]
 const REFINED: Quadrature = Quadrature {
-  low: &refined_nodes::GH128,
-  high: &refined_nodes::GH160,
+  low: &refined_nodes::GH176,
+  high: &refined_nodes::GH208,
 };
+pub(crate) const COPIED_QUADRATURE_NODES: [usize; 2] = [REFINED.low.len(), REFINED.high.len()];
 
 #[derive(Debug, Clone)]
 struct Posterior {
@@ -596,6 +595,22 @@ pub fn fit_normal_poisson(
 ) -> Result<NormalPoissonResult, StatsError> {
   fit_with_rule(problem, entity_variable, options, ORDINARY, None)
 }
+// One deterministic original-normal initializer, not an error-triggered retry.
+// Each copied frame rescales the raw coefficients into its own RMS units.
+pub(crate) fn fit_normal_poisson_copied(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  original_raw_parameters: &[f64],
+) -> Result<NormalPoissonResult, StatsError> {
+  fit_with_rule(
+    problem,
+    entity_variable,
+    &NormalPoissonOptions::default(),
+    REFINED,
+    Some(original_raw_parameters),
+  )
+}
+
 fn fit_with_rule(
   problem: &EstimationProblem,
   entity_variable: &str,
@@ -1475,8 +1490,8 @@ mod tests {
     for rule in [
       &GH80[..],
       &GH96[..],
-      &refined_nodes::GH128[..],
-      &refined_nodes::GH160[..],
+      &refined_nodes::GH176[..],
+      &refined_nodes::GH208[..],
     ] {
       assert!(
         rule

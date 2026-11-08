@@ -34,16 +34,18 @@ The Rust increment helper now supports production ordinary-normal small-step
 comparisons; all statistical gates are unchanged. Cumulant arithmetic takes a
 separately stabilized E[h]; group construction uses matched moments/ratio points
 under the selected rule pair.18 direct-R cases are tested under both ordinary
-80/96 and private/test-only128/160 profiles. Actual rounded parameter increments
+80/96 and copied176/208 profiles (earlier128/160 and160/192 prototypes
+failed the strict quadrature gate on artificial copy105). Actual rounded parameter increments
 and the existing global Stein score preserve small Newton gains without
 re-cancelling first-order group terms; rounded no-op trials are rejected.
 The1e-4 small-move crossover is a calculation strategy, not a decline allowance
 or convergence threshold. Large moves retain the usual marginal-level test.
-Private warm/refined source500 points and31 empirical quantities now match
-independent cold-start direct-R refits at fixed gates (max parameter delta
-4.9e-12). This validates that prototype numerical construction, not a public
-bootstrap command. Native control replay, permanent API/state/file/report tests
-and raw-equation/forgery auditing remain pending.
+Native Rust bootstrap API source/control500 points and empirical quantities
+now match independent cold-start direct-R refits at fixed gates (source max
+parameter delta4.9e-12). Fixed176/208 uses384-node work and no adaptive retry.
+This validates the kernel, not a public terminal/bootstrap command. Multi-slope/
+unbalanced controls, application/state/file/report tests and raw-equation/forgery
+auditing remain pending.
 Invalid/non-normalized/negative/nonfinite inputs and log-domain/overflow cases
 must reject rather than clip or silently renormalize. No statistical fit gate
 has changed and no public bootstrap command is implemented.

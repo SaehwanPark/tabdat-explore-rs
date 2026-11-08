@@ -1,10 +1,12 @@
 # Native normal-RE whole-firm bootstrap — WIP contract and evidence
 
-Current status: production ordinary-normal stable-increment/no-op refinements
-pass affected checks; private warm/refined fitting passes native500-copy source
-feasibility. All500 source fits and31 empirical quantities now match independent
-R; control500 R references are generated. Public bootstrap stats/parser/result/
-report/script/failure/auditor workflow remains pending.
+Current status: ordinary-normal stable-increment/no-op refinements remain.
+Native Rust bootstrap kernel/API uses fixed176/208 copied quadrature and the
+original joint raw warm point; all500 source and control refits/empirical
+quantities match independent R. The remaining multi-slope/unbalanced kernel
+controls, application/parser/result/report/script/state/file/auditor workflow
+and final review remain WIP. Earlier profile/prototype evidence below is
+chronological, not the currently selected copied rule.
 
 ## Bounded outcome / source status
 
@@ -281,6 +283,58 @@ not an implemented public bootstrap report/workflow. Native control500 replay,
 permanent kernel/API tests, raw-equation/forgery auditing, read-only state and
 file/CLI/script/report contracts remain. No new Cargo/workspace/CI claim from
 these development-oracle runs; all native/R counts above are separate evidence.
+
+## Native stats API and control105 refinement
+
+`bootstrap_normal_poisson_clustered`/`NormalPoissonBootstrapResult` now implement
+first-seen whole-group resampling, distinct copy effects, joint raw coefficient/
+log-variance refits, full empirical covariance/bias/SE/type7 and read-only owned
+input metadata. The original estimate uses80/96; every copy uses fixed176/208
+and the original raw point converted to its own RMS units. Result metadata
+records both rules and initializer. No public precision flag/adaptive retry.
+
+Permanent artificial500-replicate testing exposed copy105:128/160 stalls at
+t~1.84472 with score.03798/undamped step.2473, and160/192 stalls at~2.07542 with
+score.001227/step.009385. Trace proves paired disagreement1e-9, not convergence,
+blocks further motion. Independent R optimum is intercept−.77892230308921,
+slope−.000410394108639088,t2.0836168535458266,LL−279.315092419633/raw score<7e-14.
+Neither failed series counts as a pass.176/208 is selected for **all** copies;
+all18 normal tests pass, including both-profile rule/moment/ratio/scalar-model
+controls, with unchanged gates.
+Generated384 pairs retain R binary64 values; positive tails/Gaussian moments
+through25, direct moments, signed ratios and42 scalar/model quantities pass.
+All transient traces/probes are removed (one initial trace-only field-name
+compile typo corrected; no numerical or acceptance change).
+
+Resource contract revision: actual selected node work factor is384, not prior
+proposed288/352. Guard bounds remain candidateN<=40000, per-copy work<=20m and
+aggregate<=3b, now all conservatively checked using G*largest-group-size and
+actual selected nodes/K² **before** fitting an unresampleable frame. Source
+384*1730*9*500=2989440000<3b. This is not a claim about exact CPU operations.
+Gamma/FE/pooled bounds and original normal176-node constraints are unchanged.
+
+Actual new Rust API source500 succeeds in73.424s including build. All500
+triples match independent R with max deltas4.897e-12/1.190e-12/2.309e-12;
+all173000 ordered indices match the independently verified native stream.
+Full empirical covariance/means/bias/SE/type7 identities and R quantities pass.
+Native control500 (including105) matches every R triple and all31 source/
+empirical quantities. Frozen artificial references have no runtime R dependency.
+Additional tests cover deterministic seed replay, bad reps, rank-losing first
+copy abort/no redraw/immutable input,512 accept/513 reject and three separate
+conservative size/per-copy/aggregate guards. The guard test originally reached
+numerical fitting first; preflight now correctly rejects conservative unsupported
+sizes before numerical estimation, with explicit sample/key alignment checks.
+
+Fresh affected-crate332 tests/59 binaries/one pre-existing skip pass
+(888cacb5-461d-4a5f-8b79-20bbc7ae0f38,13.144s). Clippy identified a test-only
+chunks_exact→as_chunks recommendation; subsequent focused5 confirms the parser
+change, not another332 pass (e55323e9-3b44-41f7-ae21-e001e51b2163). Stats
+all-target Clippy now passes. Reverse ordinary-normal runtime3
+(c589a790-122a-43f8-887d-3ff1cbcff3b2) and root source3
+(fbdc7ddb-829b-4bb2-88c3-ff412576ebe7) pass; generator bitwise384 pairs/fmt/diff/
+hash/link checks pass. Remaining multi-slope/unbalanced/distinct-copy
+negative controls and application/auditor/state/file contracts are required.
+No native script command/full-workspace/CI/readiness or merge claim.
 
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
