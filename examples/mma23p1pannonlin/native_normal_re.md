@@ -150,11 +150,25 @@ split-borrow symmetry construction replaces it without changing mathematics.
 The two affected evaluator cases pass separately2/2
 (41cdb9af-efb6-4f4e-87b2-1c3cc1abb95b), and final stats lib/tests Clippy passes.
 Earlier other five passing tests remain applicable; no fresh final7/broad run
-is claimed. No optimizer/fitted inference/source-native workflow is claimed.
+is claimed. No fitted inference/source-native workflow is claimed at that checkpoint.
 
-The module is explicitly test-only until the fit path is implemented. No
-native normal-RE parser, fitted kernel, state, inference/report, original-
-sample validation or completed slice is claimed. Next implement full joint
-score/information/optimizer and independent multivariate/reference checks,
-then typed execution/prediction/reporting and actual-source workflow. Do not
+A bounded test-only Newton optimizer now uses diagonal-whitened undamped SPD
+information (existing inverse with dimensionless pivots>1e-12),100-iteration/
+32-halving limits, nondecreasing likelihood and the declared joint score/
+relative-step criteria; no ridge/fallback. Existing200-row/40-firm direct-R
+control validates all three MLE parameters, six covariance entries and log
+likelihood (ten scalar quantities), plus all200 population mean/residual/key/
+design records. Iteration limits, high-variance quadrature start and indefinite/
+near-singular information fail; diagonal whitening handles disparate units.
+The two new optimizer cases pass2/2 (8afad200-7398-4b8a-81ae-69092d49f917,
+0.039s), with final stats lib/tests Clippy. Earlier seven mathematical checks
+remain applicable; no new final9/broad pass is claimed. This is not yet a public
+fit API, sample adapter, full42-field inference or original1730-source proof.
+
+The module is explicitly test-only until the public fit path is implemented.
+No native normal-RE parser, public fit API, state, full inference/report,
+original-sample validation or completed slice is claimed. Next implement sample/
+RMS preprocessing and public model-based inference, independent multivariate/
+reference checks, then typed execution/prediction/reporting and actual-source
+workflow. Do not
 merge this WIP. Artifacts `/tmp/tabdat-ch23-native-normal/`.

@@ -170,6 +170,7 @@ fn posterior(total: f64, mean_sum: f64, log_variance: f64) -> Result<Posterior, 
   })
 }
 
+#[derive(Debug)]
 struct Evaluation {
   log_likelihood: f64,
   score: Vec<f64>,
@@ -318,9 +319,219 @@ fn evaluate(
   })
 }
 
+#[derive(Debug)]
+struct CoreFit {
+  evaluation: Evaluation,
+  parameters: Vec<f64>,
+  inverse: Vec<Vec<f64>>,
+  iterations: usize,
+  score_norm: f64,
+  relative_step: f64,
+}
+fn scaled_inverse(information: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+  let scales: Vec<_> = information
+    .iter()
+    .enumerate()
+    .map(|(i, row)| row[i].sqrt())
+    .collect();
+  if scales.iter().any(|v| !v.is_finite() || *v <= 0.) {
+    return None;
+  }
+  let normalized: Vec<Vec<_>> = information
+    .iter()
+    .enumerate()
+    .map(|(i, row)| {
+      row
+        .iter()
+        .enumerate()
+        .map(|(j, v)| v / scales[i] / scales[j])
+        .collect()
+    })
+    .collect();
+  // Existing SPD inversion checks dimensionless pivots above1e-12 after whitening;
+  // neither step nor reported covariance uses a ridge or absolute eigenvalues.
+  crate::nb2::positive_inverse(&normalized).map(|inverse| {
+    inverse
+      .iter()
+      .enumerate()
+      .map(|(i, row)| {
+        row
+          .iter()
+          .enumerate()
+          .map(|(j, v)| v / scales[i] / scales[j])
+          .collect()
+      })
+      .collect()
+  })
+}
+fn optimize(
+  x: &[Vec<f64>],
+  y: &[f64],
+  groups: &[Vec<usize>],
+  mut parameters: Vec<f64>,
+  max_iterations: usize,
+) -> Result<CoreFit, StatsError> {
+  if max_iterations == 0 || max_iterations > 100 {
+    return Err(invalid("iteration limit must be1..100"));
+  }
+  for iteration in 1..=max_iterations {
+    let current = evaluate(x, y, groups, &parameters)?;
+    let inverse = scaled_inverse(&current.information)
+      .ok_or_else(|| invalid("joint undamped information is not positive definite"))?;
+    let step: Vec<_> = inverse
+      .iter()
+      .map(|row| sum(row.iter().zip(&current.score).map(|(a, b)| a * b)))
+      .collect();
+    let score_norm = current.score.iter().map(|v| v.abs()).fold(0., f64::max);
+    let relative_step = step
+      .iter()
+      .zip(&parameters)
+      .map(|(d, b)| d.abs() / (1. + b.abs()))
+      .fold(0., f64::max);
+    if score_norm <= 1e-10 && relative_step <= 1e-12 {
+      return Ok(CoreFit {
+        evaluation: current,
+        parameters,
+        inverse,
+        iterations: iteration,
+        score_norm,
+        relative_step,
+      });
+    }
+    let directional = sum(step.iter().zip(&current.score).map(|(a, b)| a * b));
+    if !directional.is_finite() || directional <= 0. {
+      return Err(invalid("Newton direction is not finite and ascending"));
+    }
+    let mut fraction = 1.;
+    let mut accepted = None;
+    for _ in 0..32 {
+      let trial: Vec<_> = parameters
+        .iter()
+        .zip(&step)
+        .map(|(b, d)| b + fraction * d)
+        .collect();
+      if let Ok(next) = evaluate(x, y, groups, &trial)
+        && next.log_likelihood >= current.log_likelihood
+      {
+        accepted = Some(trial);
+        break;
+      }
+      fraction *= 0.5;
+    }
+    parameters =
+      accepted.ok_or_else(|| invalid("no finite nondecreasing Newton step within32 trials"))?;
+  }
+  Err(invalid(
+    "iteration limit without strict joint score/step convergence",
+  ))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  fn control() -> (Vec<Vec<f64>>, Vec<f64>, Vec<Vec<usize>>) {
+    let mut x = vec![];
+    let mut y = vec![];
+    let mut groups = vec![];
+    for line in include_str!("../../../tests/fixtures/mma23_gamma_re_bootstrap/source.asc")
+      .lines()
+      .filter(|line| !line.trim().is_empty())
+    {
+      let cells: Vec<_> = line.split_whitespace().collect();
+      let mut rows = vec![];
+      for j in 0..5 {
+        rows.push(y.len());
+        x.push(vec![1., cells[10 + j].parse().unwrap()]);
+        y.push(cells[20 + j].parse().unwrap());
+      }
+      groups.push(rows);
+    }
+    assert_eq!((x.len(), groups.len()), (200, 40));
+    (x, y, groups)
+  }
+  #[test]
+  fn optimizer_matches_independent_control_point_covariance_and_predictions() {
+    let (x, y, groups) = control();
+    let fit = optimize(
+      &x,
+      &y,
+      &groups,
+      vec![1.2479608264839344, 0.5673452307402028, 0.],
+      100,
+    )
+    .unwrap();
+    assert!(fit.iterations <= 100 && fit.score_norm <= 1e-10 && fit.relative_step <= 1e-12);
+    let reference: std::collections::BTreeMap<_, _> =
+      include_str!("../../../tests/fixtures/mma23_normal_re/reference.csv")
+        .lines()
+        .skip(1)
+        .map(|line| {
+          let (k, v) = line.split_once(',').unwrap();
+          (k, v.parse::<f64>().unwrap())
+        })
+        .collect();
+    let close = |a: f64, b: f64| assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs(), "{a} vs {b}");
+    for (i, name) in [
+      "estimate_intercept",
+      "estimate_slope",
+      "estimate_lnvariance",
+    ]
+    .iter()
+    .enumerate()
+    {
+      close(fit.parameters[i], reference[name]);
+    }
+    close(fit.evaluation.log_likelihood, reference["log_likelihood"]);
+    for (i, a) in ['a', 'b', 't'].iter().enumerate() {
+      for (j, b) in ['a', 'b', 't'].iter().enumerate().skip(i) {
+        close(
+          fit.inverse[i][j] / groups.len() as f64,
+          reference[format!("covariance_{a}{b}").as_str()],
+        );
+      }
+    }
+    let predictions: Vec<_> =
+      include_str!("../../../tests/fixtures/mma23_normal_re/predictions.csv")
+        .lines()
+        .skip(1)
+        .collect();
+    assert_eq!(predictions.len(), 200);
+    for (i, line) in predictions.iter().enumerate() {
+      let cells: Vec<_> = line.split(',').collect();
+      assert_eq!(cells[0].parse::<usize>().unwrap(), i / 5 + 1);
+      assert_eq!(cells[1].parse::<usize>().unwrap(), 1975 + i % 5);
+      assert_eq!(cells[2].parse::<f64>().unwrap(), x[i][1]);
+      assert_eq!(cells[3].parse::<f64>().unwrap(), y[i]);
+      let mu =
+        (fit.parameters[0] + fit.parameters[1] * x[i][1] + fit.parameters[2].exp() / 2.).exp();
+      close(mu, cells[4].parse().unwrap());
+      close(y[i] - mu, cells[5].parse().unwrap());
+    }
+  }
+  #[test]
+  fn optimizer_and_whitened_information_reject_unsupported_states() {
+    let (x, y, groups) = control();
+    let start = vec![1.2479608264839344, 0.5673452307402028, 0.];
+    for limit in [0, 1, 101] {
+      assert!(optimize(&x, &y, &groups, start.clone(), limit).is_err());
+    }
+    assert!(
+      optimize(&x, &y, &groups, vec![start[0], start[1], 2.], 100)
+        .unwrap_err()
+        .to_string()
+        .contains("quadrature disagreement")
+    );
+    for matrix in [
+      vec![vec![1., 2.], vec![2., 1.]],
+      vec![vec![1., 1. - 1e-14], vec![1. - 1e-14, 1.]],
+      vec![vec![-1., 0.], vec![0., 1.]],
+    ] {
+      assert!(scaled_inverse(&matrix).is_none());
+    }
+    let inverse = scaled_inverse(&[vec![1e-12, 0.25], vec![0.25, 1e12]]).unwrap();
+    assert!((inverse[0][0] / (1e12 / 0.9375) - 1.).abs() < 1e-12);
+    assert!((inverse[1][1] / (1e-12 / 0.9375) - 1.).abs() < 1e-12);
+  }
   #[test]
   fn fixed_rules_have_positive_tail_weights_and_independent_gaussian_moments() {
     for rule in [&GH80[..], &GH96[..]] {
