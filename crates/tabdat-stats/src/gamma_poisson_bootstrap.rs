@@ -86,8 +86,8 @@ pub fn bootstrap_gamma_poisson_clustered(
     clusters[index].push(row);
   }
   let g = clusters.len();
-  if !(2..=256).contains(&g) {
-    return Err(invalid("2 to 256 retained groups are required"));
+  if !(2..=512).contains(&g) {
+    return Err(invalid("2 to 512 retained groups are required"));
   }
   let max_rows = g
     .checked_mul(clusters.iter().map(Vec::len).max().unwrap())

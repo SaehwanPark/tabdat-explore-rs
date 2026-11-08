@@ -139,8 +139,8 @@ examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md for the
 bounded Chapter24 workflow and its independent evidence. The source-sized
 Chapter23 patents B500 workflow (324 positive firms) is documented at
 examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md, including independent
-R refits and RNG checks. Only conditional FE permits512 groups; pooled Poisson
-and shared-gamma RE retain their256-group bounds.
+R refits and RNG checks. Conditional FE and shared-gamma RE permit512 groups;
+pooled Poisson retains its256-group bound.
 
 ## Whole-group shared-gamma Poisson RE
 
@@ -158,7 +158,7 @@ intercept/slopes and ln(alpha) are refit; this is not independent-row NB2,
 conditional FE, a posterior-effect forecast or a retained bootstrap model.
 Fit xtpoisson ..., re separately for marginal predictions.
 
-B=2..500 (default200), G<=256 with G>K, K=slopes+2 joint parameters including
+B=2..500 (default200), G<=512 with G>K, K=slopes+2 joint parameters including
 intercept and ln(alpha), slopes1..14, G*largest_group_size<=40000 and
 G*largest_group_size*B*K²<=3000000000. Checked limits are conservative; the
 underlying RE fit also enforces its original sample, count-total, rank,
@@ -179,7 +179,12 @@ Labels are exact internal key strings, not necessarily display formatting.
 Terminal output gives the same parameter/mean/bias/SE/interval summaries.
 Data, labels, named reports and retained fit remain unchanged on success or
 failure. See examples/mma24p2poiscluster/individual_gamma_re_bootstrap.md for
-the bounded Chapter24 workflow and independent validation evidence.
+the bounded Chapter24 workflow and independent validation evidence. The
+Chapter23 source-sized B500 workflow (346 firms, including22 zero-total firms)
+is at examples/mma23p1pannonlin/native_gamma_re_bootstrap.md: independent R
+joint refits/full covariance and raw-score/RNG/empirical identities validate
+all three parameters, including nuisance ln(alpha). Historical RNG/SE/interval
+parity is not claimed.
 
 ## Joint conditional quantiles
 

@@ -147,4 +147,8 @@ changed. No fresh full-root/workspace/doctest/release/platform claim. No Rust
 documentation example changed. Remaining illustrations, native generalizations
 where needed, normal-RE/bootstrap/GEE outputs, full textbook inventory, I-DETAIL/
 I-FREQ/I-GRAPH, historical household ML SE and URBAN/MEDEXP/LNHHEXP reconciliation
-stay required; this slice does not resolve or exclude them.
+stay required; this slice does not resolve or exclude them. The separate
+[native gamma-RE bootstrap](native_gamma_re_bootstrap.md) now validates original
+B500 under its512-group bound: all346 firms/22 zero totals,500 joint R refits,
+full covariance/173000 draws and unchanged original predictions. That workflow
+has a distinct native stream and does not establish historical bootstrap parity.

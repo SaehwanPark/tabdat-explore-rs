@@ -1,0 +1,179 @@
+# Patents native shared-gamma RE whole-firm bootstrap
+
+## Outcome and selection rationale
+
+Native gamma RE fits the patents sample, but its former256-group bootstrap
+cap rejected346 firms. This bounded original-data workflow removes that
+separate resampling barrier after the native conditional-FE bootstrap.
+Native normal-Poisson RE remains required but is a distinct higher-risk kernel
+slice; do not label it complete or postpone it behind a full inventory gate.
+
+This change raises only shared-gamma RE bootstrap's group cap to512. Preserve B2..500,
+1..14 slopes/K=slopes+2<=16, G>K, G*largest_group_size<=40000 and
+G*largest_group_size*B*K²<=3000000000. Existing original-fit/raw-key/count/rank/
+interior-dispersion/convergence guards, first-seen complete-case order, one
+continuous xoshiro256++/SplitMix64/u64-rejection stream, distinct gamma-effect
+copies, fail-abort/no redraw and read-only model/data/labels/reports remain.
+Conditional FE already permits512; pooled Poisson keeps256. No formula, parser,
+API/schema, RNG or dependency changed.
+
+## Exact sample and statistical contract
+
+CT2005 §23.3 patents `patr7079.asc`, SHA256
+`87525a1ae9112c235326bf3197cb57dced73c6f166d84e261395a737a390fee8`.
+Reuse [native gamma source guards](native_gamma_re.md):1730 records/346 firms,
+five unique1975–79 years each; exact PAT0..1000, finite |LOGR|<=20 and finite
+nonmodel metadata except nullable ARDSSIC. SUMPAT is not a selection filter.
+
+Include all346 complete-case firms, including22 zero-total firms; unlike FE,
+there is no zero-total exclusion. Intercept/LOGR slope and ln(alpha) are jointly
+refit in500 whole-firm replicates, seed10001, with a separate mean-one shared
+Gamma effect for each copied occurrence. Alpha is the effect variance, not a
+row-NB2 dispersion model or Gaussian log effect. Full joint B−1 covariance,
+bootstrap means/biases/SEs and type7 marginal percentile95 are for
+`_cons,logr,lnalpha`; no new normal/t/bootstrap p-values or joint confidence
+region. Finite B has Monte Carlo error and inference requires appropriate
+independent-firm/regularity assumptions. Original actual gamma RE remains
+installed for population n/xb/residuals; no bootstrap replicate is retained.
+
+## Acceptance and failures, declared before implementation
+
+1. Stable257/346/512-group kernel controls accept and513 rejects, preserving
+   zero-total/singleton eligibility, full joint parameter/refit order and all
+   conservative row/work budgets. Existing below256 RNG/results remain; test
+   distinct copies against merged-ID fitting and fail-abort/boundary failures.
+2. Actual original B500 script completes load/guard/cohort → fit → bootstrap →
+   retained marginal predictions/diagnostics → readable/CLI-v1/export. All1730
+   source/prediction records and22 eligible zero-total firms are verified;
+   permutations/all-null nonmodel metadata, state/labels/reports and file
+   collision/failure semantics retain their supported guarantees.
+3. Reuse unchanged development-only `gamma_re_bootstrap_reference.R`, feeding
+   independently regenerated native draws (including rejection-step indices).
+   Compare all500 three-parameter R BFGS/Newton refits,31 summary fields/full3x3
+   covariance and original predictions. Freeze an existing small synthetic
+   source's500 R vectors/reference; leave publisher data external. Fixed gates:
+   scalar1e-9+1e-10*abs(reference), exact keys/membership/draws/counts. Diagnose
+   sample/parameterization/stream/convergence differences rather than widen.
+4. Independently reconstruct empirical covariance/quantiles and raw shared-
+   gamma likelihood/score identities so matching forged native/R covariance,
+   coefficients or nuisance parameters cannot pass from equality alone. Test
+   wrong zero-total eligibility, merged/repeated IDs, order, draws and ownership;
+   failed/boundary/singular refits must abort, not omit/redraw or install a fit.
+5. New/modified focused checks precede affected stats and relevant runtime/CLI/
+   reporting/help checks. Reconcile SPEC/roadmap/ledger/inventory/help and old
+   gamma256-limit notices; author-review complete diff and evidence, then merge,
+   check tree identity and prune branches before another slice. No full-workspace
+   pass inferred from retained/filtered runs or empty CI.
+
+Scope exclusions (still required where applicable): pooled source-sized native
+bootstrap, native normal RE/bootstrap, GEE bootstrap, general/weighted/offset
+resampling, source named tables, historical RNG/repeated-ID/SE/interval parity
+and complete illustration inventory. Existing SQL bootstrap stays distinct; its
+merged-source-ID counterfactual is sensitivity evidence, not historical proof.
+
+## Validation evidence
+
+Old executable reproduces original346-group rejection at256. Conditional FE
+remains512 and pooled remains256; only gamma cap/error text changed. New native
+original B500 completes, all173000 draw indices/rejection steps match independent
+Python RNG, and unchanged R4.6.2 validates31 fields/full3x3 covariance/all500
+three-parameter refits. Maximum intercept/slope/lnalpha differences are
+9.34e-11/1.75e-11/4.24e-11 under the fixed scalar gates. Bootstrap SEs are
+.42502508954787294/.12339690766905602/.22334598492348126. All1730 post-bootstrap
+prediction rows are byte-identical to the independently audited native gamma
+source-fit baseline, including all22 zero-total firms.
+
+Modified/new kernel module7/7 passes:257/346/512 accept with zero/singleton
+eligibility and joint refits;513 rejects; prior distinct-copy-versus-merged,
+singular/boundary aborts and row/work contracts remain. Fresh affected stats
+crate309 pass/one pre-existing skip,58 binaries,12.531s,
+run8537766a-07a3-454c-b304-05b0421838e0. Relevant runtime contracts4/4 pass,
+runfec98e13-2b9c-4aa6-855c-4f4eaedf93d2. No full-workspace/CI claim.
+
+The committed auditor reconstructs per-replicate
+three-component raw scores using exact integer-count harmonic digamma
+differences; all3x3 empirical covariance entries, anchored means/SEs/bias/type7
+limits and original marginal predictions/information are checked independently.
+Existing40-firm/200-record control retains eight zero-total firms;31 fields/
+500 joint R vectors and20000 independently checked draws pass and are frozen.
+
+Final actual-script Rust module3/3 passes,run245865c7-b0df-4c7b-9957-99da843e8bff,
+6.231s: all31 R fields/500 joint vectors, original prediction ownership, JSON/
+text export equality/no-clobber, reversed/all-null metadata and a257-firm B500
+replay retaining zero totals. Python3/3 passes,2.911s,including constant joint
+vectors/zero covariance and30 rejected forgeries. Matching native/R wrong full
+covariance or shifted intercept/slope/lnalpha passes equality only with the
+relevant independent checks deliberately mocked out, then the real checks
+reject it. Original readable report matches validated numbers; JSON/text
+exports are byte-identical. Stats-all-target/new-root-target Clippy pass.
+After help reconciliation, reporting58/58 (88580894-b9f1-4b54-85f0-994e17ce0be5)
+and CLI discovery29/29 (9723ddba-ed5f-4cc2-b4a1-f90d9cc30b2f) pass.
+Author review clarified that original analytic covariance is not cluster-robust
+while the bootstrap does resample whole independent firms; no actionable issues
+remain. All463 local links/19 changed files/31+500 frozen R records and no-NBSP
+checks pass.
+
+SPEC/help/roadmap/ledger/inventory distinguish this bounded native workflow
+from unresolved historical output and required remaining methods. No whole
+chapter/table/book, full-workspace, CI, doctest, platform or release claim.
+Artifacts `/tmp/tabdat-ch23-native-gamma-bootstrap/`.
+
+## Original-data report and interpretation
+
+| Parameter | Original | Bootstrap mean | Bias | Bootstrap SE | Type7 percentile95 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `_cons` | 2.3127049949956313 | 2.375972363611859 | .0632673686162275 | .42502508954787294 | [1.6921272803045648,3.3457220238765575] |
+| `logr` | .3487831736207683 | .33564050203720436 | −.01314267158356397 | .12339690766905602 | [.061096529605087574,.5568849706621087] |
+| `lnalpha` | .5454693087373752 | .5527933019084071 | .0073239931710319395 | .22334598492348126 | [.10733010668411369,1.0052391719629619] |
+
+The full covariance (same order) is
+`[[.1806463267451774,−.05149464206431657,.08936152572532464],
+[−.05149464206431657,.015226796822285537,−.026466121344109316],
+[.08936152572532464,−.026466121344109316,.049883428981439916]]`.
+lnalpha=0 means alpha=1, not no heterogeneity. These empirical intervals are
+not normal/t Wald intervals or a boundary test for alpha=0. Model-based
+original inference remains separately labeled in `GammaPoissonResult`; the
+bootstrap has `GammaPoissonBootstrapResult` with every joint vector/draw and
+full covariance. It neither overwrites that original inference nor invents
+bootstrap p-values. Independent-firm assumptions and finite-B uncertainty
+still matter; no global optimum/existence guarantee is added.
+
+## Reproduce in a fresh directory
+
+R/Python are optional development references, never production dependencies.
+Publisher data stay external. Build the pinned Rust project as described in
+[CONTRIBUTING](../../CONTRIBUTING.md), then:
+
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo build --locked -p tabdat-explore-rs
+repo=$PWD
+work=$(mktemp -d)
+curl -fL https://cameron.econ.ucdavis.edu/mmabook/patr7079.asc -o "$work/patr7079.asc"
+printf '%s  %s\n' 87525a1ae9112c235326bf3197cb57dced73c6f166d84e261395a737a390fee8 "$work/patr7079.asc" | shasum -a 256 -c -
+sh examples/mma23p1pannonlin/prepare.sh "$work/patr7079.asc" "$work/patents.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma23p1pannonlin/native_gamma_re_bootstrap.td" > result.jsonl)
+python3 examples/mma23p1pannonlin/check_native_gamma_re_bootstrap.py oracle \
+  "$work" "$work/patr7079.asc" "$work/draws.csv"
+Rscript examples/mma23p1pannonlin/gamma_re_bootstrap_reference.R \
+  "$work/patr7079.asc" "$work/draws.csv" "$work/reference"
+python3 examples/mma23p1pannonlin/check_native_gamma_re_bootstrap.py check \
+  "$work" "$work/patr7079.asc" "$work/reference"
+```
+
+Use `--text` in a separate fresh prepared directory for readable output.
+The script creates `native_gamma_re_bootstrap_cohort`, checks/sorts source
+keys and exports `native_gamma_re_bootstrap_predictions.csv` with all nine
+source fields, selected firm totals, inclusion flags and original n/xb/residuals.
+Do not reuse an export path: no-clobber failure preserves the existing file.
+Smaller source/independent-reference commands are in the [fixture guide](../../tests/fixtures/mma23_native_gamma_re_bootstrap/README.md).
+
+The auditor validates all source keys, exact labels/membership and continuous
+RNG draws/rejection steps, then raw marginal shared-gamma scores
+for every joint vector, independent empirical covariance/type7 summaries,
+original likelihood/information inverse and population predictions. These
+scores integrate each shared effect separately, not condition it out as FE.
+Covariance identity tolerance is1e-9 times the empirical SD product; zero
+covariance rows stay exactly zero. Scalar R gates remain unchanged. Shared
+wrong R/native artifacts are not accepted as independent numerical evidence.
