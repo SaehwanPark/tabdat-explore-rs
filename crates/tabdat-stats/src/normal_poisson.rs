@@ -899,6 +899,200 @@ mod tests {
     );
   }
   #[test]
+  fn multivariate_unbalanced_singletons_match_all57_direct_r_fields_and_predictions() {
+    use std::collections::BTreeMap;
+    let records: Vec<Vec<f64>> =
+      include_str!("../tests/fixtures/normal_poisson/multivariate/input.csv")
+        .lines()
+        .skip(1)
+        .map(|line| line.split(',').map(|v| v.parse().unwrap()).collect())
+        .collect();
+    assert_eq!(records.len(), 120);
+    assert!(records.iter().all(|row| row.len() == 6));
+    let x: Vec<Vec<_>> = records.iter().map(|row| vec![row[4], row[5]]).collect();
+    let y: Vec<_> = records.iter().map(|row| row[3]).collect();
+    let keys: Vec<_> = records
+      .iter()
+      .map(|row| (row[1] as usize).to_string())
+      .collect();
+    let retained: Vec<_> = records.iter().map(|row| row[0] as usize).collect();
+    for row in &records {
+      assert_eq!(row[0], (row[1] - 1.) * 5. + row[2] - 1975.);
+    }
+    let sample = EstimationSample::new(retained, 200, 80, None, Some(keys.clone())).unwrap();
+    let p = EstimationProblem::new("y", vec!["x".into(), "z".into()], y.clone(), x)
+      .unwrap()
+      .with_intercept_name("_cons")
+      .with_sample(sample.clone());
+    let before = p.clone();
+    let r = fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap();
+    assert_eq!(p, before);
+    assert_eq!(r.sample, sample);
+    assert_eq!(
+      (
+        r.observation_count,
+        r.group_count,
+        r.singleton_group_count,
+        r.minimum_group_size,
+        r.maximum_group_size
+      ),
+      (120, 40, 8, 1, 5)
+    );
+    assert_eq!(
+      r.covariance_parameter_names,
+      ["_cons", "x", "z", "lnsigma2"]
+    );
+    let reference: BTreeMap<_, _> =
+      include_str!("../tests/fixtures/normal_poisson/multivariate/reference.csv")
+        .lines()
+        .skip(1)
+        .map(|line| {
+          let (k, v) = line.split_once(',').unwrap();
+          (k, v.parse::<f64>().unwrap())
+        })
+        .collect();
+    assert_eq!(reference.len(), 57);
+    let mut actual = BTreeMap::from([
+      ("observations".into(), 120.),
+      ("groups".into(), 40.),
+      ("zero_groups".into(), r.zero_total_group_count as f64),
+      ("singletons".into(), 8.),
+      ("log_likelihood".into(), r.log_likelihood),
+      ("poisson_log_likelihood".into(), r.poisson_log_likelihood),
+      ("lr_variance_zero".into(), r.variance_likelihood_ratio),
+      (
+        "p_lr_variance_zero".into(),
+        r.variance_likelihood_ratio_p_value,
+      ),
+      ("sigma".into(), r.sigma),
+      ("se_sigma".into(), r.sigma_standard_error),
+      ("lower_sigma".into(), r.sigma_confidence_lower),
+      ("upper_sigma".into(), r.sigma_confidence_upper),
+      ("wald".into(), r.wald_statistic),
+      ("wald_df".into(), r.wald_df as f64),
+      ("wald_p".into(), r.wald_p_value),
+    ]);
+    let labels = ["intercept", "x", "z", "lnvariance"];
+    let coefficients: Vec<_> = r
+      .coefficients
+      .iter()
+      .chain(std::iter::once(&r.ln_variance))
+      .collect();
+    let parameters: Vec<_> = coefficients.iter().map(|c| c.value).collect();
+    let design: Vec<_> = p
+      .design_matrix
+      .iter()
+      .map(|row| std::iter::once(1.).chain(row.iter().copied()).collect())
+      .collect();
+    let mut grouped: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+    for (i, key) in keys.iter().enumerate() {
+      grouped.entry(key).or_default().push(i);
+    }
+    let e = evaluate(
+      &design,
+      &y,
+      &grouped.into_values().collect::<Vec<_>>(),
+      &parameters,
+    )
+    .unwrap();
+    for (i, c) in coefficients.iter().enumerate() {
+      for (prefix, value) in [
+        ("estimate", c.value),
+        ("se", c.standard_error),
+        ("z", c.statistic),
+        ("p", c.p_value),
+        ("lower", c.confidence_lower),
+        ("upper", c.confidence_upper),
+        ("score", e.score[i] * 40.),
+      ] {
+        actual.insert(format!("{prefix}_{}", labels[i]), value);
+      }
+      for j in 0..4 {
+        let (a, b) = if i <= j {
+          (labels[i], labels[j])
+        } else {
+          (labels[j], labels[i])
+        };
+        let name = format!("covariance_{a}_{b}");
+        let expected = reference[name.as_str()];
+        assert!((r.covariance[i][j] - expected).abs() <= 1e-9 + 1e-10 * expected.abs());
+        if i <= j {
+          actual.insert(name, r.covariance[i][j]);
+        }
+      }
+    }
+    actual.insert("mean_mu".into(), sum(r.fitted_means.iter().copied()) / 120.);
+    actual.insert(
+      "min_mu".into(),
+      r.fitted_means.iter().copied().fold(f64::INFINITY, f64::min),
+    );
+    actual.insert(
+      "max_mu".into(),
+      r.fitted_means
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max),
+    );
+    actual.insert(
+      "mean_residual".into(),
+      sum(y.iter().zip(&r.fitted_means).map(|(a, b)| a - b)) / 120.,
+    );
+    assert_eq!(actual.len(), 57);
+    for (name, value) in reference {
+      let a = actual[name];
+      if (name.starts_with("p_") || name == "wald_p") && value > 0. {
+        assert!((a / value - 1.).abs() <= 1e-9, "{name}: {a} vs {value}");
+      } else {
+        assert!(
+          (a - value).abs() <= 1e-9 + 1e-10 * value.abs(),
+          "{name}: {a} vs {value}"
+        );
+      }
+    }
+    let predicted: Vec<Vec<f64>> =
+      include_str!("../tests/fixtures/normal_poisson/multivariate/predictions.csv")
+        .lines()
+        .skip(1)
+        .map(|line| line.split(',').map(|s| s.parse().unwrap()).collect())
+        .collect();
+    assert_eq!(predicted.len(), 120);
+    for (i, row) in predicted.iter().enumerate() {
+      assert_eq!(row.len(), 8);
+      assert_eq!(row[..6], records[i]);
+      assert!((r.fitted_means[i] - row[6]).abs() <= 1e-9 + 1e-10 * row[6].abs());
+      assert!((y[i] - r.fitted_means[i] - row[7]).abs() <= 1e-9 + 1e-10 * row[7].abs());
+    }
+    let mut changed = p.clone();
+    for row in &mut changed.design_matrix {
+      row[0] *= 1e3;
+      row[1] *= 1e-3;
+    }
+    changed.design_matrix.reverse();
+    changed.response.reverse();
+    let changed_sample = changed.sample.as_mut().unwrap();
+    changed_sample.retained_indices.reverse();
+    changed_sample.cluster_groups.as_mut().unwrap().reverse();
+    let scaled = fit_normal_poisson(&changed, "id", &NormalPoissonOptions::default()).unwrap();
+    assert_eq!(scaled.sample, changed.sample.unwrap());
+    let units = [1., 1e3, 1e-3, 1.];
+    let scaled_values: Vec<_> = scaled
+      .coefficients
+      .iter()
+      .chain(std::iter::once(&scaled.ln_variance))
+      .map(|c| c.value)
+      .collect();
+    for i in 0..4 {
+      assert!((scaled_values[i] * units[i] - parameters[i]).abs() < 1e-9);
+      for j in 0..4 {
+        assert!((scaled.covariance[i][j] * units[i] * units[j] - r.covariance[i][j]).abs() < 1e-9);
+      }
+    }
+    assert!((scaled.wald_statistic - r.wald_statistic).abs() < 1e-9);
+    for (a, b) in scaled.fitted_means.iter().zip(r.fitted_means.iter().rev()) {
+      assert!((a - b).abs() <= 1e-9 + 1e-10 * b.abs());
+    }
+  }
+  #[test]
   fn public_fit_preprocessing_rescaling_and_failure_contracts() {
     let p = control_problem();
     let base = fit_normal_poisson(&p, "id", &NormalPoissonOptions::default()).unwrap();

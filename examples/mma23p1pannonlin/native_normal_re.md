@@ -200,8 +200,19 @@ probe wrongly assumed25 tokens per physical line; publisher records wrap.
 Corrected to25-token records, with no statistical code/tolerance change. No
 publisher data or temporary example is committed.
 
+Independent multivariate control now validates120 observations/40 firms/eight
+singletons, group sizes1..5 and two slopes. The separate direct-improper-R
+oracle checks integrated information with two Richardson refinements (maximum
+covariance difference5.45e-12), not native GH or its Stein decomposition. All57
+R quantities/full4x4 covariance and all120 exact key/design/count/prediction
+records pass, including nonzero p relative1e-9. Source/covariate CSV uses17
+digits to preserve the exact fitted design. Reversed rows/opposite1e3/1e-3
+units preserve sample mapping, transformed coefficients/full covariance,
+Wald and predictions. Modified/new case passes1/1
+(84c1d558-3469-4be4-b327-fab82bdc8e2a), stats-all-target Clippy passes.
+The retained320-test baseline plus this new case is not a fresh321 run.
+
 No parser/execution/owned state/application reports, full original-source audit
-or completed slice is claimed. Next independent multivariate/unbalanced/
-singleton reference controls, then typed execution/prediction/reporting and
+or completed slice is claimed. Next typed execution/prediction/reporting and
 actual-source workflow. Do not merge this kernel-only WIP.
 Artifacts `/tmp/tabdat-ch23-native-normal/`.
