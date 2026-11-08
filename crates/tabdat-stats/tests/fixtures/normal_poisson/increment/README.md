@@ -39,8 +39,11 @@ and the existing global Stein score preserve small Newton gains without
 re-cancelling first-order group terms; rounded no-op trials are rejected.
 The1e-4 small-move crossover is a calculation strategy, not a decline allowance
 or convergence threshold. Large moves retain the usual marginal-level test.
-Private warm/refined source feasibility passes500 fits, but independent all500
-reference/uncertainty and a public bootstrap workflow remain pending.
+Private warm/refined source500 points and31 empirical quantities now match
+independent cold-start direct-R refits at fixed gates (max parameter delta
+4.9e-12). This validates that prototype numerical construction, not a public
+bootstrap command. Native control replay, permanent API/state/file/report tests
+and raw-equation/forgery auditing remain pending.
 Invalid/non-normalized/negative/nonfinite inputs and log-domain/overflow cases
 must reject rather than clip or silently renormalize. No statistical fit gate
 has changed and no public bootstrap command is implemented.

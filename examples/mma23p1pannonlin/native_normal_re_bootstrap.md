@@ -2,8 +2,9 @@
 
 Current status: production ordinary-normal stable-increment/no-op refinements
 pass affected checks; private warm/refined fitting passes native500-copy source
-feasibility. Independent all500 reference/empirical uncertainty and public
-bootstrap stats/parser/result/report/script/failure workflow remain pending.
+feasibility. All500 source fits and31 empirical quantities now match independent
+R; control500 R references are generated. Public bootstrap stats/parser/result/
+report/script/failure/auditor workflow remains pending.
 
 ## Bounded outcome / source status
 
@@ -191,7 +192,7 @@ warm-started copied fit is unsupported; do not alter the undamped-SPD, ascent,
 iteration, step or score requirements. This is a demonstrated initialization
 contract revision, not a validated all500 outcome or a new public option.
 
-## Native feasibility achieved, independent500-fit reference still pending
+## Native feasibility achieved (subsequently independently validated below)
 
 The ordinary optimizer now uses the exact posterior-ratio construction for
 max(abs(delta_eta))<=1e-4 and abs(delta_t)<=1e-4. This is a calculation crossover,
@@ -226,6 +227,60 @@ wrong bin name `tabdat`, corrected to `tabdat-explore-rs`, not a code defect.
 No new workspace/CI/doctest/platform/release claim. No public bootstrap or
 merge readiness. Next independently refit all500 from raw copies/draws, then
 complete stats/application/script/report/failure/auditor contracts.
+
+## Independent reference driver (development only)
+
+`native_normal_re_bootstrap_reference.py RAW_ASC DRAWS_CSV NEW_OUTPUT_DIR`
+verifies the complete500-replicate seed10001 stream using the existing separate
+Python RNG oracle, freezes the R model/summary sources with hashes, and runs
+independent R point fits from raw distinct-copy records (not native coefficients
+or warm starts). Default4 workers use independent R processes; a failed fit
+aborts/cancels queued work and never publishes a partial fits.csv/reference.csv
+or complete provenance. Existing output directories are never overwritten.
+`--control` explicitly marks an unhashed artificial source; `--reps 2` is only
+a prefix smoke, not source500 evidence. All raw inputs/logs remain for diagnosis.
+
+The R `bootstrap-point` mode uses the existing improper-integration/BFGS/Newton
+model. BFGS omits unused information integrals; full observed information is
+still required positive at every Newton/final point and raw score<1e-8. Final
+per-copy covariance/Richardson exports are skipped because bootstrap uncertainty
+uses empirical joint refits, not those Wald matrices. The legacy two-argument
+full42-field control output is byte-identical; copy2 point mode before/after
+skipping unused BFGS integrals is also byte-identical. Independent base-R
+`cov`/type7 `quantile` summaries export31 quantities, original marginal means
+and every fitted triple/likelihood/raw score.
+
+Reference-driver4/4 RNG-tampering/no-clobber/failed-refit/failed-summary controls
+pass. Actual two-copy source smoke passes with692 verified draws and independent
+R summaries (6.443s); means/covariance/type7 identities pass. These mocks/smoke
+are not themselves all500 statistical validation. Subsequent full runs follow.
+
+## Full independent reference series achieved
+
+Source500 direct-R refits/173000 verified draws complete in425.550s; artificial
+40-firm control500/20000 draws complete in60.361s. Each R copy starts from its
+own full-X pooled GLM/t0 (not native/original normal warm coefficients), uses
+improper integration/complete-data scores/information, and requires final SPD
+and raw score<1e-8. Source max raw R score2.147e-10. Frozen scripts/hashes/logs,
+point triples/likelihoods/scores and independent base-R31-field summaries are
+retained in `reference-source500`/`reference-control500`.
+
+All500 prototype native source triples match R at fixed1e-9+1e-10*abs(ref):
+max deltas4.899e-12/1.191e-12/2.306e-12, max loglikelihood delta7.276e-11.
+All31 original point/marginal-mean and empirical mean/bias/full covariance/SE/
+type7 quantities match the same fixed scalar gates. Native joint means are
+1.42736691757247/.2840890158976975/.9916756742094646; bootstrap SEs
+.18739135487060413/.1339801535962461/.3055342450484391. R type7 intervals are
+[1.0827199678624204,1.8259472687076947],
+[.0028317537800471621,.53613928159713375] and
+[.3549663380036438,1.5789470374470538]. They concern intercept/slope/log variance,
+not a no-heterogeneity test or invented natural-sigma percentile interval.
+
+This validates the prototype source numerical series/empirical construction,
+not an implemented public bootstrap report/workflow. Native control500 replay,
+permanent kernel/API tests, raw-equation/forgery auditing, read-only state and
+file/CLI/script/report contracts remain. No new Cargo/workspace/CI claim from
+these development-oracle runs; all native/R counts above are separate evidence.
 
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
