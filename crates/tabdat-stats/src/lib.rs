@@ -49,6 +49,8 @@ mod multinomial;
 mod nb2;
 mod nested_logit;
 mod nls;
+#[cfg(test)]
+mod normal_poisson;
 mod normalized_common_nested_logit;
 mod poisson;
 mod poisson_bootstrap;

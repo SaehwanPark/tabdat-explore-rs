@@ -56,7 +56,8 @@ Adaptive quadrature centers at the unique strictly concave posterior mode,
 bracketed[-60,60]/55 bisections with root check, scale from posterior curvature.
 Log-sum-exp weights and centered posterior covariance moments avoid raw-second-
 moment cancellation. Compare both levels for every firm's log integral and
-required posterior means/centered covariances at every evaluated fit; reject
+required posterior means/centered covariances in intensity/prior-score units
+(M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²) at every evaluated fit; reject
 relative discrepancy>1e-9, not silently choose one rule as exact.
 
 RMS-preconditioned beta plus t, full joint observed-information Newton steps,
@@ -120,5 +121,24 @@ applicable, not silently excluded. If numerical evidence contradicts a declared
 bound/algorithm, document and validate the smallest explicit design revision;
 do not silently change statistical semantics or thresholds.
 
-Status: contract only. No native normal-RE parser/kernel/state/report or new
-reference pass is claimed. Artifacts `/tmp/tabdat-ch23-native-normal/`.
+## Verified pre-estimator checkpoint (not merge-ready)
+
+Test-only adaptive quadrature primitive now has independent R4.6.2 improper-
+integration controls: six artificial groups/six posterior quantities each,
+including zero totals and100000 counts, pass at unchanged scalar gates. Both
+fixed80/96 rules have positive/ordered weights and exact Gaussian-moment checks
+through degree25. A real high-variance t=2 pooled-R-GLM start on the existing
+40-firm source exposes paired-rule disagreement and is rejected; invalid
+parameters/unbracketed modes fail. Focused four tests passed under locked
+Rust1.99.1 (f620e2a6-e676-493c-974c-b1b7088ee3f8,0.024s;77 unrelated tests
+filtered out), with stats lib/tests Clippy. After adding explicit six-case/
+nine-column fixture-count assertions, that modified case separately passes1/1
+(ee1ecbef-172d-49d8-8c30-70c5a4cd72e3); this is not a new broad/final4 run.
+No broad baseline rerun claimed.
+
+The module is explicitly test-only until the fit path is implemented. No
+native normal-RE parser, fitted kernel, state, inference/report, original-
+sample validation or completed slice is claimed. Next implement full joint
+score/information/optimizer and independent multivariate/reference checks,
+then typed execution/prediction/reporting and actual-source workflow. Do not
+merge this WIP. Artifacts `/tmp/tabdat-ch23-native-normal/`.
