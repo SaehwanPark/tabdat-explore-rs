@@ -1,4 +1,9 @@
-# Native normal-RE whole-firm bootstrap — preimplementation contract
+# Native normal-RE whole-firm bootstrap — WIP contract and evidence
+
+Current status: production ordinary-normal stable-increment/no-op refinements
+pass affected checks; private warm/refined fitting passes native500-copy source
+feasibility. Independent all500 reference/empirical uncertainty and public
+bootstrap stats/parser/result/report/script/failure workflow remain pending.
 
 ## Bounded outcome / source status
 
@@ -156,15 +161,83 @@ are deliberately matched here. Any refined fitter path must parameterize both
 together before using this helper. No production no-op/optimizer fix or
 copied-source replay is yet claimed.
 
+## Integration feasibility / required initializer revision
+
+Stable small-increment comparison and rounded no-op rejection are now being
+integrated into the ordinary optimizer; the statistical gates remain unchanged.
+Matched128/160 profile/moments/ratio points are private/test-only. Focused17
+normal tests pass including all42 independent scalar-control fields/full
+covariance/predictions under both profiles, independent Gaussian moments for
+all four rules, and18 direct-R group ratios under both profiles. This is not a
+full-crate/workspace or bootstrap-command claim.
+
+The source feasibility replay now fits copies1..6, including copy2 at its R
+solution, but stops at copy7. Temporary tracing (removed) places this at
+**iteration1**, not at the solution: pooled beta=1.9670169781410587/normalized
+slope1.473252951855466,t=0 has indefinite joint observed information despite
+positive diagonal entries. Independent direct-R copy7 MLE is1.2513903274375/
+.379131218523013,t=.944140581212082,LL=-5249.55818325462,24 zero-total copies;
+maximum raw score9.66e-11/Richardson covariance discrepancy1.49e-11 meet fixed
+gates. Thus neither ridge/absolute eigenvalues nor accepting indefinite
+covariance is appropriate.
+
+The proposed copied-refit initializer is now explicitly **the original normal
+joint estimate in raw coefficient units**, converted to each copy's RMS units.
+Use that one deterministic warm start for every replicate, not retry-after-error,
+original pooled coefficients, prior application state or R coefficients. Refit
+the full-X same-copy pooled null independently as before. Ordinary normal
+commands keep their existing pooled/t0 initializer. Fail if the original or any
+warm-started copied fit is unsupported; do not alter the undamped-SPD, ascent,
+iteration, step or score requirements. This is a demonstrated initialization
+contract revision, not a validated all500 outcome or a new public option.
+
+## Native feasibility achieved, independent500-fit reference still pending
+
+The ordinary optimizer now uses the exact posterior-ratio construction for
+max(abs(delta_eta))<=1e-4 and abs(delta_t)<=1e-4. This is a calculation crossover,
+not a new convergence tolerance: large steps retain marginal-level comparison;
+small steps require computed change>=0 with no epsilon allowance. Actual rounded
+parameter deltas are used; bit-identical trials cannot be accepted. Both full
+frames still pass the same posterior/design/bounds checks; undamped SPD and
+score1e-10/relative step1e-12 are unchanged. Tests cover both directions,
+no-progress rejection and the adjacent binary64 values across the crossover.
+
+With matched128/160 nodes and the original normal raw joint point as the sole
+copied initializer, a removed development probe now fits **all500** source
+copies/173000 reused independently verified native-stream indices in58.404s
+(debug). No copy retry/redraw/skipping. t ranges.1801618898518454..1.9326944936544626;
+max final per-group score7.253e-13, relative undamped step9.477e-13 and final
+paired discrepancy8.596e-11. Copies2/7 match their independent direct-R points
+within4.93e-14/1.47e-13. This is native feasibility plus two independently checked
+copies, **not independent validation of all500 fits/uncertainty**. The public
+bootstrap command/result/state/report workflow is not implemented yet.
+
+After implementation, fresh stats all-target327/58 binaries/one pre-existing
+skip pass (805675d3-0a2e-42ca-a7bc-7074711b8aef,13.048s); reverse normal runtime3
+(444b5084-9164-4cb6-bd1e-1845eef141a1) and root source workflow3
+(98c82deb-7b77-464d-abe3-e813af27e823) pass. Updated focused normal18 tests include
+raw-initializer RMS conversion/opposite1e3/1e-3 units/full covariance, malformed
+initializer rejection and both-profile independent controls. Subsequent test-only
+expansion checks all eight direct-R posterior moments in all six stress cases
+under both profiles (modified1/1,128b9985-a1f1-4f24-98aa-b44812ad71f0), not a
+second327-test run; production code was unchanged. Stats all-target
+and scoped root bin/new-normal-test Clippy pass; initial root Clippy used the
+wrong bin name `tabdat`, corrected to `tabdat-explore-rs`, not a code defect.
+No new workspace/CI/doctest/platform/release claim. No public bootstrap or
+merge readiness. Next independently refit all500 from raw copies/draws, then
+complete stats/application/script/report/failure/auditor contracts.
+
 Artifacts `/tmp/tabdat-ch23-native-normal-bootstrap/`: exact replicate002.asc,
 independent replicate002-reference/reference.csv/R log, original feasibility
 and temporary128/160 feasibility JSON, both optimizer traces and R node/probe
-generators. No raw source or transient example/trace is committed. Production
-normal_poisson.rs was restored byte-identically to merged7fbeb1e after the
-prototypes; its only subsequent change registers the cfg(test)-only arithmetic
-module. Production fitting logic remains unchanged.
+generators. No raw source or transient example/trace is committed. The original diagnostic
+edits were restored before implementation. Subsequent numerical integration now
+uses the validated Rust increment helper in production ordinary fits; the
+128/160 profile/raw warm-start machinery remains private/test-only. The public
+normal API, model/inference/sample/prediction semantics,80/96 rules,176 work
+factor and all statistical convergence/SPD/quadrature gates remain unchanged.
 
-WIP: contract, two diagnosed numerical barriers and isolated test-only arithmetic/
-Poisson-group controls; no production bootstrap parser/kernel/result or all500
-feasibility claim. Normal bootstrap/historical issues and the
+WIP: ordinary stable numerical comparisons, private refined/warm copied-fit
+feasibility and independent controls; no production bootstrap parser/kernel/
+result or independent all500 uncertainty/workflow validation yet. Normal bootstrap/historical issues and the
 complete roadmap remain required.

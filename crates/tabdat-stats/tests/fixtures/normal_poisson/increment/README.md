@@ -30,13 +30,17 @@ error bound); requested relative tolerance2e-12. Fixed Rust directional-score/
 log-ratio gate1e-9*abs(reference)+1e-24 allows quadrature/moment propagation while
 retaining meaningful relative tests for the~1e-12 changes. All18 signs must match.
 
-The helper is currently **test-only and not wired into the fitter**. Cumulant
-arithmetic takes a separately stabilized E[h]; the group helper constructs that
-mean using the Poisson/Stein/remainder identities and the existing96-node rule.
-These controls validate that group construction against independent integration,
-not fit convergence or all500 bootstrap replicates. Source replay, ordinary/
-refined-rule regressions and no-progress rejection remain before production
-integration.
+The Rust increment helper now supports production ordinary-normal small-step
+comparisons; all statistical gates are unchanged. Cumulant arithmetic takes a
+separately stabilized E[h]; group construction uses matched moments/ratio points
+under the selected rule pair.18 direct-R cases are tested under both ordinary
+80/96 and private/test-only128/160 profiles. Actual rounded parameter increments
+and the existing global Stein score preserve small Newton gains without
+re-cancelling first-order group terms; rounded no-op trials are rejected.
+The1e-4 small-move crossover is a calculation strategy, not a decline allowance
+or convergence threshold. Large moves retain the usual marginal-level test.
+Private warm/refined source feasibility passes500 fits, but independent all500
+reference/uncertainty and a public bootstrap workflow remain pending.
 Invalid/non-normalized/negative/nonfinite inputs and log-domain/overflow cases
 must reject rather than clip or silently renormalize. No statistical fit gate
 has changed and no public bootstrap command is implemented.

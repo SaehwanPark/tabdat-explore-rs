@@ -140,5 +140,8 @@ This is author review, not delegated/independent code review; numerical oracles
 are independent. CI is disabled; no doctest/platform/release or whole-book
 completion claim. The [normal-bootstrap extension](native_normal_re_bootstrap.md)
 is WIP: exact copied-source feasibility has exposed numerical limitations,
-not a validated bootstrap command. Ordinary normal fits remain unchanged;
-bootstrap and unresolved inventory entries remain required.
+not a validated bootstrap command. Ordinary normal model/inference/sample/
+prediction/rule/bound contracts remain; numerical comparison now preserves
+tiny likelihood gains with stable posterior ratios and rejects rounded no-op
+trials, without relaxing convergence or accepting epsilon-sized declines.
+Bootstrap and unresolved inventory entries remain required.

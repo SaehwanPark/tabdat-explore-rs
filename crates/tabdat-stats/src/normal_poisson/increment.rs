@@ -1,5 +1,5 @@
-//! Stable posterior-ratio cumulants; isolated numerical controls before fitter use.
-use super::{invalid, sum};
+//! Stable posterior-ratio increments when marginal levels lose the Newton gain.
+use super::{Quadrature, invalid, sum};
 use crate::StatsError;
 
 pub(super) fn expm1_minus_x(x: f64) -> f64 {
@@ -68,6 +68,7 @@ pub(super) fn poisson_group_increment(
   delta_eta: &[f64],
   log_variance: f64,
   delta_t: f64,
+  quadrature: Quadrature,
 ) -> Result<(f64, f64), StatsError> {
   if y.is_empty()
     || y.len() != mu.len()
@@ -84,7 +85,7 @@ pub(super) fn poisson_group_increment(
   }
   let total = sum(y.iter().copied());
   let m = sum(mu.iter().copied());
-  let post = super::posterior(total, m, log_variance)?;
+  let post = super::posterior_with_rule(total, m, log_variance, quadrature)?;
   let variance = log_variance.exp();
   let delta_center = sum(mu.iter().zip(delta_eta).map(|(a, b)| a / m * b));
   let conditional = sum(y.iter().zip(delta_eta).map(|(a, b)| a * (b - delta_center)));
@@ -98,8 +99,8 @@ pub(super) fn poisson_group_increment(
   let mu_expm1 = sum(mu.iter().zip(delta_eta).map(|(a, b)| a * b.exp_m1()));
   let (center, curvature) = super::mode(total, m, variance)?;
   let scale = (2. / curvature).sqrt();
-  let mut points = Vec::with_capacity(super::nodes::GH96.len());
-  for &(z, weight) in &super::nodes::GH96 {
+  let mut points = Vec::with_capacity(quadrature.high.len());
+  for &(z, weight) in quadrature.high {
     let u = center + scale * z;
     if !u.is_finite() || u.abs() > 100. {
       return Err(invalid("increment quadrature random intercept exceeds100"));
@@ -120,6 +121,50 @@ pub(super) fn poisson_group_increment(
     return Err(invalid("nonfinite Poisson posterior increment"));
   }
   Ok((linear, correction))
+}
+
+// Caller validates both parameter frames with the full likelihood evaluator.
+// None means the move is large enough to use the usual marginal-level comparison.
+pub(super) fn stable_likelihood_increment(
+  x: &[Vec<f64>],
+  y: &[f64],
+  groups: &[Vec<usize>],
+  parameters: &[f64],
+  trial: &[f64],
+  score_per_group: &[f64],
+  quadrature: Quadrature,
+) -> Result<Option<f64>, StatsError> {
+  if parameters == trial {
+    return Err(invalid("rounded Newton trial makes no parameter progress"));
+  }
+  let k = parameters.len() - 1;
+  let delta: Vec<_> = trial.iter().zip(parameters).map(|(a, b)| a - b).collect();
+  let delta_eta: Vec<_> = x
+    .iter()
+    .map(|row| sum(row.iter().zip(&delta).map(|(a, b)| a * b)))
+    .collect();
+  if delta[k].abs() > 1e-4 || delta_eta.iter().any(|v| v.abs() > 1e-4) {
+    return Ok(None);
+  }
+  let mu: Vec<_> = x
+    .iter()
+    .map(|row| sum(row.iter().zip(parameters).map(|(a, b)| a * b)).exp())
+    .collect();
+  let linear = groups.len() as f64 * sum(delta.iter().zip(score_per_group).map(|(a, b)| a * b));
+  let mut corrections = Vec::with_capacity(groups.len());
+  for group in groups {
+    let yy: Vec<_> = group.iter().map(|&i| y[i]).collect();
+    let mm: Vec<_> = group.iter().map(|&i| mu[i]).collect();
+    let dd: Vec<_> = group.iter().map(|&i| delta_eta[i]).collect();
+    let (_, correction) =
+      poisson_group_increment(&yy, &mm, &dd, parameters[k], delta[k], quadrature)?;
+    corrections.push(correction);
+  }
+  let change = sum(std::iter::once(linear).chain(corrections));
+  if !change.is_finite() {
+    return Err(invalid("nonfinite full likelihood increment"));
+  }
+  Ok(Some(change))
 }
 
 #[cfg(test)]
@@ -201,26 +246,28 @@ mod tests {
       let y: Vec<_> = rows.iter().map(|r| r[2]).collect();
       let mu: Vec<_> = rows.iter().map(|r| r[3]).collect();
       let delta: Vec<_> = rows.iter().map(|r| r[4]).collect();
-      let (linear, correction) =
-        poisson_group_increment(&y, &mu, &delta, rows[0][5], rows[0][6]).unwrap();
-      for (name, actual, expected) in [
-        ("linear", linear, c[1]),
-        ("log ratio", linear + correction, c[2]),
-      ] {
-        let tolerance = 1e-9 * expected.abs() + 1e-24;
-        assert!(
-          (actual - expected).abs() <= tolerance,
-          "case{} {name}: {actual:.17e} versus {expected:.17e}, tolerance{tolerance:.3e}",
-          c[0]
-        );
-        assert_eq!(actual.is_sign_positive(), expected.is_sign_positive());
+      for quadrature in [super::super::ORDINARY, super::super::REFINED] {
+        let (linear, correction) =
+          poisson_group_increment(&y, &mu, &delta, rows[0][5], rows[0][6], quadrature).unwrap();
+        for (name, actual, expected) in [
+          ("linear", linear, c[1]),
+          ("log ratio", linear + correction, c[2]),
+        ] {
+          let tolerance = 1e-9 * expected.abs() + 1e-24;
+          assert!(
+            (actual - expected).abs() <= tolerance,
+            "case{} {name}: {actual:.17e} versus {expected:.17e}, tolerance{tolerance:.3e}",
+            c[0]
+          );
+          assert_eq!(actual.is_sign_positive(), expected.is_sign_positive());
+        }
       }
       count += 1;
     }
     assert_eq!(count, 18);
     assert_eq!(records.len(), 54);
     assert_eq!(
-      poisson_group_increment(&[0.], &[1.], &[0.], 0., 0.).unwrap(),
+      poisson_group_increment(&[0.], &[1.], &[0.], 0., 0., super::super::ORDINARY).unwrap(),
       (0., 0.)
     );
     for (y, mu, delta, dt) in [
@@ -233,7 +280,7 @@ mod tests {
       (vec![1.], vec![1.], vec![0.], 9.),
       (vec![1.], vec![1.], vec![0.], f64::INFINITY),
     ] {
-      assert!(poisson_group_increment(&y, &mu, &delta, 0., dt).is_err());
+      assert!(poisson_group_increment(&y, &mu, &delta, 0., dt, super::super::ORDINARY).is_err());
     }
   }
 

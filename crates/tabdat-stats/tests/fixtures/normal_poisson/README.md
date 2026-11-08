@@ -26,6 +26,13 @@ recurrence gives positive weights even at tiny tails (not eigenvector first
 components). Rust literals are shortest round-trip representations of the
 R17-digit values. Unit checks validate positive/ordered rules and exact
 Gaussian moments through degree25, rather than trusting the generated file.
+The private/test-only copied-refit prototype adds128/160 rules in
+`src/normal_poisson/refined_nodes.rs`, reproducible with the same generator's
+explicit128160 arguments (`... /tmp/nodes.sql 128 160`). All288 new pairs were
+checked bit-for-bit against fresh R output; all four rules pass the same
+moment/positive-tail checks. Ordinary public normal fits still use80/96 and
+the176 work factor. Refined copied fitting, raw original-normal warm starts and
+its288 work factor are not a public bootstrap command or precision option.
 
 Paired-rule differences are checked in intensity/prior-score units:
 `[log_integral,M*EexpU,Eu²/v,M²*VarExpU,M*CovExpUu²/v,VarU²/v²,Eu/v,M*CovExpUu/v]`.
