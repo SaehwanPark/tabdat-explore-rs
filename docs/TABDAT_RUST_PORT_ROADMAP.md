@@ -631,7 +631,18 @@ GLS blocks, mixed reporting, historical parity and full book inventory remain re
    independent direct R integration, with guarded quadrature and full joint
    information. The historical normal-RE result has missing SEs and materially
    differs from the integrated likelihood; it is not counted as exact parity.
-   Broader conditional-FE inference, native normal RE, normal-RE bootstrap,
+   The separate [native normal-RE workflow](../examples/mma23p1pannonlin/native_normal_re.md)
+   now retains actual normal state for population n=exp(xb+variance/2), with
+   paired80/96 GH/full observed joint information and explicit bounded failures.
+   All1730 original source/prediction records/42 independent direct-R fields,
+   full covariance and byte-identical JSON/text exports pass; two-slope,
+   unbalanced/singleton controls add57 R fields/full4x4 covariance. Independent
+   raw Simpson score/information/pooled-null identities reject31 forgeries,
+   including coherent wrong native/R covariance/null artifacts. Native default
+   gamma/FE and SQL composition remain distinct. Help/discovery, failure-state
+   and file/column ownership contracts are covered; this completes the bounded
+   native normal-RE workflow, not historical/table/chapter parity.
+   Broader conditional-FE inference, normal-RE bootstrap,
    general GEE, other firm bootstraps and historical Figure23.1 reconciliation
    remain separate required work. The [native FE bootstrap workflow](../examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md)
    now admits324 positive firms under its conditional-specific512-group cap while

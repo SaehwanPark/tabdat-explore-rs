@@ -12,7 +12,7 @@ impl Session {
       ));
     }
     self
-      .validate_xtpoisson_group_structure(&command.cluster_variable, p + 2)
+      .validate_xtpoisson_group_structure(&command.cluster_variable, p + 2, 1)
       .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
     let (problem, _) = self
       .count_problem(
@@ -45,7 +45,7 @@ impl Session {
       ));
     }
     self
-      .validate_xtpoisson_group_structure(&command.cluster_variable, k)
+      .validate_xtpoisson_group_structure(&command.cluster_variable, k, 1)
       .map_err(|e| RuntimeError::BootstrapFailed(e.to_string()))?;
     let (problem, _) = self
       .count_problem(

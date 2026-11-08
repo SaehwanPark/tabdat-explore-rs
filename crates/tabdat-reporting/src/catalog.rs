@@ -1256,8 +1256,8 @@ fn get_command_schema(
     "xtpoisson" => Ok(CommandSchemaResult {
       arguments:vec![ArgumentDescriptor {name:"outcome".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],
       help_topic,name:"xtpoisson".into(),
-      options:vec![OptionDescriptor {name:"fe".into(),required:false},OptionDescriptor {name:"re".into(),required:false},OptionDescriptor {name:"id".into(),required:true}],
-      syntax:"xtpoisson y xvars, fe|re id(group)".into(),
+      options:vec![OptionDescriptor {name:"fe".into(),required:false},OptionDescriptor {name:"re".into(),required:false},OptionDescriptor {name:"id".into(),required:true},OptionDescriptor {name:"distribution".into(),required:false}],
+      syntax:"xtpoisson y xvars, fe|re id(group) [distribution(gamma|normal) for re]".into(),
     }),
     "clogit" => Ok(CommandSchemaResult {
       arguments:vec![ArgumentDescriptor {name:"chosen".into(),required:true},ArgumentDescriptor {name:"predictors".into(),required:true}],

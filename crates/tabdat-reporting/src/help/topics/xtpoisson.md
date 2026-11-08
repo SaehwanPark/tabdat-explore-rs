@@ -1,11 +1,11 @@
 # xtpoisson
 
 Installed bounded syntax:
-`xtpoisson y xvars, fe|re id(group)`
+`xtpoisson y xvars, fe|re id(group) [distribution(gamma|normal) for re]`
 
 Choose exactly one of fe or re and one structural group variable. No persistent
 panel declaration or time key is needed. Predictors are numeric columns, not
-factor expansions. Both methods use joint-finite model cases, exact integer
+factor expansions. All three methods use joint-finite model cases, exact integer
 counts0..100000, and model-based inference only. Raw group keys must be
 nonmissing/finite numeric, text or boolean, even on omitted model rows; exact
 wide integer/decimal group identity is preserved. No weights or offsets.
@@ -64,6 +64,42 @@ a covariance adjustment. Boundary/nonconvergent fits fail explicitly; no clipped
 alpha or pooled fit mislabeled as RE. This bounded command does not supply an
 automatic zero-variance fallback.
 
+## Normal random-intercept RE
+
+`xtpoisson visits income age, re distribution(normal) id(commune)`
+
+Default `re` is still gamma; `distribution(gamma)` makes that choice explicit.
+Distribution selection is invalid with FE. Normal RE has a shared mean-zero
+Gaussian **log** effect u_g~N(0,variance), independent of X, with conditional
+mean exp(intercept+X beta+u_g). It is not mean-one gamma or independent-row NB.
+All selected zero-total and singleton groups remain; unbalanced groups are
+supported without a time key.
+
+Joint beta and lnsigma2=ln(variance) use inverse full observed information,
+including cross terms, without a DF multiplier. Coefficients/lnsigma2 use
+normal95; sigma has delta SE=(sigma/2)*SE(lnsigma2) and positive log-Wald CI.
+The lnsigma2 z test tests variance=1, NOT variance=0. The separate zero-variance
+LR refits full-X pooled Poisson on the same sample with a 50:50 chi-square(0,1)
+reference. Slope Wald uses chi-square. These are model/asymptotic references,
+not robust or few-group corrections.
+
+`predict index, xb` returns X beta including the intercept, NOT log(n).
+`predict fitted, n` returns the population mean exp(X beta+variance/2).
+Residuals are current y minus this mean; n/xb require no current y or ID.
+No posterior effects are estimated. Population residuals need not sum to zero.
+
+Bounds: candidate rows<=40000, slopes1..14, raw groups<=10000, selected
+G>slopes+2, group count totals<=100000,176*rows*(slopes+2)^2<=20000000.
+Adaptive paired80/96-node GH checks log integrals and centered moment units at
+every evaluation; relative discrepancy<=1e-9 is a diagnostic, not an error
+bound. RMS-scaled, undamped SPD joint Newton steps use at most100 iterations,
+32 halving trials per iteration, per-group score<=1e-10 and relative step<=1e-12. No ridge,
+covariance repair or optimizer/pooled fallback. lnsigma2 is strictly(-8,8),
+fit X beta[-40,40]; marginal log means[-700,700]. Pooled LR must exceed1e-8 to
+numerically distinguish the boundary, not as a significance cutoff. Boundary,
+rank, quadrature, unrepresentable inference or convergence failure is an error;
+use `poisson` explicitly if a zero-variance model is appropriate.
+
 ## State, prediction and limits
 
 A failed new fit clears stale estimation state without changing data; a parser
@@ -76,9 +112,11 @@ Missing/nonfinite required current inputs yield NULL. Residuals require finite
 current y. Gamma RE finite-input predictions that are not representable fail
 atomically; finite xb remains available without computing an overflowing mean.
 Zero means from floating-point exponential underflow are permitted. Prediction
-has the same row/work bounds as its corresponding fit and never refits.
+uses rows<=40000 and the corresponding parameter-dimension squared work bound;
+normal prediction needs no quadrature/176 multiplier and checks marginal log
+means[-700,700]. It never refits.
 
-No normal RE, robust/cluster/survey covariance, weights/offsets, factor syntax,
+No robust/cluster/survey covariance, weights/offsets, factor syntax,
 posterior effects/uncertainty, generic margins/test/lincom, automatic bootstrap
 or general Stata compatibility is claimed. See the Chapter24 individual FE/RE
 workflows for exact samples and independent reference evidence. Existing

@@ -11,6 +11,7 @@ impl Session {
     &self,
     entity_variable: &str,
     dimension: usize,
+    quadrature_work: usize,
   ) -> Result<String, RuntimeError> {
     let dataset = self
       .active_dataset
@@ -44,9 +45,9 @@ impl Session {
         &query,
         |row| {
           rows += 1;
-          if rows > 40000 || rows.saturating_mul(dimension * dimension) > 20_000_000 {
+          if rows > 40000 || rows.saturating_mul(dimension * dimension).saturating_mul(quadrature_work) > 20_000_000 {
             return Err(error(
-              "candidate rows<=40000 and rows*work_dimension^2<=20000000 required (FE slopes; RE slopes+2)",
+              if quadrature_work==176 {"normal RE candidate rows<=40000 and176*rows*(slopes+2)^2<=20000000 required"} else {"candidate rows<=40000 and rows*work_dimension^2<=20000000 required (FE slopes; RE slopes+2)"},
             ));
           }
           let cell = row.cell(0).map_err(|_| error("could not read group key"))?;
@@ -70,25 +71,46 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
     let k = command.predictors.len();
+    let normal = command.estimator == XtPoissonEstimator::NormalRe;
     let gamma = command.estimator == XtPoissonEstimator::SharedGammaRe;
-    let dimension = if gamma { k + 2 } else { k };
-    if !(1..=32).contains(&k) {
-      return Err(error("requires1..32 numeric predictors"));
+    let re = gamma || normal;
+    let dimension = if re { k + 2 } else { k };
+    if !(1..=if normal { 14 } else { 32 }).contains(&k) {
+      return Err(error(if normal {
+        "normal RE requires1..14 numeric predictors"
+      } else {
+        "requires1..32 numeric predictors"
+      }));
     }
-    let entity_data_type =
-      self.validate_xtpoisson_group_structure(&command.entity_variable, dimension)?;
+    let entity_data_type = self.validate_xtpoisson_group_structure(
+      &command.entity_variable,
+      dimension,
+      if normal { 176 } else { 1 },
+    )?;
     let (problem, _) = self.count_problem(
-      if gamma {
+      if normal {
+        CountFamily::NormalPoisson
+      } else if gamma {
         CountFamily::GammaPoisson
       } else {
         CountFamily::ConditionalPoisson
       },
       &command.outcome,
       &command.predictors,
-      gamma,
+      re,
       Some(&command.entity_variable),
       None,
     )?;
+    if normal {
+      let result = tabdat_stats::fit_normal_poisson(
+        &problem.with_intercept_name("_cons"),
+        &command.entity_variable,
+        &Default::default(),
+      )
+      .map_err(|e| error(e.to_string()))?;
+      self.estimation = Some(EstimationState::NormalPoisson(Box::new(result.clone())));
+      return Ok(ExecutionResult::NormalPoisson(Box::new(result)));
+    }
     if gamma {
       let result = tabdat_stats::fit_gamma_poisson(
         &problem.with_intercept_name("_cons"),
@@ -265,10 +287,23 @@ impl Session {
     Ok(ExecutionResult::Prediction(PredictionResult { dataset }))
   }
 
-  pub(crate) fn execute_gamma_poisson_prediction(
+  pub(crate) fn execute_poisson_re_prediction(
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    let (predictors, outcome, coefficients, shift, normal) = match &self.estimation {
+      Some(EstimationState::GammaPoisson(r)) => {
+        (&r.predictor_names, &r.outcome, &r.coefficients, 0., false)
+      }
+      Some(EstimationState::NormalPoisson(r)) => (
+        &r.predictor_names,
+        &r.outcome,
+        &r.coefficients,
+        r.ln_variance.value.exp() / 2.,
+        true,
+      ),
+      _ => return Err(RuntimeError::PredictRequiresPriorRegression),
+    };
     if !matches!(
       command.kind,
       PredictKind::Xb | PredictKind::MeanCount | PredictKind::Residuals
@@ -277,13 +312,12 @@ impl Session {
       || command.saving.is_some()
       || command.count_cutoff_variable.is_some()
     {
-      return Err(error(
-        "gamma RE supports marginal xb, n or residuals only; no posterior effects or auxiliary options",
-      ));
+      return Err(error(if normal {
+        "normal RE supports fixed xb, marginal n or residuals only; no posterior effects or auxiliary options"
+      } else {
+        "gamma RE supports marginal xb, n or residuals only; no posterior effects or auxiliary options"
+      }));
     }
-    let Some(EstimationState::GammaPoisson(result)) = &self.estimation else {
-      return Err(RuntimeError::PredictRequiresPriorRegression);
-    };
     let dataset = self
       .active_dataset
       .as_ref()
@@ -299,9 +333,9 @@ impl Session {
       });
     }
     let residual = command.kind == PredictKind::Residuals;
-    let mut variables = result.predictor_names.clone();
+    let mut variables = predictors.clone();
     if residual {
-      variables.push(result.outcome.clone());
+      variables.push(outcome.clone());
     }
     for name in &variables {
       let column = dataset
@@ -324,7 +358,7 @@ impl Session {
         .join(", ")
     );
     let mut values = Vec::new();
-    let dimension = result.predictor_names.len() + 2;
+    let dimension = predictors.len() + 2;
     self
       .backend
       .as_ref()
@@ -350,18 +384,22 @@ impl Session {
             };
             current.push(v);
           }
-          let xb = result.coefficients[0].value
+          let xb = coefficients[0].value
             + current
               .iter()
-              .zip(&result.coefficients[1..])
+              .zip(&coefficients[1..])
               .map(|(x, b)| x * b.value)
               .sum::<f64>();
           let value = if command.kind == PredictKind::Xb {
             xb
           } else {
-            let mean = xb.exp();
+            let log_mean = xb + shift;
+            if normal && (!log_mean.is_finite() || !(-700.0..=700.0).contains(&log_mean)) {
+              return Err(error("normal RE marginal log mean outside[-700,700]"));
+            }
+            let mean = log_mean.exp();
             if residual {
-              current[result.predictor_names.len()] - mean
+              current[predictors.len()] - mean
             } else {
               mean
             }
