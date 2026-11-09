@@ -190,6 +190,27 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
       None => m.reference_distribution.clone(),
     }
   });
+  if models.iter().any(|m| !m.linear_design_terms.is_empty()) {
+    row(&mut output, "Factor reference levels", models, |m| {
+      let factors = m
+        .linear_design_terms
+        .iter()
+        .filter_map(tabdat_domain::LinearDesignTerm::factor)
+        .map(|(variable, reference, levels)| {
+          format!(
+            "{variable}={} of {}",
+            reference.unwrap_or("none"),
+            levels.len()
+          )
+        })
+        .collect::<Vec<_>>();
+      if factors.is_empty() {
+        "none".into()
+      } else {
+        factors.join("; ")
+      }
+    });
+  }
   for name in &table.parameter_names {
     row(&mut output, &format!("{name} coefficient"), models, |m| {
       number(

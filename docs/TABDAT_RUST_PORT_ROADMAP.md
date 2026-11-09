@@ -54,7 +54,7 @@ These foundations should be delivered alongside the estimators that need them.
 
 | Outcome | Required behavior and acceptance evidence |
 | --- | --- |
-| Reliable model design | Explicit categorical levels/reference categories, interactions and transformations; stable parameter order/names and prediction design. Test missing categories, absent/new prediction levels and collinearity policy against a trusted reference. Encoding numeric labels alone is not factor support. |
+| Reliable model design | Explicit categorical levels/reference categories, interactions and transformations; stable parameter order/names and prediction design. Test missing categories, absent/new prediction levels and collinearity policy against a trusted reference. Encoding numeric labels alone is not factor support. One-way `i.var`/`ib(level).var` in `regress` now exists with retained design metadata and NULL policy for unseen prediction levels; interactions, transformations and factors in other estimators remain. |
 | Deliberate samples and weights | Report estimation exclusions; keep selected-cohort and current-data prediction semantics explicit. Distinguish analytic/frequency/probability weights before advertising them. Current WLS and inverse-diagonal-variance GLS are not general survey estimation or arbitrary-covariance GLS. |
 | Interpretable results | Correlation/covariance tables, model-appropriate diagnostics, coefficient uncertainty and prediction uncertainty where defined. Preserve robust/cluster corrections and inference DF separately from fit residual DF. |
 | Analytical graphics | Executable scatter/distribution, fitted/residual and later model-specific plots, with a documented terminal/file output path. Rendering syntax alone is not completion. |

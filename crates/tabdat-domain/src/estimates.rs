@@ -139,6 +139,9 @@ pub struct EstimateSnapshot {
   /// NB2-specific joint likelihood and dispersion metadata.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub nb2: Option<Nb2EstimateDetails>,
+  /// Ordered linear design terms when the fit retained categorical factors.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub linear_design_terms: Vec<crate::state::LinearDesignTerm>,
   pub predictors: Vec<String>,
   pub include_intercept: bool,
   pub covariance: String,

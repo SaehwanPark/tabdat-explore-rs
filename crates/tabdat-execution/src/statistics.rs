@@ -1,4 +1,12 @@
 use crate::*;
+use regress_design::{
+  ObservedFactor, ObservedTermValue, RegressTerm, expand_design, parse_regress_terms,
+};
+
+pub(crate) struct PreparedRegression {
+  pub problem: tabdat_stats::EstimationProblem,
+  pub design_terms: Vec<LinearDesignTerm>,
+}
 
 impl Session {
   /// Execute a linear regression command (OLS, WLS, GLS, robust, cluster).
@@ -23,11 +31,23 @@ impl Session {
     condition: Option<&GenerateExpression>,
     exact_cluster_keys: bool,
   ) -> Result<tabdat_stats::EstimationProblem, RuntimeError> {
+    self
+      .prepare_regression_design(command, condition, exact_cluster_keys)
+      .map(|prepared| prepared.problem)
+  }
+
+  pub(crate) fn prepare_regression_design(
+    &self,
+    command: &RegressCommand,
+    condition: Option<&GenerateExpression>,
+    exact_cluster_keys: bool,
+  ) -> Result<PreparedRegression, RuntimeError> {
     let dataset = self
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "regress" })?
       .clone();
+    let terms = parse_regress_terms(&command.predictors)?;
 
     let predicate = condition
       .map(|condition| {
@@ -57,7 +77,7 @@ impl Session {
 
     let mut referenced_variables = Vec::new();
     referenced_variables.push(command.outcome.clone());
-    referenced_variables.extend(command.predictors.iter().cloned());
+    referenced_variables.extend(terms.iter().map(|term| term.variable().to_owned()));
     if let Some(w) = &command.weight_variable {
       referenced_variables.push(w.clone());
     }
@@ -89,10 +109,14 @@ impl Session {
       }
     }
 
-    // Verify outcome, predictors, and weight (if present) are numeric
+    // Verify outcome, continuous predictors, and weight (if present) are numeric.
+    // Factor variables are explicitly categorical and may be text/boolean/numeric.
     let mut numeric_candidates = Vec::new();
     numeric_candidates.push(command.outcome.clone());
-    numeric_candidates.extend(command.predictors.iter().cloned());
+    numeric_candidates.extend(terms.iter().filter_map(|term| match term {
+      RegressTerm::Continuous { name } => Some(name.clone()),
+      RegressTerm::Factor { .. } => None,
+    }));
     if let Some(w) = &command.weight_variable {
       numeric_candidates.push(w.clone());
     }
@@ -112,6 +136,26 @@ impl Session {
       });
     }
 
+    let invalid_factors = terms
+      .iter()
+      .filter_map(|term| match term {
+        RegressTerm::Factor { variable, .. } => {
+          let data_type = column_types[variable.as_str()];
+          (!is_numeric_data_type(data_type) && !matches!(data_type, "VARCHAR" | "BOOLEAN"))
+            .then_some(variable.clone())
+        }
+        RegressTerm::Continuous { .. } => None,
+      })
+      .collect::<Vec<_>>();
+    if !invalid_factors.is_empty() {
+      return Err(RuntimeError::RegressFailed {
+        message: format!(
+          "factor variables must be text, boolean, or numeric codes: {}",
+          invalid_factors.join(", ")
+        ),
+      });
+    }
+
     let backend = self
       .backend
       .as_ref()
@@ -120,8 +164,8 @@ impl Session {
     // Prepare SELECT query
     let mut select_columns = Vec::new();
     select_columns.push(quote_identifier(&command.outcome));
-    for p in &command.predictors {
-      select_columns.push(quote_identifier(p));
+    for term in &terms {
+      select_columns.push(quote_identifier(term.variable()));
     }
     if let Some(c) = &command.cluster_variable {
       select_columns.push(quote_identifier(c));
@@ -142,16 +186,16 @@ impl Session {
     // preserves this physical sample order, including bootstrap index mapping.
     let query = format!("SELECT {select_sql} FROM {ACTIVE_TABLE}");
 
-    let p_count = command.predictors.len();
+    let term_count = terms.len();
     let has_cluster = command.cluster_variable.is_some();
     let has_weight = command.weight_variable.is_some();
-    let cluster_idx = 1 + p_count;
-    let weight_idx = 1 + p_count + if has_cluster { 1 } else { 0 };
+    let cluster_idx = 1 + term_count;
+    let weight_idx = 1 + term_count + if has_cluster { 1 } else { 0 };
 
     let mut total_rows = 0usize;
     let mut retained_indices = Vec::new();
     let mut response = Vec::new();
-    let mut design_matrix = Vec::new();
+    let mut raw_terms = Vec::new();
     let mut cluster_groups = Vec::new();
     let mut weights = Vec::new();
 
@@ -179,20 +223,32 @@ impl Session {
           _ => return Ok(()),
         };
 
-        // Extract predictors
-        let mut pred_vals = Vec::with_capacity(p_count);
-        let mut pred_valid = true;
-        for j in 0..p_count {
-          let cell = read_owned_cell(row, 1 + j, true, "could not read predictor cell")?;
-          match cell_to_f64(cell) {
-            Some(v) if v.is_finite() => pred_vals.push(v),
-            _ => {
-              pred_valid = false;
-              break;
-            }
+        // Extract ordered terms. Factor cells retain their type so prediction
+        // can reconstruct the same category comparisons.
+        let mut term_values = Vec::with_capacity(term_count);
+        let mut terms_valid = true;
+        for (index, term) in terms.iter().enumerate() {
+          let cell = read_owned_cell(row, 1 + index, true, "could not read predictor cell")?;
+          match term {
+            RegressTerm::Continuous { .. } => match cell_to_f64(cell) {
+              Some(value) if value.is_finite() => {
+                term_values.push(ObservedTermValue::Continuous(value));
+              }
+              _ => {
+                terms_valid = false;
+                break;
+              }
+            },
+            RegressTerm::Factor { .. } => match ObservedFactor::from_cell(cell)? {
+              Some(value) => term_values.push(ObservedTermValue::Factor(value)),
+              None => {
+                terms_valid = false;
+                break;
+              }
+            },
           }
         }
-        if !pred_valid {
+        if !terms_valid {
           return Ok(());
         }
 
@@ -240,7 +296,7 @@ impl Session {
 
         retained_indices.push(row_idx);
         response.push(outcome_val);
-        design_matrix.push(pred_vals);
+        raw_terms.push(term_values);
         if has_cluster {
           cluster_groups.push(cluster_val);
         }
@@ -268,11 +324,20 @@ impl Session {
       message: e.to_string(),
     })?;
 
+    let expanded = expand_design(&terms, &raw_terms, command.include_intercept)?;
+    // Retained design metadata is additive: a purely continuous fit keeps the
+    // established JSON/state shape, so only designs with an explicit factor
+    // record their terms.
+    let design_terms = if regress_design::has_factor_terms(&expanded.design_terms) {
+      expanded.design_terms
+    } else {
+      Vec::new()
+    };
     let mut problem = tabdat_stats::EstimationProblem::new(
       command.outcome.clone(),
-      command.predictors.clone(),
+      expanded.parameter_names,
       response,
-      design_matrix,
+      expanded.design_matrix,
     )
     .map_err(|e| RuntimeError::RegressFailed {
       message: e.to_string(),
@@ -284,7 +349,10 @@ impl Session {
       problem = problem.with_weights(weights);
     }
 
-    Ok(problem)
+    Ok(PreparedRegression {
+      problem,
+      design_terms,
+    })
   }
 
   fn execute_regression_sample(
@@ -293,7 +361,9 @@ impl Session {
     condition: Option<&GenerateExpression>,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
-    let problem = self.prepare_regression_problem(command, condition, false)?;
+    let prepared = self.prepare_regression_design(command, condition, false)?;
+    let problem = prepared.problem;
+    let design_terms = prepared.design_terms;
 
     let covariance_type = if let Some(cluster_var) = &command.cluster_variable {
       tabdat_stats::CovarianceType::Cluster(cluster_var.clone())
@@ -309,6 +379,7 @@ impl Session {
         message: e.to_string(),
       })?;
 
+    let predictor_names = problem.predictor_names.clone();
     self.estimation = Some(EstimationState::Linear(Box::new(LinearRegressionState {
       estimator: Some(
         match command.estimator {
@@ -319,9 +390,10 @@ impl Session {
         .into(),
       ),
       outcome: command.outcome.clone(),
-      predictors: command.predictors.clone(),
+      predictors: predictor_names.clone(),
       predictor_design: problem.design_matrix,
       include_intercept: command.include_intercept,
+      design_terms: design_terms.clone(),
       result: least_squares_result.clone(),
     })));
 
@@ -338,7 +410,7 @@ impl Session {
 
     let result = RegressionResult {
       outcome: command.outcome.clone(),
-      predictors: command.predictors.clone(),
+      predictors: predictor_names,
       estimator: estimator_str,
       covariance: covariance_str,
       observation_count: least_squares_result.fit_statistics.observation_count,
@@ -347,6 +419,7 @@ impl Session {
       adjusted_r_squared: least_squares_result.fit_statistics.adjusted_r_squared,
       root_mse: least_squares_result.fit_statistics.root_mse,
       coefficients: least_squares_result.coefficients.clone(),
+      design_terms,
       first_stage: None,
       least_squares: least_squares_result,
     };
@@ -615,6 +688,7 @@ impl Session {
           predictors: predictor_names.clone(),
           predictor_design,
           include_intercept: command.include_intercept,
+          design_terms: Vec::new(),
           result: iv_result.regression.clone(),
         },
         problem,
@@ -637,6 +711,7 @@ impl Session {
       adjusted_r_squared: fit.adjusted_r_squared,
       root_mse: fit.root_mse,
       coefficients: iv_result.regression.coefficients.clone(),
+      design_terms: Vec::new(),
       first_stage: Some(iv_result.first_stage),
       least_squares: iv_result.regression,
     })))
@@ -1373,6 +1448,32 @@ impl Session {
       return Err(RuntimeError::UnsupportedCommand { name: "predict" });
     }
 
+    // A retained factor design must be scored with its own contrast columns;
+    // predicting from expanded coefficient names alone would look for columns
+    // that never existed in the data. `linear_state` already excludes clustered
+    // GMM, and IV carries no factor terms.
+    if let Some(model) = self.linear_state()
+      && regress_design::has_factor_terms(&model.design_terms)
+    {
+      let design_terms = model.design_terms.clone();
+      let include_intercept = model.include_intercept;
+      let outcome = model.outcome.clone();
+      let coefficients: Vec<f64> = model
+        .result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.value)
+        .collect();
+      return self.execute_design_prediction(
+        command,
+        &dataset,
+        design_terms,
+        include_intercept,
+        &outcome,
+        coefficients,
+      );
+    }
+
     let (outcome, predictors, intercept, coefficients) = match &self.estimation {
       Some(EstimationState::ClusterGmm(model)) => (
         model.outcome.clone(),
@@ -1444,6 +1545,145 @@ impl Session {
       .as_mut()
       .ok_or(RuntimeError::PredictFailed)?
       .add_linear_prediction_column(&dataset, &prediction)
+      .map_err(|_| RuntimeError::PredictFailed)?;
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
+    Ok(ExecutionResult::Prediction(PredictionResult {
+      dataset: next_dataset,
+    }))
+  }
+
+  /// Current-data `xb`/residual prediction for a retained factor design.
+  ///
+  /// The retained design defines both the required data variables and the dummy
+  /// column order, so unknown or missing levels yield NULL instead of silently
+  /// scoring a different model.
+  fn execute_design_prediction(
+    &mut self,
+    command: &PredictCommand,
+    dataset: &DatasetInfo,
+    design_terms: Vec<LinearDesignTerm>,
+    include_intercept: bool,
+    outcome: &str,
+    coefficients: Vec<f64>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let required_columns = if include_intercept { 1 } else { 0 };
+    let design_columns: usize = design_terms
+      .iter()
+      .map(|term| match term {
+        LinearDesignTerm::Continuous { .. } => 1,
+        LinearDesignTerm::Factor {
+          reference, levels, ..
+        } => {
+          if include_intercept && reference.is_some() {
+            levels.len().saturating_sub(1)
+          } else {
+            levels.len()
+          }
+        }
+      })
+      .sum();
+    if coefficients.len() != required_columns + design_columns {
+      return Err(RuntimeError::PredictFailed);
+    }
+    if dataset
+      .columns
+      .iter()
+      .any(|column| column.name == command.target_variable)
+    {
+      return Err(RuntimeError::PredictTargetExists {
+        variable: command.target_variable.clone(),
+      });
+    }
+    let mut required = design_terms
+      .iter()
+      .map(|term| match term {
+        LinearDesignTerm::Continuous { name } => name.clone(),
+        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
+      })
+      .collect::<Vec<_>>();
+    let residual = command.kind == PredictKind::Residuals;
+    if residual {
+      required.push(outcome.to_owned());
+    }
+    let missing = required
+      .iter()
+      .filter(|variable| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == variable.as_str())
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::PredictUnknownVariable { variables: missing });
+    }
+
+    let term_count = design_terms.len();
+    let query = format!(
+      "SELECT {} FROM {ACTIVE_TABLE}",
+      required
+        .iter()
+        .map(|name| quote_identifier(name))
+        .collect::<Vec<_>>()
+        .join(", ")
+    );
+    let mut values = Vec::with_capacity(usize::try_from(dataset.row_count).unwrap_or(0));
+    self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::PredictFailed)?
+      .visit_rows(
+        &query,
+        |row| {
+          let cells = (0..term_count)
+            .map(|index| read_owned_cell(row, index, true, "could not read predictor cell"))
+            .collect::<Result<Vec<_>, _>>()?;
+          let value =
+            match regress_design::expand_current_row(&design_terms, include_intercept, &cells)? {
+              None => None,
+              Some(columns) => {
+                let mut index = 0usize;
+                let mut xb = if include_intercept {
+                  let value = coefficients[0];
+                  index = 1;
+                  value
+                } else {
+                  0.0
+                };
+                for column in columns {
+                  xb += coefficients[index] * column;
+                  index += 1;
+                }
+                if !xb.is_finite() {
+                  return Err(RuntimeError::PredictFailed);
+                }
+                if residual {
+                  let cell = read_owned_cell(row, term_count, true, "could not read outcome cell")?;
+                  cell_to_f64(cell)
+                    .filter(|value| value.is_finite())
+                    .map(|value| value - xb)
+                } else {
+                  Some(xb)
+                }
+              }
+            };
+          if value.is_some_and(|value| !value.is_finite()) {
+            return Err(RuntimeError::PredictFailed);
+          }
+          values.push(value);
+          Ok(())
+        },
+        |message| RuntimeError::RegressFailed { message },
+      )?;
+    if u64::try_from(values.len()).ok() != Some(dataset.row_count) {
+      return Err(RuntimeError::PredictFailed);
+    }
+    let next_dataset = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::PredictFailed)?
+      .add_numeric_prediction_column(dataset, &command.target_variable, &values)
       .map_err(|_| RuntimeError::PredictFailed)?;
     let next_dataset = self.sync_active_dataset(next_dataset)?;
     Ok(ExecutionResult::Prediction(PredictionResult {

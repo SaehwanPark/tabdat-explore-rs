@@ -249,7 +249,7 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ),
     (
       "regress",
-      "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]",
+      "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]; xvars may include i.var or ib(level).var",
       serde_json::json!([
         {"name": "depvar", "required": true}, {"name": "indepvars", "required": true}
       ]),

@@ -35,6 +35,7 @@ mod nls;
 mod plotting;
 mod poisson;
 mod quantile;
+mod regress_design;
 mod scripts;
 mod statistics;
 mod stcox;

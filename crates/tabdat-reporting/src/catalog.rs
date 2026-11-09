@@ -1603,7 +1603,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]".to_string(),
+      syntax: "regress y xvars [if expr] [, robust cluster(var) noconstant wls(var) gls(var)]; xvars may include i.var or ib(level).var".to_string(),
     }),
     "rename" => Ok(CommandSchemaResult {
       arguments: vec![

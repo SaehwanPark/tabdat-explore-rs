@@ -875,6 +875,31 @@ fn regression(result: &tabdat_domain::RegressionResult) -> String {
       inference_number(log_likelihood)
     ).unwrap();
   }
+  let factors = result
+    .design_terms
+    .iter()
+    .filter_map(tabdat_domain::LinearDesignTerm::factor)
+    .collect::<Vec<_>>();
+  if !factors.is_empty() {
+    output.push_str("Factor design: indicator contrasts on the estimation sample\n");
+    for (variable, reference, levels) in factors {
+      let reference = match reference {
+        Some(reference) => reference.escape_debug().to_string(),
+        None => "none (noconstant: every level estimated)".to_owned(),
+      };
+      writeln!(
+        output,
+        "{}\tlevels = {}\treference = {reference}\tcolumns follow the parameter table below",
+        variable.escape_debug(),
+        levels
+          .iter()
+          .map(|level| level.label().escape_debug().to_string())
+          .collect::<Vec<_>>()
+          .join(" "),
+      )
+      .unwrap();
+    }
+  }
   output.push_str("Parameter\tCoefficient\tStd. error\tStatistic\tP(two-sided)\n");
   for coefficient in &result.coefficients {
     writeln!(

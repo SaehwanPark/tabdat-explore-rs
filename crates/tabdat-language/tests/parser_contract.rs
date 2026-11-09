@@ -5764,3 +5764,67 @@ fn bayesplot_preserves_bounded_parser_diagnostics() {
     );
   }
 }
+
+#[test]
+fn parses_regress_factor_terms_without_broadening_other_commands() {
+  let Command::Regress { command } =
+    parse_command("regress y x i.region ib(South).region").unwrap()
+  else {
+    panic!("expected regress");
+  };
+  assert_eq!(command.outcome, "y");
+  assert_eq!(
+    command.predictors,
+    vec!["x", "i.region", "ib(South).region"]
+  );
+  assert_eq!(command.estimator, RegressEstimator::Ols);
+  assert!(command.include_intercept);
+
+  let Command::RegressQuery { command, .. } =
+    parse_command("regress y x i.group if x > 0").unwrap()
+  else {
+    panic!("expected regress query");
+  };
+  assert_eq!(command.predictors, vec!["x", "i.group"]);
+
+  let Command::Regress { command } = parse_command("regress y x ib(North East).region").unwrap()
+  else {
+    panic!("expected regress");
+  };
+  assert_eq!(command.predictors, vec!["x", "ib(North East).region"]);
+
+  assert!(parse_command("summarize i.region").is_err());
+  assert!(parse_command("logit y i.region").is_err());
+}
+
+#[test]
+fn rejects_malformed_regress_factor_terms() {
+  for (input, expected) in [
+    (
+      "regress y i.",
+      "factor term syntax i. requires a variable after the dot",
+    ),
+    (
+      "regress y ib(South)",
+      "factor reference syntax ib(...) must be followed by .variable",
+    ),
+    (
+      "regress y ib().g",
+      "factor reference syntax ib(...) requires a level",
+    ),
+    (
+      "regress y ib(South).",
+      "factor reference syntax ib(...) requires a variable after .",
+    ),
+    (
+      "regress y ib(South",
+      "factor reference syntax ib(...) is missing closing )",
+    ),
+  ] {
+    assert_eq!(
+      parse_command(input).unwrap_err().to_string(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
