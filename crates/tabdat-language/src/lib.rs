@@ -2695,7 +2695,7 @@ fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
     .map(parse_use_options)
     .transpose()?
     .unwrap_or_default();
-  let parts = parse_simple_body(argument_body, false)?;
+  let parts = parse_simple_body_with_factor_terms(argument_body, false, true)?;
   if parts.has_options || parts.has_assignment || parts.arguments.len() < 2 {
     return Err(ParseError::new(syntax));
   }
@@ -9762,6 +9762,14 @@ fn parse_row_limit(text: &str, name: &str) -> Result<RowLimit, ParseError> {
 }
 
 fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, ParseError> {
+  parse_simple_body_with_factor_terms(body, allow_symbols, false)
+}
+
+fn parse_simple_body_with_factor_terms(
+  body: &str,
+  allow_symbols: bool,
+  allow_factor_terms: bool,
+) -> Result<SimpleBody, ParseError> {
   let characters: Vec<char> = body.chars().collect();
   let mut parts = SimpleBody::default();
   let mut index = 0;
@@ -9860,6 +9868,68 @@ fn parse_simple_body(body: &str, allow_symbols: bool) -> Result<SimpleBody, Pars
             }
             text.extend(&characters[identifier_start..index]);
             continue;
+          }
+          if allow_factor_terms && !quoted && characters[index] == '(' && text == "ib" {
+            let base_start = index + 1;
+            let mut close = base_start;
+            while close < characters.len() && characters[close] != ')' {
+              close += 1;
+            }
+            if close >= characters.len() {
+              return Err(ParseError::new(
+                "factor reference syntax ib(...) is missing closing )",
+              ));
+            }
+            let base = characters[base_start..close]
+              .iter()
+              .collect::<String>()
+              .trim()
+              .to_string();
+            if base.is_empty() {
+              return Err(ParseError::new(
+                "factor reference syntax ib(...) requires a level",
+              ));
+            }
+            text.push('(');
+            text.push_str(&base);
+            text.push(')');
+            index = close + 1;
+            if characters.get(index) != Some(&'.') {
+              return Err(ParseError::new(
+                "factor reference syntax ib(...) must be followed by .variable",
+              ));
+            }
+            text.push('.');
+            index += 1;
+            let variable_start = index;
+            if index >= characters.len()
+              || !(characters[index].is_alphabetic() || characters[index] == '_')
+            {
+              return Err(ParseError::new(
+                "factor reference syntax ib(...) requires a variable after .",
+              ));
+            }
+            index += 1;
+            while index < characters.len()
+              && (characters[index].is_alphanumeric() || characters[index] == '_')
+            {
+              index += 1;
+            }
+            text.extend(&characters[variable_start..index]);
+            continue;
+          }
+          if allow_factor_terms && !quoted && characters[index] == '.' && text == "i" {
+            if characters
+              .get(index + 1)
+              .is_some_and(|character| character.is_alphabetic() || *character == '_')
+            {
+              text.push('.');
+              index += 1;
+              continue;
+            }
+            return Err(ParseError::new(
+              "factor term syntax i. requires a variable after the dot",
+            ));
           }
           if is_unsupported_simple_symbol(characters[index], allow_symbols) {
             return Err(ParseError::new(format!(

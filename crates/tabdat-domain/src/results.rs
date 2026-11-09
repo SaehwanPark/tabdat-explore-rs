@@ -1,3 +1,4 @@
+use crate::state::LinearDesignTerm;
 use serde::{Deserialize, Serialize};
 pub use tabdat_stats::UnitEffectsFTest;
 pub use tabdat_stats::{
@@ -565,6 +566,9 @@ pub struct RegressionResult {
   pub root_mse: Option<f64>,
   /// Estimated coefficients and inference.
   pub coefficients: Vec<tabdat_stats::CoefficientEstimate>,
+  /// Ordered design terms; empty for legacy continuous-only results.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub design_terms: Vec<LinearDesignTerm>,
   /// Conventional excluded-instrument first-stage tests for IV fits.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub first_stage: Option<Vec<tabdat_stats::FirstStageDiagnostic>>,

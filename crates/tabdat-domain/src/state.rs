@@ -124,6 +124,61 @@ pub enum EstimationFamily {
   ControlFunction,
 }
 
+/// One retained linear-design term. Continuous terms contribute one column;
+/// factor terms contribute one treatment column per non-reference level (or
+/// every level when no intercept is fitted).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum LinearDesignTerm {
+  /// A numeric predictor used as one column.
+  Continuous { name: String },
+  /// An explicitly declared categorical predictor.
+  Factor {
+    variable: String,
+    reference: String,
+    levels: Vec<LinearFactorLevel>,
+  },
+}
+
+impl LinearDesignTerm {
+  /// Stable factor metadata for reports, if this term is categorical.
+  pub fn factor(&self) -> Option<(&str, &str, &[LinearFactorLevel])> {
+    match self {
+      Self::Continuous { .. } => None,
+      Self::Factor {
+        variable,
+        reference,
+        levels,
+      } => Some((variable, reference, levels)),
+    }
+  }
+}
+
+/// Retained typed category value used to reconstruct prediction design columns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum LinearFactorLevel {
+  /// A finite numeric category code.
+  Number {
+    label: String,
+    #[serde(with = "crate::wire::float_text")]
+    value: f64,
+  },
+  /// A text category value.
+  Text { label: String },
+  /// A boolean category value.
+  Boolean { label: String, value: bool },
+}
+
+impl LinearFactorLevel {
+  /// Display label used in coefficient names and reports.
+  pub fn label(&self) -> &str {
+    match self {
+      Self::Number { label, .. } | Self::Text { label } | Self::Boolean { label, .. } => label,
+    }
+  }
+}
+
 /// Owned post-estimation cache for the executable linear OLS/2SLS paths.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinearRegressionState {
@@ -134,6 +189,9 @@ pub struct LinearRegressionState {
   pub predictors: Vec<String>,
   pub predictor_design: Vec<Vec<f64>>,
   pub include_intercept: bool,
+  /// Ordered design terms; empty for legacy continuous-only snapshots.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub design_terms: Vec<LinearDesignTerm>,
   pub result: tabdat_stats::LeastSquaresResult,
 }
 
