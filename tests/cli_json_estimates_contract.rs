@@ -374,3 +374,95 @@ fn poisson_named_reports_show_offset_correction_and_preserve_active_fit() {
   );
   assert!(text.contains("Poisson McFadden pseudo-R-squared"), "{text}");
 }
+#[test]
+fn nb2_named_reports_show_joint_dispersion_corrections_and_boundary_conventions() {
+  let fixture = Fixture::new();
+  let y = [
+    0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0, 2,
+    2, 0, 1, 0,
+  ];
+  let mut csv = String::from("y,x,z,person\n");
+  for (i, y) in y.iter().enumerate() {
+    csv.push_str(&format!(
+      "{},{},{},{}\n",
+      y,
+      -2.0 + 4.0 * i as f64 / 35.0,
+      [0., 1., 0.4][i % 3],
+      i % 6
+    ));
+  }
+  fs::write(fixture.0.join("counts.csv"), csv).unwrap();
+  fs::write(fixture.0.join("nb2_report.td"), "use counts.csv\nnbreg y x, offset(z)\nestimates store model\nnbreg y x, offset(z) robust\nestimates store robust_count\nnbreg y x, offset(z) cluster(person)\nestimates store clustered\nestimates table model robust_count clustered\n").unwrap();
+  let output = fixture.run(&["--json", "-f", "nb2_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let rows = envelopes(&output.stdout);
+  let table = rows
+    .iter()
+    .find(|v| v["result_type"] == "EstimateTableResult")
+    .unwrap();
+  assert_eq!(
+    table["data"]["parameter_names"],
+    serde_json::json!(["intercept", "x", "lnalpha"])
+  );
+  let models = table["data"]["models"].as_array().unwrap();
+  assert_eq!(models.len(), 3);
+  for model in models {
+    assert_eq!(model["estimator"], "nb2");
+    assert_eq!(model["nb2"]["offset_variable"], "z");
+    assert_eq!(
+      model["nb2"]["null_model"],
+      "intercept_only_with_same_fixed_offset_refit_alpha"
+    );
+    assert!(model["nb2"]["null_log_likelihood"].is_number());
+    assert!(model["nb2"]["alpha"].is_number());
+    assert!(model["nb2"]["alpha_standard_error"].is_number());
+    assert!(model["nb2"]["mcfadden_r_squared"].is_number());
+    assert_eq!(
+      model["covariance_parameter_names"],
+      serde_json::json!(["intercept", "x", "lnalpha"])
+    );
+    assert_eq!(model["covariance_matrix"].as_array().unwrap().len(), 3);
+    assert_eq!(model["coefficients"][2]["name"], "lnalpha");
+    assert!(model["coefficients"][2]["statistic"].is_null());
+    assert!(model["coefficients"][2]["p_value"].is_null());
+    assert_eq!(model["log_likelihood_convention"], "nb2_count_pmf");
+    assert_eq!(
+      model["reference_distribution"],
+      "asymptotic_standard_normal"
+    );
+    assert!(model["inference_degrees_of_freedom"].is_null());
+    assert_eq!(model["df_residual"], 33);
+  }
+  assert_eq!(models[0]["nb2"]["covariance_correction"], 1.0);
+  assert_eq!(models[1]["nb2"]["covariance_correction"], 36.0 / 35.0);
+  assert_eq!(models[2]["nb2"]["covariance_correction"], 6.0 / 5.0);
+  assert_eq!(models[2]["cluster_variable"], "person");
+  assert_eq!(models[2]["cluster_count"], 6);
+  assert!(models[0]["nb2"]["dispersion_test"]["p_value"].is_number());
+  assert!(models[1]["nb2"]["dispersion_test"]["p_value"].is_null());
+  assert!(models[2]["nb2"]["dispersion_test"]["p_value"].is_null());
+  let output = fixture.run(&["--text", "-f", "nb2_report.td"]);
+  assert!(
+    output.status.success(),
+    "{}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let text = String::from_utf8(output.stdout).unwrap();
+  for phrase in [
+    "NB2 offset (coefficient 1)\tz\tz\tz",
+    "NB2 covariance correction\t1.000000\t1.028571\t1.200000",
+    "NB2 alpha\t",
+    "NB2 McFadden pseudo-R-squared\t",
+    "NB2 Poisson-boundary LR\t",
+    "lnalpha coefficient\t",
+    "lnalpha statistic\tNA\tNA\tNA",
+    "full joint beta/lnalpha matrix",
+    "50:50 chi-square(0)/chi-square(1)",
+  ] {
+    assert!(text.contains(phrase), "{phrase}\n{text}");
+  }
+}

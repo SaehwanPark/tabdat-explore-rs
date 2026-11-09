@@ -7,8 +7,9 @@ Installed syntax:
 - `estimates drop NAME [NAME ...]`
 
 Keep immutable reporting snapshots of successful current unweighted OLS, logit,
-probit, Poisson, explicit-formula NLS, model-based FE/RE fits, or an explicitly
-selected Gaussian GEE inference, and compare them without refitting. Example:
+probit, Poisson, NB2, explicit-formula NLS, model-based FE/RE fits, or an
+explicitly selected Gaussian GEE inference, and compare them without refitting.
+Example:
 
 ```
 regress outcome score
@@ -71,13 +72,22 @@ correction. Independent-row robust uses N/(N−1); clustered uses G/(G−1).
 Both use asymptotic normal inference, not G−1 t or a few-cluster guarantee.
 The offset remains fixed in the null model. Count likelihood is descriptive
 under QMLE and its LR reference is not robust.
+NB2 reports retain the full joint beta/lnalpha covariance, with `lnalpha` as the
+last covariance/coefficient name; it is dispersion, not an ordinary mean-model
+predictor, and no two-sided normal-Wald z/p is invented for it. They also retain
+the fixed offset, selected joint-score correction (1, N/(N−1), or G/(G−1)),
+zero/total counts, refitted-dispersion null convention/likelihood, alpha and its
+delta-method SE/exponentiated interval, McFadden pseudo-R-squared and the
+one-sided Poisson-boundary LR test when available. Robust/clustered boundary-LR
+p-values remain unavailable; a robust covariance does not make that LR reference
+robust. The 64-coefficient report bound includes `lnalpha`.
 Old serialized linear states without estimator metadata remain readable but must
 be refitted before storing. Ambiguous duplicate parameter names are rejected;
 rename a predictor that conflicts with the intercept name and refit.
 
 Tables preserve requested model order and align coefficients by exact name in
-first-seen order. Missing terms/statistics are NA/null, never zero. Binary
-and Poisson statistics are normal z; OLS statistics use Student t with residual df, or G−1
+first-seen order. Missing terms/statistics are NA/null, never zero. Binary,
+Poisson and NB2 statistics are normal z; OLS statistics use Student t with residual df, or G−1
 for one-way clustered OLS; NLS uses its approximate Student t with N−P df.
 Selected covariance and reference are disclosed per column. No model is refitted
 and no cross-model test is made; FE common-intercept inference uses its retained
@@ -88,9 +98,10 @@ the transformed response. Panel reports leave the common OLS-labelled R-squared
 row unavailable rather than substituting within/conditional/quasi-GLS measures.
 No panel key asserts calendar-time semantics. Gaussian marginal ML likelihood
 cannot be compared as if it were GEE or FE likelihood.
-Gaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a
-cross-family or robust likelihood-ratio test. Zero/nonfinite OLS variance has
-no reported likelihood or convention.
+Gaussian working-model RSS/N, Bernoulli and Poisson/NB2 count likelihoods are descriptive, not a
+cross-family or robust likelihood-ratio test. NB2 alpha intervals exponentiate
+the log-alpha interval; the Poisson-boundary LR is a separate one-sided test.
+Zero/nonfinite OLS variance has no reported likelihood or convention.
 
 Reports survive current-data edits/reloads, refits and failed fits. Storing,
 reading or dropping reports does not change the active estimator, predictions,

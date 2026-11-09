@@ -126,6 +126,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: state.predictors.clone(),
         include_intercept: state.include_intercept,
         cluster_variable: match &result.covariance.covariance_type {
@@ -187,6 +188,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: result.predictor_names.clone(),
         include_intercept: result.include_intercept,
         covariance: covariance.into(),
@@ -286,6 +288,7 @@ fn snapshot(
           .then_some(result.mcfadden_r_squared),
         poisson_zero_count: Some(result.zero_count),
         poisson_count_sum: Some(result.count_sum),
+        nb2: None,
         predictors: result.predictor_names.clone(),
         include_intercept: result.include_intercept,
         covariance: covariance.into(),
@@ -311,6 +314,147 @@ fn snapshot(
         inference_degrees_of_freedom: None,
         log_likelihood: Some(result.log_likelihood),
         log_likelihood_convention: Some("poisson_count_pmf".into()),
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: Some(result.df_residual),
+      }
+    }
+    EstimationState::NegativeBinomialFit(state) => {
+      let result = &state.result;
+      let sample = result
+        .sample
+        .as_ref()
+        .ok_or_else(|| failure("fit sample is unavailable; refit before storing"))?;
+      if sample.weights.is_some() {
+        return Err(failure("weighted NB2 reports are not installed"));
+      }
+      let mean_parameters = result.coefficients.len();
+      let joint_parameters = mean_parameters + 1;
+      if result.covariance.len() != joint_parameters
+        || result.covariance.iter().enumerate().any(|(i, row)| {
+          row.len() != joint_parameters || row.iter().any(|v| !v.is_finite()) || row[i] < 0.0
+        })
+        || result.observation_count != sample.retained_indices.len()
+        || result
+          .coefficients
+          .iter()
+          .any(|c| !c.value.is_finite() || !c.standard_error.is_finite())
+        || !result.log_likelihood.is_finite()
+        || !result.null_log_likelihood.is_finite()
+        || !result.dispersion.alpha.is_finite()
+        || result.dispersion.alpha <= 0.0
+        || !result.dispersion.log_alpha.is_finite()
+        || !result.dispersion.log_alpha_standard_error.is_finite()
+        || result.dispersion.log_alpha_standard_error < 0.0
+        || !result.dispersion.alpha_standard_error.is_finite()
+        || !result.mcfadden_r_squared.is_finite()
+      {
+        return Err(failure(
+          "NB2 joint fit provenance/dimensions are inconsistent; refit before storing",
+        ));
+      }
+      let (covariance, correction) = if let Some(cluster) = &result.cluster {
+        let groups = sample
+          .cluster_groups
+          .as_ref()
+          .ok_or_else(|| failure("cluster provenance is unavailable"))?;
+        let count = groups.iter().collect::<BTreeSet<_>>().len();
+        if count != cluster.group_count || count < 2 {
+          return Err(failure(
+            "cluster provenance is inconsistent; refit before storing",
+          ));
+        }
+        (
+          "cluster_joint_score_sandwich_g_over_g_minus_1",
+          count as f64 / (count - 1) as f64,
+        )
+      } else if result.robust {
+        let n = result.observation_count;
+        if n < 2 {
+          return Err(failure(
+            "robust covariance requires at least two observations",
+          ));
+        }
+        (
+          "robust_joint_score_sandwich_n_over_n_minus_1",
+          n as f64 / (n - 1) as f64,
+        )
+      } else {
+        ("model_based_joint_observed_information", 1.0)
+      };
+      let mut coefficients: Vec<_> = result
+        .coefficients
+        .iter()
+        .map(|c| tabdat_stats::CoefficientEstimate {
+          name: c.name.clone(),
+          value: c.value,
+          standard_error: Some(c.standard_error),
+          statistic: c.statistic,
+          p_value: c.p_value,
+        })
+        .collect();
+      coefficients.push(tabdat_stats::CoefficientEstimate {
+        name: "lnalpha".into(),
+        value: result.dispersion.log_alpha,
+        standard_error: Some(result.dispersion.log_alpha_standard_error),
+        // The retained dispersion test is a one-sided boundary LR, not a
+        // two-sided normal-Wald statistic, so no z/p is invented here.
+        statistic: None,
+        p_value: None,
+      });
+      EstimateSnapshot {
+        panel: None,
+        name: name.into(),
+        estimator: "nb2".into(),
+        outcome: result.outcome.clone(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
+        nb2: Some(Nb2EstimateDetails {
+          offset_variable: result.offset_variable.clone(),
+          covariance_correction: correction,
+          zero_count: result.zero_count,
+          count_sum: result.count_sum,
+          null_model: match (result.offset_variable.is_some(), result.include_intercept) {
+            (true, true) => "intercept_only_with_same_fixed_offset_refit_alpha",
+            (true, false) => "unit_mean_with_same_fixed_offset_refit_alpha",
+            (false, true) => "intercept_only_estimated_mean_refit_alpha",
+            (false, false) => "unit_mean_all_coefficients_zero_refit_alpha",
+          }
+          .into(),
+          null_log_likelihood: result.null_log_likelihood,
+          null_alpha: result.null_alpha,
+          mcfadden_r_squared: result.mcfadden_r_squared,
+          alpha: result.dispersion.alpha,
+          alpha_standard_error: result.dispersion.alpha_standard_error,
+          alpha_confidence_lower: result.dispersion.alpha_confidence_lower,
+          alpha_confidence_upper: result.dispersion.alpha_confidence_upper,
+          dispersion_test: result.dispersion_test.clone(),
+        }),
+        predictors: result.predictor_names.clone(),
+        include_intercept: result.include_intercept,
+        covariance: covariance.into(),
+        cluster_variable: result.cluster.as_ref().map(|c| c.variable.clone()),
+        cluster_count: result.cluster.as_ref().map(|c| c.group_count),
+        covariance_parameter_names: coefficients.iter().map(|c| c.name.clone()).collect(),
+        covariance_matrix: result.covariance.clone(),
+        coefficients,
+        observation_count: result.observation_count,
+        event_count: None,
+        sample: sample.clone(),
+        reference_distribution: "asymptotic_standard_normal".into(),
+        inference_degrees_of_freedom: None,
+        log_likelihood: Some(result.log_likelihood),
+        log_likelihood_convention: Some("nb2_count_pmf".into()),
         r_squared: None,
         mcfadden_r_squared: None,
         root_mse: None,
@@ -380,6 +524,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: fit.parameter_names.clone(),
         include_intercept: true,
         covariance: "model_based_within_fe_normalized_levels".into(),
@@ -452,6 +597,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: result.predictor_names.clone(),
         include_intercept: true,
         covariance: if result.ml.is_some() {
@@ -536,6 +682,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: result.predictor_names.clone(),
         include_intercept: true,
         covariance: covariance.into(),
@@ -574,6 +721,7 @@ fn snapshot(
         poisson_mcfadden_r_squared: None,
         poisson_zero_count: None,
         poisson_count_sum: None,
+        nb2: None,
         predictors: result.model.predictor_names.clone(),
         // NLS has no implicit intercept; the formula alone defines its parameters.
         include_intercept: false,
@@ -614,7 +762,7 @@ fn snapshot(
     }
     _ => {
       return Err(failure(
-        "store supports unweighted OLS, logit, probit, Poisson, NLS, model-based FE/RE, and explicitly selected Gaussian GEE reports",
+        "store supports unweighted OLS, logit, probit, Poisson, NB2, NLS, model-based FE/RE, and explicitly selected Gaussian GEE reports",
       ));
     }
   };
