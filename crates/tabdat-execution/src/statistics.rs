@@ -328,9 +328,11 @@ impl Session {
     // Retained design metadata is additive: a purely continuous fit keeps the
     // established JSON/state shape, so only designs with an explicit factor
     // record their terms.
-    let design_terms = regress_design::has_factor_terms(&expanded.design_terms)
-      .then_some(expanded.design_terms)
-      .unwrap_or_default();
+    let design_terms = if regress_design::has_factor_terms(&expanded.design_terms) {
+      expanded.design_terms
+    } else {
+      Vec::new()
+    };
     let mut problem = tabdat_stats::EstimationProblem::new(
       command.outcome.clone(),
       expanded.parameter_names,
@@ -1572,7 +1574,7 @@ impl Session {
         LinearDesignTerm::Factor {
           reference, levels, ..
         } => {
-          if include_intercept && !reference.is_empty() {
+          if include_intercept && reference.is_some() {
             levels.len().saturating_sub(1)
           } else {
             levels.len()

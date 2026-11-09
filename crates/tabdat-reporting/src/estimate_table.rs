@@ -199,11 +199,7 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
         .map(|(variable, reference, levels)| {
           format!(
             "{variable}={} of {}",
-            if reference.is_empty() {
-              "none"
-            } else {
-              reference
-            },
+            reference.unwrap_or("none"),
             levels.len()
           )
         })

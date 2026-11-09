@@ -389,6 +389,45 @@ fn weighted_and_gls_factor_fits_keep_the_same_expanded_design() {
 }
 
 #[test]
+fn noconstant_omits_the_reference_field_instead_of_naming_an_empty_level() {
+  let dir = TestDir::new();
+  fs::write(dir.path().join("factor.csv"), INPUT).unwrap();
+  let output = envelopes(&run(
+    &dir,
+    &["use factor.csv", "regress y x i.region, noconstant"],
+  ));
+  let data = &output[1]["data"];
+  assert_eq!(
+    data["predictors"],
+    serde_json::json!(["x", "region_East", "region_North", "region_West"])
+  );
+  // `reference` absent means "no level omitted"; it is never an empty string,
+  // which would collide with a literal empty-string level.
+  assert_eq!(
+    data["design_terms"][1],
+    serde_json::json!({
+      "kind": "factor",
+      "variable": "region",
+      "levels": [
+        {"kind": "text", "label": "East"},
+        {"kind": "text", "label": "North"},
+        {"kind": "text", "label": "West"}
+      ]
+    })
+  );
+  let text = run_mode(
+    &dir,
+    "--text",
+    &["use factor.csv", "regress y x i.region, noconstant"],
+  );
+  let text = String::from_utf8(text.stdout).unwrap();
+  assert!(
+    text.contains("none (noconstant: every level estimated)"),
+    "{text}"
+  );
+}
+
+#[test]
 fn factor_terms_stay_out_of_other_models_and_bootstrap() {
   let dir = TestDir::new();
   fs::write(dir.path().join("factor.csv"), INPUT).unwrap();

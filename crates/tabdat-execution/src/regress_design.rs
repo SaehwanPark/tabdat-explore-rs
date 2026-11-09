@@ -281,10 +281,8 @@ pub(crate) fn expand_design(
             ),
           });
         }
-        // Without an intercept no level is omitted, so the reference is empty.
-        let reference_label = include_intercept
-          .then(|| levels[reference].label())
-          .unwrap_or_default();
+        // Without an intercept no level is omitted, so no reference is recorded.
+        let reference_label = include_intercept.then(|| levels[reference].label());
         let mut included = Vec::new();
         for (index, level) in levels.iter().enumerate() {
           if include_intercept && index == reference {
@@ -379,9 +377,16 @@ pub(crate) fn expand_current_row(
           return Ok(None);
         };
         let reference_position = include_intercept
-          .then(|| levels.iter().position(|level| level.label() == reference))
+          .then(|| {
+            reference.as_ref().and_then(|reference| {
+              levels
+                .iter()
+                .position(|level| level.label() == reference.as_str())
+            })
+          })
           .flatten();
-        if reference_position.is_none() && include_intercept && !reference.is_empty() {
+        if include_intercept && reference_position.is_none() {
+          // A retained intercept design must name its omitted level.
           return Err(RuntimeError::PredictFailed);
         }
         for (index, _) in levels.iter().enumerate() {
@@ -622,7 +627,7 @@ mod tests {
       design.design_terms,
       [LinearDesignTerm::Factor {
         variable: "region".into(),
-        reference: "East".into(),
+        reference: Some("East".into()),
         levels: vec![
           LinearFactorLevel::Text {
             label: "East".into()
@@ -659,7 +664,7 @@ mod tests {
       design.design_terms,
       [LinearDesignTerm::Factor {
         variable: "region".into(),
-        reference: String::new(),
+        reference: None,
         levels: vec![
           LinearFactorLevel::Text {
             label: "East".into()

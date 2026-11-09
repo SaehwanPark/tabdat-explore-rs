@@ -135,21 +135,24 @@ pub enum LinearDesignTerm {
   /// An explicitly declared categorical predictor.
   Factor {
     variable: String,
-    reference: String,
+    /// Omitted level label, or `None` when no level is omitted (`noconstant`).
+    /// `Option` keeps "no reference" distinct from a literal empty-string level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reference: Option<String>,
     levels: Vec<LinearFactorLevel>,
   },
 }
 
 impl LinearDesignTerm {
   /// Stable factor metadata for reports, if this term is categorical.
-  pub fn factor(&self) -> Option<(&str, &str, &[LinearFactorLevel])> {
+  pub fn factor(&self) -> Option<(&str, Option<&str>, &[LinearFactorLevel])> {
     match self {
       Self::Continuous { .. } => None,
       Self::Factor {
         variable,
         reference,
         levels,
-      } => Some((variable, reference, levels)),
+      } => Some((variable, reference.as_deref(), levels)),
     }
   }
 }
