@@ -1450,9 +1450,9 @@ impl Session {
 
     // A retained factor design must be scored with its own contrast columns;
     // predicting from expanded coefficient names alone would look for columns
-    // that never existed in the data.
-    if !matches!(&self.estimation, Some(EstimationState::ClusterGmm(_)))
-      && let Some(model) = self.linear_state()
+    // that never existed in the data. `linear_state` already excludes clustered
+    // GMM, and IV carries no factor terms.
+    if let Some(model) = self.linear_state()
       && regress_design::has_factor_terms(&model.design_terms)
     {
       let design_terms = model.design_terms.clone();
