@@ -10,6 +10,7 @@ source and fixtures below are relative to the repository root; use in-session
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
+- [One-way categorical factor design](#one-way-categorical-factor-design)
 - [Multinomial logit and continuous marginal effects](#multinomial-logit-and-continuous-marginal-effects)
 - [Binary logit/probit and continuous marginal effects](#binary-logitprobit-and-continuous-marginal-effects)
 - [Expressions and recoding](#expressions-and-recoding)
@@ -1108,6 +1109,46 @@ logical breadth); temporary filtering and automatic refits stay unsupported.
 Coefficients, inference, VIF and predictions are checked against a
 development-only statsmodels selected-row reference with exact sample/cluster/
 weight membership (no production Python dependency).
+
+## One-way categorical factor design
+
+`regress` accepts explicit one-way categorical terms in the predictor list:
+
+- `i.var` treats `var` as categorical and omits the first sorted retained level.
+- `ib(level).var` omits the named level instead. Levels may be quoted, and a
+  numeric spelling such as `ib(1.20)` matches the DECIMAL `1.2` level.
+- Text, boolean and finite numeric codes are accepted; other physical types are
+  refused with `factor variables must be text, boolean, or finite numeric codes`.
+- Levels are learned from the retained estimation sample only, so rows excluded
+  by missingness or an `if` predicate cannot create empty dummy columns.
+- Expanded columns are indicator (treatment) contrasts in sorted level order and
+  are named `<variable>_<level>` with non-identifier characters replaced by `_`.
+  Generated names never shadow a continuous predictor or an earlier column; a
+  collision takes a `_2`, `_3`, ... suffix.
+- `noconstant` retains every level and rejects `ib(level).var`, because nothing
+  remains to contrast against.
+- An intercept model whose factor has one retained level, and a reference level
+  absent from the estimation sample, fail with explicit diagnostics.
+
+Retained metadata is additive. A factor fit records `design_terms` in
+`RegressionResult`, `LinearRegressionState` and stored `EstimateSnapshot`
+reports (`linear_design_terms`), listing the ordered terms with each factor's
+typed levels and reference label. Continuous-only fits keep the previous
+envelopes and omit the field. Text reports add a factor-design block naming the
+levels and reference, and stored tables add a factor reference-level row.
+
+`predict` after a factor fit reconstructs the retained contrast columns from
+current data rather than looking for columns named like expanded coefficients.
+A missing factor cell, or a level absent from the estimation sample, produces a
+NULL prediction for that row; no new level is folded into the reference.
+`predict ..., residuals` subtracts the same index from the current outcome.
+
+Factor terms are bounded to `regress`. `summarize`, `logit`, `bootstrap` and the
+other model commands keep rejecting `i.var`. Coefficients, standard errors,
+p-values, R-squared and current-data predictions are checked against a
+development-only R `lm` treatment-contrast reference on a synthetic sample
+(`tools/capture_regress_factor_reference.R`), with no production R dependency.
+
 
 ## Ordered-row LOWESS smoothing
 

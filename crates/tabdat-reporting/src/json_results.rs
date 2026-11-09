@@ -1685,6 +1685,11 @@ fn regression_result_data(result: &RegressionResult) -> Value {
       })).collect::<Vec<_>>()
     });
   }
+  // Additive: absent for legacy continuous-only fits and IV, so existing
+  // envelopes keep their shape while factor designs stay machine-readable.
+  if !result.design_terms.is_empty() {
+    data["design_terms"] = serde_json::to_value(&result.design_terms).expect("finite design terms");
+  }
   data
 }
 

@@ -66,6 +66,7 @@ fn old_states_default_missing_report_registry_and_unknown_estimator_without_gues
     predictors: vec!["x".into()],
     predictor_design: problem.design_matrix.clone(),
     include_intercept: true,
+    design_terms: Vec::new(),
     result: tabdat_stats::fit_least_squares(&problem).unwrap(),
   };
   let mut old = serde_json::to_value(state).unwrap();

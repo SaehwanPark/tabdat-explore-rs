@@ -325,6 +325,12 @@ impl Session {
     })?;
 
     let expanded = expand_design(&terms, &raw_terms, command.include_intercept)?;
+    // Retained design metadata is additive: a purely continuous fit keeps the
+    // established JSON/state shape, so only designs with an explicit factor
+    // record their terms.
+    let design_terms = regress_design::has_factor_terms(&expanded.design_terms)
+      .then_some(expanded.design_terms)
+      .unwrap_or_default();
     let mut problem = tabdat_stats::EstimationProblem::new(
       command.outcome.clone(),
       expanded.parameter_names,
@@ -343,7 +349,7 @@ impl Session {
 
     Ok(PreparedRegression {
       problem,
-      design_terms: expanded.design_terms,
+      design_terms,
     })
   }
 
