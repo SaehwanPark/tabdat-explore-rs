@@ -74,8 +74,9 @@ identical exported data.
 ## Limits
 
 Exposure shorthand, weights/survey, multiway/few-cluster inference,
-factor/discrete-change effects, general count tests/lincom and named count reports
-remain unimplemented. NB2 offsets have a separate
+factor/discrete-change effects and general count tests/lincom remain
+unimplemented. Named Poisson/NB2 reports are available through
+`estimates store/table/drop`, outside this method slice. NB2 offsets have a separate
 [joint-inference workflow](../nb2-offset/README.md); they are not supplied by the
 Poisson script. Supply a precomputed log exposure from input or explicit
 SQL when appropriate; `generate` function calls are not installed. Extreme finite

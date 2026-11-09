@@ -72,7 +72,8 @@ zero-offset equivalence, +1000 offset/intercept shifts, source-name provenance,
 state/failure invariants and actual JSON/text script exports against R.
 
 No exposure alias, weights/survey/multiway/few-cluster methods, factor/discrete
-changes, other formal specification tests or named count reports are added.
+changes or other formal specification tests are added. Named NB2 reports are a
+separate reporting capability, not evidence for this offset slice.
 Equivalent log-exposure preparation may use input/explicit SQL; `generate`
 function calls remain unsupported. Extreme finite designs may still fail the
 bounded numerical policy. Remaining count/panel/textbook requirements stay open.

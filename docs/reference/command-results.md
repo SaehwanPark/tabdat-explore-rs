@@ -66,8 +66,10 @@ does not invent covariance, operation or materialization tracking. See `help sta
 
 ## Named fit reports and comparison
 
-`estimates store NAME` snapshots a successful current unweighted OLS, logit or
-probit fit into a session-local report registry. `estimates table NAME [NAME ...]`
+`estimates store NAME` snapshots a successful current supported fit into a
+session-local report registry: unweighted OLS, logit, probit, Poisson, NB2,
+explicit-formula NLS, model-based FE/RE, or an explicitly selected Gaussian GEE
+inference. `estimates table NAME [NAME ...]`
 returns the explicitly requested columns in that order; `estimates drop NAME
 [NAME ...]` removes reports only. Names are case-sensitive ASCII identifiers of
 1–32 bytes. At most 32 stored reports, 64 coefficients per report, 1–8 unique
@@ -92,16 +94,27 @@ CLI-v1 adds three result types, with the existing envelope version/shapes unchan
   `inference_degrees_of_freedom`, `log_likelihood`/`log_likelihood_convention`,
   OLS `r_squared`/`root_mse`/`df_residual`, and binary `mcfadden_r_squared`.
   Inapplicable/undefined/nonfinite optional quantities are null, not zero.
+  NB2 additionally adds an optional `nb2` block with offset identity, selected
+  covariance correction, zero/count sum, refitted-dispersion null metadata,
+  alpha/SE/interval, McFadden pseudo-R² and the retained boundary-LR object.
+  Its `covariance_parameter_names` and full covariance end with `lnalpha`, which
+  is also a coefficient row with joint SE but no invented normal-Wald z/p.
 
 Coefficients and covariance are copied from the selected fit, never refitted or
 reinferred. Binary reference is `asymptotic_standard_normal` with null inference
 DF; OLS is `student_t` with residual DF except clustered OLS uses G−1.
 `df_residual` is separately retained and must not be substituted for G−1.
 Covariance labels match the original fit results: linear nonrobust/robust/cluster,
-binary model-based information or N/(N−1)/G/(G−1) sandwich. OLS likelihood convention
-is `gaussian_working_model_ml_variance_rss_over_n`, binary is `bernoulli`.
-Zero/nonfinite OLS variance has null likelihood/convention. OLS R² and binary
-McFadden pseudo-R² are distinct; no cross-family or robust LR test is implied.
+binary model-based information or N/(N−1)/G/(G−1) sandwich; NB2 uses
+`model_based_joint_observed_information`, `robust_joint_score_sandwich_n_over_n_minus_1`
+or `cluster_joint_score_sandwich_g_over_g_minus_1`. OLS likelihood convention
+is `gaussian_working_model_ml_variance_rss_over_n`, binary is `bernoulli`,
+and Poisson/NB2 use `poisson_count_pmf`/`nb2_count_pmf`.
+Zero/nonfinite OLS variance has null likelihood/convention. OLS R², binary
+McFadden pseudo-R² and NB2's separate `nb2.mcfadden_r_squared` are distinct; no
+cross-family or robust LR test is implied. NB2 alpha intervals exponentiate the
+log-alpha interval; the boundary LR is one-sided and its p-value is unavailable
+for robust/clustered fits.
 
 Terminal output aligns exact coefficient names, displaying coefficient/statistic
 rows, model/sample counts and conventions, with six-decimal tab-separated values.
@@ -779,8 +792,9 @@ Domain command snapshots add `PredictKind::MeanCount` (`mean_count` on wire).
 Owned executable state is `EstimationState::PoissonFit` (`family: "poisson_fit"`);
 the legacy `Poisson(ModelState)`/`family: "poisson"` placeholder remains readable,
 not an installed usable fit. A failed new runtime fit clears stale estimation,
-not data/labels/order. No fit restoration/persistence is added. `estimates store`
-continues to reject Poisson. See [exact source/R workflow](../../examples/mma20p1count/README.md)
+not data/labels/order. No fit restoration/persistence is added. Poisson and NB2
+fits support immutable named reports; see [named fit reports](#named-fit-reports-and-comparison).
+See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
 [fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
 method evidence, not a textbook replication. Remaining exposure workflows,
@@ -923,7 +937,7 @@ See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
 full joint inference/nulls without claiming a new textbook illustration.
 FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
 specifications, other formal specification tests, discrete
-changes/general restrictions/named reports and full illustration outputs remain
+changes/general restrictions and full illustration outputs remain
 required as applicable. Independent-row robust is not panel-robust.
 
 ### NB2 one-way full-joint clustered inference
@@ -964,7 +978,7 @@ and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
 See MIG-0020. Remaining multiway/survey/few-cluster, exposure workflows/weights,
-current-row probabilities/formal tests/general restrictions/named reports and richer count
+current-row probabilities/formal tests/general restrictions and richer count
 requirements are not removed.
 
 ## Retained count probability-frequency reports

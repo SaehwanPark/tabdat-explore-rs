@@ -265,11 +265,15 @@ fn cluster_named_nb2_report_retains_full_joint_score_covariance_and_groups() {
   assert_eq!(saved.cluster_count, Some(6));
   assert_eq!(nb2.covariance_correction, 6.0 / 5.0);
   assert_eq!(saved.covariance_matrix, fit.covariance);
-  assert_eq!(saved.covariance_parameter_names, ["intercept", "x", "z", "lnalpha"]);
+  assert_eq!(
+    saved.covariance_parameter_names,
+    ["intercept", "x", "z", "lnalpha"]
+  );
   assert_eq!(saved.sample, fit.sample.unwrap());
   assert!(nb2.dispersion_test.as_ref().unwrap().p_value.is_none());
   assert_eq!(
-    nb2.dispersion_test
+    nb2
+      .dispersion_test
       .as_ref()
       .unwrap()
       .unavailable_reason

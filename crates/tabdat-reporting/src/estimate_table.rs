@@ -164,14 +164,19 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
           .map(|test| test.statistic),
       )
     });
-    row(&mut output, "NB2 Poisson-boundary LR p-value", models, |m| {
-      number(
-        m.nb2
-          .as_ref()
-          .and_then(|nb2| nb2.dispersion_test.as_ref())
-          .and_then(|test| test.p_value),
-      )
-    });
+    row(
+      &mut output,
+      "NB2 Poisson-boundary LR p-value",
+      models,
+      |m| {
+        number(
+          m.nb2
+            .as_ref()
+            .and_then(|nb2| nb2.dispersion_test.as_ref())
+            .and_then(|test| test.p_value),
+        )
+      },
+    );
   }
   row(&mut output, "Cluster variable", models, |m| {
     m.cluster_variable.clone().unwrap_or("NA".into())

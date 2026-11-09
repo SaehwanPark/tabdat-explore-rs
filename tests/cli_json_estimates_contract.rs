@@ -378,8 +378,8 @@ fn poisson_named_reports_show_offset_correction_and_preserve_active_fit() {
 fn nb2_named_reports_show_joint_dispersion_corrections_and_boundary_conventions() {
   let fixture = Fixture::new();
   let y = [
-    0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0,
-    2, 2, 0, 1, 0,
+    0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0, 2,
+    2, 0, 1, 0,
   ];
   let mut csv = String::from("y,x,z,person\n");
   for (i, y) in y.iter().enumerate() {
@@ -438,20 +438,13 @@ fn nb2_named_reports_show_joint_dispersion_corrections_and_boundary_conventions(
     assert_eq!(model["df_residual"], 33);
   }
   assert_eq!(models[0]["nb2"]["covariance_correction"], 1.0);
-  assert_eq!(
-    models[1]["nb2"]["covariance_correction"],
-    36.0 / 35.0
-  );
+  assert_eq!(models[1]["nb2"]["covariance_correction"], 36.0 / 35.0);
   assert_eq!(models[2]["nb2"]["covariance_correction"], 6.0 / 5.0);
   assert_eq!(models[2]["cluster_variable"], "person");
   assert_eq!(models[2]["cluster_count"], 6);
   assert!(models[0]["nb2"]["dispersion_test"]["p_value"].is_number());
-  assert!(
-    models[1]["nb2"]["dispersion_test"]["p_value"].is_null()
-  );
-  assert!(
-    models[2]["nb2"]["dispersion_test"]["p_value"].is_null()
-  );
+  assert!(models[1]["nb2"]["dispersion_test"]["p_value"].is_null());
+  assert!(models[2]["nb2"]["dispersion_test"]["p_value"].is_null());
   let output = fixture.run(&["--text", "-f", "nb2_report.td"]);
   assert!(
     output.status.success(),

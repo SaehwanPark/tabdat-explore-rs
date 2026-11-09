@@ -333,9 +333,7 @@ fn snapshot(
       let joint_parameters = mean_parameters + 1;
       if result.covariance.len() != joint_parameters
         || result.covariance.iter().enumerate().any(|(i, row)| {
-          row.len() != joint_parameters
-            || row.iter().any(|v| !v.is_finite())
-            || row[i] < 0.0
+          row.len() != joint_parameters || row.iter().any(|v| !v.is_finite()) || row[i] < 0.0
         })
         || result.observation_count != sample.retained_indices.len()
         || result

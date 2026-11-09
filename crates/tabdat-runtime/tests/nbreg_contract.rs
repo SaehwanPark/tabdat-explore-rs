@@ -3,7 +3,9 @@ use std::{
   path::PathBuf,
   sync::atomic::{AtomicU64, Ordering},
 };
-use tabdat_domain::{CellValue, EstimationFamily, EstimationState, EstimateSnapshot, ExecutionResult};
+use tabdat_domain::{
+  CellValue, EstimateSnapshot, EstimationFamily, EstimationState, ExecutionResult,
+};
 use tabdat_language::parse_command;
 use tabdat_runtime::{RuntimeError, Session};
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -371,7 +373,10 @@ fn named_nb2_reports_copy_joint_covariance_dispersion_and_sample_without_refitti
     assert!(saved.include_intercept);
     assert_eq!(saved.covariance, covariance);
     assert_eq!(saved.covariance_matrix, fit.covariance);
-    assert_eq!(saved.covariance_parameter_names, ["intercept", "x", "lnalpha"]);
+    assert_eq!(
+      saved.covariance_parameter_names,
+      ["intercept", "x", "lnalpha"]
+    );
     assert_eq!(saved.coefficients.len(), fit.coefficients.len() + 1);
     for (copy, original) in saved
       .coefficients
