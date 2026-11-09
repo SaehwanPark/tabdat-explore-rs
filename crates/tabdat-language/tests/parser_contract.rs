@@ -5767,7 +5767,8 @@ fn bayesplot_preserves_bounded_parser_diagnostics() {
 
 #[test]
 fn parses_regress_factor_terms_without_broadening_other_commands() {
-  let Command::Regress { command } = parse_command("regress y x i.region ib(South).region").unwrap()
+  let Command::Regress { command } =
+    parse_command("regress y x i.region ib(South).region").unwrap()
   else {
     panic!("expected regress");
   };
