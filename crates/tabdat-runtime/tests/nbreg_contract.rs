@@ -3,7 +3,7 @@ use std::{
   path::PathBuf,
   sync::atomic::{AtomicU64, Ordering},
 };
-use tabdat_domain::{CellValue, EstimationFamily, EstimationState, ExecutionResult};
+use tabdat_domain::{CellValue, EstimationFamily, EstimationState, EstimateSnapshot, ExecutionResult};
 use tabdat_language::parse_command;
 use tabdat_runtime::{RuntimeError, Session};
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -234,7 +234,6 @@ fn unsupported_postestimation_and_failed_prediction_never_mutate_data_labels_or_
     "lincom x",
     "test x",
     "estat vif",
-    "estimates store counts",
   ] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
@@ -333,4 +332,116 @@ fn no_constant_and_intercept_only_keep_distinct_nuisance_null_and_empty_effect_s
     panic!("effects")
   };
   assert!(e.effects.is_empty());
+}
+#[test]
+fn named_nb2_reports_copy_joint_covariance_dispersion_and_sample_without_refitting() {
+  let f = Fixture::new(true);
+  let mut s = f.load();
+  for (name, options, covariance, correction) in [
+    (
+      "model",
+      "offset(z)",
+      "model_based_joint_observed_information",
+      1.0,
+    ),
+    (
+      "robust_count",
+      "offset(z) robust",
+      "robust_joint_score_sandwich_n_over_n_minus_1",
+      36.0 / 35.0,
+    ),
+  ] {
+    let ExecutionResult::Nbreg(fit) = execute(&mut s, &format!("nbreg y x, {options}")) else {
+      panic!("fit")
+    };
+    let before = s.state();
+    execute(&mut s, &format!("estimates store {name}"));
+    let mut after = s.state();
+    after.stored_estimates = before.stored_estimates.clone();
+    assert_eq!(after, before);
+    let ExecutionResult::EstimateTable(mut table) =
+      execute(&mut s, &format!("estimates table {name}"))
+    else {
+      panic!("table")
+    };
+    let saved = table.models.remove(0);
+    assert_eq!(saved.estimator, "nb2");
+    assert_eq!(saved.outcome, "y");
+    assert_eq!(saved.predictors, ["x"]);
+    assert!(saved.include_intercept);
+    assert_eq!(saved.covariance, covariance);
+    assert_eq!(saved.covariance_matrix, fit.covariance);
+    assert_eq!(saved.covariance_parameter_names, ["intercept", "x", "lnalpha"]);
+    assert_eq!(saved.coefficients.len(), fit.coefficients.len() + 1);
+    for (copy, original) in saved
+      .coefficients
+      .iter()
+      .take(fit.coefficients.len())
+      .zip(fit.coefficients.iter())
+    {
+      assert_eq!(copy.name, original.name);
+      assert_eq!(copy.value, original.value);
+      assert_eq!(copy.standard_error, Some(original.standard_error));
+      assert_eq!(copy.statistic, original.statistic);
+      assert_eq!(copy.p_value, original.p_value);
+    }
+    let dispersion = saved.coefficients.last().unwrap();
+    assert_eq!(dispersion.name, "lnalpha");
+    assert_eq!(dispersion.value, fit.dispersion.log_alpha);
+    assert_eq!(
+      dispersion.standard_error,
+      Some(fit.dispersion.log_alpha_standard_error)
+    );
+    assert!(dispersion.statistic.is_none() && dispersion.p_value.is_none());
+    let nb2 = saved.nb2.as_ref().unwrap();
+    assert_eq!(nb2.offset_variable.as_deref(), Some("z"));
+    assert_eq!(nb2.covariance_correction, correction);
+    assert_eq!(
+      nb2.null_model,
+      "intercept_only_with_same_fixed_offset_refit_alpha"
+    );
+    assert_eq!(nb2.null_log_likelihood, fit.null_log_likelihood);
+    assert_eq!(nb2.null_alpha, fit.null_alpha);
+    assert_eq!(nb2.mcfadden_r_squared, fit.mcfadden_r_squared);
+    assert_eq!(nb2.alpha, fit.dispersion.alpha);
+    assert_eq!(
+      nb2.alpha_standard_error,
+      fit.dispersion.alpha_standard_error
+    );
+    assert_eq!(
+      nb2.alpha_confidence_lower,
+      fit.dispersion.alpha_confidence_lower
+    );
+    assert_eq!(
+      nb2.alpha_confidence_upper,
+      fit.dispersion.alpha_confidence_upper
+    );
+    assert_eq!(nb2.dispersion_test, fit.dispersion_test);
+    assert_eq!(nb2.zero_count, fit.zero_count);
+    assert_eq!(nb2.count_sum, fit.count_sum);
+    assert_eq!(saved.sample, fit.sample.unwrap());
+    assert_eq!(saved.observation_count, 36);
+    assert_eq!(saved.reference_distribution, "asymptotic_standard_normal");
+    assert!(saved.inference_degrees_of_freedom.is_none());
+    assert_eq!(saved.log_likelihood, Some(fit.log_likelihood));
+    assert_eq!(
+      saved.log_likelihood_convention.as_deref(),
+      Some("nb2_count_pmf")
+    );
+    assert_eq!(saved.df_residual, Some(fit.df_residual));
+    assert!(saved.mcfadden_r_squared.is_none());
+    let serialized = serde_json::to_value(&saved).unwrap();
+    assert_eq!(
+      serde_json::from_value::<EstimateSnapshot>(serialized).unwrap(),
+      saved
+    );
+  }
+  let ExecutionResult::EstimateTable(table) = execute(&mut s, "estimates table model robust_count")
+  else {
+    panic!("table")
+  };
+  assert_eq!(table.parameter_names, ["intercept", "x", "lnalpha"]);
+  let state = s.state();
+  execute(&mut s, "head 1");
+  assert_eq!(s.state(), state);
 }

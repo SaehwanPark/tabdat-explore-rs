@@ -89,6 +89,7 @@ fn copies_fit_inference_and_sample_without_mutating_active_model_data_or_labels(
   assert!(legacy.get("poisson_mcfadden_r_squared").is_none());
   assert!(legacy.get("poisson_zero_count").is_none());
   assert!(legacy.get("poisson_count_sum").is_none());
+  assert!(legacy.get("nb2").is_none());
   assert_eq!(
     serde_json::from_value::<tabdat_domain::EstimateSnapshot>(legacy).unwrap(),
     saved

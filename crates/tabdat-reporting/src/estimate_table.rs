@@ -124,6 +124,55 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
       number(m.poisson_covariance_correction)
     });
   }
+  if models.iter().any(|m| m.nb2.is_some()) {
+    row(&mut output, "NB2 offset (coefficient 1)", models, |m| {
+      m.nb2.as_ref().map_or("NA".into(), |nb2| {
+        nb2.offset_variable.clone().unwrap_or_else(|| "none".into())
+      })
+    });
+    row(&mut output, "NB2 null model", models, |m| {
+      m.nb2
+        .as_ref()
+        .map_or("NA".into(), |nb2| nb2.null_model.clone())
+    });
+    row(&mut output, "NB2 covariance correction", models, |m| {
+      number(m.nb2.as_ref().map(|nb2| nb2.covariance_correction))
+    });
+    row(&mut output, "NB2 alpha", models, |m| {
+      number(m.nb2.as_ref().map(|nb2| nb2.alpha))
+    });
+    row(&mut output, "NB2 alpha standard error", models, |m| {
+      number(m.nb2.as_ref().map(|nb2| nb2.alpha_standard_error))
+    });
+    row(&mut output, "NB2 alpha 95% lower", models, |m| {
+      number(m.nb2.as_ref().and_then(|nb2| nb2.alpha_confidence_lower))
+    });
+    row(&mut output, "NB2 alpha 95% upper", models, |m| {
+      number(m.nb2.as_ref().and_then(|nb2| nb2.alpha_confidence_upper))
+    });
+    row(&mut output, "NB2 null log likelihood", models, |m| {
+      number(m.nb2.as_ref().map(|nb2| nb2.null_log_likelihood))
+    });
+    row(&mut output, "NB2 McFadden pseudo-R-squared", models, |m| {
+      number(m.nb2.as_ref().map(|nb2| nb2.mcfadden_r_squared))
+    });
+    row(&mut output, "NB2 Poisson-boundary LR", models, |m| {
+      number(
+        m.nb2
+          .as_ref()
+          .and_then(|nb2| nb2.dispersion_test.as_ref())
+          .map(|test| test.statistic),
+      )
+    });
+    row(&mut output, "NB2 Poisson-boundary LR p-value", models, |m| {
+      number(
+        m.nb2
+          .as_ref()
+          .and_then(|nb2| nb2.dispersion_test.as_ref())
+          .and_then(|test| test.p_value),
+      )
+    });
+  }
   row(&mut output, "Cluster variable", models, |m| {
     m.cluster_variable.clone().unwrap_or("NA".into())
   });
@@ -204,7 +253,10 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
     models,
     |m| number(m.mcfadden_r_squared),
   );
-  output.push_str("Statistics use each model's selected covariance/reference: binary/Poisson normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N, Bernoulli and Poisson count likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  output.push_str("Statistics use each model's selected covariance/reference: binary/Poisson/NB2 normal z; OLS Student t (clustered: G-1); NLS approximate t. NA means unavailable/absent, not zero.\nSamples/outcomes can differ; equal N does not establish equal rows. JSON retains fit-time candidate positions, not current-data identities.\nGaussian working-model RSS/N, Bernoulli and Poisson/NB2 count likelihoods are descriptive, not a cross-family or robust LR test. Reports cannot restore fits.\n");
+  if models.iter().any(|m| m.nb2.is_some()) {
+    output.push_str("NB2 covariance is the full joint beta/lnalpha matrix; the `lnalpha` coefficient is dispersion, not a mean predictor, and has no invented normal-Wald z/p. Alpha intervals exponentiate the log-alpha interval. The Poisson-boundary LR p-value uses a 50:50 chi-square(0)/chi-square(1) mixture and is unavailable for robust/clustered fits.\n");
+  }
   if models.iter().any(|m| m.panel.is_some()) {
     output.push_str("Panel FE uses classical Student t(N-G-p); RE and selected Gaussian GEE use asymptotic normal z, not residual-DF t. GEE unit-sandwich is uncorrected (multiplier 1), not CR1 or few-cluster inference. Working GEE relies on its specified covariance.\nPanel keys do not assert calendar time. FE common intercept uses observation-weighted zero effects; population-mean intercepts have a different convention. Panel within/conditional or quasi-GLS R-squared is not substituted for OLS R-squared. Only ML supplies the Gaussian random-intercept marginal likelihood, not quasi-GLS or GEE likelihood.\n");
   }

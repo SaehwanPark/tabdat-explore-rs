@@ -74,6 +74,30 @@ pub struct PanelEstimateProvenance {
   pub intercept_convention: String,
 }
 
+/// NB2 retains a joint beta/lnalpha covariance and a dispersion parameter that
+/// is not an ordinary mean-model predictor.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Nb2EstimateDetails {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub offset_variable: Option<String>,
+  /// Applied joint-score covariance multiplier: 1, N/(N-1), or G/(G-1).
+  pub covariance_correction: f64,
+  pub zero_count: usize,
+  pub count_sum: f64,
+  pub null_model: String,
+  pub null_log_likelihood: f64,
+  pub null_alpha: f64,
+  pub mcfadden_r_squared: f64,
+  pub alpha: f64,
+  pub alpha_standard_error: f64,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub alpha_confidence_lower: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub alpha_confidence_upper: Option<f64>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub dispersion_test: Option<tabdat_stats::Nb2DispersionTest>,
+}
+
 /// Reporting uses retained inference, never refits or current-data reconstruction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EstimateSnapshot {
@@ -112,6 +136,9 @@ pub struct EstimateSnapshot {
   pub poisson_zero_count: Option<usize>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub poisson_count_sum: Option<f64>,
+  /// NB2-specific joint likelihood and dispersion metadata.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub nb2: Option<Nb2EstimateDetails>,
   pub predictors: Vec<String>,
   pub include_intercept: bool,
   pub covariance: String,

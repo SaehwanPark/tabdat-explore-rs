@@ -138,7 +138,6 @@ fn retained_joint_effects_survive_edits_and_predictions_need_neither_outcome_nor
     "lincom x",
     "test x",
     "estat vif",
-    "estimates store counts",
   ] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
@@ -243,4 +242,38 @@ fn failed_new_group_fits_clear_stale_inference_only_and_bad_manual_options_fail(
     RuntimeError::NoActiveDataset { command: "nbreg" }
   );
   assert!(empty.initialized_capabilities().is_empty());
+}
+#[test]
+fn cluster_named_nb2_report_retains_full_joint_score_covariance_and_groups() {
+  let f = Fixture::new(false);
+  let mut s = f.load();
+  let ExecutionResult::Nbreg(fit) = run(&mut s, "nbreg y x z, cluster(person)") else {
+    panic!("fit")
+  };
+  run(&mut s, "estimates store clustered");
+  let ExecutionResult::EstimateTable(mut table) = run(&mut s, "estimates table clustered") else {
+    panic!("table")
+  };
+  let saved = table.models.remove(0);
+  let nb2 = saved.nb2.as_ref().unwrap();
+  assert_eq!(saved.estimator, "nb2");
+  assert_eq!(
+    saved.covariance,
+    "cluster_joint_score_sandwich_g_over_g_minus_1"
+  );
+  assert_eq!(saved.cluster_variable.as_deref(), Some("person"));
+  assert_eq!(saved.cluster_count, Some(6));
+  assert_eq!(nb2.covariance_correction, 6.0 / 5.0);
+  assert_eq!(saved.covariance_matrix, fit.covariance);
+  assert_eq!(saved.covariance_parameter_names, ["intercept", "x", "z", "lnalpha"]);
+  assert_eq!(saved.sample, fit.sample.unwrap());
+  assert!(nb2.dispersion_test.as_ref().unwrap().p_value.is_none());
+  assert_eq!(
+    nb2.dispersion_test
+      .as_ref()
+      .unwrap()
+      .unavailable_reason
+      .as_deref(),
+    Some("clustered_likelihood_not_independent")
+  );
 }
