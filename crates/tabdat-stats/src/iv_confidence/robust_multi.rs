@@ -525,21 +525,35 @@ fn validate_score_condition_over_real_line(
   Ok(())
 }
 
-fn confidence_set_probes(intervals: &[ArConfidenceInterval]) -> (Vec<f64>, Vec<f64>) {
+fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Vec<f64>, Vec<f64>) {
   if intervals.is_empty() {
-    return (Vec::new(), vec![0.0]);
+    let magnitude = center.abs().clamp(1.0, f64::MAX / 20.0) * 10.0;
+    return (Vec::new(), vec![-magnitude, 0.0, magnitude]);
   }
   let mut inside = Vec::new();
   for ci in intervals {
     match (ci.lower, ci.upper) {
-      (None, None) => inside.push(0.0),
+      (None, None) => {
+        let magnitude = center.abs().clamp(1.0, f64::MAX / 20.0) * 10.0;
+        inside.extend([-magnitude, center, magnitude]);
+      }
       (None, Some(upper)) => {
         let step = 1.0_f64.max(upper.abs() * 0.01);
         inside.push(upper - step);
+        let far_step = 10.0_f64.max(upper.abs() * 0.1);
+        let far = upper - far_step;
+        if far.is_finite() && far < upper {
+          inside.push(far);
+        }
       }
       (Some(lower), None) => {
         let step = 1.0_f64.max(lower.abs() * 0.01);
         inside.push(lower + step);
+        let far_step = 10.0_f64.max(lower.abs() * 0.1);
+        let far = lower + far_step;
+        if far.is_finite() && far > lower {
+          inside.push(far);
+        }
       }
       (Some(lower), Some(upper)) => inside.push(lower / 2.0 + upper / 2.0),
     }
@@ -549,6 +563,11 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval]) -> (Vec<f64>, Vec<f
     && let Some(lower) = first.lower
   {
     outside.push(lower - 1.0_f64.max(lower.abs() * 0.01));
+    let far_step = 10.0_f64.max(lower.abs() * 0.1);
+    let far = lower - far_step;
+    if far.is_finite() && far < lower {
+      outside.push(far);
+    }
   }
   for pair in intervals.windows(2) {
     if let (Some(left), Some(right)) = (pair[0].upper, pair[1].lower) {
@@ -559,6 +578,11 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval]) -> (Vec<f64>, Vec<f
     && let Some(upper) = last.upper
   {
     outside.push(upper + 1.0_f64.max(upper.abs() * 0.01));
+    let far_step = 10.0_f64.max(upper.abs() * 0.1);
+    let far = upper + far_step;
+    if far.is_finite() && far > upper {
+      outside.push(far);
+    }
   }
   (inside, outside)
 }
@@ -880,7 +904,7 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     return Err(invalid("robust AR boundary coefficients are non-finite"));
   }
   let (shape, mut intervals) = confidence_set_from_boundary(&boundary, center)?;
-  let (inside_probes, outside_probes) = confidence_set_probes(&intervals);
+  let (inside_probes, outside_probes) = confidence_set_probes(&intervals, center);
   for (beta, expected_included) in inside_probes
     .into_iter()
     .map(|beta| (beta, true))

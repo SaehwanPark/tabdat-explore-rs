@@ -132,6 +132,15 @@ fn all_real_two_instrument_cli_workflow_reports_the_unbounded_set() {
     .join("examples/robust-ar/two_instrument_ci_all_real.td");
   let rows = json_lines(&fixture.run("--json", script.to_str().unwrap()));
   assert_eq!(rows.len(), 3);
+  let first_stage = &rows[1]["data"]["first_stage"]["rows"][0];
+  assert!(
+    first_stage["partial_r_squared"].as_f64().unwrap() > 0.0,
+    "all-real fixture must retain nonzero first-stage relevance: {first_stage}"
+  );
+  assert!(
+    first_stage["f_statistic"].as_f64().unwrap() > 0.0,
+    "all-real fixture must retain a nonzero first-stage statistic: {first_stage}"
+  );
   assert_eq!(
     rows[2]["result_type"],
     "RobustMultipleInstrumentAndersonRubinConfidenceSet"

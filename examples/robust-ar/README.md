@@ -123,7 +123,9 @@ The deterministic 20-row fixtures and independent base R reference are in
 The HC1 confidence set has two rays plus one bounded component; CR1 has two
 unbounded rays. [`two_instrument_ci_all_real.td`](two_instrument_ci_all_real.td)
 uses the second design, which produces an all-real set under both covariance
-choices. The tests compare endpoint and probe statistics, correction factors,
+choices while retaining a small nonzero first-stage loading. The tests assert
+that loading remains nonzero and compare endpoint and probe statistics,
+including positive/negative tails, correction factors,
 instrument rescaling, runtime fit retention and CLI JSON/text output. At these
 fixtures, HC1 uses correction 1.25 and CR1 uses 1.31944444444444 for ten groups.
 R is development-only; the native scripts need only the committed CSV and the

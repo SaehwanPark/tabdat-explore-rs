@@ -34,9 +34,15 @@ critical value is 5.99146454710798.
 | all-real | HC1 | 1.25 | (-inf, +inf) |
 | all-real | CR1, 10 groups | 1.31944444444444 | (-inf, +inf) |
 
+The all-real fixture retains a 0.01 loading of `z1` in the endogenous regressor,
+so its first-stage relevance is nonzero and 2SLS remains estimable. The CLI test
+asserts positive first-stage partial R-squared and F before checking the
+all-real confidence set.
+
 Base R `lm.fit`, explicit score sandwiches and `polyroot` supply the reference
 intervals and direct Wald statistics at interior/exterior probes. Rust tests
-compare every endpoint and probe, check HC1/CR1 metadata, no-intercept behavior,
+compare every endpoint and probe, check direct Wald tests in the positive and
+negative tails of rays/all-real sets, HC1/CR1 metadata, no-intercept behavior,
 instrument rescaling, rank and cluster failures, singular auxiliary residuals,
 root degree reduction, repeated/near-coincident roots, state retention, and
 JSON/text workflows. The three-component HC1 example has two rays and a bounded

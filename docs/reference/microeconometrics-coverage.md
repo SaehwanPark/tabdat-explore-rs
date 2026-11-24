@@ -1470,8 +1470,9 @@ panel likelihood is supplied.
   fixture: K_aux=4, residual DF=16, 95% critical chi-square(2)=5.99146454710798,
   with corrections 1.25 / 1.31944444444444. The HC1 design gives three components
   (two rays and a bounded interval), CR1 gives two rays, and both covariances
-  return all-real sets for the projected-null fixture. Tests compare endpoints,
-  direct AR statistics at probes, instrument rescaling, retained-fit behavior,
+  return all-real sets for a fixture with nonzero first-stage relevance. Tests
+  compare endpoints, direct AR statistics at probes including both tails,
+  instrument rescaling, retained-fit behavior,
   text/JSON metadata and unsupported dimensions. Root ambiguity, singularity and
   ill-conditioned score covariance are errors. More than two excluded
   instruments, multiple endogenous regressors, robust projection, HAC/survey
