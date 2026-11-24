@@ -26,10 +26,10 @@ not by implementing every estimator mentioned in a chapter.
 | --- | --- | --- |
 | 4: Linear, IV and quantile models | Bounded OLS with one-way factors, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg and joint IID pairs quantile bootstrap with one two-quantile coefficient contrast | Remaining IV diagnostics, analytic/cluster quantile uncertainty, general quantile restrictions and simultaneous bands; cross-estimator factor designs, interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares, bounded binary logit/probit MLE/QR and explicit-formula unweighted NLS | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
-| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald and delta-AME inference | Further model-specific LR/LM/Wald and specification tests, nonlinear restrictions, comparison and uncertainty |
+| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions and delta-AME inference | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb and continuous retained-X delta AME; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | General binary restrictions/specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb, continuous retained-X delta AME and retained-fit Wald tests of general linear restrictions; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | Binary specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
@@ -1275,6 +1275,18 @@ panel likelihood is supplied.
   checks remain. Sixteen synthetic robust/clustered family/design variants
   validate W/df/tails; singular/rank-limited restrictions produce explicit
   unavailable tests, not pseudoinverses/reduced-q inference or discarded fits.
+- **General binary restrictions:** `test` after logit/probit uses the retained
+  fit's model-based, independent-row robust or one-way cluster covariance and
+  returns an asymptotic Wald chi-square(q); the existing `TestResult` envelope
+  sets `df_residual` null. A separate Base R4.6.2 reference validates one- and
+  two-restriction tests for both families and all three covariance modes on a
+  deterministic 40-row design (12 comparisons). On the exact fishing cohort,
+  classical/robust logit and probit `test lnrelp = 0` match independent R within
+  8e-12 in W and 4e-12 relative in the upper-tail probability. See the
+  [runnable test and evidence](../../examples/mma14p1binary/wald-test.md).
+  Runtime checks cover retained-fit reuse after data edits and state-preserving
+  unknown/singular failures. General binary `lincom`, finite-sample or few-cluster
+  inference and specification tests remain unsupported. [PR #452](https://github.com/SaehwanPark/tabdat-explore-rs/pull/452).
 - **OLS/six-column comparison:** [PR #275](https://github.com/SaehwanPark/tabdat-explore-rs/pull/275)
   adds `comparison.td`, independently checked by base R4.6.1 and a standard-library
   checker: all 94 classical/robust logit/probit/OLS numerical quantities and all

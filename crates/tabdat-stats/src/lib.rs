@@ -99,8 +99,9 @@ pub mod ttest;
 pub use binary::{
   BinaryCluster, BinaryLogitResult, BinaryMleResult, BinaryModel, BinaryOmnibusWald, LogitEstimate,
   LogitMarginalEffects, LogitOptions, ProbitOptions, binary_average_marginal_effects,
-  fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options, fit_binary_probit,
-  fit_binary_probit_with_options, fit_binary_robust, logit_average_marginal_effects,
+  binary_wald_test, fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options,
+  fit_binary_probit, fit_binary_probit_with_options, fit_binary_robust,
+  logit_average_marginal_effects,
 };
 pub use bootstrap::{
   BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, ClusterBootstrapOlsResult,
@@ -184,7 +185,8 @@ pub use poisson::{
 };
 pub use poisson_bootstrap::{ClusterBootstrapPoissonResult, bootstrap_poisson_clustered};
 pub use post_estimation::{
-  LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel, WaldTestResult,
+  LinearCombinationInferenceResult, LinearCombinationResult, PostEstimationModel,
+  WaldChiSquareTestResult, WaldTestResult,
 };
 pub use problem::EstimationProblem;
 pub use random_effects::{

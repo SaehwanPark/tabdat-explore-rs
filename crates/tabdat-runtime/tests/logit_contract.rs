@@ -384,7 +384,7 @@ fn unrepresentable_current_indices_produce_null_without_losing_rows_or_fit() {
 }
 
 #[test]
-fn linear_only_postestimation_never_uses_logit_and_other_families_do_not_supply_margins() {
+fn binary_wald_tests_work_after_logit_while_other_linear_postestimation_stays_unsupported() {
   let f = Fixture::new(false);
   let mut s = f.load();
   assert!(matches!(
@@ -401,8 +401,14 @@ fn linear_only_postestimation_never_uses_logit_and_other_families_do_not_supply_
     s.state().estimation,
     Some(EstimationState::Logit(_))
   ));
+  let ExecutionResult::Test(test) = execute(&mut s, "test x1") else {
+    panic!("expected a binary Wald test")
+  };
+  assert!(test.is_chi2);
+  assert_eq!(test.df, 1);
+  assert_eq!(test.df_residual, None);
   let before = s.state();
-  for command in ["lincom x1", "test x1", "estat vif", "estat ar, null(0)"] {
+  for command in ["lincom x1", "estat vif", "estat ar, null(0)"] {
     fail(&mut s, command);
     assert_eq!(s.state(), before);
   }

@@ -431,8 +431,14 @@ fn prior_margins_wording_stays_logit_and_other_families_do_not_supply_margins() 
     execute(&mut s, "estat margins"),
     ExecutionResult::ProbitMarginalEffects(_)
   ));
+  let ExecutionResult::Test(test) = execute(&mut s, "test x1") else {
+    panic!("expected a probit Wald test")
+  };
+  assert!(test.is_chi2);
+  assert_eq!(test.df, 1);
+  assert_eq!(test.df_residual, None);
   let before = s.state();
-  for command in ["lincom x1", "test x1", "estat vif", "estat ar, null(0)"] {
+  for command in ["lincom x1", "estat vif", "estat ar, null(0)"] {
     let error = fail(&mut s, command);
     assert!(
       matches!(

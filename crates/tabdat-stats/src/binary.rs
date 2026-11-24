@@ -139,6 +139,45 @@ pub struct BinaryMleResult {
   pub sample: Option<EstimationSample>,
 }
 
+/// Test arbitrary linear restrictions on a retained logit or probit fit.
+///
+/// The selected model-based, independent-row robust or clustered covariance is
+/// used as stored. The returned Wald statistic has an asymptotic chi-square
+/// reference; no residual-F or few-cluster correction is implied.
+pub fn binary_wald_test(
+  result: &BinaryMleResult,
+  r_matrix: &[Vec<f64>],
+  r_vector: &[f64],
+) -> Result<crate::WaldChiSquareTestResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.as_str())
+    .collect::<Vec<_>>();
+  let unique_names = coefficient_names.iter().copied().collect::<BTreeSet<_>>();
+  let predictor_order_matches = coefficient_names
+    .iter()
+    .skip(usize::from(result.include_intercept))
+    .copied()
+    .eq(result.predictor_names.iter().map(String::as_str));
+  if result.coefficients.len()
+    != result.predictor_names.len() + usize::from(result.include_intercept)
+    || unique_names.len() != result.coefficients.len()
+    || coefficient_names.iter().any(|name| name.is_empty())
+    || !predictor_order_matches
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "binary Wald test requires the exact finite fitted coefficient vector".into(),
+    ));
+  }
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  crate::post_estimation::wald_chi_square_test(&parameters, &result.covariance, r_matrix, r_vector)
+}
+
 /// Compatibility name for logit results before the shared binary core.
 pub type BinaryLogitResult = BinaryMleResult;
 
