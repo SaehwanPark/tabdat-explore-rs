@@ -363,7 +363,7 @@ fn vif_errors_preserve_prior_streams_locations_and_stop_later_effects() {
       results[1]["error"]["message"]
         .as_str()
         .unwrap()
-        .contains("supported only")
+        .contains("no supported result contract")
     );
   }
   for (setup, command, code) in [

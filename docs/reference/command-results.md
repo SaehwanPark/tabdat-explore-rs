@@ -35,12 +35,14 @@ source and fixtures below are relative to the repository root; use in-session
 - [Column profiles](#column-profiles)
 
 Use `--json -c "use data.csv" -c "summarize"` (or `--json -f analysis.td`)
-for versioned line-delimited envelopes. Successful execution output currently
-supports use, describe, count, codebook, summarize, missing, tabulate,
-generate/replace, save/export, bounded SVG scatter artifact metadata,
-`estimates store/table/drop` reporting snapshots,
-head/tail, `estat vif/ar/overid/endogenous` and the bounded
-regress/predict/lincom/test workflow plus ttest; nested scripts stream leaf results.
+for versioned line-delimited envelopes. CLI-v1 JSON is an explicit, tested
+subset of executable commands and options. The workflow families and
+model-specific boundaries documented below describe that subset without trying
+to maintain an exhaustive command list; source admission and integration tests
+are authoritative. Parser acceptance, command discovery, packaged help topics
+and text rendering do not imply JSON execution support. Nested scripts stream
+supported leaf results. A command rejected before execution emits
+`JsonResultUnsupported`.
 Existing result shapes remain unchanged. `describe` uses `schema_version: 1`,
 `result_type: "DescribeResult"` and `data.dataset`, reusing the load/prediction
 metadata shape: source `path`, integer `row_count`, ordered `columns` with names
@@ -57,10 +59,9 @@ linear fit's names, intercept convention and original sample counts. It is read-
 works before loading without initializing DuckDB, and never clones model arrays.
 CLI-v1 adds `StatusResult` with `data_initialized`, nullable `dataset`, nullable
 `active_table_name`, sorted `named_tables`, nullable `estimation_family` and nullable
-`linear_model`. The family is the retained cache's snake-case tag (currently
-`linear`, `instrumental_variables`, `logit`, `probit`, `multinomial_logit`, `poisson`,
-`negative_binomial` or `panel_linear` for native within FE), not a claim of
-current-data prediction eligibility. `linear_model` remains OLS/2SLS-only and is
+`linear_model`. The family is the retained cache's snake-case state tag. It may
+cover more estimator families than the bounded examples below and is not a claim
+of current-data prediction eligibility or JSON execution support. `linear_model` remains OLS/2SLS-only and is
 null after other families, including FE; its existing fields are unchanged.
 Within-FE sample/DF/normalization metadata is in the preceding `FixedEffectsResult`. Status is not an automatic refit/stale flag and
 does not invent covariance, operation or materialization tracking. See `help status`.
