@@ -132,14 +132,18 @@ fn retained_cluster_effects_survive_edits_and_current_predictions_do_not_need_id
     close(number(&row[3]), number(&row[4]).exp());
   }
   assert_eq!(s.state().estimation, retained);
+  assert!(matches!(
+    run(&mut s, "lincom x"),
+    ExecutionResult::Lincom(_)
+  ));
+  assert!(matches!(run(&mut s, "test x"), ExecutionResult::Test(_)));
+  assert_eq!(s.state().estimation, retained);
   let before = s.state();
   let old = rows(&mut s);
   for text in [
     "predict x, n",
     "predict bad, pr",
     "predict bad, residuals",
-    "lincom x",
-    "test x",
     "estat vif",
   ] {
     fail(&mut s, text);

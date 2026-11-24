@@ -31,6 +31,10 @@ cp examples/nb2-overdispersion-score/score_reference.csv "$work/"
   -f "$repo/examples/nb2-overdispersion-score/model_based.td")
 ```
 
+Replace `model_based.td` with `robust.td` or `clustered.td` to inspect the two
+score-sandwich variants. All three scripts read the same generated fixture and
+retain the fitted offset in their Poisson means.
+
 The reference independently fits Poisson GLMs and computes the score and each
 variance convention in base R 4.6.2. It includes independent NB2-like rows for
 model-based and robust checks plus shared-gamma groups for the clustered check.

@@ -6869,7 +6869,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|countprob|gof|did|drdid|dml|bayes|spatial|report>";
+  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
@@ -7068,6 +7068,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     ("residuals", false) => EstatSubcommand::Residuals,
     ("ovtest", false) => EstatSubcommand::Ovtest,
     ("margins", false) => EstatSubcommand::Margins,
+    ("overdispersion", false) => EstatSubcommand::Overdispersion,
     ("gof", false) => EstatSubcommand::Gof,
     ("did", false) => EstatSubcommand::Did,
     ("drdid", false) => EstatSubcommand::Drdid,
@@ -7080,7 +7081,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     ("hausman", false) => EstatSubcommand::Hausman,
     _ => {
       return Err(ParseError::new(
-        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, countprob, gof, did, drdid, dml, bayes, spatial, or report",
+        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, gof, did, drdid, dml, bayes, spatial, or report",
       ));
     }
   };
