@@ -27,7 +27,13 @@ impl RegressTerm {
 /// DECIMAL codes that collapse to the same `f64` remain distinct categories.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ObservedFactor {
-  Number { label: String, value: f64 },
+  Number {
+    label: String,
+    value: f64,
+    /// Integer/DECIMAL labels retain exact ordering semantics. Float labels
+    /// preserve the prior binary64 reference lookup behavior.
+    exact: bool,
+  },
   Text(String),
   Boolean(bool),
 }
@@ -41,20 +47,24 @@ impl ObservedFactor {
       CellValue::SignedInteger(value) => Some(Self::Number {
         label: value.to_string(),
         value: *value as f64,
+        exact: true,
       }),
       CellValue::UnsignedInteger(value) => Some(Self::Number {
         label: value.to_string(),
         value: *value as f64,
+        exact: true,
       }),
       CellValue::Decimal { value, scale, .. } => cell_to_f64(cell)
         .filter(|number| number.is_finite())
         .map(|number| Self::Number {
           label: decimal_label(*value, *scale),
           value: number,
+          exact: true,
         }),
       CellValue::Float(value) => value.is_finite().then(|| Self::Number {
         label: format_factor_number(*value),
         value: *value,
+        exact: false,
       }),
       CellValue::Bytes(_) => {
         return Err(RuntimeError::RegressFailed {
@@ -95,7 +105,7 @@ impl ObservedFactor {
 
 fn factor_level_from_observed(value: &ObservedFactor) -> LinearFactorLevel {
   match value {
-    ObservedFactor::Number { label, value } => LinearFactorLevel::Number {
+    ObservedFactor::Number { label, value, .. } => LinearFactorLevel::Number {
       label: label.clone(),
       value: *value,
     },
@@ -246,9 +256,7 @@ fn parse_exact_decimal(text: &str) -> Option<ExactDecimal> {
     Some(b'+') => (false, &mantissa[1..]),
     _ => (false, mantissa),
   };
-  let (integer, fraction) = mantissa
-    .split_once('.')
-    .map_or((mantissa, ""), |parts| parts);
+  let (integer, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
   if integer.is_empty() && fraction.is_empty()
     || !integer.bytes().all(|byte| byte.is_ascii_digit())
     || !fraction.bytes().all(|byte| byte.is_ascii_digit())
@@ -285,29 +293,15 @@ fn parse_exact_decimal(text: &str) -> Option<ExactDecimal> {
 fn compare_exact_decimals(left: &str, right: &str) -> Option<std::cmp::Ordering> {
   let left = parse_exact_decimal(left)?;
   let right = parse_exact_decimal(right)?;
-  if left.digits == "0" && right.digits == "0" {
-    return Some(std::cmp::Ordering::Equal);
-  }
   if left.negative != right.negative {
-    return Some(if left.negative {
-      std::cmp::Ordering::Less
-    } else {
-      std::cmp::Ordering::Greater
-    });
+    return Some(right.negative.cmp(&left.negative));
   }
-  let mut ordering = left.order.cmp(&right.order);
-  if ordering == std::cmp::Ordering::Equal {
-    let width = left.digits.len().max(right.digits.len());
-    ordering = (0..width)
-      .map(|index| {
-        (
-          left.digits.as_bytes().get(index).copied().unwrap_or(b'0'),
-          right.digits.as_bytes().get(index).copied().unwrap_or(b'0'),
-        )
-      })
-      .find_map(|(left, right)| (left != right).then_some(left.cmp(&right)))
-      .unwrap_or(std::cmp::Ordering::Equal);
-  }
+  // With trailing zeros removed, lexical digit order resolves equal orders
+  // of magnitude, including when one sequence is a prefix of the other.
+  let magnitude = |n: &ExactDecimal| (n.digits != "0", n.order);
+  let ordering = magnitude(&left)
+    .cmp(&magnitude(&right))
+    .then_with(|| left.digits.cmp(&right.digits));
   Some(if left.negative {
     ordering.reverse()
   } else {
@@ -546,57 +540,23 @@ fn select_reference(
   let Some(base) = base else {
     return Ok(0);
   };
-  if let Some(index) = levels
+  let exact = parse_exact_decimal(base);
+  let float = base.parse::<f64>().ok();
+  levels
     .iter()
-    .position(|level| level.label().as_str() == base)
-  {
-    return Ok(index);
-  }
-  if let Ok(number) = base.parse::<f64>() {
-    if let Some(index) = levels.iter().position(|level| {
-      let Some(value) = level.as_number() else {
-        return false;
-      };
-      match compare_exact_decimals(&level.label(), base) {
-        Some(std::cmp::Ordering::Equal) => true,
-        Some(_) => false,
-        None => value == number,
+    .position(|level| match level {
+      ObservedFactor::Text(label) => label == base,
+      ObservedFactor::Boolean(value) => base.eq_ignore_ascii_case(if *value { "true" } else { "false" }),
+      ObservedFactor::Number { label, exact: true, .. } => {
+        label == base || exact.is_some() && parse_exact_decimal(label) == exact
       }
-    }) {
-      return Ok(index);
-    }
-  }
-  match base.to_ascii_lowercase().as_str() {
-    "true"
-      if levels
-        .iter()
-        .any(|level| matches!(level, ObservedFactor::Boolean(true))) =>
-    {
-      Ok(
-        levels
-          .iter()
-          .position(|level| matches!(level, ObservedFactor::Boolean(true)))
-          .expect("checked above"),
-      )
-    }
-    "false"
-      if levels
-        .iter()
-        .any(|level| matches!(level, ObservedFactor::Boolean(false))) =>
-    {
-      Ok(
-        levels
-          .iter()
-          .position(|level| matches!(level, ObservedFactor::Boolean(false)))
-          .expect("checked above"),
-      )
-    }
-    _ => Err(RuntimeError::RegressFailed {
+      ObservedFactor::Number { value, .. } => float == Some(*value),
+    })
+    .ok_or_else(|| RuntimeError::RegressFailed {
       message: format!(
         "reference level '{base}' for factor variable '{variable}' is not present in the estimation sample"
       ),
-    }),
-  }
+    })
 }
 
 fn factor_parameter_name(variable: &str, label: &str) -> String {
@@ -805,6 +765,27 @@ mod tests {
     assert!(select_reference("code", Some("9.223372036854776e18"), &levels).is_err());
   }
 
+  #[test]
+  fn float_reference_lookup_keeps_binary64_alias_behavior() {
+    let level = ObservedFactor::from_cell(&CellValue::Float(0.1))
+      .unwrap()
+      .unwrap();
+    assert_eq!(
+      select_reference("x", Some("0.10000000000000001"), &[level]),
+      Ok(0)
+    );
+  }
+
+  #[test]
+  fn exact_integer_reference_rejects_underflow_aliases() {
+    let zero = ObservedFactor::from_cell(&CellValue::SignedInteger(0))
+      .unwrap()
+      .unwrap();
+    for alias in ["1e-10001", "1e-99999999999999999999"] {
+      assert!(select_reference("x", Some(alias), std::slice::from_ref(&zero)).is_err());
+    }
+  }
+
   fn observed(values: &[ObservedFactor]) -> Vec<Vec<ObservedTermValue>> {
     values
       .iter()
@@ -897,6 +878,7 @@ mod tests {
         ObservedTermValue::Factor(ObservedFactor::Number {
           label: "10".into(),
           value: 10.0,
+          exact: true,
         }),
       ],
       vec![
@@ -904,6 +886,7 @@ mod tests {
         ObservedTermValue::Factor(ObservedFactor::Number {
           label: "2".into(),
           value: 2.0,
+          exact: true,
         }),
       ],
     ];
