@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions with selected covariance; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Bounded legacy-convention Gaussian PA SQL composition with working/uncorrected unit-sandwich normal95 and independently validated source predictions, native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow and normalized-level-intercept pairs bootstrap (raw-copy R QR evidence, full coefficient covariance/type7 intervals, retained original FE state), the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Bounded clustered two-step linear IV GMM and source-specific first-difference panel workflow; Chapter 23 full-decade patents preparation with pre-restriction lags/summaries, log-patents pooled/FE/RE linear panels, pooled Poisson with a whole-firm bootstrap, native one-slope conditional-FE Poisson source replay and a separate SQL whole-firm bootstrap, exponential-mean NLS with auxiliary firm sandwich and a whole-firm bootstrap, bounded native balanced exchangeable Poisson GEE with owned marginal predictions and a separate SQL distinct-copy whole-firm bootstrap, a bounded shared-gamma random-effects Poisson composition with a distinct-copy whole-firm bootstrap, and a bounded normal random-intercept Poisson composition | General dynamic GMM, broader conditional-FE inference and broader native normal random-effects count panels, general GEE and other nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | Bounded household OLS/FE/RE/GEE and individual Poisson workflows with one-way cluster covariance and audited whole-cluster bootstrap compositions; no design-based survey estimator | Probability weights, strata/PSUs, finite-population corrections and design-based workflows |
@@ -1529,7 +1529,7 @@ other formal NB specification tests and robust/clustered NB boundary-LR referenc
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` supports Poisson and NB2
 reporting snapshots, including NB2's full joint beta/lnalpha covariance; no count
-fit restoration/persistence or general count `lincom` is claimed.
+fit restoration/persistence is claimed.
 
 [PR #281](https://github.com/SaehwanPark/tabdat-explore-rs/pull/281) adds
 [`nb2.td`](../../examples/mma20p1count/nb2.td) on the identical prepared sample:
@@ -1549,7 +1549,7 @@ fits fail; there is no clipped-alpha or implicit Poisson fallback. Original
 DTA/ASCII NB2 coefficient differences <=4.38e-8 are source quantization; native
 validation uses exact ASCII. Historical stopping/rounded output is not the
 float64 score fixed point (HLTHP approximately0.4256563 vs converged0.42565748).
-General count `lincom`, other formal NB specification tests and robust/clustered NB boundary-LR reference, multiway/survey,
+Other formal NB specification tests and robust/clustered NB boundary-LR reference, multiway/survey,
 current-row probability predictions and remaining illustration outputs stay required;
 this addition does not complete the book's count workflow or panel inference.
 
@@ -1652,8 +1652,8 @@ retained-fit affine `test` restrictions after Poisson and NB2, using the
 selected model-based, independent-row robust or one-way cluster covariance and
 the existing `TestResult` shape with asymptotic chi-square inference. NB2 uses
 the mean block of its full joint beta/lnalpha covariance; `lnalpha` is not a
-mean restriction. General count `lincom`, few-cluster corrections and other
-formal NB specification/boundary tests remain open.
+mean restriction. Few-cluster corrections and other formal NB
+specification/boundary tests remain open.
 
 The [synthetic base-R fixture](../../crates/tabdat-stats/tests/fixtures/count_wald_reference.R)
 independently derives one-zero, nonzero affine and joint restrictions from the
@@ -1666,6 +1666,30 @@ Base R4.6.2/MASS7.3.66 agrees with native statistics within8e-12 and relative
 tail probabilities within4e-12. The repeated person-year sample does not add a
 new cluster-inference claim. This is post-estimation method evidence, not full
 Table20.5/20.6, count chapter or book completion.
+
+### Normal-reference linear combinations after Poisson and NB2
+
+[PR #454](https://github.com/SaehwanPark/tabdat-explore-rs/pull/454) adds
+retained-fit affine `lincom` after Poisson/NB2. It uses the selected
+model-based, independent-row robust or one-way cluster covariance, with
+asymptotic standard-normal z inference, two-sided p-values, 95% normal intervals
+and `LincomResult.df_residual: null`. NB2 uses the mean block from the full
+joint beta/lnalpha covariance. Zero-SE combinations preserve the estimate and
+point interval with unavailable statistic/p-value; `lnalpha` is not a mean
+coefficient. No few-cluster correction or panel-independence claim is added.
+
+The [Base R fixture](../../crates/tabdat-stats/tests/fixtures/count_lincom_reference.R)
+derives one-slope, nonzero affine-contrast and two-slope-sum combinations from
+the existing independently validated offset references. Native tests compare
+all 18 estimate/SE/z/tail/interval cases across both estimators and three
+covariance choices, including the NB2 full-joint mean block and zero-SE behavior.
+The [Table20.5 cohort workflow](../../examples/mma20p1count/lincom.md) adds 12
+combinations on the exact20,186-row/17-predictor source design, checked from
+Base R4.6.2/MASS7.3.66 fit references; native z statistics differ by at most
+9.4e-13 and all other numeric fields by at most6.3e-15. These are
+post-estimation comparisons, not new printed table columns or full count-chapter
+coverage. Other formal NB specification/boundary tests and richer count models
+remain open.
 
 ## Additional fixed count offset evidence (not a textbook replication)
 

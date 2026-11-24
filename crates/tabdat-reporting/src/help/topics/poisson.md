@@ -62,6 +62,9 @@ Inference and interpretation:
 - `test <linear restrictions>` uses the selected covariance and an asymptotic
   Wald chi-square reference. It tests retained mean coefficients, including
   affine restrictions; clustered tests have no few-cluster correction.
+- `lincom <affine expression>` uses the same selected covariance for a linear
+  combination of retained mean coefficients, with asymptotic standard-normal
+  z inference and a 95% normal confidence interval. Residual DF is not supplied.
 - Coefficient intervals are fixed normal 95%, not Student t. Zero selected
   variance yields unavailable z/p/CI, not exact significance or point intervals.
 - Without offsets, the intercept null is the estimated overall mean and the
@@ -89,7 +92,7 @@ law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
 formal goodness-of-fit test is supplied; see `help estat`.
 
 Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
-cutoff-variable values above99, factors/discrete changes, general count lincom,
+cutoff-variable values above99, factors/discrete changes,
 interval prediction or few-cluster bootstrap. Immutable `estimates store/table`
 reports are supported; they cannot restore fits or establish current-data identity.
 Clustered covariance is not FE/RE/random-effects or the full panel family.

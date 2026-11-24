@@ -88,6 +88,9 @@ Inference and interpretation:
   chi-square reference. It uses the mean block of the full joint beta/lnalpha
   covariance; `lnalpha` itself is not a mean restriction. Clustered tests have
   no few-cluster correction.
+- `lincom <affine expression>` applies the same mean-coefficient rule and full
+  joint covariance block to a linear combination, with asymptotic standard-normal
+  z inference, a two-sided p-value and a 95% normal confidence interval.
 - NB residual deviance at fitted alpha and Pearson/(N-K-1) dispersion are
   descriptive, not formal specification/panel tests or covariance multipliers.
 - `predict ..., n` is the current-row conditional mean, not a probability or
@@ -112,8 +115,8 @@ See `help estimates`.
 
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
 exposure shorthand, NB1, cutoff-variable values above99, factors/discrete changes,
-general count lincom, interval prediction or other formal specification
-tests. Independent-row robust is **NOT panel-robust**; choose
+interval prediction or other formal specification tests. Independent-row
+robust is **NOT panel-robust**; choose
 actual cluster IDs and defend independence across the selected groups.
 
 See `help poisson`, `help predict`, `help estat`, and

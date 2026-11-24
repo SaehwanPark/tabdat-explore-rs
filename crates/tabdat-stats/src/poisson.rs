@@ -114,6 +114,39 @@ pub fn poisson_wald_test(
   crate::post_estimation::wald_chi_square_test(&parameters, &result.covariance, r_matrix, r_vector)
 }
 
+/// Evaluate a linear combination of retained Poisson mean coefficients.
+///
+/// Uses the selected fit covariance and an asymptotic standard-normal reference.
+pub fn poisson_linear_combination(
+  result: &PoissonResult,
+  weights: &[f64],
+  offset: f64,
+  confidence_level: f64,
+) -> Result<crate::NormalLinearCombinationInferenceResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  crate::post_estimation::linear_combination_normal_inference(
+    &parameters,
+    &result.covariance,
+    weights,
+    offset,
+    confidence_level,
+  )
+}
+
 /// Continuous predictor-column derivatives, conditional on retained X.
 /// Not discrete changes, original-variable chain rules or random-X uncertainty.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

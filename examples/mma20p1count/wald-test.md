@@ -15,8 +15,8 @@ dispersion uncertainty remains in the mean-coefficient covariance. `lnalpha`
 is not a mean-model restriction. Model-based, independent-row robust and
 one-way cluster covariance are supported. Cluster tests use an asymptotic
 reference without few-cluster correction or guarantee. Linear-model F tests
-are unchanged; general count `lincom` and other formal specification tests
-remain outside this slice.
+are unchanged; other formal count specification tests remain outside this
+slice. See the separate [linear-combination workflow](lincom.md).
 
 Unknown or collinear/singular restrictions fail without changing the fitted
 model or active data.
