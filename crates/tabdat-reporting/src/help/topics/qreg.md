@@ -16,7 +16,8 @@ Examples:
 - `export predictions.csv`
 
 The joint complete-finite-case sample follows current row order. Variables must
-be numeric; no weights, factors, interactions or clustered fit are installed.
+be numeric; no weights, factors, interactions or clustered `qreg` fit are
+installed.
 The parsed `robust` option fails explicitly. A new fit attempt clears the previous
 fit even on failure; data, labels and named reports remain unchanged.
 
@@ -29,8 +30,11 @@ not heteroskedastic-robust, clustered, weighted or survey inference.
 Separate fits do not supply cross-quantile covariance. The optional
 `bootstrap ..., quantiles(...) contrast(variable)` report supports one
 higher-minus-lower coefficient contrast for exactly two quantiles, with shared
-IID pairs and asymptotic normal inference; it is not a general `test`/`lincom`
-interface for the retained qreg fit.
+IID-row or whole-cluster pairs and asymptotic normal inference; it is not a
+general `test`/`lincom` interface for the retained qreg fit. Add
+`cluster(unit)` to request whole-cluster resampling. That separate report assumes
+independent sampled clusters with many-cluster asymptotics and does not make the
+analytic `qreg` covariance clustered or survey-adjusted.
 
 The sparse dual LP uses Clarabel 0.11.1 with QR polishing and explicit numerical
 optimality checks. Limits: N>K, N<=10,000, K<=32 including the intercept,
@@ -52,7 +56,9 @@ median is half the absolute-deviation sum; it is not a likelihood.
 See `examples/mma04p2qreg/README.md` for the original-source household workflow,
 independent references and historical Stata input/convention differences.
 
-For heteroskedastic IID pairs uncertainty and cross-quantile covariance, see
-`help bootstrap`: `bootstrap y x, quantiles(.25 .5 .75) seed(10101)`.
+For heteroskedastic IID-row or whole-cluster pairs uncertainty and
+cross-quantile covariance, see
+`help bootstrap`: `bootstrap y x, quantiles(.25 .5 .75) seed(10101)` or
+`bootstrap y x, quantiles(.25 .5 .75) cluster(unit) seed(10101)`.
 This separate read-only report preserves qreg's retained fit and does not change
 its IID-location covariance, prediction behavior or post-estimation support.

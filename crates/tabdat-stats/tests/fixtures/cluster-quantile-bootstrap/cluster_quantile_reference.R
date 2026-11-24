@@ -25,7 +25,7 @@ data <- rbind(
 )
 dir.create(args[[1]], recursive = TRUE, showWarnings = FALSE)
 write.csv(data, file.path(args[[1]], "cluster_quantile_inputs.csv"),
-          row.names = FALSE, quote = FALSE, na = "NA")
+          row.names = FALSE, quote = FALSE, na = "")
 
 complete <- data[complete.cases(data[c("y", "x", "z", "group")]), ]
 stopifnot(nrow(complete) == 100L, length(unique(complete$group)) == 20L)
@@ -88,5 +88,18 @@ metadata <- data.frame(
   value = c(nrow(complete), nrow(data) - nrow(complete), cluster_count,
     nrow(draws), min(replicate_observation_counts), max(replicate_observation_counts))
 )
-reference <- rbind(do.call(rbind, coefficient_rows), covariance_rows, metadata)
+contrast_estimate <- original[8L] - original[2L]
+contrast_draws <- estimates[, 8L] - estimates[, 2L]
+contrast_se <- stats::sd(contrast_draws)
+contrast_z <- contrast_estimate / contrast_se
+contrast_rows <- data.frame(
+  record = "contrast",
+  parameter = "x",
+  field = c("estimate", "standard_error", "statistic", "p_value", "ci_lower", "ci_upper"),
+  value = c(contrast_estimate, contrast_se, contrast_z,
+    2 * stats::pnorm(-abs(contrast_z)),
+    contrast_estimate - stats::qnorm(.975) * contrast_se,
+    contrast_estimate + stats::qnorm(.975) * contrast_se)
+)
+reference <- rbind(do.call(rbind, coefficient_rows), covariance_rows, metadata, contrast_rows)
 write.csv(reference, stdout(), row.names = FALSE, quote = FALSE)

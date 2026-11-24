@@ -1,6 +1,6 @@
 # bootstrap
 
-`bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit) | quantiles(values) [contrast(variable)]]`
+`bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit)] [quantiles(values) [contrast(variable)]]`
 
 By default, compute a read-only pairs-bootstrap OLS report on CURRENT complete-finite
 outcome/predictor rows, with an intercept unless noconstant is specified. At
@@ -232,18 +232,33 @@ bootstrap blocks in the author program or historical/table/chapter parity.
 
 ## Joint conditional quantiles
 
-`bootstrap y xvars, quantiles(.25 .5 .75) [contrast(x)] seed(integer) [reps(200) noconstant]`
+`bootstrap y xvars, quantiles(.25 .5 .75) [cluster(unit)] [contrast(x)] seed(integer) [reps(200) noconstant]`
 
 With quantiles(), fit unweighted conditional quantile regressions instead of OLS.
-Supply 1..19 strictly increasing finite values from .05 to .95. Clustering is
-not supported in this mode. The same joint complete-finite sample and explicit
-local RNG contract apply. Each replication draws N whole rows ONCE, then fits
-all requested quantiles on those identical rows. Adding quantiles does not
-consume extra random draws. There is no shared global RNG state.
+Supply 1..19 strictly increasing finite values from .05 to .95. Without
+`cluster()`, each replication draws N complete rows once and fits all requested
+quantiles on those identical rows. Adding quantiles does not consume extra
+random draws. There is no shared global RNG state.
+
+With `cluster(unit)`, the method is a whole-cluster pairs bootstrap. The same
+ordered complete-finite sample must have at least three retained clusters. Each
+replication draws G clusters uniformly with replacement and includes every
+retained row from each draw in source order. Cluster draws are shared across
+quantiles; unequal cluster sizes make replicate N vary. Cluster order follows
+first appearance in the retained sample. Missing/nonfinite outcomes, predictors
+or cluster keys are excluded before cluster counts are formed. The minimum of
+three groups is a computational admission rule, not evidence that few-cluster
+inference is reliable.
 
 Report QuantileBootstrapResult: coefficients/covariance in quantile-major order,
 intercept first within each quantile, with names such as q0.25:intercept and
 q0.25:x. The full joint covariance includes cross-quantile blocks and uses B-1.
+Its JSON `covariance_convention` is `common_iid_pairs_b_minus_1` for row
+resampling and `common_whole_cluster_pairs_b_minus_1` for whole-cluster
+resampling. Clustered JSON results also report `cluster_variable`,
+`cluster_count`, `cluster_sizes` and each `replicate_observation_counts` value.
+The matching estimator tags are `iid_pairs_bootstrap_joint_quantiles` and
+`whole_cluster_pairs_bootstrap_joint_quantiles`.
 Marginal percentile95 intervals use R type7; they are NOT simultaneous coverage
 bands. Without contrast(), no analytic coefficient p-values or tests are added.
 Covariance may be singular (rank at most B-1); the report does not silently
@@ -267,13 +282,22 @@ bootstrap report remains available and the contrast carries an explicit
 unavailable reason with null normal inference fields. No retained bootstrap
 fit or automatic figure is installed.
 
-Pairs inference permits heteroskedastic conditional outcomes under IID row
-sampling and regular identified quantiles with positive conditional density.
-It is not survey/design-based inference for the source's household survey, and
-supplies no finite-sample coverage guarantee. Quantile LP bounds are N>K,
-N<=10000, K<=32 and N*K²<=10000000; additionally
-N*K²*number_of_quantiles*(replications+1)<=100000000. The latter counts original
-fits as well as all resampled fits, not worst-case LP iteration cost. Each coefficient fit retains the existing solved/identification/numerical-certificate
+IID pairs inference permits heteroskedastic conditional outcomes under
+independent row sampling. Whole-cluster pairs inference instead assumes
+independent sampled clusters and many-cluster asymptotics; it does not provide
+few-cluster or survey/design-based inference, including for the source household
+survey. Neither method supplies finite-sample coverage guarantees. This is a
+defined whole-cluster pairs procedure, not the Hagemann wild-gradient bootstrap
+exposed by the `cluster` argument in R `quantreg::boot.rq` (see the
+[quantreg reference](https://cran.r-project.org/web/packages/quantreg/refman/quantreg.html)
+and [Hagemann (2017)](https://doi.org/10.1080/01621459.2016.1148610)).
+
+Quantile LP bounds are N>K, K<=32 and maximum replicate N<=10000,
+max-replicate N*K²<=10000000; additionally
+max-replicate N*K²*number_of_quantiles*(replications+1)<=100000000. For cluster
+resampling, maximum replicate N is bounded by G times the largest retained
+cluster size. The total-work limit counts original fits and all resampled fits,
+not worst-case LP iteration cost. Each coefficient fit retains the existing solved/identification/numerical-certificate
 requirements. A failed first solve may refine the SAME LP at stricter solver
 tolerance once; all active-constraint/gap/score checks remain unchanged. This
 never redraws a sample. Iteration/time limits apply per attempt.

@@ -46,9 +46,12 @@ large-sample regularity and sufficient bootstrap replications are assumptions,
 not coverage guarantees. B200 has Monte Carlo error. The optional single
 two-quantile contrast uses a normal-Wald interval and normal test; it supplies
 no finite-sample guarantee, multiplicity adjustment or simultaneous coverage.
-No cluster/weighted/wild bootstrap, general restriction interface, retained
-bootstrap fit or native Figure4.1 is claimed. This slice supplies the bounded
-comparison, not whole-example coverage or rendering.
+This audited household source workflow uses IID row resampling and does not
+claim survey/design-based inference. The separate [synthetic whole-cluster
+pairs workflow](../cluster-quantile-bootstrap/README.md) defines and validates
+that resampling method. No weighted/wild bootstrap, general restriction
+interface, retained bootstrap fit or native Figure4.1 is claimed here. This
+slice supplies the bounded comparison, not whole-example coverage or rendering.
 
 Original and resampled coefficients use the existing certified LP; irrelevant
 replicate IID sparsity estimates are omitted. Identification, rank, response

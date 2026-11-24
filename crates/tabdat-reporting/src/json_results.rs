@@ -204,7 +204,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     }
     ExecutionResult::QuantileBootstrap(result) => {
       let mut data = serde_json::to_value(result).expect("finite quantile bootstrap");
-      data["estimator"] = json!("iid_pairs_bootstrap_joint_quantiles");
+      data["estimator"] = if result.cluster_count.is_some() {
+        json!("whole_cluster_pairs_bootstrap_joint_quantiles")
+      } else {
+        json!("iid_pairs_bootstrap_joint_quantiles")
+      };
       data["seed"] = json!(result.seed.to_string());
       data["sample"] = match &result.sample {
         Some(s) => {
@@ -212,7 +216,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         }
         None => Value::Null,
       };
-      data["covariance_convention"] = json!("common_iid_pairs_b_minus_1");
+      data["covariance_convention"] = if result.cluster_count.is_some() {
+        json!("common_whole_cluster_pairs_b_minus_1")
+      } else {
+        json!("common_iid_pairs_b_minus_1")
+      };
       data["simultaneous_coverage"] = json!(false);
       (data, "QuantileBootstrapResult")
     }

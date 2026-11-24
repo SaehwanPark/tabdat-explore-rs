@@ -252,6 +252,7 @@ fn point_fit(x: &[Vec<f64>], y: &[f64], tau: f64, intercept: bool) -> Result<Poi
 pub(crate) fn quantile_design(
   problem: &EstimationProblem,
   tau: f64,
+  allow_cluster_sample: bool,
 ) -> Result<Vec<Vec<f64>>, StatsError> {
   problem.validate()?;
   let n = problem.observation_count();
@@ -265,11 +266,13 @@ pub(crate) fn quantile_design(
     || problem
       .sample
       .as_ref()
-      .is_some_and(|s| s.weights.is_some() || s.cluster_groups.is_some())
+      .is_some_and(|s| s.weights.is_some() || (!allow_cluster_sample && s.cluster_groups.is_some()))
   {
-    return Err(invalid(
-      "only unweighted independent observations are supported",
-    ));
+    return Err(invalid(if allow_cluster_sample {
+      "only unweighted observations are supported"
+    } else {
+      "only unweighted independent observations are supported"
+    }));
   }
   if n <= k || n > 10000 || k > 32 || n.checked_mul(k * k).is_none_or(|v| v > 10_000_000) {
     return Err(invalid("requires N>K, N<=10000, K<=32 and N*K²<=10000000"));
@@ -305,7 +308,7 @@ pub fn fit_quantile_iid(
   problem: &EstimationProblem,
   tau: f64,
 ) -> Result<QuantileResult, StatsError> {
-  let design = quantile_design(problem, tau)?;
+  let design = quantile_design(problem, tau, false)?;
   let n = problem.observation_count();
   let k = problem.parameter_count();
   let point = point_fit(&design, &problem.response, tau, problem.include_intercept)?;

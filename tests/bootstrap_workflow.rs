@@ -79,7 +79,7 @@ fn discovery_exposes_the_new_read_only_seeded_report_without_rewriting_pinned_co
   let v: Value = serde_json::from_slice(&o.stdout).unwrap();
   assert_eq!(
     v["data"]["syntax"],
-    "bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit) | quantiles(values) [contrast(variable)]]"
+    "bootstrap y xvars, seed(integer) [reps(200) noconstant] [cluster(unit)] [quantiles(values) [contrast(variable)]]"
   );
   let o = tabdat_bin()
     .args(["--json", "--help-topic", "bootstrap"])
@@ -92,6 +92,18 @@ fn discovery_exposes_the_new_read_only_seeded_report_without_rewriting_pinned_co
       .as_str()
       .unwrap()
       .contains("no discarded draws")
+  );
+  assert!(
+    v["data"]["text"]
+      .as_str()
+      .unwrap()
+      .contains("whole-cluster pairs bootstrap")
+  );
+  assert!(
+    v["data"]["text"]
+      .as_str()
+      .unwrap()
+      .contains("Hagemann wild-gradient")
   );
 }
 

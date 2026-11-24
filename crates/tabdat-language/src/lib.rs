@@ -2641,11 +2641,6 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
   }
   let contrast = contrast.and_then(|mut v| v.pop());
   if let Some(option) = options.iter().find(|o| o.name == "quantiles") {
-    if command.regression.cluster_variable.is_some() {
-      return Err(ParseError::new(
-        "quantile bootstrap does not support cluster",
-      ));
-    }
     let quantiles = match &option.value {
       UseOptionValue::Number(q) => vec![q.clone()],
       UseOptionValue::Numbers(q) => q.clone(),

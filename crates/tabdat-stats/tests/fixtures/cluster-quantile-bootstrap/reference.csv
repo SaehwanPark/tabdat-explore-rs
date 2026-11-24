@@ -140,3 +140,9 @@ meta,cluster_count,value,20
 meta,replications,value,80
 meta,min_replicate_n,value,93
 meta,max_replicate_n,value,108
+contrast,x,estimate,-0.230703872914656
+contrast,x,standard_error,0.290184107615437
+contrast,x,statistic,-0.795025871025278
+contrast,x,p_value,0.426598453182492
+contrast,x,ci_lower,-0.799454272726808
+contrast,x,ci_upper,0.338046526897496

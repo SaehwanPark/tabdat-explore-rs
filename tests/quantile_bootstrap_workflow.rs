@@ -87,6 +87,120 @@ fn native_joint_quantile_bootstrap_reports_r_covariance_and_preserves_prediction
 }
 
 #[test]
+fn whole_cluster_pairs_quantiles_report_cluster_contract_and_preserve_predictions() {
+  let d = TestDir::new();
+  let raw =
+    include_str!("../crates/tabdat-stats/tests/fixtures/cluster-quantile-bootstrap/inputs.csv");
+  fs::write(d.path().join("data.csv"), raw).unwrap();
+  let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    .join("examples/cluster-quantile-bootstrap/cluster_quantiles.td");
+  let run = |mode| {
+    tabdat_bin()
+      .current_dir(d.path())
+      .args([mode, "-f"])
+      .arg(&script)
+      .output()
+      .unwrap()
+  };
+
+  let json = run("--json");
+  assert!(
+    json.status.success(),
+    "{}",
+    String::from_utf8_lossy(&json.stderr)
+  );
+  let events: Vec<Value> = String::from_utf8(json.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let result = &events
+    .iter()
+    .find(|event| event["result_type"] == "QuantileBootstrapResult")
+    .unwrap()["data"];
+  assert_eq!(
+    result["estimator"],
+    "whole_cluster_pairs_bootstrap_joint_quantiles"
+  );
+  assert_eq!(
+    result["covariance_convention"],
+    "common_whole_cluster_pairs_b_minus_1"
+  );
+  assert_eq!(result["cluster_variable"], "group");
+  assert_eq!(result["cluster_count"], 20);
+  assert_eq!(
+    result["cluster_sizes"],
+    serde_json::json!([4, 5, 6, 5].repeat(5))
+  );
+  assert_eq!(result["replications"], 80);
+  assert_eq!(
+    result["sample"],
+    serde_json::json!({"total_observations": 103, "dropped_observations": 3})
+  );
+  let replicate_counts = result["replicate_observation_counts"].as_array().unwrap();
+  assert_eq!(replicate_counts.len(), 80);
+  assert_eq!(
+    replicate_counts.iter().filter_map(Value::as_u64).min(),
+    Some(93)
+  );
+  assert_eq!(
+    replicate_counts.iter().filter_map(Value::as_u64).max(),
+    Some(108)
+  );
+
+  let csv = fs::read(d.path().join("cluster_quantile_predictions.csv")).unwrap();
+  let csv_text = String::from_utf8(csv.clone()).unwrap();
+  let headers: Vec<_> = csv_text.lines().next().unwrap().split(',').collect();
+  let original = headers
+    .iter()
+    .position(|name| *name == "original_fit")
+    .unwrap();
+  let preserved = headers
+    .iter()
+    .position(|name| *name == "preserved_fit")
+    .unwrap();
+  for line in csv_text.lines().skip(1) {
+    let row: Vec<_> = line.split(',').collect();
+    assert_eq!(row[original], row[preserved]);
+  }
+
+  fs::remove_file(d.path().join("cluster_quantile_predictions.csv")).unwrap();
+  let text = run("--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  let text = String::from_utf8(text.stdout).unwrap();
+  assert!(text.contains("Joint whole-cluster pairs-bootstrap quantiles"));
+  assert!(text.contains("cluster variable = group"));
+  assert!(text.contains("replicate N ranges from 93 to 108"));
+  assert!(text.contains("not survey or few-cluster inference"));
+  assert_eq!(
+    fs::read(d.path().join("cluster_quantile_predictions.csv")).unwrap(),
+    csv
+  );
+
+  fs::write(
+    d.path().join("small.csv"),
+    "y,x,g\n1,0,a\n3,1,a\n5,2,a\n2,0,b\n4,1,b\n7,2,b\n",
+  )
+  .unwrap();
+  fs::write(
+    d.path().join("failure.td"),
+    "use small.csv\nbootstrap y x, quantiles(.5) cluster(g) seed(1) reps(10)\nexport must_not_exist.csv\n",
+  )
+  .unwrap();
+  let failure = tabdat_bin()
+    .current_dir(d.path())
+    .args(["--json", "-f", "failure.td"])
+    .output()
+    .unwrap();
+  assert!(!failure.status.success());
+  assert!(!d.path().join("must_not_exist.csv").exists());
+}
+
+#[test]
 fn actual_household_script_preserves_median_prediction_and_checks_source_keys() {
   let d = TestDir::new();
   fs::write(
