@@ -201,11 +201,12 @@ fn four_instrument_sets_are_invariant_to_instrument_rescaling() {
 }
 
 #[test]
-fn five_instruments_rank_failure_and_singular_score_covariance_fail_explicitly() {
+fn six_instruments_rank_failure_and_singular_score_covariance_fail_explicitly() {
   let mut too_many = make_problem("multiple", false);
-  too_many.instrument_names.push("z5".into());
+  too_many.instrument_names.extend(["z5".into(), "z6".into()]);
   for row in &mut too_many.instruments {
     row.push(row[0] + row[1] + row[2] + row[3]);
+    row.push(row[0] - row[1] + row[2] - row[3]);
   }
   assert!(matches!(
     robust_multiple_instrument_anderson_rubin_confidence_set(

@@ -49,6 +49,7 @@ impl Fixture {
           cos(i / 8.0) + sin(i / 17.0) + i / 130.0 AS z3, \
           sin(i / 19.0) - cos(i / 21.0) + i / 250.0 AS z4, \
           cos(i / 23.0) + sin(i / 31.0) + i / 180.0 AS z5, \
+          sin(i / 29.0) + cos(i / 37.0) + i / 210.0 AS z6, \
           sin(i / 3.0) + cos(i / 9.0) AS v1, \
           cos(i / 4.0) - sin(i / 6.0) AS v2 \
         FROM range(1, 61) AS t(i)\
@@ -62,7 +63,7 @@ impl Fixture {
         FROM design\
       ) SELECT CASE WHEN i = 1 THEN NULL ELSE y END AS y, w, \
           CASE WHEN i = 2 THEN NULL ELSE x1 END AS x1, x2, z1, z2, z3, z4, z5, \
-          CASE WHEN i = 3 THEN NULL ELSE CAST(CAST(i AS INTEGER) % 12 AS VARCHAR) END AS group_id \
+          CASE WHEN i = 3 THEN NULL ELSE CAST(CAST(i AS INTEGER) % 12 AS VARCHAR) END AS group_id, z6 \
         FROM outcome",
     )
   }
@@ -722,7 +723,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
-fn three_and_four_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dimensions() {
+fn three_through_five_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dimensions() {
   let fixture = Fixture::school_like_sample();
   for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
@@ -796,17 +797,55 @@ fn three_and_four_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dimension
     assert_eq!(session.state(), changed);
   }
 
+  for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x1) iv(z1 z2 z3 z4 z5) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let command = parse_command("estat ar, ci").unwrap();
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust five-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x1");
+    assert_eq!(set.excluded_instruments, ["z1", "z2", "z3", "z4", "z5"]);
+    assert_eq!(set.degrees_of_freedom, 5);
+    assert_eq!(set.observation_count, expected_n);
+    assert_eq!(set.auxiliary_parameter_count, 7);
+    assert_eq!(set.auxiliary_residual_df, expected_n - 7);
+    assert_eq!(
+      set.cluster_group_count.is_some(),
+      option.starts_with("cluster")
+    );
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
+
   let mut session = load(&fixture);
   session
-    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2 z3 z4 z5) robust").unwrap())
+    .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2 z3 z4 z5 z6) robust").unwrap())
     .unwrap();
+  let before = session.state();
   assert!(
     session
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most four excluded instruments")
+      .contains("at most five excluded instruments")
   );
+  assert_eq!(session.state(), before);
 }
 
 #[test]

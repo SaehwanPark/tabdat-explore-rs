@@ -1473,7 +1473,7 @@ panel likelihood is supplied.
   illustration or a schooling-only interval from the three-endogenous design.
 - **HC1/CR1 scalar AR method evidence (not a textbook replication):** the
   [`robust-ar` workflow](../../examples/robust-ar/README.md) inverts the robust
-  auxiliary Wald test for exactly one endogenous regressor and one to four
+  auxiliary Wald test for exactly one endogenous regressor and one to five
   excluded instruments, with included exogenous coefficients unrestricted.
   The deterministic 80-row design retains 78 rows under HC1 (two missing outcome/
   instrument rows) and 77 under CR1 (one additional missing group); the clustered
@@ -1485,8 +1485,8 @@ panel likelihood is supplied.
   endpoint membership and current-data/retained-fit behavior through both CLI
   modes. HC1 requires independent rows; CR1 requires independent groups and many-
   group asymptotics, with no finite-sample or few-cluster guarantee. The scalar
-  one-instrument path and the two-to-four-instrument path use distinct result
-  types; the latter isolates degree-four, degree-six or degree-eight boundaries
+  one-instrument path and the two-to-five-instrument path use distinct result
+  types; the latter isolates degree-four, degree-six, degree-eight or degree-ten boundaries
   through derivative roots without a finite grid.
   Independent base R `lm.fit`/HC1/CR1 references validate the 20-row two-instrument
   fixture: K_aux=4, residual DF=16, 95% critical chi-square(2)=5.99146454710798,
@@ -1504,7 +1504,7 @@ panel likelihood is supplied.
   set, and a CR1 design with six boundary roots and four accepted components.
   Tests compare all finite endpoints and direct auxiliary-Wald probes, verify
   the six-root degree-six boundary, and cover rescaling, retained fit, JSON/text,
-  rank, and the five-instrument rejection. The four-instrument Base R 4.6.2
+  rank, and the six-instrument rejection. The four-instrument Base R 4.6.2
   `lm.fit`/HC1/CR1 reference uses 48 rows, K_aux=6, residual DF=42 and the
   95% chi-square(4) critical value 9.48772903678115. Corrections are
   1.14285714285714 / 1.22077922077922 for HC1 / CR1 with 12 groups. Cases
@@ -1512,8 +1512,16 @@ panel likelihood is supplied.
   two-component CR1 set with four real degree-eight boundary roots. Tests
   compare all endpoints and direct Wald probes, test the eight-root/five-
   component polynomial boundary, rescaling, runtime/CLI retained-fit behavior,
-  text/JSON, and the five-instrument limit. More than four excluded
-  instruments, multiple endogenous regressors outside the bounded projected
+  text/JSON. The five-instrument Base R 4.6.2 lm.fit/HC1/CR1 reference has
+  100 rows, K_aux=7, residual DF=93 and a 95% chi-square(5) critical value of
+  11.0704976935164. Corrections are 1.0752688172043 / 1.12054329371817 for
+  HC1 / CR1 with 20 groups; the multiple design yields [1.06421221080996,
+  1.39773070439002] / [1.16236801651081, 1.39363336463301], and a separate
+  design gives an empty CR1 set. Rust compares endpoints and direct Wald probes
+  within 3e-8, checks the degree-ten boundary, ten-root/six-component polynomial,
+  rescaling, retained state, text/JSON, and six-instrument rejection. More than
+  five excluded instruments, multiple endogenous regressors outside the bounded
+  projected
   two-by-two slice, robust projection outside that slice, HAC/survey covariance
   and few-cluster methods remain unsupported. This synthetic method
   evidence does not change the Table 4.5 status above.
