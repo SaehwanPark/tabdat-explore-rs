@@ -1619,11 +1619,12 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         tabdat_domain::CovarianceType::NonRobust => "nonrobust".to_owned(),
       };
       let mut output = format!(
-        "Robust Anderson-Rubin confidence set ({covariance}, weak-IV-robust)\n{}; instruments = {:?}; level = {}%; N = {}; asymptotic chi-square(2) critical value = {}; auxiliary K = {}; residual DF = {}; correction = {}; clusters = {:?}\n",
+        "Robust Anderson-Rubin confidence set ({covariance}, weak-IV-robust)\n{}; instruments = {:?}; level = {}%; N = {}; asymptotic chi-square({}) critical value = {}; auxiliary K = {}; residual DF = {}; correction = {}; clusters = {:?}\n",
         result.endogenous.escape_debug(),
         result.excluded_instruments,
         inference_number(result.confidence_level),
         result.observation_count,
+        result.degrees_of_freedom,
         inference_number(result.critical_chi_square),
         result.auxiliary_parameter_count,
         result.auxiliary_residual_df,
@@ -1653,7 +1654,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         )
         .unwrap();
       }
-      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous regressor and two excluded instruments are supported.\n");
+      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous regressor and two or three excluded instruments are supported.\n");
       output
     }
     ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {

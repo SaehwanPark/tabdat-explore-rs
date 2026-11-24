@@ -48,8 +48,9 @@ exact F or weak-IV-robust test. See `help estat` for assumptions/numerical limit
 Subset/robust-score endogeneity, robust projection with multiple excluded
 instruments/endogenous regressors and multi-endogenous confidence regions remain
 unsupported. Clustered Hansen J/GMM overidentification is also not installed.
-`estat ar, ci` after a robust/cluster fit
-supports only one endogenous regressor and one excluded instrument.
+`estat ar, ci` after a robust/cluster fit supports one endogenous regressor
+with one, two or three excluded instruments. Multiple endogenous coefficients
+and four or more excluded instruments are unsupported for robust confidence sets.
 
 Clustered two-step GMM:
 The bounded `gmm` form requires `cluster(id) noconstant`, with no included

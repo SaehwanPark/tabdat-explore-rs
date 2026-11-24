@@ -18,9 +18,12 @@ make_data <- function(seed,n=36L) {
 
 multiple <- make_data(33L)
 all_real <- make_data(27L)
+six_roots <- make_data(981L)
 write.csv(multiple,file.path(args[[1]],'robust_ar_three_ci_data.csv'),
   row.names=FALSE,quote=FALSE)
 write.csv(all_real,file.path(args[[1]],'robust_ar_three_ci_all_real_data.csv'),
+  row.names=FALSE,quote=FALSE)
+write.csv(six_roots,file.path(args[[1]],'robust_ar_three_ci_six_roots_data.csv'),
   row.names=FALSE,quote=FALSE)
 
 padd <- function(a,b,scale=1) {
@@ -96,6 +99,8 @@ fit_reference <- function(data,fixture,covariance) {
       sum(score_x[,i]*score_x[,j]))
   }
   determinant <- polynomial_determinant(S)
+  determinant_roots <- polyroot(determinant)
+  stopifnot(all(abs(Im(determinant_roots))>1e-7*(1+abs(Re(determinant_roots)))) )
 
   # The block determinant is -g' adj(S) g, avoiding division by det(S).
   block <- matrix(vector('list',(q+1L)^2L),q+1L,q+1L)
@@ -181,6 +186,8 @@ reference <- rbind(
   fit_reference(multiple,'multiple','hc1'),
   fit_reference(multiple,'multiple','cluster'),
   fit_reference(all_real,'all_real','hc1'),
-  fit_reference(all_real,'all_real','cluster')
+  fit_reference(all_real,'all_real','cluster'),
+  fit_reference(six_roots,'six_roots','hc1'),
+  fit_reference(six_roots,'six_roots','cluster')
 )
 write.csv(reference,stdout(),row.names=FALSE,quote=FALSE)

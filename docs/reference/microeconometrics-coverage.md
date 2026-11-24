@@ -1464,8 +1464,9 @@ panel likelihood is supplied.
   endpoint membership and current-data/retained-fit behavior through both CLI
   modes. HC1 requires independent rows; CR1 requires independent groups and many-
   group asymptotics, with no finite-sample or few-cluster guarantee. The scalar
-  one-instrument and two-instrument paths use distinct result types; the latter
-  isolates the quartic boundary through derivative roots without a finite grid.
+  one-instrument path and the two/three-instrument path use distinct result
+  types; the latter isolates quartic or degree-six boundaries through derivative
+  roots without a finite grid.
   Independent base R `lm.fit`/HC1/CR1 references validate the 20-row two-instrument
   fixture: K_aux=4, residual DF=16, 95% critical chi-square(2)=5.99146454710798,
   with corrections 1.25 / 1.31944444444444. The HC1 design gives three components
@@ -1474,7 +1475,15 @@ panel likelihood is supplied.
   compare endpoints, direct AR statistics at probes including both tails,
   instrument rescaling, retained-fit behavior,
   text/JSON metadata and unsupported dimensions. Root ambiguity, singularity and
-  ill-conditioned score covariance are errors. More than two excluded
+  ill-conditioned score covariance are errors. The three-instrument Base R 4.6.2
+  `lm.fit`/HC1/CR1 reference uses 36 rows, K_aux=5, residual DF=31 and the
+  95% chi-square(3) critical value 7.81472790325118. Corrections are
+  1.16129032258065 / 1.2316715542522 for HC1 / CR1 with 12 groups. Independent
+  cases include a three-component HC1 set, a disjoint CR1 set, an all-real HC1
+  set, and a CR1 design with six boundary roots and four accepted components.
+  Tests compare all finite endpoints and direct auxiliary-Wald probes, verify
+  the six-root degree-six boundary, and cover rescaling, retained fit, JSON/text,
+  rank, and the four-instrument rejection. More than three excluded
   instruments, multiple endogenous regressors, robust projection, HAC/survey
   covariance and few-cluster methods remain unsupported. This synthetic method
   evidence does not change the Table 4.5 status above.

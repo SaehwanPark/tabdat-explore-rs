@@ -6,8 +6,9 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
-/// HC1/one-way CR1 AR confidence set for one endogenous regressor and two
-/// excluded instruments. The joint null has two degrees of freedom.
+/// HC1/one-way CR1 AR confidence set for one endogenous regressor and two or
+/// three excluded instruments. The joint-null degrees of freedom equal the
+/// number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
   pub endogenous: String,
@@ -26,7 +27,7 @@ pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
 }
 
 type Polynomial = Vec<f64>;
-type ScorePair = ([f64; 2], [f64; 2]);
+type ScorePair = (Vec<f64>, Vec<f64>);
 
 fn dot(left: &[f64], right: &[f64]) -> f64 {
   left.iter().zip(right).map(|(a, b)| a * b).sum()
@@ -57,6 +58,54 @@ fn polynomial_multiply(left: &[f64], right: &[f64]) -> Polynomial {
       result[left_index + right_index] += left_value * right_value;
     }
   }
+  result
+}
+
+fn polynomial_matrix_determinant(matrix: &[Vec<Polynomial>]) -> Polynomial {
+  fn expand(
+    matrix: &[Vec<Polynomial>],
+    row: usize,
+    columns: &mut Vec<usize>,
+    product: &[f64],
+    permutation_sign: f64,
+    result: &mut Polynomial,
+  ) {
+    if row == matrix.len() {
+      *result = polynomial_add(result, &polynomial_scale(product, permutation_sign));
+      return;
+    }
+    for column in 0..matrix.len() {
+      if columns.contains(&column) {
+        continue;
+      }
+      let inversions = columns
+        .iter()
+        .filter(|previous| **previous > column)
+        .count();
+      let next_sign = if inversions % 2 == 0 {
+        permutation_sign
+      } else {
+        -permutation_sign
+      };
+      columns.push(column);
+      let next_product = polynomial_multiply(product, &matrix[row][column]);
+      expand(matrix, row + 1, columns, &next_product, next_sign, result);
+      columns.pop();
+    }
+  }
+
+  if matrix.is_empty() {
+    return vec![1.0];
+  }
+  let mut result = vec![0.0];
+  expand(
+    matrix,
+    0,
+    &mut Vec::with_capacity(matrix.len()),
+    &[1.0],
+    1.0,
+    &mut result,
+  );
   result
 }
 
@@ -341,8 +390,8 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 4 {
-    return Err(invalid("robust AR boundary has more than four real roots"));
+  if roots_in_scale.len() > 6 {
+    return Err(invalid("robust AR boundary has more than six real roots"));
   }
   let derivative = polynomial_derivative(&scaled);
   let mut roots = Vec::with_capacity(roots_in_scale.len());
@@ -403,9 +452,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 3 {
+  if intervals.len() > 4 {
     return Err(invalid(
-      "robust AR confidence set has more than three components",
+      "robust AR confidence set has more than four components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -440,24 +489,33 @@ fn confidence_set_from_boundary(
 }
 
 fn score_meat_is_well_conditioned(scores: &[ScorePair], delta: f64) -> Result<(), StatsError> {
-  let mut s11 = 0.0;
-  let mut s12 = 0.0;
-  let mut s22 = 0.0;
+  let dimension = scores.first().map_or(0, |(score_y, _)| score_y.len());
+  let mut meat = vec![vec![0.0; dimension]; dimension];
   for (score_y, score_x) in scores {
-    let first = score_y[0] - delta * score_x[0];
-    let second = score_y[1] - delta * score_x[1];
-    s11 += first * first;
-    s12 += first * second;
-    s22 += second * second;
+    let score = score_y
+      .iter()
+      .zip(score_x)
+      .map(|(value_y, value_x)| value_y - delta * value_x)
+      .collect::<Vec<_>>();
+    for row in 0..dimension {
+      for column in 0..dimension {
+        meat[row][column] += score[row] * score[column];
+      }
+    }
   }
-  let determinant = s11 * s22 - s12 * s12;
-  let scale = s11 * s22;
-  if !s11.is_finite()
-    || !s12.is_finite()
-    || !s22.is_finite()
+  let diagonal_product = (0..dimension).fold(1.0, |product, index| product * meat[index][index]);
+  let determinant = polynomial_matrix_determinant(
+    &meat
+      .iter()
+      .map(|row| row.iter().map(|value| vec![*value]).collect())
+      .collect::<Vec<Vec<Polynomial>>>(),
+  )[0];
+  if dimension == 0
+    || meat.iter().flatten().any(|value| !value.is_finite())
     || !determinant.is_finite()
-    || scale <= 0.0
-    || determinant <= 1e-12 * scale
+    || !diagonal_product.is_finite()
+    || diagonal_product <= 0.0
+    || determinant <= 1e-12 * diagonal_product
   {
     return Err(invalid(
       "robust AR score covariance is singular or numerically ill-conditioned",
@@ -473,19 +531,58 @@ fn polynomial_degree(polynomial: &[f64]) -> usize {
     .unwrap_or(0)
 }
 
+fn chi_square_critical_value(alpha: f64, degrees_of_freedom: usize) -> Result<f64, StatsError> {
+  if degrees_of_freedom == 2 {
+    return Ok(-2.0 * alpha.ln());
+  }
+  let mut low = 0.0;
+  let mut high = degrees_of_freedom as f64;
+  while crate::distributions::chi_square_tail(high, degrees_of_freedom) > alpha {
+    high *= 2.0;
+    if !high.is_finite() {
+      return Err(invalid(
+        "AR critical chi-square exceeds the finite numerical range",
+      ));
+    }
+  }
+  for _ in 0..100 {
+    let midpoint = low + (high - low) / 2.0;
+    if crate::distributions::chi_square_tail(midpoint, degrees_of_freedom) > alpha {
+      low = midpoint;
+    } else {
+      high = midpoint;
+    }
+  }
+  Ok(low + (high - low) / 2.0)
+}
+
 fn validate_score_condition_over_real_line(
   scores: &[ScorePair],
-  s11: &[f64],
-  s22: &[f64],
+  score_covariance: &[Vec<Polynomial>],
   determinant: &[f64],
 ) -> Result<(), StatsError> {
-  let diagonal_product = polynomial_multiply(s11, s22);
+  let diagonal_product = score_covariance
+    .iter()
+    .enumerate()
+    .fold(vec![1.0], |product, (index, row)| {
+      polynomial_multiply(&product, &row[index])
+    });
   let determinant_slope = polynomial_derivative(determinant);
   let diagonal_slope = polynomial_derivative(&diagonal_product);
-  let condition_slope = polynomial_add(
+  let mut condition_slope = polynomial_add(
     &polynomial_multiply(&determinant_slope, &diagonal_product),
     &polynomial_scale(&polynomial_multiply(determinant, &diagonal_slope), -1.0),
   );
+  let determinant_degree = polynomial_degree(determinant);
+  let diagonal_degree = polynomial_degree(&diagonal_product);
+  if determinant_degree == diagonal_degree && determinant_degree > 0 {
+    // The leading derivative-ratio term cancels algebraically. Remove its
+    // floating-point residue so it cannot be mistaken for a huge finite root.
+    let canceled_degree = 2 * determinant_degree - 1;
+    if let Some(coefficient) = condition_slope.get_mut(canceled_degree) {
+      *coefficient = 0.0;
+    }
+  }
   if diagonal_product
     .iter()
     .chain(&condition_slope)
@@ -498,8 +595,6 @@ fn validate_score_condition_over_real_line(
     score_meat_is_well_conditioned(scores, point)?;
   }
 
-  let determinant_degree = polynomial_degree(determinant);
-  let diagonal_degree = polynomial_degree(&diagonal_product);
   let limiting_ratio = match determinant_degree.cmp(&diagonal_degree) {
     std::cmp::Ordering::Less => 0.0,
     std::cmp::Ordering::Equal => {
@@ -588,11 +683,11 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and exactly two excluded instruments. The confidence boundary is a quartic
-/// inequality; every real root is isolated by recursive derivative partitioning,
-/// without evaluating a finite beta grid. HC1 assumes independent rows. Cluster
-/// inference assumes independent groups with many groups and has no few-cluster
-/// guarantee.
+/// and two or three excluded instruments. The confidence boundary has degree at
+/// most four or six, respectively; every real root is isolated by recursive
+/// derivative partitioning, without evaluating a finite beta grid. HC1 assumes
+/// independent rows. Cluster inference assumes independent groups with many
+/// groups and has no few-cluster guarantee.
 pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
   problem: &InstrumentalVariablesProblem,
   level: f64,
@@ -603,9 +698,10 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
       "robust AR confidence sets require HC1 or one-way cluster covariance",
     ));
   }
-  if problem.endogenous_names.len() != 1 || problem.instrument_names.len() != 2 {
+  let instrument_count = problem.instrument_names.len();
+  if problem.endogenous_names.len() != 1 || !(2..=3).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require exactly one endogenous regressor and two excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two or three excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -621,14 +717,14 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
       "AR confidence level exceeds floating-point probability resolution",
     ));
   }
-  let critical_chi_square = -2.0 * alpha.ln();
+  let critical_chi_square = chi_square_critical_value(alpha, instrument_count)?;
   if !critical_chi_square.is_finite() || critical_chi_square <= 0.0 {
     return Err(invalid("AR critical chi-square could not be computed"));
   }
 
   let n = problem.response.len();
   let auxiliary_parameter_count =
-    problem.exogenous_names.len() + usize::from(problem.include_intercept) + 2;
+    problem.exogenous_names.len() + usize::from(problem.include_intercept) + instrument_count;
   if n <= auxiliary_parameter_count {
     return Err(StatsError::ZeroDegreesOfFreedom {
       observations: n,
@@ -677,56 +773,47 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     .iter()
     .map(|row| row[0])
     .collect::<Vec<_>>();
-  let z1 = problem
-    .instruments
-    .iter()
-    .map(|row| row[0])
-    .collect::<Vec<_>>();
-  let z2 = problem
-    .instruments
-    .iter()
-    .map(|row| row[1])
-    .collect::<Vec<_>>();
   let control_names = problem.exogenous_names.clone();
-  let residual_z1 = residualize(
-    &z1,
-    &problem.exogenous,
-    &control_names,
-    problem.include_intercept,
-  )?;
-  let residual_z2 = residualize(
-    &z2,
-    &problem.exogenous,
-    &control_names,
-    problem.include_intercept,
-  )?;
-  let norm_z1 = dot(&residual_z1, &residual_z1);
-  let norm_z2 = dot(&residual_z2, &residual_z2);
-  if !norm_z1.is_finite() || !norm_z2.is_finite() || norm_z1 <= 0.0 || norm_z2 <= 0.0 {
-    return Err(invalid(
-      "robust AR confidence-set auxiliary design is rank deficient or non-finite",
-    ));
+  let mut orthonormal_instruments = Vec::<Vec<f64>>::with_capacity(instrument_count);
+  for column in 0..instrument_count {
+    let instrument = problem
+      .instruments
+      .iter()
+      .map(|row| row[column])
+      .collect::<Vec<_>>();
+    let residualized = residualize(
+      &instrument,
+      &problem.exogenous,
+      &control_names,
+      problem.include_intercept,
+    )?;
+    let norm = dot(&residualized, &residualized);
+    if !norm.is_finite() || norm <= 0.0 {
+      return Err(invalid(
+        "robust AR confidence-set auxiliary design is rank deficient or non-finite",
+      ));
+    }
+    let mut basis = residualized
+      .iter()
+      .map(|value| value / norm.sqrt())
+      .collect::<Vec<_>>();
+    for _ in 0..2 {
+      for previous in &orthonormal_instruments {
+        let projection = dot(&basis, previous);
+        for (value, previous_value) in basis.iter_mut().zip(previous) {
+          *value -= projection * previous_value;
+        }
+      }
+    }
+    let orthogonal_norm = dot(&basis, &basis);
+    if !orthogonal_norm.is_finite() || orthogonal_norm <= 1e-12 {
+      return Err(invalid(
+        "robust AR confidence-set excluded instruments are rank deficient after controls",
+      ));
+    }
+    let scale = orthogonal_norm.sqrt();
+    orthonormal_instruments.push(basis.into_iter().map(|value| value / scale).collect());
   }
-  let q1 = residual_z1
-    .iter()
-    .map(|value| value / norm_z1.sqrt())
-    .collect::<Vec<_>>();
-  let q2_projection = dot(&q1, &residual_z2);
-  let q2_orthogonal = residual_z2
-    .iter()
-    .zip(&q1)
-    .map(|(value, q)| value - q2_projection * q)
-    .collect::<Vec<_>>();
-  let norm_q2 = dot(&q2_orthogonal, &q2_orthogonal);
-  if !norm_q2.is_finite() || norm_q2 <= 1e-12 * norm_z2 {
-    return Err(invalid(
-      "robust AR confidence-set excluded instruments are rank deficient after controls",
-    ));
-  }
-  let q2 = q2_orthogonal
-    .iter()
-    .map(|value| value / norm_q2.sqrt())
-    .collect::<Vec<_>>();
 
   let residual_y = residualize(
     &problem.response,
@@ -740,8 +827,14 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     &control_names,
     problem.include_intercept,
   )?;
-  let g_y = [dot(&q1, &residual_y), dot(&q2, &residual_y)];
-  let g_x = [dot(&q1, &residual_x), dot(&q2, &residual_x)];
+  let g_y = orthonormal_instruments
+    .iter()
+    .map(|basis| dot(basis, &residual_y))
+    .collect::<Vec<_>>();
+  let g_x = orthonormal_instruments
+    .iter()
+    .map(|basis| dot(basis, &residual_x))
+    .collect::<Vec<_>>();
   if g_y.iter().chain(&g_x).any(|value| !value.is_finite()) {
     return Err(invalid("robust AR confidence-set moments are non-finite"));
   }
@@ -808,27 +901,29 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
   }
 
   let score_pairs = if let Some(groups) = cluster_groups {
-    let mut totals = BTreeMap::<&str, ([f64; 2], [f64; 2])>::new();
+    let mut totals = BTreeMap::<&str, ScorePair>::new();
     for (index, group) in groups.iter().enumerate() {
-      let entry = totals.entry(group.as_str()).or_default();
-      entry.0[0] += q1[index] * residual_y_full[index];
-      entry.0[1] += q2[index] * residual_y_full[index];
-      entry.1[0] += q1[index] * residual_x_full[index];
-      entry.1[1] += q2[index] * residual_x_full[index];
+      let entry = totals
+        .entry(group.as_str())
+        .or_insert_with(|| (vec![0.0; instrument_count], vec![0.0; instrument_count]));
+      for (column, basis) in orthonormal_instruments.iter().enumerate() {
+        entry.0[column] += basis[index] * residual_y_full[index];
+        entry.1[column] += basis[index] * residual_x_full[index];
+      }
     }
     totals.into_values().collect::<Vec<_>>()
   } else {
     (0..n)
       .map(|index| {
         (
-          [
-            q1[index] * residual_y_full[index],
-            q2[index] * residual_y_full[index],
-          ],
-          [
-            q1[index] * residual_x_full[index],
-            q2[index] * residual_x_full[index],
-          ],
+          orthonormal_instruments
+            .iter()
+            .map(|basis| basis[index] * residual_y_full[index])
+            .collect(),
+          orthonormal_instruments
+            .iter()
+            .map(|basis| basis[index] * residual_x_full[index])
+            .collect(),
         )
       })
       .collect::<Vec<_>>()
@@ -841,19 +936,24 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     return Err(invalid("robust AR confidence-set scores are non-finite"));
   }
 
-  let center_g = [g_y[0] - center * g_x[0], g_y[1] - center * g_x[1]];
-  let mut s0 = [[0.0; 2]; 2];
-  let mut s1 = [[0.0; 2]; 2];
-  let mut s2 = [[0.0; 2]; 2];
+  let center_g = g_y
+    .iter()
+    .zip(&g_x)
+    .map(|(value_y, value_x)| value_y - center * value_x)
+    .collect::<Vec<_>>();
+  let mut s0 = vec![vec![0.0; instrument_count]; instrument_count];
+  let mut s1 = vec![vec![0.0; instrument_count]; instrument_count];
+  let mut s2 = vec![vec![0.0; instrument_count]; instrument_count];
   let mut centered_scores = Vec::with_capacity(score_pairs.len());
   for (score_y, score_x) in &score_pairs {
-    let score_center = [
-      score_y[0] - center * score_x[0],
-      score_y[1] - center * score_x[1],
-    ];
-    centered_scores.push((score_center, *score_x));
-    for row in 0..2 {
-      for column in 0..2 {
+    let score_center = score_y
+      .iter()
+      .zip(score_x)
+      .map(|(value_y, value_x)| value_y - center * value_x)
+      .collect::<Vec<_>>();
+    centered_scores.push((score_center.clone(), score_x.clone()));
+    for row in 0..instrument_count {
+      for column in 0..instrument_count {
         s0[row][column] += score_center[row] * score_center[column];
         s1[row][column] -=
           score_center[row] * score_x[column] + score_x[row] * score_center[column];
@@ -861,41 +961,69 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
       }
     }
   }
-  if [
-    s0[0][0], s0[0][1], s0[1][1], s1[0][0], s1[0][1], s1[1][1], s2[0][0], s2[0][1], s2[1][1],
-  ]
-  .iter()
-  .any(|value| !value.is_finite())
+  if s0
+    .iter()
+    .chain(&s1)
+    .chain(&s2)
+    .flatten()
+    .any(|value| !value.is_finite())
   {
     return Err(invalid("robust AR score covariance is non-finite"));
   }
-  let g1 = [center_g[0], -g_x[0]];
-  let g2 = [center_g[1], -g_x[1]];
-  let s11 = [s0[0][0], s1[0][0], s2[0][0]];
-  let s12 = [s0[0][1], s1[0][1], s2[0][1]];
-  let s22 = [s0[1][1], s1[1][1], s2[1][1]];
-  let determinant = polynomial_add(
-    &polynomial_multiply(&s11, &s22),
-    &polynomial_scale(&polynomial_multiply(&s12, &s12), -1.0),
-  );
+  let score_covariance = (0..instrument_count)
+    .map(|row| {
+      (0..instrument_count)
+        .map(|column| vec![s0[row][column], s1[row][column], s2[row][column]])
+        .collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+  let determinant = polynomial_matrix_determinant(&score_covariance);
+  if determinant
+    .iter()
+    .any(|coefficient| !coefficient.is_finite())
+  {
+    return Err(invalid("robust AR score covariance is non-finite"));
+  }
   let determinant_roots = real_polynomial_roots(&determinant, false)?;
   if !determinant_roots.is_empty() {
     return Err(invalid(
       "robust AR score covariance becomes singular for a real null value",
     ));
   }
-  validate_score_condition_over_real_line(&centered_scores, &s11, &s22, &determinant)?;
+  validate_score_condition_over_real_line(&centered_scores, &score_covariance, &determinant)?;
 
-  let numerator = polynomial_add(
-    &polynomial_add(
-      &polynomial_multiply(&polynomial_multiply(&g1, &g1), &s22),
-      &polynomial_scale(
-        &polynomial_multiply(&polynomial_multiply(&g1, &g2), &s12),
-        -2.0,
+  let g_polynomials = center_g
+    .iter()
+    .zip(&g_x)
+    .map(|(value, slope)| vec![*value, -*slope])
+    .collect::<Vec<_>>();
+  let numerator = if instrument_count == 2 {
+    let g1 = &g_polynomials[0];
+    let g2 = &g_polynomials[1];
+    let s11 = &score_covariance[0][0];
+    let s12 = &score_covariance[0][1];
+    let s22 = &score_covariance[1][1];
+    polynomial_add(
+      &polynomial_add(
+        &polynomial_multiply(&polynomial_multiply(g1, g1), s22),
+        &polynomial_scale(
+          &polynomial_multiply(&polynomial_multiply(g1, g2), s12),
+          -2.0,
+        ),
       ),
-    ),
-    &polynomial_multiply(&polynomial_multiply(&g2, &g2), &s11),
-  );
+      &polynomial_multiply(&polynomial_multiply(g2, g2), s11),
+    )
+  } else {
+    let mut block = vec![vec![vec![0.0]; instrument_count + 1]; instrument_count + 1];
+    for row in 0..instrument_count {
+      for column in 0..instrument_count {
+        block[row][column] = score_covariance[row][column].clone();
+      }
+      block[row][instrument_count] = g_polynomials[row].clone();
+      block[instrument_count][row] = g_polynomials[row].clone();
+    }
+    polynomial_scale(&polynomial_matrix_determinant(&block), -1.0)
+  };
   let boundary = polynomial_add(
     &numerator,
     &polynomial_scale(&determinant, -critical_chi_square * covariance_correction),
@@ -955,7 +1083,7 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     covariance_type: covariance_type.clone(),
     covariance_correction,
     cluster_group_count,
-    degrees_of_freedom: 2,
+    degrees_of_freedom: instrument_count,
     critical_chi_square,
     shape,
     intervals,
@@ -966,7 +1094,7 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
 mod tests {
   use super::*;
 
-  fn quartic_with_roots(roots: &[f64], leading: f64) -> Polynomial {
+  fn polynomial_with_roots(roots: &[f64], leading: f64) -> Polynomial {
     roots.iter().fold(vec![leading], |polynomial, root| {
       polynomial_multiply(&polynomial, &[-root, 1.0])
     })
@@ -1007,7 +1135,7 @@ mod tests {
 
     let roots = [-2.0, -1.0, 1.0, 2.0];
     let (shape, intervals) =
-      confidence_set_from_boundary(&quartic_with_roots(&roots, 1.0), 0.0).unwrap();
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, 1.0), 0.0).unwrap();
     assert_eq!(shape, ArConfidenceSetShape::Disjoint);
     assert_intervals_close(
       &intervals,
@@ -1018,7 +1146,7 @@ mod tests {
     );
 
     let (shape, intervals) =
-      confidence_set_from_boundary(&quartic_with_roots(&roots, -1.0), 0.0).unwrap();
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
     assert_eq!(shape, ArConfidenceSetShape::Multiple);
     assert_intervals_close(
       &intervals,
@@ -1026,6 +1154,23 @@ mod tests {
         interval(None, Some(-2.0)),
         interval(Some(-1.0), Some(1.0)),
         interval(Some(2.0), None),
+      ],
+    );
+  }
+
+  #[test]
+  fn degree_six_boundary_supports_six_roots_and_four_components() {
+    let roots = [-3.0, -2.0, -1.0, 1.0, 2.0, 3.0];
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    assert_intervals_close(
+      &intervals,
+      &[
+        interval(None, Some(-3.0)),
+        interval(Some(-2.0), Some(-1.0)),
+        interval(Some(1.0), Some(2.0)),
+        interval(Some(3.0), None),
       ],
     );
   }
