@@ -10,9 +10,9 @@ The product is not feature complete. A compiled command type is not evidence of 
 | --- | --- |
 | `tabdat-domain` | Typed commands, results/errors, metadata, session/model state and capabilities |
 | `tabdat-language` | Command, expression, tokenizer and script parsing |
-| `tabdat-stats` | Pure Rust linear/within-FE/balanced-Swamy–Arora-RE/binary-logit/probit/bounded-Poisson/conditional-Poisson-FE/shared-gamma-RE/Gaussian-exchangeable-GEE/NB2/quantile estimation, covariance/inference, seeded IID/whole-cluster pairs OLS and joint IID pairs quantile bootstrap, and hypothesis utilities |
+| `tabdat-stats` | Pure Rust estimation kernels, covariance and inference, seeded resampling, and hypothesis tests. Supported estimators and limits are listed in [SPEC.md](SPEC.md). |
 | `tabdat-io` | Local path/format and script I/O validation; complete staged SVG publication without replacing destinations |
-| `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and one registered scalar UDF (`tabdat_gauss_phi`, delegating to `tabdat-stats`' validated normal CDF); it depends on `tabdat-stats` only for that validated function, with no reverse edge |
+| `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and SQL scalar functions backed by the normal and Student-t routines in `tabdat-stats`. |
 | `tabdat-execution` | Session coordination, data/statistical dispatch, script execution and generated SVG artifact coordination |
 | `tabdat-reporting` | Help/catalog, bounded structured reporting, core terminal result rendering and pure owned-data scatter/line SVG generation |
 | `tabdat-shell` | Batch CLI, persistent session I/O; terminal editing through Rustyline's safe facade, plain piped input |

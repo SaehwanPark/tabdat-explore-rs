@@ -23,22 +23,7 @@ a different toolchain's new lints. Verify both `rustc --version` and
 retain the compiler versions on which they were measured; a pin update alone is
 not evidence of a compilation or runtime speedup.
 
-Use two-space indentation, no hard tabs or non-breaking spaces; respect syntax
-or generated-file formatting requirements.
-
-A practical change should:
-
-1. State what user-visible behavior or internal invariant changes.
-2. Add or adjust the few relevant tests; include realistic failure cases.
-3. Implement the smallest solution within existing boundaries.
-4. Run focused tests, inspect the diff, and summarize residual limitations.
-5. Update brief current-status docs when supported behavior changes. For a
-   textbook slice, refine one exact illustration's data/sample/design/reference
-   contract and update the coverage ledger with implementation/test evidence;
-   partial method support must not be labeled whole-example or chapter coverage.
-
-A new failure-first test is helpful for a bug fix, not a mandatory ceremonial
-step. A PR or design note should be as short as the actual complexity allows.
+For agent development, follow the [branch-to-merge workflow](AGENTS.md#default-development-workflow).
 
 Keep the root README focused on orientation and a runnable quickstart. Follow the
 [documentation index](docs/README.md) for detailed guides, result contracts and
@@ -242,14 +227,7 @@ Do not launch long fuzz campaigns for routine non-parser changes. Use the
 [syntax budget ADR](docs/adr/0023-syntax-resource-budgets-and-fuzz-tooling.md)
 for current input limits.
 
-## PRs, approvals, and handoffs
-
-Keep scope small and reviewable. Do not overwrite unrelated uncommitted work.
-Push/merge only under explicit task authorization; no required automatic PR
-creation, review-pass count, delegation, or wait-for-quota loop. On an incomplete
-change, record the branch/commit, successful and failing tests, remaining
-question and smallest next action. Leave important WIP evidence in the draft PR
-when one exists.
+## Compatibility
 
 For Python compatibility, use [migration guidance](docs/migration/README.md).
 Differences affecting mathematical results or supported user workflows deserve
