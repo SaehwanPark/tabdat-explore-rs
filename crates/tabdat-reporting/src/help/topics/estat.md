@@ -195,51 +195,62 @@ asymptotics are required. A small p-value can reflect invalid instruments or
 model misspecification; it does not identify which instrument is invalid.
 Failure to reject does not prove instrument validity or resolve weak identification.
 
-Just-identified and clustered parent fits are rejected explicitly, as are
-zero/nonfinite structural residual variance and auxiliary rank/DF failures.
-Independent-row robust parent fits use the separate score test below, not Sargan.
+Just-identified fits are rejected explicitly, as are zero/nonfinite structural
+residual variance and auxiliary rank/DF failures. Robust and clustered parent
+fits use the score test below, not Sargan.
 Sargan uses the retained sample/design/residuals even after current data changes;
 it does not refit 2SLS, rescan current columns or mutate dataset/model state.
 CLI-v1 JSON returns `SarganResult` with test convention, assumptions, N, endogenous
 and excluded-instrument names, DF, statistic and upper-tail p-value. Scripts and
 `--text` expose the same owned results. Endogeneity tests are described below;
-clustered overid and GMM remain separate work. See the reproducible external-data
-example under `examples/cigarettes_iv/`.
+clustered Hansen J/GMM overidentification remains separate work. See the
+reproducible external-data example under `examples/cigarettes_iv/`.
 
-### Heteroskedasticity-robust overidentification score
+### Robust overidentification score
 
-After `ivregress 2sls ..., robust`, `estat overid` returns
+After `ivregress 2sls ..., robust` or `cluster(group)`, `estat overid` returns
 `RobustOveridScoreResult`, a Wooldridge residualized-instrument score test.
 Let X be the original regressors, Z the full instrument design (both including
 any intercept), Xhat=P_Z X, L=rank(Z), K=rank(Xhat), and q=L-K. Residualize Z on
-Xhat and choose exactly q independent directions Q from that complement. Regress
-ones on `diag(u)Q` **without an intercept**, using retained structural 2SLS
-residuals u. The statistic is N-RSS, computed as the fitted projection norm to
-avoid cancellation. It has an **asymptotic chi-square(q)** reference under the
-null and conventional strong identification.
+Xhat and choose exactly q independent directions Q from that complement. For
+the independent-row path, regress ones on `diag(u)Q` **without an intercept**,
+using retained structural 2SLS residuals u. The statistic is N-RSS, computed as
+the fitted projection norm to avoid cancellation. It has an **asymptotic
+chi-square(q)** reference under the null and conventional strong identification.
 
-The uncentered score OPG is **uncorrected**: `covariance_correction=1`, not the
-parent coefficient HC1 N/(N-K) adjustment. The projection removes the first-order
-2SLS nuisance-estimation effect; testing all raw moments with an arbitrary weight
-is not equivalent. This is not Hansen J, classical Sargan, Basmann, a finite F,
-cluster/survey inference or a weak-IV-robust procedure. Independent rows, the
-correctly specified maintained model and valid instruments under the null are
-required. Failure to reject does not prove instrument validity. Rejection may
-reflect invalid instruments or misspecification, not a named instrument's guilt.
+The independent-row score OPG is **uncorrected**: `covariance_correction=1`, not
+the parent coefficient HC1 N/(N-K) adjustment. For a clustered parent fit, the
+test sums each residualized-instrument score within its retained group and uses
+the uncentered CR0 covariance of those group sums. It also has
+`covariance_correction=1`; the parent coefficient CR1 multiplier is not applied
+to this score test. Its statistic is `T' V^-1 T`, where `T` is the sum of group
+scores and `V` is their outer-product sum. The cluster path reports its variable
+and group count and requires more groups than q plus a full-rank score covariance.
+
+The projection removes the first-order 2SLS nuisance-estimation effect; testing
+all raw moments with an arbitrary weight is not equivalent. This is not Hansen J,
+classical Sargan, Basmann, a finite F, a survey test or weak-IV-robust inference.
+The independent-row path requires independent rows. The cluster path requires
+independent groups and many-group asymptotics; it gives no few-cluster guarantee.
+Both require the correctly specified maintained model, valid instruments under
+the null and conventional strong identification. Failure to reject does not
+prove instrument validity. Rejection may reflect invalid instruments or
+misspecification, not a named instrument's guilt.
 
 The result reports ordered endogenous/instrument names, N, L, K, q, correction,
-statistic and upper-tail p, with the same text/script/JSON reachability. The
-original fit sample, design and structural residuals are retained; there is no
-current-data scan, structural refit or data/model mutation. Full-rank
-Z/Xhat and a rank-q score design are required. The complement uses unit-scaled
-instruments and pivoted twice-reorthogonalized directions with a 1e-12 relative
-norm rank bound; score columns are separately unit-scaled before QR. Rank is not
-silently reduced. Just-identification, insufficient auxiliary DF, nonfinite or
-zero structural residuals and singular score spaces fail explicitly. Clustered
-parent fits remain rejected rather than using an independent-row reference.
+statistic and upper-tail p, with optional cluster variable/group count and the
+same text/script/JSON reachability. The original fit sample, design, cluster IDs
+and structural residuals are retained; there is no current-data scan, structural
+refit or data/model mutation. Full-rank Z/Xhat and a rank-q score design are
+required. The complement uses unit-scaled instruments and pivoted
+twice-reorthogonalized directions with a 1e-12 relative norm rank bound; score
+columns are separately unit-scaled before QR. Rank is not silently reduced.
+Just-identification, insufficient auxiliary DF/groups, nonfinite or zero
+structural residuals and singular row/group score spaces fail explicitly.
 
-See the [documented score construction, p23](https://www.stata.com/manuals/rivregresspostestimation.pdf)
-and `examples/cigarettes_iv/robust_overid.td` for independent base-R method
+See the [documented score construction, p23](https://www.stata.com/manuals/rivregresspostestimation.pdf),
+`examples/cigarettes_iv/robust_overid.td` and
+`crates/tabdat-stats/tests/fixtures/robust_overid_score_reference.R` for method
 evidence. This does not mark a Cameron–Trivedi empirical illustration complete.
 
 ## Joint Wu–Hausman endogeneity test

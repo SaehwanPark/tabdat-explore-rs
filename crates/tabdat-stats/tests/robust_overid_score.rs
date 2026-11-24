@@ -1,6 +1,6 @@
 use tabdat_stats::{
-  CovarianceType, InstrumentalVariablesProblem, IvOptions, fit_two_stage_least_squares,
-  robust_overid_score_test,
+  CovarianceType, InstrumentalVariablesProblem, IvOptions, cluster_robust_overid_score_test,
+  fit_two_stage_least_squares, robust_overid_score_test,
 };
 
 fn problem(m: usize, control: bool, intercept: bool, extra: bool) -> InstrumentalVariablesProblem {
@@ -93,6 +93,8 @@ fn independent_r_svd_references_cover_complement_df_and_noconstant() {
     assert_eq!(result.instrument_parameter_count, l);
     assert_eq!(result.degrees_of_freedom, l - k);
     assert_eq!(result.covariance_correction, 1.0);
+    assert_eq!(result.cluster_variable, None);
+    assert_eq!(result.cluster_group_count, None);
     assert!((result.statistic - expected).abs() < 1e-11, "{result:?}");
     assert!((result.p_value - tail).abs() < 1e-11, "{result:?}");
     assert_eq!(p, before);
@@ -119,6 +121,162 @@ fn independent_r_svd_references_cover_complement_df_and_noconstant() {
     }
     assert!((robust_overid_score_test(&scaled, &u).unwrap().statistic - expected).abs() < 1e-11);
   }
+}
+
+fn clustered_problem(
+  m: usize,
+  control: bool,
+  intercept: bool,
+  extra: bool,
+) -> InstrumentalVariablesProblem {
+  let mut problem = problem(m, control, intercept, extra);
+  let group_shocks = [-0.9, -0.5, -0.2, 0.6, 1.1, 0.8, 0.1, -0.7, -0.4, 0.1];
+  let n = problem.response.len();
+  for (index, response) in problem.response.iter_mut().enumerate() {
+    *response += 0.25 * group_shocks[index / 4];
+  }
+  problem.sample = Some(
+    tabdat_stats::sample::EstimationSample::new(
+      (0..n).collect(),
+      n,
+      0,
+      None,
+      Some((0..n).map(|index| format!("g{}", index / 4)).collect()),
+    )
+    .unwrap(),
+  );
+  problem
+}
+
+#[test]
+fn clustered_grouped_scores_match_independent_r_cr0_references() {
+  // Base R4.6.2 fixture in robust_overid_score_reference.R uses a separate
+  // SVD and grouped score crossproduct. Tolerance covers QR/SVD arithmetic.
+  for (m, control, intercept, extra, expected, tail) in [
+    (2, true, true, false, 0.5767918743903001, 0.4475725583094755),
+    (2, true, true, true, 0.9078062533814221, 0.6351442587920135),
+    (1, false, true, false, 2.94293227537329, 0.2295886297663257),
+  ] {
+    let p = clustered_problem(m, control, intercept, extra);
+    let before = p.clone();
+    let fit = fit_two_stage_least_squares(
+      &p,
+      &IvOptions {
+        covariance_type: CovarianceType::Cluster("group_id".into()),
+      },
+    )
+    .unwrap();
+    let result =
+      cluster_robust_overid_score_test(&p, &fit.regression.residuals, "group_id").unwrap();
+    assert_eq!(result.observation_count, 40);
+    assert_eq!(result.degrees_of_freedom, p.instrument_names.len() - m);
+    assert_eq!(result.covariance_correction, 1.0);
+    assert_eq!(result.cluster_variable.as_deref(), Some("group_id"));
+    assert_eq!(result.cluster_group_count, Some(10));
+    assert!((result.statistic - expected).abs() < 1e-11, "{result:?}");
+    assert!((result.p_value - tail).abs() < 1e-11, "{result:?}");
+    assert_eq!(p, before);
+
+    // Basis rotation, residual units and cluster labels cannot change the test.
+    let mut rotated = p.clone();
+    rotated.instrument_names.reverse();
+    for row in &mut rotated.instruments {
+      row[0] += 0.3 * row[1];
+      row[2] -= 0.2 * row[1];
+      row.reverse();
+    }
+    let rotated_residuals = fit_two_stage_least_squares(
+      &rotated,
+      &IvOptions {
+        covariance_type: CovarianceType::Cluster("group_id".into()),
+      },
+    )
+    .unwrap()
+    .regression
+    .residuals;
+    assert!(
+      (cluster_robust_overid_score_test(&rotated, &rotated_residuals, "group_id")
+        .unwrap()
+        .statistic
+        - expected)
+        .abs()
+        < 1e-11
+    );
+    for scale in [1e-120, 1e120, -1.0] {
+      let scaled = fit
+        .regression
+        .residuals
+        .iter()
+        .map(|value| value * scale)
+        .collect::<Vec<_>>();
+      assert!(
+        (cluster_robust_overid_score_test(&p, &scaled, "group_id")
+          .unwrap()
+          .statistic
+          - expected)
+          .abs()
+          < 1e-11
+      );
+    }
+    let mut relabeled = p.clone();
+    for group in relabeled
+      .sample
+      .as_mut()
+      .unwrap()
+      .cluster_groups
+      .as_mut()
+      .unwrap()
+    {
+      *group = format!("renamed-{}", group.trim_start_matches('g'));
+    }
+    assert!(
+      (cluster_robust_overid_score_test(&relabeled, &fit.regression.residuals, "renamed")
+        .unwrap()
+        .statistic
+        - expected)
+        .abs()
+        < 1e-11
+    );
+  }
+}
+
+#[test]
+fn clustered_score_requires_retained_groups_and_sufficient_group_rank() {
+  let p = clustered_problem(1, false, true, false);
+  let u = residuals(&p);
+  assert!(
+    robust_overid_score_test(&p, &u)
+      .unwrap_err()
+      .to_string()
+      .contains("retained cluster identifiers require the clustered score test")
+  );
+  let mut missing = p.clone();
+  missing.sample = None;
+  assert!(
+    cluster_robust_overid_score_test(&missing, &u, "group_id")
+      .unwrap_err()
+      .to_string()
+      .contains("retained cluster identifiers")
+  );
+
+  let mut insufficient = p.clone();
+  insufficient.sample.as_mut().unwrap().cluster_groups =
+    Some((0..40).map(|index| format!("g{}", index % 2)).collect());
+  assert!(
+    cluster_robust_overid_score_test(&insufficient, &u, "group_id")
+      .unwrap_err()
+      .to_string()
+      .contains("more clusters than test degrees of freedom")
+  );
+
+  let mut mismatched = p;
+  mismatched.sample.as_mut().unwrap().cluster_groups = Some(vec!["g0".into(); 39]);
+  assert!(
+    cluster_robust_overid_score_test(&mismatched, &u, "group_id")
+      .unwrap_err()
+      .to_string()
+      .contains("cluster identifier count")
+  );
 }
 
 #[test]

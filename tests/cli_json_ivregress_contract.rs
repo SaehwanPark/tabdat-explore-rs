@@ -64,7 +64,7 @@ impl Drop for Fixture {
 
 fn confidence_fixture(strength: f64, direct_z1: f64, direct_z2: f64) -> Fixture {
   let fixture = Fixture::new();
-  let mut csv = String::from("y,w,x1,z1,z2\n");
+  let mut csv = String::from("y,w,x1,z1,z2,group_id\n");
   for i in 1..=40 {
     let basis = |k: f64| (2.0 * std::f64::consts::PI * k * i as f64 / 40.0).cos();
     let w = basis(5.0);
@@ -72,7 +72,7 @@ fn confidence_fixture(strength: f64, direct_z1: f64, direct_z2: f64) -> Fixture 
     let z2 = basis(2.0);
     let x1 = strength * z1 + basis(3.0);
     let y = 1.5 * x1 + 0.5 * w + direct_z1 * z1 + direct_z2 * z2 + basis(4.0);
-    writeln!(csv, "{y},{w},{x1},{z1},{z2}").unwrap();
+    writeln!(csv, "{y},{w},{x1},{z1},{z2},{}", (i - 1) / 4).unwrap();
   }
   fs::write(fixture.0.join("data.csv"), csv).unwrap();
   fixture
@@ -220,7 +220,6 @@ fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
   for fit in [
     "ivregress 2sls y w, endog(x1) iv(z1)",
     "ivregress 2sls y w, endog(x1) iv(z1) robust",
-    "ivregress 2sls y w, endog(x1) iv(z1 z2) cluster(w)",
   ] {
     let output = fixture.batch(
       "--json",
@@ -247,6 +246,8 @@ fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
   );
   assert_eq!(data["covariance"], "independent_row_uncentered_score_opg");
   assert_eq!(data["covariance_correction"], 1.0);
+  assert!(data.get("cluster_variable").is_none());
+  assert!(data.get("cluster_group_count").is_none());
   assert_eq!(data["reference_distribution"], "asymptotic_chi_square");
   assert_eq!(data["weak_iv_robust"], false);
   assert_eq!(data["instrument_parameter_count"], 4);
@@ -261,9 +262,39 @@ fn sargan_scripts_and_json_label_convention_and_fail_before_file_effects() {
   for expected in [
     "Wooldridge residualized instruments",
     "asymptotic chi-square(1)",
-    "no N-K/HC1 adjustment",
+    "no regression DF adjustment",
     "Not Hansen J",
     "Independent rows",
+  ] {
+    assert!(text.contains(expected), "{text}");
+  }
+
+  fs::write(
+    fixture.0.join("clustered-overid.td"),
+    "use data.csv\nivregress 2sls y w, endog(x1) iv(z1 z2) cluster(group_id)\nestat overid\nreplace y = 999\nestat overid\n",
+  )
+  .unwrap();
+  let rows = json_lines(&fixture.run(&["--json", "-f", "clustered-overid.td"]));
+  assert_eq!(rows[2], rows[4]);
+  assert_eq!(rows[2]["result_type"], "RobustOveridScoreResult");
+  let data = &rows[2]["data"];
+  assert_eq!(
+    data["covariance"],
+    "one_way_cluster_uncentered_group_score_opg_cr0"
+  );
+  assert_eq!(data["cluster_variable"], "group_id");
+  assert_eq!(data["cluster_group_count"], 10);
+  assert_eq!(data["covariance_correction"], 1.0);
+  assert_eq!(data["degrees_of_freedom"], 1);
+  assert!(data["statistic"].as_f64().unwrap().is_finite());
+  assert!(data["p_value"].as_f64().unwrap() > 0.0);
+  let text = fixture.run(&["--text", "-f", "clustered-overid.td"]);
+  assert!(text.status.success());
+  let text = String::from_utf8(text.stdout).unwrap();
+  for expected in [
+    "cluster(group_id) CR0 grouped score covariance; G = 10",
+    "many-group asymptotics required",
+    "no few-cluster guarantee",
   ] {
     assert!(text.contains(expected), "{text}");
   }

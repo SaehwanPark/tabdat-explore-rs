@@ -1405,10 +1405,14 @@ impl Session {
           .map(ExecutionResult::RobustOveridScore)
           .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
         }
-        tabdat_stats::CovarianceType::Cluster(_) => {
-          return Err(RuntimeError::EstatOveridFailed(
-            "clustered overidentification tests are not implemented; the independent-row robust score and homoskedastic Sargan references cannot be substituted".into(),
-          ));
+        tabdat_stats::CovarianceType::Cluster(variable) => {
+          return tabdat_stats::cluster_robust_overid_score_test(
+            &state.problem,
+            &state.linear.result.residuals,
+            variable,
+          )
+          .map(ExecutionResult::RobustOveridScore)
+          .map_err(|error| RuntimeError::EstatOveridFailed(error.to_string()));
         }
         tabdat_stats::CovarianceType::NonRobust => {}
       }

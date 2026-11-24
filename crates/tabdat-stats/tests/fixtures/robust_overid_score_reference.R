@@ -39,3 +39,37 @@ u <- drop(y-X%*%lm.fit(H,y)$coefficients)
 Q <- svd(lm.fit(H,Z)$residuals)$u[,1,drop=FALSE]
 value <- sum(lm.fit(Q*u,rep(1,40))$fitted.values^2)
 cat(sprintf("CLI q=1 score=%.16g p=%.16g\n",value,pchisq(value,1,lower.tail=FALSE)))
+
+# Clustered extension: independent base-R SVD plus a CR0 sandwich of cluster-
+# summed residualized-instrument scores. Shared group shocks create within-group
+# outcome-error dependence; no CR1 finite-sample factor is applied to the test.
+i <- 1:40
+w <- b(8); z1 <- b(1); z2 <- b(2); z3 <- b(3); z4 <- b(7)
+x1 <- 0.7*z1+0.4*z2-0.2*z3+b(4)
+x2 <- -0.3*z1+1.2*z2+0.5*z3+b(5)
+cluster_id <- rep(seq_len(10), each=4)
+cluster_shock <- c(-0.9,-0.5,-0.2,0.6,1.1,0.8,0.1,-0.7,-0.4,0.1)
+for(case in list(c(2,1,1,0),c(2,1,1,1),c(1,0,1,0))) {
+  m <- case[1]; control <- case[2]==1; intercept <- case[3]==1; extra <- case[4]==1
+  y <- 1+0.5*w+1.5*x1+0.3*z3+(1+0.2*w)*b(6)
+  if(m==2) y <- y-0.7*x2
+  if(extra) y <- y+0.2*z4
+  y <- y + 0.25*cluster_shock[cluster_id]
+  W <- matrix(numeric(0),40,0); if(control) W <- cbind(W,w)
+  X <- cbind(W,x1); if(m==2) X <- cbind(X,x2)
+  Z <- cbind(W,z1,z2,z3); if(extra) Z <- cbind(Z,z4)
+  if(intercept) { X<-cbind(1,X); Z<-cbind(1,Z) }
+  Xhat <- as.matrix(lm.fit(Z,X)$fitted.values)
+  beta <- lm.fit(Xhat,y)$coefficients
+  u <- drop(y-X%*%beta)
+  q <- ncol(Z)-ncol(X)
+  residualized <- lm.fit(Xhat,Z)$residuals
+  Q <- svd(residualized)$u[,seq_len(q),drop=FALSE]
+  score <- Q*u
+  grouped <- rowsum(score,cluster_id,reorder=TRUE)
+  total <- colSums(grouped)
+  meat <- crossprod(grouped)
+  statistic <- drop(crossprod(total,solve(meat,total)))
+  cat(sprintf("cluster m=%d control=%s intercept=%s extra=%s G=%d q=%d CR0=%.16g p=%.16g\n",
+    m,control,intercept,extra,nrow(grouped),q,statistic,pchisq(statistic,q,lower.tail=FALSE)))
+}
