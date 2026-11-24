@@ -892,7 +892,7 @@ pub enum ExecutionResult {
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// HC1/CR1 scalar AR confidence set for one endogenous regressor and one instrument.
   RobustAndersonRubinConfidenceSet(tabdat_stats::RobustAndersonRubinConfidenceSet),
-  /// HC1/CR1 AR confidence set for one endogenous regressor and two or three instruments.
+  /// HC1/CR1 AR confidence set for one endogenous regressor and two to four instruments.
   RobustMultipleInstrumentAndersonRubinConfidenceSet(
     tabdat_stats::RobustMultipleInstrumentAndersonRubinConfidenceSet,
   ),

@@ -173,18 +173,23 @@ fn two_instrument_cluster_script_reports_cr1_correction_and_unbounded_set() {
 }
 
 #[test]
-fn more_than_two_robust_excluded_instruments_stop_before_later_script_effects() {
+fn more_than_four_robust_excluded_instruments_stop_before_later_script_effects() {
   let fixture = Fixture::new();
   fs::write(
+    fixture.0.join("robust_ar_four_ci_multiple_data.csv"),
+    include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_four_ci_multiple_data.csv"),
+  )
+  .unwrap();
+  fs::write(
     fixture.0.join("unsupported.td"),
-    "use robust_ar_multi_ci_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 group) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    "use robust_ar_four_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
   )
   .unwrap();
   let output = fixture.run("--json", "unsupported.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("currently support at most two excluded instruments")
+      .contains("currently support at most four excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }

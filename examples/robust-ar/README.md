@@ -111,7 +111,7 @@ independent groups with many-group asymptotics; neither gives finite-sample
 coverage guarantees. This one-instrument result does not cover multiple
 endogenous regressors or robust projection.
 
-## Robust two- and three-instrument confidence sets
+## Robust two-, three- and four-instrument confidence sets
 
 [`two_instrument_ci.td`](two_instrument_ci.td) and
 [`two_instrument_ci_clustered.td`](two_instrument_ci_clustered.td) use one
@@ -140,6 +140,21 @@ R is development-only; native scripts need only the committed CSV and Rust
 binary. See [`multiple-instrument.md`](multiple-instrument.md) for reference
 endpoints and statistical limits.
 
+[`four_instrument_ci.td`](four_instrument_ci.td),
+[`four_instrument_ci_clustered.td`](four_instrument_ci_clustered.td) and
+[`four_instrument_ci_all_real.td`](four_instrument_ci_all_real.td) extend the
+same workflow to four excluded instruments. These 48-row fixtures have K=6,
+residual DF=42 and the chi-square(4) critical value 9.48772903678115. The
+independent Base R 4.6.2 reference and generated data are in
+[`robust_ar_four_ci_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_four_ci_reference.R).
+HC1 and CR1 produce bounded sets for the multiple case, an empty set for the
+all-real-labelled case, and a two-component CR1 set with four real boundary
+roots. Corrections are 1.14285714285714 for HC1 and 1.22077922077922 for CR1
+with 12 groups. The degree-eight method supports up to eight roots and five
+accepted components; tests compare independent endpoints and probes, retained
+state, text/JSON, rescaling and failure paths. Five or more excluded instruments
+remain unsupported.
+
 Run the examples from a temporary directory after building the binary:
 
 ```sh
@@ -147,18 +162,22 @@ repo="$PWD"
 work=$(mktemp -d)
 cp crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci*csv "$work/"
 cp crates/tabdat-stats/tests/fixtures/robust_ar_three_ci*csv "$work/"
+cp crates/tabdat-stats/tests/fixtures/robust_ar_four_ci*csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/two_instrument_ci_all_real.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/three_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/three_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/three_instrument_ci_six_roots_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/four_instrument_ci_all_real.td")
 ```
 
-Quartic and degree-six boundaries are solved by recursively isolating
+Quartic, degree-six and degree-eight boundaries are solved by recursively isolating
 derivative roots and checking every intervening region, without a finite grid.
 Repeated or ambiguous roots and singular or ill-conditioned score covariance
 fail explicitly. This remains synthetic method evidence, not a
-Cameron–Trivedi illustration or a claim of instrument validity. Four or more
+Cameron–Trivedi illustration or a claim of instrument validity. Five or more
 excluded instruments, multiple endogenous regressors, robust projection,
 HAC/survey covariance and few-cluster inference remain unsupported.
