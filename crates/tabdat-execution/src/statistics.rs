@@ -1116,26 +1116,30 @@ impl Session {
             .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
         }
         EstatSubcommand::AndersonRubinConfidenceSet { level } => {
-          if state.linear.result.covariance.covariance_type
-            != tabdat_stats::CovarianceType::NonRobust
-          {
-            return Err(RuntimeError::EstatArFailed(
-              "this homoskedastic AR confidence set requires a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
-            ));
-          }
           let level = level
             .parse::<f64>()
             .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;
-          tabdat_stats::anderson_rubin_confidence_set(&state.problem, level)
-            .map(ExecutionResult::AndersonRubinConfidenceSet)
+          let covariance_type = &state.linear.result.covariance.covariance_type;
+          if *covariance_type == tabdat_stats::CovarianceType::NonRobust {
+            tabdat_stats::anderson_rubin_confidence_set(&state.problem, level)
+              .map(ExecutionResult::AndersonRubinConfidenceSet)
+              .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+          } else {
+            tabdat_stats::robust_anderson_rubin_confidence_set(
+              &state.problem,
+              level,
+              covariance_type,
+            )
+            .map(ExecutionResult::RobustAndersonRubinConfidenceSet)
             .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+          }
         }
         EstatSubcommand::AndersonRubinProjectedConfidenceSet { coefficient, level } => {
           if state.linear.result.covariance.covariance_type
             != tabdat_stats::CovarianceType::NonRobust
           {
             return Err(RuntimeError::EstatArFailed(
-              "projected homoskedastic AR confidence sets require a nonrobust 2SLS fit; robust/cluster confidence sets are not implemented".into(),
+              "projected homoskedastic AR confidence sets require a nonrobust 2SLS fit; robust/cluster projection is not implemented".into(),
             ));
           }
           let level = level

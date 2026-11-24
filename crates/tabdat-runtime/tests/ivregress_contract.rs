@@ -651,6 +651,30 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
   let changed = session.state();
   assert_eq!(session.execute(ci.clone()).unwrap(), result);
   assert_eq!(session.state(), changed);
+  for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
+    let mut session = load(&fixture);
+    session
+      .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1) {option}")).unwrap())
+      .unwrap();
+    let before = session.state();
+    let result = session.execute(ci.clone()).unwrap();
+    let ExecutionResult::RobustAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x1");
+    assert_eq!(set.excluded_instrument, "z1");
+    assert_eq!(set.observation_count, expected_n);
+    assert_eq!(set.auxiliary_parameter_count, 3);
+    assert_eq!(set.auxiliary_residual_df, expected_n - 3);
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(ci.clone()).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
   for option in ["robust", "cluster(group_id)"] {
     let mut session = load(&fixture);
     session
@@ -662,7 +686,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
         .execute(ci.clone())
         .unwrap_err()
         .to_string()
-        .contains("requires a nonrobust")
+        .contains("exactly one endogenous regressor and one excluded instrument")
     );
     assert_eq!(session.state(), before);
   }
@@ -719,7 +743,7 @@ fn projected_ar_confidence_sets_reuse_the_retained_fit_and_keep_robust_limits_ex
         .execute(parse_command("estat ar, ci coefficient(x1)").unwrap())
         .unwrap_err()
         .to_string()
-        .contains("robust/cluster confidence sets are not implemented")
+        .contains("robust/cluster projection is not implemented")
     );
     assert_eq!(session.state(), before);
   }

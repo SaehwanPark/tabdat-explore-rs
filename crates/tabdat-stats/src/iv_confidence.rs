@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-  EstimationProblem, InstrumentalVariablesProblem, IvOptions, StatsError,
+  CovarianceType, EstimationProblem, InstrumentalVariablesProblem, IvOptions, StatsError,
   f_distribution_survival_probability, fit_least_squares, fit_two_stage_least_squares,
+  normal_quantile,
 };
 
 /// Shape of the scalar AR nonrejection set; rays include their finite endpoint.
@@ -54,6 +55,24 @@ pub struct ProjectedArConfidenceSet {
   /// True when the scaled nuisance curvature was not safely positive definite,
   /// forcing the conservative all-real set.
   pub all_real_conservative_fallback: bool,
+}
+
+/// HC1/one-way CR1 scalar AR confidence set for a single excluded instrument.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RobustAndersonRubinConfidenceSet {
+  pub endogenous: String,
+  pub excluded_instrument: String,
+  pub confidence_level: f64,
+  pub observation_count: usize,
+  pub auxiliary_parameter_count: usize,
+  pub auxiliary_residual_df: usize,
+  pub covariance_type: CovarianceType,
+  pub covariance_correction: f64,
+  pub cluster_group_count: Option<usize>,
+  pub degrees_of_freedom: usize,
+  pub critical_chi_square: f64,
+  pub shape: ArConfidenceSetShape,
+  pub intervals: Vec<ArConfidenceInterval>,
 }
 
 fn invalid(message: &str) -> StatsError {
@@ -734,6 +753,314 @@ pub fn anderson_rubin_confidence_set(
     numerator_df: problem.instrument_names.len(),
     denominator_df: df,
     critical_f: critical,
+    shape,
+    intervals,
+  })
+}
+
+/// Invert the HC1/CR1 AR Wald test for one endogenous regressor and one excluded
+/// instrument. Included exogenous coefficients remain unrestricted.
+///
+/// For each null, the auxiliary regression is `y - beta*x` on the included
+/// exogenous regressors and the excluded instrument. With one tested auxiliary
+/// coefficient, the chi-square(1) Wald non-rejection condition reduces to a
+/// quadratic inequality. This function solves that inequality directly; it does
+/// not evaluate a finite grid. HC1 assumes independent rows. Cluster inference
+/// assumes independent groups with many groups and has no few-cluster guarantee.
+pub fn robust_anderson_rubin_confidence_set(
+  problem: &InstrumentalVariablesProblem,
+  level: f64,
+  covariance_type: &CovarianceType,
+) -> Result<RobustAndersonRubinConfidenceSet, StatsError> {
+  if *covariance_type == CovarianceType::NonRobust {
+    return Err(invalid(
+      "robust AR confidence sets require HC1 or one-way cluster covariance",
+    ));
+  }
+  if problem.endogenous_names.len() != 1 || problem.instrument_names.len() != 1 {
+    return Err(invalid(
+      "robust AR confidence sets require exactly one endogenous regressor and one excluded instrument",
+    ));
+  }
+  if !level.is_finite() || level <= 0.0 || level >= 100.0 {
+    return Err(invalid(
+      "AR confidence level must be finite and strictly between 0 and 100",
+    ));
+  }
+  problem.validate()?;
+  let alpha = 1.0 - level / 100.0;
+  let upper_normal_probability = 1.0 - alpha / 2.0;
+  let z = normal_quantile(upper_normal_probability);
+  let critical_chi_square = z * z;
+  if !alpha.is_finite()
+    || alpha <= 0.0
+    || upper_normal_probability >= 1.0
+    || !critical_chi_square.is_finite()
+  {
+    return Err(invalid(
+      "AR confidence level exceeds floating-point probability resolution",
+    ));
+  }
+
+  let n = problem.response.len();
+  let parameter_count = problem.exogenous_names.len() + usize::from(problem.include_intercept) + 1;
+  if n <= parameter_count {
+    return Err(StatsError::ZeroDegreesOfFreedom {
+      observations: n,
+      parameters: parameter_count,
+    });
+  }
+  let residual_df = n - parameter_count;
+  let (cluster_group_count, covariance_correction, cluster_groups) = match covariance_type {
+    CovarianceType::NonRobust => unreachable!("nonrobust covariance rejected above"),
+    CovarianceType::RobustHc1 => (None, n as f64 / residual_df as f64, None),
+    CovarianceType::Cluster(variable) => {
+      let sample = problem.sample.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(
+          "cluster covariance requires an estimation sample with cluster identifiers".into(),
+        )
+      })?;
+      let groups = sample.cluster_groups.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(format!(
+          "cluster covariance on variable '{variable}' requires cluster group identifiers"
+        ))
+      })?;
+      if groups.len() != n {
+        return Err(StatsError::DimensionMismatch(format!(
+          "cluster group identifier count ({}) does not match retained observations ({n})",
+          groups.len()
+        )));
+      }
+      let count = groups
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+      if count < 2 {
+        return Err(StatsError::InsufficientObservations(
+          "cluster covariance requires at least 2 distinct clusters".into(),
+        ));
+      }
+      let correction = count as f64 / (count - 1) as f64 * (n - 1) as f64 / residual_df as f64;
+      (Some(count), correction, Some(groups))
+    }
+  };
+  if !covariance_correction.is_finite() || covariance_correction <= 0.0 {
+    return Err(invalid("AR covariance correction is non-finite"));
+  }
+
+  let x = problem
+    .endogenous
+    .iter()
+    .map(|row| row[0])
+    .collect::<Vec<_>>();
+  let z = problem
+    .instruments
+    .iter()
+    .map(|row| row[0])
+    .collect::<Vec<_>>();
+  let control_names = problem.exogenous_names.clone();
+  let residual_z = residualize(
+    &z,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let residual_y = residualize(
+    &problem.response,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let residual_x = residualize(
+    &x,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let instrument_norm = dot(&residual_z, &residual_z);
+  let reduced_form_y = dot(&residual_z, &residual_y);
+  let reduced_form_x = dot(&residual_z, &residual_x);
+  if !instrument_norm.is_finite()
+    || instrument_norm <= 0.0
+    || !reduced_form_y.is_finite()
+    || !reduced_form_x.is_finite()
+  {
+    return Err(invalid(
+      "robust AR confidence-set auxiliary design is rank deficient or non-finite",
+    ));
+  }
+  let center = if reduced_form_x != 0.0 {
+    reduced_form_y / reduced_form_x
+  } else {
+    0.0
+  };
+  if !center.is_finite() {
+    return Err(invalid("robust AR confidence-set centering is non-finite"));
+  }
+
+  let mut auxiliary_names = control_names;
+  auxiliary_names.push(problem.instrument_names[0].clone());
+  let auxiliary_design = problem
+    .exogenous
+    .iter()
+    .zip(&problem.instruments)
+    .map(|(controls, instruments)| {
+      controls
+        .iter()
+        .chain(instruments)
+        .copied()
+        .collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+  let residual_y_full = residualize(
+    &problem.response,
+    &auxiliary_design,
+    &auxiliary_names,
+    problem.include_intercept,
+  )?;
+  let residual_x_full = residualize(
+    &x,
+    &auxiliary_design,
+    &auxiliary_names,
+    problem.include_intercept,
+  )?;
+
+  let (score_y, score_x) = if let Some(groups) = cluster_groups {
+    let mut totals = std::collections::BTreeMap::<&str, (f64, f64)>::new();
+    for ((group, z), (residual_y, residual_x)) in groups
+      .iter()
+      .zip(&residual_z)
+      .zip(residual_y_full.iter().zip(&residual_x_full))
+    {
+      let entry = totals.entry(group.as_str()).or_default();
+      entry.0 += z * residual_y;
+      entry.1 += z * residual_x;
+    }
+    let pairs = totals.into_values().collect::<Vec<_>>();
+    (
+      pairs.iter().map(|pair| pair.0).collect::<Vec<_>>(),
+      pairs.iter().map(|pair| pair.1).collect::<Vec<_>>(),
+    )
+  } else {
+    (
+      residual_z
+        .iter()
+        .zip(&residual_y_full)
+        .map(|(z, residual)| z * residual)
+        .collect(),
+      residual_z
+        .iter()
+        .zip(&residual_x_full)
+        .map(|(z, residual)| z * residual)
+        .collect(),
+    )
+  };
+  if score_y
+    .iter()
+    .chain(&score_x)
+    .any(|score| !score.is_finite())
+  {
+    return Err(invalid("robust AR confidence-set scores are non-finite"));
+  }
+  let score_y_norm = dot(&score_y, &score_y);
+  let score_x_norm = dot(&score_x, &score_x);
+  if !score_y_norm.is_finite() || !score_x_norm.is_finite() {
+    return Err(invalid("robust AR confidence-set covariance is non-finite"));
+  }
+  if score_y_norm == 0.0 && score_x_norm == 0.0 {
+    return Err(invalid(
+      "robust AR confidence-set auxiliary covariance is zero for every null",
+    ));
+  }
+  if score_x_norm > 0.0 {
+    let projection = dot(&score_y, &score_x) / score_x_norm;
+    let innovation = score_y
+      .iter()
+      .zip(&score_x)
+      .map(|(y, x)| (y - projection * x).powi(2))
+      .sum::<f64>();
+    if !innovation.is_finite() || innovation <= 1e-24 * score_y_norm {
+      return Err(invalid(
+        "robust AR confidence-set auxiliary covariance is degenerate at a candidate null",
+      ));
+    }
+  }
+
+  let centered_response = residual_y
+    .iter()
+    .zip(&residual_x)
+    .map(|(y, x)| y - center * x)
+    .collect::<Vec<_>>();
+  let centered_residual = residual_y_full
+    .iter()
+    .zip(&residual_x_full)
+    .map(|(y, x)| y - center * x)
+    .collect::<Vec<_>>();
+  if centered_response
+    .iter()
+    .chain(&centered_residual)
+    .any(|value| !value.is_finite())
+  {
+    return Err(invalid(
+      "robust AR confidence-set centered outcome is non-finite",
+    ));
+  }
+  let centered_score_y = if let Some(groups) = cluster_groups {
+    let mut totals = std::collections::BTreeMap::<&str, f64>::new();
+    for ((group, z), residual) in groups.iter().zip(&residual_z).zip(&centered_residual) {
+      *totals.entry(group.as_str()).or_default() += z * residual;
+    }
+    totals.into_values().collect::<Vec<_>>()
+  } else {
+    residual_z
+      .iter()
+      .zip(&centered_residual)
+      .map(|(z, residual)| z * residual)
+      .collect::<Vec<_>>()
+  };
+  let centered_moment = dot(&residual_z, &centered_response);
+  let reduced_form_slope = reduced_form_x;
+  let scale = critical_chi_square * covariance_correction;
+  let quadratic_a = reduced_form_slope.powi(2) - scale * score_x_norm;
+  let quadratic_b =
+    -2.0 * centered_moment * reduced_form_slope + 2.0 * scale * dot(&centered_score_y, &score_x);
+  let quadratic_c = centered_moment.powi(2) - scale * dot(&centered_score_y, &centered_score_y);
+  let (shape, mut intervals) = quadratic_set(quadratic_a, quadratic_b, quadratic_c)?;
+  for interval in &mut intervals {
+    for bound in [&mut interval.lower, &mut interval.upper]
+      .into_iter()
+      .flatten()
+    {
+      *bound += center;
+      if !bound.is_finite() {
+        return Err(invalid(
+          "robust AR confidence-set endpoint exceeds the finite numerical range",
+        ));
+      }
+    }
+  }
+  let collapsed = match shape {
+    ArConfidenceSetShape::Bounded => intervals[0].lower >= intervals[0].upper,
+    ArConfidenceSetShape::Disjoint => intervals[0].upper >= intervals[1].lower,
+    _ => false,
+  };
+  if collapsed {
+    return Err(invalid(
+      "robust AR confidence-set endpoints exceed floating-point resolution",
+    ));
+  }
+  Ok(RobustAndersonRubinConfidenceSet {
+    endogenous: problem.endogenous_names[0].clone(),
+    excluded_instrument: problem.instrument_names[0].clone(),
+    confidence_level: level,
+    observation_count: n,
+    auxiliary_parameter_count: parameter_count,
+    auxiliary_residual_df: residual_df,
+    covariance_type: covariance_type.clone(),
+    covariance_correction,
+    cluster_group_count,
+    degrees_of_freedom: 1,
+    critical_chi_square,
     shape,
     intervals,
   })

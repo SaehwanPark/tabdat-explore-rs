@@ -890,6 +890,8 @@ pub enum ExecutionResult {
   NormalPoissonBootstrap(Box<tabdat_stats::NormalPoissonBootstrapResult>),
   /// Scalar homoskedastic AR confidence set, including unbounded or empty sets.
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
+  /// HC1/CR1 scalar AR confidence set for one endogenous regressor and one instrument.
+  RobustAndersonRubinConfidenceSet(tabdat_stats::RobustAndersonRubinConfidenceSet),
   /// At-least-nominal projection of a joint homoskedastic AR region.
   ProjectedAndersonRubinConfidenceSet(tabdat_stats::ProjectedArConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.

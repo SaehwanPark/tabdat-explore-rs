@@ -57,12 +57,56 @@ relevance entirely. This checks the absence of a relevance denominator; the
 fixture itself is not a simulation of weak-IV size or power. Runtime/CLI tests check retained behavior after edits, output
 metadata, null errors, missing groups and rank failures, script stopping before
 later file effects, and unchanged fit/data state. The existing classical F and
-scalar confidence-set tests remain in the suite.
+homoskedastic scalar/projected confidence-set tests remain in the suite beside
+the robust scalar confidence-set tests documented below.
 
 Weak-identification robustness does not relax instrument validity or correct-model
 assumptions. HC1 requires independent observations; CR1 permits within-group
 dependence but requires independent groups and many-group asymptotics. Twelve
 synthetic groups validate arithmetic, not nominal coverage or few-cluster
 accuracy. There is no automatic covariance-rank reduction: rank-limited joint
-tests fail. This slice supplies no robust confidence sets, endogenous-subvector
-inference, HAC, survey, overidentification or instrument-validity test.
+tests fail. The joint-test slice does not supply multiple-instrument robust
+confidence sets, endogenous-subvector inference, HAC/survey inference,
+overidentification or instrument-validity tests.
+
+## Robust scalar confidence set
+
+The separate [`scalar_ci.td`](scalar_ci.td) and
+[`scalar_ci_clustered.td`](scalar_ci_clustered.td) workflows invert the HC1 or
+one-way CR1 auxiliary Wald test for exactly one endogenous regressor and one
+excluded instrument. Included exogenous coefficients remain unrestricted. This
+is synthetic method evidence, not a Cameron–Trivedi illustration or a weak-IV
+coverage simulation.
+
+From the repository root:
+
+```sh
+repo="$PWD"
+work=$(mktemp -d)
+cp crates/tabdat-stats/tests/fixtures/robust_ar_ci_data.csv "$work/"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/scalar_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/scalar_ci_clustered.td")
+```
+
+The base R 4.6.2 generator and independent reference are
+[`robust_ar_ci_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_ci_reference.R).
+It uses direct `lm.fit`, explicit observation/group score sandwiches and
+`polyroot`; R is development-only. Source rows 2 and 8 are missing the outcome
+and instrument, so HC1 retains 78 of 80 rows. The clustered script also excludes
+source row 17 for its missing group, retaining 77 rows and 10 groups. Both
+scripts change the current data after fitting and report the same set again,
+confirming that inference reuses the retained sample and does not refit.
+
+| Covariance | Auxiliary K / residual DF | Correction | 95% set |
+| --- | ---: | ---: | --- |
+| HC1 | 3 / 75 | 1.04 | [1.36445194119086, 1.96845342740648] |
+| CR1, 10 groups | 3 / 74 | 1.14114114114114 | [1.20537141708336, 2.13637942939771] |
+
+The reference distribution is asymptotic chi-square(1), with critical value
+3.84145882069413. The one-instrument test inversion is a quadratic inequality;
+the implementation solves it analytically without a finite grid. Tests check
+sample indices, corrections, endpoints, test membership and retained-state
+behavior within absolute 1e-10. HC1 assumes independent rows. CR1 assumes
+independent groups with many-group asymptotics; neither gives finite-sample
+coverage guarantees. Multiple excluded instruments, multiple endogenous
+regressors or robust projection remain unsupported.

@@ -364,7 +364,9 @@ Robust results use the distinct `RobustAndersonRubinResult` type with covariance
 correction, auxiliary K/DF, optional G and asymptotic reference metadata; the
 classical `AndersonRubinResult` contract remains unchanged. See
 `examples/robust-ar/README.md` for an independently validated complete workflow.
-Endogenous nuisance coefficients and robust/cluster confidence sets are not implemented.
+Endogenous-subvector inference is not implemented. Robust confidence sets are
+limited to one endogenous regressor and one excluded instrument, as described
+below.
 Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
 inference.
 
@@ -410,9 +412,36 @@ CLI-v1 JSON returns `AndersonRubinConfidenceSet` with the endogenous name, level
 N, both DF, critical F, `shape` and `intervals`. An absent lower/upper bound
 (`null`) means **negative/positive infinity**, not missingness; `empty` has an
 empty interval list and `all_real` has one interval with both bounds null.
-No heteroskedastic/cluster confidence sets or endogenous-subvector/nuisance
-projection are implied by this single-endogenous form. A separate projected form
-is available for multi-endogenous fits below.
+This homoskedastic form does not imply robust confidence sets or
+endogenous-subvector/nuisance projection. A separate projected form is available
+for multi-endogenous homoskedastic fits below.
+
+After a `robust` or `cluster(group)` fit with exactly one endogenous regressor
+and exactly one excluded instrument, the same `ci` syntax inverts the HC1/CR1
+auxiliary Wald test instead:
+
+```text
+ivregress 2sls y w, endog(x) iv(z) robust
+estat ar, ci
+ivregress 2sls y w, endog(x) iv(z) cluster(group)
+estat ar, ci level(90)
+```
+
+The result uses an **asymptotic chi-square(1)** reference. HC1 correction is
+N/(N−K_aux); CR1 is G/(G−1)*(N−1)/(N−K_aux), where K_aux counts the intercept,
+included exogenous regressors and the excluded instrument. The analytic
+quadratic inversion reports bounded, disjoint, ray, all-real, empty or singleton
+sets. Included exogenous coefficients remain unrestricted nuisance parameters.
+HC1 assumes independent rows; CR1 assumes independent groups and many-group
+asymptotics. Neither offers finite-sample or few-cluster coverage guarantees.
+
+Multiple excluded instruments, multiple endogenous regressors, projected robust
+sets, and HAC/survey covariance are unsupported. Rank, residual-DF, cluster,
+nonfinite arithmetic and degenerate auxiliary-score covariance failures are
+explicit errors. CLI-v1 JSON returns the distinct
+`RobustAndersonRubinConfidenceSet` type with the covariance, correction, optional
+cluster count, critical value, shape and intervals; the homoskedastic JSON
+contract is unchanged.
 
 ## Projected Anderson–Rubin confidence sets
 

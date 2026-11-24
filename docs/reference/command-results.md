@@ -1766,8 +1766,9 @@ Linear JSON results reuse the supplied statistics without recalculation:
   summaries do not contain weak-IV-robust inference),
   `joint_ar_postestimation_available` (true for classical/HC1/one-way-cluster fits;
   actual null-specific auxiliary rank/variance checks still apply),
-  `scalar_ar_confidence_set_available` (true only for nonrobust/single-endogenous
-  fits; numerical/rank/variance validation can still fail),
+  `scalar_ar_confidence_set_available` (true for nonrobust single-endogenous fits,
+  and robust/cluster fits with one endogenous regressor and one excluded
+  instrument; numerical/rank/variance validation can still fail),
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
   `rows` with endogenous name,
   excluded instruments, N, numerator/denominator DF, ordinary `partial_r_squared`,
@@ -1893,8 +1894,9 @@ Linear JSON results reuse the supplied statistics without recalculation:
   Rank-limited restriction covariance (including q >= G), invalid nulls and
   auxiliary design/variance/DF failures are errors; restrictions are never dropped
   to manufacture a p-value. Retained sample/design/groups are used without 2SLS
-  refits, current-column reads or state mutation. Robust confidence sets and
-  less-conservative endogenous-subvector tests remain unsupported. The synthetic
+  refits, current-column reads or state mutation. Broader multiple-instrument
+  robust confidence sets and less-conservative endogenous-subvector tests remain
+  unsupported. The synthetic
   `examples/robust-ar/` workflow records independent numerical/sample evidence.
 - `AndersonRubinConfidenceSet` (`estat ar, ci [level(95)]`): scalar nonrejection
   set for exactly one endogenous coefficient, leaving included-exogenous
@@ -1909,12 +1911,30 @@ Linear JSON results reuse the supplied statistics without recalculation:
   ((-inf, upper]), `upper_ray` ([lower, +inf)), `singleton` ([b,b]). Empty sets
   have no intervals; all-real sets have one interval with both bounds null.
   Analytic quadratic inversion uses no finite grid/truncation. Confidence levels
-  are finite and strictly between 0 and 100. Multi-endogenous and robust/cluster
-  fits are rejected. Rank/DF/nonfinite/range failures and auxiliary residual
+  are finite and strictly between 0 and 100. This homoskedastic result type
+  rejects multi-endogenous and robust/cluster fits. Rank/DF/nonfinite/range failures and auxiliary residual
   variance that cannot remain positive for all nulls are errors, not empty sets
   (see `help estat` for the relative 1e-12 innovation-norm policy). Assumptions and
   retained sample/state semantics match the homoskedastic joint test; use the
   projected result below to leave other endogenous coefficients unrestricted.
+- `RobustAndersonRubinConfidenceSet` (`estat ar, ci [level(95)]` after an HC1 or
+  one-way clustered fit): robust scalar nonrejection set for exactly one
+  endogenous regressor and one excluded instrument, with included exogenous
+  coefficients unrestricted. It reports
+  `test: "anderson_rubin_scalar_robust_confidence_set"`,
+  `covariance: "robust_hc1"` or `"cluster(name)"`,
+  `reference_distribution: "asymptotic_chi_square"`,
+  `weak_iv_robust: true`, the endogenous/instrument names, level, N, auxiliary K
+  and residual DF, correction, optional cluster count, `degrees_of_freedom: 1`,
+  critical chi-square, `shape` and `intervals`. It analytically inverts the HC1/CR1
+  auxiliary Wald test and uses the same interval shape and infinity conventions
+  as `AndersonRubinConfidenceSet`. HC1 assumes independent rows; CR1 assumes
+  independent groups with many-group asymptotics. Neither has a finite-sample or
+  few-cluster guarantee. Multiple excluded instruments, multiple endogenous
+  regressors, robust projection and HAC/survey covariance are unsupported.
+  Degenerate auxiliary-score covariance, rank, DF, cluster or numerical-range
+  failures are errors. The retained sample/design/groups are used without
+  refits, current-column reads or state mutation.
 - `ProjectedAndersonRubinConfidenceSet`
   (`estat ar, ci coefficient(name) [level(95)]` after a nonrobust multi-endogenous
   2SLS fit): analytic projection of the joint homoskedastic AR nonrejection region
