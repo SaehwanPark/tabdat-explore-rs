@@ -221,6 +221,100 @@ fn decimal_label(value: i128, scale: u8) -> String {
   text
 }
 
+/// An arbitrary-precision decimal key used only to order numeric factor labels
+/// after their f64 values compare equal. Integer and DECIMAL cells can be
+/// distinct beyond f64 precision, so ordering those ties by the rounded value
+/// or by input order would make the omitted reference row-order dependent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExactDecimal {
+  negative: bool,
+  digits: String,
+  /// Decimal position relative to the first significant digit. For example,
+  /// `1.2` has order 1 and digits `12`, while `0.012` has order -1 and digits
+  /// `12`.
+  order: i64,
+}
+
+fn parse_exact_decimal(text: &str) -> Option<ExactDecimal> {
+  let text = text.trim();
+  let (mantissa, exponent) = match text.find(['e', 'E']) {
+    Some(index) => (&text[..index], text[index + 1..].parse::<i64>().ok()?),
+    None => (text, 0),
+  };
+  let (negative, mantissa) = match mantissa.as_bytes().first().copied() {
+    Some(b'-') => (true, &mantissa[1..]),
+    Some(b'+') => (false, &mantissa[1..]),
+    _ => (false, mantissa),
+  };
+  let (integer, fraction) = mantissa
+    .split_once('.')
+    .map_or((mantissa, ""), |parts| parts);
+  if integer.is_empty() && fraction.is_empty()
+    || !integer.bytes().all(|byte| byte.is_ascii_digit())
+    || !fraction.bytes().all(|byte| byte.is_ascii_digit())
+  {
+    return None;
+  }
+  let mut digits = String::with_capacity(integer.len() + fraction.len());
+  digits.push_str(integer);
+  digits.push_str(fraction);
+  let first_nonzero = digits.bytes().position(|byte| byte != b'0');
+  let Some(first_nonzero) = first_nonzero else {
+    return Some(ExactDecimal {
+      negative: false,
+      digits: "0".into(),
+      order: 0,
+    });
+  };
+  digits.drain(..first_nonzero);
+
+  let order = i64::try_from(integer.len())
+    .ok()?
+    .checked_sub(i64::try_from(first_nonzero).ok()?)?
+    .checked_add(exponent)?;
+  while digits.ends_with('0') {
+    digits.pop();
+  }
+  Some(ExactDecimal {
+    negative,
+    digits,
+    order,
+  })
+}
+
+fn compare_exact_decimals(left: &str, right: &str) -> Option<std::cmp::Ordering> {
+  let left = parse_exact_decimal(left)?;
+  let right = parse_exact_decimal(right)?;
+  if left.digits == "0" && right.digits == "0" {
+    return Some(std::cmp::Ordering::Equal);
+  }
+  if left.negative != right.negative {
+    return Some(if left.negative {
+      std::cmp::Ordering::Less
+    } else {
+      std::cmp::Ordering::Greater
+    });
+  }
+  let mut ordering = left.order.cmp(&right.order);
+  if ordering == std::cmp::Ordering::Equal {
+    let width = left.digits.len().max(right.digits.len());
+    ordering = (0..width)
+      .map(|index| {
+        (
+          left.digits.as_bytes().get(index).copied().unwrap_or(b'0'),
+          right.digits.as_bytes().get(index).copied().unwrap_or(b'0'),
+        )
+      })
+      .find_map(|(left, right)| (left != right).then_some(left.cmp(&right)))
+      .unwrap_or(std::cmp::Ordering::Equal);
+  }
+  Some(if left.negative {
+    ordering.reverse()
+  } else {
+    ordering
+  })
+}
+
 /// Expanded ordered design after factor levels are learned from the retained sample.
 #[derive(Debug)]
 pub(crate) struct ExpandedDesign {
@@ -428,10 +522,13 @@ fn sorted_factor_levels(values: &[ObservedFactor]) -> Vec<ObservedFactor> {
   // A column has one physical type, so mixed-type levels are only a defensive
   // fallback; text labels sort before numeric codes there.
   levels.sort_by(|left, right| match (left.as_number(), right.as_number()) {
-    (Some(left), Some(right)) => left
-      .partial_cmp(&right)
+    (Some(left_value), Some(right_value)) => left_value
+      .partial_cmp(&right_value)
       .unwrap_or(std::cmp::Ordering::Equal)
-      .then_with(|| left.to_string().cmp(&right.to_string())),
+      .then_with(|| {
+        compare_exact_decimals(&left.label(), &right.label())
+          .unwrap_or_else(|| left.label().cmp(&right.label()))
+      }),
     (None, Some(_)) => std::cmp::Ordering::Less,
     (Some(_), None) => std::cmp::Ordering::Greater,
     (None, None) => left.label().cmp(&right.label()),
@@ -455,12 +552,19 @@ fn select_reference(
   {
     return Ok(index);
   }
-  if let Ok(number) = base.parse::<f64>()
-    && let Some(index) = levels
-      .iter()
-      .position(|level| level.as_number().is_some_and(|value| value == number))
-  {
-    return Ok(index);
+  if let Ok(number) = base.parse::<f64>() {
+    if let Some(index) = levels.iter().position(|level| {
+      let Some(value) = level.as_number() else {
+        return false;
+      };
+      match compare_exact_decimals(&level.label(), base) {
+        Some(std::cmp::Ordering::Equal) => true,
+        Some(_) => false,
+        None => value == number,
+      }
+    }) {
+      return Ok(index);
+    }
   }
   match base.to_ascii_lowercase().as_str() {
     "true"
@@ -588,6 +692,22 @@ mod tests {
   }
 
   #[test]
+  fn exact_decimal_comparison_handles_spellings_and_large_exponents() {
+    assert_eq!(
+      compare_exact_decimals("1.20", "1.2"),
+      Some(std::cmp::Ordering::Equal)
+    );
+    assert_eq!(
+      compare_exact_decimals("1e-10001", "1e-10002"),
+      Some(std::cmp::Ordering::Greater)
+    );
+    assert_eq!(
+      compare_exact_decimals("-1.2e3", "-1200"),
+      Some(std::cmp::Ordering::Equal)
+    );
+  }
+
+  #[test]
   fn wide_codes_stay_distinct_levels_after_f64_rounding() {
     let level = |value| {
       ObservedFactor::from_cell(&CellValue::Decimal {
@@ -603,6 +723,86 @@ mod tests {
     assert_eq!(left.as_number(), right.as_number());
     assert!(!left.same_level(&right));
     assert_eq!(sorted_factor_levels(&[right, left]).len(), 2);
+  }
+
+  #[test]
+  fn wide_numeric_levels_sort_exactly_and_keep_prediction_order() {
+    let level = |value| {
+      ObservedFactor::from_cell(&CellValue::Decimal {
+        width: 38,
+        scale: 0,
+        value,
+      })
+      .unwrap()
+      .unwrap()
+    };
+    let lower = level(9_223_372_036_854_775_808);
+    let higher = level(9_223_372_036_854_775_809);
+    let terms = parse_regress_terms(&["i.code".into()]).unwrap();
+    let first = expand_design(&terms, &observed(&[higher.clone(), lower.clone()]), true).unwrap();
+    let second = expand_design(&terms, &observed(&[lower.clone(), higher.clone()]), true).unwrap();
+
+    assert_eq!(first.parameter_names, ["code_9223372036854775809"]);
+    assert_eq!(first.design_terms, second.design_terms);
+    assert_eq!(first.parameter_names, second.parameter_names);
+    assert_eq!(
+      expand_current_row(
+        &first.design_terms,
+        true,
+        &[&CellValue::Decimal {
+          width: 38,
+          scale: 0,
+          value: 9_223_372_036_854_775_809,
+        }]
+      )
+      .unwrap(),
+      Some(vec![1.0])
+    );
+  }
+
+  #[test]
+  fn negative_wide_numeric_levels_sort_by_exact_value() {
+    let level = |value| {
+      ObservedFactor::from_cell(&CellValue::Decimal {
+        width: 38,
+        scale: 0,
+        value,
+      })
+      .unwrap()
+      .unwrap()
+    };
+    let lower = level(-9_223_372_036_854_775_809);
+    let higher = level(-9_223_372_036_854_775_808);
+    let sorted = sorted_factor_levels(&[higher, lower]);
+    assert_eq!(
+      sorted.iter().map(ObservedFactor::label).collect::<Vec<_>>(),
+      [
+        "-9223372036854775809".to_owned(),
+        "-9223372036854775808".to_owned()
+      ]
+    );
+  }
+
+  #[test]
+  fn explicit_wide_reference_does_not_use_rounded_f64_aliases() {
+    let level = |value| {
+      ObservedFactor::from_cell(&CellValue::Decimal {
+        width: 38,
+        scale: 0,
+        value,
+      })
+      .unwrap()
+      .unwrap()
+    };
+    let levels = sorted_factor_levels(&[
+      level(9_223_372_036_854_775_809),
+      level(9_223_372_036_854_775_808),
+    ]);
+    assert_eq!(
+      select_reference("code", Some("9223372036854775809"), &levels),
+      Ok(1)
+    );
+    assert!(select_reference("code", Some("9.223372036854776e18"), &levels).is_err());
   }
 
   fn observed(values: &[ObservedFactor]) -> Vec<Vec<ObservedTermValue>> {
