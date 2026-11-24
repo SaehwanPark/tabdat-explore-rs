@@ -66,11 +66,12 @@ Convergence and supported limits:
   classifier; extreme finite designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Only one-way clustering is supported. Weighted/survey logit,
-  prediction intervals and general `lincom`/`test` after logit are not
-  installed (the probit counterpart is `help probit`). Normal coefficient
-  inference and (for model-based fits only) the overall LR test are reported
-  directly by `logit`; do not substitute linear t/F inference.
+- Only one-way clustering is supported. Weighted/survey logit, prediction
+  intervals and `lincom` are not installed. `test` supports general linear
+  restrictions on retained logit coefficients with an asymptotic Wald
+  chi-square reference; see `help test`. Normal coefficient inference and (for
+  model-based fits only) the overall LR test are reported directly by `logit`;
+  do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryLogitResult`; `estat margins` returns
   `LogitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.

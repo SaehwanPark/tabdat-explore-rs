@@ -384,7 +384,16 @@ covariance, `degrees_of_freedom` q equal to the number of declared predictor
 columns, and `reference_distribution: "asymptotic_chi_square"` (not F).
 Without an intercept every coefficient is tested. Classical fits return
 `omnibus_wald: null` and retain their existing LR inference. This is not a
-conditional-mean specification test or a general binary `test`/`lincom` API.
+conditional-mean specification test.
+
+After a retained logit or probit fit, `test <linear restrictions>` evaluates
+general affine restrictions with that fit's selected model-based, robust or
+one-way clustered covariance. It returns the existing `TestResult` shape with
+`statistic` as Wald chi-square, `df` equal to the number of restrictions,
+`df_residual: null`, and `is_chi2: true`. This is asymptotic inference, with no
+few-cluster reference correction. Restrictions use the retained coefficients
+and covariance even if the active data later change. `lincom` remains
+unsupported after these binary fits.
 
 If no slopes exist (stats API), q >= G for a clustered fit, or the slope
 correlation covariance is numerically singular, the fitted model remains usable
@@ -428,8 +437,8 @@ inference fields as coefficients, excluding the intercept). It averages
 covariance through the delta gradient, **not** sampling uncertainty in the
 covariate distribution. Current-data changes do not redefine the estimand or
 rescan/refit the model. These are not automatic discrete changes or interaction
-chain rules. `lincom`/`test` after logit are explicitly unsupported rather than
-silently using linear Student-t/F inference.
+chain rules. `lincom` after logit remains unsupported. `test` uses the binary
+Wald chi-square contract above rather than linear Student-t/F inference.
 
 `probit y x1 ... [, robust cluster(group) noconstant]` shares the contract with these
 family deltas. The engine fits Newton steps against the per-observation observed
@@ -1958,6 +1967,8 @@ Linear JSON results reuse the supplied statistics without recalculation:
   `ci_lower`, `ci_upper`, `ci_level`, `df_residual` (supplied Student-t inference).
 - `TestResult`: ordered `constraints`, `statistic`, upper-tail `p_value`, `df`,
   `df_residual`, `is_chi2`; false means F with numerator/residual denominator DF.
+  Binary logit/probit restrictions set `is_chi2: true`, use `df` as chi-square
+  degrees of freedom and leave `df_residual` null.
 
 The current least-squares engine reports fit residual DF N − P. Nonrobust/HC1
 coefficient and `lincom` Student-t inference and `test` F denominators use N − P;

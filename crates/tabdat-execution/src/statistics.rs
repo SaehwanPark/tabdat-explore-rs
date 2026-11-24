@@ -769,22 +769,43 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
       return Err(RuntimeError::TestFailed { message: "RE reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
     }
-    if matches!(self.estimation, Some(EstimationState::Logit(_))) {
-      return Err(RuntimeError::TestFailed {
-        message: "test after logit is not implemented; logit reports normal coefficient tests and an overall likelihood-ratio test".into(),
-      });
-    }
-    let post_estimation = self
-      .linear_inference_model()
-      .ok_or(RuntimeError::TestRequiresPriorEstimation)?;
+    let binary_result = match &self.estimation {
+      Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {
+        Some(&state.result)
+      }
+      _ => None,
+    };
+    let post_estimation = if binary_result.is_none() {
+      Some(
+        self
+          .linear_inference_model()
+          .ok_or(RuntimeError::TestRequiresPriorEstimation)?,
+      )
+    } else {
+      None
+    };
     if command.constraints.is_empty() {
       return Err(RuntimeError::TestFailed {
         message: "test command expects a list of variables or constraints".to_owned(),
       });
     }
 
-    let parameter_indices = post_estimation
-      .parameter_names
+    let parameter_names = binary_result
+      .map(|result| {
+        result
+          .coefficients
+          .iter()
+          .map(|coefficient| coefficient.name.clone())
+          .collect::<Vec<_>>()
+      })
+      .unwrap_or_else(|| {
+        post_estimation
+          .as_ref()
+          .expect("nonbinary post-estimation model exists")
+          .parameter_names
+          .clone()
+      });
+    let parameter_indices = parameter_names
       .iter()
       .enumerate()
       .map(|(index, name)| (name.clone(), index))
@@ -793,17 +814,35 @@ impl Session {
     let mut r_vector = Vec::with_capacity(command.constraints.len());
     let mut constraints = Vec::with_capacity(command.constraints.len());
     for constraint in &command.constraints {
-      let affine = affine_test_expression(
-        constraint,
-        &parameter_indices,
-        post_estimation.parameter_names.len(),
-      )
-      .map_err(|message| RuntimeError::TestFailed { message })?;
+      let affine = affine_test_expression(constraint, &parameter_indices, parameter_names.len())
+        .map_err(|message| RuntimeError::TestFailed { message })?;
       r_matrix.push(affine.weights);
       r_vector.push(-affine.offset);
       constraints.push(format_test_constraint(constraint));
     }
 
+    if let Some(result) = binary_result {
+      let wald = tabdat_stats::binary_wald_test(result, &r_matrix, &r_vector).map_err(|error| {
+        RuntimeError::TestFailed {
+          message: match error {
+            tabdat_stats::StatsError::SingularMatrix(_) => {
+              "constraints are collinear or singular".to_owned()
+            }
+            other => other.to_string(),
+          },
+        }
+      })?;
+      return Ok(ExecutionResult::Test(TestResult {
+        constraints,
+        statistic: wald.statistic,
+        p_value: wald.p_value,
+        df: wald.degrees_of_freedom,
+        df_residual: None,
+        is_chi2: true,
+      }));
+    }
+
+    let post_estimation = post_estimation.expect("nonbinary post-estimation model exists");
     let wald = post_estimation
       .test_linear_hypothesis(&r_matrix, &r_vector)
       .map_err(|error| RuntimeError::TestFailed {

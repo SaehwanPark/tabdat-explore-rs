@@ -70,11 +70,12 @@ Convergence and supported limits:
   designs may also fail numerical-resolution bounds.
 - Plain numeric predictor columns only: no automatic factor/interactions,
   discrete changes, or chain-rule interpretation of generated columns.
-- Only one-way clustering is supported. Weighted/survey probit,
-  prediction intervals and general `lincom`/`test` after probit are not
-  installed. Normal coefficient inference and (for model-based fits only) the
-  overall LR test are reported directly by `probit`; do not substitute linear
-  t/F inference.
+- Only one-way clustering is supported. Weighted/survey probit, prediction
+  intervals and `lincom` are not installed. `test` supports general linear
+  restrictions on retained probit coefficients with an asymptotic Wald
+  chi-square reference; see `help test`. Normal coefficient inference and (for
+  model-based fits only) the overall LR test are reported directly by `probit`;
+  do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryProbitResult`; `estat margins` returns
   `ProbitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.

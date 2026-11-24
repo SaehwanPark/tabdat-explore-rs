@@ -564,10 +564,53 @@ are not rejected merely because probabilities round to zero/one.
 One-way clustered fits have separate [external method evidence](../contraception_cluster/README.md),
 not a new fishing-mode illustration claim.
 
-Weighted/survey forms, categorical/factor/interactions and
-discrete changes with uncertainty, prediction intervals, general `lincom`/`test`
-after either binary family and graphics beyond the bounded SVG scatter/line
-workflow are not delivered by this slice. They
-remain required where specified by the roadmap/illustrations; neither this
-example nor passing synthetic tests establish binary-family or full-book
-completion.
+## General Wald tests of linear restrictions
+
+`test <linear restrictions>` after logit or probit uses the retained fit's
+model-based, robust or one-way clustered covariance and reports an asymptotic
+chi-square test with `df` equal to the number of restrictions. `df_residual` is
+null; the result keeps the existing `TestResult` JSON shape. Current-data edits
+do not change the fitted coefficients or covariance used by the test. This does
+not add `lincom`, few-cluster corrections, or binary specification tests.
+
+Run the four tests on the verified fishing cohort:
+
+```sh
+(
+set -eu
+cargo build --locked --bin tabdat-explore-rs
+repo="$PWD"
+work=$(mktemp -d)
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/Nldata.asc -o "$work/Nldata.asc"
+printf '%s  %s\n' \
+  1fb6f7d5abaf790d4df2c6a13a499ca42c0db4f950d941ba92565c30b4ab6c22 \
+  "$work/Nldata.asc" | shasum -a 256 -c -
+awk -f examples/mma14p1binary/nldata_to_csv.awk "$work/Nldata.asc" \
+  > "$work/Nldata.csv.tmp" && mv "$work/Nldata.csv.tmp" "$work/Nldata.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/wald_test.td")
+)
+```
+
+The script tests `lnrelp = 0` after classical and robust logit and probit fits.
+The independent coefficient/covariance reference, reproduced with Base R 4.6.2,
+gives these results:
+
+| Fit | Wald chi-square(1) | Upper-tail p-value |
+| --- | ---: | ---: |
+| Classical logit | 158.929605201185 | 1.93874847795392e-36 |
+| Robust logit | 194.280378518602 | 3.69887865747074e-44 |
+| Classical probit | 192.300872674365 | 1.00026649672042e-43 |
+| Robust probit | 232.020896467226 | 2.16086165111997e-52 |
+
+Native results match these references within 8e-12 in the statistic and 4e-12
+relative in the tail probability. A separate deterministic 40-row design checks
+one and two restrictions under model-based, independent-row robust and one-way
+cluster covariance for both families; see the
+[`wald-test.md` method evidence](wald-test.md). No R/Python production dependency
+is introduced.
+
+Weighted/survey forms, categorical/factor/interactions, discrete changes with
+uncertainty, prediction intervals and graphics beyond the bounded SVG
+scatter/line workflow remain open. General binary `lincom`, few-cluster
+inference, specification tests and the rest of the textbook are not claimed.

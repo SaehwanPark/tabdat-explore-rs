@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::distributions::chi_square_tail;
 use crate::error::StatsError;
 use crate::estimates::{CovarianceMatrix, CovarianceType};
 use crate::matrix::{
@@ -65,6 +66,127 @@ pub struct WaldTestResult {
   pub df_num: usize,
   /// Denominator degrees of freedom (residual df).
   pub df_denom: usize,
+}
+
+/// Asymptotic Wald test against a chi-square reference distribution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WaldChiSquareTestResult {
+  /// Chi-square Wald statistic.
+  pub statistic: f64,
+  /// Number of tested restrictions and chi-square degrees of freedom.
+  pub degrees_of_freedom: usize,
+  /// Upper-tail chi-square probability.
+  pub p_value: f64,
+}
+
+pub(crate) fn wald_chi_square_test(
+  parameters: &[f64],
+  covariance: &[Vec<f64>],
+  r_matrix: &[Vec<f64>],
+  r_vector: &[f64],
+) -> Result<WaldChiSquareTestResult, StatsError> {
+  let q = r_matrix.len();
+  if q == 0 {
+    return Err(StatsError::IncompatibleHypothesis(
+      "restriction matrix R must have at least one row".into(),
+    ));
+  }
+  if r_vector.len() != q {
+    return Err(StatsError::DimensionMismatch(format!(
+      "restriction vector r length ({}) must match R rows ({q})",
+      r_vector.len()
+    )));
+  }
+  let p = parameters.len();
+  if p == 0 || covariance.len() != p {
+    return Err(StatsError::DimensionMismatch(format!(
+      "covariance row count ({}) must match positive parameter count ({p})",
+      covariance.len()
+    )));
+  }
+  if parameters.iter().any(|value| !value.is_finite())
+    || r_vector.iter().any(|value| !value.is_finite())
+    || r_matrix.iter().flatten().any(|value| !value.is_finite())
+    || covariance.iter().flatten().any(|value| !value.is_finite())
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Wald parameters, covariance and restrictions must be finite".into(),
+    ));
+  }
+  for (idx, row) in r_matrix.iter().enumerate() {
+    if row.len() != p {
+      return Err(StatsError::DimensionMismatch(format!(
+        "R row {idx} length ({}) must match parameter count ({p})",
+        row.len()
+      )));
+    }
+  }
+  for (idx, row) in covariance.iter().enumerate() {
+    if row.len() != p {
+      return Err(StatsError::DimensionMismatch(format!(
+        "covariance row {idx} length ({}) must match parameter count ({p})",
+        row.len()
+      )));
+    }
+  }
+
+  let r_beta = multiply_vector(r_matrix, parameters)?;
+  let difference = r_beta
+    .iter()
+    .zip(r_vector)
+    .map(|(value, null)| value - null)
+    .collect::<Vec<_>>();
+  let r_v = multiply(r_matrix, covariance)?;
+  let r_v_rt = multiply(&r_v, &transpose(r_matrix)?)?;
+  let covariance_scale = r_v_rt
+    .iter()
+    .flatten()
+    .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+  if covariance_scale == 0.0 || !covariance_scale.is_finite() {
+    return Err(StatsError::SingularMatrix(
+      "restriction covariance matrix is zero or non-finite".into(),
+    ));
+  }
+  let normalized_covariance = r_v_rt
+    .iter()
+    .map(|row| row.iter().map(|value| value / covariance_scale).collect())
+    .collect::<Vec<Vec<_>>>();
+  let inverse = invert(&normalized_covariance)?;
+  let difference_scale = difference
+    .iter()
+    .fold(0.0_f64, |scale, value| scale.max(value.abs()));
+  let statistic = if difference_scale == 0.0 {
+    0.0
+  } else {
+    let normalized_difference = difference
+      .iter()
+      .map(|value| value / difference_scale)
+      .collect::<Vec<_>>();
+    let inverse_difference = multiply_vector(&inverse, &normalized_difference)?;
+    let normalized_quadratic = normalized_difference
+      .iter()
+      .zip(&inverse_difference)
+      .map(|(value, inverse_value)| value * inverse_value)
+      .sum::<f64>();
+    let scale = difference_scale / covariance_scale.sqrt();
+    normalized_quadratic * scale * scale
+  };
+  if !statistic.is_finite() || statistic < 0.0 {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Wald chi-square statistic is negative or non-finite".into(),
+    ));
+  }
+  let p_value = chi_square_tail(statistic, q);
+  if !p_value.is_finite() || !(0.0..=1.0).contains(&p_value) {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Wald chi-square probability is invalid".into(),
+    ));
+  }
+  Ok(WaldChiSquareTestResult {
+    statistic,
+    degrees_of_freedom: q,
+    p_value,
+  })
 }
 
 impl PostEstimationModel {
@@ -206,83 +328,27 @@ impl PostEstimationModel {
     r_matrix: &[Vec<f64>],
     r_vector: &[f64],
   ) -> Result<WaldTestResult, StatsError> {
-    let q = r_matrix.len();
-    if q == 0 {
-      return Err(StatsError::IncompatibleHypothesis(
-        "restriction matrix R must have at least one row".into(),
-      ));
-    }
-    if r_vector.len() != q {
-      return Err(StatsError::DimensionMismatch(format!(
-        "restriction vector r length ({}) must match R rows ({q})",
-        r_vector.len()
-      )));
-    }
-    let p = self.parameters.len();
-    for (idx, row) in r_matrix.iter().enumerate() {
-      if row.len() != p {
-        return Err(StatsError::DimensionMismatch(format!(
-          "R row {idx} length ({}) must match parameter count ({p})",
-          row.len()
-        )));
-      }
-    }
-
-    // diff = R * beta - r
-    let r_beta = multiply_vector(r_matrix, &self.parameters)?;
-    let mut diff = vec![0.0; q];
-    for i in 0..q {
-      diff[i] = r_beta[i] - r_vector[i];
-    }
-
-    // middle = (R * V * R')^(-1)
-    let r_v = multiply(r_matrix, &self.covariance.matrix)?;
-    let r_t = transpose(r_matrix)?;
-    let r_v_rt = multiply(&r_v, &r_t)?;
-    if r_v_rt.iter().flatten().any(|value| !value.is_finite()) {
-      return Err(StatsError::SingularMatrix(
-        "restriction covariance matrix is non-finite".into(),
-      ));
-    }
-    let covariance_scale = r_v_rt
-      .iter()
-      .flatten()
-      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
-    if covariance_scale == 0.0 {
-      return Err(StatsError::SingularMatrix(
-        "restriction covariance matrix is zero".into(),
-      ));
-    }
-    let normalized_r_v_rt = r_v_rt
-      .iter()
-      .map(|row| row.iter().map(|value| value / covariance_scale).collect())
-      .collect::<Vec<Vec<_>>>();
-    let r_v_rt_inv = invert(&normalized_r_v_rt)?;
-
-    // W = diff' * middle * diff
-    let difference_scale = diff
-      .iter()
-      .fold(0.0_f64, |scale, value| scale.max(value.abs()));
-    let normalized_diff = if difference_scale == 0.0 {
-      vec![0.0; q]
-    } else {
-      diff.iter().map(|value| value / difference_scale).collect()
-    };
-    let inv_diff = multiply_vector(&r_v_rt_inv, &normalized_diff)?;
-    let normalized_quadratic: f64 = normalized_diff
-      .iter()
-      .zip(inv_diff.iter())
-      .map(|(&d, &id)| d * id)
-      .sum();
-    let scaled_difference = difference_scale / covariance_scale.sqrt();
-    let chi2 = normalized_quadratic * scaled_difference * scaled_difference;
-    let f_stat = chi2 / (q as f64);
-
+    let wald = self.test_linear_hypothesis_chi_square(r_matrix, r_vector)?;
     Ok(WaldTestResult {
-      f_statistic: f_stat,
-      chi2_statistic: chi2,
-      df_num: q,
+      f_statistic: wald.statistic / wald.degrees_of_freedom as f64,
+      chi2_statistic: wald.statistic,
+      df_num: wald.degrees_of_freedom,
       df_denom: self.degrees_of_freedom,
     })
+  }
+
+  /// Test linear restrictions against their asymptotic chi-square reference.
+  /// This form does not require or invent finite-sample residual degrees of freedom.
+  pub fn test_linear_hypothesis_chi_square(
+    &self,
+    r_matrix: &[Vec<f64>],
+    r_vector: &[f64],
+  ) -> Result<WaldChiSquareTestResult, StatsError> {
+    wald_chi_square_test(
+      &self.parameters,
+      &self.covariance.matrix,
+      r_matrix,
+      r_vector,
+    )
   }
 }
