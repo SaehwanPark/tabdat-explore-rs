@@ -150,6 +150,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::Hausman
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
+            | EstatSubcommand::DiscreteMargins { .. }
             | EstatSubcommand::CountProbabilities { .. },
           ..
         },
@@ -646,6 +647,25 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "observation_count": result.observation_count, "effects": result.effects,
       }),
       "LogitMarginalEffectsResult",
+    ),
+    ExecutionResult::BinaryDiscreteChange(result) => (
+      json!({
+        "estimator": if result.model == tabdat_stats::BinaryModel::Logit { "logit" } else { "probit" },
+        "effect": "average_discrete_probability_change",
+        "predictor": result.predictor,
+        "from_value": result.from_value,
+        "to_value": result.to_value,
+        "sample": "retained_estimation_design",
+        "uncertainty": "conditional_on_observed_design_delta_method",
+        "cluster": result.cluster,
+        "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else if result.model == tabdat_stats::BinaryModel::Logit { "model_based_fisher_information" } else { "model_based_observed_information" },
+        "confidence_level": 95.0,
+        "reference_distribution": "asymptotic_standard_normal",
+        "observation_count": result.observation_count,
+        "causal_interpretation": false,
+        "effect_estimate": result.effect,
+      }),
+      "BinaryDiscreteChangeResult",
     ),
     ExecutionResult::NormalizedCommonNestedLogit(result) => {
       let mut data = serde_json::to_value(result).expect("finite normalized nested fit");

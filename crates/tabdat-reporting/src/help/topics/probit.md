@@ -22,7 +22,8 @@ non-intercept coefficients = 0, with asymptotic chi-square(q), not F.
 
 With `, cluster(group)`, scores are summed within each group before forming
 the sandwich, with G/(G-1) correction and the same converged observed-information
-bread. Coefficient and retained-X delta-AME inference remain asymptotic normal,
+bread. Coefficient and continuous/discrete retained-X effect inference remain
+asymptotic normal,
 **not** G-1 Student t. Clusters must be independent; few/imbalanced clusters can
 make this approximation unreliable. At least two retained groups are required,
 which is only a computability guard. Cluster IDs may be numeric, text or boolean;
@@ -41,6 +42,7 @@ unsupported.
 Workflow (after loading numeric data):
 - `probit insured age bmi`
 - `estat margins` — continuous average predictor-column derivatives and delta SE/95% intervals
+- `estat margins, discrete(treated)` — average probability change for a numeric 0/1 predictor
 - `predict probability, pr`
 - `predict index_b, xb`
 - `head 8`
@@ -53,8 +55,9 @@ Sample and state:
 - The intercept is included unless `noconstant`; names/order and exact retained
   indices are recorded. Without an intercept the LR null is probability 0.5,
   not an estimated constant probability.
-- A successful fit owns its original design/sample. `estat margins` remains
-  unchanged after current-data edits. Prediction instead uses current predictor
+- A successful fit owns its original design/sample. Both continuous and
+  discrete `estat margins` results remain unchanged after current-data edits.
+  Prediction instead uses current predictor
   rows, without requiring the outcome; probability columns are computed by the
   same validated Gaussian function the fit used (`tabdat_gauss_phi`).
 - A new fit attempt clears the previous model, including on failure. Refit
@@ -68,8 +71,10 @@ Convergence and supported limits:
   singularity/nonconvergence cannot publish a fit merely because likelihood
   looks flat. This is not an analytic separation classifier; extreme finite
   designs may also fail numerical-resolution bounds.
-- Plain numeric predictor columns only: no automatic factor/interactions,
-  discrete changes, or chain-rule interpretation of generated columns.
+- Plain numeric predictor columns only: no automatic factor/interactions or
+  chain-rule interpretation of generated columns. The bounded discrete-change
+  command accepts one numeric predictor with exact 0/1 values and both levels
+  in the retained sample; see `help estat`.
 - Only one-way clustering is supported. Weighted/survey probit, prediction
   intervals and `lincom` are not installed. `test` supports general linear
   restrictions on retained probit coefficients with an asymptotic Wald
@@ -77,8 +82,9 @@ Convergence and supported limits:
   model-based fits only) the overall LR test are reported directly by `probit`;
   do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
-  JSON returns `BinaryProbitResult`; `estat margins` returns
-  `ProbitMarginalEffectsResult`. Prediction retains metadata-only `PredictionResult`.
+  JSON returns `BinaryProbitResult`; continuous `estat margins` returns
+  `ProbitMarginalEffectsResult`, while `discrete()` returns
+  `BinaryDiscreteChangeResult`. Prediction retains metadata-only `PredictionResult`.
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
 §14.2 fishing-mode binary illustration, independent R validation).

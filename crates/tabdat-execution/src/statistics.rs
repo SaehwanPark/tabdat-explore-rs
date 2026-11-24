@@ -1237,6 +1237,9 @@ impl Session {
     &self,
     command: &EstatCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if let EstatSubcommand::DiscreteMargins { variable } = &command.subcommand {
+      return self.execute_binary_discrete_margins(variable);
+    }
     if let EstatSubcommand::CountProbabilities { tail_from } = command.subcommand {
       return self.execute_count_probability_table(tail_from);
     }

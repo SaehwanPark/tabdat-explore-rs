@@ -331,7 +331,7 @@ contrasts/restores. Original fitted λ≈25.009343 is outside (0,1]; terminal wa
 and `random_utility_iv_bounds_satisfied: false` expose that failure. Preferred
 normalization alone does not make this fit a valid RUM or reproduce Stata8.
 
-## Binary logit/probit and continuous marginal effects
+## Binary logit/probit marginal effects and discrete changes
 
 `logit y x1 ... [, robust cluster(group) noconstant]` fits an unweighted
 Bernoulli logit model.
@@ -447,9 +447,27 @@ inference fields as coefficients, excluding the intercept). It averages
 "conditional_on_observed_design_delta_method"` includes the full intercept/slopes'
 covariance through the delta gradient, **not** sampling uncertainty in the
 covariate distribution. Current-data changes do not redefine the estimand or
-rescan/refit the model. These are not automatic discrete changes or interaction
-chain rules. `lincom` after logit remains unsupported. `test` uses the binary
-Wald chi-square contract above rather than linear Student-t/F inference.
+rescan/refit the model. These are not discrete changes or interaction chain
+rules. `lincom` after logit remains unsupported. `test` uses the binary Wald
+chi-square contract above rather than linear Student-t/F inference.
+
+`estat margins, discrete(variable)` after either family returns
+`BinaryDiscreteChangeResult`. It accepts one retained numeric predictor with
+exactly both 0 and 1 represented. For each retained row it changes that column
+to 0 and 1, leaves all other columns at their row values, and averages
+`Pr(y=1|X, variable=1) - Pr(y=1|X, variable=0)`. JSON identifies this as
+`effect: "average_discrete_probability_change"`, names the predictor and
+`from_value`/`to_value`, reports `sample: "retained_estimation_design"`, N,
+selected `covariance`, optional cluster metadata, and the `effect_estimate`
+normal inference object. The full delta method includes every coefficient and
+covariance cross term; inference is conditional on observed X and
+asymptotic-normal. `causal_interpretation` is false. Current-data edits do not
+change the stored-design result. Unknown/nonbinary/single-level predictors and
+calls without a retained logit/probit fit fail without changing the fit. This is
+a numeric binary method slice, not automatic factor handling, interactions,
+multiway/weighted inference or a causal effect. The independent synthetic R
+reference and runnable scripts are in
+[`examples/binary-discrete-change`](../../examples/binary-discrete-change/README.md).
 
 `probit y x1 ... [, robust cluster(group) noconstant]` shares the contract with these
 family deltas. The engine fits Newton steps against the per-observation observed
@@ -466,12 +484,14 @@ retained design). `predict ... , pr` computes probabilities with the same
 registered `tabdat_gauss_phi` Gaussian function the fit used, keeping SQL
 probabilities bit-identical to engine probabilities under the same index; `, xb`
 appends the finite linear index, and unsupported predict forms fail with the
-probit wording. With no supported binary/Poisson/NB2 fit, `estat margins` keeps the established
-prior-logit message.
+probit wording. Continuous `estat margins` returns
+`ProbitMarginalEffectsResult`; `discrete()` returns the shared
+`BinaryDiscreteChangeResult`. With no supported binary/Poisson/NB2 fit, bare
+`estat margins` keeps the established prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Weighted/survey/multiway binary inference and factors/interactions/discrete
-changes remain required work where applicable. The bounded Figure14.1 SVG
+Weighted/survey/multiway binary inference and general factors/interactions or
+broader categorical contrasts remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
 ## Bounded Heckman two-step selection

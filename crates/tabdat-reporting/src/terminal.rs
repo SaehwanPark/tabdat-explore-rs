@@ -2096,6 +2096,28 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       }
     ),
+    ExecutionResult::BinaryDiscreteChange(result) => format!(
+      "{} discrete average probability change; retained estimation N = {}\nPredictor {} set from {} to {}; other predictors stay at their observed retained-row values.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% interval. This is not a causal effect.\n{}",
+      if result.model == tabdat_stats::BinaryModel::Logit {
+        "Logit"
+      } else {
+        "Probit"
+      },
+      result.observation_count,
+      result.predictor.escape_debug(),
+      result.from_value,
+      result.to_value,
+      binary_covariance_note(
+        result.robust,
+        result.cluster.as_ref(),
+        if result.model == tabdat_stats::BinaryModel::Logit {
+          "model-based Fisher information covariance"
+        } else {
+          "model-based observed-information covariance"
+        }
+      ),
+      logit_estimates(std::slice::from_ref(&result.effect)),
+    ),
     ExecutionResult::NormalizedCommonNestedLogit(result) => format!(
       "Normalized common-scale nested choice maximum likelihood\nOutcome: {}; independent choice sets = {}; alternative rows = {}; alternatives per set = {}\nGroup: {}; alternative: {}; nest: {}; alternative/nest map = {:?}/{:?}\nCandidate sets = {}; whole-set exclusions = {}; selected fit iterations = {}; converged starts = {}/2\nPreferred common-utility normalization with ONE shared positive scale; not unrestricted nest-specific scales.\nFull joint natural-utility observed-Hessian covariance, correction1, asymptotic normal95; no uniform-null omnibus chi-square.\nLog likelihood = {}; fitted scale=1 conditional restriction = {}; independence LR chi2({}) = {}; p-value = {}\nSlope/upper coefficients (H0=0):\n{}\nShared inclusive-value diagnostic (H0=1; natural-scale Wald interval may cross zero):\n{}\nFitted IV bounds (0,1] satisfied: {}{}",
       result.outcome.escape_debug(),

@@ -1447,6 +1447,10 @@ pub enum EstatSubcommand {
   Residuals,
   Ovtest,
   Margins,
+  /// Average binary response probability change for a retained 0/1 predictor.
+  DiscreteMargins {
+    variable: String,
+  },
   /// Descriptive observed/fitted retained-count bins, ending in >= tail_from.
   CountProbabilities {
     tail_from: usize,
