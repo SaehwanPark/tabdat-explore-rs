@@ -15,17 +15,12 @@ fn help_describes_the_current_json_result_boundary() {
 
   assert!(output.status.success());
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
-  assert!(stdout.contains("batch success output"));
-  assert!(
-    stdout.contains("supports use/describe/count/codebook/summarize/missing/tabulate/head/tail")
-  );
-  assert!(stdout.contains("scripts stream"));
-  assert!(stdout.contains("regress/logit/probit/poisson/nbreg/predict/lincom/test/ttest"));
-  assert!(stdout.contains("estat vif/ar/overid/endogenous/margins"));
-  assert!(stdout.contains("SVG scatter"));
-  assert!(stdout.contains("save/export"));
-  assert!(stdout.contains("generate/replace"));
-  assert!(stdout.contains("use/describe/count/codebook/summarize/missing/tabulate/head/tail"));
+  assert!(stdout.contains("tested CLI-v1"));
+  assert!(stdout.contains("command subset"));
+  assert!(stdout.contains("command-specific result shapes and"));
+  assert!(stdout.contains("docs/reference/command-results.md"));
+  assert!(stdout.contains("parser acceptance and discovery do not imply JSON"));
+  assert!(stdout.contains("scripts stream supported leaf results"));
 }
 
 fn fixture_csv(dir: &TestDir) -> PathBuf {
@@ -257,10 +252,12 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
 
   assert_eq!(output.status.code(), Some(2));
   assert!(!exported_path.exists());
-  assert_eq!(
-    output.stderr,
-    b"Error: --json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/hausman/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()\n"
+  let stderr = String::from_utf8(output.stderr).expect("utf-8");
+  assert!(
+    stderr
+      .starts_with("Error: --json has no supported result contract for this command in batch mode")
   );
+  assert!(stderr.contains("docs/reference/command-results.md"));
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   let envelopes = stdout
     .lines()
@@ -270,16 +267,16 @@ fn unsupported_json_batch_result_is_rejected_before_command_execution() {
   assert_eq!(envelopes.len(), 3);
   assert_eq!(envelopes[0]["result_type"], "LoadResult");
   assert_eq!(envelopes[1]["result_type"], "CountResult");
-  assert_eq!(
-    envelopes[2],
-    serde_json::json!({
-      "schema_version": 1,
-      "error": {
-        "message": "--json successful batch results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, estat vif/ar/overid/hausman/endogenous/margins/countprob, scatter (SVG saving/noopen), estimates store/table/drop, and run (supported script leaves only), and xtreg fe/re/mle with explicit id()/time()",
-        "type": "JsonResultUnsupported"
-      }
-    })
+  assert_eq!(envelopes[2]["schema_version"], 1);
+  assert_eq!(envelopes[2]["error"]["type"], "JsonResultUnsupported");
+  let message = envelopes[2]["error"]["message"]
+    .as_str()
+    .expect("error message");
+  assert!(
+    message.starts_with("--json has no supported result contract for this command in batch mode")
   );
+  assert!(message.contains("docs/reference/command-results.md"));
+  assert_eq!(stderr.trim_end().strip_prefix("Error: "), Some(message));
 }
 
 #[test]
@@ -490,15 +487,16 @@ fn json_script_rejects_unsupported_commands_before_they_execute() {
     resolved_path.to_string_lossy().as_ref()
   );
   assert_eq!(envelopes[1]["error"]["line"], 2);
-  assert_eq!(
-    envelopes[1]["error"]["message"],
-    "--json successful script results are currently supported only for use, lowess, nl, describe, status, count, collapse count/mean, duplicates, isid, assert, datasignature, codebook, summarize, missing, tabulate, by ...: count/summarize (native means), generate, replace, rename, recode, label, encode, decode, sql, join, append, reshape, keep/drop/select variable lists, bounded keep/drop if, sort, gsort, save, export, head, tail, ivregress 2sls and bounded clustered gmm, regress, logit, probit, poisson, nbreg, qreg, bootstrap, predict, lincom, test, ttest, scatter (SVG saving/noopen), estimates store/table/drop, and estat vif/ar/overid/hausman/endogenous/margins/countprob, and xtreg fe/re/mle with explicit id()/time()"
-  );
+  let message = envelopes[1]["error"]["message"]
+    .as_str()
+    .expect("error message");
   assert!(
-    String::from_utf8(output.stderr)
-      .expect("utf-8")
-      .contains(&format!("{}:2:", resolved_path.display()))
+    message.starts_with("--json has no supported result contract for this command in script mode")
   );
+  assert!(message.contains("docs/reference/command-results.md"));
+  let stderr = String::from_utf8(output.stderr).expect("utf-8");
+  assert!(stderr.contains(&format!("{}:2:", resolved_path.display())));
+  assert!(stderr.contains(message));
 }
 
 #[test]

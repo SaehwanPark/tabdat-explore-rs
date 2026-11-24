@@ -54,6 +54,8 @@ fn cli_help_flag() {
   let stdout = String::from_utf8(output.stdout).expect("utf-8");
   assert!(stdout.contains("usage: tabdat"));
   assert!(stdout.contains("options:"));
+  assert!(stdout.contains("tested CLI-v1"));
+  assert!(stdout.contains("parser acceptance and discovery do not imply JSON"));
   assert!(output.stderr.is_empty());
 
   let output2 = tabdat_bin()
@@ -63,6 +65,7 @@ fn cli_help_flag() {
   assert!(output2.status.success());
   let stdout2 = String::from_utf8(output2.stdout).expect("utf-8");
   assert!(stdout2.contains("usage: tabdat"));
+  assert!(stdout2.contains("tested CLI-v1"));
   assert!(output2.stderr.is_empty());
 }
 

@@ -2,842 +2,166 @@
 
 ## Destination and current baseline
 
-Build a practically usable, terminal-first tool for **graduate-level econometrics**.
-The minimum long-term analytical target is the empirical analyses illustrated in
-Cameron and Trivedi, *Microeconometrics: Methods and Applications* (2005), not merely
-introductory OLS. This is a product commitment, **not a claim of current support**.
-Exact Stata/Python syntax parity and implementation of every theoretical derivation
-are not required; statistically equivalent, reproducible workflows are.
+TabDat is a small, terminal-first Rust application for dependable exploratory
+data analysis and graduate-level econometrics. The long-term analytical target is
+the empirical work in Cameron and Trivedi, *Microeconometrics: Methods and
+Applications* (MMA, 2005). This is a product commitment, not a claim that the
+book or its syntax is currently supported. Equivalent native workflows are
+preferred to copying Stata or Python internals.
 
-[SPEC.md](../SPEC.md) describes the installed baseline: bounded local CSV/Parquet,
-EDA/preparation, scripts, terminal/JSON output and bounded linear/nonlinear
-analyses. Advanced required workflows remain incomplete; catalog/parser breadth
-is not executable coverage. The [coverage ledger](reference/microeconometrics-coverage.md)
-maps required analytical work and textbook replication status. Completed-slice
-history stays in the [archived delivery ledger](archive/delivered-workflows.md).
+[SPEC.md](../SPEC.md) is the current capability map. The
+[coverage ledger](reference/microeconometrics-coverage.md) is the source of truth
+for illustration-level status and numerical evidence. The examples directory
+contains executable workflows and their local contracts. The roadmap sets
+priority and acceptance direction. It does not duplicate delivery logs.
+
+The installed baseline is a usable data-preparation, EDA and regression core.
+It includes local eager CSV/Parquet data, scripts, terminal and JSON output,
+bounded linear, IV, panel, binary, count and selected nonlinear workflows, and
+reference-checked textbook slices. Parser acceptance, executable behavior,
+independent numerical evidence and release readiness remain separate claims.
+Remote/lazy input, native DTA loading, broad survey estimation, general survival
+declarations, Bayesian estimation and many textbook illustrations remain open.
 
 Maintain three distinct milestones:
 
-1. **Dependable core:** usable data preparation and linear-analysis workflows.
-2. **Graduate core:** common cross-section, IV, panel and nonlinear analyses with
-   interpretation, diagnostics and reproducible reporting.
-3. **Textbook empirical coverage:** validated replications of the book's empirical
-   illustrations, including the more advanced families below.
+1. **Dependable core** — usable data preparation and linear-analysis workflows.
+2. **Graduate core** — representative cross-section, IV, panel and nonlinear
+   analyses with diagnostics, interpretation and reproducible reporting.
+3. **Textbook empirical coverage** — validated workflows for the book's empirical
+   illustrations, including their samples, designs, inference and post-estimation.
 
-The first milestone is useful but does not satisfy the second; the second does
-not establish full textbook coverage. Missing required methods are **deferred
-required work**, not optional breadth.
+The first milestone does not satisfy the second, and the second does not imply
+complete textbook coverage. Missing methods remain required work when a selected
+analysis needs them.
 
 ## How to select work
 
 Choose a small, complete **load/prepare → specify → fit → diagnose/interpret →
-report/reproduce** slice. Implement parse → execute → validate → report together;
-parser catalog entries and native prototypes do not count as delivered analyses.
+report/reproduce** slice. Implement parsing, execution, validation and reporting
+together. A parser entry, native prototype or coefficient-only estimator is not
+a delivered workflow.
 
-- Follow the priority order below, adjusting for demonstrated dependencies and
-  correctness defects. The sections are not rigid phase gates: useful independent
-  estimator slices need not wait for every foundation or editor improvement.
-- Before implementation, state behavior, 2–5 acceptance cases, an important failure
-  case, exclusions and the independent reference. For textbook work, identify the
-  exact example/data and add or refine its coverage-ledger entry.
-- Do not make all textbook inventory work a prerequisite to implementing one
-  bounded example. Expand the ledger alongside delivery.
-- Address statistical/data-integrity defects before breadth. Do not let repeated
-  completion/help/editor polish indefinitely displace the missing graduate core.
-- Use existing crates and boundaries. This roadmap does not authorize a new
-  generic estimator framework, dependency or native integration by default.
+- Define the sample, design, parameterization, covariance and degrees of freedom,
+  prediction cohort, failure behavior and independent reference before coding.
+- Prefer a concrete data/analysis need over broad syntax or a generic estimator
+  framework. Reuse existing crates and boundaries.
+- Keep exact source, method and inference distinctions visible. Do not silently
+  convert a source discrepancy into tolerance or whole-family support.
+- Update the ledger and SPEC only when supported behavior or evidence changes.
+  Keep detailed gates beside the example, test or ledger entry.
 
 ## Priority 1: foundations that unblock real analyses
 
-Preserve the supported core while removing concrete barriers to the next analysis.
-These foundations should be delivered alongside the estimators that need them.
+Deliver these with the estimator that needs them.
 
-| Outcome | Required behavior and acceptance evidence |
+| Outcome | Required behavior and acceptance direction |
 | --- | --- |
-| Reliable model design | Explicit categorical levels/reference categories, interactions and transformations; stable parameter order/names and prediction design. Test missing categories, absent/new prediction levels and collinearity policy against a trusted reference. Encoding numeric labels alone is not factor support. One-way `i.var`/`ib(level).var` in `regress` now exists with retained design metadata and NULL policy for unseen prediction levels; interactions, transformations and factors in other estimators remain. |
-| Deliberate samples and weights | Report estimation exclusions; keep selected-cohort and current-data prediction semantics explicit. Distinguish analytic/frequency/probability weights before advertising them. Current WLS and inverse-diagonal-variance GLS are not general survey estimation or arbitrary-covariance GLS. |
-| Interpretable results | Correlation/covariance tables, model-appropriate diagnostics, coefficient uncertainty and prediction uncertainty where defined. Preserve robust/cluster corrections and inference DF separately from fit residual DF. |
-| Analytical graphics | Executable scatter/distribution, fitted/residual and later model-specific plots, with a documented terminal/file output path. Rendering syntax alone is not completion. |
-| Reusable reporting | Named fit storage/comparison and exportable estimates/covariance/sample provenance; no silent refits or invented staleness guarantees. Preserve current advertised JSON contracts when extending results. |
-| Reproducible data access | Tested local data preparation/persistence and textbook data ingestion. Provide native DTA or an explicit reproducible conversion path; document type/label/missingness losses. Do not require production Python/R. |
+| Reliable model design | Explicit factor levels and references, interactions and transformations, stable parameter names/order, prediction-design rules and collinearity policy. The bounded `regress i.var`/`ib(level).var` design is installed. Interactions and cross-estimator factor semantics remain. |
+| Deliberate samples and weights | Report exclusions and retain selected-cohort versus current-data prediction semantics. Distinguish analytic, frequency, probability and design weights. Existing WLS/diagonal GLS and one-way clustering are bounded methods, not general survey estimation. |
+| Interpretable results | Preserve model-appropriate diagnostics, covariance corrections, inference degrees of freedom, coefficient uncertainty and defined prediction/effect uncertainty. |
+| Analytical graphics | SVG scatter plots with supplied or fitted line overlays are installed. Add distribution, fitted/residual and model-specific plots only when a selected workflow has a defined output and geometry contract. |
+| Reusable reporting | Retain named estimates, covariance, sample provenance and model metadata without silent refits or invented restoration guarantees. Preserve stable JSON contracts. |
+| Reproducible data access | Keep local preparation and persistence tested. Add a reproducible source conversion or native reader when an identified illustration requires it, with explicit type, label and missingness losses. |
 
-Keep ordinary finite summaries distinct from SQL-NULL missingness and native grouped
-means. Keep failure/state and file-output behavior tested. Improve help/discovery
-for each executed slice, rather than advertising future methods as available.
+Ordinary finite summaries must remain distinct from SQL NULL missingness. Data,
+state and output failures must preserve the promised pre-failure state.
 
-## Priority 2: required graduate econometrics core
+## Priority 2: graduate econometrics core
 
-Default estimator delivery order is IV → binary outcomes → count outcomes → linear
-panels → quantile/resampling. A documented dependency or a concrete analysis may
-justify a smaller reordering. Each row is multiple bounded deliverables, not a
-single PR or a demand to expose every option immediately.
+The default order is IV → binary outcomes → count outcomes → linear panels →
+quantile/resampling. A concrete dependency or correctness defect can change the
+order. Each row describes a bounded end-to-end outcome, not every option.
 
 | Workflow | Minimum complete outcome |
 | --- | --- |
-| **IV/2SLS** | Exogenous/endogenous/instrument design, exact estimation sample, identification/rank checks, classical and appropriate robust/cluster inference, first-stage results and instrument-strength diagnostics. Add endogeneity, overidentification and weak-instrument-robust inference as applicable; label assumptions and unavailable tests, never imply ordinary Wald inference resolves weak identification. |
-| **Logit/probit** | Fit binary outcomes; report convergence/separation failures and robust/cluster inference; predict probabilities and compute average marginal effects/discrete changes with delta-method uncertainty. Define factor/interactions and effect estimands. |
-| **Poisson QMLE/negative binomial** | Count-domain validation, offsets/exposure, model-specific fit diagnostics, conditional means and effects. Specify the NB parameterization and distinguish Poisson robust QMLE from distributional assumptions. |
-| **Linear panels** | Validate unit/time keys, order, gaps and duplicates; define lag/lead/difference semantics. The bounded [MMA POLS/annual-FD SQL workflow](../examples/mma21p1panel/README.md) now validates guarded keys/pairs and person-cluster inference. Bounded FE, Between, balanced/unbalanced Swamy–Arora RE-GLS, and balanced/unbalanced Gaussian RE-ML with positive-interior variance-component log-Wald intervals and a one-sided zero-unit-variance LR test are also validated. Interior ML additionally supports full joint unit-score inference; remaining illustrated ML inference and general panel semantics, panel/model-comparison diagnostics and remaining analyses are still required. |
-| **Quantile regression** | Installed bounded unweighted IID-location inference and current-row predictions, validated .1/.5/.9 household fits; joint IID pairs-bootstrap covariance/marginal percentile intervals permit heteroskedasticity under IID regularity, with a shared-replicate B-1 SE and asymptotic normal test/95% Wald interval for one coefficient across exactly two quantiles. Cluster inference, general restrictions, simultaneous bands and Figure4.1 rendering remain. See MMA-QREG. |
-| **Seeded bootstrap** | Real RNG/seed/stream contract, IID and cluster resampling, explicit replication failures and reproducible uncertainty. Bounded IID/whole-cluster pairs OLS now uses an explicit local xoshiro256++/SplitMix64 stream, B-1 covariance and percentile95 intervals, including MOM Between, pooled, annual first-difference, within-transformed and fixed-theta RE-GLS whole-person workflows (conditional transform, not variance-component refits), plus the 500-refit Chapter24 household whole-commune OLS workflow. IID work is capped at100million and conservative cluster work at200million. Separate bounded native whole-cluster pooled, conditional-FE and shared-gamma RE Poisson modes refit all coefficients (and RE dispersion) and expose every ordered draw, with independent Chapter24 individual B500 QR, conditional-score and integrated-likelihood evidence, respectively. Script context-only `seed` is separate; joint IID pairs quantiles add common draws/full cross-quantile covariance; residual/parametric/further-estimator resampling, general automatic FE/RE refits and simulation remain required; the bounded MOM component-refitting compositions below are not a general resampling API. |
+| **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Conventional first-stage F does not certify validity. |
+| **Logit/probit** | Domain and separation/convergence failures, model-based/robust/cluster inference, probability and linear-index predictions, and average marginal effects or discrete changes with an explicit estimand and delta uncertainty. |
+| **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions. Distinguish Poisson QMLE from distributional claims. |
+| **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. Persistent panel state and broader diagnostics remain open. |
+| **Quantile regression** | Conditional quantiles, current-row predictions, IID uncertainty and a documented resampling unit. Cluster inference, general restrictions, simultaneous bands, effects and Figure 4.1 remain. |
+| **Seeded resampling** | Explicit seed/stream, IID and cluster units, B−1 uncertainty, percentile conventions and failure policy. Current OLS, quantile and selected Poisson/panel compositions are bounded source workflows, not a general automatic bootstrap API. |
 
-Graduate-core acceptance requires representative end-to-end analyses across these
-families, the design/reporting foundations they need, usable terminal and script
-execution, and reference-validated interpretation and inference. An OLS result,
-a passing parser test or a coefficient-only estimator is not that milestone.
+Graduate-core acceptance requires representative, independently checked workflows
+across these families with interpretation and reporting. One passing parser test
+or one estimator coefficient vector does not establish that milestone.
 
-## Priority 3: required applied microeconometrics coverage
+## Priority 3: applied microeconometrics target
 
-Extend the same workflow/validation standard to:
+Use the ledger for exact source, sample and evidence. The following summaries state
+the next outcome without repeating the ledger's detailed delivery records.
 
-- **Choice:** bounded shared-design model-based multinomial logit now supplies
-  the [original fishing-mode Table15.2 MNL column](../examples/mma15p1mnl/README.md),
-  current category predictions and retained-X continuous joint-delta AMEs with
-  independent R evidence. Balanced single-choice conditional logit additionally
-  supplies the price/catch CL column, explicit current choice-set probabilities,
-  and section2B finite-change point contrasts with independent R/survival and
-  original-token evidence. Explicit numeric design additionally validates the
-  author's combined fixed-coefficient alternative-constant/income/price/catch
-  column and conditional MNL encoding, including its different null/LR convention;
-  this is not random-coefficients mixed logit. These workflows do not cover all
-  historical float-storage/at-means effects, conditional effects uncertainty, IIA
-  diagnostics or remaining Chapter15 illustrations. Explicit positive-scale
-  non-normalized two-nest `nlogit` additionally supplies the source-audited
-  [MMA §15.6.3 p511 workflow](../examples/mma15p1mnl/README.md#non-normalized-nested-choice),
-  full observed covariance/IV=1 diagnostics, identified independence-restriction
-  LR and current income/price/catch point contrasts. This earlier specification
-  is not preferred common-utility RUM normalization; fitted IV-bound violations
-  and the historical Stata8 stationary-point discrepancy remain explicit.
-  A separately labelled [normalized common-scale extension](../examples/mma15p1mnl/README.md#normalized-common-scale-nested-choice)
-  now supplies preferred common-utility normalization with one shared positive
-  scale, full natural covariance/scale-one diagnostics and identified LR
-  chi-square1;131 R quantities/41 covariance entries/23,640 source probabilities
-  and an exact900-decision in-bound-scale fixture. The real source fit still
-  violates RUM bounds; preferred normalization does not certify consistency.
-  Unrestricted preferred nest-specific fitting, ordered/richer models, broader
-  availability, effects uncertainty, diagnostics and all remaining illustrations
-  stay required.
-- **Limited outcomes:** the [classic lower-censored Gaussian Tobit workflow](../examples/mma16p1tobit/README.md)
-  now supplies model-based full joint observed inference, retained continuous
-  observed-mean delta effects, current latent/uncensoring/censored-mean prediction
-  and48 original-source R reference gates/600 predictions. This bounded §16.2.1
-  author-program extension is not a published table or complete Chapter16.
-  The [explicit Heckman two-step workflow](../examples/mma16p1tobit/heckman.md)
-  validates the same original200/130 selection/outcome rows with corrected
-  generated-regressor covariance, owned state/five point projections and an
-  independent source audit. Closed-form actual-script/failure controls,
-  reverse-consumer checks and independent source review pass. This is not default
-  ML, excluded-instrument/causal identification or RAND illustration parity.
-  The [fixed-lower truncated Gaussian slice](../examples/mma16p1tobit/truncreg.md)
-  now delivers native conditional ML/full inference/effects/current point projections.
-  Original130-row R/independent audits, actual-script/failure checks, independent
-  kernel/integration source reviews and local workspace regression gates pass
-  (1515 tests/two pre-existing ignored,264 current artifacts). This fills the
-  author's documented but unexecuted truncated-MLE gap,
-  not historical/table parity. Richer truncation/censoring/inference, remaining
-  selection/two-part workflows and illustrations stay required.
-- **Survival:** the [original566-strike nonparametric workflow](../examples/mma17p1km/README.md)
-  now composes existing SQL/table/export/SVG commands for tied-time Kaplan–Meier,
-  Greenwood SE/pointwise log-log95% bounds and Nelson–Aalen/SE. Independent R,
-  source-pinned author-output and actual SVG geometry audits pass. A separate
-  [80-spell artificial right-censoring workflow](../examples/mma17p2kmextra/README.md)
-  now validates event/censor ties, carried-forward censor-only times, KM intervals
-  and NA log-Wald95% bands against R and both author tables. Exact executable
-  40-failure/40-censor input takes precedence over mistaken prose labels; the
-  source is artificial, not an empirical-regression substitute. These are bounded
-  single-spell/entry-zero scripts, not general survival declarations, delayed
-  entry/other censoring/truncation, Cox-baseline equivalence or a complete chapter.
-  The [original3343-spell Table17.8 exponential column](../examples/mma17p4duration/README.md)
-  now composes native robust offset-Poisson for exact event/exposure likelihood,
-  all40 covariates+intercept/full sandwich/normal95 and conditional hazard/net-
-  survival points. R survival validates1936 gates/1681 covariance entries and
-  all207266 source/design/projection cells;262 author printed quantities pass.
-  Original DTA acquisition is explicit: ASCII omits stateur;102 all-zero status
-  rows are retained. Competing exits do not turn net survival into all-cause
-  joblessness survival/cumulative incidence, and UI projections are not causal.
-  The [native Table17.8 Weibull column](../examples/mma17p4duration/weibull.md)
-  now adds full joint PH beta/lnshape ML/model-based or independent-spell robust
-  inference, same-sample null/LR, shape-one/slope diagnostics and owned current
-  xb/hazard/cumhaz/net-survival points. Original2031 R gates/all1764 covariance
-  entries,197237 native cells/147092 exact source cells and276 author quantities
-  pass, including14 compact table cells; source-preserving JSON/text exports are
-  byte-identical. Native exponential/cluster remain unsupported; no blanket streg
-  parity. The [native Table17.8 Gompertz column](../examples/mma17p4duration/gompertz.md)
-  now adds unrestricted natural-gamma PH ML/full joint observed or independent-
-  spell sandwich inference, refitted null/slope Wald and atomic current points.
-  Original2029 R gates/all1764 covariance entries,197237 native cells/147092 exact
-  source cells and268 printed quantities pass, including14 compact table cells;
-  JSON/text exports are byte-identical. Gamma0 nests exponential; negative gamma
-  implies positive net-survival tail mass, not causal cure. Two independent source
-  reviews and1231 local regression passes/two pre-existing ignored support this
-  bounded workflow, not full streg/survival/chapter/platform completion.
-  The [native Table17.8 Cox/Breslow coefficient column](../examples/mma17p4duration/cox.md)
-  now validates the same3343 spells/1073 events/40 covariates without intercept,
-  full efficient-score N/(N-1) inference, owned all-X-means reference baseline
-  and current step-H/net-survival/xb points. Independent R/source audits pass2084
-  gates/all1600 covariance entries,187208 native cells/147092 exact source cells
-  and254 author quantities; original JSON/text CSV bytes match. No instantaneous
-  hazard from jumps, baseline/prediction uncertainty, strata/cluster/other entry
-  or PH-adequacy claim. Those declarations plus remaining empirical parametric/
-  richer Cox models, baseline/survival/hazard outputs, diagnostics and illustrations
-  remain required, not optional breadth.
-- **GMM/systems and dynamic panels:** moments/instruments, weighting matrices,
-  one-/two-step covariance, convergence, overidentification and serial-correlation
-  diagnostics; control instrument proliferation rather than silently expanding it.
-- **Treatment evaluation:** explicit ATE/ATT and identification assumptions,
-  regression adjustment, propensity matching/weighting, balance/overlap diagnostics
-  and estimator-appropriate uncertainty. Add DID where the selected analysis needs
-  it; modern causal extensions must not displace the book's required workflows.
-- **Complex surveys:** probability weights, strata/PSUs and design-based variance;
-  one-way regression clustering alone does not satisfy this outcome. The bounded
-  [Chapter24 household OLS workflow](../examples/mma24p1olscluster/README.md)
-  validates Table24.4 IID/HC1/commune-CR1 OLS on 5,006 observations against R;
-  [commune FE](../examples/mma24p1olscluster/household_fe.md) separately checks
-  normalized common-intercept/slope inference and predictions against full-dummy
-  R QR, using cross-sectional source-row only as a unique key. The separate
-  [household RE GLS workflow](../examples/mma24p1olscluster/household_re_gls.md)
-  validates native unbalanced Swamy–Arora components, full covariance/normal
-  inference and population predictions against R/plm on the same cohort; it is
-  not the author's different RE component convention. The opt-in
-  [equal-group-between RE workflow](../examples/mma24p1olscluster/household_equal_group_re.md)
-  independently validates the alternate component formula and all 14 native
-  DTA-based printed author coefficient/SE facts, without changing the default.
-  The distinct [native household Gaussian GEE](../examples/mma24p1olscluster/household_gee.md)
-  validates working and uncorrected commune-sandwich inference against198 R/geeM
-  quantities, all5,999 source/prediction rows on ASCII and DTA, and16 printed
-  DTA author facts; it retains an owned marginal model, not an RE fit. The
-  [household pooled-OLS commune bootstrap](../examples/mma24p1olscluster/household_ols_bootstrap.md)
-  independently checks94 R quantities and all500 replicate sizes for500 seeded
-  native-stream refits, with all source/prediction rows on ASCII and DTA. The
-  separate [household FE commune bootstrap](../examples/mma24p1olscluster/household_fe_bootstrap.md)
-  checks500 distinct-copy R QR refits, full covariance,97,000 exact draws and
-  all source/prediction rows; it uses bounded scaled normal-equation pivots and
-  per-draw observation-weighted level-intercept normalization. The separate
-  [household RE commune bootstrap](../examples/mma24p1olscluster/household_re_bootstrap.md)
-  refits equal-group variance components and quasi-GLS for all500 copied draws,
-  independently checking diagnostics, full covariance,97,000 exact draws and
-  all source/prediction rows. It has conservative numerical gates and used about
-  1.28 GB peak RSS locally; it is not a general bootstrap API.
-  The [individual pooled Poisson workflow](../examples/mma24p2poiscluster/README.md)
-  validates Table24.6 model-based/row/commune inference and derivatives on
-  27,765 individuals against R. The separate [individual pooled-Poisson commune
-  bootstrap](../examples/mma24p2poiscluster/individual_pooled_bootstrap.md) checks
-  all500 native/R QR refits, full covariance,97,000 exact draw indices and all
-  source/prediction rows on ASCII and precise DTA; the pinned historical log uses
-  B50, so its bootstrap uncertainty is not claimed. The separate native
-  [individual conditional Poisson FE workflow](../examples/mma24p2poiscluster/individual_conditional_fe.md)
-  validates 179 R quantities and all source/prediction rows after excluding one
-  94-person all-zero commune (27,671 people/193 communes); native DTA results match
-  20 printed author coefficient/SE facts. Owned group normalization and atomic
-  prediction/export-state failures are tested. The separate [individual FE
-  commune bootstrap](../examples/mma24p2poiscluster/individual_conditional_fe_bootstrap.md)
-  resamples193 retained positive-total groups, checks all500 R conditional-score
-  refits,96,500 exact draws and all source/prediction rows on ASCII and precise
-  DTA, and cross-checks three synthetic raw-copy dummy GLMs. Nine of ten author
-  bootstrap points match half a printed digit; the remaining MARRIED final-digit
-  discrepancy is documented, not hidden by a widened tolerance. The separate native
-  [individual shared-gamma RE workflow](../examples/mma24p2poiscluster/individual_gamma_re.md)
-  retains all 27,765 people/194 communes including the all-zero commune, validates
-  236 independent R full-joint/inference quantities and every source/marginal-
-  prediction row on ASCII and DTA, and matches 29 native DTA author facts. The
-  separate [individual shared-gamma RE commune bootstrap](../examples/mma24p2poiscluster/individual_gamma_re_bootstrap.md)
-  refits all12 joint parameters on500 distinct-copy group draws; independent R
-  likelihood and Python checks cover every refit, full covariance,97,000 draws
-  and all source/prediction rows on ASCII and precise DTA. Ten of twelve author
-  bootstrap points match half a printed digit; two last-digit discrepancies and
-  historical repeated-ID ambiguity are explicitly documented. These workflows
-  are unweighted, not design-based survey inference. The separate [household
-  Gaussian RE-ML workflow](../examples/mma24p1olscluster/household_re_ml.md)
-  checks210 independent R/nlme likelihood and information quantities and all
-  source/prediction rows on ASCII/precise DTA, with interior and boundary
-  controls. All seven printed author coefficient points and two SEs match;
-  five coefficient and two component-SD printed SE discrepancies remain
-  unexplained. The [source-pinned Chapter24 companion inventory](../examples/mma24p1olscluster/inventory.md)
-  maps34 analytical/preparation/report blocks, separating bounded methods from
-  open source summaries, frequency/histogram, classical Hausman and unified
-  mixed comparisons. The [household BP LM composition](../examples/mma24p1olscluster/household_bp_lm.md)
-  now validates69 R QR/plm quantities and all source/prediction rows on ASCII
-  and precise DTA, with balanced/unbalanced-singleton/negative-score controls.
-  It reports the legacy squared-score chi-square1 reference, not the existing
-  ML boundary LR or one-sided variance inference, and retains pooled OLS.
-  The separate [joint household Hausman workflow](../examples/mma24p1olscluster/household_hausman.md)
-  now validates139 independent R QR quantities/full FE/RE/difference matrices,
-  all source/prediction rows and20 printed DTA author facts. It uses separate
-  native covariance scales, a parent-scaled SPD-only difference and owned-design
-  validation; neither common-scale variants nor default multivariate/unbalanced
-  Swamy–Arora, ML or cluster-robust Hausman are implied. The [mixed household
-  named comparison](../examples/mma24p1olscluster/household_mixed_report.md)
-  now independently audits327 reporting quantities/all source and ML prediction
-  rows on ASCII/precise DTA, with explicit GEE selection, FE t versus RE/GEE z,
-  full covariance/panel provenance and unavailable common R². Historical printed
-  ML SE discrepancies, remaining individual comparisons, other GEE workflows
-  and full survey methods remain required. The [household variable-wise
-  source summary](../examples/mma24p1olscluster/household_descriptives.md)
-  separately checks45 R fields/all5999 source and prepared records/memberships,
-  plus45 DTA author-log facts, with DOUBLE EXP-generated HHEXP. Outcome N5006
-  differs deliberately from other source-variable N5999; no joint-cohort filter
-  or survey estimand is substituted. The separate [individual source summaries](../examples/mma24p2poiscluster/individual_descriptives.md)
-  check60 R fields/all27766 records and333180 available variable/key pairs on
-  both modes, plus60 DTA printed facts; retain wholly missing27734 rather than
-  replacing source N by a model cohort. Partial/whole missingness, N0/N1,
-  typed JSON/text and read-only cached-Poisson/export/failure controls are tested.
-  The book's URBAN/MEDEXP/LNHHEXP source discrepancies remain; this is not
-  whole-table/chapter/book coverage.
-- **Missing data:** imputation models, multiple-imputation pooling and diagnostics;
-  finite-case deletion and missingness profiles alone do not satisfy it. The bounded
-  [Chapter27 comparison](../examples/mma27p1milinear/README.md) independently
-  validates complete-case and single-mean-filled OLS on four generated 1,000-row
-  author inputs. Naive filled-fit t/SE omit missing-value uncertainty. Separate
-  [supplied-summary Rubin pooling](../examples/mma27p1milinear/rubin_pooling.md)
-  validates marginal large-complete-DF inference on ten rounded author-log fits;
-  it does not generate imputations, fit completed data, provide joint covariance
-  or finite-complete-DF corrections. Author MCMC MI, diagnostics and logit remain required.
+| Area | Installed bounded baseline | Required next outcomes |
+| --- | --- | --- |
+| Choice | MNL, balanced conditional logit and restricted normalized/non-normalized nested-choice workflows with source audits | Broader availability and choice sets, ordered/richer models, effects uncertainty, IIA diagnostics and remaining illustrations |
+| Censoring and selection | Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step workflows with declared inference/effects | Richer truncation/censoring, two-part and selection workflows, default ML and remaining illustrations |
+| Survival | KM/NA compositions plus bounded exponential, Weibull, Gompertz and Cox/Breslow source workflows | General declarations, delayed entry, time-varying covariates, clustered inference, competing-risk incidence and richer diagnostics |
+| Counts | Poisson/NB2, fixed-offset compositions, effects, probability bins and selected person/cluster workflows | Household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, formal NB tests and unresolved Table 20.6 output |
+| Linear and nonlinear panels | Explicit-key linear panels, IV/GMM composition, Gaussian GEE and selected Poisson FE/RE/GEE workflows | Persistent declarations, dynamic-panel methods, broader GEE/FE/RE inference, model comparisons and instrument-control diagnostics |
+| Treatment and clustered samples | NSW/PSID comparisons, DID, overlap diagnostics, IPW, kernel and descriptive matching compositions; household/individual clustered workflows | General estimands, matching uncertainty, survey weights/strata/PSUs, design-based variance and remaining treatment/Chapter 24 analyses |
+| Nonparametric and missing data | Bounded KDE/LOWESS source adaptations and complete-case/single-fill/Rubin-summary comparisons | General smoothing/uncertainty, tied-curve parity, imputation generation/diagnostics and finite-complete-DF multiple-imputation inference |
+| GMM, measurement error and Bayesian methods | Selected IV/GMM and explicit-formula NLS evidence | General systems/dynamic GMM, measurement-error corrections, simulation, Bayesian estimation and diagnostics |
 
-Choose a specific example before fixing detailed parameterizations, algorithms or
-backend choices. Do not advertise a broad family based on one narrow estimator.
+Each bounded workflow must keep its assumptions and unresolved source differences
+visible. No row is a claim of chapter or book completion.
 
-## Priority 4: complete the textbook empirical target
+## Priority 4: textbook empirical coverage
 
-Use the coverage ledger to close remaining illustration-specific gaps:
+The coverage ledger's inventory is incomplete. For every selected illustration,
+record the edition and locator, source and provenance, preparation, estimation
+sample, design and estimand, inference/reference, post-estimation outputs,
+failure case, executable entry point and independent evidence. Mark it planned,
+in progress, blocked or validated. An exclusion requires an explicit product-scope
+decision.
 
-- Nonparametric/semiparametric methods and quantile extensions. The bounded
-  [PSID Figure9.2 bandwidth-sensitivity workflow](../examples/mma09p1np/README.md)
-  now composes native Epanechnikov density at h/2,h,2h for177 original women;
-  strict direct-R/source/normalization/actual-SVG audits pass4870 reference cells,
-  all1536 ordinates/vertices,48560 raw source fields and103 historical-float facts.
-  Double versus historical generated-float bandwidths are separately audited,
-  never hidden by tolerance widening. No general KDE command/uncertainty is
-  implied. Native [centred-rank LOWESS](../examples/mma09p1np/lowess.md) adds a
-  bounded Figure9.3 source-data adaptation:177 rows, spans.8/.4/.1,531 independent
-  R-QR fits/actual SVG vertices,177 raw points, within-X diagnostics and48560 exact
-  source fields. Stable input-sensitive tied windows deliberately do not claim
-  historical Stata tied-curve parity; that unresolved entry is not completed.
-  Histogram/other kernels/kNN and remaining local/semiparametric regression,
-  figures and methods remain required, not covered by these bounded workflows.
-- General ML/NLS, numerical optimization and systems/GMM cases not covered above.
-  The bounded [explicit-formula NLS slice](../examples/mma05p2nls/README.md) now has
-  an owned native fit/current mean-residual prediction and text/CLI-v1 interface,
-  six independent-R control formulas and original10000-row pure-API validation.
-  Its original-source CLI/export replay now passes120055 numerical/two stricter
-  tail gates plus source/forgery/IO/JSON-text checks and closed-form offline controls;
-  independent kernel/integration-source reviews,1645 distinct local passing cases
-  (two pre-existing ignored; documented loader fallback/composite scope) and
-  workspace all-target Clippy pass. The [fixed-first-fit WNLS/FGNLS composition](../examples/mma05p2nls/weighted.md)
-  also validates both covariance modes and source projections. These bounded
-  Table5.7 NLS columns do not close exponential ML, known-variance covariance,
-  marginal effects or the broader optimization/system requirements.
-- Mixture/unobserved-heterogeneity, hurdle/zero-inflated counts, frailty,
-  competing-risk and multiple-spell survival models.
-- Nonlinear panel models and remaining dynamic-panel analyses.
-- Simulation-based and Bayesian estimation, including diagnostics and actual
-  reproducible random draws.
-- Measurement-error estimation and remaining missing-data analyses.
+The remaining families include flexible and semiparametric regression, general
+optimization and systems, dynamic panels, mixtures and unobserved heterogeneity,
+hurdle/zero-inflated counts, frailty and multiple-event survival, simulation,
+Bayesian/MCMC methods, measurement error and the remaining missing-data work.
+The [coverage ledger](reference/microeconometrics-coverage.md) and the linked
+example inventories are authoritative for which bounded slices already exist.
 
-**Completion rule:** inventory every empirical illustration in the stated edition,
-identify its data, preparation, model, inference and post-estimation requirements,
-and link executable scripts plus independent reference evidence. Mark each entry
-planned, in progress, blocked or validated. Any proposed exclusion requires an
-explicit product-scope decision; it cannot silently count as coverage. The present
-family-level ledger and seed examples are not a complete example inventory.
+## Supporting work and optional breadth
 
-Equivalent native workflows are acceptable; reproducing Stata do-file syntax,
-Python internals or every theoretical estimator discussed in prose is not the
-acceptance criterion. Resolve edition/example ambiguities explicitly in the ledger.
-
-## Supporting work and genuinely optional breadth
-
-- **Interface reliability:** protect ordered script effects, source-classified
-  errors, output-failure stopping and stable structured results. Add result access
-  or script iteration when an actual replication requires it, not a speculative
-  general programming language.
-- **Interactive ergonomics:** completion/history/multiline/cancellation work follows
-  demonstrated analysis friction, not command-catalog size.
-- **Responsiveness/distribution:** use the existing [measurement harness](performance/core-workflow.md);
-  packaging, licensing and platform claims need named-platform evidence.
-- **Optional unless a required analysis demonstrates a need:** MCP transport,
-  remote/lazy engines, spatial modeling, regularization and integrations beyond
-  the analytical target. ReadStat/libgretl/plotting adapters are implementation
-  choices, not product milestones or approved production dependencies.
+- Protect ordered script effects, source-classified errors, output-failure stopping
+  and stable structured results. Add language features when a real replication
+  requires them.
+- Improve completion, history, multiline editing and cancellation when analysis
+  friction demonstrates the need.
+- Use the [performance harness](performance/core-workflow.md) for measurements.
+  Packaging, licensing and platform claims require named-platform evidence.
+- MCP transport, remote/lazy engines, spatial modeling, regularization and extra
+  integrations are optional until a required analysis demonstrates a need.
+  ReadStat, libgretl and plotting adapters are implementation choices.
 
 ## Next bounded actions
 
-The [Chapter21 first-program inventory](../examples/mma21p1panel/inventory.md)
-now separates20 source-program requirements; the [manual-program inventory](../examples/mma21p1panel/manual_inventory.md)
-adds29 transformed-OLS/reporting requirements and verified publisher filenames.
-Neither closes full chapter/book coverage. Native FE/ML inference is not a proxy
-for the manual auxiliary rows; the logged GLS-under-ML-HC1 anomaly is explicit.
-The separate first-program [whole-person RE-ML bootstrap composition](../examples/mma21p1panel/random_effects_ml_bootstrap.md)
-now refits variance components per draw on the original MOM mean design:
-500 independent R refits/266,000 exact native-stream draws, full coefficient
-covariance/type7 intervals and original predictions are audited. Boundary draws
-are retained; historical Stata draw/duplicate-ID/all-interval parity and a general
-ML bootstrap API are not claimed. The distinct [component-refitting RE-GLS
-bootstrap](../examples/mma21p1panel/random_effects_gls_refit_bootstrap.md) now
-validates500 R/plm Swamy–Arora refits/266,000 exact draws, signed/truncated
-components/theta, population-intercept/slope covariance/type7 intervals, readable/
-CLI-v1 uncertainty and original predictions. Existing fixed-theta workflows
-remain separate and unchanged. The bounded [Gaussian population-averaged
-GEE composition](../examples/mma21p1panel/gaussian_pa.md) now validates legacy
-Pearson exchangeable correlation/RSS-N scale, full working/uncorrected unit
-sandwich covariance/normal95, all5,320 predictions/532 unit scores and12 author
-printed facts against R gee/dense matrices. Positive/negative-correlation controls,
-readable/CLI-v1 reports and retained pooled-OLS state are explicit; this composition
-has no owned GEE model (the separate native household GEE uses different moments).
-The composition's original report omits p-values, while the P4 report
-below supplies them. The distinct [normalized FE level-intercept
-pairs bootstrap](../examples/mma21p1panel/fe_level_bootstrap.md) now validates500
-raw-copy R QR refits/266,000 exact draws, full coefficient covariance/type7
-intervals and retained native original FE predictions. Re-normalization is per
-draw; zero empirical variance is retained, not dropped. The centered auxiliary-
-OLS bootstrap is unchanged. The distinct [classical analytic common-intercept
-workflow](../examples/mma21p1panel/classical_intercept.md) now adds full normalized
-joint covariance/Student-t95 and `_cons` lincom/test, independently checked by
-39 original full-dummy QR fields/all5,320 predictions,96 multi-slope control
-fields and a160-row complete-panel control. Unit-cluster common inference is
-explicitly withheld; old slope arrays remain unchanged. Expanded shared-API
-verification after the conditioning guard covers1810 reverse-consumer cases plus
-8 focused and2 unaffected earlier stats cases (1820 passing,2 pre-existing ignored);
-large predictor offsets with unrecoverable mean-error variance withhold only
-new normalized inference, not existing slope/point fits.
-The separate [first-program B500 Between bootstrap](../examples/mma21p1panel/between_bootstrap_b500.md)
-now validates18 independent R summaries/all532 mean/prediction records and exact
-raw inputs, retaining manual B200 and distinguishing native/historical RNG.
-The [manual FE auxiliary covariance comparison](../examples/mma21p1panel/manual_fe_covariance.md)
-now validates68 original QR quantities/79,800 source/mean/prediction cells,
-IID/row-HC1/person-CR1 full matrices and5318/531 slope-interval DF. Named reports
-carry exact samples/cluster labels; post-prediction cluster inference is retained.
-Centered-intercept t/p artifacts are explicitly not interpreted; canonical FE
-covariance/normalization remains separate. The [manual fixed-GLS-theta comparison](../examples/mma21p1panel/manual_gls_covariance.md)
-now validates120 original R/plm/QR fields, all122,360 source/component/population/
-quasi prediction cells, three matrices/both coefficient intervals and two
-independent interior/theta0 controls. Signed negative raw variance is retained,
-not re-estimated per covariance; native normal versus auxiliary t and quasi
-intercept scaling are explicit. The [manual nonrobust auxiliary Hausman comparison](../examples/mma21p1panel/iid_hausman.md)
-now validates39 original R/plm/QR fields and all5,320x18 source/design/prediction
-cells, plus interior/theta0 controls. Its working F and asymptotic chi-square
-tails are distinct; this is neither the robust target nor native covariance
-subtraction. The [fixed-ML-theta auxiliary comparison](../examples/mma21p1panel/manual_ml_covariance.md)
-now validates66 independent likelihood/QR fields and all5,320x22 source/design/
-prediction cells, plus interior and constrained-boundary controls. Native ML
-information is distinct from working auxiliary IID/CR1. The [fixed-ML auxiliary bootstrap](../examples/mma21p1panel/manual_ml_bootstrap.md)
-adds500 independent QR refits,22 aggregate fields and all5,320x22 cells with
-interior/theta0 controls; it freezes theta rather than refitting ML components.
-The [residual-program inventory](../examples/mma21p1panel/residual_inventory.md)
-now maps the source blocks, and the [Table21.3 pooled residual matrix](../examples/mma21p1panel/pooled_residual_correlations.md)
-validates100 year-pair cells/all5,320 source/prediction rows against R and45
-printed-log entries. The [Table21.4 within-FE residual matrix](../examples/mma21p1panel/within_residual_correlations.md)
-separately validates100 correlations,25 full-dummy QR inference fields, all5,320
-source/prediction rows and45 printed facts. The [RE idiosyncratic residual composition](../examples/mma21p1panel/random_effects_residual_correlations.md)
-separately validates100 correlations,30 plm/ranef fields and all5,320x24 source/
-prediction cells plus45 printed facts; its sample-specific unit predictions are
-not native retained RE state. The [two observed-level year matrices](../examples/mma21p1panel/level_correlations.md)
-validate all200 R cells,5,320 source rows and90 printed author-log facts. The
-[annual-FD composition](../examples/mma21p1panel/fd_residual_correlations.md)
-validates4,788 annual-pair/prediction rows,243 R cells and108 logged correlations;
-only checked outputs, not the external `mom` binary identity/order, are equivalent.
-The [within-person lag composition](../examples/mma21p1panel/individual_autocorrelation.md)
-separately validates all532 people and both logged9-pair examples. The [1979
-cross-sectional fit](../examples/mma21p1panel/cross_section_1979.md) validates29 R
-inference/test fields and all532 source/prediction rows. The [joint residual
-snapshot/report](../examples/mma21p1panel/residual_summary.md) checks64 R/plm
-fields, all5,320x30 source/prediction cells and55 summaries; one near-zero
-author RE mean's last printed digit is unresolved. The [GLS companion inventory](../examples/mma21p1panel/gls_inventory.md)
-now maps four working correlations, bootstraps and reporting. Its [independent-working
-GEE composition](../examples/mma21p1panel/independent_gee.md) checks18 fit/26
-inference fields, all5,320 source/prediction rows and532 unit scores against R;
-RSS/N, G/(G-1), normal/chi-square and retained pooled OLS are explicit. A
-separate float32-input hypothesis matches24 printed facts. The [exchangeable P4 report](../examples/mma21p1panel/exchangeable_p4.md)
-reuses the legacy-Pearson composition and validates19 R fit/26 inference fields,
-full G/(G-1) sandwich, all5,320 source/prediction rows,532 scores and25 direct
-printed facts, retaining pooled OLS rather than a GEE model. The [AR1 GEE](../examples/mma21p1panel/ar1_gee.md)
-validates17 fit/26 inference fields, all5,320 source/prediction rows,532 unit
-scores and25 printed facts against R gee/dense matrices; keyed annual pairs,
-strict rho/convergence guards and retained pooled OLS are explicit. The author's log
-requests500 bootstrap replications but reports72 for independent/exchangeable;
-its unstructured bootstrap is commented out and final matrix list fails. Other
-GLS blocks, mixed reporting, historical parity and full book inventory remain required.
+Select one of these outcomes with an exact ledger-defined contract, then add its
+evidence beside the workflow. Keep the choice responsive to correctness defects
+and demonstrated dependencies rather than treating the list as phase gates.
 
-1. Advance another required econometric analysis or bounded panel diagnostic on an
-   exact ledger-defined sample/design/reference. The
-   [Table21.2 workflows](../examples/mma21p1panel/README.md) now include composed
-   POLS/FD/Between, native FE, balanced Swamy–Arora model-based/unit-cluster GLS,
-   and Gaussian ML with joint/constrained observed information and null/slope LR.
-   The [Figure21.2 between-person source-data adaptation](../examples/mma21p1panel/between_figure.md)
-   validates 5,320 source rows, 532 exact-source-scale person means and ordered
-   LOWESS/OLS fits plus SVG geometry. The [Figure21.1 pooled adaptation](../examples/mma21p1panel/pooled_figure.md)
-   validates all5,320 source/fit rows and SVG geometry, with the native LOWESS
-   work cap raised to23million for its22,636,600-window bound. The
-   [Figure21.4 first-difference adaptation](../examples/mma21p1panel/fd_figure.md)
-   validates all4,788 consecutive pairs and SVG geometry, with raw lags before
-   finite filtering. The [Figure21.3 within adaptation](../examples/mma21p1panel/within_figure.md)
-   validates5,320 exact-source-scale transformed rows, FE/auxiliary OLS cluster
-   inference and SVG geometry. Historical tied-curve parity remains open.
-   The exact p719 robust auxiliary Hausman workflow now uses existing SQL/clustered
-   OLS/test primitives:39 independent R quantities/95,760 cells and8 selected
-   printed facts, with F(1,G-1) reference and explicit covariance assumptions.
-   Separately, bounded native `estat hausman` compares a balanced nonclustered
-   one-slope RE-GLS fit with same-sample FE using classical covariance subtraction;
-   original MOM R/plm validates12 quantities and58,520 exported cells. It rejects
-   nonpositive/cancellation-dominated differences and unsupported ML, clustered,
-   unbalanced or multivariate fits. Neither method supplies general model selection
-   or makes the classical test robust to within-unit dependence.
-   Conventional nonclustered FE now also reports the pooled-versus-within
-   unit-effects F test; independent R/plm comparisons cover balanced, unbalanced
-   and interleaved synthetic fixtures, while clustered FE withholds the classical
-   reference. The original MOM source is not bundled.
-   Unbalanced ML adds a 4,738-row MOM sensitivity audit (65 scalars/52,118 cells)
-   and531 synthetic numerical comparisons, with unequal-count null/information.
-   Interior ML audits48 R quantities/58,520 cells and495 synthetic comparisons;
-   zero-unit-variance ML adds378 base-R Gaussian ML/constrained-information
-   comparisons with explicit boundary metadata. Either fitted boundary withholds
-   ordinary slope-LR references; the separate unit-variance test uses its 50:50
-   boundary mixture. The bounded profile and lack of a regular normal-Wald
-   unit-variance SE remain explicit. A small unresolved difference from old printed
-   Stata8 SEs prevents claiming the published uncertainty column. Interior ML
-   unit-score inference now validates53 independent R quantities and58,520 cells
-   on the same MOM design, plus292 synthetic comparisons across balanced/unequal
-   counts and a restricted-null boundary. It uses full joint observed bread,
-   G/(G-1), normal/log-Wald and rank-aware slope chi-square inference, with no
-   robust LR references or few-cluster guarantee. Boundary sandwich and non-unit
-   clusters remain unsupported; select further ML extensions from exact illustrated
-   requirements. Individual unit-intercept uncertainty, cluster-robust unit-effects
-   tests, other Hausman/panel diagnostics, bootstrap and remaining table/figure
-   outputs stay required. No persistent
-   panel declaration or whole-table/family coverage is claimed.
+1. Advance one required econometric analysis or bounded panel diagnostic. The
+   [Chapter 21 workflows](../examples/mma21p1panel/README.md) provide explicit
+   panel samples, designs and open comparison/diagnostic choices, while the
+   [coverage ledger](reference/microeconometrics-coverage.md) records the next
+   evidence needed for IV, binary, quantile and panel slices.
+2. Advance the next bounded MMA count requirement from its defined source and
+   sample. The [native count workflows](../examples/mma20p1count/README.md)
+   identify fixed-offset, clustered/person, NB2 and remaining Table 20.6 work;
+   choose one exact estimand and reference without treating a single discrepancy
+   as a prerequisite for unrelated count progress.
 
-2. Advance the next bounded MMA-COUNT requirement from its now-resolved
-   source/sample/design: the [native Table20.5 Poisson portion](../examples/mma20p1count/README.md)
-   and separate NB2 script validate model-based/independent-row robust coefficients,
-   full inference/diagnostics/continuous effects and all 20,186 means/indices
-   against R (Poisson1,095/NB2 1,191 quantities). NB2 specifies variance
-   mu+alpha*mu² and full joint observed-information covariance for beta/lnalpha,
-   not conditional GLM/Fisher covariance. Neither completes the count family or
-   panel analysis: remaining exposure workflows, household/site/multiway/survey inference,
-   other formal NB specification tests and remaining table outputs stay required; the boundary LR p-value is currently model-based only.
-   The native Poisson original-person extension now audits20,186 source rows/
-   5,908 actual people and validates551 additional R quantities with G/(G-1)
-   group-score/normal inference. It assumes independent people, not household/site
-   dependence or FE/RE; development-only DTA identity conversion is not native DTA IO.
-   The NB2 original-person extension now independently validates599 additional
-   quantities/all source/ID/design/mean/index records using FULL joint beta/lnalpha
-   observed bread and grouped joint scores; normal95/transformed dispersion CIs,
-   not conditional/Fisher substitution, G-1 t, few-cluster guarantee or alpha=0 test.
-   Retained `estat countprob` now supplies descriptive observed/mean-fitted bins,
-   validated against2090 R scalar/95 empirical quantities and444092 individual
-   native-helper probabilities. It assumes full laws, not QMLE calibration or a
-   formal test. The materially different printed Table20.6 NB2 row remains
-   unresolved; native/November2006 author-program evidence does not complete it.
-   The shared log-gamma Lanczos coefficient is now corrected, with 153
-   independent base-R regressions for positive log-gamma, Student t tails/quantiles,
-   F tails and normal probabilities. This improves existing inference paths without
-   changing sample/covariance/DF conventions or adding textbook coverage;
-   integer-shape count probabilities remain on their separate numerical path.
-   Fixed Poisson `offset(var)` is now separately validated on a synthetic
-   [complete workflow](../examples/poisson-offset/README.md): joint finite sample,
-   same-offset null, current offset predictions and retained conditional-offset
-   effects/count bins, with 950 independent base-R quantities across three designs
-   and three covariance choices. NB2 fixed offsets now have a separate
-   [synthetic workflow](../examples/nb2-offset/README.md) validating 1,076 R/MASS
-   quantities, full joint beta/lnalpha observed covariance/group scores, same-offset
-   dispersion-refitted nulls, current predictions and retained conditional-offset
-   effects/count bins. These are method evidence, not new book coverage.
-   Current-row `predict ..., pmf(k)`/`cdf(k)` now supports scalar or row-specific
-   integer cutoffs0..100000 with retained alpha/offsets, a 10,000,000-increment
-   expanded-work bound above99 and atomic publication;308
-   independent base-R helper values,432 fixed-cutoff and144 row-specific
-   offset-fit/current-row probabilities validate the bounded
-   [complete workflow](../examples/count-probability/README.md). Full laws remain
-   assumptions; robust covariance does not establish distributional calibration.
-   The [§23.3 log-patents linear panel workflow](../examples/mma23p1pannonlin/linear_panel.md)
-   validates clustered pooled OLS, classical within FE and balanced RE-GLS on
-   all1,730 source rows and106 independent R/plm/full-dummy fit/test quantities;
-   337 zeros use the author's ad hoc ln(0.5). Original classical normalized
-   intercept SE/t/nonzero p/95CI/full covariance now pass independent full-dummy
-   OLS and raw within/mean information identities, with df1383 and24 printed
-   author facts. Auditor-only Student-t checks match30 R values;26 forged
-   source/inference artifacts fail. The stale point-only checker tag is fixed;
-   no estimator/API/source-script change or widened tolerance. Exact named
-   three-fit comparison and other historical/full-inventory requirements remain.
-   The [Figure23.1 source-data adaptation](../examples/mma23p1pannonlin/figure.md)
-   independently validates all1,730 observations, centred-rank LOWESS and
-   linear fits and SVG geometry; historical Stata tied-curve parity remains open.
-   The [source-pinned patents companion inventory](../examples/mma23p1pannonlin/inventory.md)
-   now accounts for37 preparation/graph/model/bootstrap/report blocks, including
-   `xtsum` and named comparisons not covered by the bounded fit workflows. Its log
-   distinguishes500 nominal PA bootstrap replications from338 usable statistics
-   and missing normal-RE primary SEs from table zeros. The separate
-   [full-decade preparation workflow](../examples/mma23p1pannonlin/decade_preparation.md)
-   validates all3460 1970–79/1730 selected records,21 derived fields, five
-   pre-restriction lags, labels and42 variable-wise summaries against independent
-   raw-token R; Python checker forgeries, no-clobber/error paths and21 existing
-   five-year reverse-consumer tests pass. The default five-year converter is
-   unchanged. Between/within `xtsum`, historical wide DTA/label restoration and
-   named source reports remain required. These source facts do not resolve
-   historical mechanisms or complete Chapter23/book inventory; partial/open
-   entries remain required.
-   The [§23.3 pooled patent Poisson illustration](../examples/mma23p1pannonlin/pooled_poisson.md)
-   now validates all1,730 original firm-years, three covariance modes,103 R
-   quantities and19,030 exported cells;22 all-zero firms remain in pooled data.
-   Its [whole-firm bootstrap](../examples/mma23p1pannonlin/pooled_poisson_bootstrap.md)
-   validates both coefficients in500 R refits and173,000 ordered RNG-oracle draws;
-   the non-Stata stream and whole-script failure boundaries are explicit.
-   A separate [bounded conditional-FE Poisson SQL composition](../examples/mma23p1pannonlin/conditional_fe.md)
-   validates the 1,620-row/324-firm positive-total sample against14 R quantities
-   and48,440 export cells; this model-based one-slope test is not cluster robust
-   or a general native panel estimator. The separate [native conditional-FE replay](../examples/mma23p1pannonlin/native_conditional_fe.md)
-   now owns the installed conditional model and positive-group normalization for
-   later n/xb/residuals, validating14 unchanged R quantities/full scalar variance
-   and all1730 source/prediction records with110 NULL excluded predictions. Both
-   routes exclude22 zero-total firms, retain1620/324, and use model-based inference;
-   no production kernel/API change. Raw score/information/likelihood/LR identities,
-   retained-subset predictions, metadata/order/labels/file failures and31 rejected
-   forgeries supplement R comparisons; text/JSON exports match. Its [whole-firm bootstrap](../examples/mma23p1pannonlin/conditional_fe_bootstrap.md)
-   separately validates 500 R refits and 162,000 ordered independent-oracle draws;
-   the explicit RNG differs from Stata. The separate [exponential-mean NLS](../examples/mma23p1pannonlin/exponential_nls.md)
-   uses native `nl` and a firm-score SQL sandwich; R validates all1,730 source
-   rows, 346 firm scores and both author working/cluster covariance conventions.
-   Its [whole-firm bootstrap](../examples/mma23p1pannonlin/exponential_nls_bootstrap.md)
-   validates 500 two-parameter R refits and173,000 ordered RNG-oracle draws;
-   its bounded profiled score can be nonmonotone, and final observed-curvature
-   checks establish a local minimum without a global-uniqueness claim.
-   The bounded [exchangeable Poisson GEE composition](../examples/mma23p1pannonlin/exchangeable_gee.md)
-   independently validates both full covariance matrices, all1,730 predictions
-   and346 firm scores against legacy R `gee` and base-R equations. A nine-step
-   float32 probe supports storage/stopping as contributors to the
-   disclosed seven-decimal slope difference; this SQL composition retains
-   pooled Poisson. The separate [native Poisson GEE workflow](../examples/mma23p1pannonlin/native_poisson_gee.md)
-   now owns actual Poisson/log exchangeable GEE for later n/xb/residual prediction:
-   balanced selected groups, legacy Pearson correlation, fixed working scale1
-   and separate G/(G-1) sandwich/normal inference. It validates27 R quantities/
-   full covariance, all1730 source/prediction rows and346 firm scores, with all22
-   zero-total firms retained. Dense-R multivariate/rescaling controls, negative
-   rho, selected missingness/balance, resource/convergence/state/file boundaries
-   and33 rejected source/inference forgeries cover the bounded implementation.
-   Gaussian GEE wires/moments/uncorrected covariance and legacy failure policy
-   remain unchanged. Native unbalanced/general GEE, automatic GEE bootstrap and
-   historical slope/stopping parity remain required. The separate SQL [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/exchangeable_gee_bootstrap.md)
-   validates 500 R/base-R refits and173,000 independent ordered draws; the
-   author's materially different bootstrap SE and historical duplicate-ID
-   handling remain unresolved, not counted as historical parity.
-   The bounded [gamma random-effects Poisson composition](../examples/mma23p1pannonlin/gamma_re_poisson.md)
-   validates the shared-firm gamma likelihood, joint observed covariance, boundary
-   LR and all1,730 marginal predictions against independent R; a float32 probe
-   explains part of the historical ln(alpha) precision discrepancy without an
-   exact-parity claim. The separate [native patents RE workflow](../examples/mma23p1pannonlin/native_gamma_re.md)
-   now validates the installed estimator against37 unchanged R quantities/full
-   joint covariance and all1730 source/prediction rows, retaining all346 firms/
-   22 zero-total firms and actual owned RE state for later predictions. Six
-   printed author gates pass; historical lnalpha precision remains unresolved.
-   Missing/all-missing metadata, permutation, text/JSON, registry/labels and
-   failed-fit invalidation/export/prediction ownership are tested. No new kernel
-   or API; this bridge does not complete the table/chapter. The existing SQL [distinct-copy whole-firm bootstrap](../examples/mma23p1pannonlin/gamma_re_bootstrap.md)
-   validates 500 joint three-parameter R refits and173,000 independent ordered
-   draws; historical repeated-ID semantics remain unresolved despite a material
-   merged-ID counterfactual. The separate [normal random-intercept Poisson composition](../examples/mma23p1pannonlin/normal_re_poisson.md)
-   validates all1,730 source/prediction rows and42 report quantities against
-   independent direct R integration, with guarded quadrature and full joint
-   information. The historical normal-RE result has missing SEs and materially
-   differs from the integrated likelihood; it is not counted as exact parity.
-   The separate [native normal-RE workflow](../examples/mma23p1pannonlin/native_normal_re.md)
-   now retains actual normal state for population n=exp(xb+variance/2), with
-   paired80/96 GH/full observed joint information and explicit bounded failures.
-   All1730 original source/prediction records/42 independent direct-R fields,
-   full covariance and byte-identical JSON/text exports pass; two-slope,
-   unbalanced/singleton controls add57 R fields/full4x4 covariance. Independent
-   raw Simpson score/information/pooled-null identities reject31 forgeries,
-   including coherent wrong native/R covariance/null artifacts. Native default
-   gamma/FE and SQL composition remain distinct. Help/discovery, failure-state
-   and file/column ownership contracts are covered; this completes the bounded
-   native normal-RE workflow, not historical/table/chapter parity.
-   A separate [native normal-RE bootstrap](../examples/mma23p1pannonlin/native_normal_re_bootstrap.md)
-   now delivers read-only terminal/script/CLI-v1 uncertainty: source1730/346/22
-   zero-total groups and control200/40 match all500 independent R joint refits,
-   31 empirical fields/full3x3 covariance/type7 intervals and every ordered draw.
-   Raw adaptive-Simpson scores check every copied fit; original42-field inference,
-   information/null equations and owned predictions remain unchanged. Two-slope/
-   unbalanced/singleton/distinct-versus-merged effects,20 forged-artifact cases
-   and state/file ownership contracts pass. Fixed copied176/208 rules and the
-   original raw joint initializer preserve strict numerical gates, with no
-   adaptive retry/redraw; conservative384-node work is bounded explicitly.
-   Cross-crate regressions are verified with separate run accounting and final
-   author review is complete. This native extension
-   is not requested by the publisher's five bootstrap blocks or historical parity.
-   Broader conditional-FE inference,
-   general GEE, other firm bootstraps and historical Figure23.1 reconciliation
-   remain separate required work. The [native FE bootstrap workflow](../examples/mma23p1pannonlin/native_conditional_fe_bootstrap.md)
-   now admits324 positive firms under its conditional-specific512-group cap while
-   preserving copied-row/work budgets and fail-abort/RNG/state contracts. All500
-   R conditional refits/three dummy-GLM cross-checks,162000 independent native
-   draws, full scalar B−1 covariance/type7 intervals and original predictions
-   pass;26 forgeries cover shared artifacts. The separate [native gamma bootstrap](../examples/mma23p1pannonlin/native_gamma_re_bootstrap.md)
-   now admits346 firms/22 zero totals under cap512:500 joint R refits/31 fields/
-   full3x3 covariance and173000 independent draws pass; original predictions
-   remain owned, and30 forgeries include shared native/R nuisance/covariance
-   errors rejected by raw-score/empirical identities. Pooled stays256. These
-   native/SQL streams differ; historical RNG/SE/interval parity remains open.
-   Select one exact specification/reference before extending the estimator. The defined
-   §14.2 native published-analysis workflow is now validated, including all
-   source/cohort/fitted summaries, Tables14.1–14.2 and Figure14.1; this does not
-   complete the binary family. Needed Fisher/factor/interaction/discrete-change
-   foundations, maximum score and other exact binary illustrations remain
-   required. Native OLS/logit/probit named reports are not fit restoration or
-   reporting for every future estimator. One-way clustered covariance remains
-   external method evidence, not a newly validated textbook illustration.
+Do not turn the entire textbook inventory into a prerequisite for one bounded
+analysis. Preserve the assumptions and unresolved source differences in the ledger.
 
-The classical/robust-MLE portion of the [§14.2 binary
-slice](../examples/mma14p1binary/README.md) is delivered: the logit column
-supplies model-based MLE/normal coefficient and LR inference, current-data
-probabilities/xb, and retained-X continuous AME with conditional-design delta
-uncertainty; the probit column (`probit.td` / `reference_probit.R`) delivers the
-same workflow on Newton steps against the per-observation observed information,
-with the R reference polished to the analytic score fixed point. R4.6.1 validates
-all 630 source-row identities and numeric outputs for both families, including
-tiny test tails. Unclustered robust fits now use N/(N-1) score-sandwich
-covariance with converged observed-information bread, independently validated
-for both families and propagated to conditional-X AME uncertainty. Their LR
-p/reference are unavailable, not falsely advertised as robust LR inference.
-Robust/clustered omnibus Wald inference now tests all non-intercept coefficients
-using selected covariance and asymptotic chi-square(q); singular/rank-limited
-restrictions are explicitly unavailable, without dropping the fit or silently
-reducing q. Independent R validates the exact §14.2 robust tests under the
-converged-information convention, not exact historical Stata8 Wald equality.
-Probit deliberately retains the
-fixed-point convention rather than old Stata8 information lag.
-Combined outlier/separating-direction tests cover the
-independent-review convergence defect; absolute normalized full-step and score
-bounds fail rather than publish an unconverged fit. One-way clustered fits now
-use G/(G-1) cluster-score covariance and normal (not G-1 t) inference, with
-independent external Bangladesh method evidence in the coverage ledger. That
-is not survey inference or a small-cluster reliability guarantee. The native
-six-fit script now supplies the numerical classical/robust logit/probit/OLS
-comparison for Table14.2, with 94 quantities and every source/design/prediction
-record independently checked in R. OLS Gaussian working likelihood and unbounded
-linear fitted values are explicitly distinguished from Bernoulli probabilities.
-The original development-only checker's joined display remains only a validation
-convenience. A separate native named-report workflow now stores the selected
-OLS/logit/probit coefficients, covariance and fit-time sample provenance, and
-renders the six requested columns without refitting. All 94 table quantities
-match independent R; normal binary versus t-based OLS inference and distinct
-likelihood/R² conventions remain explicit. Reports survive edits/reloads/refits
-but cannot restore fit caches or establish current-data staleness/identity.
-A native SVG scatter/three-line overlay now
-renders Figure14.1's 630 outcomes and 1,890 independently checked R prediction
-vertices, including actual geometry at 1e-8 pixel absolute tolerance. The visible
-OLS range stays unbounded; layout/fonts and deterministic y-only display jitter
-are intentionally not historical Stata RNG/pixel parity. The shared command
-preserves data/fit/labels/order and publishes without replacement; PNG, automatic
-opening and broader graphics remain uninstalled. Table14.1's overall/pier/charter
-summaries now run through native conditional summarize: all 60 quantities and
-630 sample/design records independently match base R, with sample n−1 SD and
-unchanged prepared source order. This is three ordered summary blocks, not a
-joined-table command. A composed `analysis.td` now includes the remaining source,
-full prepared-cohort and fitted-value summaries: independent base R validates all
-465 quantities in eight blocks/93 rows, plus every field/ID of the 1,182 source
-and 630 prepared records, using unchanged tolerances. The same run also passes
-all six-model/table/prediction and SVG geometry checks. JSON/text/piped CSV/SVG
-bytes match the leaf workflows. Source/program/output hashes are verified; the
-example audits each author block against the native representation. This
-validates the defined §14.2 published tables/figure and all descriptive blocks,
-not every auxiliary Stata fit-log field/layout, historical float32/RNG/WMF/ASCII
-parity or fit restoration. Individual OLS ANOVA/F/interval displays are not added
-to the comparison table; native test/lincom remain separate. Earlier successful
-script outputs remain on later failure, not whole-script rollback. Reporting for
-future estimator families remains required. This completes that bounded native
-analytical contract, not the binary milestone, IV illustration or full book.
+## Delivery record and historical detail
 
-Keep general GMM/Hansen J beyond the bounded clustered/no-intercept slice, robust/cluster AR confidence sets, endogenous-subvector confidence sets and
-any further endogeneity inference required by exact illustrations explicit as
-remaining required work.
-Conventional Wald results, Sargan/Wu diagnostics and first-stage relevance tests
-do not establish weak-IV-robust coefficient inference.
+The [coverage ledger](reference/microeconometrics-coverage.md) records current
+method and illustration status. Example READMEs and linked evidence record exact
+commands, numerical gates and limitations. Historical delivery logs remain in
+`_workspace/` and the archived delivery ledger for provenance, but they are not a
+current backlog. The immutable [previous roadmap snapshot](https://github.com/SaehwanPark/tabdat-explore-rs/blob/133cfc0/docs/TABDAT_RUST_PORT_ROADMAP.md)
+preserves the former detailed roadmap when that history is needed.
 
-The schooling-IV 2SLS core now reports ordinary and Shea partial R-squared
-separately, validated against the author output on the DATA66 sample; see the
-[coverage ledger](reference/microeconometrics-coverage.md). This does not establish
-completion of the illustration. A separate `estat ar, null(...)` command now supplies
-homoskedastic weak-IV-robust **joint tests of all endogenous coefficients** on the
-retained fit sample. Single-endogenous fits additionally support analytic
-homoskedastic confidence sets via `estat ar, ci [level(95)]`, including disjoint,
-unbounded and empty sets within documented numerical limits. For multiple-endogenous
-fits, `estat ar, ci coefficient(name) [level(95)]` analytically projects the joint
-AR region onto one coefficient while leaving every other endogenous coefficient
-unrestricted; this has at-least-nominal coverage and can be conservative. It is
-validated on a synthetic R reference and the original DATA66 sample: N=3,010 and
-the 95% grade76 set is [-0.01438755244, 0.50285323590], matching an independent
-base-R profile. This does
-not supply robust/cluster projected confidence sets, multidimensional projected
-regions or the less-conservative subvector AR test. A separate
-[synthetic robust AR workflow](../examples/robust-ar/README.md) now validates
-retained-sample HC1/one-way CR1 auxiliary-regression joint tests against base R
-under three designs, with explicit auxiliary corrections and asymptotic
-chi-square(q) inference. This is method evidence, not new book coverage or
-few-cluster validation. The separate
-[overidentified AER cigarette-demand example](../examples/cigarettes_iv/README.md)
-now validates `estat overid` Sargan N*R² with asymptotic homoskedastic chi-square
-inference on 48 states in 1995. Its sample/design/reference is specified; this
-advances method coverage, not the Cameron–Trivedi empirical-illustration ledger.
-Sargan is not robust Hansen J, an endogeneity test, or proof of instrument validity.
-Independent-row robust parent fits now use a distinct residualized-instrument
-Wooldridge score, with uncorrected score OPG, retained structural residuals and
-asymptotic chi-square(L-K). Independent R SVD/lm.fit matches the exact 48-state
-source/design/score/tail and five synthetic q1/q2 designs; see the same example.
-This is additional method evidence, not new textbook coverage or Hansen J.
-Clustered overidentification after 2SLS and general GMM remain required work.
-A bounded [Chapter 22 base-instrument workflow](../examples/mma22p1panel/README.md)
-now implements clustered two-step linear IV GMM with no intercept/included
-exogenous variables and nine instruments on 4,256 person-years. Independent R
-checks all source design/prediction rows, coefficients, full fixed-weight and
-author-updated covariance matrices, and both J objectives/p-values; selected
-author-log facts are checked with explicit float-precision caveats. A separate
-[year-stacked workflow](../examples/mma22p1panel/stacked_gmm.md) validates the
-72-instrument column against independent R with both covariance/objective
-conventions; the highly conditioned cluster moments and small historical-log
-differences are documented. Neither workflow implements dynamic-panel GMM or
-resolves weak identification. The separate [Chapter 22 author wage Shea
-workflow](../examples/mma22p1panel/shea.md) reproduces the intercept-including
-auxiliary residual correlation on the original panel against independent R;
-it is a descriptive relevance measure, not a joint weak-IV test.
-The same specified sample additionally validates joint homoskedastic
-`estat endogenous`: Wu–Hausman F(1,44)=3.067816272944078, p=0.08682504624130956,
-using auxiliary original/innovation-augmented OLS. A separate retained-sample HC1/one-way CR1 `estat endogenous` now tests all
-first-stage innovations jointly by augmented-OLS Wald with asymptotic chi-square
-inference. Its auxiliary K/DF/corrections and exact 48-state HC1 R reference are
-explicit in the same example; five synthetic designs independently validate HC1
-and grouped-score CR1. This is additional method evidence, not new book coverage.
-Subset forms, robust score/GMM C variants and few-cluster guarantees remain
-unsupported; these conventional tests assume valid instruments and do not
-establish exogeneity or instrument validity by failing to reject.
-
-Immutable named estimate reports now include explicit-formula NLS with its typed mean model, covariance, sample and approximate-t inference; the terminal comparison also shows standard errors. Named Poisson reports additionally retain offset identity, selected covariance correction and count-likelihood conventions. Model-based FE/RE and explicitly selected Gaussian GEE now support immutable reports with optional panel provenance, normalized FE common-intercept inference and explicit native covariance/reference conventions. Clustered FE/RE snapshots remain unsupported; GEE requires covariance(working|sandwich). These snapshots do not restore fits. Named NB2 reports retain the full joint
-beta/lnalpha covariance, dispersion/alpha interval, offset, joint-score
-covariance correction, refitted-dispersion null and available Poisson-boundary
-LR without inventing a normal-Wald dispersion test. The [combined Table 5.7 source composition](../examples/mma05table57/README.md) now compares five specifications in working and robust reports with fixed first-fit weights and original-scale diagnostics; it is not a literal historical-output reproduction.
-
-The [unweighted NLS model-variance calculation](../examples/mma05p2nls/model_variance.md) now supplies the source plug-in sandwich using fitted mean², independently checked against R on all original rows. It is conditional on the specified mean/variance and is not generic robust or weighted covariance; historical eight-decimal SE differences remain explicit.
-
-The [Table 5.7 OLS/exponential comparison](../examples/mma05p1mle/README.md) now covers the original generated 10,000-row sample and both classical/robust fits with independent R, complete source-row projections and distinct exponential-density versus offset-Poisson likelihoods. This is a bounded source composition, not a general estimator or whole-table completion.
-
-The [Chapter 5.9.4 exponential point-effect workflow](../examples/mma05p4margeffects/README.md) now uses an all-one offset-Poisson fit with the same exponential-density score and information. Independent R profile likelihood verifies all 10,000 generated rows and four point summaries; the historical forward numerical derivative remains discrepant. Separate model-based conditional-x delta intervals now cover the analytical average derivative, one-unit difference and derivative at mean x, with independent R numerical-gradient checks; robust/cluster or random-design effect uncertainty, a general exponential estimator and remaining historical Table 5.7 output remain required.
-
-Implement the selected bounded plan without broadening scope. If it conflicts
-with the codebase or reference semantics, stop and report the conflict rather than
-improvising. Report changed files, tests, deviations and unresolved limitations.
-
-## Verification and scope boundaries
-
-Follow [AGENTS.md](../AGENTS.md) and [CONTRIBUTING.md](../CONTRIBUTING.md):
-
-| Change | Evidence |
-| --- | --- |
-| Docs or low-risk refactor | Diff, links and relevant checks |
-| Grammar, script, CLI | Supported acceptance/error regressions |
-| Data, session or file effects | Invariants, failure state and representative end-to-end workflow |
-| Numerical inference | Independent reference, exact samples/design, parameterization, covariance/DF and justified tolerances; convergence/failure cases when applicable |
-| Native/FFI or distribution | Ownership, lifecycle, licensing and platform-specific checks |
-
-Development-only reference tools may use R/Python/Stata; the production runtime
-must not require them. Never widen tolerances to conceal unexplained differences.
-Do not reinstate exhaustive historical parity gates, routine repeated reviews or
-unrelated fuzz campaigns. Commit/push/PR/merge only within current authorization.
-Update SPEC when capabilities change, the ledger when example evidence changes,
-and this roadmap when priorities change; keep detailed logs beside tests or PRs.
+Verification and development follow [AGENTS.md](../AGENTS.md) and the
+[local testing guide](../CONTRIBUTING.md#impact-scoped-testing).
