@@ -242,23 +242,23 @@ fn robust_projected_cli_workflows_report_reference_sets_and_closed_envelope() {
 }
 
 #[test]
-fn more_than_four_robust_excluded_instruments_stop_before_later_script_effects() {
+fn more_than_five_robust_excluded_instruments_stop_before_later_script_effects() {
   let fixture = Fixture::new();
   fs::write(
-    fixture.0.join("robust_ar_four_ci_multiple_data.csv"),
-    include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_four_ci_multiple_data.csv"),
+    fixture.0.join("robust_ar_five_ci_multiple_data.csv"),
+    include_str!("../examples/robust-ar/robust_ar_five_ci_multiple_data.csv"),
   )
   .unwrap();
   fs::write(
     fixture.0.join("unsupported.td"),
-    "use robust_ar_four_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    "use robust_ar_five_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
   )
   .unwrap();
   let output = fixture.run("--json", "unsupported.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("currently support at most four excluded instruments")
+      .contains("currently support at most five excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }

@@ -111,7 +111,7 @@ independent groups with many-group asymptotics; neither gives finite-sample
 coverage guarantees. This one-instrument result does not cover multiple
 endogenous regressors or robust projection.
 
-## Robust two-, three- and four-instrument confidence sets
+## Robust two-, three-, four- and five-instrument confidence sets
 
 [`two_instrument_ci.td`](two_instrument_ci.td) and
 [`two_instrument_ci_clustered.td`](two_instrument_ci_clustered.td) use one
@@ -152,8 +152,21 @@ all-real-labelled case, and a two-component CR1 set with four real boundary
 roots. Corrections are 1.14285714285714 for HC1 and 1.22077922077922 for CR1
 with 12 groups. The degree-eight method supports up to eight roots and five
 accepted components; tests compare independent endpoints and probes, retained
-state, text/JSON, rescaling and failure paths. Five or more excluded instruments
-remain unsupported.
+state, text/JSON, rescaling and failure paths.
+
+[`five_instrument_ci.td`](five_instrument_ci.td) and
+[`five_instrument_ci_clustered.td`](five_instrument_ci_clustered.td) extend the
+same workflow to five excluded instruments. The 100-row fixture has K=7 and
+residual DF=93, with a 95% chi-square(5) critical value of 11.0704976935164.
+Its independent Base R 4.6.2 reference and generated datasets are in
+[`robust_ar_five_ci_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_five_ci_reference.R).
+For the multiple design, HC1 gives [1.06421221080996, 1.39773070439002] and
+CR1 with 20 groups gives [1.16236801651081, 1.39363336463301]. Corrections are
+1.0752688172043 and 1.12054329371817. A second design yields an empty CR1 set
+and a bounded HC1 set. The degree-ten method supports up to ten boundary roots
+and six set components. Tests compare endpoints and direct Wald probes,
+rescaling, retained state, text/JSON and six-instrument rejection. Six or more
+excluded instruments remain unsupported.
 
 ## Robust projected coefficient sets
 
@@ -213,6 +226,7 @@ work=$(mktemp -d)
 cp crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci*csv "$work/"
 cp crates/tabdat-stats/tests/fixtures/robust_ar_three_ci*csv "$work/"
 cp crates/tabdat-stats/tests/fixtures/robust_ar_four_ci*csv "$work/"
+cp examples/robust-ar/robust_ar_five_ci*csv "$work/"
 cp examples/robust-ar/projected_ar_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
@@ -223,15 +237,18 @@ cp examples/robust-ar/projected_ar_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/four_instrument_ci_all_real.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/five_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/five_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/projected_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/projected_ci_clustered.td")
 ```
 
-Quartic, degree-six and degree-eight boundaries are solved by recursively isolating
-derivative roots and checking every intervening region, without a finite grid.
+Quartic, degree-six, degree-eight and degree-ten boundaries are solved by
+recursively isolating derivative roots and checking every intervening region,
+without a finite grid.
 Repeated or ambiguous roots and singular or ill-conditioned score covariance
 fail explicitly. This remains synthetic method evidence, not a
-Cameron–Trivedi illustration or a claim of instrument validity. Five or more
+Cameron–Trivedi illustration or a claim of instrument validity. Six or more
 excluded instruments, robust projection outside the bounded two-endogenous/
 two-instrument slice, larger endogenous systems, HAC/survey covariance and
 few-cluster inference remain unsupported.
