@@ -87,6 +87,7 @@ git diff --check
 | Native or FFI | Ownership and teardown, licensing, platform checks and sanitizer/leak evidence as applicable |
 | Dependencies or release | `cargo deny check`, `cargo audit -D warnings` and distribution review as applicable |
 
+For a dependency or native safety inventory, see the [cargo-geiger policy](docs/adr/0002-dependency-and-unsafe-code-policy.md).
 Use the [fuzz workspace](fuzz/README.md) and [syntax budgets](docs/adr/0023-syntax-resource-budgets-and-fuzz-tooling.md)
 for parser robustness work. For Python compatibility decisions see the
 [migration guide](docs/migration/README.md).
