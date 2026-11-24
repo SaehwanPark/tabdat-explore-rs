@@ -675,20 +675,34 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
     assert_eq!(session.execute(ci.clone()).unwrap(), result);
     assert_eq!(session.state(), changed);
   }
-  for option in ["robust", "cluster(group_id)"] {
+  for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
     session
       .execute(parse_command(&format!("ivregress 2sls y w, endog(x1) iv(z1 z2) {option}")).unwrap())
       .unwrap();
     let before = session.state();
-    assert!(
-      session
-        .execute(ci.clone())
-        .unwrap_err()
-        .to_string()
-        .contains("exactly one endogenous regressor and one excluded instrument")
+    let result = session.execute(ci.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust two-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x1");
+    assert_eq!(set.excluded_instruments, ["z1", "z2"]);
+    assert_eq!(set.observation_count, expected_n);
+    assert_eq!(set.auxiliary_parameter_count, 4);
+    assert_eq!(set.auxiliary_residual_df, expected_n - 4);
+    assert_eq!(set.degrees_of_freedom, 2);
+    assert_eq!(
+      set.cluster_group_count.is_some(),
+      option.starts_with("cluster")
     );
     assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(ci.clone()).unwrap(), result);
+    assert_eq!(session.state(), changed);
   }
 }
 

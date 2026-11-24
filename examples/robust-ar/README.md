@@ -108,5 +108,44 @@ the implementation solves it analytically without a finite grid. Tests check
 sample indices, corrections, endpoints, test membership and retained-state
 behavior within absolute 1e-10. HC1 assumes independent rows. CR1 assumes
 independent groups with many-group asymptotics; neither gives finite-sample
-coverage guarantees. Multiple excluded instruments, multiple endogenous
-regressors or robust projection remain unsupported.
+coverage guarantees. This one-instrument result does not cover multiple
+endogenous regressors or robust projection.
+
+## Robust two-instrument confidence set
+
+[`two_instrument_ci.td`](two_instrument_ci.td) and
+[`two_instrument_ci_clustered.td`](two_instrument_ci_clustered.td) use one
+endogenous regressor and exactly two excluded instruments. The unrestricted
+auxiliary regression has K=4 and residual DF=16. Its joint null uses the
+asymptotic chi-square(2) reference with 95% critical value 5.99146454710798.
+The deterministic 20-row fixtures and independent base R reference are in
+[`robust_ar_multi_ci_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci_reference.R).
+The HC1 confidence set has two rays plus one bounded component; CR1 has two
+unbounded rays. [`two_instrument_ci_all_real.td`](two_instrument_ci_all_real.td)
+uses the second design, which produces an all-real set under both covariance
+choices while retaining a small nonzero first-stage loading. The tests assert
+that loading remains nonzero and compare endpoint and probe statistics,
+including positive/negative tails, correction factors,
+instrument rescaling, runtime fit retention and CLI JSON/text output. At these
+fixtures, HC1 uses correction 1.25 and CR1 uses 1.31944444444444 for ten groups.
+R is development-only; the native scripts need only the committed CSV and the
+Rust binary.
+
+Run the examples from a temporary directory after building the binary:
+
+```sh
+repo="$PWD"
+work=$(mktemp -d)
+cp crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci*csv "$work/"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/two_instrument_ci_all_real.td")
+```
+
+The quartic boundary is solved by recursively isolating derivative roots and
+checking every intervening region, without a finite grid. Repeated or ambiguous
+roots and singular or ill-conditioned score covariance fail explicitly. This
+remains synthetic method evidence, not a Cameron–Trivedi illustration or a claim
+of instrument validity. More than two instruments, multiple endogenous
+regressors, robust projection, HAC/survey covariance and few-cluster inference
+remain unsupported.

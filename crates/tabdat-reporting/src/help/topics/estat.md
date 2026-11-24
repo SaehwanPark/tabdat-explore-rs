@@ -365,8 +365,8 @@ correction, auxiliary K/DF, optional G and asymptotic reference metadata; the
 classical `AndersonRubinResult` contract remains unchanged. See
 `examples/robust-ar/README.md` for an independently validated complete workflow.
 Endogenous-subvector inference is not implemented. Robust confidence sets are
-limited to one endogenous regressor and one excluded instrument, as described
-below.
+limited to one endogenous regressor and at most two excluded instruments, as
+described below.
 Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
 inference.
 
@@ -436,12 +436,36 @@ HC1 assumes independent rows; CR1 assumes independent groups and many-group
 asymptotics. Neither offers finite-sample or few-cluster coverage guarantees.
 
 Multiple excluded instruments, multiple endogenous regressors, projected robust
-sets, and HAC/survey covariance are unsupported. Rank, residual-DF, cluster,
-nonfinite arithmetic and degenerate auxiliary-score covariance failures are
-explicit errors. CLI-v1 JSON returns the distinct
+sets, and HAC/survey covariance are unsupported for this one-instrument result.
+Rank, residual-DF, cluster, nonfinite arithmetic and degenerate auxiliary-score
+covariance failures are explicit errors. CLI-v1 JSON returns the distinct
 `RobustAndersonRubinConfidenceSet` type with the covariance, correction, optional
 cluster count, critical value, shape and intervals; the homoskedastic JSON
 contract is unchanged.
+
+With exactly two excluded instruments, `estat ar, ci` instead tests the pair of
+instrument coefficients jointly using an **asymptotic chi-square(2)** reference:
+
+```text
+ivregress 2sls y w, endog(x) iv(z1 z2) robust
+estat ar, ci
+ivregress 2sls y w, endog(x) iv(z1 z2) cluster(group)
+estat ar, ci level(90)
+```
+
+The auxiliary regression includes the retained controls, intercept and both
+instruments. HC1 uses N/(N−K_aux); CR1 uses G/(G−1)*(N−1)/(N−K_aux), where
+K_aux counts all auxiliary regressors. The confidence boundary is a quartic
+inequality. The implementation isolates every real root by recursively
+partitioning at derivative roots, then checks the sign of each region; it does
+not use a finite grid. Sets may be bounded, disjoint, rays, all-real, empty, or
+three-component `multiple` sets. A three-component set can contain two rays and
+one bounded interval. Repeated/ambiguous roots and singular or ill-conditioned
+score covariance are explicit errors. The distinct
+`RobustMultipleInstrumentAndersonRubinConfidenceSet` JSON result identifies both
+instruments, reports two degrees of freedom and follows the same null-infinity
+convention. More than two excluded instruments, multiple endogenous regressors,
+robust projection and HAC/survey covariance remain unsupported.
 
 ## Projected Anderson–Rubin confidence sets
 

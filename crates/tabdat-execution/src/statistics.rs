@@ -1282,13 +1282,26 @@ impl Session {
               .map(ExecutionResult::AndersonRubinConfidenceSet)
               .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
           } else {
-            tabdat_stats::robust_anderson_rubin_confidence_set(
-              &state.problem,
-              level,
-              covariance_type,
-            )
-            .map(ExecutionResult::RobustAndersonRubinConfidenceSet)
-            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+            match state.problem.instrument_names.len() {
+              1 => tabdat_stats::robust_anderson_rubin_confidence_set(
+                &state.problem,
+                level,
+                covariance_type,
+              )
+              .map(ExecutionResult::RobustAndersonRubinConfidenceSet)
+              .map_err(|error| RuntimeError::EstatArFailed(error.to_string())),
+              2 => tabdat_stats::robust_multiple_instrument_anderson_rubin_confidence_set(
+                &state.problem,
+                level,
+                covariance_type,
+              )
+              .map(ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet)
+              .map_err(|error| RuntimeError::EstatArFailed(error.to_string())),
+              _ => Err(RuntimeError::EstatArFailed(
+                "robust AR confidence sets currently support at most two excluded instruments"
+                  .into(),
+              )),
+            }
           }
         }
         EstatSubcommand::AndersonRubinProjectedConfidenceSet { coefficient, level } => {

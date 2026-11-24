@@ -25,6 +25,11 @@ impl Fixture {
       include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_ci_data.csv"),
     )
     .unwrap();
+    fs::write(
+      root.join("robust_ar_multi_ci_data.csv"),
+      include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci_data.csv"),
+    )
+    .unwrap();
     Self(root)
   }
 
@@ -143,18 +148,18 @@ fn robust_scalar_ci_scripts_report_independent_sets_and_reuse_the_fit_sample() {
 }
 
 #[test]
-fn robust_scalar_ci_rejects_multiple_excluded_instruments_before_later_effects() {
+fn robust_ar_ci_rejects_more_than_two_instruments_before_later_effects() {
   let fixture = Fixture::new();
   fs::write(
     fixture.0.join("multiple.td"),
-    "use robust_ar_ci_data.csv\nivregress 2sls y w, endog(x) iv(z g) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    "use robust_ar_multi_ci_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 group) robust\nestat ar, ci\nexport should-not-exist.csv\n",
   )
   .unwrap();
   let output = fixture.run("--json", "multiple.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("exactly one endogenous regressor and one excluded instrument")
+      .contains("currently support at most two excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
