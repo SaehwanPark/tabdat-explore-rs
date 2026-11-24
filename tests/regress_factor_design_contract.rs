@@ -141,6 +141,80 @@ fn factor_estimates_match_independent_r_reference() {
 }
 
 #[test]
+fn wide_numeric_factor_order_is_stable_in_cli_with_known_group_predictions() {
+  const LOW: &str = "9007199254740992";
+  const HIGH: &str = "9007199254740993";
+  let dir = TestDir::new();
+  fs::write(
+    dir.path().join("wide_a.csv"),
+    format!("y,code\n1,{LOW}\n3,{LOW}\n10,{HIGH}\n14,{HIGH}\n"),
+  )
+  .unwrap();
+  fs::write(
+    dir.path().join("wide_b.csv"),
+    format!("y,code\n10,{HIGH}\n14,{HIGH}\n1,{LOW}\n3,{LOW}\n"),
+  )
+  .unwrap();
+
+  for (file, command, expected_parameter, expected_reference) in [
+    (
+      "wide_a.csv",
+      "regress y i.code",
+      "code_9007199254740993",
+      LOW,
+    ),
+    (
+      "wide_b.csv",
+      "regress y i.code",
+      "code_9007199254740993",
+      LOW,
+    ),
+    (
+      "wide_b.csv",
+      "regress y ib(9007199254740993).code",
+      "code_9007199254740992",
+      HIGH,
+    ),
+  ] {
+    let output = envelopes(&run(
+      &dir,
+      &[
+        &format!("use {file}"),
+        command,
+        "predict fitted",
+        "select code fitted",
+        "head 10",
+      ],
+    ));
+    let fit = &output[1]["data"];
+    assert_eq!(fit["predictors"], serde_json::json!([expected_parameter]));
+    assert_eq!(fit["design_terms"][0]["reference"], expected_reference);
+    let levels = fit["design_terms"][0]["levels"].as_array().unwrap();
+    let labels: Vec<_> = levels
+      .iter()
+      .map(|level| level["label"].as_str().unwrap())
+      .collect();
+    assert_eq!(labels, [LOW, HIGH]);
+
+    let rows = output[4]["data"]["rows"].as_array().unwrap();
+    assert_eq!(rows.len(), 4);
+    for row in rows {
+      let code = row[0].as_i64().unwrap().to_string();
+      let expected = match code.as_str() {
+        LOW => 2.0,
+        HIGH => 12.0,
+        _ => panic!("unexpected factor code {code}"),
+      };
+      close(
+        row[1].as_f64().unwrap(),
+        expected,
+        &format!("{file}: prediction for {code}"),
+      );
+    }
+  }
+}
+
+#[test]
 fn retained_design_reports_reference_levels_and_predicts_current_data() {
   let reference: Value = serde_json::from_str(REFERENCE).unwrap();
   let dir = TestDir::new();
