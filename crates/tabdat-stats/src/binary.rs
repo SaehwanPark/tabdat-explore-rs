@@ -182,6 +182,20 @@ pub struct LogitMarginalEffects {
   pub effects: Vec<LogitEstimate>,
 }
 
+/// Average fitted-probability change when one binary predictor is set from
+/// zero to one for every row in the retained estimation design.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryDiscreteChange {
+  pub model: BinaryModel,
+  pub predictor: String,
+  pub from_value: u8,
+  pub to_value: u8,
+  pub effect: LogitEstimate,
+  pub robust: bool,
+  pub cluster: Option<BinaryCluster>,
+  pub observation_count: usize,
+}
+
 fn invalid(model: BinaryModel, message: &str) -> StatsError {
   StatsError::InvalidEstimation(format!("{}: {message}", model.label()))
 }
@@ -960,6 +974,181 @@ pub fn binary_average_marginal_effects(
     cluster: result.cluster.clone(),
     observation_count: n,
     effects,
+  })
+}
+
+fn binary_link_and_derivative(model: BinaryModel, eta: f64) -> (f64, f64) {
+  match model {
+    BinaryModel::Logit => {
+      let tail = (-eta.abs()).exp();
+      let denominator = 1.0 + tail;
+      let probability = if eta >= 0.0 {
+        1.0 / denominator
+      } else {
+        tail / denominator
+      };
+      (probability, tail / denominator.powi(2))
+    }
+    BinaryModel::Probit => (normal_cdf(eta), normal_pdf(eta)),
+  }
+}
+
+/// Estimate the average discrete probability change for one numeric 0/1
+/// predictor over the retained fit design. Other predictors stay at their
+/// observed row values. The full gradient is evaluated against the fitted
+/// model-based, robust or clustered covariance and inference is asymptotic
+/// normal conditional on observed X.
+pub fn binary_average_discrete_change(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  predictor: &str,
+) -> Result<BinaryDiscreteChange, StatsError> {
+  problem.validate()?;
+  let model = result.model;
+  let n = problem.observation_count();
+  let k = problem.parameter_count();
+  let parameter_names = problem.parameter_names();
+  if result.outcome != problem.outcome
+    || result.predictor_names != problem.predictor_names
+    || result.include_intercept != problem.include_intercept
+    || result.sample != problem.sample
+    || result.observation_count != n
+    || result
+      .coefficients
+      .iter()
+      .map(|coefficient| coefficient.name.clone())
+      .collect::<Vec<_>>()
+      != parameter_names
+    || result.covariance.len() != k
+    || result.covariance.iter().any(|row| row.len() != k)
+    || result.fitted_probabilities.len() != n
+  {
+    return Err(invalid(
+      model,
+      "discrete changes require the exact retained fit/design/sample",
+    ));
+  }
+  if result
+    .coefficients
+    .iter()
+    .any(|coefficient| !coefficient.value.is_finite())
+    || result
+      .covariance
+      .iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+  {
+    return Err(failed(
+      model,
+      "discrete changes require finite fit quantities",
+    ));
+  }
+  let Some(predictor_index) = problem
+    .predictor_names
+    .iter()
+    .position(|name| name == predictor)
+  else {
+    return Err(invalid(
+      model,
+      &format!("discrete change predictor '{predictor}' is not in the retained model"),
+    ));
+  };
+  let observed_values = problem
+    .design_matrix
+    .iter()
+    .map(|row| row[predictor_index])
+    .collect::<Vec<_>>();
+  if observed_values
+    .iter()
+    .any(|value| *value != 0.0 && *value != 1.0)
+  {
+    return Err(invalid(
+      model,
+      &format!(
+        "discrete change predictor '{predictor}' must contain only 0 and 1 in the retained estimation sample"
+      ),
+    ));
+  }
+  if !observed_values.contains(&0.0) || !observed_values.contains(&1.0) {
+    return Err(invalid(
+      model,
+      &format!(
+        "discrete change predictor '{predictor}' requires both 0 and 1 in the retained estimation sample"
+      ),
+    ));
+  }
+
+  let coefficient_values = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  let column_index = predictor_index + usize::from(problem.include_intercept);
+  let linear_index = |row: &[f64]| {
+    row
+      .iter()
+      .zip(&coefficient_values)
+      .map(|(value, coefficient)| value * coefficient)
+      .sum::<f64>()
+  };
+  let mut effect_sum = 0.0;
+  let mut gradient_sum = vec![0.0; k];
+  for row in full_design(problem) {
+    let mut from = row.clone();
+    let mut to = row;
+    from[column_index] = 0.0;
+    to[column_index] = 1.0;
+    let eta_from = linear_index(&from);
+    let eta_to = linear_index(&to);
+    if !eta_from.is_finite() || !eta_to.is_finite() {
+      return Err(failed(model, "discrete change linear index is non-finite"));
+    }
+    let (probability_from, derivative_from) = binary_link_and_derivative(model, eta_from);
+    let (probability_to, derivative_to) = binary_link_and_derivative(model, eta_to);
+    if [
+      probability_from,
+      derivative_from,
+      probability_to,
+      derivative_to,
+    ]
+    .iter()
+    .any(|value| !value.is_finite())
+    {
+      return Err(failed(model, "discrete change probability is non-finite"));
+    }
+    effect_sum += probability_to - probability_from;
+    for column in 0..k {
+      gradient_sum[column] += derivative_to * to[column] - derivative_from * from[column];
+    }
+  }
+  let effect_value = effect_sum / n as f64;
+  let gradient = gradient_sum
+    .into_iter()
+    .map(|value| value / n as f64)
+    .collect::<Vec<_>>();
+  let variance = (0..k)
+    .map(|i| {
+      (0..k)
+        .map(|j| gradient[i] * result.covariance[i][j] * gradient[j])
+        .sum::<f64>()
+    })
+    .sum::<f64>();
+  if !effect_value.is_finite() || !variance.is_finite() || variance <= 0.0 {
+    return Err(failed(
+      model,
+      "discrete change delta variance is non-finite or nonpositive",
+    ));
+  }
+  let effect = inference(model, predictor.to_owned(), effect_value, variance.sqrt())?;
+  Ok(BinaryDiscreteChange {
+    model,
+    predictor: predictor.to_owned(),
+    from_value: 0,
+    to_value: 1,
+    effect,
+    robust: result.robust,
+    cluster: result.cluster.clone(),
+    observation_count: n,
   })
 }
 

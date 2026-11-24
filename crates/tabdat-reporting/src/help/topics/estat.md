@@ -9,6 +9,7 @@ How to invoke:
 `estat hausman` (after bounded balanced nonclustered RE-GLS)
 `estat endogenous`
 `estat margins` (after logit, probit, Poisson, NB2, Gaussian Tobit or truncreg)
+`estat margins, discrete(variable)` (after logit or probit)
 `estat countprob [, max(10)]` (after Poisson or NB2)
 
 What it does:
@@ -29,7 +30,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Classical panel FE–RE Hausman comparison
 
@@ -124,12 +125,34 @@ z/two-sided p and fixed 95% intervals; CLI-v1 returns
 These are continuous predictor-column derivatives, not discrete changes or
 original-variable interaction chain rules. In particular, a generated log-price
 column gives a derivative per log-price unit, not per original price unit. No
-multiway-cluster/weighted effects, level option or categorical/discrete changes
-are installed. Additional model-family margins are limited to the Poisson/NB2
-continuous effects below. The retained fit
+multiway-cluster/weighted effects or level option are installed. The one supported
+numeric binary contrast is described below. Additional model-family margins are
+limited to the Poisson/NB2 continuous effects below. The retained fit
 selects the family; with no supported fit the call keeps the established
 prior-logit error wording. Refit successfully after a failed new runtime
 estimation attempt; see `help logit`, `help probit`, `help poisson` and `help predict`.
+
+## Binary discrete probability changes
+
+After logit or probit, run `estat margins, discrete(variable)` for one predictor
+whose values in the retained sample are exactly 0 and 1, with both levels
+present. It reports the average fitted probability difference after setting that
+predictor to 1 versus 0 for every retained row; all other predictor values stay
+at their observed row values. The result is a finite change, not a continuous
+derivative or a causal effect.
+
+The calculation and full delta-method gradient use the owned retained design and
+selected model-based, independent-row robust, or one-way clustered covariance.
+Uncertainty is conditional on observed X, with asymptotic-normal z inference and
+a fixed 95% interval. Cluster inference assumes independent groups; the G/(G-1)
+correction does not guarantee reliable few-cluster inference. Current data edits
+do not alter the result. The command rejects an unknown predictor, a predictor
+with values other than 0/1, or a retained sample missing either level. It does
+not add automatic factor variables, multiple contrasts, interactions, weights,
+multilevel changes, or a causal interpretation. CLI-v1 JSON returns
+`BinaryDiscreteChangeResult` with the estimand, predictor, covariance and sample
+count. See `examples/binary-discrete-change/README.md` for the independent Base R
+reference and runnable logit/probit scripts.
 
 ## Poisson continuous average partial effects
 

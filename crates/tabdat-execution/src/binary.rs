@@ -280,6 +280,27 @@ impl Session {
     Ok(ExecutionResult::ProbitMarginalEffects(Box::new(result)))
   }
 
+  pub(crate) fn execute_binary_discrete_margins(
+    &self,
+    predictor: &str,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let Some((problem, result)) = (match &self.estimation {
+      Some(EstimationState::Logit(state)) => Some((&state.problem, &state.result)),
+      Some(EstimationState::Probit(state)) => Some((&state.problem, &state.result)),
+      _ => None,
+    }) else {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "requires a prior logit or probit fit".into(),
+      });
+    };
+    let result = tabdat_stats::binary_average_discrete_change(problem, result, predictor).map_err(
+      |error| RuntimeError::EstatMarginsFailed {
+        message: error.to_string(),
+      },
+    )?;
+    Ok(ExecutionResult::BinaryDiscreteChange(Box::new(result)))
+  }
+
   pub(crate) fn execute_logit_prediction(
     &mut self,
     command: &PredictCommand,

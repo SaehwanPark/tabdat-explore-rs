@@ -818,6 +818,8 @@ pub enum ExecutionResult {
   Logit(Box<tabdat_stats::BinaryLogitResult>),
   /// Conditional-on-retained-X continuous average partial effects and delta inference.
   LogitMarginalEffects(tabdat_stats::LogitMarginalEffects),
+  /// Average fitted probability change for a retained 0/1 predictor.
+  BinaryDiscreteChange(Box<tabdat_stats::BinaryDiscreteChange>),
   /// Converged model-based binary probit maximum likelihood fit.
   Probit(Box<tabdat_stats::BinaryMleResult>),
   /// Probit conditional-on-retained-X average partial effects and delta inference.

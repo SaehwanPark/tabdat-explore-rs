@@ -26,10 +26,10 @@ not by implementing every estimator mentioned in a chapter.
 | --- | --- | --- |
 | 4: Linear, IV and quantile models | Bounded OLS with one-way factors, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg and joint IID pairs quantile bootstrap with one two-quantile coefficient contrast | Remaining IV diagnostics, analytic/cluster quantile uncertainty, general quantile restrictions and simultaneous bands; cross-estimator factor designs, interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares, bounded binary logit/probit MLE/QR and explicit-formula unweighted NLS | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
-| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions and delta-AME inference | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
+| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous delta AMEs and bounded 0/1 probability changes | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb, continuous retained-X delta AME and retained-fit Wald tests of general linear restrictions; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | Binary specification tests, factors/interactions/discrete changes and uncertainty, other illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb, continuous retained-X delta AME, numeric 0/1 retained-X discrete probability change and retained-fit Wald tests of general linear restrictions; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | Binary specification tests, factors/interactions, broader categorical contrasts and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
@@ -1287,6 +1287,26 @@ panel likelihood is supplied.
   Runtime checks cover retained-fit reuse after data edits and state-preserving
   unknown/singular failures. General binary `lincom`, finite-sample or few-cluster
   inference and specification tests remain unsupported. [PR #452](https://github.com/SaehwanPark/tabdat-explore-rs/pull/452).
+- **Numeric binary discrete probability change:** `estat margins, discrete(var)`
+  sets one exact numeric 0/1 predictor to each level for every original retained
+  row and averages the fitted probability difference. Other predictors stay at
+  their observed row values. The full delta gradient uses the retained logit or
+  probit model-based, independent-row robust or one-way clustered covariance;
+  inference is conditional on observed X and asymptotic normal. A separate
+  Base R4.6.2 reference independently checks estimate, SE, z, p and 95% interval
+  for both links under all three covariance conventions on a deterministic
+  120-row synthetic fixture (six comparisons; absolute tolerance 2e-10).
+  Point changes are 0.183329669025602 for logit and 0.182161202616056 for
+  probit; logit model/robust/20-group cluster SEs are
+  0.087144810436201/0.0874645296037798/0.0882884728319724, and probit SEs are
+  0.0872000553269167/0.0874502399969682/0.0879864301019988. Runtime/CLI
+  contracts verify fitted-sample retention after current-data edits, bare
+  continuous-margins compatibility, text/JSON semantics and recovery after
+  no-fit, unknown-variable and nonbinary failures. Exact 0/1 is the only
+  installed discrete contrast; this synthetic method evidence is not a new
+  textbook replication or causal claim. See the [independent reference and
+  runnable workflow](../../examples/binary-discrete-change/README.md) and
+  [PR #461](https://github.com/SaehwanPark/tabdat-explore-rs/pull/461).
 - **OLS/six-column comparison:** [PR #275](https://github.com/SaehwanPark/tabdat-explore-rs/pull/275)
   adds `comparison.td`, independently checked by base R4.6.1 and a standard-library
   checker: all 94 classical/robust logit/probit/OLS numerical quantities and all
@@ -1368,7 +1388,8 @@ panel likelihood is supplied.
   change. The example README audits every author program block against native
   execution and documents remaining format/display differences.
 - **Still required:** reporting for future estimator families, other exact binary
-  illustrations and needed factor/interactions/discrete-change foundations.
+  illustrations and general factor/interaction or broader categorical-contrast
+  foundations.
   Maximum score is a separate required locator, not silently absorbed into logit
   or removed from the inventory.
   This is neither complete binary-family nor full-book validation.
