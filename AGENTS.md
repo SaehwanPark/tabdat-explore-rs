@@ -1,126 +1,68 @@
 # Working on TabDat Explore Rust
 
-## Mission and priority
+Build a small, fast, terminal-first statistical application for graduate
+econometrics. The long-term analytical target is the empirical analyses in
+Cameron and Trivedi, *Microeconometrics: Methods and Applications* (2005).
+Deliver a usable load/prepare → specify → fit → diagnose/interpret → report
+workflow for the selected analysis.
 
-Build a small, fast, dependable, terminal-first statistical/EDA application in
-Rust that is practically usable for **graduate-level econometrics**. The minimum
-long-term analytical target is the empirical analyses in Cameron and Trivedi,
-*Microeconometrics: Methods and Applications* (2005). Current EDA/linear support
-is a foundation, not completion of that target. Prefer **complete, usable
-workflows** to syntax scaffolding or exact Python/Stata implementation parity.
+## Default development workflow
 
-The source code and tests define implemented behavior. [SPEC.md](SPEC.md) is the
-short, current capability map; the [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md)
-is a revisable priority list, not a sequence of mandatory phase gates. The
-[architecture](ARCHITECTURE.md) explains boundaries. Historical proposal, ADRs,
-old migration evidence, and Git history are references **when relevant**, not
-required reading for every task.
+For repository development tasks, follow this workflow unless the user gives
+different instructions. A question, read-only review or planning request does
+not authorize changes.
 
-## Non-negotiable engineering rules
+1. Check the working tree, fetch current `main` and inspect open PRs. Resume
+   matching work or branch from current `main` for one cohesive change. Preserve
+   unrelated edits and other contributors' branches.
+2. Open a draft PR before substantive implementation, or at the earliest
+   practical point. A minimal initial commit is fine. Describe the change,
+   rationale and verification approach.
+3. Make routine technical decisions autonomously. Commit and push meaningful
+   increments. Record decisions, changed scope, failures and verification in
+   the PR when they help a reader understand or resume the work.
+4. Inspect the diff and validate the affected contracts. When the slice is
+   complete, mark the PR ready, satisfy required checks and approvals, merge to
+   `main`, and remove its temporary branches after confirming the merge.
 
-- **Statistical trust:** Define estimation samples, missingness, formula/design
-  semantics, covariance corrections, degrees of freedom, and model state
-  explicitly. Validate changed numerical results against a trusted independent
-  reference when appropriate; never make unexplained differences pass by widening
-  tolerances.
-- **Data integrity:** Preserve ordering, types, labels, and state where promised.
-  Test failure paths for operations that mutate data, session state, or files.
-- **Safe boundaries:** Prefer safe Rust; keep approved native/FFI unsafety local,
-  documented, and out of domain/application APIs. DuckDB remains the canonical
-  initial data engine. No production Python or R dependency.
-- **Honest status:** Distinguish parser acceptance, executable behavior, tested
-  behavior, and future intent. Do not claim whole-command parity, release
-  readiness, or platform support from a passing unit test.
-- **Compatibility by impact:** Preserve supported user workflows, data/statistical
-  semantics, documented machine contracts, and meaningful errors. Exact Python
-  wording, obscure lexical behavior, and unsupported features may diverge after
-  a short, explicit decision; see [migration guidance](docs/migration/README.md).
-- **Minimal architecture:** Reuse existing crates/modules. Introduce abstractions,
-  dependencies, configuration, ADRs, or new crates only for a demonstrated need.
+This workflow supplies standing authorization for those actions within the task.
+Seek input for a consequential change of product meaning, an irreversible action
+outside this workflow, or a blocker that requires the user. Continue independent
+work while blocked. Honor repository protections and platform limits.
 
-## Everyday development loop
+## Evidence and scope
 
-1. Read the immediate request, relevant source/tests, and the short capability
-   status. Select the **smallest end-to-end user-visible outcome** that fits.
-2. Define a few observable acceptance cases and important failure cases. Do not
-   build an exhaustive requirements matrix for a routine change.
-3. Implement using the impact-scoped test policy below and the applicable checks
-   in [CONTRIBUTING.md](CONTRIBUTING.md). Keep test fixtures small and inspectable.
-4. Check the diff, report what was and was not verified, and update the current
-   specification/roadmap only if public capability or priority changed.
-5. Commit, push, create PRs, or merge **only within the user's actual authorization**.
-   A general instruction to continue developing is not a grant to merge or
-   change unrelated work. Draft PRs are useful for a substantial WIP handoff,
-   not required for every small change.
-
-For straightforward changes, a concise PR explanation and focused tests are
-sufficient. Do **not** require three self-review passes, a failed test observed
-before implementation, four handoff documents, or full Python differential
-replays by default. Escalate evidence proportional to risk:
-
-| Change | Evidence expected |
-| --- | --- |
-| Docs, formatting, low-risk refactor | Diff and relevant checks |
-| Parser, script, CLI, command dispatch | Focused acceptance, error, and regression tests |
-| Data mutation, persistence, state | Invariants, failure/rollback, representative end-to-end case |
-| Estimator, covariance, inference | Independent numerical/reference comparison and documented tolerances |
-| Unsafe/FFI, native distribution | Ownership/safety, platform, licensing and specialized testing |
+- Start with the relevant source, tests and [capability map](SPEC.md). Use the
+  [roadmap](docs/TABDAT_RUST_PORT_ROADMAP.md) for priorities and the
+  [architecture](ARCHITECTURE.md) for crate boundaries. Consult historical
+  material when it answers a specific question.
+- For textbook work, select an illustration, sample/design, independent
+  reference and failure case from the [coverage ledger](docs/reference/microeconometrics-coverage.md).
+  Update its evidence alongside the workflow. Distinguish executable support,
+  reference validation and outstanding coverage.
+- Define statistical samples, missingness, design, covariance corrections,
+  degrees of freedom and retained state. Check changed numerical results against
+  an independent reference and explain tolerances.
+- Preserve promised row order, types, labels, file and session state. Exercise
+  failure paths for mutations. Preserve supported user workflows and documented
+  machine contracts. See the [migration policy](docs/migration/README.md) for
+  compatibility decisions.
+- Prefer existing crates and safe Rust. Keep DuckDB as the canonical data
+  engine, native unsafety local and documented, and production free of Python/R.
+  Use two-space indentation, respect format conventions and avoid non-breaking
+  spaces.
 
 ## Test execution policy
 
-Optimize for rapid feedback without sacrificing regression safety.
+Inspect the branch diff, working tree and affected callers before selecting
+tests. Run new or changed tests explicitly and check the selected count. Start
+with the smallest relevant case, then cover affected crates and integration
+boundaries in proportion to risk. Reuse passing evidence while the relevant
+code and inputs are unchanged. Broaden checks for shared APIs, cross-cutting
+changes or uncertain impact. See [local verification](CONTRIBUTING.md#impact-scoped-testing)
+for runner commands and specialized checks.
 
-- **Before testing:** Inspect the branch diff and uncommitted changes; identify
-  changed behaviors, their direct tests, integration tests and consumers. Include
-  newly added or modified tests explicitly; do not rely on a name filter finding
-  them incidentally.
-- **During implementation:** Run the smallest relevant test or module first,
-  rather than an entire crate. Include integration tests for changed boundaries
-  or contracts and expand to reverse-dependent crates for shared APIs. Do not
-  repeat passing tests unless subsequent changes could affect them. If impact is
-  uncertain, choose the broader scope.
-- **Before completion:** Run affected-crate tests and relevant integration tests;
-  include doctests when documentation examples change. Earlier passing runs
-  count when no subsequent change invalidates them. Skip full-workspace
-  validation unless the change is cross-cutting or explicitly requires local
-  validation. Do not begin by rerunning an already-verified baseline.
-- **Output:** Keep successful output concise, preserve complete failure
-  diagnostics, and report commands/scope tested plus validation not performed.
-  Never treat an empty test selection as a passing regression check.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md#impact-scoped-testing) for selection,
-runner configuration, Cargo fallbacks and broader validation commands.
-
-## Scope control
-
-- Deliver complete load/prepare → specify → fit → diagnose/interpret → report
-  workflows in the CLI/REPL, not syntax-only estimator families. Preserve the
-  working EDA/linear core while advancing the roadmap's required graduate methods;
-  do not indefinitely substitute editor/help polish for missing econometrics.
-- Use the [coverage ledger](docs/reference/microeconometrics-coverage.md) when
-  selecting textbook work. Specify one exact illustration, sample/design,
-  reference and failure case before implementing; update its status with evidence.
-  IV/panel, binary/count, resampling and later textbook methods are deferred
-  required work, not optional breadth. Do not demand the full book inventory or
-  every foundation feature before delivering one bounded analysis.
-- Do not turn a rare Python edge case into a dependency or public API expansion
-  without a real user/reproducibility need. Document supported limits clearly.
-- Avoid speculative security hardening. Keep reproduced parser-crash regressions
-  and sensible input bounds; run extended fuzz/sanitizer campaigns when parser or
-  native risk warrants them, not for unrelated changes.
-- Implement future features only when requested or prioritized. A checkbox in an
-  old roadmap is not an instruction to implement it now.
-
-## Agent operation and handoff
-
-Work single-agent by default. Delegate only a bounded, independent task with a
-clear benefit, returning conclusions and file/test evidence. See
-[optional skill routing](docs/harness/tabdat/team-spec.md); select only relevant
-skills. No particular harness, subagent topology, quota-monitoring tool, or
-model route is required.
-
-Use two-space indentation; preserve format-specific conventions. Keep functions
-organized so dependencies precede callers where practical. Never add non-breaking
-spaces to source or docs.
-
-For AI subscription quota/budget policy, refer to [ai-usage-policy](docs/ai-usage-policy.md)
+Work in one context by default. Delegate a bounded independent question when
+it saves time or brings relevant expertise. Use [specialist skills](docs/harness/tabdat/team-spec.md)
+as needed. If a real limit interrupts work, use the draft PR for a concise
+handoff with the remaining step.

@@ -581,7 +581,10 @@ pub(super) fn cell_value_from_ref(value: ValueRef<'_>) -> Result<CellValue, Data
 }
 
 pub(super) fn named_table_identifier(table_name: &str) -> String {
-  format!("__tabdat_named_{table_name}")
+  // DuckDB folds unquoted identifiers case-insensitively. Encode the exact
+  // UTF-8 table name so distinct case-sensitive registry keys always map to
+  // distinct native tables while retaining a valid identifier shape.
+  format!("__tabdat_named_{}", lower_hex(table_name.as_bytes()))
 }
 
 pub(super) fn unique_internal_name(candidate: &str, used_names: &HashSet<String>) -> String {

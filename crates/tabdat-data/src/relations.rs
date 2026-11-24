@@ -7,13 +7,15 @@ impl DuckDbBackend {
       .connection
       .prepare(query)
       .map_err(|_| RuntimeError::SqlFailed)?;
-    statement.execute([]).map_err(|_| RuntimeError::SqlFailed)?;
-    let headers = statement.column_names();
+    let mut rows_iter = statement.query([]).map_err(|_| RuntimeError::SqlFailed)?;
+    let headers = rows_iter
+      .as_ref()
+      .ok_or(RuntimeError::SqlFailed)?
+      .column_names();
     if headers.is_empty() {
       return Err(RuntimeError::SqlNoTableResult);
     }
     let column_count = headers.len();
-    let mut rows_iter = statement.query([]).map_err(|_| RuntimeError::SqlFailed)?;
     let mut rows = Vec::new();
     while let Some(row) = rows_iter.next().map_err(|_| RuntimeError::SqlFailed)? {
       let mut row_values = Vec::with_capacity(column_count);
@@ -673,5 +675,33 @@ impl DuckDbBackend {
       execution_mode: ExecutionMode::Eager,
       lazy_engine: None,
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn run_sql_evaluates_a_result_query_once() {
+    let backend = DuckDbBackend::new().expect("backend should initialize");
+    backend
+      .connection
+      .execute_batch(
+        "CREATE TEMP TABLE __tabdat_active AS SELECT 1 AS marker; \
+         CREATE TEMP SEQUENCE run_sql_sequence",
+      )
+      .expect("active table and sequence should be created");
+
+    let (headers, rows) = backend
+      .run_sql("SELECT nextval('run_sql_sequence') AS value")
+      .expect("query should execute");
+    assert_eq!(headers, vec!["value"]);
+    assert_eq!(rows, vec![vec![CellValue::SignedInteger(1)]]);
+
+    let (_, rows) = backend
+      .run_sql("SELECT nextval('run_sql_sequence') AS value")
+      .expect("query should execute again");
+    assert_eq!(rows, vec![vec![CellValue::SignedInteger(2)]]);
   }
 }

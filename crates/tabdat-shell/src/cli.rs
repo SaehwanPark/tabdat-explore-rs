@@ -34,17 +34,12 @@ options:
   -f, --file FILE       run a TabDat script file and exit
   --text                render readable batch/script results; requires -c or a
                         script path; cannot be combined with --json/discovery
-  --json                emit versioned JSON envelopes (batch success output
-                        supports use/describe/count/codebook/summarize/missing/tabulate/head/tail,
-                        by ...: count/summarize (native means), collapse count/mean
-                        and generate/replace/rename/recode/label/encode/decode/sql/join/append/reshape,
-                        keep/drop/select variable lists, bounded keep/drop if,
-                        no-option summarize if, duplicates/isid, assert/datasignature,
-                        sort/gsort,
-                        regress/logit/probit/poisson/nbreg/predict/lincom/test/ttest,
-                        estat vif/ar/overid/endogenous/margins/countprob, estimates store/table/drop,
-                        save/export and SVG scatter;
-                        scripts stream the same successful leaf results)
+  --json                emit versioned JSON envelopes for the tested CLI-v1
+                        command subset; command-specific result shapes and
+                        limits are documented in
+                        docs/reference/command-results.md;
+                        parser acceptance and discovery do not imply JSON
+                        execution support; scripts stream supported leaf results
   --list-commands       emit the available command catalog; requires --json
   --list-command-effects
                         emit declared command effects; requires --json

@@ -5,18 +5,20 @@ application with Stata-inspired commands. The aim is a **small, responsive,
 trustworthy workflow for graduate-level econometrics**, not exhaustive Python or
 Stata compatibility. The long-term analytical target includes the empirical
 analyses in Cameron and Trivedi, *Microeconometrics: Methods and Applications*
-(2005); the current release is an EDA/linear-analysis foundation, not that full suite.
+(2005); the capability map tracks progress toward that target.
 
 ## What works today
 
 - Persistent interactive sessions, readable batch output and sequential scripts.
 - Local eager CSV/Parquet loading through DuckDB, inspection, summaries,
   frequency tables and bounded data transformations.
-- Linear regression, prediction, hypothesis tests, VIF and mean comparisons.
+- Linear, IV, panel, binary and count regression with model-specific inference
+  and prediction.
+- SVG scatter plots with optional line overlays from data columns.
 - Versioned JSON results for the supported command subset.
 
 **Work in progress:** command discovery and parsing include forms that do not
-execute. Remote/lazy/DTA loading, plot execution and an MCP server are not
+execute. Remote/lazy/DTA loading and an MCP server are not
 installed. Consult [SPEC.md](SPEC.md) for current capabilities and limits.
 
 ## Build and try

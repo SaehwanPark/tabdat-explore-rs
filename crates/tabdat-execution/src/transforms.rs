@@ -56,6 +56,8 @@ impl Session {
     validate_sql_query(query)?;
 
     if let Some(target_table) = into {
+      tabdat_language::validate_named_table_name(target_table)
+        .map_err(|_| RuntimeError::SqlFailed)?;
       let backend = self
         .backend
         .as_mut()

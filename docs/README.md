@@ -35,9 +35,8 @@ an ordered implementation backlog or a requirement to repeat every historical ga
 
 ## Optional agent tooling
 
-[Team/skill routing](harness/tabdat/team-spec.md),
-[subagent policy](subagents_policy.md) and [AI usage guidance](ai-usage-policy.md)
-are contributor aids, not product acceptance gates. Single-agent work is the default.
+See [specialist skills](harness/tabdat/team-spec.md) for domain-specific checks
+and [subscription budgets](ai-usage-policy.md) for quota-managed work.
 
 Keep entry points brief. Put detailed usage in `guides/`, public result/state
 contracts in `reference/`, current priorities in the roadmap and historical
