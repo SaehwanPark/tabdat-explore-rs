@@ -1309,7 +1309,8 @@ Rows are not automatically truncated: specify SQL `LIMIT` when appropriate.
 `sql ... into name` returns `SqlCreateResult`, and `use name` for a registered
 named table returns `ActivateResult`, each with owned `data.table_name` and
 `dataset`. Their source path is the named-table identifier, not the original
-file. Publication/activation retains the cached fit/sample without refitting,
+file. Named tables preserve literal, case-sensitive names, including names that
+differ only by case. Publication/activation retains the cached fit/sample without refitting,
 clears session labels, and reports native schema/count; transformations update
 an active named table under existing rules. Dataset label/panel fields stay null.
 Use explicit `ORDER BY` plus tie keys for reproducible query/cohort ordering.
