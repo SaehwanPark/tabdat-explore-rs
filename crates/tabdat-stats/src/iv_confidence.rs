@@ -12,6 +12,7 @@ use crate::{
 pub enum ArConfidenceSetShape {
   Bounded,
   Disjoint,
+  Multiple,
   AllReal,
   Empty,
   LowerRay,
@@ -74,6 +75,12 @@ pub struct RobustAndersonRubinConfidenceSet {
   pub shape: ArConfidenceSetShape,
   pub intervals: Vec<ArConfidenceInterval>,
 }
+
+mod robust_multi;
+pub use robust_multi::{
+  RobustMultipleInstrumentAndersonRubinConfidenceSet,
+  robust_multiple_instrument_anderson_rubin_confidence_set,
+};
 
 fn invalid(message: &str) -> StatsError {
   StatsError::IncompatibleHypothesis(message.into())

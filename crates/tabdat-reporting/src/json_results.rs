@@ -368,6 +368,24 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       );
       (data, "RobustAndersonRubinConfidenceSet")
     }
+    ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(result) => {
+      let mut data = serde_json::to_value(result)
+        .expect("serializable robust multiple-instrument AR confidence set");
+      data["test"] = json!("anderson_rubin_multiple_instrument_robust_confidence_set");
+      data.as_object_mut().unwrap().remove("covariance_type");
+      data["covariance"] = json!(match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "robust_hc1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "homoskedastic".to_owned(),
+      });
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["weak_iv_robust"] = json!(true);
+      data["endogenous_nuisance_policy"] = json!("none_single_endogenous_only");
+      data["assumptions"] = json!(
+        "valid_instruments_correct_linear_model_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"
+      );
+      (data, "RobustMultipleInstrumentAndersonRubinConfidenceSet")
+    }
     ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {
       let mut data = serde_json::to_value(result).expect("serializable projected AR set");
       data["test"] = json!("anderson_rubin_projected_scalar_confidence_set");
@@ -1689,7 +1707,7 @@ fn regression_result_data(result: &RegressionResult) -> Value {
       "joint_ar_postestimation_available": true,
       "scalar_ar_confidence_set_available": first_stage.len() == 1
         && (result.covariance == "nonrobust"
-          || first_stage[0].excluded_instruments.len() == 1),
+          || first_stage[0].excluded_instruments.len() <= 2),
       "coefficient_inference": "conventional_t_not_weak_iv_robust",
       "rows": first_stage.iter().map(|diagnostic| json!({
         "endogenous": diagnostic.endogenous,

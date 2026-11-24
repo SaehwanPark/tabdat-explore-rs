@@ -1433,8 +1433,9 @@ panel likelihood is supplied.
   relevance, and auxiliary failures; runtime/CLI tests verify retained sample,
   state, scripts and reporting. This is **method evidence**, not a newly validated
   book illustration or an empirical scalar schooling confidence set with experience
-  effects left as endogenous nuisance parameters. Robust/cluster AR confidence sets
-  and the less-conservative subvector AR test remain required work.
+  effects left as endogenous nuisance parameters. Robust/cluster AR confidence
+  sets for one endogenous coefficient are separately bounded below; the
+  less-conservative endogenous-subvector AR test remains required work.
 - **Bounded scalar AR confidence-set method:** after a nonrobust fit with exactly
   one endogenous regressor, `estat ar, ci [level(95)]` analytically inverts the
   homoskedastic AR test, leaving exogenous coefficients unrestricted. Independent
@@ -1450,9 +1451,9 @@ panel likelihood is supplied.
   This is synthetic method validation, not a newly replicated empirical
   illustration or a schooling-only interval from the three-endogenous design.
 - **HC1/CR1 scalar AR method evidence (not a textbook replication):** the
-  [`robust-ar` workflow](../../examples/robust-ar/robust-confidence-set.md)
-  inverts the robust auxiliary Wald test for exactly one endogenous regressor
-  and one excluded instrument, with included exogenous coefficients unrestricted.
+  [`robust-ar` workflow](../../examples/robust-ar/README.md) inverts the robust
+  auxiliary Wald test for exactly one endogenous regressor and one or two
+  excluded instruments, with included exogenous coefficients unrestricted.
   The deterministic 80-row design retains 78 rows under HC1 (two missing outcome/
   instrument rows) and 77 under CR1 (one additional missing group); the clustered
   sample has 10 groups. Independent base R 4.6.2 `lm.fit`, explicit HC1/CR1
@@ -1462,10 +1463,20 @@ panel likelihood is supplied.
   1e-10. Tests compare exact retained source positions, several test statistics,
   endpoint membership and current-data/retained-fit behavior through both CLI
   modes. HC1 requires independent rows; CR1 requires independent groups and many-
-  group asymptotics, with no finite-sample or few-cluster guarantee. Multiple
-  excluded instruments, multiple endogenous regressors, robust projection,
-  HAC/survey covariance and few-cluster methods remain unsupported. This synthetic
-  method evidence does not change the Table 4.5 status above.
+  group asymptotics, with no finite-sample or few-cluster guarantee. The scalar
+  one-instrument and two-instrument paths use distinct result types; the latter
+  isolates the quartic boundary through derivative roots without a finite grid.
+  Independent base R `lm.fit`/HC1/CR1 references validate the 20-row two-instrument
+  fixture: K_aux=4, residual DF=16, 95% critical chi-square(2)=5.99146454710798,
+  with corrections 1.25 / 1.31944444444444. The HC1 design gives three components
+  (two rays and a bounded interval), CR1 gives two rays, and both covariances
+  return all-real sets for the projected-null fixture. Tests compare endpoints,
+  direct AR statistics at probes, instrument rescaling, retained-fit behavior,
+  text/JSON metadata and unsupported dimensions. Root ambiguity, singularity and
+  ill-conditioned score covariance are errors. More than two excluded
+  instruments, multiple endogenous regressors, robust projection, HAC/survey
+  covariance and few-cluster methods remain unsupported. This synthetic method
+  evidence does not change the Table 4.5 status above.
 - **Bounded projected scalar AR method:** after a nonrobust multi-endogenous 2SLS
   fit, `estat ar, ci coefficient(name) [level(95)]` profiles all other endogenous
   coefficients out of the homoskedastic joint AR region and reports the scalar

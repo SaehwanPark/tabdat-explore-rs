@@ -892,6 +892,10 @@ pub enum ExecutionResult {
   AndersonRubinConfidenceSet(tabdat_stats::AndersonRubinConfidenceSet),
   /// HC1/CR1 scalar AR confidence set for one endogenous regressor and one instrument.
   RobustAndersonRubinConfidenceSet(tabdat_stats::RobustAndersonRubinConfidenceSet),
+  /// HC1/CR1 AR confidence set for one endogenous regressor and two instruments.
+  RobustMultipleInstrumentAndersonRubinConfidenceSet(
+    tabdat_stats::RobustMultipleInstrumentAndersonRubinConfidenceSet,
+  ),
   /// At-least-nominal projection of a joint homoskedastic AR region.
   ProjectedAndersonRubinConfidenceSet(tabdat_stats::ProjectedArConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.
