@@ -43,8 +43,10 @@ robust/cluster or endogenous-subset test. Robust/cluster parent fits instead
 support a distinct augmented-OLS joint innovation Wald test with asymptotic
 chi-square(m) inference and auxiliary HC1/CR1 corrections (Kaux=K+m), not an
 exact F or weak-IV-robust test. See `help estat` for assumptions/numerical limits.
-Subset/robust-score endogeneity, clustered 2SLS overid, multi-endogenous
-confidence regions and robust/cluster confidence sets are not implemented.
+Subset/robust-score endogeneity, clustered 2SLS overid, robust projection with
+multiple excluded instruments/endogenous regressors and multi-endogenous
+confidence regions remain unsupported. `estat ar, ci` after a robust/cluster fit
+supports only one endogenous regressor and one excluded instrument.
 
 Clustered two-step GMM:
 The bounded `gmm` form requires `cluster(id) noconstant`, with no included

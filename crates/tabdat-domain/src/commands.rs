@@ -1472,7 +1472,7 @@ pub enum EstatSubcommand {
   },
   /// Report variance inflation factors for a linear regression model.
   Vif,
-  /// Scalar homoskedastic AR confidence set; level is a percentage.
+  /// Scalar AR confidence set using the covariance on the retained IV fit; level is a percentage.
   AndersonRubinConfidenceSet {
     level: String,
   },

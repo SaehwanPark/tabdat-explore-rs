@@ -1551,6 +1551,50 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       output.push_str("\nAssumes valid instruments and homoskedastic errors; exact F requires conditional normality.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous coefficient; no endogenous nuisance/subvector inference.\n");
       output
     }
+    ExecutionResult::RobustAndersonRubinConfidenceSet(result) => {
+      let covariance = match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "HC1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("CR1 cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "nonrobust".to_owned(),
+      };
+      let mut output = format!(
+        "Robust Anderson-Rubin confidence set ({covariance}, weak-IV-robust)\n{}; instrument = {}; level = {}%; N = {}; asymptotic chi-square(1) critical value = {}; auxiliary K = {}; residual DF = {}; correction = {}; clusters = {:?}\n",
+        result.endogenous.escape_debug(),
+        result.excluded_instrument.escape_debug(),
+        inference_number(result.confidence_level),
+        result.observation_count,
+        inference_number(result.critical_chi_square),
+        result.auxiliary_parameter_count,
+        result.auxiliary_residual_df,
+        inference_number(result.covariance_correction),
+        result.cluster_group_count,
+      );
+      if result.intervals.is_empty() {
+        output.push_str("Empty set\n");
+      }
+      for (index, interval) in result.intervals.iter().enumerate() {
+        if index > 0 {
+          output.push_str(" union ");
+        }
+        write!(
+          output,
+          "{}{}, {}{}",
+          if interval.lower.is_some() { "[" } else { "(" },
+          interval
+            .lower
+            .map(inference_number)
+            .unwrap_or_else(|| "-inf".into()),
+          interval
+            .upper
+            .map(inference_number)
+            .unwrap_or_else(|| "+inf".into()),
+          if interval.upper.is_some() { "]" } else { ")" }
+        )
+        .unwrap();
+      }
+      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous regressor and one excluded instrument are supported; no endogenous-subvector inference.\n");
+      output
+    }
     ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {
       let mut output = format!(
         "Projected Anderson-Rubin confidence set (homoskedastic, weak-IV-robust, at least nominal coverage)\n{}; level = {}%; N = {}; critical F({}, {}) = {}\nNuisance endogenous coefficients left unrestricted: {:?}\n",
