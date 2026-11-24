@@ -8119,7 +8119,8 @@ fn is_join_argument_token(token: &UseToken) -> bool {
   !matches!(token.kind, UseTokenKind::Symbol)
 }
 
-fn validate_named_table_name(table_name: &str) -> Result<(), ParseError> {
+/// Validate a named SQL table identifier at the typed execution boundary.
+pub fn validate_named_table_name(table_name: &str) -> Result<(), ParseError> {
   let mut characters = table_name.chars();
   let valid = characters
     .next()

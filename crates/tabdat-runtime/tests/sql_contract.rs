@@ -54,6 +54,17 @@ impl Drop for Fixture {
   }
 }
 
+fn head_value(session: &mut Session) -> CellValue {
+  let ExecutionResult::Head(PreviewResult { rows, .. }) =
+    session.execute(parse_command("head 1").unwrap()).unwrap()
+  else {
+    panic!("expected Head result");
+  };
+  assert_eq!(rows.len(), 1);
+  assert_eq!(rows[0].len(), 1);
+  rows.into_iter().next().unwrap().into_iter().next().unwrap()
+}
+
 #[test]
 fn sql_requires_an_active_dataset() {
   let mut session = Session::new();
@@ -286,6 +297,72 @@ fn sql_into_registers_named_table_for_later_activation() {
       vec![CellValue::Text("M".to_owned())],
     ]
   );
+}
+
+#[test]
+fn named_tables_preserve_case_sensitive_identity_and_refresh_exact_names() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+
+  session
+    .execute(parse_command("sql select 1 as value into Foo").unwrap())
+    .unwrap();
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+  session
+    .execute(parse_command("sql select 2 as value into foo").unwrap())
+    .unwrap();
+
+  session.execute(parse_command("use Foo").unwrap()).unwrap();
+  assert_eq!(head_value(&mut session), CellValue::SignedInteger(1));
+
+  session.execute(parse_command("use foo").unwrap()).unwrap();
+  assert_eq!(head_value(&mut session), CellValue::SignedInteger(2));
+
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+  session
+    .execute(parse_command("sql select 3 as value into Foo").unwrap())
+    .unwrap();
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+  session.execute(parse_command("use Foo").unwrap()).unwrap();
+  assert_eq!(head_value(&mut session), CellValue::SignedInteger(3));
+
+  session.execute(parse_command("use foo").unwrap()).unwrap();
+  assert_eq!(head_value(&mut session), CellValue::SignedInteger(2));
+}
+
+#[test]
+fn failed_named_table_refresh_preserves_the_previous_snapshot() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+  session
+    .execute(parse_command("sql select 7 as value into stable").unwrap())
+    .unwrap();
+  session
+    .execute(parse_command(&fixture.use_cmd()).unwrap())
+    .unwrap();
+
+  assert_eq!(
+    session
+      .execute(parse_command("sql select missing from active into stable").unwrap())
+      .unwrap_err(),
+    RuntimeError::SqlFailed
+  );
+  session
+    .execute(parse_command("use stable").unwrap())
+    .unwrap();
+  assert_eq!(head_value(&mut session), CellValue::SignedInteger(7));
 }
 
 #[test]

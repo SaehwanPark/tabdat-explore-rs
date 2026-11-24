@@ -94,6 +94,13 @@ for parser robustness work. For Python compatibility decisions see the
 
 ### Runner troubleshooting
 
+When testing different worktrees, keep both Cargo's target directory and its
+intermediate build directory local to each checkout (the defaults). Sharing
+them has caused CLI tests to run another branch's binary and runtime tests
+to link another branch's implementation. Check `target_directory` and
+`build_directory` in `cargo metadata --no-deps --format-version 1` if a
+regression test disagrees with the checked-out source.
+
 On macOS, discovery has occasionally stalled in `_dyld_start` before the test
 harness starts. Inspect the process with `sample <pid> 1`. For that diagnosed
 loader stall, a byte-identical executable at a fresh path has worked. Select
