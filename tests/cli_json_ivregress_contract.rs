@@ -738,3 +738,73 @@ fn robust_ar_script_reports_auxiliary_chi_square_and_retained_sample() {
   assert_eq!(rows[4]["error"]["type"], "ExecutionError");
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
+
+#[test]
+fn three_instrument_robust_ar_confidence_sets_report_json_text_and_dimension_limit() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("data.csv"),
+    include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_three_ci_data.csv"),
+  )
+  .unwrap();
+  for (option, covariance, group_count) in [
+    ("robust", "robust_hc1", serde_json::Value::Null),
+    ("cluster(group)", "cluster(group)", json!(12)),
+  ] {
+    fs::write(
+      fixture.0.join("robust-ar-ci.td"),
+      format!(
+        "use data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3) {option}\nestat ar, ci\nreplace y = 999\ndrop z1\nestat ar, ci\n"
+      ),
+    )
+    .unwrap();
+    let rows = json_lines(&fixture.run(&["--json", "-f", "robust-ar-ci.td"]));
+    assert_eq!(
+      rows[1]["data"]["first_stage"]["scalar_ar_confidence_set_available"],
+      true
+    );
+    assert_eq!(
+      rows[2]["result_type"],
+      "RobustMultipleInstrumentAndersonRubinConfidenceSet"
+    );
+    assert_eq!(rows[2]["data"], rows[5]["data"]);
+    let data = &rows[2]["data"];
+    assert_eq!(
+      data["test"],
+      "anderson_rubin_multiple_instrument_robust_confidence_set"
+    );
+    assert_eq!(data["endogenous"], "x");
+    assert_eq!(data["excluded_instruments"], json!(["z1", "z2", "z3"]));
+    assert_eq!(data["covariance"], covariance);
+    assert_eq!(data["reference_distribution"], "asymptotic_chi_square");
+    assert_eq!(data["degrees_of_freedom"], 3);
+    assert_eq!(data["observation_count"], 36);
+    assert_eq!(data["auxiliary_parameter_count"], 5);
+    assert_eq!(data["auxiliary_residual_df"], 31);
+    assert_eq!(data["cluster_group_count"], group_count);
+    assert_eq!(data["weak_iv_robust"], true);
+    close(&data["critical_chi_square"], 7.814_727_903_251_179);
+    let text = fixture.run(&["--text", "-f", "robust-ar-ci.td"]);
+    assert!(
+      text.status.success(),
+      "{}",
+      String::from_utf8_lossy(&text.stderr)
+    );
+    let text = String::from_utf8(text.stdout).unwrap();
+    assert!(text.contains("asymptotic chi-square(3)"));
+    assert!(text.contains("three excluded instruments"));
+  }
+
+  let output = fixture.batch(
+    "--json",
+    &[
+      "use data.csv",
+      "ivregress 2sls y w, endog(x) iv(z1 z2 z3 row) robust",
+      "estat ar, ci",
+      "export unsupported-not-written.csv",
+    ],
+  );
+  assert_eq!(output.status.code(), Some(1));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("at most three excluded instruments"));
+  assert!(!fixture.0.join("unsupported-not-written.csv").exists());
+}
