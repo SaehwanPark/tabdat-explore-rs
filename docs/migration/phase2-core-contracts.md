@@ -137,7 +137,7 @@ The first full extraction test run caught a new adapter metadata-timing panic:
 DuckDB column metadata was queried after prepare but before execution. Fixed by
 reading metadata from executed rows, with three dedicated regressions for empty
 queries, unsupported skipped cells, early visitor errors and query recovery. The
-[contributor lesson](../../CONTRIBUTING.md#duckdb-metadata-timing) preserves cause,
+[contributor lesson](https://github.com/SaehwanPark/tabdat-explore-rs/blob/333b97dd55524dbf5ce55fac510375df99e4649e/CONTRIBUTING.md#duckdb-metadata-timing) preserves cause,
 resolution and prevention. New workspace/MCP tests first failed for missing crates
 before extraction. All later full runs passed.
 
