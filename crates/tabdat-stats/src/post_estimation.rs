@@ -9,6 +9,7 @@ use crate::matrix::{
   invert, multiply, multiply_vector, student_t_pvalue, student_t_quantile, transpose,
 };
 use crate::result::LeastSquaresResult;
+use std::collections::BTreeSet;
 
 /// Owned post-estimation model state for hypothesis testing, predictions, and combinations.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -77,6 +78,32 @@ pub struct WaldChiSquareTestResult {
   pub degrees_of_freedom: usize,
   /// Upper-tail chi-square probability.
   pub p_value: f64,
+}
+
+pub(crate) fn validate_mean_coefficient_names(
+  coefficient_names: &[String],
+  predictor_names: &[String],
+  include_intercept: bool,
+) -> Result<(), StatsError> {
+  let unique_names = coefficient_names
+    .iter()
+    .map(String::as_str)
+    .collect::<BTreeSet<_>>();
+  let predictor_order_matches = coefficient_names
+    .iter()
+    .skip(usize::from(include_intercept))
+    .map(String::as_str)
+    .eq(predictor_names.iter().map(String::as_str));
+  if coefficient_names.len() != predictor_names.len() + usize::from(include_intercept)
+    || unique_names.len() != coefficient_names.len()
+    || coefficient_names.iter().any(String::is_empty)
+    || !predictor_order_matches
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "Wald test requires the exact fitted mean coefficient names and order".into(),
+    ));
+  }
+  Ok(())
 }
 
 pub(crate) fn wald_chi_square_test(

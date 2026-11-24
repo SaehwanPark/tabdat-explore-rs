@@ -83,6 +83,11 @@ Inference and interpretation:
   chi-square; robust/clustered LR p/reference are unavailable. Robust/clustered
   zero-slope Wald excludes lnalpha and has explicit rank/unavailability guards:
   q>=G is unavailable, not a reduced-q test or pseudoinverse.
+- `test <linear restrictions>` applies general affine restrictions to retained
+  mean coefficients using the selected covariance and an asymptotic Wald
+  chi-square reference. It uses the mean block of the full joint beta/lnalpha
+  covariance; `lnalpha` itself is not a mean restriction. Clustered tests have
+  no few-cluster correction.
 - NB residual deviance at fitted alpha and Pearson/(N-K-1) dispersion are
   descriptive, not formal specification/panel tests or covariance multipliers.
 - `predict ..., n` is the current-row conditional mean, not a probability or
@@ -107,7 +112,7 @@ See `help estimates`.
 
 Not installed: weights/survey/multiway/few-cluster methods, FE/RE/panel NB2,
 exposure shorthand, NB1, cutoff-variable values above99, factors/discrete changes,
-general count test/lincom, interval prediction or other formal specification
+general count lincom, interval prediction or other formal specification
 tests. Independent-row robust is **NOT panel-robust**; choose
 actual cluster IDs and defend independence across the selected groups.
 

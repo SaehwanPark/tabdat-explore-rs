@@ -8,6 +8,47 @@ pub(crate) struct PreparedRegression {
   pub design_terms: Vec<LinearDesignTerm>,
 }
 
+#[derive(Clone, Copy)]
+enum WaldTestTarget<'a> {
+  Binary(&'a tabdat_stats::BinaryMleResult),
+  Poisson(&'a tabdat_stats::PoissonResult),
+  Nb2(&'a tabdat_stats::Nb2Result),
+}
+
+impl WaldTestTarget<'_> {
+  fn parameter_names(self) -> Vec<String> {
+    match self {
+      Self::Binary(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
+      Self::Poisson(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
+      Self::Nb2(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
+    }
+  }
+
+  fn test(
+    self,
+    r_matrix: &[Vec<f64>],
+    r_vector: &[f64],
+  ) -> Result<tabdat_stats::WaldChiSquareTestResult, tabdat_stats::StatsError> {
+    match self {
+      Self::Binary(result) => tabdat_stats::binary_wald_test(result, r_matrix, r_vector),
+      Self::Poisson(result) => tabdat_stats::poisson_wald_test(result, r_matrix, r_vector),
+      Self::Nb2(result) => tabdat_stats::nb2_wald_test(result, r_matrix, r_vector),
+    }
+  }
+}
+
 impl Session {
   /// Execute a linear regression command (OLS, WLS, GLS, robust, cluster).
   pub fn execute_regress(
@@ -769,13 +810,15 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
       return Err(RuntimeError::TestFailed { message: "RE reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
     }
-    let binary_result = match &self.estimation {
+    let wald_target = match &self.estimation {
       Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {
-        Some(&state.result)
+        Some(WaldTestTarget::Binary(&state.result))
       }
+      Some(EstimationState::PoissonFit(state)) => Some(WaldTestTarget::Poisson(&state.result)),
+      Some(EstimationState::NegativeBinomialFit(state)) => Some(WaldTestTarget::Nb2(&state.result)),
       _ => None,
     };
-    let post_estimation = if binary_result.is_none() {
+    let post_estimation = if wald_target.is_none() {
       Some(
         self
           .linear_inference_model()
@@ -790,14 +833,8 @@ impl Session {
       });
     }
 
-    let parameter_names = binary_result
-      .map(|result| {
-        result
-          .coefficients
-          .iter()
-          .map(|coefficient| coefficient.name.clone())
-          .collect::<Vec<_>>()
-      })
+    let parameter_names = wald_target
+      .map(WaldTestTarget::parameter_names)
       .unwrap_or_else(|| {
         post_estimation
           .as_ref()
@@ -821,17 +858,17 @@ impl Session {
       constraints.push(format_test_constraint(constraint));
     }
 
-    if let Some(result) = binary_result {
-      let wald = tabdat_stats::binary_wald_test(result, &r_matrix, &r_vector).map_err(|error| {
-        RuntimeError::TestFailed {
+    if let Some(target) = wald_target {
+      let wald = target
+        .test(&r_matrix, &r_vector)
+        .map_err(|error| RuntimeError::TestFailed {
           message: match error {
             tabdat_stats::StatsError::SingularMatrix(_) => {
               "constraints are collinear or singular".to_owned()
             }
             other => other.to_string(),
           },
-        }
-      })?;
+        })?;
       return Ok(ExecutionResult::Test(TestResult {
         constraints,
         statistic: wald.statistic,

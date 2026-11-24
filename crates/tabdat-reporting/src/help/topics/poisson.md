@@ -59,6 +59,9 @@ Inference and interpretation:
   applies G/(G-1), using the same converged inverse information. It allows
   within-group dependence but assumes independence ACROSS groups. No N/(N-K),
   G-1 Student t or automatic few-cluster correction is substituted.
+- `test <linear restrictions>` uses the selected covariance and an asymptotic
+  Wald chi-square reference. It tests retained mean coefficients, including
+  affine restrictions; clustered tests have no few-cluster correction.
 - Coefficient intervals are fixed normal 95%, not Student t. Zero selected
   variance yields unavailable z/p/CI, not exact significance or point intervals.
 - Without offsets, the intercept null is the estimated overall mean and the
@@ -86,7 +89,7 @@ law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
 formal goodness-of-fit test is supplied; see `help estat`.
 
 Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
-cutoff-variable values above99, factors/discrete changes, general count test/lincom,
+cutoff-variable values above99, factors/discrete changes, general count lincom,
 interval prediction or few-cluster bootstrap. Immutable `estimates store/table`
 reports are supported; they cannot restore fits or establish current-data identity.
 Clustered covariance is not FE/RE/random-effects or the full panel family.
