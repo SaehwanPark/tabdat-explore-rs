@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::distributions::chi_square_tail;
+use crate::distributions::{chi_square_tail, normal_cdf, normal_quantile};
 use crate::error::StatsError;
 use crate::estimates::{CovarianceMatrix, CovarianceType};
 use crate::matrix::{
@@ -56,6 +56,25 @@ pub struct LinearCombinationInferenceResult {
   pub degrees_of_freedom: usize,
 }
 
+/// Result of a linear combination with asymptotic standard-normal inference.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NormalLinearCombinationInferenceResult {
+  /// Estimated point combination value, including any constant offset.
+  pub estimate: f64,
+  /// Standard error sqrt(c' * V * c).
+  pub standard_error: f64,
+  /// Standard-normal z statistic against a zero combination, absent for zero SE.
+  pub statistic: Option<f64>,
+  /// Two-sided standard-normal p-value, or NaN when the standard error is zero.
+  pub p_value: f64,
+  /// Lower confidence interval endpoint.
+  pub ci_lower: f64,
+  /// Upper confidence interval endpoint.
+  pub ci_upper: f64,
+  /// Confidence level in percent.
+  pub confidence_level: f64,
+}
+
 /// Result of testing a joint linear hypothesis R * beta = r.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WaldTestResult {
@@ -100,10 +119,114 @@ pub(crate) fn validate_mean_coefficient_names(
     || !predictor_order_matches
   {
     return Err(StatsError::IncompatibleHypothesis(
-      "Wald test requires the exact fitted mean coefficient names and order".into(),
+      "post-estimation inference requires the exact fitted mean coefficient names and order".into(),
     ));
   }
   Ok(())
+}
+
+/// Evaluate an affine coefficient combination with an asymptotic normal reference.
+///
+/// `offset` is coefficient-independent and does not contribute to variance.
+/// A zero standard error retains the point estimate/interval and leaves
+/// statistic and p-value unavailable, matching linear-model `lincom` output.
+pub fn linear_combination_normal_inference(
+  parameters: &[f64],
+  covariance: &[Vec<f64>],
+  weights: &[f64],
+  offset: f64,
+  confidence_level: f64,
+) -> Result<NormalLinearCombinationInferenceResult, StatsError> {
+  if !confidence_level.is_finite() || confidence_level <= 0.0 || confidence_level >= 100.0 {
+    return Err(StatsError::IncompatibleHypothesis(
+      "confidence level must be between 0 and 100".into(),
+    ));
+  }
+  let parameter_count = parameters.len();
+  if parameter_count == 0 || covariance.len() != parameter_count {
+    return Err(StatsError::DimensionMismatch(format!(
+      "covariance row count ({}) must match positive parameter count ({parameter_count})",
+      covariance.len()
+    )));
+  }
+  if weights.len() != parameter_count {
+    return Err(StatsError::DimensionMismatch(format!(
+      "combination weights length ({}) must match parameter count ({parameter_count})",
+      weights.len()
+    )));
+  }
+  for (index, row) in covariance.iter().enumerate() {
+    if row.len() != parameter_count {
+      return Err(StatsError::DimensionMismatch(format!(
+        "covariance row {index} length ({}) must match parameter count ({parameter_count})",
+        row.len()
+      )));
+    }
+  }
+  if !offset.is_finite()
+    || parameters.iter().any(|value| !value.is_finite())
+    || weights.iter().any(|value| !value.is_finite())
+    || covariance.iter().flatten().any(|value| !value.is_finite())
+  {
+    return Err(StatsError::NonFiniteValue(
+      "linear combination inputs must be finite".into(),
+    ));
+  }
+
+  let estimate = offset
+    + weights
+      .iter()
+      .zip(parameters)
+      .map(|(&weight, &parameter)| weight * parameter)
+      .sum::<f64>();
+  let covariance_weights = multiply_vector(covariance, weights)?;
+  let variance = weights
+    .iter()
+    .zip(covariance_weights)
+    .map(|(&weight, covariance_weight)| weight * covariance_weight)
+    .sum::<f64>();
+  if !variance.is_finite() {
+    return Err(StatsError::NonFiniteValue(
+      "linear combination variance is not finite".into(),
+    ));
+  }
+  let standard_error = variance.max(0.0).sqrt();
+  if !estimate.is_finite() || !standard_error.is_finite() {
+    return Err(StatsError::NonFiniteValue(
+      "linear combination estimate or standard error is not finite".into(),
+    ));
+  }
+
+  let (statistic, p_value, ci_lower, ci_upper) = if standard_error == 0.0 {
+    (None, f64::NAN, estimate, estimate)
+  } else {
+    let z = estimate / standard_error;
+    let p_value = 2.0 * normal_cdf(-z.abs());
+    let critical_value = normal_quantile(0.5 + confidence_level / 200.0);
+    let ci_lower = estimate - critical_value * standard_error;
+    let ci_upper = estimate + critical_value * standard_error;
+    if !z.is_finite()
+      || !p_value.is_finite()
+      || !critical_value.is_finite()
+      || !ci_lower.is_finite()
+      || !ci_upper.is_finite()
+    {
+      return Err(StatsError::NonFiniteValue(
+        "linear combination normal inference is not finite".into(),
+      ));
+    }
+    (Some(z), p_value, ci_lower, ci_upper)
+  };
+
+  Ok(NormalLinearCombinationInferenceResult {
+    estimate,
+    standard_error,
+    statistic,
+    p_value,
+    ci_lower,
+    ci_upper,
+    confidence_level,
+  })
 }
 
 pub(crate) fn wald_chi_square_test(

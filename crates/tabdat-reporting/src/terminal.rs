@@ -2705,22 +2705,29 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ExecutionResult::RandomEffects(result) => random_effects(result),
     ExecutionResult::Ttest(result) => ttest(result),
     ExecutionResult::Prediction(result) => dataset_outcome("Predicted", &result.dataset),
-    ExecutionResult::Lincom(result) => format!(
-      "Linear combination: {}\nt reference; residual df = {}\nEstimate\tStd. error\tt\tP(two-sided)\tCI lower ({}%)\tCI upper ({}%)\n{}\t{}\t{}\t{}\t{}\t{}\nNA = unavailable or undefined.\n",
-      result.label.escape_debug(),
-      result
-        .df_residual
-        .map(|df| df.to_string())
-        .unwrap_or_else(|| "NA".to_owned()),
-      result.ci_level,
-      result.ci_level,
-      inference_number(result.estimate),
-      inference_number(result.standard_error),
-      inference_number(result.statistic),
-      inference_number(result.p_value),
-      inference_number(result.ci_lower),
-      inference_number(result.ci_upper)
-    ),
+    ExecutionResult::Lincom(result) => {
+      let (reference, statistic_label) = if result.df_residual.is_some() {
+        ("t", "t")
+      } else {
+        ("asymptotic standard-normal", "z")
+      };
+      format!(
+        "Linear combination: {}\n{reference} reference; residual df = {}\nEstimate\tStd. error\t{statistic_label}\tP(two-sided)\tCI lower ({}%)\tCI upper ({}%)\n{}\t{}\t{}\t{}\t{}\t{}\nNA = unavailable or undefined.\n",
+        result.label.escape_debug(),
+        result
+          .df_residual
+          .map(|df| df.to_string())
+          .unwrap_or_else(|| "NA".to_owned()),
+        result.ci_level,
+        result.ci_level,
+        inference_number(result.estimate),
+        inference_number(result.standard_error),
+        inference_number(result.statistic),
+        inference_number(result.p_value),
+        inference_number(result.ci_lower),
+        inference_number(result.ci_upper)
+      )
+    }
     ExecutionResult::Test(result) => {
       let mut output = String::from("Linear restrictions:\n");
       for constraint in &result.constraints {
@@ -3046,6 +3053,20 @@ mod tests {
     assert!(text.contains("t reference; residual df = 4"));
     assert!(text.contains("CI lower (95%)\tCI upper (95%)\n5\t0\tNA\tNA\t5\t5\n"));
     assert!(!text.contains("NaN"));
+    let normal = ExecutionResult::Lincom(tabdat_domain::LincomResult {
+      label: "x".to_owned(),
+      estimate: 0.5,
+      standard_error: 0.25,
+      statistic: 2.0,
+      p_value: 0.0455002638963584,
+      ci_lower: 0.01000900313339787,
+      ci_upper: 0.9899909968666021,
+      ci_level: 95.0,
+      df_residual: None,
+    });
+    let normal_text = render_execution_result(&normal);
+    assert!(normal_text.contains("asymptotic standard-normal reference; residual df = NA"));
+    assert!(normal_text.contains("Estimate\tStd. error\tz\tP(two-sided)"));
     for (is_chi2, expected) in [(false, "F(2, 4)"), (true, "chi-square(2)")] {
       let test = ExecutionResult::Test(tabdat_domain::TestResult {
         constraints: vec!["x = 0".to_owned()],

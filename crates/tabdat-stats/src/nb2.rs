@@ -111,26 +111,7 @@ pub struct Nb2Result {
   pub sample: Option<EstimationSample>,
 }
 
-/// Test general affine restrictions on retained NB2 mean coefficients.
-///
-/// Uses the mean-parameter block of the fit's full joint beta/log-alpha
-/// covariance, so dispersion uncertainty is retained. The reference is
-/// asymptotic chi-square; log-alpha itself is not a mean-model restriction.
-pub fn nb2_wald_test(
-  result: &Nb2Result,
-  r_matrix: &[Vec<f64>],
-  r_vector: &[f64],
-) -> Result<crate::WaldChiSquareTestResult, StatsError> {
-  let coefficient_names = result
-    .coefficients
-    .iter()
-    .map(|coefficient| coefficient.name.clone())
-    .collect::<Vec<_>>();
-  crate::post_estimation::validate_mean_coefficient_names(
-    &coefficient_names,
-    &result.predictor_names,
-    result.include_intercept,
-  )?;
+fn nb2_mean_covariance(result: &Nb2Result) -> Result<Vec<Vec<f64>>, StatsError> {
   let mean_parameter_count = result.coefficients.len();
   let joint_parameter_count = mean_parameter_count
     .checked_add(1)
@@ -155,18 +136,78 @@ pub fn nb2_wald_test(
       "NB2 joint covariance must be finite".into(),
     ));
   }
-  let mean_covariance = result
-    .covariance
+  Ok(
+    result
+      .covariance
+      .iter()
+      .take(mean_parameter_count)
+      .map(|row| row.iter().take(mean_parameter_count).copied().collect())
+      .collect(),
+  )
+}
+
+/// Test general affine restrictions on retained NB2 mean coefficients.
+///
+/// Uses the mean-parameter block of the fit's full joint beta/log-alpha
+/// covariance, so dispersion uncertainty is retained. The reference is
+/// asymptotic chi-square; log-alpha itself is not a mean-model restriction.
+pub fn nb2_wald_test(
+  result: &Nb2Result,
+  r_matrix: &[Vec<f64>],
+  r_vector: &[f64],
+) -> Result<crate::WaldChiSquareTestResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
     .iter()
-    .take(mean_parameter_count)
-    .map(|row| row.iter().take(mean_parameter_count).copied().collect())
-    .collect::<Vec<Vec<_>>>();
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let mean_covariance = nb2_mean_covariance(result)?;
   let parameters = result
     .coefficients
     .iter()
     .map(|coefficient| coefficient.value)
     .collect::<Vec<_>>();
   crate::post_estimation::wald_chi_square_test(&parameters, &mean_covariance, r_matrix, r_vector)
+}
+
+/// Evaluate a linear combination of retained NB2 mean coefficients.
+///
+/// Uses the mean block of the full joint beta/lnalpha covariance and an
+/// asymptotic standard-normal reference. `lnalpha` is not a mean coefficient.
+pub fn nb2_linear_combination(
+  result: &Nb2Result,
+  weights: &[f64],
+  offset: f64,
+  confidence_level: f64,
+) -> Result<crate::NormalLinearCombinationInferenceResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  let mean_covariance = nb2_mean_covariance(result)?;
+  crate::post_estimation::linear_combination_normal_inference(
+    &parameters,
+    &mean_covariance,
+    weights,
+    offset,
+    confidence_level,
+  )
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

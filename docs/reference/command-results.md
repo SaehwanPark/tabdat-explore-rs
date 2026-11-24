@@ -400,8 +400,11 @@ After a retained Poisson or NB2 fit, `test <linear restrictions>` uses the same
 covariance. Restrictions apply to retained mean coefficients. For NB2 the test
 uses the mean block of the full joint beta/lnalpha covariance; `lnalpha` is not
 a mean restriction. Clustered tests have no few-cluster reference correction.
-Current-data edits do not refit the model. General count `lincom` remains
-unsupported.
+`lincom <affine expression>` after a count fit uses the selected covariance for
+an estimate, standard error, z statistic, two-sided normal p-value and 95%
+normal interval. `LincomResult.df_residual` is null. NB2 uses the mean block of
+its full joint beta/lnalpha covariance. Current-data edits do not refit the
+model.
 
 If no slopes exist (stats API), q >= G for a clustered fit, or the slope
 correlation covariance is numerically singular, the fitted model remains usable
@@ -818,7 +821,8 @@ and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
 [fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
 method evidence, not a textbook replication. Remaining exposure workflows,
 multiway clustering, weighted/survey inference, current-row PMF/CDF predictions,
-factors/discrete changes and general count `lincom` remain required work.
+factors/discrete changes and other formal count specification tests remain
+required work.
 
 ### Poisson one-way clustered inference
 
@@ -956,7 +960,7 @@ See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
 full joint inference/nulls without claiming a new textbook illustration.
 FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
 specifications, other formal specification tests, discrete
-changes/general count `lincom` and other general nonlinear restrictions remain
+changes and other general nonlinear restrictions remain
 required, as do full illustration outputs. Independent-row robust is not panel-robust.
 
 ### NB2 one-way full-joint clustered inference
@@ -997,7 +1001,7 @@ and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
 See MIG-0020. Remaining multiway/survey/few-cluster, exposure workflows/weights,
-current-row probabilities/other formal tests/general count `lincom` and richer count
+current-row probabilities/other formal tests and richer count
 requirements are not removed.
 
 ## Retained count probability-frequency reports
@@ -1972,7 +1976,8 @@ Linear JSON results reuse the supplied statistics without recalculation:
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,
-  `ci_lower`, `ci_upper`, `ci_level`, `df_residual` (supplied Student-t inference).
+  `ci_lower`, `ci_upper`, `ci_level`, `df_residual` (supplied Student-t inference
+  for linear models; null for normal-reference Poisson/NB2 combinations).
 - `TestResult`: ordered `constraints`, `statistic`, upper-tail `p_value`, `df`,
   `df_residual`, `is_chi2`; false means F with numerator/residual denominator DF.
   Binary logit/probit and Poisson/NB2 restrictions set `is_chi2: true`, use `df`

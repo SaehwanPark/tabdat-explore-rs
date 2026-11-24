@@ -236,13 +236,18 @@ fn count_test_works_and_other_unsupported_postestimation_fails_without_mutation(
   assert_eq!(test.df_residual, None);
   assert_eq!(s.state(), before);
   same_rows(&rows(&mut s), &old);
+  let ExecutionResult::Lincom(lincom) = execute(&mut s, "lincom x") else {
+    panic!("expected a Poisson linear combination")
+  };
+  assert_eq!(lincom.df_residual, None);
+  assert_eq!(s.state(), before);
+  same_rows(&rows(&mut s), &old);
   for text in [
     "predict bad, pr",
     "predict bad, residuals",
     "predict bad, posterior_predictive interval",
     "predict bad, posterior_predictive saving(\"bad.csv\")",
     "predict y, n",
-    "lincom x",
     "estat vif",
   ] {
     fail(&mut s, text);

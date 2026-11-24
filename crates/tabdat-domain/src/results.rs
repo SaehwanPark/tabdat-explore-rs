@@ -608,9 +608,9 @@ pub struct LincomResult {
   pub estimate: f64,
   /// Covariance-based standard error.
   pub standard_error: f64,
-  /// Student-t statistic against a zero combination, or NaN for zero standard error.
+  /// Student-t or standard-normal statistic against a zero combination, or NaN for zero SE.
   pub statistic: f64,
-  /// Two-sided Student-t p-value, or NaN for zero standard error.
+  /// Two-sided fit-appropriate p-value, or NaN for zero standard error.
   pub p_value: f64,
   /// Lower endpoint of the 95% confidence interval.
   pub ci_lower: f64,
@@ -618,7 +618,7 @@ pub struct LincomResult {
   pub ci_upper: f64,
   /// Confidence level in percent.
   pub ci_level: f64,
-  /// Residual degrees of freedom used for inference.
+  /// Residual degrees of freedom for finite-sample t inference; null for normal inference.
   pub df_residual: Option<usize>,
 }
 

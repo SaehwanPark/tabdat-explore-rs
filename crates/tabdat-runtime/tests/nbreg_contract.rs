@@ -228,13 +228,24 @@ fn unsupported_postestimation_and_failed_prediction_never_mutate_data_labels_or_
   execute(&mut s, "nbreg y x z");
   let before = s.state();
   let old = rows(&mut s);
+  let ExecutionResult::Test(test) = execute(&mut s, "test x") else {
+    panic!("expected an NB2 Wald test")
+  };
+  assert!(test.is_chi2);
+  assert_eq!(test.df_residual, None);
+  assert_eq!(s.state(), before);
+  assert_eq!(rows(&mut s), old);
+  let ExecutionResult::Lincom(lincom) = execute(&mut s, "lincom x") else {
+    panic!("expected an NB2 linear combination")
+  };
+  assert_eq!(lincom.df_residual, None);
+  assert_eq!(s.state(), before);
+  assert_eq!(rows(&mut s), old);
   for text in [
     "predict bad, pr",
     "predict bad, residuals",
     "predict bad, posterior_predictive interval",
     "predict y, n",
-    "lincom x",
-    "test x",
     "estat vif",
   ] {
     fail(&mut s, text);

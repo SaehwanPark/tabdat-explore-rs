@@ -15,6 +15,45 @@ enum WaldTestTarget<'a> {
   Nb2(&'a tabdat_stats::Nb2Result),
 }
 
+#[derive(Clone, Copy)]
+enum CountLincomTarget<'a> {
+  Poisson(&'a tabdat_stats::PoissonResult),
+  Nb2(&'a tabdat_stats::Nb2Result),
+}
+
+impl CountLincomTarget<'_> {
+  fn parameter_names(self) -> Vec<String> {
+    match self {
+      Self::Poisson(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
+      Self::Nb2(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
+    }
+  }
+
+  fn linear_combination(
+    self,
+    weights: &[f64],
+    offset: f64,
+    confidence_level: f64,
+  ) -> Result<tabdat_stats::NormalLinearCombinationInferenceResult, tabdat_stats::StatsError> {
+    match self {
+      Self::Poisson(result) => {
+        tabdat_stats::poisson_linear_combination(result, weights, offset, confidence_level)
+      }
+      Self::Nb2(result) => {
+        tabdat_stats::nb2_linear_combination(result, weights, offset, confidence_level)
+      }
+    }
+  }
+}
+
 impl WaldTestTarget<'_> {
   fn parameter_names(self) -> Vec<String> {
     match self {
@@ -771,11 +810,32 @@ impl Session {
           "lincom after logit is not implemented; logit reports normal coefficient inference".into(),
       });
     }
-    let post_estimation = self
-      .linear_inference_model()
-      .ok_or(RuntimeError::LincomRequiresPriorEstimation)?;
-    let parameter_indices = post_estimation
-      .parameter_names
+    let count_target = match &self.estimation {
+      Some(EstimationState::PoissonFit(state)) => Some(CountLincomTarget::Poisson(&state.result)),
+      Some(EstimationState::NegativeBinomialFit(state)) => {
+        Some(CountLincomTarget::Nb2(&state.result))
+      }
+      _ => None,
+    };
+    let post_estimation = if count_target.is_none() {
+      Some(
+        self
+          .linear_inference_model()
+          .ok_or(RuntimeError::LincomRequiresPriorEstimation)?,
+      )
+    } else {
+      None
+    };
+    let parameter_names = count_target
+      .map(CountLincomTarget::parameter_names)
+      .unwrap_or_else(|| {
+        post_estimation
+          .as_ref()
+          .expect("non-count post-estimation model exists")
+          .parameter_names
+          .clone()
+      });
+    let parameter_indices = parameter_names
       .iter()
       .enumerate()
       .map(|(index, name)| (name.clone(), index))
@@ -783,8 +843,29 @@ impl Session {
     let combination = affine_lincom_expression(
       &command.expression,
       &parameter_indices,
-      post_estimation.parameter_names.len(),
+      parameter_names.len(),
     )?;
+
+    if let Some(target) = count_target {
+      let inference = target
+        .linear_combination(&combination.weights, combination.offset, 95.0)
+        .map_err(|error| RuntimeError::LincomFailed {
+          message: error.to_string(),
+        })?;
+      return Ok(ExecutionResult::Lincom(LincomResult {
+        label: format_lincom_expression(&command.expression),
+        estimate: inference.estimate,
+        standard_error: inference.standard_error,
+        statistic: inference.statistic.unwrap_or(f64::NAN),
+        p_value: inference.p_value,
+        ci_lower: inference.ci_lower,
+        ci_upper: inference.ci_upper,
+        ci_level: inference.confidence_level,
+        df_residual: None,
+      }));
+    }
+
+    let post_estimation = post_estimation.expect("non-count post-estimation model exists");
     let inference = post_estimation
       .linear_combination_with_inference(&combination.weights, combination.offset, 95.0)
       .map_err(|error| RuntimeError::LincomFailed {

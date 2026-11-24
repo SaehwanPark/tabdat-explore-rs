@@ -178,7 +178,7 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
 
 Still required: offsets/exposure, household/site/multiway/survey
 inference, weights, current-row PMF/CDF predictions/unresolved printed Table20.6 NB2 row, formal NB
-boundary/specification tests, factors/discrete changes, general count `lincom`
+boundary/specification tests, factors/discrete changes,
 and remaining Tables20.3–20.6/workflows. Immutable Poisson/NB2 named reports are
 available through `estimates store/table/drop`; they do not restore or persist
 fits.
@@ -365,8 +365,8 @@ JSON/text/piped native runs publish identical ordered CSVs without replacing tar
 
 Household/site/multiway/survey/few-cluster methods, offsets/exposure,
 current-row count probabilities/unresolved printed Table20.6 NB2 row, other
-formal tests, general count `lincom`
-and remaining required count/book analyses remain open. This is not
+formal tests, broader count-family workflows and remaining required count/book
+analyses remain open. This is not
 whole count-family/panel/chapter/book/goal completion. No author data/program
 is redistributed.
 
@@ -433,7 +433,7 @@ conditional, preserving noncluster JSON/old owned reads, not fit restoration.
 
 This does not remove required weights/offsets/exposure, appropriate household/
 site/multiway/survey/few-cluster methods, FE/RE/panels, current-row count probabilities/formal
-boundary/specification tests, general count `lincom`, native DTA,
+boundary/specification tests, native DTA,
 richer counts or remaining book analyses. No source data/program is redistributed;
 R/Python remain development-only reference/conversion tools.
 
@@ -442,8 +442,9 @@ R/Python remain development-only reference/conversion tools.
 [`wald_test.td`](wald_test.td) runs retained-fit linear restrictions on the
 Table20.5 cohort after model-based and robust Poisson/NB2 fits. The independent
 Base R comparison, covariance contract, eight actual-sample statistics and
-limitations are documented in [wald-test.md](wald-test.md). General count
-`lincom` and other formal specification tests remain unsupported.
+limitations are documented in [wald-test.md](wald-test.md). See also the
+[normal-reference linear-combination workflow](lincom.md); other formal count
+specification tests remain unsupported.
 
 ## Retained observed/fitted probability-frequency analysis
 
