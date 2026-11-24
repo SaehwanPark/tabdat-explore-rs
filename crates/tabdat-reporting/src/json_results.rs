@@ -321,13 +321,20 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ExecutionResult::RobustOveridScore(result) => {
       let mut data = serde_json::to_value(result).expect("finite robust overidentification score");
       data["test"] = json!("wooldridge_residualized_instrument_overid_score");
-      data["covariance"] = json!("independent_row_uncentered_score_opg");
+      let clustered = result.cluster_variable.is_some();
+      data["covariance"] = json!(if clustered {
+        "one_way_cluster_uncentered_group_score_opg_cr0"
+      } else {
+        "independent_row_uncentered_score_opg"
+      });
       data["reference_distribution"] = json!("asymptotic_chi_square");
       data["weak_iv_robust"] = json!(false);
       data["null_hypothesis"] = json!("overidentifying_restrictions_hold_given_maintained_model");
-      data["assumptions"] = json!(
+      data["assumptions"] = json!(if clustered {
+        "independent_clusters_many_groups_correctly_specified_maintained_model_valid_instruments_under_null_strong_identification_no_few_cluster_guarantee"
+      } else {
         "independent_rows_correctly_specified_maintained_model_valid_instruments_under_null_strong_identification"
-      );
+      });
       (data, "RobustOveridScoreResult")
     }
     ExecutionResult::Sargan(result) => {

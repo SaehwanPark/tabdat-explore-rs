@@ -1744,7 +1744,7 @@ tolerance. The statistic is N*(u'P_Z u)/(u'u), not an N-K-corrected variant.
 mutating state. Numerical tests additionally validate two-endogenous,
 three-/four-instrument, intercept/no-intercept fixtures and independent chi-square
 tails; runtime/CLI cases cover exact retained indices, current-data changes,
-just-identified/robust/cluster rejection, undefined variance and stop-before-export.
+just-identification, undefined variance and stop-before-export.
 Inference is homoskedastic, correctly specified maintained model, conventional
 strong-identification asymptotics. Failure to reject does not prove instrument
 validity; independent-row Hansen J and GMM for this design remain required work. Independent-row robust parent
@@ -1762,10 +1762,22 @@ intercept/no-intercept/no-control cases and native instrument-coordinate/unit
 invariance at 1e-11 absolute. See the
 [reference and checker](../../examples/cigarettes_iv/README.md#independent-row-robust-overidentification-score).
 Retained state/failure and CLI/script tests cover rank/DF/undefined-score failures
-without silently lowering q or running later file effects. This conventional
-independent-row asymptotic score is not Hansen J, weak-IV or cluster/survey
-inference; clustered overidentification remains required work. It adds external
-method evidence only, not a completed textbook illustration.
+without silently lowering q or running later file effects. A one-way clustered
+extension groups the same residualized-instrument scores and uses their CR0
+outer-product covariance with factor 1 (no parent CR1 multiplier), requiring
+G>q and full covariance rank. A separate base-R 4.6.2 SVD reference covers 40
+rows, 10 groups, shared group shocks, q=1/q=2, multiple endogenous regressors
+and a no-control design. It returns q=1 statistic/p=0.5767918743903001 /
+0.4475725583094755; q=2 with multiple endogenous regressors
+0.9078062533814221 / 0.6351442587920135; and q=2 without controls
+2.94293227537329 / 0.2295886297663257. Native statistic/tails match within
+1e-11. See the [independent reference](../../crates/tabdat-stats/tests/fixtures/robust_overid_score_reference.R)
+and [contract tests](../../crates/tabdat-stats/tests/robust_overid_score.rs). The
+chi-square(q) reference assumes independent many-group asymptotics and provides
+no few-cluster guarantee. Cluster variable/group count remain attached to the
+retained result after current-data changes. These score tests are not Hansen J,
+weak-IV or survey inference. This remains method evidence only, not a completed
+textbook illustration.
 
 The same exact sample/design additionally supports joint homoskedastic
 `estat endogenous`, using the independent

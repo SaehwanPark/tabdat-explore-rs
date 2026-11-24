@@ -547,14 +547,26 @@ fn sargan_uses_retained_structural_residuals_and_preserves_success_and_failure_s
     .execute(parse_command("ivregress 2sls y w, endog(x1) iv(z1 z2) cluster(group_id)").unwrap())
     .unwrap();
   let before = session.state();
-  assert!(
-    session
-      .execute(overid.clone())
-      .unwrap_err()
-      .to_string()
-      .contains("clustered overidentification tests are not implemented")
-  );
+  let result = session.execute(overid.clone()).unwrap();
+  let ExecutionResult::RobustOveridScore(test) = &result else {
+    panic!("clustered overidentification score result");
+  };
+  assert_eq!(test.observation_count, 57);
+  assert_eq!(test.degrees_of_freedom, 1);
+  assert_eq!(test.cluster_variable.as_deref(), Some("group_id"));
+  assert_eq!(test.cluster_group_count, Some(12));
+  assert_eq!(test.covariance_correction, 1.0);
   assert_eq!(session.state(), before);
+  session
+    .execute(parse_command("replace y = 999").unwrap())
+    .unwrap();
+  session.execute(parse_command("drop z1").unwrap()).unwrap();
+  session
+    .execute(parse_command("drop group_id").unwrap())
+    .unwrap();
+  let changed = session.state();
+  assert_eq!(session.execute(overid).unwrap(), result);
+  assert_eq!(session.state(), changed);
 }
 
 #[test]

@@ -146,7 +146,9 @@ pub use iv_endogenous::{
   RobustEndogeneityResult, WuHausmanResult, robust_endogeneity_test, wu_hausman_test,
 };
 pub use iv_overid::{SarganResult, sargan_test};
-pub use iv_overid_score::{RobustOveridScoreResult, robust_overid_score_test};
+pub use iv_overid_score::{
+  RobustOveridScoreResult, cluster_robust_overid_score_test, robust_overid_score_test,
+};
 pub use least_squares::{
   LeastSquaresOptions, PureLeastSquaresEstimator, fit_least_squares,
   fit_least_squares_with_options, predict_linear_response,
