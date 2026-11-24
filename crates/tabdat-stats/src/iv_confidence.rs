@@ -78,8 +78,9 @@ pub struct RobustAndersonRubinConfidenceSet {
 
 mod robust_multi;
 pub use robust_multi::{
-  RobustMultipleInstrumentAndersonRubinConfidenceSet,
+  RobustMultipleInstrumentAndersonRubinConfidenceSet, RobustProjectedArConfidenceSet,
   robust_multiple_instrument_anderson_rubin_confidence_set,
+  robust_projected_anderson_rubin_confidence_set,
 };
 
 fn invalid(message: &str) -> StatsError {

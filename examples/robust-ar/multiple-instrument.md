@@ -79,6 +79,7 @@ The all-real fixtures retain nonzero first-stage relevance. These are synthetic
 method checks, not a Cameron–Trivedi illustration, coverage simulation or
 evidence that instruments are valid. HC1 assumes independent rows. CR1 assumes
 independent groups and many-group asymptotics, with no finite-sample or
-few-cluster guarantee. Five or more excluded instruments, multiple
-endogenous regressors, robust projection and HAC/survey covariance remain
-unsupported.
+few-cluster guarantee. This scalar result type covers exactly one endogenous
+regressor and at most four excluded instruments. Robust projected inference is
+separate and bounded to exactly two endogenous regressors and two excluded
+instruments; larger dimensions and HAC/survey covariance remain unsupported.

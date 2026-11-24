@@ -1982,9 +1982,11 @@ Linear JSON results reuse the supplied statistics without recalculation:
   covariance, rank, DF, cluster and numerical-range failures are errors. HC1
   assumes independent rows; CR1 assumes independent groups and many-group
   asymptotics, with no finite-sample or few-cluster guarantee. More than four
-  instruments, multiple endogenous regressors, robust projection and HAC/survey
-  covariance remain unsupported. The retained sample/design/groups are used
-  without refits, current-column reads or state mutation.
+  instruments are unsupported by this result type. It remains a scalar result
+  for one endogenous regressor; the separate robust projected result below is
+  bounded to exactly two endogenous regressors and two excluded instruments.
+  HAC/survey covariance remain unsupported. The retained sample/design/groups
+  are used without refits, current-column reads or state mutation.
 - `ProjectedAndersonRubinConfidenceSet`
   (`estat ar, ci coefficient(name) [level(95)]` after a nonrobust multi-endogenous
   2SLS fit): analytic projection of the joint homoskedastic AR nonrejection region
@@ -2002,6 +2004,29 @@ Linear JSON results reuse the supplied statistics without recalculation:
   conditional normality. Robust/cluster covariance, multidimensional regions and
   the less-conservative subvector AR test remain unsupported. The command uses the
   retained fit sample/design and does not mutate state.
+- `RobustProjectedAndersonRubinConfidenceSet`
+  (`estat ar, ci coefficient(name) [level(95)]` after an HC1 or one-way CR1 fit):
+  closed conservative projection of the full robust joint AR region for exactly
+  two endogenous regressors and two excluded instruments, leaving the other
+  endogenous coefficient unrestricted. It reports
+  `test: "anderson_rubin_projected_scalar_robust_confidence_set"`, selected
+  `covariance`, `reference_distribution: "asymptotic_chi_square"`,
+  `weak_iv_robust: true`, `coverage: "at_least_confidence_level_by_closed_projection"`,
+  `projection: "closed_conservative_envelope"`, `closure_conservative: true`,
+  the coefficient/nuisance/instrument names, level, N, auxiliary K and residual
+  DF, HC1/CR1 correction, optional group count, `degrees_of_freedom: 2`, critical
+  chi-square, `shape`, ordered `intervals`, and
+  `all_real_conservative_fallback`. The boundary polynomial has total degree at
+  most four in the target/nuisance coefficients; target cells are partitioned
+  by resultant roots and roots where nuisance-polynomial coefficients vanish,
+  without a finite grid. Singular points are included only through the closed
+  conservative envelope; a covariance singular throughout the null plane is an
+  error, while numerical boundary/covariance ambiguity yields an all-real
+  fallback. CR1 requires at least three groups and independent groups with
+  many-group asymptotics; no finite-sample or few-cluster guarantee is made.
+  Other endogenous/instrument dimensions, HAC and survey covariance remain
+  unsupported. The retained sample/design/groups are used without refits or
+  state mutation.
 - `PredictionResult`: `dataset`, using the existing load metadata shape; follow
   with head/tail to inspect values. Current prediction kinds are xb/residuals.
 - `LincomResult`: `label`, `estimate`, `standard_error`, `statistic`, `p_value`,

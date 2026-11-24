@@ -155,6 +155,56 @@ accepted components; tests compare independent endpoints and probes, retained
 state, text/JSON, rescaling and failure paths. Five or more excluded instruments
 remain unsupported.
 
+## Robust projected coefficient sets
+
+[`projected_ci.td`](projected_ci.td) and
+[`projected_ci_clustered.td`](projected_ci_clustered.td) project the full
+chi-square(2) joint AR region for two endogenous regressors and two excluded
+instruments onto either named coefficient. The other endogenous coefficient
+remains unrestricted; no estimate is plugged in. The 48-row synthetic design
+has an intercept, one included control, two endogenous regressors, two excluded
+instruments and 12 four-row groups. K_aux=4, residual DF=44, and the 95% critical
+value is 5.99146454710798. HC1/CR1 corrections are 1.09090909090909 /
+1.16528925619835.
+
+The committed data are `projected_ar_data.csv`. The independent development-only
+Base R 4.6.2 generator/reference is
+[`robust_ar_projected_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_projected_reference.R).
+It computes direct auxiliary-OLS HC1/CR1 Wald statistics, profiles the nuisance
+coefficient over a broad pilot grid, refines local minima with `optimize`, and
+brackets target endpoints with `uniroot`. Regenerate the data and reference CSV
+from the repository root with:
+
+```sh
+work=$(mktemp -d)
+Rscript crates/tabdat-stats/tests/fixtures/robust_ar_projected_reference.R "$work" \
+  > "$work/robust_ar_projected_reference.csv"
+cmp examples/robust-ar/projected_ar_data.csv "$work/projected_ar_data.csv"
+cmp crates/tabdat-stats/tests/fixtures/robust_ar_projected_reference.csv \
+  "$work/robust_ar_projected_reference.csv"
+```
+
+The four bounded 95% sets are:
+
+| Covariance | Coefficient | 95% set |
+| --- | --- | --- |
+| HC1 | x1 | [0.789041366121279, 1.65982451868902] |
+| HC1 | x2 | [-1.10737758826908, -0.234526183277661] |
+| CR1, 12 groups | x1 | [0.331931575649699, 2.27083168350681] |
+| CR1, 12 groups | x2 | [-2.01629567401708, 0.208762765550004] |
+
+The Rust solver partitions target values using polynomial resultant roots and
+roots where nuisance-polynomial coefficients vanish; it does not use a finite
+search grid. The reported result is the closed conservative envelope, which can
+include a target value approached only as the nuisance coefficient diverges.
+Numerical boundary or candidate covariance ambiguity yields a marked all-real
+fallback; a score covariance singular throughout the null plane is an error.
+Polynomial tests additionally cover disjoint and singleton projection shapes.
+CR1 needs at least three retained groups and independent groups with many-group
+asymptotics; these fixtures do not establish few-cluster reliability or coverage.
+This method evidence does not cover the three-endogenous/three-instrument DATA66
+design in the textbook schooling example.
+
 Run the examples from a temporary directory after building the binary:
 
 ```sh
@@ -163,6 +213,7 @@ work=$(mktemp -d)
 cp crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci*csv "$work/"
 cp crates/tabdat-stats/tests/fixtures/robust_ar_three_ci*csv "$work/"
 cp crates/tabdat-stats/tests/fixtures/robust_ar_four_ci*csv "$work/"
+cp examples/robust-ar/projected_ar_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/two_instrument_ci_all_real.td")
@@ -172,6 +223,8 @@ cp crates/tabdat-stats/tests/fixtures/robust_ar_four_ci*csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/four_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/four_instrument_ci_all_real.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/projected_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/projected_ci_clustered.td")
 ```
 
 Quartic, degree-six and degree-eight boundaries are solved by recursively isolating
@@ -179,5 +232,6 @@ derivative roots and checking every intervening region, without a finite grid.
 Repeated or ambiguous roots and singular or ill-conditioned score covariance
 fail explicitly. This remains synthetic method evidence, not a
 Cameron–Trivedi illustration or a claim of instrument validity. Five or more
-excluded instruments, multiple endogenous regressors, robust projection,
-HAC/survey covariance and few-cluster inference remain unsupported.
+excluded instruments, robust projection outside the bounded two-endogenous/
+two-instrument slice, larger endogenous systems, HAC/survey covariance and
+few-cluster inference remain unsupported.

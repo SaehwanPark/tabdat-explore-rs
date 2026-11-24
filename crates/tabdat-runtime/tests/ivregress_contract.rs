@@ -810,7 +810,7 @@ fn three_and_four_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dimension
 }
 
 #[test]
-fn projected_ar_confidence_sets_reuse_the_retained_fit_and_keep_robust_limits_explicit() {
+fn projected_ar_confidence_sets_reuse_the_retained_fit_for_homoskedastic_and_robust_fits() {
   let fixture = Fixture::school_like_sample();
   let mut session = load(&fixture);
   session
@@ -855,13 +855,20 @@ fn projected_ar_confidence_sets_reuse_the_retained_fit_and_keep_robust_limits_ex
       )
       .unwrap();
     let before = session.state();
-    assert!(
-      session
-        .execute(parse_command("estat ar, ci coefficient(x1)").unwrap())
-        .unwrap_err()
-        .to_string()
-        .contains("robust/cluster projection is not implemented")
+    let result = session
+      .execute(parse_command("estat ar, ci coefficient(x1)").unwrap())
+      .unwrap();
+    let ExecutionResult::RobustProjectedAndersonRubinConfidenceSet(set) = result else {
+      panic!("expected robust projected AR confidence set after {option}");
+    };
+    assert_eq!(set.coefficient, "x1");
+    assert_eq!(set.nuisance_endogenous, ["x2"]);
+    assert_eq!(
+      set.observation_count,
+      if option == "robust" { 58 } else { 57 }
     );
+    assert_eq!(set.degrees_of_freedom, 2);
+    assert!(set.closure_conservative);
     assert_eq!(session.state(), before);
   }
 }

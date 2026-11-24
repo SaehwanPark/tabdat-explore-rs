@@ -139,8 +139,10 @@ pub use iv::{
 pub use iv_confidence::{
   AndersonRubinConfidenceSet, ArConfidenceInterval, ArConfidenceSetShape, ProjectedArConfidenceSet,
   RobustAndersonRubinConfidenceSet, RobustMultipleInstrumentAndersonRubinConfidenceSet,
-  anderson_rubin_confidence_set, projected_anderson_rubin_confidence_set,
-  robust_anderson_rubin_confidence_set, robust_multiple_instrument_anderson_rubin_confidence_set,
+  RobustProjectedArConfidenceSet, anderson_rubin_confidence_set,
+  projected_anderson_rubin_confidence_set, robust_anderson_rubin_confidence_set,
+  robust_multiple_instrument_anderson_rubin_confidence_set,
+  robust_projected_anderson_rubin_confidence_set,
 };
 pub use iv_endogenous::{
   RobustEndogeneityResult, WuHausmanResult, robust_endogeneity_test, wu_hausman_test,

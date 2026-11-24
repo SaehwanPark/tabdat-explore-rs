@@ -404,6 +404,26 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         json!("valid_instruments_homoskedastic_errors_exact_F_requires_conditional_normality");
       (data, "ProjectedAndersonRubinConfidenceSet")
     }
+    ExecutionResult::RobustProjectedAndersonRubinConfidenceSet(result) => {
+      let mut data =
+        serde_json::to_value(result).expect("serializable robust projected AR confidence set");
+      data["test"] = json!("anderson_rubin_projected_scalar_robust_confidence_set");
+      data.as_object_mut().unwrap().remove("covariance_type");
+      data["covariance"] = json!(match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "robust_hc1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "homoskedastic".to_owned(),
+      });
+      data["reference_distribution"] = json!("asymptotic_chi_square");
+      data["weak_iv_robust"] = json!(true);
+      data["coverage"] = json!("at_least_confidence_level_by_closed_projection");
+      data["projection"] = json!("closed_conservative_envelope");
+      data["endogenous_nuisance_policy"] = json!("project_over_all_other_endogenous_coefficients");
+      data["assumptions"] = json!(
+        "valid_instruments_correct_linear_model_independent_rows_or_independent_clusters_many_clusters_required_no_few_cluster_guarantee"
+      );
+      (data, "RobustProjectedAndersonRubinConfidenceSet")
+    }
     ExecutionResult::RobustAndersonRubin(result) => {
       let mut data = serde_json::to_value(result).expect("finite robust AR result");
       data["test"] = json!("anderson_rubin_joint_robust_wald");
@@ -2736,6 +2756,60 @@ mod tests {
       envelope["data"],
       json!({"missing_definition": "sql_null", "rows": []})
     );
+  }
+
+  #[test]
+  fn robust_projected_ar_json_names_covariance_and_closed_projection() {
+    let result = ExecutionResult::RobustProjectedAndersonRubinConfidenceSet(
+      tabdat_stats::RobustProjectedArConfidenceSet {
+        coefficient: "x1".into(),
+        nuisance_endogenous: vec!["x2".into()],
+        excluded_instruments: vec!["z1".into(), "z2".into()],
+        confidence_level: 95.0,
+        observation_count: 48,
+        auxiliary_parameter_count: 4,
+        auxiliary_residual_df: 44,
+        covariance_type: tabdat_domain::CovarianceType::RobustHc1,
+        covariance_correction: 48.0 / 44.0,
+        cluster_group_count: None,
+        degrees_of_freedom: 2,
+        critical_chi_square: 5.99146454710798,
+        shape: tabdat_stats::ArConfidenceSetShape::Bounded,
+        intervals: vec![tabdat_stats::ArConfidenceInterval {
+          lower: Some(0.789041366121279),
+          upper: Some(1.65982451868902),
+        }],
+        closure_conservative: true,
+        all_real_conservative_fallback: false,
+      },
+    );
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(
+      envelope["result_type"],
+      "RobustProjectedAndersonRubinConfidenceSet"
+    );
+    assert_eq!(
+      envelope["data"]["test"],
+      "anderson_rubin_projected_scalar_robust_confidence_set"
+    );
+    assert_eq!(envelope["data"]["covariance"], "robust_hc1");
+    assert_eq!(
+      envelope["data"]["reference_distribution"],
+      "asymptotic_chi_square"
+    );
+    assert_eq!(
+      envelope["data"]["coverage"],
+      "at_least_confidence_level_by_closed_projection"
+    );
+    assert_eq!(
+      envelope["data"]["projection"],
+      "closed_conservative_envelope"
+    );
+    assert_eq!(envelope["data"]["closure_conservative"], true);
+    assert_eq!(envelope["data"]["all_real_conservative_fallback"], false);
+    assert_eq!(envelope["data"]["nuisance_endogenous"], json!(["x2"]));
+    assert!(envelope["data"].get("covariance_type").is_none());
   }
 
   #[test]

@@ -1305,19 +1305,28 @@ impl Session {
           }
         }
         EstatSubcommand::AndersonRubinProjectedConfidenceSet { coefficient, level } => {
-          if state.linear.result.covariance.covariance_type
-            != tabdat_stats::CovarianceType::NonRobust
-          {
-            return Err(RuntimeError::EstatArFailed(
-              "projected homoskedastic AR confidence sets require a nonrobust 2SLS fit; robust/cluster projection is not implemented".into(),
-            ));
-          }
           let level = level
             .parse::<f64>()
             .map_err(|_| RuntimeError::EstatArFailed("confidence level must be numeric".into()))?;
-          tabdat_stats::projected_anderson_rubin_confidence_set(&state.problem, coefficient, level)
+          let covariance_type = &state.linear.result.covariance.covariance_type;
+          if *covariance_type == tabdat_stats::CovarianceType::NonRobust {
+            tabdat_stats::projected_anderson_rubin_confidence_set(
+              &state.problem,
+              coefficient,
+              level,
+            )
             .map(ExecutionResult::ProjectedAndersonRubinConfidenceSet)
             .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+          } else {
+            tabdat_stats::robust_projected_anderson_rubin_confidence_set(
+              &state.problem,
+              coefficient,
+              level,
+              covariance_type,
+            )
+            .map(ExecutionResult::RobustProjectedAndersonRubinConfidenceSet)
+            .map_err(|error| RuntimeError::EstatArFailed(error.to_string()))
+          }
         }
         _ => unreachable!("AR command checked above"),
       };
