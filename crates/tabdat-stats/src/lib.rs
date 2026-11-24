@@ -185,9 +185,10 @@ pub use normalized_common_nested_logit::{
 };
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
-  PoissonOptions, PoissonResult, fit_poisson, fit_poisson_clustered, fit_poisson_with_offset,
-  fit_poisson_with_options, poisson_average_marginal_effects, poisson_linear_combination,
-  poisson_wald_test,
+  PoissonOptions, PoissonOverdispersionScoreTest, PoissonResult, fit_poisson,
+  fit_poisson_clustered, fit_poisson_with_offset, fit_poisson_with_options,
+  poisson_average_marginal_effects, poisson_linear_combination,
+  poisson_nb2_overdispersion_score_test, poisson_wald_test,
 };
 pub use poisson_bootstrap::{ClusterBootstrapPoissonResult, bootstrap_poisson_clustered};
 pub use post_estimation::{

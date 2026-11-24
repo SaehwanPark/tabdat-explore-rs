@@ -5,7 +5,8 @@ pub use tabdat_stats::{
   BinaryCluster, BinaryOmnibusWald, CountProbabilityLaw, CovarianceType, LogitEstimate,
   MAX_COUNT_POINT_CUTOFF, MultinomialEstimate, Nb2Cluster, Nb2Dispersion, Nb2Estimate,
   Nb2MarginalEffects, Nb2Result, NlsExpression, NlsModel, NlsResult, PoissonCluster,
-  PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonResult, TobitEstimate,
+  PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald, PoissonOverdispersionScoreTest,
+  PoissonResult, TobitEstimate,
 };
 pub use tabdat_stats::{
   BootstrapOlsResult, ClusterBootstrapOlsResult, QuantileBootstrapResult, QuantileResult,
@@ -846,6 +847,8 @@ pub enum ExecutionResult {
   HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
+  /// Retained-Poisson one-sided NB2 overdispersion score test.
+  PoissonOverdispersionScoreTest(Box<PoissonOverdispersionScoreTest>),
   /// Model-based conditional Poisson FE, including explicit zero-total exclusions.
   ConditionalPoisson(Box<tabdat_stats::ConditionalPoissonResult>),
   GammaPoisson(Box<tabdat_stats::GammaPoissonResult>),

@@ -1240,6 +1240,16 @@ impl Session {
     if let EstatSubcommand::DiscreteMargins { variable } = &command.subcommand {
       return self.execute_binary_discrete_margins(variable);
     }
+    if command.subcommand == EstatSubcommand::Overdispersion {
+      let Some(EstimationState::PoissonFit(state)) = &self.estimation else {
+        return Err(RuntimeError::EstatOverdispersionRequiresPriorPoisson);
+      };
+      return tabdat_stats::poisson_nb2_overdispersion_score_test(&state.problem, &state.result)
+        .map(|result| ExecutionResult::PoissonOverdispersionScoreTest(Box::new(result)))
+        .map_err(|error| RuntimeError::EstatOverdispersionFailed {
+          message: error.to_string(),
+        });
+    }
     if let EstatSubcommand::CountProbabilities { tail_from } = command.subcommand {
       return self.execute_count_probability_table(tail_from);
     }

@@ -20,6 +20,7 @@ Example workflow:
 - `use visits.csv`
 - `summarize visits`
 - `poisson visits age income, robust`
+- `estat overdispersion` — one-sided score test in the NB2 variance direction
 - `estat margins`
 - `predict mean_visits, n`
 - `predict index, xb`
@@ -90,6 +91,16 @@ Inference and interpretation:
 retained y/means (exact0..9 plus >=10 by default). It assumes the full Poisson
 law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
 formal goodness-of-fit test is supplied; see `help estat`.
+
+`estat overdispersion` evaluates the Poisson score for the one-sided NB2
+variance alternative `Var(Y|X)=mu+alpha*mu^2`, `alpha>0`, on the retained fit;
+fixed offsets remain in its fitted means. The selected model-based, independent-
+row N/(N-1), or one-way cluster G/(G-1) score variance gives a signed asymptotic-
+normal Z and one-sided p-value. Robust inference requires a correct conditional
+mean; clustered inference additionally assumes independent groups and does not
+guarantee reliable few-cluster inference. It does not fit NB2 or supply a
+cluster-robust NB2 likelihood-ratio reference. See
+`examples/nb2-overdispersion-score/README.md`.
 
 Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
 cutoff-variable values above99, factors/discrete changes,

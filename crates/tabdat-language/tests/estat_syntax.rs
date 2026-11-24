@@ -6,6 +6,7 @@ fn remaining_no_option_estat_forms_parse_without_a_backend() {
     "residuals",
     "ovtest",
     "margins",
+    "overdispersion",
     "gof",
     "did",
     "drdid",

@@ -876,6 +876,29 @@ are validated. This is not a printed Table20.5 column, household/site/multiway
 correction, survey or FE/RE/panel-family implementation. See MIG-0019. NB2
 uses its distinct full-joint clustered law below.
 
+### Retained Poisson NB2-direction overdispersion score test
+
+`estat overdispersion` is available only after a retained Poisson fit. It tests
+`H0: alpha=0` (Poisson conditional variance) against `alpha>0` in
+`Var(Y|X)=mu+alpha*mu^2`, using
+`u_i=0.5*((y_i-mu_i)^2-y_i)` at the retained fitted means. Fixed offsets remain
+in `mu_i`; no NB2 fit is performed. CLI-v1 adds
+`PoissonOverdispersionScoreTestResult` with `estimator`, `effect`, `sample`,
+`uncertainty`, `independent_unit`, `method`, both hypotheses, `score`,
+`score_variance`, signed `statistic`, one-sided `p_value`, selected `covariance`,
+`covariance_correction`, `reference_distribution`, retained N, optional
+`offset_variable` and optional cluster metadata.
+
+Model variance is `0.5*sum(mu_i^2)` (`poisson_information_nb2_score`); robust
+row variance is `N/(N-1)*sum(u_i^2)`; clustered variance aggregates row scores
+first and uses `G/(G-1)*sum_g(sum_i u_i)^2`. The statistic is compared with the
+upper tail of the standard normal. Robust inference assumes a correctly
+specified Poisson conditional mean. Cluster inference also assumes independent
+groups and many-group asymptotics; no few-cluster guarantee is supplied. This
+score test is not the NB2 boundary likelihood-ratio test and does not validate
+the complete NB2 distribution. Current-data edits do not refit or alter its
+retained score.
+
 ## Bounded jointly estimated NB2
 
 `nbreg y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link NB2:

@@ -1,7 +1,7 @@
 //! Unweighted log-link Poisson ML / independent-row or one-way clustered QMLE.
 
 use crate::binary::{BinaryCluster, BinaryOmnibusWald, omnibus_wald};
-use crate::distributions::chi_square_tail;
+use crate::distributions::{chi_square_tail, normal_cdf};
 use crate::matrix::{
   add_compensated, qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r,
 };
@@ -87,6 +87,28 @@ pub struct PoissonResult {
   pub sample: Option<EstimationSample>,
 }
 
+/// One-sided score test of Poisson equidispersion in the NB2 variance direction.
+/// Robust score variance supports independent rows or independent clusters;
+/// it does not validate the Poisson mean or the full NB2 distribution.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PoissonOverdispersionScoreTest {
+  pub method: String,
+  pub null_hypothesis: String,
+  pub alternative_hypothesis: String,
+  /// Signed score divided by its selected standard error.
+  pub statistic: f64,
+  /// One-sided upper-tail standard-normal probability for alpha > 0.
+  pub p_value: f64,
+  pub score: f64,
+  pub score_variance: f64,
+  pub covariance: String,
+  pub covariance_correction: f64,
+  pub reference_distribution: String,
+  pub observation_count: usize,
+  pub offset_variable: Option<String>,
+  pub cluster: Option<PoissonCluster>,
+}
+
 /// Test general affine restrictions on retained Poisson mean coefficients.
 ///
 /// Uses the model-based, independent-row robust or clustered covariance owned
@@ -158,6 +180,185 @@ pub struct PoissonMarginalEffects {
   pub cluster: Option<PoissonCluster>,
   pub observation_count: usize,
   pub effects: Vec<PoissonEstimate>,
+}
+
+/// Test the Poisson boundary against excess conditional variation in the NB2
+/// direction using the retained Poisson fit. The score at alpha=0 is
+/// `0.5*((y-mu)^2-y)`, with mu including the fit's fixed offset.
+pub fn poisson_nb2_overdispersion_score_test(
+  problem: &EstimationProblem,
+  result: &PoissonResult,
+) -> Result<PoissonOverdispersionScoreTest, StatsError> {
+  problem.validate()?;
+  let n = problem.observation_count();
+  let parameter_names = problem.parameter_names();
+  if problem.weights.is_some()
+    || problem
+      .sample
+      .as_ref()
+      .is_some_and(|sample| sample.weights.is_some())
+    || result.outcome != problem.outcome
+    || result.predictor_names != problem.predictor_names
+    || result.include_intercept != problem.include_intercept
+    || result.sample != problem.sample
+    || result.observation_count != n
+    || result
+      .coefficients
+      .iter()
+      .map(|coefficient| coefficient.name.clone())
+      .collect::<Vec<_>>()
+      != parameter_names
+    || result.fitted_means.len() != n
+  {
+    return Err(invalid(
+      "NB2 overdispersion score test requires aligned Poisson fit and sample metadata",
+    ));
+  }
+  if result
+    .fitted_means
+    .iter()
+    .any(|mean| !mean.is_finite() || *mean < 0.0)
+    || problem.response.iter().any(|count| {
+      !count.is_finite() || *count < 0.0 || count.fract() != 0.0 || *count > MAX_POISSON_COUNT
+    })
+  {
+    return Err(failed(
+      "NB2 overdispersion score test requires finite Poisson means and exact nonnegative counts",
+    ));
+  }
+
+  let groups = if let Some(cluster) = &result.cluster {
+    let Some(groups) = problem
+      .sample
+      .as_ref()
+      .and_then(|sample| sample.cluster_groups.as_ref())
+    else {
+      return Err(invalid("clustered score test requires retained group keys"));
+    };
+    if groups.len() != n || groups.iter().collect::<BTreeSet<_>>().len() != cluster.group_count {
+      return Err(invalid(
+        "clustered score test requires group keys aligned with the retained sample",
+      ));
+    }
+    Some(groups)
+  } else {
+    if problem
+      .sample
+      .as_ref()
+      .is_some_and(|sample| sample.cluster_groups.is_some())
+    {
+      return Err(invalid(
+        "unclustered score test cannot use retained cluster keys",
+      ));
+    }
+    None
+  };
+  if result.cluster.is_some() && !result.robust {
+    return Err(invalid(
+      "clustered Poisson scores must use robust inference",
+    ));
+  }
+
+  let scores = problem
+    .response
+    .iter()
+    .zip(&result.fitted_means)
+    .map(|(outcome, mean)| {
+      let residual = outcome - mean;
+      0.5 * (residual * residual - outcome)
+    })
+    .collect::<Vec<_>>();
+  let mut score = 0.0;
+  let mut score_error = 0.0;
+  for row_score in &scores {
+    add_compensated(&mut score, &mut score_error, *row_score);
+  }
+  let (score_variance, covariance, covariance_correction) = if let Some(groups) = groups {
+    let mut grouped_scores: BTreeMap<&str, (f64, f64)> = BTreeMap::new();
+    for (group, row_score) in groups.iter().zip(&scores) {
+      let group_score = grouped_scores.entry(group.as_str()).or_insert((0.0, 0.0));
+      add_compensated(&mut group_score.0, &mut group_score.1, *row_score);
+    }
+    let group_count = grouped_scores.len();
+    if group_count < 2 {
+      return Err(invalid(
+        "clustered score variance requires at least two retained groups",
+      ));
+    }
+    let correction = group_count as f64 / (group_count - 1) as f64;
+    let meat = grouped_scores
+      .values()
+      .map(|(group_score, _)| group_score * group_score)
+      .fold((0.0, 0.0), |(mut sum, mut error), value| {
+        add_compensated(&mut sum, &mut error, value);
+        (sum, error)
+      })
+      .0;
+    (
+      correction * meat,
+      "cluster_nb2_score_g_over_g_minus_1",
+      correction,
+    )
+  } else if result.robust {
+    if n < 2 {
+      return Err(invalid(
+        "row-robust score variance requires at least two rows",
+      ));
+    }
+    let correction = n as f64 / (n - 1) as f64;
+    let meat = scores
+      .iter()
+      .map(|score| score * score)
+      .fold((0.0, 0.0), |(mut sum, mut error), value| {
+        add_compensated(&mut sum, &mut error, value);
+        (sum, error)
+      })
+      .0;
+    (
+      correction * meat,
+      "robust_row_nb2_score_n_over_n_minus_1",
+      correction,
+    )
+  } else {
+    let information = 0.5
+      * result
+        .fitted_means
+        .iter()
+        .map(|mean| mean * mean)
+        .fold((0.0, 0.0), |(mut sum, mut error), value| {
+          add_compensated(&mut sum, &mut error, value);
+          (sum, error)
+        })
+        .0;
+    (information, "poisson_information_nb2_score", 1.0)
+  };
+  let statistic = score / score_variance.sqrt();
+  let p_value = normal_cdf(-statistic);
+  if !score.is_finite()
+    || !score_variance.is_finite()
+    || score_variance <= 0.0
+    || !statistic.is_finite()
+    || !p_value.is_finite()
+  {
+    return Err(failed(
+      "NB2 overdispersion score statistic or variance is non-finite",
+    ));
+  }
+  Ok(PoissonOverdispersionScoreTest {
+    method: "one_sided_nb2_variance_score".into(),
+    null_hypothesis: "alpha = 0 (Poisson conditional variance)".into(),
+    alternative_hypothesis: "alpha > 0 in Var(Y|X) = mu + alpha*mu^2".into(),
+    statistic,
+    p_value,
+    score,
+    score_variance,
+    covariance: covariance.into(),
+    covariance_correction,
+    reference_distribution: "asymptotic_standard_normal".into(),
+    observation_count: n,
+    offset_variable: result.offset_variable.clone(),
+    cluster: result.cluster.clone(),
+  })
 }
 
 fn invalid(message: &str) -> StatsError {

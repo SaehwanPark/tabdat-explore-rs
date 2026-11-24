@@ -2815,6 +2815,37 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       }
     ),
     ExecutionResult::Poisson(result) => poisson_report(result),
+    ExecutionResult::PoissonOverdispersionScoreTest(result) => format!(
+      "Poisson one-sided NB2 overdispersion score test\nH0: {}; H1: {}\nRetained N = {}; score = {}; score variance = {}; Z = {}; one-sided p = {}\nCovariance: {}; correction = {}; {}; reference = asymptotic standard normal.\nCorrect Poisson conditional means are required. Robust score variance does not validate a complete NB2 law.{}",
+      result.null_hypothesis,
+      result.alternative_hypothesis,
+      result.observation_count,
+      inference_number(result.score),
+      inference_number(result.score_variance),
+      inference_number(result.statistic),
+      inference_number(result.p_value),
+      result.covariance,
+      result.covariance_correction,
+      if let Some(cluster) = &result.cluster {
+        format!(
+          "independent clusters, G = {}; many-group approximation only, no few-cluster guarantee",
+          cluster.group_count
+        )
+      } else if result.covariance == "robust_row_nb2_score_n_over_n_minus_1" {
+        "independent rows".to_owned()
+      } else {
+        "model-based Poisson information".to_owned()
+      },
+      result
+        .offset_variable
+        .as_ref()
+        .map_or_else(String::new, |variable| {
+          format!(
+            "\nFixed offset {} is included in retained fitted means.",
+            variable.escape_debug()
+          )
+        }),
+    ),
     ExecutionResult::PoissonMarginalEffects(result) => format!(
       "Poisson continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}{}{}",
       result.observation_count,

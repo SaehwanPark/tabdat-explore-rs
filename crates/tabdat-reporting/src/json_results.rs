@@ -150,6 +150,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::Hausman
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
+            | EstatSubcommand::Overdispersion
             | EstatSubcommand::DiscreteMargins { .. }
             | EstatSubcommand::CountProbabilities { .. },
           ..
@@ -1323,6 +1324,19 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         });
       }
       (data, "PoissonResult")
+    }
+    ExecutionResult::PoissonOverdispersionScoreTest(result) => {
+      let mut data = serde_json::to_value(result).expect("finite overdispersion score test");
+      data["estimator"] = json!("poisson_nb2_overdispersion_score");
+      data["effect"] = json!("one_sided_test_alpha_greater_than_zero");
+      data["sample"] = json!("retained_estimation_design");
+      data["uncertainty"] = json!("selected_score_variance_conditional_on_retained_fit");
+      data["independent_unit"] = json!(if result.cluster.is_some() {
+        "cluster"
+      } else {
+        "observation"
+      });
+      (data, "PoissonOverdispersionScoreTestResult")
     }
     ExecutionResult::PoissonMarginalEffects(result) => {
       let mut data = json!({
