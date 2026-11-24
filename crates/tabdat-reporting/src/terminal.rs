@@ -1697,6 +1697,57 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       }
       output
     }
+    ExecutionResult::RobustProjectedAndersonRubinConfidenceSet(result) => {
+      let covariance = match &result.covariance_type {
+        tabdat_domain::CovarianceType::RobustHc1 => "HC1".to_owned(),
+        tabdat_domain::CovarianceType::Cluster(variable) => format!("CR1 cluster({variable})"),
+        tabdat_domain::CovarianceType::NonRobust => "homoskedastic".to_owned(),
+      };
+      let mut output = format!(
+        "Projected Anderson-Rubin confidence set ({covariance}, weak-IV-robust, at least nominal coverage)\n{}; level = {}%; N = {}; K_aux = {}; residual df = {}; correction = {}; critical chi-square({}) = {}\nNuisance endogenous coefficients left unrestricted: {:?}\n",
+        result.coefficient.escape_debug(),
+        inference_number(result.confidence_level),
+        result.observation_count,
+        result.auxiliary_parameter_count,
+        result.auxiliary_residual_df,
+        inference_number(result.covariance_correction),
+        result.degrees_of_freedom,
+        inference_number(result.critical_chi_square),
+        result.nuisance_endogenous
+      );
+      if let Some(group_count) = result.cluster_group_count {
+        writeln!(output, "Cluster groups = {group_count}").unwrap();
+      }
+      if result.intervals.is_empty() {
+        output.push_str("Empty set\n");
+      }
+      for (index, interval) in result.intervals.iter().enumerate() {
+        if index > 0 {
+          output.push_str(" union ");
+        }
+        write!(
+          output,
+          "{}{}, {}{}",
+          if interval.lower.is_some() { "[" } else { "(" },
+          interval
+            .lower
+            .map(inference_number)
+            .unwrap_or_else(|| "-inf".into()),
+          interval
+            .upper
+            .map(inference_number)
+            .unwrap_or_else(|| "+inf".into()),
+          if interval.upper.is_some() { "]" } else { ")" }
+        )
+        .unwrap();
+      }
+      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee. The output is the closed conservative envelope of the joint projection.\n");
+      if result.all_real_conservative_fallback {
+        output
+          .push_str("Numerical or covariance ambiguity forced the conservative all-real set.\n");
+      }
+      output
+    }
     ExecutionResult::RobustAndersonRubin(result) => {
       let mut output = String::from(
         "Anderson-Rubin joint Wald test (HC1/one-way cluster, weak-IV-robust)\nH0: all endogenous coefficients jointly, in fit order\n",
@@ -2853,6 +2904,39 @@ mod tests {
     assert!(output.contains("Projected Anderson-Rubin confidence set"));
     assert!(output.contains("(-inf, +inf)"));
     assert!(output.contains("conservative all-real set"));
+  }
+
+  #[test]
+  fn robust_projected_ar_terminal_reports_covariance_and_closed_envelope() {
+    let output =
+      render_execution_result(&ExecutionResult::RobustProjectedAndersonRubinConfidenceSet(
+        tabdat_stats::RobustProjectedArConfidenceSet {
+          coefficient: "x1".into(),
+          nuisance_endogenous: vec!["x2".into()],
+          excluded_instruments: vec!["z1".into(), "z2".into()],
+          confidence_level: 95.0,
+          observation_count: 48,
+          auxiliary_parameter_count: 4,
+          auxiliary_residual_df: 44,
+          covariance_type: tabdat_domain::CovarianceType::Cluster("group".into()),
+          covariance_correction: 1.16528925619835,
+          cluster_group_count: Some(12),
+          degrees_of_freedom: 2,
+          critical_chi_square: 5.99146454710798,
+          shape: tabdat_stats::ArConfidenceSetShape::Bounded,
+          intervals: vec![tabdat_stats::ArConfidenceInterval {
+            lower: Some(0.331931575649699),
+            upper: Some(2.27083168350681),
+          }],
+          closure_conservative: true,
+          all_real_conservative_fallback: false,
+        },
+      ));
+    assert!(output.contains("Projected Anderson-Rubin confidence set (CR1 cluster(group)"));
+    assert!(output.contains("critical chi-square(2)"));
+    assert!(output.contains("Cluster groups = 12"));
+    assert!(output.contains("closed conservative envelope"));
+    assert!(!output.contains("Numerical or covariance ambiguity"));
   }
 
   #[test]

@@ -30,6 +30,11 @@ impl Fixture {
       include_str!("../crates/tabdat-stats/tests/fixtures/robust_ar_multi_ci_all_real_data.csv"),
     )
     .unwrap();
+    fs::write(
+      root.join("projected_ar_data.csv"),
+      include_str!("../examples/robust-ar/projected_ar_data.csv"),
+    )
+    .unwrap();
     Self(root)
   }
 
@@ -170,6 +175,70 @@ fn two_instrument_cluster_script_reports_cr1_correction_and_unbounded_set() {
   close(&data["covariance_correction"], 1.31944444444444, 1e-13);
   close(&data["intervals"][0]["upper"], 0.154198964682854, 2e-10);
   close(&data["intervals"][1]["lower"], 0.573634185761531, 2e-10);
+}
+
+#[test]
+fn robust_projected_cli_workflows_report_reference_sets_and_closed_envelope() {
+  let fixture = Fixture::new();
+  for (script_name, covariance, correction, group_count, expected) in [
+    (
+      "projected_ci.td",
+      "robust_hc1",
+      1.09090909090909,
+      Value::Null,
+      [0.789041366121279, 1.65982451868902],
+    ),
+    (
+      "projected_ci_clustered.td",
+      "cluster(group)",
+      1.16528925619835,
+      serde_json::json!(12),
+      [0.331931575649699, 2.27083168350681],
+    ),
+  ] {
+    let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("examples/robust-ar")
+      .join(script_name);
+    let rows = json_lines(&fixture.run("--json", script.to_str().unwrap()));
+    assert_eq!(rows.len(), 3);
+    assert_eq!(
+      rows[2]["result_type"],
+      "RobustProjectedAndersonRubinConfidenceSet"
+    );
+    let data = &rows[2]["data"];
+    assert_eq!(
+      data["test"],
+      "anderson_rubin_projected_scalar_robust_confidence_set"
+    );
+    assert_eq!(data["covariance"], covariance);
+    assert_eq!(data["reference_distribution"], "asymptotic_chi_square");
+    assert_eq!(
+      data["coverage"],
+      "at_least_confidence_level_by_closed_projection"
+    );
+    assert_eq!(data["projection"], "closed_conservative_envelope");
+    assert_eq!(data["closure_conservative"], true);
+    assert_eq!(data["all_real_conservative_fallback"], false);
+    assert_eq!(data["degrees_of_freedom"], 2);
+    assert_eq!(data["observation_count"], 48);
+    assert_eq!(data["auxiliary_parameter_count"], 4);
+    assert_eq!(data["auxiliary_residual_df"], 44);
+    assert_eq!(data["cluster_group_count"], group_count);
+    close(&data["covariance_correction"], correction, 2e-14);
+    close(&data["critical_chi_square"], 5.99146454710798, 2e-12);
+    assert_eq!(data["shape"], "bounded");
+    close(&data["intervals"][0]["lower"], expected[0], 2e-7);
+    close(&data["intervals"][0]["upper"], expected[1], 2e-7);
+  }
+
+  let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    .join("examples/robust-ar")
+    .join("projected_ci_clustered.td");
+  let output = fixture.run("--text", script.to_str().unwrap());
+  assert!(output.status.success());
+  let text = String::from_utf8(output.stdout).unwrap();
+  assert!(text.contains("Projected Anderson-Rubin confidence set (CR1 cluster(group)"));
+  assert!(text.contains("closed conservative envelope"));
 }
 
 #[test]

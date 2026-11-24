@@ -1492,8 +1492,9 @@ panel likelihood is supplied.
   compare all endpoints and direct Wald probes, test the eight-root/five-
   component polynomial boundary, rescaling, runtime/CLI retained-fit behavior,
   text/JSON, and the five-instrument limit. More than four excluded
-  instruments, multiple endogenous regressors, robust projection, HAC/survey
-  covariance and few-cluster methods remain unsupported. This synthetic method
+  instruments, multiple endogenous regressors outside the bounded projected
+  two-by-two slice, robust projection outside that slice, HAC/survey covariance
+  and few-cluster methods remain unsupported. This synthetic method
   evidence does not change the Table 4.5 status above.
 - **Bounded projected scalar AR method:** after a nonrobust multi-endogenous 2SLS
   fit, `estat ar, ci coefficient(name) [level(95)]` profiles all other endogenous
@@ -1512,9 +1513,34 @@ panel likelihood is supplied.
   [`reference_ar_projected.R`](../../examples/mma04p4ivweak/reference_ar_projected.R)
   profile to 1e-10. The exact source/design are recorded above; the source data
   remain external and are not committed. Runtime tests cover retained sample,
-  state, JSON metadata and robust/cluster rejection. This advances the weak-IV
+  state and JSON metadata. Robust projection is available separately for the
+  bounded two-endogenous/two-instrument slice below. This advances the weak-IV
   inference method for Table 4.5 but does not validate the entire illustration.
-  Robust/cluster projection and the less-conservative subvector AR test remain open.
+  Robust/cluster projection outside the bounded two-endogenous/two-instrument
+  slice and the less-conservative subvector AR test remain open.
+- **Bounded HC1/CR1 projected AR method evidence (not a textbook replication):**
+  [`projected_ci.td`](../../examples/robust-ar/projected_ci.td) and
+  [`projected_ci_clustered.td`](../../examples/robust-ar/projected_ci_clustered.td)
+  project the joint robust AR Wald region for two endogenous regressors/two
+  excluded instruments onto either named coefficient. The 48-row design retains
+  an intercept, `w`, `x1`, `x2`, `z1`, `z2`, and 12 four-row groups; K_aux=4,
+  residual DF=44, and the asymptotic chi-square(2) critical value is
+  5.99146454710798. HC1/CR1 corrections are 1.09090909090909 / 1.16528925619835.
+  Independent Base R 4.6.2 auxiliary `lm.fit` Wald tests and broad-grid nuisance
+  profiling with `optimize`/`uniroot` validate the four bounded 95% sets:
+  HC1 x1 [0.789041366121279, 1.65982451868902], HC1 x2
+  [-1.10737758826908, -0.234526183277661], CR1 x1
+  [0.331931575649699, 2.27083168350681], and CR1 x2
+  [-2.01629567401708, 0.208762765550004]. Tests compare direct joint-Wald probes,
+  target endpoints, instrument rescaling and retained-fit behavior. Polynomial
+  unit cases cover disjoint and singleton projections. The output is the closed
+  conservative envelope; ambiguous roots or candidate covariance singularity
+  yield a marked all-real fallback, while a covariance singular throughout the
+  null plane and CR1 with fewer than three groups fail explicitly. HC1 assumes
+  independent rows; CR1 assumes independent groups and many-group asymptotics,
+  with no finite-sample or few-cluster guarantee. Other dimensions and covariance
+  estimators remain unsupported. This method evidence does not cover the actual
+  three-endogenous/three-instrument Table 4.5 design or validate that illustration.
 
 Missing seed rows (including simulation/Bayesian, measurement error and imputation)
 are **un-inventoried required work**, not exclusions. Several locators may contain

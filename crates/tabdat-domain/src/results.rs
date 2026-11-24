@@ -898,6 +898,9 @@ pub enum ExecutionResult {
   ),
   /// At-least-nominal projection of a joint homoskedastic AR region.
   ProjectedAndersonRubinConfidenceSet(tabdat_stats::ProjectedArConfidenceSet),
+  /// Closed conservative HC1/CR1 projection of a joint robust AR region for
+  /// exactly two endogenous coefficients and two excluded instruments.
+  RobustProjectedAndersonRubinConfidenceSet(tabdat_stats::RobustProjectedArConfidenceSet),
   /// The result of a two-sided Student t-test over active dataset columns.
   Ttest(Box<TtestResult>),
 }

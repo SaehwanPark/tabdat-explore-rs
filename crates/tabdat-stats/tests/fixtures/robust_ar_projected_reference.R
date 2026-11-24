@@ -27,7 +27,7 @@ make_data <- function() {
 }
 
 data <- make_data()
-write.csv(data,file.path(args[[1]],'robust_ar_projected_data.csv'),
+write.csv(data,file.path(args[[1]],'projected_ar_data.csv'),
   row.names=FALSE,quote=FALSE)
 
 n <- nrow(data)
@@ -42,8 +42,11 @@ residual_df <- n-parameter_count
 group_count <- length(unique(groups))
 critical <- qchisq(.95,df=2)
 
-joint_statistic <- function(target,nuisance,covariance) {
-  adjusted <- y-drop(E%*%c(target,nuisance))
+joint_statistic <- function(target,nuisance,covariance,target_index) {
+  beta <- numeric(2L)
+  beta[target_index] <- target
+  beta[3L-target_index] <- nuisance
+  adjusted <- y-drop(E%*%beta)
   fit <- lm.fit(auxiliary_design,adjusted)
   scores <- auxiliary_design*fit$residuals
   if (covariance=='cluster') scores <- rowsum(scores,groups)
@@ -60,10 +63,10 @@ joint_statistic <- function(target,nuisance,covariance) {
 # Numerical profiling supplies an independent check on the exact production
 # inversion. The pilot grid spans the nuisance line; optimize refines every
 # local minimum found on it and retains the better boundary values.
-profile <- function(target,covariance) {
+profile <- function(target,covariance,target_index) {
   nuisance_grid <- seq(-30,30,length.out=601L)
   values <- vapply(nuisance_grid,joint_statistic,numeric(1),
-    target=target,covariance=covariance)
+    target=target,covariance=covariance,target_index=target_index)
   local_minima <- which(values<=c(Inf,values[-length(values)]) &
     values<=c(values[-1L],Inf))
   if (!length(local_minima)) local_minima <- which.min(values)
@@ -71,7 +74,7 @@ profile <- function(target,covariance) {
   best_nuisance <- nuisance_grid[which.min(values)]
   for (index in local_minima) if (index>1L && index<length(nuisance_grid)) {
     result <- optimize(function(value)
-      joint_statistic(target,value,covariance),
+      joint_statistic(target,value,covariance,target_index),
       nuisance_grid[c(index-1L,index+1L)],tol=1e-10)
     if (result$objective<best_value) {
       best_value <- result$objective
@@ -81,23 +84,24 @@ profile <- function(target,covariance) {
   list(statistic=best_value,nuisance=best_nuisance)
 }
 
-reference_one <- function(covariance) {
+reference_one <- function(covariance,target_index) {
   target_grid <- seq(-10,10,length.out=201L)
   profile_values <- vapply(target_grid,function(value)
-    profile(value,covariance)$statistic,numeric(1))
+    profile(value,covariance,target_index)$statistic,numeric(1))
   included <- which(profile_values<=critical)
   stopifnot(length(included)>0L,all(diff(included)==1L),
     min(included)>1L,max(included)<length(target_grid))
   lower <- uniroot(function(value)
-    profile(value,covariance)$statistic-critical,
+    profile(value,covariance,target_index)$statistic-critical,
     target_grid[c(min(included)-1L,min(included))],tol=1e-9)$root
   upper <- uniroot(function(value)
-    profile(value,covariance)$statistic-critical,
+    profile(value,covariance,target_index)$statistic-critical,
     target_grid[c(max(included),max(included)+1L)],tol=1e-9)$root
   correction <- if (covariance=='hc1') n/residual_df else
     group_count/(group_count-1)*(n-1)/residual_df
   common <- data.frame(
-    covariance=covariance,shape='bounded',confidence_level=95,
+    coefficient=c('x1','x2')[target_index],covariance=covariance,
+    shape='bounded',confidence_level=95,
     observation_count=n,auxiliary_parameter_count=parameter_count,
     auxiliary_residual_df=residual_df,covariance_correction=correction,
     cluster_group_count=if (covariance=='cluster') group_count else NA_integer_,
@@ -106,9 +110,11 @@ reference_one <- function(covariance) {
     target=NA_real_,nuisance=NA_real_,statistic=NA_real_
   )
   probes <- c(lower-.1,lower,(lower+upper)/2,upper,upper+.1)
-  profiled <- lapply(probes,function(value) profile(value,covariance))
+  profiled <- lapply(probes,function(value)
+    profile(value,covariance,target_index))
   probe_rows <- data.frame(
-    covariance=covariance,shape='bounded',confidence_level=95,
+    coefficient=c('x1','x2')[target_index],covariance=covariance,
+    shape='bounded',confidence_level=95,
     observation_count=n,auxiliary_parameter_count=parameter_count,
     auxiliary_residual_df=residual_df,covariance_correction=correction,
     cluster_group_count=if (covariance=='cluster') group_count else NA_integer_,
@@ -121,5 +127,7 @@ reference_one <- function(covariance) {
   rbind(common,probe_rows)
 }
 
-reference <- rbind(reference_one('hc1'),reference_one('cluster'))
+reference <- do.call(rbind,lapply(c('hc1','cluster'),function(covariance)
+  do.call(rbind,lapply(1:2,function(target_index)
+    reference_one(covariance,target_index)))))
 write.csv(reference,stdout(),row.names=FALSE,quote=FALSE)

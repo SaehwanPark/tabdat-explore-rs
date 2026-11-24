@@ -481,8 +481,9 @@ with up to five components. Repeated/ambiguous roots and singular or
 ill-conditioned score covariance are explicit errors. The distinct
 `RobustMultipleInstrumentAndersonRubinConfidenceSet` JSON result identifies the
 instruments, reports two, three or four degrees of freedom and follows the same
-null-infinity convention. More than four excluded instruments, multiple endogenous regressors,
-robust projection and HAC/survey covariance remain unsupported.
+null-infinity convention. More than four excluded instruments, multiple endogenous
+regressors outside the robust projected two-by-two slice, robust projection
+outside that slice, and HAC/survey covariance remain unsupported.
 
 ## Projected Anderson–Rubin confidence sets
 
@@ -509,9 +510,29 @@ positive definite after unit-diagonal scaling, with every Cholesky pivot above
 1e-12. Otherwise the command reports the all-real set as a conservative fallback
 and marks `all_real_conservative_fallback: true` in JSON.
 This may reflect a truly unbounded projection or numerical/rank-degenerate
-nuisance curvature. Robust/cluster projected confidence sets and a less
-conservative subvector AR test are not implemented. The command uses the
-retained estimation sample and does not change session state.
+nuisance curvature. The command uses the retained estimation sample and does not
+change session state.
+
+For an HC1 or one-way clustered fit with exactly two endogenous regressors and
+two excluded instruments, the same syntax computes a robust projection:
+
+```text
+ivregress 2sls y w, endog(x1 x2) iv(z1 z2) robust
+estat ar, ci coefficient(x1) level(95)
+```
+
+This projects the complete asymptotic chi-square(2) robust AR nonrejection region
+over the other endogenous coefficient. HC1 uses N/(N−K_aux); CR1 uses
+G/(G−1)*(N−1)/(N−K_aux), with K_aux counting the intercept, included controls
+and both excluded instruments. It does not plug in a nuisance estimate or use a
+finite grid. The command reports the closed conservative envelope, so a boundary
+approached only as the nuisance coefficient diverges may be included. Root or
+covariance ambiguity returns an all-real conservative fallback; a score
+covariance singular throughout the null plane is an error. CR1 requires at least
+three retained groups and independent groups with many-group asymptotics; there
+is no finite-sample or few-cluster guarantee. Other dimensions and covariance
+estimators remain unsupported. The retained fit sample/design/groups are used,
+and session state is unchanged.
 
 
 Links:

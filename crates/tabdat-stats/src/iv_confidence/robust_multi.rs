@@ -26,8 +26,45 @@ pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
   pub intervals: Vec<ArConfidenceInterval>,
 }
 
+/// Projection of a robust joint AR region for exactly two endogenous
+/// coefficients and two excluded instruments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RobustProjectedArConfidenceSet {
+  pub coefficient: String,
+  pub nuisance_endogenous: Vec<String>,
+  pub excluded_instruments: Vec<String>,
+  pub confidence_level: f64,
+  pub observation_count: usize,
+  pub auxiliary_parameter_count: usize,
+  pub auxiliary_residual_df: usize,
+  pub covariance_type: CovarianceType,
+  pub covariance_correction: f64,
+  pub cluster_group_count: Option<usize>,
+  pub degrees_of_freedom: usize,
+  pub critical_chi_square: f64,
+  pub shape: ArConfidenceSetShape,
+  pub intervals: Vec<ArConfidenceInterval>,
+  /// True because projected output reports the closed conservative envelope.
+  pub closure_conservative: bool,
+  /// True when numerical ambiguity forced the conservative all-real set.
+  pub all_real_conservative_fallback: bool,
+}
+
 type Polynomial = Vec<f64>;
 type ScorePair = (Vec<f64>, Vec<f64>);
+type BivariatePolynomial = Vec<Polynomial>;
+type ProjectionIntervalSet = (
+  ArConfidenceSetShape,
+  Vec<ArConfidenceInterval>,
+  Vec<f64>,
+  Vec<f64>,
+);
+
+struct NuisanceMinimum {
+  included: bool,
+  minimizer: f64,
+  stationary_points: Vec<f64>,
+}
 
 fn dot(left: &[f64], right: &[f64]) -> f64 {
   left.iter().zip(right).map(|(a, b)| a * b).sum()
@@ -59,6 +96,459 @@ fn polynomial_multiply(left: &[f64], right: &[f64]) -> Polynomial {
     }
   }
   result
+}
+
+fn bivariate_trim(polynomial: &mut BivariatePolynomial) {
+  while polynomial.len() > 1
+    && polynomial
+      .last()
+      .is_some_and(|coefficient| coefficient.iter().all(|value| *value == 0.0))
+  {
+    polynomial.pop();
+  }
+}
+
+fn bivariate_add(left: &[Polynomial], right: &[Polynomial]) -> BivariatePolynomial {
+  let mut result = (0..left.len().max(right.len()))
+    .map(|nuisance_power| {
+      polynomial_add(
+        left.get(nuisance_power).map_or(&[0.0], Vec::as_slice),
+        right.get(nuisance_power).map_or(&[0.0], Vec::as_slice),
+      )
+    })
+    .collect::<Vec<_>>();
+  bivariate_trim(&mut result);
+  result
+}
+
+fn bivariate_scale(polynomial: &[Polynomial], scale: f64) -> BivariatePolynomial {
+  let mut result = polynomial
+    .iter()
+    .map(|coefficient| polynomial_scale(coefficient, scale))
+    .collect::<Vec<_>>();
+  bivariate_trim(&mut result);
+  result
+}
+
+fn bivariate_multiply(left: &[Polynomial], right: &[Polynomial]) -> BivariatePolynomial {
+  let mut result = vec![vec![0.0]; left.len() + right.len() - 1];
+  for (left_power, left_coefficient) in left.iter().enumerate() {
+    for (right_power, right_coefficient) in right.iter().enumerate() {
+      let product = polynomial_multiply(left_coefficient, right_coefficient);
+      result[left_power + right_power] =
+        polynomial_add(&result[left_power + right_power], &product);
+    }
+  }
+  bivariate_trim(&mut result);
+  result
+}
+
+fn bivariate_value_at_target(polynomial: &[Polynomial], target: f64) -> Polynomial {
+  polynomial
+    .iter()
+    .map(|coefficient| polynomial_value(coefficient, target))
+    .collect()
+}
+
+fn resultant_candidate_is_real_boundary(
+  boundary: &[Polynomial],
+  candidate: f64,
+) -> Result<bool, StatsError> {
+  let evaluated = bivariate_value_at_target(boundary, candidate);
+  let derivative = bivariate_nuisance_derivative(boundary);
+  let evaluated_derivative = bivariate_value_at_target(&derivative, candidate);
+  let minimum = nuisance_polynomial_minimum(&evaluated, true)?;
+  let mut closest_residual = f64::INFINITY;
+  for nuisance in &minimum.stationary_points {
+    let value = polynomial_value(&evaluated, *nuisance);
+    let derivative_value = polynomial_value(&evaluated_derivative, *nuisance);
+    let value_scale = polynomial_residual_scale(&evaluated, *nuisance);
+    let derivative_scale = polynomial_residual_scale(&evaluated_derivative, *nuisance);
+    if [value, derivative_value, value_scale, derivative_scale]
+      .iter()
+      .any(|number| !number.is_finite())
+    {
+      return Err(invalid(
+        "robust AR resultant candidate residual is non-finite",
+      ));
+    }
+    let value_residual = if value_scale == 0.0 {
+      0.0
+    } else {
+      value.abs() / value_scale
+    };
+    let derivative_residual = if derivative_scale == 0.0 {
+      0.0
+    } else {
+      derivative_value.abs() / derivative_scale
+    };
+    closest_residual = closest_residual.min(value_residual.max(derivative_residual));
+    if value_residual <= 2e-8 && derivative_residual <= 2e-8 {
+      return Ok(true);
+    }
+  }
+  if closest_residual <= 1e-5 {
+    return Err(invalid(
+      "robust AR resultant candidate has an unresolved common-root residual",
+    ));
+  }
+  Ok(false)
+}
+
+fn bivariate_nuisance_derivative(polynomial: &[Polynomial]) -> BivariatePolynomial {
+  polynomial
+    .iter()
+    .enumerate()
+    .skip(1)
+    .map(|(power, coefficient)| polynomial_scale(coefficient, power as f64))
+    .collect()
+}
+
+fn polynomial_resultant_with_nuisance_derivative(
+  polynomial: &[Polynomial],
+) -> Result<Polynomial, StatsError> {
+  let mut polynomial = polynomial.to_vec();
+  bivariate_trim(&mut polynomial);
+  let degree = polynomial.len().saturating_sub(1);
+  if degree == 0 {
+    return Ok(vec![0.0]);
+  }
+  let derivative = bivariate_nuisance_derivative(&polynomial);
+  let derivative_degree = derivative.len().saturating_sub(1);
+  if derivative_degree + 1 != degree {
+    return Err(invalid(
+      "robust AR projection resultant degree is ambiguous",
+    ));
+  }
+  let size = degree + derivative_degree;
+  let mut matrix = vec![vec![vec![0.0]; size]; size];
+  for row in 0..derivative_degree {
+    for (offset, coefficient) in polynomial.iter().rev().enumerate() {
+      matrix[row][row + offset] = coefficient.clone();
+    }
+  }
+  for row in 0..degree {
+    for (offset, coefficient) in derivative.iter().rev().enumerate() {
+      matrix[derivative_degree + row][row + offset] = coefficient.clone();
+    }
+  }
+  let resultant = polynomial_matrix_determinant(&matrix);
+  if resultant.iter().any(|coefficient| !coefficient.is_finite()) {
+    return Err(invalid("robust AR projection resultant is non-finite"));
+  }
+  Ok(resultant)
+}
+
+fn score_covariance_well_conditioned_at(
+  score_covariance: &[[BivariatePolynomial; 2]; 2],
+  target: f64,
+  nuisance: f64,
+) -> bool {
+  let evaluate = |polynomial: &[Polynomial]| {
+    polynomial_value(&bivariate_value_at_target(polynomial, target), nuisance)
+  };
+  let s11 = evaluate(&score_covariance[0][0]);
+  let s12 = evaluate(&score_covariance[0][1]);
+  let s22 = evaluate(&score_covariance[1][1]);
+  let scale = s11.abs().max(s12.abs()).max(s22.abs());
+  if !scale.is_finite() || scale <= 0.0 {
+    return false;
+  }
+  let a = s11 / scale;
+  let b = s12 / scale;
+  let d = s22 / scale;
+  let diagonal_product = a * d;
+  let determinant = diagonal_product - b * b;
+  diagonal_product.is_finite()
+    && determinant.is_finite()
+    && diagonal_product > 0.0
+    && determinant > 1e-12 * diagonal_product
+}
+
+fn distinct_projection_candidates(mut roots: Vec<f64>) -> Result<Vec<f64>, StatsError> {
+  if roots.iter().any(|root| !root.is_finite()) {
+    return Err(invalid("robust AR projection boundary is non-finite"));
+  }
+  roots.sort_by(f64::total_cmp);
+  let mut distinct = Vec::with_capacity(roots.len());
+  for root in roots {
+    let Some(previous) = distinct.last_mut() else {
+      distinct.push(root);
+      continue;
+    };
+    let scale = 1.0 + root.abs().max(previous.abs());
+    let distance = (root - *previous).abs();
+    if distance <= 32.0 * f64::EPSILON * scale {
+      *previous += (root - *previous) / 2.0;
+    } else if distance <= 1e-7 * scale {
+      return Err(invalid(
+        "robust AR projection boundaries are too close to distinguish reliably",
+      ));
+    } else {
+      distinct.push(root);
+    }
+  }
+  if distinct.len() > 32 {
+    return Err(invalid(
+      "robust AR projection has too many boundary candidates",
+    ));
+  }
+  Ok(distinct)
+}
+
+/// Return whether a nuisance value exists with polynomial value <= 0, and a
+/// finite witness. The polynomial is scaled before root isolation; numerical
+/// degree loss at a boundary is treated as an error for the caller's fallback.
+fn nuisance_polynomial_minimum(
+  polynomial: &[f64],
+  boundary_candidate: bool,
+) -> Result<NuisanceMinimum, StatsError> {
+  let mut coefficients = polynomial.to_vec();
+  if coefficients.iter().any(|value| !value.is_finite()) {
+    return Err(invalid("robust AR projection polynomial is non-finite"));
+  }
+  let scale = coefficients
+    .iter()
+    .map(|value| value.abs())
+    .fold(0.0, f64::max);
+  if scale == 0.0 {
+    return Ok(NuisanceMinimum {
+      included: true,
+      minimizer: 0.0,
+      stationary_points: Vec::new(),
+    });
+  }
+  for coefficient in &mut coefficients {
+    *coefficient /= scale;
+  }
+  let mut dropped_leading_coefficients = 0;
+  while coefficients.len() > 1 {
+    let leading = coefficients.last().copied().unwrap_or(0.0).abs();
+    if leading == 0.0 {
+      coefficients.pop();
+    } else if boundary_candidate && leading <= 1e-10 {
+      dropped_leading_coefficients += 1;
+      if dropped_leading_coefficients > 1 {
+        return Err(invalid(
+          "robust AR projection boundary has multiple unresolved nuisance degree drops",
+        ));
+      }
+      coefficients.pop();
+    } else if leading <= 1e-13 {
+      return Err(invalid(
+        "robust AR projection nuisance degree is numerically ambiguous",
+      ));
+    } else {
+      break;
+    }
+  }
+  let degree = coefficients.len() - 1;
+  if degree == 0 {
+    return Ok(NuisanceMinimum {
+      included: coefficients[0] <= 0.0,
+      minimizer: 0.0,
+      stationary_points: Vec::new(),
+    });
+  }
+  let derivative = polynomial_derivative(&coefficients);
+  let critical_points = projected_real_polynomial_roots(&derivative, false)?;
+  validate_real_polynomial_roots(&derivative, &critical_points)?;
+  for point in &critical_points {
+    let value = polynomial_value(&derivative, *point);
+    if !value.is_finite() || !near_zero(&derivative, *point, value) {
+      return Err(invalid(
+        "robust AR projection nuisance stationary-point residual is too large",
+      ));
+    }
+  }
+  if degree % 2 == 1 || coefficients[degree] < 0.0 {
+    let positive_tail = coefficients[degree] < 0.0 || degree.is_multiple_of(2);
+    let mut bound = 1.0_f64.max(
+      critical_points
+        .iter()
+        .map(|value| value.abs())
+        .fold(0.0, f64::max),
+    );
+    for _ in 0..100 {
+      let candidate = if positive_tail { bound } else { -bound };
+      let value = polynomial_value(&coefficients, candidate);
+      if value.is_finite() && value <= 0.0 {
+        return Ok(NuisanceMinimum {
+          included: true,
+          minimizer: candidate,
+          stationary_points: critical_points,
+        });
+      }
+      bound *= 2.0;
+      if !bound.is_finite() {
+        break;
+      }
+    }
+    return Err(invalid(
+      "robust AR projection nuisance tail could not be evaluated reliably",
+    ));
+  }
+  if critical_points.is_empty() {
+    return Err(invalid(
+      "robust AR projection nuisance minimum could not be isolated",
+    ));
+  }
+  let mut minimum = f64::INFINITY;
+  let mut minimizer = 0.0;
+  for point in critical_points.iter().copied() {
+    let value = polynomial_value(&coefficients, point);
+    if !value.is_finite() {
+      return Err(invalid("robust AR projection minimum is non-finite"));
+    }
+    if value < minimum {
+      minimum = value;
+      minimizer = point;
+    }
+  }
+  if boundary_candidate && minimum.abs() <= 2e-10 {
+    return Ok(NuisanceMinimum {
+      included: true,
+      minimizer,
+      stationary_points: critical_points,
+    });
+  }
+  if !boundary_candidate && minimum.abs() <= 2e-12 {
+    return Err(invalid(
+      "robust AR projection cell membership is numerically ambiguous",
+    ));
+  }
+  Ok(NuisanceMinimum {
+    included: minimum <= 0.0,
+    minimizer,
+    stationary_points: critical_points,
+  })
+}
+
+fn projection_interval_set(
+  boundary: &[Polynomial],
+  target_center: f64,
+) -> Result<ProjectionIntervalSet, StatsError> {
+  let mut candidates = Vec::new();
+  for coefficient in boundary {
+    let roots = projected_real_polynomial_roots(coefficient, false)?;
+    validate_real_polynomial_roots(coefficient, &roots)?;
+    candidates.extend(roots);
+  }
+  let resultant = polynomial_resultant_with_nuisance_derivative(boundary)?;
+  if boundary.len() > 1 && resultant.iter().all(|value| *value == 0.0) {
+    return Err(invalid(
+      "robust AR projection resultant is identically zero",
+    ));
+  }
+  let resultant_candidates = projected_real_polynomial_roots(&resultant, false)?;
+  validate_real_polynomial_roots(&resultant, &resultant_candidates)?;
+  let mut verified_resultant_candidates = Vec::new();
+  for candidate in resultant_candidates {
+    if resultant_candidate_is_real_boundary(boundary, candidate)? {
+      verified_resultant_candidates.push(candidate);
+      candidates.push(candidate);
+    }
+  }
+  let candidates = distinct_projection_candidates(candidates)?;
+  let sample_for_interval = |lower: Option<f64>, upper: Option<f64>| -> Result<f64, StatsError> {
+    match (lower, upper) {
+      (None, None) => Ok(0.0),
+      (None, Some(upper)) => {
+        let step = 1.0_f64.max(upper.abs());
+        let sample = upper - step;
+        sample.is_finite().then_some(sample).ok_or_else(|| {
+          invalid("robust AR projection interval sample exceeds the numerical range")
+        })
+      }
+      (Some(lower), None) => {
+        let step = 1.0_f64.max(lower.abs());
+        let sample = lower + step;
+        sample.is_finite().then_some(sample).ok_or_else(|| {
+          invalid("robust AR projection interval sample exceeds the numerical range")
+        })
+      }
+      (Some(lower), Some(upper)) => Ok(lower + (upper - lower) / 2.0),
+    }
+  };
+  let mut intervals = Vec::new();
+  let mut lower: Option<f64> = None;
+  for upper in candidates
+    .iter()
+    .copied()
+    .map(Some)
+    .chain(std::iter::once(None))
+  {
+    let sample = sample_for_interval(lower, upper)?;
+    let evaluated = bivariate_value_at_target(boundary, sample);
+    let minimum = nuisance_polynomial_minimum(&evaluated, false)?;
+    if minimum.included {
+      intervals.push(interval(
+        lower.map(|value| value + target_center),
+        upper.map(|value| value + target_center),
+      ));
+    }
+    lower = upper;
+  }
+  for candidate in candidates.iter().copied() {
+    let evaluated = bivariate_value_at_target(boundary, candidate);
+    let minimum = nuisance_polynomial_minimum(&evaluated, true)?;
+    if minimum.included {
+      let value = candidate + target_center;
+      if !value.is_finite() {
+        return Err(invalid("robust AR projection endpoint is non-finite"));
+      }
+      intervals.push(interval(Some(value), Some(value)));
+    }
+  }
+  intervals.sort_by(|left, right| match (left.lower, right.lower) {
+    (None, None) => std::cmp::Ordering::Equal,
+    (None, Some(_)) => std::cmp::Ordering::Less,
+    (Some(_), None) => std::cmp::Ordering::Greater,
+    (Some(left), Some(right)) => left.total_cmp(&right),
+  });
+  let mut merged: Vec<ArConfidenceInterval> = Vec::with_capacity(intervals.len());
+  for current in intervals {
+    let Some(previous) = merged.last_mut() else {
+      merged.push(current);
+      continue;
+    };
+    let touches = match (previous.upper, current.lower) {
+      (None, _) | (_, None) => true,
+      (Some(previous), Some(current)) => current <= previous + 1e-9 * (1.0 + previous.abs()),
+    };
+    if touches {
+      previous.upper = match (previous.upper, current.upper) {
+        (None, _) | (_, None) => None,
+        (Some(previous), Some(current)) => Some(previous.max(current)),
+      };
+    } else {
+      merged.push(current);
+    }
+  }
+  if merged.len() > 7 {
+    return Err(invalid("robust AR projection has too many components"));
+  }
+  for current in &mut merged {
+    for bound in [&mut current.lower, &mut current.upper]
+      .into_iter()
+      .flatten()
+    {
+      if !bound.is_finite() {
+        return Err(invalid("robust AR projection endpoint is non-finite"));
+      }
+    }
+  }
+  let shape = match merged.as_slice() {
+    [] => ArConfidenceSetShape::Empty,
+    [only] if only.lower.is_none() && only.upper.is_none() => ArConfidenceSetShape::AllReal,
+    [only] if only.lower.is_none() => ArConfidenceSetShape::LowerRay,
+    [only] if only.upper.is_none() => ArConfidenceSetShape::UpperRay,
+    [only] if only.lower == only.upper => ArConfidenceSetShape::Singleton,
+    [_] => ArConfidenceSetShape::Bounded,
+    [_, _] => ArConfidenceSetShape::Disjoint,
+    _ => ArConfidenceSetShape::Multiple,
+  };
+  Ok((shape, merged, candidates, verified_resultant_candidates))
 }
 
 fn polynomial_matrix_determinant(matrix: &[Vec<Polynomial>]) -> Polynomial {
@@ -131,6 +621,11 @@ fn polynomial_value_scale(polynomial: &[f64], point: f64) -> f64 {
   })
 }
 
+fn polynomial_residual_scale(polynomial: &[f64], point: f64) -> f64 {
+  polynomial_value_scale(polynomial, point)
+    .max(polynomial_value_scale(polynomial, point.abs().max(1.0)))
+}
+
 fn sign(value: f64) -> i8 {
   if value < 0.0 {
     -1
@@ -143,7 +638,9 @@ fn sign(value: f64) -> i8 {
 
 fn near_zero(polynomial: &[f64], point: f64, value: f64) -> bool {
   let scale = polynomial_value_scale(polynomial, point);
-  scale == 0.0 || value.abs() <= 2e-12 * scale
+  let evaluation_floor =
+    64.0 * f64::EPSILON * polynomial_value_scale(polynomial, point.abs().max(1.0));
+  scale == 0.0 || value.abs() <= 2e-12 * scale || value.abs() <= evaluation_floor
 }
 
 fn bisect_root(polynomial: &[f64], mut left: f64, mut right: f64) -> Result<f64, StatsError> {
@@ -185,8 +682,16 @@ fn bisect_root(polynomial: &[f64], mut left: f64, mut right: f64) -> Result<f64,
 
 /// Isolate every distinct real root of a polynomial on [-1, 1]. Recursive
 /// derivative roots partition it into monotone intervals, so no finite grid is
-/// used. Repeated roots are retained for the caller to reject or classify.
+/// used. Repeated roots are retained for the caller to reject or classify;
+/// near-tangent critical values that cannot be classified reliably are errors.
 fn roots_on_unit_interval(polynomial: &[f64]) -> Result<Vec<f64>, StatsError> {
+  roots_on_unit_interval_with_policy(polynomial, false)
+}
+
+fn roots_on_unit_interval_with_policy(
+  polynomial: &[f64],
+  strict_tangencies: bool,
+) -> Result<Vec<f64>, StatsError> {
   let mut polynomial = polynomial.to_vec();
   while polynomial.len() > 1 && polynomial.last() == Some(&0.0) {
     polynomial.pop();
@@ -214,7 +719,8 @@ fn roots_on_unit_interval(polynomial: &[f64]) -> Result<Vec<f64>, StatsError> {
     );
   }
 
-  let critical_points = roots_on_unit_interval(&polynomial_derivative(&polynomial))?;
+  let critical_points =
+    roots_on_unit_interval_with_policy(&polynomial_derivative(&polynomial), strict_tangencies)?;
   let mut partitions = Vec::with_capacity(critical_points.len() + 2);
   partitions.push(-1.0);
   partitions.extend(critical_points.iter().copied());
@@ -226,8 +732,14 @@ fn roots_on_unit_interval(polynomial: &[f64]) -> Result<Vec<f64>, StatsError> {
     if !value.is_finite() {
       return Err(invalid("robust AR polynomial evaluation is non-finite"));
     }
-    if near_zero(&polynomial, *point, value) {
+    if value == 0.0 || (!strict_tangencies && near_zero(&polynomial, *point, value)) {
       roots.push(*point);
+    } else if strict_tangencies
+      && value.abs() <= 64.0 * f64::EPSILON * polynomial_residual_scale(&polynomial, *point)
+    {
+      return Err(invalid(
+        "robust AR root count is ambiguous near a stationary point",
+      ));
     }
   }
   for pair in partitions.windows(2) {
@@ -238,9 +750,24 @@ fn roots_on_unit_interval(polynomial: &[f64]) -> Result<Vec<f64>, StatsError> {
     if !left_value.is_finite() || !right_value.is_finite() {
       return Err(invalid("robust AR polynomial evaluation is non-finite"));
     }
+    let left_is_root = if strict_tangencies {
+      left_value == 0.0
+    } else {
+      near_zero(&polynomial, left, left_value)
+    };
+    let right_is_root = if strict_tangencies {
+      right_value == 0.0
+    } else {
+      near_zero(&polynomial, right, right_value)
+    };
+    if (left == -1.0 && left_is_root) || (right == 1.0 && right_is_root) {
+      return Err(invalid(
+        "robust AR root lies on an unresolved isolation bound",
+      ));
+    }
     // A monotone section with a zero at one endpoint cannot contain another
     // root in its interior.
-    if near_zero(&polynomial, left, left_value) || near_zero(&polynomial, right, right_value) {
+    if left_is_root || right_is_root {
       continue;
     }
     if sign(left_value) != sign(right_value) {
@@ -348,8 +875,23 @@ fn real_polynomial_roots(
   polynomial: &[f64],
   require_simple_roots: bool,
 ) -> Result<Vec<f64>, StatsError> {
+  real_polynomial_roots_with_policy(polynomial, require_simple_roots, false)
+}
+
+fn projected_real_polynomial_roots(
+  polynomial: &[f64],
+  require_simple_roots: bool,
+) -> Result<Vec<f64>, StatsError> {
+  real_polynomial_roots_with_policy(polynomial, require_simple_roots, true)
+}
+
+fn real_polynomial_roots_with_policy(
+  polynomial: &[f64],
+  require_simple_roots: bool,
+  strict_tangencies: bool,
+) -> Result<Vec<f64>, StatsError> {
   let (scaled, scale) = scaled_polynomial(polynomial)?;
-  let roots = roots_on_unit_interval(&scaled)?;
+  let roots = roots_on_unit_interval_with_policy(&scaled, strict_tangencies)?;
   if require_simple_roots {
     let derivative = polynomial_derivative(&scaled);
     for root in &roots {
@@ -1090,6 +1632,622 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
   })
 }
 
+fn validate_real_polynomial_roots(polynomial: &[f64], roots: &[f64]) -> Result<(), StatsError> {
+  let degree = polynomial_degree(polynomial);
+  if roots.len() > degree || roots.iter().any(|root| !root.is_finite()) {
+    return Err(invalid("robust AR polynomial root count is ambiguous"));
+  }
+  for root in roots {
+    let value = polynomial_value(polynomial, *root);
+    let scale = polynomial_residual_scale(polynomial, *root);
+    if !value.is_finite() || !scale.is_finite() || (scale > 0.0 && value.abs() > 2e-8 * scale) {
+      return Err(invalid("robust AR polynomial root residual is too large"));
+    }
+  }
+  Ok(())
+}
+
+fn projection_open_cell_probes(
+  lower: Option<f64>,
+  upper: Option<f64>,
+) -> Result<Vec<f64>, StatsError> {
+  let probes = match (lower, upper) {
+    (None, None) => vec![-100.0, -10.0, -1.0, 0.0, 1.0, 10.0, 100.0],
+    (None, Some(upper)) => {
+      let step = 1.0_f64.max(upper.abs());
+      vec![
+        upper - 0.25 * step,
+        upper - step,
+        upper - 10.0 * step,
+        upper - 100.0 * step,
+      ]
+    }
+    (Some(lower), None) => {
+      let step = 1.0_f64.max(lower.abs());
+      vec![
+        lower + 0.25 * step,
+        lower + step,
+        lower + 10.0 * step,
+        lower + 100.0 * step,
+      ]
+    }
+    (Some(lower), Some(upper)) => {
+      let width = upper - lower;
+      vec![
+        lower + 0.25 * width,
+        lower + 0.5 * width,
+        lower + 0.75 * width,
+      ]
+    }
+  };
+  if probes.iter().any(|probe| !probe.is_finite()) {
+    return Err(invalid("robust AR projection tail probe is non-finite"));
+  }
+  Ok(probes)
+}
+
+fn projected_intervals_contain(intervals: &[ArConfidenceInterval], value: f64) -> bool {
+  intervals.iter().any(|set| {
+    set.lower.is_none_or(|lower| value >= lower) && set.upper.is_none_or(|upper| value <= upper)
+  })
+}
+
+/// Project the HC1/one-way CR1 joint AR Wald region onto one coefficient for a
+/// two-endogenous, two-instrument fit. The projection uses the complete joint
+/// chi-square(2) region and does not plug in a nuisance coefficient estimate.
+pub fn robust_projected_anderson_rubin_confidence_set(
+  problem: &InstrumentalVariablesProblem,
+  coefficient: &str,
+  level: f64,
+  covariance_type: &CovarianceType,
+) -> Result<RobustProjectedArConfidenceSet, StatsError> {
+  if matches!(covariance_type, CovarianceType::NonRobust) {
+    return Err(invalid(
+      "robust projected AR confidence sets require HC1 or one-way cluster covariance",
+    ));
+  }
+  if problem.endogenous_names.len() != 2 || problem.instrument_names.len() != 2 {
+    return Err(invalid(
+      "robust projected AR confidence sets require exactly two endogenous regressors and two excluded instruments",
+    ));
+  }
+  if !level.is_finite() || level <= 0.0 || level >= 100.0 {
+    return Err(invalid(
+      "AR confidence level must be finite and strictly between 0 and 100",
+    ));
+  }
+  problem.validate()?;
+  let Some(target_index) = problem
+    .endogenous_names
+    .iter()
+    .position(|name| name == coefficient)
+  else {
+    return Err(invalid(
+      "projected AR coefficient must name an endogenous regressor in the retained fit",
+    ));
+  };
+  let nuisance_index = 1 - target_index;
+  let coefficient_name = problem.endogenous_names[target_index].clone();
+  let nuisance_name = problem.endogenous_names[nuisance_index].clone();
+  let n = problem.response.len();
+  let auxiliary_parameter_count = problem.exogenous_names.len()
+    + usize::from(problem.include_intercept)
+    + problem.instrument_names.len();
+  if n <= auxiliary_parameter_count {
+    return Err(StatsError::ZeroDegreesOfFreedom {
+      observations: n,
+      parameters: auxiliary_parameter_count,
+    });
+  }
+  let auxiliary_residual_df = n - auxiliary_parameter_count;
+  let (cluster_group_count, covariance_correction, cluster_groups) = match covariance_type {
+    CovarianceType::NonRobust => unreachable!("nonrobust covariance rejected above"),
+    CovarianceType::RobustHc1 => (None, n as f64 / auxiliary_residual_df as f64, None),
+    CovarianceType::Cluster(variable) => {
+      let sample = problem.sample.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(
+          "cluster covariance requires an estimation sample with cluster identifiers".into(),
+        )
+      })?;
+      let groups = sample.cluster_groups.as_ref().ok_or_else(|| {
+        StatsError::DimensionMismatch(format!(
+          "cluster covariance on variable '{variable}' requires cluster group identifiers"
+        ))
+      })?;
+      if groups.len() != n {
+        return Err(StatsError::DimensionMismatch(format!(
+          "cluster group identifier count ({}) does not match retained observations ({n})",
+          groups.len()
+        )));
+      }
+      let count = groups.iter().collect::<BTreeSet<_>>().len();
+      if count < 3 {
+        return Err(StatsError::InsufficientObservations(
+          "cluster robust AR projection requires at least three groups for two restrictions".into(),
+        ));
+      }
+      let group_count = count as f64;
+      let correction =
+        (group_count / (group_count - 1.0)) * ((n as f64 - 1.0) / auxiliary_residual_df as f64);
+      (Some(count), correction, Some(groups))
+    }
+  };
+  if !covariance_correction.is_finite() || covariance_correction <= 0.0 {
+    return Err(invalid("AR covariance correction is non-finite"));
+  }
+  let alpha = 1.0 - level / 100.0;
+  if !alpha.is_finite() || alpha <= 0.0 || alpha >= 1.0 {
+    return Err(invalid(
+      "AR confidence level exceeds floating-point probability resolution",
+    ));
+  }
+  let critical_chi_square = chi_square_critical_value(alpha, 2)?;
+  if !critical_chi_square.is_finite() || critical_chi_square <= 0.0 {
+    return Err(invalid("AR critical chi-square could not be computed"));
+  }
+  let make_result = |shape: ArConfidenceSetShape,
+                     intervals: Vec<ArConfidenceInterval>,
+                     fallback: bool|
+   -> RobustProjectedArConfidenceSet {
+    RobustProjectedArConfidenceSet {
+      coefficient: coefficient_name.clone(),
+      nuisance_endogenous: vec![nuisance_name.clone()],
+      excluded_instruments: problem.instrument_names.clone(),
+      confidence_level: level,
+      observation_count: n,
+      auxiliary_parameter_count,
+      auxiliary_residual_df,
+      covariance_type: covariance_type.clone(),
+      covariance_correction,
+      cluster_group_count,
+      degrees_of_freedom: 2,
+      critical_chi_square,
+      shape,
+      intervals,
+      closure_conservative: true,
+      all_real_conservative_fallback: fallback,
+    }
+  };
+  let fallback = || {
+    make_result(
+      ArConfidenceSetShape::AllReal,
+      vec![interval(None, None)],
+      true,
+    )
+  };
+
+  // Orthogonalizing the residualized instruments is an invertible change of
+  // basis for the two excluded-instrument restrictions and improves scaling.
+  let control_names = problem.exogenous_names.clone();
+  let mut orthonormal_instruments = Vec::<Vec<f64>>::with_capacity(2);
+  for column in 0..2 {
+    let instrument = problem
+      .instruments
+      .iter()
+      .map(|row| row[column])
+      .collect::<Vec<_>>();
+    let residualized = residualize(
+      &instrument,
+      &problem.exogenous,
+      &control_names,
+      problem.include_intercept,
+    )?;
+    let norm = dot(&residualized, &residualized);
+    if !norm.is_finite() || norm <= 0.0 {
+      return Err(invalid(
+        "robust AR projection auxiliary design is rank deficient or non-finite",
+      ));
+    }
+    let mut basis = residualized
+      .iter()
+      .map(|value| value / norm.sqrt())
+      .collect::<Vec<_>>();
+    for _ in 0..2 {
+      for previous in &orthonormal_instruments {
+        let projection = dot(&basis, previous);
+        for (value, previous_value) in basis.iter_mut().zip(previous) {
+          *value -= projection * previous_value;
+        }
+      }
+    }
+    let orthogonal_norm = dot(&basis, &basis);
+    if !orthogonal_norm.is_finite() || orthogonal_norm <= 1e-12 {
+      return Err(invalid(
+        "robust AR projection excluded instruments are rank deficient after controls",
+      ));
+    }
+    let scale = orthogonal_norm.sqrt();
+    orthonormal_instruments.push(basis.into_iter().map(|value| value / scale).collect());
+  }
+
+  let residual_y = residualize(
+    &problem.response,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let target_x = problem
+    .endogenous
+    .iter()
+    .map(|row| row[target_index])
+    .collect::<Vec<_>>();
+  let nuisance_x = problem
+    .endogenous
+    .iter()
+    .map(|row| row[nuisance_index])
+    .collect::<Vec<_>>();
+  let residual_target_x = residualize(
+    &target_x,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let residual_nuisance_x = residualize(
+    &nuisance_x,
+    &problem.exogenous,
+    &control_names,
+    problem.include_intercept,
+  )?;
+  let g_y = orthonormal_instruments
+    .iter()
+    .map(|basis| dot(basis, &residual_y))
+    .collect::<Vec<_>>();
+  let g_target = orthonormal_instruments
+    .iter()
+    .map(|basis| dot(basis, &residual_target_x))
+    .collect::<Vec<_>>();
+  let g_nuisance = orthonormal_instruments
+    .iter()
+    .map(|basis| dot(basis, &residual_nuisance_x))
+    .collect::<Vec<_>>();
+  if g_y
+    .iter()
+    .chain(&g_target)
+    .chain(&g_nuisance)
+    .any(|value| !value.is_finite())
+  {
+    return Err(invalid("robust AR projection moments are non-finite"));
+  }
+  // A 2SLS-centered coordinate system reduces polynomial cancellation. If the
+  // first-stage moment matrix is singular, zero remains a valid arithmetic
+  // center and the confidence-set calculation continues without a plug-in.
+  let gram_11 = dot(&g_target, &g_target);
+  let gram_12 = dot(&g_target, &g_nuisance);
+  let gram_22 = dot(&g_nuisance, &g_nuisance);
+  let rhs_1 = dot(&g_target, &g_y);
+  let rhs_2 = dot(&g_nuisance, &g_y);
+  let gram_scale = gram_11.abs().max(gram_12.abs()).max(gram_22.abs());
+  let (center_target, center_nuisance) = if gram_scale > 0.0 && gram_scale.is_finite() {
+    let a = gram_11 / gram_scale;
+    let b = gram_12 / gram_scale;
+    let d = gram_22 / gram_scale;
+    let r1 = rhs_1 / gram_scale;
+    let r2 = rhs_2 / gram_scale;
+    let determinant = a * d - b * b;
+    if determinant.is_finite() && determinant > 1e-12 * (a * d).abs().max(b * b) {
+      (
+        (r1 * d - b * r2) / determinant,
+        (a * r2 - b * r1) / determinant,
+      )
+    } else {
+      (0.0, 0.0)
+    }
+  } else {
+    (0.0, 0.0)
+  };
+  if !center_target.is_finite() || !center_nuisance.is_finite() {
+    return Err(invalid("robust AR projection center is non-finite"));
+  }
+
+  let mut auxiliary_names = control_names.clone();
+  auxiliary_names.extend(problem.instrument_names.iter().cloned());
+  let auxiliary_design = problem
+    .exogenous
+    .iter()
+    .zip(&problem.instruments)
+    .map(|(controls, instruments)| {
+      controls
+        .iter()
+        .chain(instruments)
+        .copied()
+        .collect::<Vec<_>>()
+    })
+    .collect::<Vec<_>>();
+  let residual_y_full = residualize(
+    &problem.response,
+    &auxiliary_design,
+    &auxiliary_names,
+    problem.include_intercept,
+  )?;
+  let residual_target_full = residualize(
+    &target_x,
+    &auxiliary_design,
+    &auxiliary_names,
+    problem.include_intercept,
+  )?;
+  let residual_nuisance_full = residualize(
+    &nuisance_x,
+    &auxiliary_design,
+    &auxiliary_names,
+    problem.include_intercept,
+  )?;
+  let response_scale = dot(&problem.response, &problem.response);
+  let target_scale = dot(&target_x, &target_x);
+  let nuisance_scale = dot(&nuisance_x, &nuisance_x);
+  let response_innovation = dot(&residual_y_full, &residual_y_full);
+  let target_innovation = dot(&residual_target_full, &residual_target_full);
+  let nuisance_innovation = dot(&residual_nuisance_full, &residual_nuisance_full);
+  if [
+    response_scale,
+    target_scale,
+    nuisance_scale,
+    response_innovation,
+    target_innovation,
+    nuisance_innovation,
+  ]
+  .iter()
+  .any(|value| !value.is_finite())
+  {
+    return Ok(fallback());
+  }
+  let response_is_exact = response_scale == 0.0 || response_innovation <= 1e-24 * response_scale;
+  let target_is_exact = target_scale == 0.0 || target_innovation <= 1e-24 * target_scale;
+  let nuisance_is_exact = nuisance_scale == 0.0 || nuisance_innovation <= 1e-24 * nuisance_scale;
+  if response_is_exact && target_is_exact && nuisance_is_exact {
+    return Err(invalid(
+      "robust AR projection score covariance is numerically zero throughout the null plane",
+    ));
+  }
+  let mut row_scores = Vec::with_capacity(n);
+  for row in 0..n {
+    let mut scores = [[0.0; 3]; 2];
+    for instrument in 0..2 {
+      let basis_value = orthonormal_instruments[instrument][row];
+      let score_y = basis_value * residual_y_full[row];
+      let score_target = basis_value * residual_target_full[row];
+      let score_nuisance = basis_value * residual_nuisance_full[row];
+      scores[instrument] = [
+        score_y - center_target * score_target - center_nuisance * score_nuisance,
+        -score_target,
+        -score_nuisance,
+      ];
+    }
+    row_scores.push(scores);
+  }
+  let score_groups = if let Some(groups) = cluster_groups {
+    let mut totals = BTreeMap::<&str, [[f64; 3]; 2]>::new();
+    for (index, group) in groups.iter().enumerate() {
+      let score = totals.entry(group.as_str()).or_insert([[0.0; 3]; 2]);
+      for instrument in 0..2 {
+        for coefficient in 0..3 {
+          score[instrument][coefficient] += row_scores[index][instrument][coefficient];
+        }
+      }
+    }
+    totals.into_values().collect::<Vec<_>>()
+  } else {
+    row_scores
+  };
+  if score_groups
+    .iter()
+    .flatten()
+    .flatten()
+    .any(|value| !value.is_finite())
+  {
+    return Ok(fallback());
+  }
+  let score_polynomial =
+    |score: [f64; 3]| -> BivariatePolynomial { vec![vec![score[0], score[1]], vec![score[2]]] };
+  let mut score_covariance = [
+    [vec![vec![0.0]], vec![vec![0.0]]],
+    [vec![vec![0.0]], vec![vec![0.0]]],
+  ];
+  for group in &score_groups {
+    let first = score_polynomial(group[0]);
+    let second = score_polynomial(group[1]);
+    score_covariance[0][0] =
+      bivariate_add(&score_covariance[0][0], &bivariate_multiply(&first, &first));
+    score_covariance[0][1] = bivariate_add(
+      &score_covariance[0][1],
+      &bivariate_multiply(&first, &second),
+    );
+    score_covariance[1][1] = bivariate_add(
+      &score_covariance[1][1],
+      &bivariate_multiply(&second, &second),
+    );
+  }
+  score_covariance[1][0] = score_covariance[0][1].clone();
+  let determinant = bivariate_add(
+    &bivariate_multiply(&score_covariance[0][0], &score_covariance[1][1]),
+    &bivariate_scale(
+      &bivariate_multiply(&score_covariance[0][1], &score_covariance[0][1]),
+      -1.0,
+    ),
+  );
+  let bivariate_maximum = |polynomial: &[Polynomial]| {
+    polynomial
+      .iter()
+      .flatten()
+      .map(|value| value.abs())
+      .fold(0.0, f64::max)
+  };
+  let determinant_scale = (bivariate_maximum(&score_covariance[0][0])
+    * bivariate_maximum(&score_covariance[1][1]))
+  .max(bivariate_maximum(&score_covariance[0][1]).powi(2));
+  let determinant_maximum = bivariate_maximum(&determinant);
+  if !determinant_scale.is_finite() || !determinant_maximum.is_finite() {
+    return Ok(fallback());
+  }
+  if determinant_scale == 0.0 || determinant_maximum <= 1e-12 * determinant_scale {
+    return Err(invalid(
+      "robust AR projection score covariance is singular throughout the null plane",
+    ));
+  }
+  let moment_polynomial = |moment_y: f64, moment_target: f64, moment_nuisance: f64| {
+    vec![
+      vec![
+        moment_y - center_target * moment_target - center_nuisance * moment_nuisance,
+        -moment_target,
+      ],
+      vec![-moment_nuisance],
+    ]
+  };
+  let moment_1 = moment_polynomial(g_y[0], g_target[0], g_nuisance[0]);
+  let moment_2 = moment_polynomial(g_y[1], g_target[1], g_nuisance[1]);
+  let numerator = bivariate_add(
+    &bivariate_add(
+      &bivariate_multiply(
+        &score_covariance[1][1],
+        &bivariate_multiply(&moment_1, &moment_1),
+      ),
+      &bivariate_scale(
+        &bivariate_multiply(
+          &score_covariance[0][1],
+          &bivariate_multiply(&moment_1, &moment_2),
+        ),
+        -2.0,
+      ),
+    ),
+    &bivariate_multiply(
+      &score_covariance[0][0],
+      &bivariate_multiply(&moment_2, &moment_2),
+    ),
+  );
+  let boundary = bivariate_add(
+    &numerator,
+    &bivariate_scale(&determinant, -critical_chi_square * covariance_correction),
+  );
+
+  if boundary.iter().flatten().any(|value| !value.is_finite()) {
+    return Ok(fallback());
+  }
+  let (shape, intervals, candidates, resultant_candidates) =
+    match projection_interval_set(&boundary, center_target) {
+      Ok(result) => result,
+      Err(_) => return Ok(fallback()),
+    };
+
+  // Check every stationary nuisance value and a finite witness in the open
+  // target cells against the direct auxiliary-OLS Wald test. A singular
+  // covariance or polynomial disagreement falls back to all real.
+  let validate_minimum = |target_offset: f64, minimum: &NuisanceMinimum| -> bool {
+    let target = target_offset + center_target;
+    if !target.is_finite() {
+      return false;
+    }
+    let evaluated = bivariate_value_at_target(&boundary, target_offset);
+    let mut nuisance_points = minimum.stationary_points.clone();
+    if !nuisance_points.contains(&minimum.minimizer) {
+      nuisance_points.push(minimum.minimizer);
+    }
+    nuisance_points.into_iter().all(|nuisance_offset| {
+      let value = polynomial_value(&evaluated, nuisance_offset);
+      let scale = polynomial_value_scale(&evaluated, nuisance_offset);
+      let nuisance = nuisance_offset + center_nuisance;
+      if !score_covariance_well_conditioned_at(&score_covariance, target_offset, nuisance_offset) {
+        return false;
+      }
+      if !value.is_finite() || !scale.is_finite() || !nuisance.is_finite() {
+        return false;
+      }
+      let null_values = if target_index == 0 {
+        [target, nuisance]
+      } else {
+        [nuisance, target]
+      };
+      let direct = match crate::robust_anderson_rubin_test(problem, &null_values, covariance_type) {
+        Ok(result) if result.statistic.is_finite() => result.statistic,
+        _ => return false,
+      };
+      let expected_included = value <= 0.0;
+      let direct_included = direct <= critical_chi_square;
+      let polynomial_is_boundary = scale == 0.0 || value.abs() <= 2e-8 * scale;
+      let direct_is_boundary =
+        (direct - critical_chi_square).abs() <= 2e-7 * critical_chi_square.max(1.0);
+      if polynomial_is_boundary {
+        direct_is_boundary
+      } else {
+        direct_included == expected_included
+      }
+    })
+  };
+
+  let mut lower: Option<f64> = None;
+  for upper in candidates
+    .iter()
+    .copied()
+    .map(Some)
+    .chain(std::iter::once(None))
+  {
+    let probes = match projection_open_cell_probes(lower, upper) {
+      Ok(probes) => probes,
+      Err(_) => return Ok(fallback()),
+    };
+    for target_offset in probes {
+      let polynomial = bivariate_value_at_target(&boundary, target_offset);
+      let minimum = match nuisance_polynomial_minimum(&polynomial, false) {
+        Ok(value) => value,
+        Err(_) => return Ok(fallback()),
+      };
+      if minimum.included != projected_intervals_contain(&intervals, target_offset + center_target)
+      {
+        return Ok(fallback());
+      }
+      if !validate_minimum(target_offset, &minimum) {
+        return Ok(fallback());
+      }
+    }
+    lower = upper;
+  }
+  for candidate in candidates.iter().copied() {
+    let polynomial = bivariate_value_at_target(&boundary, candidate);
+    let minimum = match nuisance_polynomial_minimum(&polynomial, true) {
+      Ok(value) => value,
+      Err(_) => return Ok(fallback()),
+    };
+    if minimum.included != projected_intervals_contain(&intervals, candidate + center_target) {
+      return Ok(fallback());
+    }
+    if !validate_minimum(candidate, &minimum) {
+      return Ok(fallback());
+    }
+    if resultant_candidates
+      .iter()
+      .any(|root| (root - candidate).abs() <= 1e-7 * (1.0 + root.abs().max(candidate.abs())))
+      && !resultant_candidate_is_real_boundary(&boundary, candidate).unwrap_or(false)
+    {
+      return Ok(fallback());
+    }
+  }
+
+  // Confirm finite reported endpoints against the full robust AR test. Closed
+  // endpoints that only arise as limits at infinity are conservatively widened
+  // to all real when they cannot be represented by a finite nuisance witness.
+  for endpoint in intervals
+    .iter()
+    .flat_map(|set| [set.lower, set.upper])
+    .flatten()
+  {
+    let target_offset = endpoint - center_target;
+    let polynomial = bivariate_value_at_target(&boundary, target_offset);
+    let minimum = match nuisance_polynomial_minimum(&polynomial, true) {
+      Ok(value) => value,
+      Err(_) => return Ok(fallback()),
+    };
+    let mut boundary_witnesses = minimum.stationary_points.clone();
+    boundary_witnesses.push(minimum.minimizer);
+    let has_boundary_witness = boundary_witnesses.iter().any(|nuisance| {
+      let value = polynomial_value(&polynomial, *nuisance);
+      let scale = polynomial_value_scale(&polynomial, *nuisance);
+      scale == 0.0 || (scale.is_finite() && value.abs() <= 2e-8 * scale)
+    });
+    if !validate_minimum(target_offset, &minimum) || !has_boundary_witness {
+      return Ok(fallback());
+    }
+  }
+  Ok(make_result(shape, intervals, false))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -1194,6 +2352,83 @@ mod tests {
   }
 
   #[test]
+  fn robust_projection_partitions_bounded_disjoint_and_singleton_sets() {
+    // (t^2 - 1)^2 + u^2 - .1 <= 0 has two bounded target components.
+    let (shape, intervals, _, _) =
+      projection_interval_set(&[vec![0.9, 0.0, -2.0, 0.0, 1.0], vec![0.0], vec![1.0]], 0.0)
+        .unwrap();
+    let inner = (1.0 - 0.1_f64.sqrt()).sqrt();
+    let outer = (1.0 + 0.1_f64.sqrt()).sqrt();
+    assert_eq!(shape, ArConfidenceSetShape::Disjoint);
+    assert_intervals_close(
+      &intervals,
+      &[
+        interval(Some(-outer), Some(-inner)),
+        interval(Some(inner), Some(outer)),
+      ],
+    );
+
+    // t^2 + u^2 <= 0 retains the isolated target value t=0.
+    let (shape, intervals, _, _) =
+      projection_interval_set(&[vec![0.0, 0.0, 1.0], vec![0.0], vec![1.0]], 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Singleton);
+    assert_intervals_close(&intervals, &[interval(Some(0.0), Some(0.0))]);
+  }
+
+  #[test]
+  fn robust_projection_partitions_nuisance_degree_drop_and_unbounded_tail() {
+    // t*u^2 + u + 1 <= 0 is feasible for every t <= 1/4. At t=0,
+    // the nuisance degree drops and the set remains feasible along a tail.
+    let (shape, intervals, _, _) =
+      projection_interval_set(&[vec![1.0], vec![1.0], vec![0.0, 1.0]], 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::LowerRay);
+    assert_intervals_close(&intervals, &[interval(None, Some(0.25))]);
+  }
+
+  #[test]
+  fn robust_projection_rejects_spurious_and_ambiguous_resultant_roots() {
+    // (u^2 + 1)^2 + t has a real resultant root at t=0 from the
+    // complex stationary points u=+/-i, but its real projection boundary is
+    // t=-1 at u=0.
+    let boundary = [vec![1.0, 1.0], vec![0.0], vec![2.0], vec![0.0], vec![1.0]];
+    assert!(!resultant_candidate_is_real_boundary(&boundary, 0.0).unwrap());
+    assert!(resultant_candidate_is_real_boundary(&boundary, -1.0).unwrap());
+
+    // The full floating-point resultant also has a repeated real root here;
+    // the projection solver detects that root-count ambiguity and fails closed.
+    assert!(projection_interval_set(&boundary, 0.0).is_err());
+  }
+
+  #[test]
+  fn robust_projection_tail_probes_cover_both_directions() {
+    let probes = projection_open_cell_probes(None, None).unwrap();
+    assert!(probes.iter().any(|probe| *probe <= -100.0));
+    assert!(probes.iter().any(|probe| *probe >= 100.0));
+    assert!(
+      projection_open_cell_probes(Some(2.0), None)
+        .unwrap()
+        .iter()
+        .any(|probe| *probe >= 200.0)
+    );
+    assert!(
+      projection_open_cell_probes(None, Some(-2.0))
+        .unwrap()
+        .iter()
+        .any(|probe| *probe <= -200.0)
+    );
+  }
+
+  #[test]
+  fn narrow_projection_is_resolved_after_scaling_and_raw_tangencies_fail_closed() {
+    assert!(roots_on_unit_interval_with_policy(&[-1e-14, 0.0, 1.0], true).is_err());
+    assert!(roots_on_unit_interval_with_policy(&[1.0 + 1e-14, -2.0, 1.0], true).is_err());
+
+    // The corresponding narrow projection cannot be classified robustly and
+    // therefore fails closed for the public all-real fallback path.
+    assert!(projection_interval_set(&[vec![-1e-14, 0.0, 1.0], vec![0.0], vec![1.0]], 0.0).is_err());
+  }
+
+  #[test]
   fn repeated_and_nearly_coincident_roots_fail_and_monomials_are_retained() {
     let repeated = polynomial_multiply(&[-1.0, 1.0], &[-1.0, 1.0]);
     assert!(real_polynomial_roots(&repeated, true).is_err());
@@ -1204,5 +2439,8 @@ mod tests {
     let monomial = [0.0, 0.0, 1.0];
     assert_eq!(real_polynomial_roots(&monomial, false).unwrap(), [0.0]);
     assert!(real_polynomial_roots(&monomial, true).is_err());
+
+    let near_tangent = [1.0 + 1e-14, -2.0, 1.0];
+    assert!(projected_real_polynomial_roots(&near_tangent, false).is_err());
   }
 }
