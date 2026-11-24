@@ -354,7 +354,7 @@ fn json_batch_run_errors_are_located_exit_one_and_stop_later_commands() {
       "collapse sum x, by(y)",
       "analysis files/child script.td",
       3,
-      "successful script results",
+      "no supported result contract",
     ),
     (
       "run 'missing child.td'",
