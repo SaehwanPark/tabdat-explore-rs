@@ -59,8 +59,16 @@ fn joint_quantiles_are_ordered_bounded_and_keep_exact_seed_spelling() {
     parse_command("bootstrap y x, quantiles(.5) seed(7)").unwrap(),
     Command::QuantileBootstrap { .. }
   ));
+  let Command::QuantileBootstrap { command } =
+    parse_command("bootstrap y x, quantiles(.25 .75) cluster(id) seed(7)").unwrap()
+  else {
+    panic!("clustered joint quantiles")
+  };
+  assert_eq!(
+    command.bootstrap.regression.cluster_variable.as_deref(),
+    Some("id")
+  );
   for text in [
-    "bootstrap y x, quantiles(.5) cluster(id) seed(7)",
     "bootstrap y x, quantiles(.5 .5) seed(7)",
     "bootstrap y x, quantiles(.9 .1) seed(7)",
     "bootstrap y x, quantiles(.01 .5) seed(7)",
@@ -103,8 +111,17 @@ fn contrast_requires_one_exact_coefficient_and_two_quantiles() {
     "bootstrap y x, quantiles(.25 .75) contrast(1) seed(7)",
     "bootstrap y x, quantiles(.25 .75) contrast seed(7)",
     "bootstrap y x, quantiles(.25 .75) contrast(x) contrast(x) seed(7)",
-    "bootstrap y x, quantiles(.25 .75) contrast(x) cluster(g) seed(7)",
   ] {
     assert!(parse_command(text).is_err(), "{text}");
   }
+  let Command::QuantileBootstrap { command } =
+    parse_command("bootstrap y x, quantiles(.25 .75) contrast(x) cluster(g) seed(7)").unwrap()
+  else {
+    panic!("clustered coefficient contrast")
+  };
+  assert_eq!(command.contrast.as_deref(), Some("x"));
+  assert_eq!(
+    command.bootstrap.regression.cluster_variable.as_deref(),
+    Some("g")
+  );
 }

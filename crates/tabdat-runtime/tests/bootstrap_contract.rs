@@ -315,3 +315,87 @@ fn contrast_reports_use_joint_sample_and_preserve_prior_fits_on_success_or_failu
   }
   run(&mut s, "predict preserved");
 }
+
+#[test]
+fn whole_cluster_quantile_bootstrap_uses_retained_groups_and_preserves_session_state() {
+  let raw = include_str!("../../tabdat-stats/tests/fixtures/cluster-quantile-bootstrap/inputs.csv");
+  let f = Fixture::new(raw);
+  let mut s = f.load();
+  run(&mut s, "regress y x z");
+  run(&mut s, "estimates store original");
+  run(&mut s, "label variable x \"preserved x\"");
+  let before = s.state();
+  let text = "bootstrap y x z, quantiles(.25 .5 .75) cluster(group) seed(918273) reps(80)";
+  let ExecutionResult::QuantileBootstrap(report) = run(&mut s, text) else {
+    panic!("clustered quantile bootstrap")
+  };
+  assert_eq!(report.observation_count, 100);
+  assert_eq!(
+    report.sample.as_ref().unwrap().retained_indices,
+    (0..100).collect::<Vec<_>>()
+  );
+  assert_eq!(report.sample.as_ref().unwrap().total_observations, 103);
+  assert_eq!(report.sample.as_ref().unwrap().dropped_observations, 3);
+  assert_eq!(report.cluster_variable.as_deref(), Some("group"));
+  assert_eq!(report.cluster_count, Some(20));
+  assert_eq!(
+    report.cluster_sizes.as_ref().unwrap(),
+    &[4, 5, 6, 5].repeat(5)
+  );
+  assert_eq!(
+    report.replicate_observation_counts.as_ref().unwrap().len(),
+    80
+  );
+  assert_eq!(
+    report
+      .replicate_observation_counts
+      .as_ref()
+      .unwrap()
+      .iter()
+      .min(),
+    Some(&93)
+  );
+  assert_eq!(
+    report
+      .replicate_observation_counts
+      .as_ref()
+      .unwrap()
+      .iter()
+      .max(),
+    Some(&108)
+  );
+  assert_eq!(s.state(), before);
+  assert_eq!(
+    ExecutionResult::QuantileBootstrap(report.clone()),
+    run(&mut s, text)
+  );
+  assert_eq!(s.state(), before);
+  let ExecutionResult::QuantileBootstrap(contrast) = run(
+    &mut s,
+    "bootstrap y x z, quantiles(.25 .75) contrast(x) cluster(group) seed(918273) reps(80)",
+  ) else {
+    panic!("clustered quantile contrast")
+  };
+  assert_eq!(contrast.cluster_variable.as_deref(), Some("group"));
+  assert!(contrast.contrast.as_ref().unwrap().standard_error.unwrap() > 0.0);
+  assert_eq!(s.state(), before);
+  run(&mut s, "predict preserved");
+}
+
+#[test]
+fn clustered_quantile_bootstrap_rejects_fewer_than_three_groups_atomically() {
+  let f = Fixture::new("y,x,g\n1,0,a\n3,1,a\n5,2,a\n2,0,b\n4,1,b\n7,2,b\n");
+  let mut s = f.load();
+  run(&mut s, "regress y x");
+  let before = s.state();
+  let error = s
+    .execute(parse_command("bootstrap y x, quantiles(.5) cluster(g) seed(1) reps(10)").unwrap())
+    .unwrap_err()
+    .to_string();
+  assert!(
+    error.contains("at least three retained clusters"),
+    "{error}"
+  );
+  assert_eq!(s.state(), before);
+  run(&mut s, "predict preserved_after_cluster_failure");
+}

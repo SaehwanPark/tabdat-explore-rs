@@ -129,13 +129,9 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     let r = &command.bootstrap.regression;
     let error = RuntimeError::BootstrapFailed;
-    if r.estimator != RegressEstimator::Ols
-      || r.weight_variable.is_some()
-      || r.robust
-      || r.cluster_variable.is_some()
-    {
+    if r.estimator != RegressEstimator::Ols || r.weight_variable.is_some() || r.robust {
       return Err(error(
-        "quantile bootstrap supports only unweighted IID pairs".into(),
+        "quantile bootstrap supports only unweighted pairs resampling".into(),
       ));
     }
     let quantiles = command
@@ -144,18 +140,32 @@ impl Session {
       .map(|q| q.parse::<f64>())
       .collect::<Result<Vec<_>, _>>()
       .map_err(|_| error("invalid quantiles".into()))?;
+    let clustered = r.cluster_variable.is_some();
     let problem = self
-      .prepare_regression_problem(r, None, false)
+      .prepare_regression_problem(r, None, clustered)
       .map_err(|e| error(e.to_string()))?;
-    let result = match command.contrast.as_deref() {
-      Some(parameter) => tabdat_stats::bootstrap_quantiles_with_contrast(
+    let result = match (clustered, command.contrast.as_deref()) {
+      (false, Some(parameter)) => tabdat_stats::bootstrap_quantiles_with_contrast(
         &problem,
         &quantiles,
         command.bootstrap.replications,
         command.bootstrap.seed,
         parameter,
       ),
-      None => tabdat_stats::bootstrap_quantiles(
+      (false, None) => tabdat_stats::bootstrap_quantiles(
+        &problem,
+        &quantiles,
+        command.bootstrap.replications,
+        command.bootstrap.seed,
+      ),
+      (true, Some(parameter)) => tabdat_stats::bootstrap_quantiles_clustered_with_contrast(
+        &problem,
+        &quantiles,
+        command.bootstrap.replications,
+        command.bootstrap.seed,
+        parameter,
+      ),
+      (true, None) => tabdat_stats::bootstrap_quantiles_clustered(
         &problem,
         &quantiles,
         command.bootstrap.replications,
@@ -163,7 +173,10 @@ impl Session {
       ),
     };
     result
-      .map(|r| ExecutionResult::QuantileBootstrap(Box::new(r)))
+      .map(|mut result| {
+        result.cluster_variable = r.cluster_variable.clone();
+        ExecutionResult::QuantileBootstrap(Box::new(result))
+      })
       .map_err(|e| error(e.to_string()))
   }
 

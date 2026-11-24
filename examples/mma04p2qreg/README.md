@@ -8,6 +8,9 @@ Separate fitted quantiles do not validate Figure4.1. The [joint IID
 pairs-bootstrap workflow](bootstrap.md) adds its underlying 19-quantile
 uncertainty report and a bounded .25/.75 slope contrast; Figure4.1 bands and
 native rendering remain. The native Figure4.2 workflow is below.
+The [synthetic whole-cluster pairs workflow](../cluster-quantile-bootstrap/README.md)
+documents and validates a separate clustered resampling method; it does not
+reclassify this household survey analysis as design-based inference.
 
 The script [`coefficient_contrast.td`](coefficient_contrast.td) runs the
 author's .25/.75 log-total-expenditure slope comparison with
@@ -42,7 +45,8 @@ Inference assumes independent observations and a common location-error density
 independent of X. Hall–Sheather residual-spacing sparsity covariance follows
 R quantreg `summary.rq(se="iid", hs=TRUE)`; native coefficient tests/95% intervals
 are **asymptotic normal**, not that function's finite-t tails. No robust,
-clustered, weighted, survey or cross-quantile inference is claimed. Loss is the
+analytic clustered, weighted, survey or cross-quantile inference is claimed for
+these retained `qreg` fits. Loss is the
 check loss; at the median this is half the sum of absolute deviations. It is
 not a Gaussian likelihood. The displayed pseudo R² compares this loss to an
 intercept-only empirical quantile.

@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use std::collections::HashMap;
+
 use crate::bootstrap::{draw_index, summarize_pairs};
 use crate::distributions::{normal_cdf, normal_quantile};
 use crate::quantile::{quantile_design, quantile_point_coefficients};
@@ -23,6 +25,14 @@ pub struct QuantileBootstrapResult {
   pub covariance_parameter_names: Vec<String>,
   pub covariance_matrix: Vec<Vec<f64>>,
   pub sample: Option<EstimationSample>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster_count: Option<usize>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub cluster_sizes: Option<Vec<usize>>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub replicate_observation_counts: Option<Vec<usize>>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub contrast: Option<QuantileBootstrapContrast>,
 }
@@ -124,7 +134,7 @@ pub fn bootstrap_quantiles(
   replications: usize,
   seed: u64,
 ) -> Result<QuantileBootstrapResult, StatsError> {
-  bootstrap_quantiles_impl(problem, quantiles, replications, seed, None)
+  bootstrap_quantiles_impl(problem, quantiles, replications, seed, None, false)
 }
 
 /// Request one higher-minus-lower coefficient contrast on exactly two quantiles.
@@ -136,7 +146,45 @@ pub fn bootstrap_quantiles_with_contrast(
   seed: u64,
   parameter: &str,
 ) -> Result<QuantileBootstrapResult, StatsError> {
-  bootstrap_quantiles_impl(problem, quantiles, replications, seed, Some(parameter))
+  bootstrap_quantiles_impl(
+    problem,
+    quantiles,
+    replications,
+    seed,
+    Some(parameter),
+    false,
+  )
+}
+
+/// Whole-cluster pairs bootstrap for independent sampled clusters. Each draw
+/// retains every member of a sampled cluster and shares G cluster draws across
+/// all quantiles. Unequal cluster sizes produce variable replicate N.
+pub fn bootstrap_quantiles_clustered(
+  problem: &EstimationProblem,
+  quantiles: &[f64],
+  replications: usize,
+  seed: u64,
+) -> Result<QuantileBootstrapResult, StatsError> {
+  bootstrap_quantiles_impl(problem, quantiles, replications, seed, None, true)
+}
+
+/// Whole-cluster pairs bootstrap with one higher-minus-lower coefficient
+/// contrast on exactly two quantiles.
+pub fn bootstrap_quantiles_clustered_with_contrast(
+  problem: &EstimationProblem,
+  quantiles: &[f64],
+  replications: usize,
+  seed: u64,
+  parameter: &str,
+) -> Result<QuantileBootstrapResult, StatsError> {
+  bootstrap_quantiles_impl(
+    problem,
+    quantiles,
+    replications,
+    seed,
+    Some(parameter),
+    true,
+  )
 }
 
 fn bootstrap_quantiles_impl(
@@ -145,6 +193,7 @@ fn bootstrap_quantiles_impl(
   replications: usize,
   seed: u64,
   contrast: Option<&str>,
+  cluster_resampling: bool,
 ) -> Result<QuantileBootstrapResult, StatsError> {
   if quantiles.is_empty()
     || quantiles.len() > 19
@@ -160,7 +209,7 @@ fn bootstrap_quantiles_impl(
   if !(2..=crate::MAX_BOOTSTRAP_REPLICATIONS).contains(&replications) {
     return Err(invalid("replications must be from 2 to 5000"));
   }
-  let design = quantile_design(problem, quantiles[0])?;
+  let design = quantile_design(problem, quantiles[0], cluster_resampling)?;
   let contrast_column = contrast
     .map(|parameter| {
       if quantiles.len() != 2 {
@@ -185,16 +234,38 @@ fn bootstrap_quantiles_impl(
     .transpose()?;
   let n = problem.observation_count();
   let k = problem.parameter_count();
+  let clusters = if cluster_resampling {
+    Some(cluster_rows(problem, n)?)
+  } else {
+    None
+  };
+  let max_resample_n = clusters.as_ref().map_or(Some(n), |groups| {
+    groups
+      .len()
+      .checked_mul(groups.iter().map(Vec::len).max().unwrap_or(0))
+  });
+  if max_resample_n.is_none_or(|rows| {
+    rows > 10_000 || rows.checked_mul(k * k).is_none_or(|work| work > 10_000_000)
+  }) {
+    return Err(invalid(if cluster_resampling {
+      "G * largest cluster size must be at most 10000 and max replicate N*K² must be at most 10000000"
+    } else {
+      "N*K² must be at most 10000000"
+    }));
+  }
+  let max_resample_n = max_resample_n.unwrap();
   // Count all coefficient fits, including originals; solver iteration/refinement
   // costs remain separately bounded by the quantile solver.
-  let work = n
+  let work = max_resample_n
     .checked_mul(k * k)
     .and_then(|v| v.checked_mul(quantiles.len()))
     .and_then(|v| v.checked_mul(replications + 1));
   if work.is_none_or(|v| v > crate::MAX_BOOTSTRAP_WORK) {
-    return Err(invalid(
-      "N*K²*quantiles*(replications+1) must be at most 100000000",
-    ));
+    return Err(invalid(if cluster_resampling {
+      "G*largest cluster size*K²*quantiles*(replications+1) must be at most 100000000"
+    } else {
+      "N*K²*quantiles*(replications+1) must be at most 100000000"
+    }));
   }
   let mut names = Vec::with_capacity(k * quantiles.len());
   let mut original = Vec::with_capacity(k * quantiles.len());
@@ -212,14 +283,24 @@ fn bootstrap_quantiles_impl(
   }
   let mut estimates = vec![Vec::with_capacity(replications); original.len()];
   let mut rng = Xoshiro256PlusPlus::seed_from_u64(seed);
+  let mut replicate_observation_counts = Vec::with_capacity(replications);
   for replicate in 0..replications {
-    let mut x = Vec::with_capacity(n);
-    let mut y = Vec::with_capacity(n);
-    for _ in 0..n {
-      let index = draw_index(&mut rng, n);
-      x.push(design[index].clone());
-      y.push(problem.response[index]);
+    let mut x = Vec::with_capacity(max_resample_n);
+    let mut y = Vec::with_capacity(max_resample_n);
+    let draw_count = clusters.as_ref().map_or(n, Vec::len);
+    for _ in 0..draw_count {
+      let index = draw_index(&mut rng, draw_count);
+      if let Some(groups) = &clusters {
+        for &row in &groups[index] {
+          x.push(design[row].clone());
+          y.push(problem.response[row]);
+        }
+      } else {
+        x.push(design[index].clone());
+        y.push(problem.response[index]);
+      }
     }
+    replicate_observation_counts.push(y.len());
     for (i, &q) in quantiles.iter().enumerate() {
       let beta =
         quantile_point_coefficients(&x, &y, q, problem.include_intercept).map_err(|e| {
@@ -255,8 +336,42 @@ fn bootstrap_quantiles_impl(
     covariance_parameter_names: names,
     covariance_matrix,
     sample: problem.sample.clone(),
+    cluster_variable: None,
+    cluster_count: clusters.as_ref().map(Vec::len),
+    cluster_sizes: clusters
+      .as_ref()
+      .map(|groups| groups.iter().map(Vec::len).collect()),
+    replicate_observation_counts: clusters.map(|_| replicate_observation_counts),
     contrast,
   })
+}
+
+fn cluster_rows(problem: &EstimationProblem, n: usize) -> Result<Vec<Vec<usize>>, StatsError> {
+  let groups = problem
+    .sample
+    .as_ref()
+    .and_then(|sample| sample.cluster_groups.as_ref())
+    .ok_or_else(|| invalid("whole-cluster pairs require retained cluster identifiers"))?;
+  if groups.len() != n {
+    return Err(invalid(
+      "cluster identifier count must match retained observations",
+    ));
+  }
+  let mut lookup = HashMap::new();
+  let mut clusters: Vec<Vec<usize>> = Vec::new();
+  for (row, group) in groups.iter().enumerate() {
+    let index = *lookup.entry(group.as_str()).or_insert_with(|| {
+      clusters.push(Vec::new());
+      clusters.len() - 1
+    });
+    clusters[index].push(row);
+  }
+  if clusters.len() < 3 {
+    return Err(invalid(
+      "whole-cluster pairs require at least three retained clusters",
+    ));
+  }
+  Ok(clusters)
 }
 
 #[cfg(test)]

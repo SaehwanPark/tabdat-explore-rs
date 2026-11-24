@@ -1321,19 +1321,46 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         )
         .unwrap();
       }
-      writeln!(text,"Sparsity = {}; local residuals = {}; bandwidth probability = {}. No heteroskedastic/cluster/survey or cross-quantile inference.",inference_number(result.sparsity),result.sparsity_observation_count,inference_number(result.bandwidth_probability)).unwrap();
+      writeln!(text,"Sparsity = {}; local residuals = {}; bandwidth probability = {}. No heteroskedastic-robust, cluster-robust, survey, or cross-quantile qreg inference.",inference_number(result.sparsity),result.sparsity_observation_count,inference_number(result.bandwidth_probability)).unwrap();
       text
     }
     ExecutionResult::QuantileBootstrap(result) => {
-      let mut text = format!(
-        "Joint IID pairs-bootstrap quantiles: {}\nN = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nFull joint covariance uses common row draws and B-1 denominator.\n95% marginal percentile intervals (R type7); no simultaneous coverage or marginal coefficient p-values\n",
-        result.outcome,
-        result.observation_count,
-        result.quantiles,
-        result.replications,
-        result.seed,
-        result.rng
-      );
+      let mut text = if let Some(cluster_count) = result.cluster_count {
+        format!(
+          "Joint whole-cluster pairs-bootstrap quantiles: {}\nN = {}; clusters = {}; cluster variable = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nEach replication draws G clusters with replacement and keeps all retained cluster rows; replicate N ranges from {} to {}.\nFull joint covariance uses common cluster draws and B-1 denominator.\nAssumes independent sampled clusters with many-cluster asymptotics; not survey or few-cluster inference.\n95% marginal percentile intervals (R type7); no simultaneous coverage or marginal coefficient p-values\n",
+          result.outcome,
+          result.observation_count,
+          cluster_count,
+          result
+            .cluster_variable
+            .as_deref()
+            .unwrap_or("(unspecified)"),
+          result.quantiles,
+          result.replications,
+          result.seed,
+          result.rng,
+          result
+            .replicate_observation_counts
+            .as_ref()
+            .and_then(|counts| counts.iter().min())
+            .unwrap_or(&0),
+          result
+            .replicate_observation_counts
+            .as_ref()
+            .and_then(|counts| counts.iter().max())
+            .unwrap_or(&0),
+        )
+      } else {
+        format!(
+          "Joint IID pairs-bootstrap quantiles: {}\nN = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nFull joint covariance uses common row draws and B-1 denominator.\n95% marginal percentile intervals (R type7); no simultaneous coverage or marginal coefficient p-values\n",
+          result.outcome,
+          result.observation_count,
+          result.quantiles,
+          result.replications,
+          result.seed,
+          result.rng
+        )
+      };
       for b in &result.coefficients {
         let _ = writeln!(
           text,
