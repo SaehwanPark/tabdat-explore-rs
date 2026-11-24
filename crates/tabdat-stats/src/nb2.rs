@@ -111,6 +111,64 @@ pub struct Nb2Result {
   pub sample: Option<EstimationSample>,
 }
 
+/// Test general affine restrictions on retained NB2 mean coefficients.
+///
+/// Uses the mean-parameter block of the fit's full joint beta/log-alpha
+/// covariance, so dispersion uncertainty is retained. The reference is
+/// asymptotic chi-square; log-alpha itself is not a mean-model restriction.
+pub fn nb2_wald_test(
+  result: &Nb2Result,
+  r_matrix: &[Vec<f64>],
+  r_vector: &[f64],
+) -> Result<crate::WaldChiSquareTestResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let mean_parameter_count = result.coefficients.len();
+  let joint_parameter_count = mean_parameter_count
+    .checked_add(1)
+    .ok_or_else(|| StatsError::DimensionMismatch("NB2 joint parameter count overflow".into()))?;
+  if result.covariance.len() != joint_parameter_count
+    || result
+      .covariance
+      .iter()
+      .any(|row| row.len() != joint_parameter_count)
+  {
+    return Err(StatsError::DimensionMismatch(format!(
+      "NB2 joint covariance must be {joint_parameter_count} by {joint_parameter_count}"
+    )));
+  }
+  if result
+    .covariance
+    .iter()
+    .flatten()
+    .any(|value| !value.is_finite())
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "NB2 joint covariance must be finite".into(),
+    ));
+  }
+  let mean_covariance = result
+    .covariance
+    .iter()
+    .take(mean_parameter_count)
+    .map(|row| row.iter().take(mean_parameter_count).copied().collect())
+    .collect::<Vec<Vec<_>>>();
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  crate::post_estimation::wald_chi_square_test(&parameters, &mean_covariance, r_matrix, r_vector)
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Nb2MarginalEffects {
   #[serde(default, skip_serializing_if = "Option::is_none")]

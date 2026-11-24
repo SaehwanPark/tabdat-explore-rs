@@ -152,24 +152,13 @@ pub fn binary_wald_test(
   let coefficient_names = result
     .coefficients
     .iter()
-    .map(|coefficient| coefficient.name.as_str())
+    .map(|coefficient| coefficient.name.clone())
     .collect::<Vec<_>>();
-  let unique_names = coefficient_names.iter().copied().collect::<BTreeSet<_>>();
-  let predictor_order_matches = coefficient_names
-    .iter()
-    .skip(usize::from(result.include_intercept))
-    .copied()
-    .eq(result.predictor_names.iter().map(String::as_str));
-  if result.coefficients.len()
-    != result.predictor_names.len() + usize::from(result.include_intercept)
-    || unique_names.len() != result.coefficients.len()
-    || coefficient_names.iter().any(|name| name.is_empty())
-    || !predictor_order_matches
-  {
-    return Err(StatsError::IncompatibleHypothesis(
-      "binary Wald test requires the exact finite fitted coefficient vector".into(),
-    ));
-  }
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
   let parameters = result
     .coefficients
     .iter()

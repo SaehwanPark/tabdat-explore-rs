@@ -87,6 +87,33 @@ pub struct PoissonResult {
   pub sample: Option<EstimationSample>,
 }
 
+/// Test general affine restrictions on retained Poisson mean coefficients.
+///
+/// Uses the model-based, independent-row robust or clustered covariance owned
+/// by the fit, with an asymptotic chi-square reference.
+pub fn poisson_wald_test(
+  result: &PoissonResult,
+  r_matrix: &[Vec<f64>],
+  r_vector: &[f64],
+) -> Result<crate::WaldChiSquareTestResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  crate::post_estimation::wald_chi_square_test(&parameters, &result.covariance, r_matrix, r_vector)
+}
+
 /// Continuous predictor-column derivatives, conditional on retained X.
 /// Not discrete changes, original-variable chain rules or random-X uncertainty.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

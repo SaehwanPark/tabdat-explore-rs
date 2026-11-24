@@ -222,12 +222,20 @@ fn current_prediction_needs_only_predictors_preserves_model_and_nulls_nonfinite_
 }
 
 #[test]
-fn predictions_and_unsupported_postestimation_fail_without_any_mutation() {
+fn count_test_works_and_other_unsupported_postestimation_fails_without_mutation() {
   let f = Fixture::new(false);
   let mut s = f.load();
   execute(&mut s, "poisson y x z, robust");
   let before = s.state();
   let old = rows(&mut s);
+  let ExecutionResult::Test(test) = execute(&mut s, "test x") else {
+    panic!("expected a Poisson Wald test")
+  };
+  assert!(test.is_chi2);
+  assert_eq!(test.df, 1);
+  assert_eq!(test.df_residual, None);
+  assert_eq!(s.state(), before);
+  same_rows(&rows(&mut s), &old);
   for text in [
     "predict bad, pr",
     "predict bad, residuals",
@@ -235,7 +243,6 @@ fn predictions_and_unsupported_postestimation_fail_without_any_mutation() {
     "predict bad, posterior_predictive saving(\"bad.csv\")",
     "predict y, n",
     "lincom x",
-    "test x",
     "estat vif",
   ] {
     fail(&mut s, text);
