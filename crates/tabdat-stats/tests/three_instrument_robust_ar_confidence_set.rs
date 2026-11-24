@@ -199,13 +199,15 @@ fn three_instrument_sets_are_invariant_to_instrument_rescaling() {
 }
 
 #[test]
-fn five_instruments_and_rank_deficiency_fail_explicitly() {
+fn seven_instruments_and_rank_deficiency_fail_explicitly() {
   let mut too_many = make_problem("multiple", false);
-  too_many.instrument_names.push("z4".into());
-  too_many.instrument_names.push("z5".into());
+  for index in 4..=7 {
+    too_many.instrument_names.push(format!("z{index}"));
+  }
   for row in &mut too_many.instruments {
-    row.push(row[0] + row[1] + row[2]);
-    row.push(row[0] - row[1] + row[2]);
+    for index in 4..=7 {
+      row.push(row[0] + index as f64 * row[1] + row[2]);
+    }
   }
   assert!(matches!(
     robust_multiple_instrument_anderson_rubin_confidence_set(
