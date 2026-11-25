@@ -57,6 +57,29 @@ polynomial_determinant <- function(matrix) {
   }
   partial[[state_count]]
 }
+evaluate_polynomial <- function(polynomial, point) {
+  sum(polynomial * point^(seq_along(polynomial) - 1L))
+}
+evaluate_polynomial_matrix <- function(polynomial_matrix, point) {
+  out <- base::matrix(0, nrow(polynomial_matrix), ncol(polynomial_matrix))
+  for (i in seq_len(nrow(polynomial_matrix))) for (j in seq_len(ncol(polynomial_matrix)))
+    out[i, j] <- evaluate_polynomial(polynomial_matrix[[i, j]], point)
+  out
+}
+check_determinant_polynomial <- function(polynomial, polynomial_matrix, degree,
+                                         multiplier = 1) {
+  # Compare coefficient expansion with base R's numeric LU determinant on
+  # independent Chebyshev nodes to guard the q=9 determinant construction.
+  count <- degree + 1L
+  nodes <- cos(pi * (2 * seq_len(count) - 1) / (2 * count))
+  direct <- multiplier * vapply(nodes, function(point)
+    det(evaluate_polynomial_matrix(polynomial_matrix, point)), numeric(1))
+  evaluated <- vapply(nodes, function(point)
+    evaluate_polynomial(polynomial, point), numeric(1))
+  scale <- max(abs(direct))
+  stopifnot(all(is.finite(direct)), all(is.finite(evaluated)), scale > 0,
+            max(abs(evaluated - direct)) <= 5e-8 * scale)
+}
 
 fit_reference <- function(data, fixture, covariance) {
   n <- nrow(data)
@@ -98,6 +121,7 @@ fit_reference <- function(data, fixture, covariance) {
                    sum(score_x[, i] * score_x[, j]))
   }
   determinant <- polynomial_determinant(S)
+  check_determinant_polynomial(determinant, S, 2L * q)
   determinant_roots <- polyroot(determinant)
   stopifnot(all(abs(Im(determinant_roots)) > 1e-7 * (1 + abs(Re(determinant_roots)))))
 
@@ -109,6 +133,7 @@ fit_reference <- function(data, fixture, covariance) {
   }
   block[[q + 1L, q + 1L]] <- 0
   numerator <- -polynomial_determinant(block)
+  check_determinant_polynomial(numerator, block, 2L * q, multiplier = -1)
   critical <- qchisq(0.95, df = q)
   boundary <- padd(numerator, determinant, -critical * correction)
   while (length(boundary) > 1L && tail(boundary, 1L) == 0) boundary <- head(boundary, -1L)

@@ -199,13 +199,13 @@ fn three_instrument_sets_are_invariant_to_instrument_rescaling() {
 }
 
 #[test]
-fn eight_instruments_and_rank_deficiency_fail_explicitly() {
+fn ten_instruments_and_rank_deficiency_fail_explicitly() {
   let mut too_many = make_problem("multiple", false);
-  for index in 4..=8 {
+  for index in 4..=10 {
     too_many.instrument_names.push(format!("z{index}"));
   }
   for row in &mut too_many.instruments {
-    for index in 4..=8 {
+    for index in 4..=10 {
       row.push(row[0] + index as f64 * row[1] + row[2]);
     }
   }

@@ -142,6 +142,40 @@ impl Fixture {
     Self { root, parquet }
   }
 
+  fn nine_instrument_sample() -> Self {
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-runtime-iv-{}-{}-{}",
+      std::process::id(),
+      nonce,
+      fixture_id
+    ));
+    fs::create_dir_all(&root).expect("fixture directory should be created");
+    let csv = root.join("nine-instrument.csv");
+    fs::write(
+      &csv,
+      include_str!("../../../examples/robust-ar/robust_ar_nine_ci_multiple_data.csv"),
+    )
+    .expect("nine-instrument fixture should be written");
+    let parquet = root.join("iv.parquet");
+    let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
+    let csv_string = csv.to_string_lossy().replace('\'', "''");
+    let parquet_string = parquet.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!(
+          "COPY (SELECT * FROM read_csv_auto('{csv_string}', header = true)) TO ? (FORMAT PARQUET)"
+        ),
+        [&parquet_string],
+      )
+      .expect("nine-instrument fixture should write to parquet");
+    Self { root, parquet }
+  }
+
   fn school_like_sample() -> Self {
     Self::new_with_sql(
       "WITH base AS (\
@@ -975,11 +1009,12 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_d
     assert_eq!(session.state(), changed);
   }
 
-  let eight_fixture = Fixture::eight_instrument_sample();
-  let mut session = load(&eight_fixture);
+  let nine_fixture = Fixture::nine_instrument_sample();
+  let mut session = load(&nine_fixture);
   session
     .execute(
-      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 row) robust").unwrap(),
+      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 row) robust")
+        .unwrap(),
     )
     .unwrap();
   let before = session.state();
@@ -988,7 +1023,7 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_d
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most eight excluded instruments")
+      .contains("at most nine excluded instruments")
   );
   assert_eq!(session.state(), before);
 }
@@ -1068,6 +1103,56 @@ fn eight_instrument_robust_ar_sets_reuse_retained_fit() {
       set.cluster_group_count,
       option.starts_with("cluster").then_some(24)
     );
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
+}
+
+#[test]
+fn nine_instrument_robust_ar_sets_reuse_retained_fit() {
+  let fixture = Fixture::nine_instrument_sample();
+  for (option, expected_interval) in [
+    ("robust", [0.911362825704433, 1.28291406681336]),
+    ("cluster(group)", [0.945792747726182, 1.20035149024702]),
+  ] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let command = parse_command("estat ar, ci").unwrap();
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust nine-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x");
+    assert_eq!(
+      set.excluded_instruments,
+      ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9"]
+    );
+    assert_eq!(set.degrees_of_freedom, 9);
+    assert_eq!(set.observation_count, 216);
+    assert_eq!(set.auxiliary_parameter_count, 11);
+    assert_eq!(set.auxiliary_residual_df, 205);
+    assert_eq!(
+      set.cluster_group_count,
+      option.starts_with("cluster").then_some(24)
+    );
+    assert_eq!(set.intervals.len(), 1);
+    let interval = &set.intervals[0];
+    assert!((interval.lower.unwrap() - expected_interval[0]).abs() <= 3e-8);
+    assert!((interval.upper.unwrap() - expected_interval[1]).abs() <= 3e-8);
     assert_eq!(session.state(), before);
     session
       .execute(parse_command("replace y = 999").unwrap())

@@ -165,7 +165,7 @@ CR1 with 20 groups gives [1.16236801651081, 1.39363336463301]. Corrections are
 1.0752688172043 and 1.12054329371817. A second design yields an empty CR1 set
 and a bounded HC1 set. The degree-ten method supports up to ten boundary roots
 and six set components. Tests compare endpoints and direct Wald probes,
-rescaling, retained state, text/JSON and nine-instrument rejection.
+rescaling, retained state, text/JSON and upper-bound rejection.
 
 [`six_instrument_ci.td`](six_instrument_ci.td) and
 [`six_instrument_ci_clustered.td`](six_instrument_ci_clustered.td) extend the
@@ -180,7 +180,7 @@ HC1 [0.744654120556704, 1.63797231436378] and CR1
 [0.848220516944529, 1.52707474910469]. The degree-twelve method supports up to
 twelve real roots and seven accepted components. Tests compare reference
 endpoints and direct Wald probes within 3e-8, correction and metadata, instrument
-rescaling, retained state, JSON/text output and nine-instrument rejection.
+rescaling, retained state, JSON/text output and upper-bound rejection.
 
 [seven_instrument_ci.td](seven_instrument_ci.td) and
 [seven_instrument_ci_clustered.td](seven_instrument_ci_clustered.td) extend the
@@ -196,7 +196,7 @@ HC1 [1.11163705575731, 1.51047538844265] and CR1
 [1.17198974024994, 1.53810157793966]. The degree-fourteen method supports
 fourteen real roots and eight accepted components. Tests compare endpoints and
 direct Wald probes within 3e-8, rescaling, retained state, text/JSON and
-nine-instrument rejection.
+upper-bound rejection.
 
 Regenerate both data fixtures and the independent reference by running
 robust_ar_seven_ci_reference.R with Base R 4.6.2; the script writes the two
@@ -205,7 +205,7 @@ root, run:
 
     work=$(mktemp -d)
     Rscript crates/tabdat-stats/tests/fixtures/robust_ar_seven_ci_reference.R "$work" > "$work/robust_ar_seven_ci_reference.csv"
-The eight-instrument extension is documented next; nine or more excluded instruments remain unsupported.
+The eight-instrument extension is documented next; q10 and higher remain unsupported.
 
 [`eight_instrument_ci.td`](eight_instrument_ci.td) and
 [`eight_instrument_ci_clustered.td`](eight_instrument_ci_clustered.td) extend
@@ -221,7 +221,7 @@ with 24 groups gives [1.22474047234525, 1.32397269272157]. Corrections are
 [1.01318139921973, 1.37571882762637]. Rust compares all endpoints and six
 direct Wald probes per design/covariance, rescaling, retained state and
 text/JSON. The degree-sixteen method supports sixteen roots and nine accepted
-components; q9 remains unsupported.
+components; q10 and higher remain unsupported.
 
 Regenerate the inputs and reference from the repository root with Base R 4.6.2:
 
@@ -236,6 +236,40 @@ cmp examples/robust-ar/robust_ar_eight_ci_secondary_data.csv \
 cmp crates/tabdat-stats/tests/fixtures/robust_ar_eight_ci_reference.csv \
   "$work/robust_ar_eight_ci_reference.csv"
 ```
+
+[`nine_instrument_ci.td`](nine_instrument_ci.td) and
+[`nine_instrument_ci_clustered.td`](nine_instrument_ci_clustered.td) extend
+the same scalar workflow to nine excluded instruments. The deterministic
+216-row designs have one included control, K_aux=11 and residual DF=205; the
+95% chi-square(9) critical value is 16.9189776046204. The independent Base R
+4.6.2 generator and reference are in
+[`robust_ar_nine_ci_reference.R`](../../crates/tabdat-stats/tests/fixtures/robust_ar_nine_ci_reference.R).
+For the primary design, HC1 gives [0.911362825704433, 1.28291406681336] and CR1
+with 24 groups gives [0.945792747726182, 1.20035149024702]. Corrections are
+1.05365853658537 and 1.09437963944857. A second design checks HC1
+[1.072618576308, 1.2584091894859] and an empty CR1 set. The Base R reference
+cross-checks degree-eighteen determinant coefficients with numeric `det()` at
+19 Chebyshev nodes before checking endpoints and six direct Wald probes per
+design/covariance. Rust compares endpoints within 3e-8, rescaling, retained
+state, text/JSON output and q10 rejection. The degree-eighteen method supports
+eighteen roots and ten accepted components.
+
+Regenerate both data fixtures and the independent reference from the repository
+root with Base R 4.6.2:
+
+```sh
+work=$(mktemp -d)
+Rscript crates/tabdat-stats/tests/fixtures/robust_ar_nine_ci_reference.R "$work" \
+  > "$work/robust_ar_nine_ci_reference.csv"
+cmp examples/robust-ar/robust_ar_nine_ci_multiple_data.csv \
+  "$work/robust_ar_nine_ci_multiple_data.csv"
+cmp examples/robust-ar/robust_ar_nine_ci_secondary_data.csv \
+  "$work/robust_ar_nine_ci_secondary_data.csv"
+cmp crates/tabdat-stats/tests/fixtures/robust_ar_nine_ci_reference.csv \
+  "$work/robust_ar_nine_ci_reference.csv"
+```
+
+Ten or more excluded instruments remain unsupported.
 
 ## Robust projected coefficient sets
 
@@ -319,16 +353,18 @@ cp examples/robust-ar/robust_ar_eight_ci_secondary_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/seven_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/eight_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/eight_instrument_ci_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/nine_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/nine_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/projected_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/projected_ci_clustered.td")
 ```
 
-Degree-four through degree-sixteen boundaries are solved by
+Degree-four through degree-eighteen boundaries are solved by
 recursively isolating derivative roots and checking every intervening region,
 without a finite grid.
 Repeated or ambiguous roots and singular or ill-conditioned score covariance
 fail explicitly. This remains synthetic method evidence, not a
-Cameron–Trivedi illustration or a claim of instrument validity. Nine or more
+Cameron–Trivedi illustration or a claim of instrument validity. Ten or more
 excluded instruments, robust projection outside the bounded two-endogenous/
 two-instrument slice, larger endogenous systems, HAC/survey covariance and
 few-cluster inference remain unsupported.

@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// eight excluded instruments. The joint-null degrees of freedom
+/// nine excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -552,51 +552,44 @@ fn projection_interval_set(
 }
 
 fn polynomial_matrix_determinant(matrix: &[Vec<Polynomial>]) -> Polynomial {
-  fn expand(
-    matrix: &[Vec<Polynomial>],
-    row: usize,
-    columns: &mut Vec<usize>,
-    product: &[f64],
-    permutation_sign: f64,
-    result: &mut Polynomial,
-  ) {
-    if row == matrix.len() {
-      *result = polynomial_add(result, &polynomial_scale(product, permutation_sign));
-      return;
-    }
-    for column in 0..matrix.len() {
-      if columns.contains(&column) {
-        continue;
-      }
-      let inversions = columns
-        .iter()
-        .filter(|previous| **previous > column)
-        .count();
-      let next_sign = if inversions % 2 == 0 {
-        permutation_sign
-      } else {
-        -permutation_sign
-      };
-      columns.push(column);
-      let next_product = polynomial_multiply(product, &matrix[row][column]);
-      expand(matrix, row + 1, columns, &next_product, next_sign, result);
-      columns.pop();
-    }
-  }
-
-  if matrix.is_empty() {
+  let size = matrix.len();
+  if size == 0 {
     return vec![1.0];
   }
-  let mut result = vec![0.0];
-  expand(
-    matrix,
-    0,
-    &mut Vec::with_capacity(matrix.len()),
-    &[1.0],
-    1.0,
-    &mut result,
-  );
-  result
+
+  // Reuse each signed partial minor instead of enumerating all size! terms.
+  let state_count = 1usize << size;
+  let mut partial = vec![None::<Polynomial>; state_count];
+  partial[0] = Some(vec![1.0]);
+  for mask in 0..state_count {
+    let row = mask.count_ones() as usize;
+    if row >= size {
+      continue;
+    }
+    let Some(product) = partial[mask].clone() else {
+      continue;
+    };
+    for (column, matrix_entry) in matrix[row].iter().enumerate() {
+      let bit = 1usize << column;
+      if mask & bit != 0 {
+        continue;
+      }
+      let inversions = (mask >> (column + 1)).count_ones();
+      let next_mask = mask | bit;
+      let term = polynomial_multiply(&product, matrix_entry);
+      let signed = if inversions % 2 == 0 {
+        term
+      } else {
+        polynomial_scale(&term, -1.0)
+      };
+      if let Some(existing) = &mut partial[next_mask] {
+        *existing = polynomial_add(existing, &signed);
+      } else {
+        partial[next_mask] = Some(signed);
+      }
+    }
+  }
+  partial[state_count - 1].take().unwrap_or_default()
 }
 
 fn polynomial_derivative(polynomial: &[f64]) -> Polynomial {
@@ -947,9 +940,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 16 {
+  if roots_in_scale.len() > 18 {
     return Err(invalid(
-      "robust AR boundary has more than sixteen real roots",
+      "robust AR boundary has more than eighteen real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -1011,9 +1004,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 9 {
+  if intervals.len() > 10 {
     return Err(invalid(
-      "robust AR confidence set has more than nine components",
+      "robust AR confidence set has more than ten components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1242,7 +1235,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through eight excluded instruments. The confidence boundary has degree
+/// and two through nine excluded instruments. The confidence boundary has degree
 /// at most twice the instrument count; every real root is
 /// isolated by recursive derivative partitioning, without evaluating a finite
 /// beta grid.
@@ -1259,9 +1252,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=8).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=9).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to eight excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to nine excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2453,6 +2446,32 @@ mod tests {
         interval(Some(4.0), Some(5.0)),
         interval(Some(6.0), Some(7.0)),
         interval(Some(8.0), None),
+      ],
+    );
+  }
+
+  #[test]
+  fn degree_eighteen_boundary_supports_eighteen_roots_and_ten_components() {
+    let roots = [
+      -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+      9.0,
+    ];
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    assert_intervals_close(
+      &intervals,
+      &[
+        interval(None, Some(-9.0)),
+        interval(Some(-8.0), Some(-7.0)),
+        interval(Some(-6.0), Some(-5.0)),
+        interval(Some(-4.0), Some(-3.0)),
+        interval(Some(-2.0), Some(-1.0)),
+        interval(Some(1.0), Some(2.0)),
+        interval(Some(3.0), Some(4.0)),
+        interval(Some(5.0), Some(6.0)),
+        interval(Some(7.0), Some(8.0)),
+        interval(Some(9.0), None),
       ],
     );
   }
