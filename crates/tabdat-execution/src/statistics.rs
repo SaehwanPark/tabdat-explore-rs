@@ -1253,6 +1253,9 @@ impl Session {
     if let EstatSubcommand::CountProbabilities { tail_from } = command.subcommand {
       return self.execute_count_probability_table(tail_from);
     }
+    if let EstatSubcommand::CountGoodnessOfFit { tail_from } = command.subcommand {
+      return self.execute_nb2_count_goodness_of_fit(tail_from);
+    }
     if matches!(
       &command.subcommand,
       EstatSubcommand::AndersonRubin { .. }

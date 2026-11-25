@@ -840,9 +840,9 @@ See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
 [fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
 method evidence, not a textbook replication. Remaining exposure workflows,
-multiway clustering, weighted/survey inference, current-row PMF/CDF predictions,
-factors/discrete changes and other formal count specification tests remain
-required work.
+multiway clustering, weighted/survey inference, factors/discrete changes and
+other formal count specification tests remain required work. The bounded
+current-row PMF/CDF prediction contract is documented separately below.
 
 ### Poisson one-way clustered inference
 
@@ -1044,8 +1044,8 @@ and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
 See MIG-0020. Remaining multiway/survey/few-cluster, exposure workflows/weights,
-current-row probabilities/other formal tests and richer count
-requirements are not removed.
+other formal tests and richer count requirements are not removed; current-row
+probability prediction has its own bounded contract below.
 
 ## Retained count probability-frequency reports
 
@@ -1097,9 +1097,44 @@ reject wrong laws/averaging/tails/samples/frequencies/probabilities/claims.
 The printed Table20.6 NB2 row differs materially from the authors' November2006
 program/reference (zero share30.9% vs31.82679994%); it remains UNRESOLVED, not
 forced into a tolerance or declared literal whole-table replication. No book/data/
-program redistribution. Current-row PMF/CDF `predict`, uncertainty/formal tests,
-named count reports and other required count/core/book scope remain open.
+program redistribution. Uncertainty for predicted probabilities, other formal
+tests and remaining count/core/book scope remain open. Current-row PMF/CDF
+`predict` and named count reports have separate bounded contracts above.
 See MIG-0021.
+
+## Retained NB2 grouped goodness-of-fit reports
+
+`estat countgof [, max(10)]` is read-only after a retained, unclustered,
+unweighted model-based NB2 fit without a fixed offset. It uses the original
+retained outcomes, fitted means, sample and individual beta/lnalpha likelihood
+scores, without refitting. The default partition is exact counts0..9 and >=10;
+`max(m)` accepts an integer1..10. It reports the Andrews statistic `N*R²_u`
+from a no-intercept auxiliary regression of one on the first `J-1` cell residuals
+and all NB2 scores, with the `chi-square(J-1)` reference. For the default 11
+cells this means df10. No cluster-robust reference is installed; the reference
+assumes independent observations and a correctly specified conditional NB2 law.
+Robust/clustered, weighted and fixed-offset fits are rejected.
+
+CLI-v1 adds **CountGoodnessOfFitResult** with `estimator:
+"nb2_grouped_probability_gof"`, `method:
+"andrews_score_adjusted_grouped_chi_square"`, outcome, retained sample and
+`sample_role: "retained_estimation_sample"`; plus `observation_count`,
+`tail_from`, the ordered probability `table.bins`, `statistic`,
+`degrees_of_freedom`, `p_value`, score parameter names and auxiliary regressor
+count. It records the null as a correctly specified conditional NB2 distribution,
+the chi-square reference degrees of freedom and the two assumptions
+`independent_observations` and
+`correctly_specified_conditional_NB2_distribution`. Each bin contains the
+lower/upper bound, observed count/fraction, fitted fraction and expected count.
+Only the final inclusive tail has a null upper bound. This is a formal
+model-based test under those assumptions, unlike descriptive `countprob`; it
+does not provide a robust/cluster correction or test conditional dependence.
+
+The official November2006 author program uses df9 for the default11 cells,
+although the book's `J-1` rule gives10. This implementation follows10 and leaves
+the source discrepancy explicit. The author program's sample statistic also
+differs by about `0.000312` from an independently polished Base R reference;
+that difference remains unresolved and no tolerance was widened.
 
 ## Summaries and percentiles
 

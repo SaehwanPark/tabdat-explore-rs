@@ -249,6 +249,26 @@ impl Session {
     )))
   }
 
+  pub(crate) fn execute_nb2_count_goodness_of_fit(
+    &self,
+    tail_from: usize,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let Some(EstimationState::NegativeBinomialFit(state)) = &self.estimation else {
+      return Err(RuntimeError::EstatCountGofRequiresPriorNb2);
+    };
+    let test = tabdat_stats::nb2_count_goodness_of_fit(&state.problem, &state.result, tail_from)
+      .map_err(|error| RuntimeError::EstatCountGofFailed {
+        message: error.to_string(),
+      })?;
+    Ok(ExecutionResult::CountGoodnessOfFit(Box::new(
+      CountGoodnessOfFitResult {
+        outcome: state.problem.outcome.clone(),
+        sample: state.problem.sample.clone(),
+        test,
+      },
+    )))
+  }
+
   pub(crate) fn execute_count_prediction(
     &mut self,
     command: &PredictCommand,

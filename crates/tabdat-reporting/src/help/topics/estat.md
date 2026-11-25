@@ -12,6 +12,7 @@ How to invoke:
 `estat margins, discrete(variable)` (after logit or probit)
 `estat overdispersion` (after Poisson)
 `estat countprob [, max(10)]` (after Poisson or NB2)
+`estat countgof [, max(10)]` (after an unclustered model-based NB2 fit)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -31,7 +32,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, the Poisson NB2-direction score test `overdispersion`, and descriptive count `countprob` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Classical panel FE–RE Hausman comparison
 
@@ -119,6 +120,31 @@ Cluster inference assumes independent groups and many-group asymptotics, with no
 few-cluster guarantee. The score is separate from NB2's model-based boundary
 likelihood-ratio result. See
 `examples/nb2-overdispersion-score/README.md` for Base R evidence and limits.
+
+## NB2 grouped count goodness of fit
+
+After an unclustered, unweighted, model-based `nbreg` fit without an offset,
+`estat countgof` compares observed count cells with the mean fitted NB2
+probabilities and reports the Andrews score-adjusted grouped chi-square test.
+The default `max(10)` defines cells0..9 and >=10; `max(m)` accepts an integer
+1..10 and defines cells0..m-1 and >=m. For J=m+1 cells, one cell is omitted and
+the no-intercept auxiliary regression includes the remaining J-1 cell residuals
+and every NB2 maximum-likelihood score, including `lnalpha`. The reported
+statistic is N times the uncentered R-squared, with asymptotic chi-square(J-1)
+reference. The result includes observed/fitted frequencies for every cell.
+
+The independent-row and correctly specified conditional NB2 assumptions are
+required. No robust or cluster-adjusted reference is installed. In particular,
+the RAND doctor-visit example has repeated person-years; the authors say
+clustering is needed, while their §20.7 goodness-of-fit code does not cluster.
+Its p-value is therefore method reproduction, not panel-robust inference.
+
+For the default 11-cell partition the book's J-1 rule gives df=10. The November
+2006 author program passes df=9 to its p-value calculation; this command follows
+the book's rule and keeps the program discrepancy explicit. The diagnostic uses
+the retained NB2 sample and does not refit or mutate model/data state. See
+`examples/mma20p1count/count_gof.md` for the independent Base R reference and
+source comparison.
 
 ## Binary continuous average partial effects
 

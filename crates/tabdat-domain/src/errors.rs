@@ -453,6 +453,10 @@ pub enum RuntimeError {
   EstatCountProbRequiresPriorCount,
   /// A bounded count distribution report failed without changing state.
   EstatCountProbFailed { message: String },
+  /// Score-adjusted count goodness of fit requires a retained NB2 fit.
+  EstatCountGofRequiresPriorNb2,
+  /// A bounded NB2 count goodness-of-fit calculation failed without mutation.
+  EstatCountGofFailed { message: String },
   /// Poisson NB2 overdispersion score reports require an owned Poisson fit.
   EstatOverdispersionRequiresPriorPoisson,
   /// A retained-Poisson overdispersion score calculation failed.
@@ -1132,6 +1136,8 @@ impl fmt::Display for RuntimeError {
       Self::EstatMarginsFailed { message } => write!(formatter, "estat margins: {message}"),
       Self::EstatCountProbRequiresPriorCount => formatter.write_str("estat countprob requires a prior Poisson or NB2 fit"),
       Self::EstatCountProbFailed { message } => write!(formatter, "estat countprob: {message}"),
+      Self::EstatCountGofRequiresPriorNb2 => formatter.write_str("estat countgof requires a prior unclustered NB2 fit"),
+      Self::EstatCountGofFailed { message } => write!(formatter, "estat countgof: {message}"),
       Self::EstatOverdispersionRequiresPriorPoisson => formatter.write_str("estat overdispersion requires a prior Poisson fit"),
       Self::EstatOverdispersionFailed { message } => write!(formatter, "estat overdispersion: {message}"),
       Self::PredictLogitUnsupported => formatter.write_str(

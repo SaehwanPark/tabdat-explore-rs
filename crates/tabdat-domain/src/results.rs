@@ -724,6 +724,14 @@ pub struct CountProbabilityResult {
   pub table: tabdat_stats::CountProbabilityTable,
 }
 
+/// Score-adjusted grouped NB2 count goodness-of-fit test on a retained sample.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CountGoodnessOfFitResult {
+  pub outcome: String,
+  pub sample: Option<tabdat_stats::EstimationSample>,
+  pub test: tabdat_stats::CountGoodnessOfFitResult,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -864,6 +872,8 @@ pub enum ExecutionResult {
   NbregMarginalEffects(Box<Nb2MarginalEffects>),
   /// Descriptive observed/fitted count probabilities; no test or uncertainty.
   CountProbabilities(Box<CountProbabilityResult>),
+  /// Score-adjusted NB2 grouped frequency goodness-of-fit test.
+  CountGoodnessOfFit(Box<CountGoodnessOfFitResult>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.

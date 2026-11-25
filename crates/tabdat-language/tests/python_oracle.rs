@@ -101,8 +101,8 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
       );
       continue;
     }
-    // Installed AR and descriptive count-frequency extensions add only their
-    // names to these lists; keep the historical corpus and exact delta visible.
+    // Installed AR/count extensions add only their names to these lists; keep
+    // the historical corpus and exact delta visible.
     if matches!(
       input,
       "estat"
@@ -119,8 +119,14 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
         .unwrap()
         .replace("vif|firststage", "vif|ar|firststage")
         .replace("vif, firststage", "vif, ar, firststage")
-        .replace("margins|gof", "margins|countprob|gof")
-        .replace("margins, gof", "margins, countprob, gof");
+        .replace(
+          "margins|gof",
+          "margins|overdispersion|countprob|countgof|gof",
+        )
+        .replace(
+          "margins, gof",
+          "margins, overdispersion, countprob, countgof, gof",
+        );
       assert_eq!(result.unwrap_err().message(), expected);
       continue;
     }

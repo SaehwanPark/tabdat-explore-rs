@@ -176,10 +176,10 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   book columns. Current edits do not change the retained effects. A failed new
   runtime fit clears stale inference without changing data/labels/order.
 
-Still required: offsets/exposure, household/site/multiway/survey
-inference, weights, current-row PMF/CDF predictions/unresolved printed Table20.6 NB2 row, formal NB
-boundary/specification tests, factors/discrete changes,
-and remaining Tables20.3–20.6/workflows. Immutable Poisson/NB2 named reports are
+Still required: broader exposure workflows, household/site/multiway/survey
+inference, weights, the unresolved printed Table20.6 NB2 row, other formal NB
+specification tests, factors/discrete changes, and remaining Tables20.3–20.6
+workflows. Immutable Poisson/NB2 named reports are
 available through `estimates store/table/drop`; they do not restore or persist
 fits.
 
@@ -290,8 +290,9 @@ historical lagged/stopped estimates into the independently converged result.
 No original IDs occur in the ASCII: the two `nb2.td` fits are unclustered;
 independent-row robust NB2 is **not panel-robust**. The separate person extension
 below attaches audited DTA identities and uses full joint grouped scores.
-Offsets/exposure, household/site/multiway/survey, weights, current-row probabilities/unresolved printed Table20.6 NB2 row,
-formal alpha/specification tests and other required count analyses remain open.
+Broader exposure workflows, household/site/multiway/survey methods, weights,
+the unresolved printed Table20.6 NB2 row, other formal NB specification tests
+and other required count analyses remain open.
 Joint named NB2 reports are available but do not complete the count family or book.
 
 ## Poisson with original-person clustered inference
@@ -363,10 +364,9 @@ need only mean predictors, not outcomes/IDs. JSON adds optional cluster metadata
 ONLY for clustered results; old noncluster shapes/owned-state reads are preserved.
 JSON/text/piped native runs publish identical ordered CSVs without replacing targets.
 
-Household/site/multiway/survey/few-cluster methods, offsets/exposure,
-current-row count probabilities/unresolved printed Table20.6 NB2 row, other
-formal tests, broader count-family workflows and remaining required count/book
-analyses remain open. This is not
+Household/site/multiway/survey/few-cluster methods, broader exposure workflows,
+the unresolved printed Table20.6 NB2 row, other formal tests, broader
+count-family workflows and remaining required count/book analyses remain open. This is not
 whole count-family/panel/chapter/book/goal completion. No author data/program
 is redistributed.
 
@@ -431,8 +431,8 @@ only. Failed new runtime fits clear stale inference only; unsupported prediction
 postestimation and output collisions preserve state/targets. Cluster metadata is
 conditional, preserving noncluster JSON/old owned reads, not fit restoration.
 
-This does not remove required weights/offsets/exposure, appropriate household/
-site/multiway/survey/few-cluster methods, FE/RE/panels, current-row count probabilities/formal
+This does not remove required weights/broader exposure workflows, appropriate
+household/site/multiway/survey/few-cluster methods, FE/RE/panels, other formal
 boundary/specification tests, native DTA,
 richer counts or remaining book analyses. No source data/program is redistributed;
 R/Python remain development-only reference/conversion tools.
@@ -444,7 +444,8 @@ Table20.5 cohort after model-based and robust Poisson/NB2 fits. The independent
 Base R comparison, covariance contract, eight actual-sample statistics and
 limitations are documented in [wald-test.md](wald-test.md). See also the
 [normal-reference linear-combination workflow](lincom.md); other formal count
-specification tests remain unsupported.
+specification tests remain unsupported except for the bounded NB2 grouped test
+below.
 
 ## Retained observed/fitted probability-frequency analysis
 
@@ -472,9 +473,10 @@ probability at the average mean. Uses ORIGINAL retained y/means/NB2 alpha/sample
 current data edits/drop y/X/IDs do not change it. Covariance selection on the same
 sample does not change probabilities or prove the full Poisson/NB2 law. Robust/
 cluster QMLE need not give correctly calibrated distributional probabilities.
-This is a descriptive comparison with **no SE/interval/p-value/formal goodness-of-fit
-test**, not a robust distribution correction or random draw. There is no installed
-current-row PMF/CDF prediction or rowwise probability-export command.
+This command is a descriptive comparison with **no SE/interval/p-value or test**,
+not a robust distribution correction or random draw. The separate NB2 test below
+has its own model-based reference. This report uses the retained sample; see the
+current-row prediction workflow below for PMF/CDF predictions.
 
 R4.6.1/MASS7.3.65 independent original-ASC fits use converged Poisson and joint
 NB2 score polishing, then `dpois/ppois/dnbinom/pnbinom`, not a native recurrence.
@@ -500,6 +502,48 @@ Actual JSON/text/piped exported means/xb are byte-identical; source unchanged,
 stderr empty.20 corruption probes reject wrong laws/alpha/averaging-at-mean,
 cutoffs/tails/samples/counts/means/probabilities and manufactured tests/uncertainty.
 
+## NB2 grouped count goodness of fit
+
+[`count_gof.td`](count_gof.td) runs `estat countgof, max(10)` after the same
+unclustered NB2 specification. It reports observed and mean conditional fitted
+frequencies for cells0..9 and >=10, then the Andrews score-adjusted grouped
+statistic. For the default 11 cells it uses `chi-square(10)`, following the
+book's `J-1` rule. The 2006 author program passes 9 degrees of freedom; the
+discrepancy is retained in the report rather than copied into the test.
+
+The test requires a retained, unclustered, unweighted model-based NB2 fit with
+no offset. It uses that fit's original sample, fitted means and individual beta/
+lnalpha scores without refitting or changing state. Its reference assumes
+independent observations and a correctly specified conditional NB2 distribution.
+RAND records are repeated person-years, so the output is method reproduction,
+not panel-robust inference. No cluster-robust grouped-test reference is
+installed.
+
+In a fresh directory containing `mma20p1count.csv`, the same audited input used
+above, run:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma20p1count/count_gof.td" > count_gof_native.jsonl
+Rscript "$repo/crates/tabdat-stats/tests/fixtures/nb2_count_gof_reference.R" \
+  mma20p1count.asc > count_gof_reference.csv
+```
+
+R4.6.2/MASS7.3.66 independently report `N=20,186`, CGF
+`123.15399170935741`, `df=10`, and `p=1.1576503947859055e-21`; Rust reports
+`123.15399170936661` and `1.157650394780931e-21`. The maximum absolute
+difference across statistic, df, p-value, and observed count/fraction, fitted
+fraction and expected count for all 11 cells is `9.60654e-12` (47 comparisons). The author
+program reports `123.15368`, `df=9`, and `p=3.019e-22`; the approximately
+`0.000312` statistic difference is unresolved. It is not attributed to a
+specific cause or absorbed by a widened tolerance. The author ASCII remains
+external and is checksum-verified by the independent reference.
+
+The independently polished fit also matches Rust on18 coefficients, alpha and
+log likelihood (20 quantities; maximum absolute error `2.11003e-10`). Base R's
+maximum absolute likelihood score is `2.54e-11`; the Rust fit reports scaled
+score `7.98e-15` and scaled Newton step `2.19e-14`.
+
 ### Printed Table20.6 discrepancy remains unresolved
 
 The [2005 book Table20.6, printed p674](https://openeclass.panteion.gr/modules/document/file.php/PMS152/Textbooks/Cameron%20A.C.%2C%20Trivedi%20P.K.%20Microeconometrics%20Methods%20and%20Applications.pdf)
@@ -513,8 +557,8 @@ This workflow validates the specified native/author-program design/laws, **not
 literal whole Table20.6 reproduction**; the printed NB2 row remains visible
 unresolved required coverage. Source book/program/data are not redistributed.
 
-Offsets/exposure/weights, appropriate survey/multiway/panel methods, current-row
-probability prediction, uncertainty/formal specification tests,
+Broader exposure/weight workflows, appropriate survey/multiway/panel methods,
+uncertainty for current-row probabilities, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 
 ### Current-row count probability prediction extension
