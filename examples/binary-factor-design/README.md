@@ -31,7 +31,9 @@ predictor terms, including after additive factor terms. `estat margins,
 discrete(var)` accepts an original continuous numeric predictor with exact 0/1
 values and both levels in the retained sample, including in additive factor
 designs. Expanded factor dummy columns cannot be selected. Discrete changes
-reject interaction models; continuous product-term AMEs have separate
+also support original exact 0/1 sources in continuous product terms; see the
+[interaction discrete-change evidence](../binary-interaction-discrete-change/README.md).
+Continuous product-term AMEs have separate
 [method evidence](../continuous-interaction/README.md), while factor
 interactions remain unsupported. This synthetic method fixture does not claim
 a textbook illustration replication.
@@ -87,8 +89,9 @@ asymptotic-normal inference and the fixed 95% interval. Current-data edits do
 not change the retained-design calculation.
 
 Expanded factor dummy columns will not qualify as the selected numeric
-predictor. Discrete changes reject models with continuous product terms;
-weights, multiway clustering and simultaneous intervals are also unsupported.
+predictor. Numeric 0/1 sources in continuous product terms are supported by the
+[separate interaction method](../binary-interaction-discrete-change/README.md);
+weights, multiway clustering and simultaneous intervals remain unsupported.
 Independent Base R references cover both links, default and explicit factor
 references, `noconstant`, numeric-code and boolean factors, plus model-based,
 robust and clustered covariance for the default text-factor design.

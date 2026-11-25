@@ -45,8 +45,8 @@ categorical columns):
 - `estat margins` — original continuous-variable derivatives, including the
   product rule for `c.x#c.z`, with delta SE/95% intervals
 - `estat margins, discrete(treated)` — average probability change for an
-  original continuous numeric 0/1 predictor, including in additive factor
-  designs without interactions
+  original numeric 0/1 source in an additive or supported continuous-product
+  design, including in mixed designs with additive factor terms
 - `estat margins, factor(region)` — average probability contrasts of retained
   levels versus the fit-time reference
 - `estat classification` — retained-sample class counts and descriptive

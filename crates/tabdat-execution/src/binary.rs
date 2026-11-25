@@ -422,46 +422,32 @@ impl Session {
     &self,
     predictor: &str,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let Some((problem, result, design_terms)) = (match &self.estimation {
-      Some(EstimationState::Logit(state)) => {
-        Some((&state.problem, &state.result, &state.design_terms))
-      }
-      Some(EstimationState::Probit(state)) => {
-        Some((&state.problem, &state.result, &state.design_terms))
-      }
+    let Some((problem, result, design_terms, interaction_source_values)) = (match &self.estimation {
+      Some(EstimationState::Logit(state)) => Some((
+        &state.problem,
+        &state.result,
+        &state.design_terms,
+        &state.interaction_source_values,
+      )),
+      Some(EstimationState::Probit(state)) => Some((
+        &state.problem,
+        &state.result,
+        &state.design_terms,
+        &state.interaction_source_values,
+      )),
       _ => None,
     }) else {
       return Err(RuntimeError::EstatMarginsFailed {
         message: "requires a prior logit or probit fit".into(),
       });
     };
-    if design_terms
-      .iter()
-      .any(|term| matches!(term, LinearDesignTerm::ContinuousInteraction { .. }))
-    {
-      return Err(RuntimeError::EstatMarginsFailed {
-        message: "discrete changes for continuous interaction models are not supported; use average marginal effects".into(),
-      });
-    }
-    let continuous_columns = binary_continuous_predictor_columns(problem, design_terms)
-      .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
-    if let Some(column) = problem
-      .predictor_names
-      .iter()
-      .position(|name| name == predictor)
-      && !continuous_columns.contains(&column)
-    {
-      return Err(RuntimeError::EstatMarginsFailed {
-        message: format!(
-          "discrete margins require an original continuous predictor; '{predictor}' is not one"
-        ),
-      });
-    }
-    let result = tabdat_stats::binary_average_discrete_change(problem, result, predictor).map_err(
-      |error| RuntimeError::EstatMarginsFailed {
+    let design =
+      binary_discrete_change_design(problem, design_terms, interaction_source_values, predictor)
+        .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
+    let result = tabdat_stats::binary_average_discrete_change_for_design(problem, result, &design)
+      .map_err(|error| RuntimeError::EstatMarginsFailed {
         message: error.to_string(),
-      },
-    )?;
+      })?;
     Ok(ExecutionResult::BinaryDiscreteChange(Box::new(result)))
   }
 
@@ -1047,6 +1033,211 @@ fn binary_factor_contrast_design(
     .ok_or_else(|| format!("factor '{variable}' is not a categorical term in the retained model"))
 }
 
+fn retain_binary_discrete_source_values(
+  retained: &mut Option<Vec<f64>>,
+  predictor: &str,
+  values: &[f64],
+) -> Result<(), String> {
+  if let Some(existing) = retained {
+    if existing != values {
+      return Err(format!(
+        "retained source values for '{predictor}' disagree across design terms"
+      ));
+    }
+  } else {
+    *retained = Some(values.to_vec());
+  }
+  Ok(())
+}
+
+fn binary_discrete_change_design(
+  problem: &tabdat_stats::EstimationProblem,
+  design_terms: &[LinearDesignTerm],
+  interaction_source_values: &[tabdat_domain::BinaryInteractionSourceValues],
+  predictor: &str,
+) -> Result<tabdat_stats::BinaryDiscreteChangeDesign, String> {
+  problem.validate().map_err(|error| error.to_string())?;
+  let observation_count = problem.observation_count();
+  let predictor_count = problem.predictor_names.len();
+  let mut from_design_rows = problem
+    .design_matrix
+    .iter()
+    .map(|row| {
+      let mut full_row = Vec::with_capacity(row.len() + usize::from(problem.include_intercept));
+      if problem.include_intercept {
+        full_row.push(1.0);
+      }
+      full_row.extend_from_slice(row);
+      full_row
+    })
+    .collect::<Vec<_>>();
+  let mut to_design_rows = from_design_rows.clone();
+  let mut source_values: Option<Vec<f64>> = None;
+  let mut selected_factor = false;
+
+  if design_terms.is_empty() {
+    if !interaction_source_values.is_empty() {
+      return Err("interaction source values have no retained design metadata".into());
+    }
+    let Some(predictor_column) = problem
+      .predictor_names
+      .iter()
+      .position(|name| name == predictor)
+    else {
+      return Err(format!(
+        "discrete change predictor '{predictor}' is not in the retained model"
+      ));
+    };
+    let values = problem
+      .design_matrix
+      .iter()
+      .map(|row| row[predictor_column])
+      .collect::<Vec<_>>();
+    retain_binary_discrete_source_values(&mut source_values, predictor, &values)?;
+    let full_column = predictor_column + usize::from(problem.include_intercept);
+    for (from, to) in from_design_rows.iter_mut().zip(&mut to_design_rows) {
+      from[full_column] = 0.0;
+      to[full_column] = 1.0;
+    }
+  } else {
+    let mut predictor_column = 0usize;
+    let mut interaction_index = 0usize;
+    for term in design_terms {
+      match term {
+        LinearDesignTerm::Continuous { name } => {
+          if problem
+            .predictor_names
+            .get(predictor_column)
+            .is_none_or(|retained_name| retained_name != name)
+          {
+            return Err("retained continuous metadata does not match the binary design".into());
+          }
+          if name == predictor {
+            let values = problem
+              .design_matrix
+              .iter()
+              .map(|row| row[predictor_column])
+              .collect::<Vec<_>>();
+            retain_binary_discrete_source_values(&mut source_values, predictor, &values)?;
+            let full_column = predictor_column + usize::from(problem.include_intercept);
+            for (from, to) in from_design_rows.iter_mut().zip(&mut to_design_rows) {
+              from[full_column] = 0.0;
+              to[full_column] = 1.0;
+            }
+          }
+          predictor_column += 1;
+        }
+        LinearDesignTerm::ContinuousInteraction { first, second } => {
+          let expected = crate::regress_design::interaction_parameter_name(first, second);
+          if problem
+            .predictor_names
+            .get(predictor_column)
+            .is_none_or(|retained_name| retained_name != &expected)
+          {
+            return Err("retained interaction metadata does not match the binary design".into());
+          }
+          let source = interaction_source_values
+            .get(interaction_index)
+            .ok_or_else(|| "retained interaction source values are incomplete".to_owned())?;
+          if source.first != *first
+            || source.second != *second
+            || source.first_values.len() != observation_count
+            || source.second_values.len() != observation_count
+            || source
+              .first_values
+              .iter()
+              .chain(&source.second_values)
+              .any(|value| !value.is_finite())
+          {
+            return Err("retained interaction source values do not match the fitted sample".into());
+          }
+          let selected_values = if first == predictor {
+            Some(source.first_values.as_slice())
+          } else if second == predictor {
+            Some(source.second_values.as_slice())
+          } else {
+            None
+          };
+          if let Some(values) = selected_values {
+            retain_binary_discrete_source_values(&mut source_values, predictor, values)?;
+            let other_values = if first == predictor {
+              &source.second_values
+            } else {
+              &source.first_values
+            };
+            let full_column = predictor_column + usize::from(problem.include_intercept);
+            for (row, other) in other_values.iter().enumerate() {
+              from_design_rows[row][full_column] = 0.0;
+              to_design_rows[row][full_column] = *other;
+            }
+          }
+          interaction_index += 1;
+          predictor_column += 1;
+        }
+        LinearDesignTerm::Factor {
+          variable,
+          reference,
+          levels,
+        } => {
+          if levels.len() < 2 {
+            return Err(format!(
+              "factor '{variable}' has fewer than two retained levels"
+            ));
+          }
+          let omitted_index = if problem.include_intercept {
+            let reference = reference.as_deref().ok_or_else(|| {
+              format!("retained factor '{variable}' is missing its intercept reference")
+            })?;
+            Some(
+              levels
+                .iter()
+                .position(|level| level.label() == reference)
+                .ok_or_else(|| {
+                  format!("retained reference for factor '{variable}' is absent from its levels")
+                })?,
+            )
+          } else {
+            if reference.is_some() {
+              return Err(format!(
+                "retained factor '{variable}' has a reference without an intercept"
+              ));
+            }
+            None
+          };
+          if variable == predictor
+            || levels.iter().any(|level| {
+              crate::regress_design::factor_parameter_name(variable, level.label()) == predictor
+            })
+          {
+            selected_factor = true;
+          }
+          predictor_column += levels.len() - usize::from(omitted_index.is_some());
+        }
+      }
+    }
+    if predictor_column != predictor_count || interaction_index != interaction_source_values.len() {
+      return Err("retained design metadata does not match the binary predictors".into());
+    }
+  }
+
+  let Some(source_values) = source_values else {
+    if selected_factor {
+      return Err(format!(
+        "discrete margins require an original continuous predictor; '{predictor}' is not one"
+      ));
+    }
+    return Err(format!(
+      "discrete change predictor '{predictor}' is not in the retained model"
+    ));
+  };
+  Ok(tabdat_stats::BinaryDiscreteChangeDesign {
+    predictor_name: predictor.to_owned(),
+    source_values,
+    from_design_rows,
+    to_design_rows,
+  })
+}
+
 fn binary_continuous_predictor_columns(
   problem: &tabdat_stats::EstimationProblem,
   design_terms: &[LinearDesignTerm],
@@ -1071,8 +1262,7 @@ fn binary_continuous_predictor_columns(
       }
       LinearDesignTerm::ContinuousInteraction { .. } => {
         return Err(
-          "discrete changes for continuous interaction models are not supported; use average marginal effects"
-            .into(),
+          "continuous column derivatives require retained interaction-source metadata".into(),
         );
       }
       LinearDesignTerm::Factor {

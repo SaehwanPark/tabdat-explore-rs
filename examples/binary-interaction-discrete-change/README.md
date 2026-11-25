@@ -1,30 +1,48 @@
-# Discrete probability changes in continuous-interaction designs
+# Discrete probability changes for binary interaction sources
 
-## Bounded contract
+`estat margins, discrete(treated)` supports a retained original numeric source
+whose fit-time values are exactly 0 and 1, even when the source appears in one
+or more continuous product terms. The source may be included as a main effect,
+occur only in product terms, or also appear beside additive factor terms. Both
+source levels must occur in the retained fit sample.
 
-Extend `estat margins, discrete(x)` after logit and probit when `x` is a
-retained original continuous input with exact 0/1 support. `x` may appear as a
-main-effect term, a source of one or more supported `c.x#c.z` products, or both.
-The fit sample must contain both values.
+For each retained row, the command sets `treated` to 0 and 1, holds all other
+source values and factor levels fixed, and reconstructs every product involving
+`treated`. It averages the fitted probability difference from 0 to 1. The delta
+gradient averages `f'(eta_1) X_1 - f'(eta_0) X_0` across rows and uses the full
+selected covariance, including cross terms for interaction coefficients.
+Inference is asymptotic normal and conditional on the retained fit design.
+Active data edits do not change fit-time sources or mutate the fitted state.
 
-For each retained estimation row, set `x` to 0 and 1 in turn, keep every other
-source value and factor level fixed, and rebuild every product involving `x`.
-The estimand is the average fitted-probability difference from 0 to 1. Delta
-uncertainty uses the full selected covariance and the gradient of both
-counterfactual design rows. The calculation uses fit-time source values after
-active-data edits and does not mutate current data or refit.
+## Independent numerical evidence
 
-Unsupported factor interactions and `##` expansion remain outside this syntax.
-Invalid source terms, values outside `{0,1}`, or a retained sample missing a
-level fail without changing the fitted state or active data.
+The contract test uses the fixed 120-row fixture from
+[`binary-discrete-change`](../binary-discrete-change/README.md). It makes `x`
+missing for group 1 before fitting, leaving 114 rows and 19 clusters. The Base R
+reference independently polishes the logit and probit score equations, builds
+model-based, independent-row robust (`N/(N-1)`) and one-way clustered (`G/(G-1)`)
+covariances, then evaluates both counterfactual designs and their full delta
+gradients. The test covers:
 
-## Verification plan
+- `x z treated c.treated#c.x c.treated#c.z`, with main effects and two products;
+- the same model plus an additive factor, which remains fixed in both
+  counterfactuals;
+- `c.treated#c.x c.treated#c.z`, where the selected source occurs only in the
+  products;
+- logit and probit under all three covariance choices;
+- active-data edits, unknown/nonbinary requests and fit-state preservation.
 
-- Compare deterministic synthetic logit and probit fits against independent
-  Base R estimates for full `x z c.x#c.z` and interaction-only designs.
-- Check point changes and full-covariance delta SEs under model-based,
-  independent-row robust and one-way clustered covariance.
-- Cover retained sample exclusions, both-level checks, unknown inputs,
-  current-data edits, product reconstruction, and failure-state preservation.
-- Keep this synthetic method evidence distinct from Cameron–Trivedi
-  illustration replication.
+The runtime test is
+[`binary_interaction_discrete_change_contract.rs`](../../crates/tabdat-runtime/tests/binary_interaction_discrete_change_contract.rs).
+It compares estimates, delta standard errors, z statistics, p-values and 95%
+interval endpoints at `3e-10` absolute tolerance. The Base R script reads the
+shared fixture and prints its reference rows:
+
+```sh
+Rscript examples/binary-interaction-discrete-change/reference.R \
+  > crates/tabdat-runtime/tests/fixtures/binary_interaction_discrete_change_reference.csv
+```
+
+Factor interactions, `##` expansion, weights and multiway clustering remain
+unsupported. This is synthetic method evidence and does not claim an exact
+Cameron–Trivedi illustration replication.

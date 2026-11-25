@@ -263,12 +263,13 @@ estimation attempt; see `help logit`, `help probit`, `help poisson` and `help pr
 
 ## Binary discrete probability changes
 
-After logit or probit without continuous interactions, run
-`estat margins, discrete(variable)` for one predictor whose values in the
-retained sample are exactly 0 and 1, with both levels present. The selected
-column must belong to an original continuous term, so the command also works
-when the model contains additive factor terms. Expanded factor dummy columns are not selectable;
-use `factor(variable)` for a retained categorical predictor.
+After logit or probit, run `estat margins, discrete(variable)` for one retained
+original numeric input whose values are exactly 0 and 1, with both levels
+present. The input may appear as a main effect, in one or more continuous
+product terms, or both. Product columns involving it are rebuilt for each
+counterfactual. It can also be used beside additive factor terms, whose levels
+stay fixed. Expanded factor dummy columns are not selectable; use
+`factor(variable)` for a retained categorical predictor.
 It reports the average fitted probability difference after setting that
 predictor to 1 versus 0 for every retained row; all other predictor values stay
 at their observed row values. The result is a finite change, not a continuous
@@ -280,14 +281,13 @@ Uncertainty is conditional on observed X, with asymptotic-normal z inference and
 a fixed 95% interval. Cluster inference assumes independent groups; the G/(G-1)
 correction does not guarantee reliable few-cluster inference. Current data edits
 do not alter the result. The command rejects an unknown predictor, a factor
-dummy, a continuous predictor with values other than 0/1, or a retained sample
-missing either level. It rejects models with continuous interactions because
-changing one input also changes its product column. It does not add
+dummy, an input with values other than 0/1, or a retained sample missing either
+level. It does not add
 factor-variable encoding for the selected contrast, multiple contrasts, factor
 interactions, weights, multilevel changes, or a causal interpretation. CLI-v1 JSON returns
 `BinaryDiscreteChangeResult` with the estimand, predictor, covariance and sample
-count. See `examples/binary-discrete-change/README.md` for the independent Base R
-reference and runnable logit/probit scripts.
+count. See `examples/binary-discrete-change/README.md` for additive evidence and
+`examples/binary-interaction-discrete-change/README.md` for interaction evidence.
 
 ## Binary factor probability contrasts
 

@@ -186,7 +186,8 @@ fn factor_margins_is_admitted_for_json_and_scripts_without_changing_bare_margins
 #[test]
 fn binary_discrete_help_describes_original_terms_in_mixed_factor_designs() {
   let estat = render_interactive_help(Some("estat")).unwrap();
-  assert!(estat.contains("original continuous term"));
+  assert!(estat.contains("original numeric input"));
+  assert!(estat.contains("product terms"));
   assert!(estat.contains("additive factor terms"));
   assert!(estat.contains("factor dummy columns are not selectable"));
 
