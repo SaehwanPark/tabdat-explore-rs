@@ -585,8 +585,8 @@ fn ivregress_discovery_describes_executable_2sls_and_clustered_gmm_limits() {
   assert!(text.contains("full\nfixed-pilot-weight cluster sandwich"));
   assert!(text.contains("instruments minus regressors degrees of freedom"));
   assert!(text.contains("2SLS post-estimation commands and stored estimates do not support GMM"));
-  assert!(text.contains("one through twelve excluded instruments"));
-  assert!(text.contains("thirteen or more excluded instruments are unsupported"));
+  assert!(text.contains("one through thirteen excluded instruments"));
+  assert!(text.contains("fourteen or more excluded instruments are unsupported"));
 
   let output = tabdat_bin()
     .args(["--json", "--help-topic", "estat"])
@@ -595,8 +595,8 @@ fn ivregress_discovery_describes_executable_2sls_and_clustered_gmm_limits() {
   assert!(output.status.success());
   let help: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
   let text = help["data"]["text"].as_str().unwrap();
-  assert!(text.contains("With two through twelve excluded instruments"));
-  assert!(text.contains("More than twelve excluded instruments"));
+  assert!(text.contains("With two through thirteen excluded instruments"));
+  assert!(text.contains("More than thirteen excluded instruments"));
 }
 
 #[test]
