@@ -5704,11 +5704,6 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     None => None,
   };
 
-  if (interval || level_supplied) && kind != PredictKind::PosteriorPredictive {
-    return Err(ParseError::new(
-      "predict interval options require posterior_predictive",
-    ));
-  }
   if level_supplied && !interval {
     return Err(ParseError::new("predict option level requires interval"));
   }
@@ -5716,11 +5711,36 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     let parsed_level = level_str
       .parse::<f64>()
       .map_err(|_| ParseError::new("predict option level expects a numeric value"))?;
-    if parsed_level <= 0.0 || parsed_level >= 100.0 {
+    if !parsed_level.is_finite() || parsed_level <= 0.0 || parsed_level >= 100.0 {
       return Err(ParseError::new(
         "predict option level must be between 0 and 100",
       ));
     }
+  }
+
+  let count_probability_kind = matches!(
+    kind,
+    PredictKind::CountPmf(_)
+      | PredictKind::CountCdf(_)
+      | PredictKind::CountPmfVariable
+      | PredictKind::CountCdfVariable
+  );
+  let count_probability_se = matches!(
+    kind,
+    PredictKind::CountPmfStandardError(_)
+      | PredictKind::CountCdfStandardError(_)
+      | PredictKind::CountPmfVariableStandardError
+      | PredictKind::CountCdfVariableStandardError
+  );
+  if interval && count_probability_se {
+    return Err(ParseError::new(
+      "predict count probability intervals cannot be combined with se",
+    ));
+  }
+  if interval && kind != PredictKind::PosteriorPredictive && !count_probability_kind {
+    return Err(ParseError::new(
+      "predict interval options require posterior_predictive or pmf()/cdf()",
+    ));
   }
 
   let std = options.iter().any(|opt| opt.name == "std");

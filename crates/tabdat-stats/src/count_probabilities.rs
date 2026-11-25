@@ -35,6 +35,13 @@ pub struct CountProbabilityTable {
   pub bins: Vec<CountProbabilityBin>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct CountPointProbabilityInterval {
+  pub estimate: f64,
+  pub lower: f64,
+  pub upper: f64,
+}
+
 fn invalid(message: &str) -> StatsError {
   StatsError::InvalidEstimation(format!("count probabilities: {message}"))
 }
@@ -144,10 +151,35 @@ fn poisson_tail(mean: f64, m: usize, prefix: &[f64]) -> Result<f64, StatsError> 
   Err(failed("Poisson survival series did not converge"))
 }
 
+// Log P(Y>=m) for the small Poisson tail. The CDF caller selects this series
+// only when the opposite tail is below one half, so its terms decrease.
+fn poisson_log_small_tail(mean: f64, m: usize) -> Result<f64, StatsError> {
+  if mean <= 0.0 || !mean.is_finite() || mean >= m as f64 + 1.0 {
+    return Err(failed(
+      "Poisson direct survival series requires a small tail",
+    ));
+  }
+  let shape = m as f64;
+  let log_prefactor = poisson_log_prefactor(mean, shape);
+  let (mut term, mut sum, mut correction) = (1.0 / shape, 1.0 / shape, 0.0);
+  for j in 1..=10000 {
+    term *= mean / (shape + j as f64);
+    add_compensated(&mut sum, &mut correction, term);
+    if term <= sum * 1e-15 {
+      let value = log_prefactor + sum.ln();
+      if value.is_finite() && value <= 0.0 {
+        return Ok(value);
+      }
+      return Err(failed("Poisson log survival is invalid"));
+    }
+  }
+  Err(failed("Poisson survival series did not converge"))
+}
+
 // P(Y>=m) = I_x(m,r), x=mu/(mu+r), r=1/alpha. Compute both log
 // coordinates, retaining a tiny 1-x even when x rounds to one. Integer m lets
 // log B(m,r) use a finite product, avoiding cancellation of large log-gammas.
-fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
+fn nb2_log_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
   let log_ratio = mean.ln() - r.ln();
   let (log_x, log_y) = (-softplus(-log_ratio), -softplus(log_ratio));
   let (mut product, mut correction) = (0.0, 0.0);
@@ -166,7 +198,11 @@ fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
   if !converged || !fraction.is_finite() || fraction <= 0.0 {
     return Err(failed("NB2 survival continued fraction did not converge"));
   }
-  let probability = (log_factor + fraction.ln() - a.ln()).exp();
+  let log_probability = log_factor + fraction.ln() - a.ln();
+  let probability = log_probability.exp();
+  if !log_probability.is_finite() {
+    return Err(failed("NB2 log survival probability is invalid"));
+  }
   if complement && probability > 0.5 {
     // The beta convergence switch alone does not prevent a near-one CDF when
     // r is small. Sum its finite NB prefix excluding p0's unit term, retaining
@@ -177,13 +213,260 @@ fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
       add_compensated(&mut sum, &mut correction, term);
       term *= (r + k as f64) / (k + 1) as f64 * x;
     }
-    return Ok(-(r * log_y + sum.ln_1p()).exp_m1());
+    let log_cdf = r * log_y + sum.ln_1p();
+    if !log_cdf.is_finite() || log_cdf > 0.0 {
+      return Err(failed("NB2 CDF complement is invalid"));
+    }
+    let log_survival = if log_cdf == 0.0 {
+      f64::NEG_INFINITY
+    } else if log_cdf > -std::f64::consts::LN_2 {
+      (-log_cdf.exp_m1()).ln()
+    } else {
+      (-log_cdf.exp()).ln_1p()
+    };
+    return Ok(log_survival);
   }
-  Ok(if complement {
-    1.0 - probability
+  let log_tail = if complement {
+    if probability == 1.0 {
+      f64::NEG_INFINITY
+    } else if probability > 0.5 {
+      (-(probability.ln()).exp_m1()).ln()
+    } else {
+      (-probability).ln_1p()
+    }
   } else {
-    probability
+    log_probability
+  };
+  if log_tail <= 0.0 {
+    Ok(log_tail)
+  } else {
+    Err(failed("NB2 log survival probability is invalid"))
+  }
+}
+
+fn nb2_tail(mean: f64, r: f64, m: usize) -> Result<f64, StatsError> {
+  Ok(nb2_log_tail(mean, r, m)?.exp())
+}
+
+fn log_one_minus_exp(log_value: f64) -> Result<f64, StatsError> {
+  if !log_value.is_finite() || log_value > 0.0 {
+    return Err(failed("log probability complement is invalid"));
+  }
+  if log_value == 0.0 {
+    return Ok(f64::NEG_INFINITY);
+  }
+  Ok(if log_value > -std::f64::consts::LN_2 {
+    (-log_value.exp_m1()).ln()
+  } else {
+    (-log_value.exp()).ln_1p()
   })
+}
+
+fn add_log_positive_compensated(
+  log_value: f64,
+  scale: &mut f64,
+  sum: &mut f64,
+  correction: &mut f64,
+) -> Result<(), StatsError> {
+  if !log_value.is_finite() {
+    return Err(failed("count CDF log-PMF term is not finite"));
+  }
+  if !scale.is_finite() || log_value > *scale {
+    if scale.is_finite() {
+      let rescale = (*scale - log_value).exp();
+      *sum *= rescale;
+      *correction *= rescale;
+    }
+    *scale = log_value;
+    add_compensated(sum, correction, 1.0);
+  } else {
+    add_compensated(sum, correction, (log_value - *scale).exp());
+  }
+  Ok(())
+}
+
+fn count_log_prefix_probability(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+) -> Result<f64, StatsError> {
+  if mean <= 0.0 || !mean.is_finite() {
+    return Err(invalid("conditional means must be finite and positive"));
+  }
+  let log_mean = mean.ln();
+  let (mut log_probability, log_probability_step) = match law {
+    CountProbabilityLaw::Poisson => (-mean, None),
+    CountProbabilityLaw::Nb2 { alpha } => {
+      let shape = 1.0 / alpha;
+      let log_shape = shape.ln();
+      let log_mu_fraction = -softplus(log_shape - log_mean);
+      (
+        -shape * softplus(log_mean - log_shape),
+        Some((shape, log_mu_fraction)),
+      )
+    }
+  };
+  let mut log_probability_correction = 0.0;
+  let (mut scale, mut sum, mut sum_correction) = (f64::NEG_INFINITY, 0.0, 0.0);
+  for k in 0..=count {
+    add_log_positive_compensated(log_probability, &mut scale, &mut sum, &mut sum_correction)?;
+    if k < count {
+      let next = (k + 1) as f64;
+      let step = if let Some((shape, log_mu_fraction)) = log_probability_step {
+        ((shape - 1.0) / next).ln_1p() + log_mu_fraction
+      } else {
+        log_mean - next.ln()
+      };
+      add_compensated(&mut log_probability, &mut log_probability_correction, step);
+    }
+  }
+  let result = scale + sum.ln();
+  if !result.is_finite() || result > 64.0 * f64::EPSILON {
+    return Err(failed("count CDF log probability is invalid"));
+  }
+  // A complete prefix can exceed one by a few rounding units only. Preserve
+  // that endpoint as log(1) so the caller selects a directly evaluated tail.
+  Ok(result.min(0.0))
+}
+
+fn count_zero_log_survival(law: CountProbabilityLaw, mean: f64) -> Result<f64, StatsError> {
+  match law {
+    CountProbabilityLaw::Poisson => Ok((-(-mean).exp_m1()).ln()),
+    CountProbabilityLaw::Nb2 { alpha } => {
+      let log_mean = mean.ln();
+      let log_alpha = alpha.ln();
+      let log_product = log_alpha + log_mean;
+      if log_product < -36.0 {
+        // The first-order log complement is log(mu); the omitted relative
+        // correction is below double precision at this cutoff.
+        return Ok(log_mean);
+      }
+      let log_a = softplus(log_product).ln() - log_alpha;
+      if log_a < -36.0 {
+        return Ok(log_a);
+      }
+      if log_a > 36.0 {
+        return Ok(0.0);
+      }
+      let a = log_a.exp();
+      Ok((-(-a).exp_m1()).ln())
+    }
+  }
+}
+
+fn count_log_probability_pair(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  cdf: bool,
+) -> Result<(f64, f64), StatsError> {
+  if !cdf {
+    let Some(log_probability) = count_log_point_probability(law, mean, count)? else {
+      return Err(invalid(
+        "zero-mean probabilities have no logit representation",
+      ));
+    };
+    let log_complement = if count == 0 {
+      count_zero_log_survival(law, mean)?
+    } else {
+      log_one_minus_exp(log_probability)?
+    };
+    if log_complement == f64::NEG_INFINITY {
+      return Err(failed("count PMF complement is not representable"));
+    }
+    return Ok((log_probability, log_complement));
+  }
+
+  let log_cdf = count_log_prefix_probability(law, mean, count)?;
+  if log_cdf <= -std::f64::consts::LN_2 {
+    return Ok((log_cdf, log_one_minus_exp(log_cdf)?));
+  }
+  let log_survival = match law {
+    CountProbabilityLaw::Poisson => poisson_log_small_tail(mean, count + 1)?,
+    CountProbabilityLaw::Nb2 { alpha } => nb2_log_tail(mean, 1.0 / alpha, count + 1)?,
+  };
+  if !log_survival.is_finite() || log_survival > -std::f64::consts::LN_2 {
+    return Err(failed("count CDF survival log probability is invalid"));
+  }
+  Ok((log_one_minus_exp(log_survival)?, log_survival))
+}
+
+fn inverse_logit(value: f64) -> f64 {
+  if value >= 0.0 {
+    1.0 / (1.0 + (-value).exp())
+  } else {
+    let exponential = value.exp();
+    exponential / (1.0 + exponential)
+  }
+}
+
+fn count_probability_interval_from_logs(
+  estimate: f64,
+  log_probability: f64,
+  log_complement: f64,
+  log_standard_error: Option<f64>,
+  level: f64,
+  quantity: &str,
+) -> Result<CountPointProbabilityInterval, StatsError> {
+  validate_count_interval_level(level)?;
+  if !estimate.is_finite() {
+    return Err(failed_for(quantity, "point estimate is not finite"));
+  }
+  let Some(log_standard_error) = log_standard_error else {
+    return Ok(CountPointProbabilityInterval {
+      estimate,
+      lower: estimate,
+      upper: estimate,
+    });
+  };
+  let logit = log_probability - log_complement;
+  let logit_standard_error = (log_standard_error - log_probability - log_complement).exp();
+  let critical = crate::normal_quantile(0.5 + level / 200.0);
+  if !logit.is_finite()
+    || !logit_standard_error.is_finite()
+    || logit_standard_error == 0.0
+    || !critical.is_finite()
+    || critical <= 0.0
+  {
+    return Err(failed_for(
+      quantity,
+      "logit interval gradient is not representable",
+    ));
+  }
+  let half_width = critical * logit_standard_error;
+  let lower_logit = logit - half_width;
+  let upper_logit = logit + half_width;
+  if !half_width.is_finite() || !lower_logit.is_finite() || !upper_logit.is_finite() {
+    return Err(failed_for(
+      quantity,
+      "logit interval endpoints are not finite",
+    ));
+  }
+  let lower = inverse_logit(lower_logit);
+  let upper = inverse_logit(upper_logit);
+  if !lower.is_finite() || !upper.is_finite() || lower < 0.0 || lower > upper || upper > 1.0 {
+    return Err(failed_for(quantity, "logit interval endpoints are invalid"));
+  }
+  Ok(CountPointProbabilityInterval {
+    estimate,
+    lower,
+    upper,
+  })
+}
+
+fn validate_count_interval_level(level: f64) -> Result<(), StatsError> {
+  if !level.is_finite() || !(0.0..100.0).contains(&level) {
+    return Err(invalid(
+      "interval level must be finite and strictly between 0 and 100",
+    ));
+  }
+  let upper_probability = 0.5 + level / 200.0;
+  if upper_probability <= 0.5 || upper_probability >= 1.0 {
+    return Err(invalid(
+      "interval level is too close to 0 or 100 to represent a finite normal critical value",
+    ));
+  }
+  Ok(())
 }
 
 /// Conditional probabilities at 0..tail_from-1 and P(Y>=tail_from).
@@ -355,12 +638,12 @@ fn count_log_point_probability(
   Ok(Some(log_p))
 }
 
-fn count_delta_standard_error(
+fn count_delta_log_standard_error(
   covariance: &[Vec<f64>],
   log_gradient_magnitudes: &[Option<f64>],
   gradient_signs: &[f64],
   quantity: &str,
-) -> Result<f64, StatsError> {
+) -> Result<Option<f64>, StatsError> {
   let parameter_count = covariance.len();
   if log_gradient_magnitudes.len() != parameter_count
     || gradient_signs.len() != parameter_count
@@ -388,7 +671,7 @@ fn count_delta_standard_error(
     .copied()
     .reduce(f64::max)
   else {
-    return Ok(0.0);
+    return Ok(None);
   };
 
   // Scaling preserves a representable delta SE even when its probability
@@ -398,7 +681,7 @@ fn count_delta_standard_error(
     .flatten()
     .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
   if max_covariance == 0.0 {
-    return Ok(0.0);
+    return Ok(None);
   }
   let log_max_covariance = max_covariance.ln();
   let scaled_gradient: Vec<_> = log_gradient_magnitudes
@@ -431,12 +714,17 @@ fn count_delta_standard_error(
       return Err(failed_for(quantity, "delta variance is negative"));
     }
   }
-  let log_standard_error = max_log_gradient + 0.5 * log_max_covariance + 0.5 * variance.ln();
-  let standard_error = log_standard_error.exp();
-  if !standard_error.is_finite() {
-    return Err(failed_for(quantity, "delta standard error is not finite"));
+  if variance == 0.0 {
+    return Ok(None);
   }
-  Ok(standard_error)
+  let log_standard_error = max_log_gradient + 0.5 * log_max_covariance + 0.5 * variance.ln();
+  if !log_standard_error.is_finite() {
+    return Err(failed_for(
+      quantity,
+      "log delta standard error is not finite",
+    ));
+  }
+  Ok(Some(log_standard_error))
 }
 
 fn add_log_signed_compensated(
@@ -549,19 +837,13 @@ fn count_nb2_cdf_log_alpha_gradient(
   Ok(Some((log_gradient_magnitude, sum.signum())))
 }
 
-/// Pointwise delta-method SE for a current-row PMF, conditional on its design
-/// and fixed offset/exposure. `design` and the square `covariance` use fitted
-/// beta order, including an intercept when fitted; NB2 appends lnalpha. A zero
-/// mean uses the installed point-mass limit and returns zero. Invalid laws,
-/// means, counts, covariance dimensions, nonfinite inputs, or a materially
-/// negative delta variance return an error.
-pub fn count_point_pmf_standard_error(
+fn count_point_pmf_log_standard_error(
   law: CountProbabilityLaw,
   mean: f64,
   count: usize,
   design: &[f64],
   covariance: &[Vec<f64>],
-) -> Result<f64, StatsError> {
+) -> Result<Option<f64>, StatsError> {
   if design.is_empty() {
     return Err(invalid(
       "PMF design must contain at least one fitted coefficient",
@@ -593,7 +875,7 @@ pub fn count_point_pmf_standard_error(
 
   let Some(log_probability) = count_log_point_probability(law, mean, count)? else {
     // The installed zero-mean point-mass limit has a zero parameter gradient.
-    return Ok(0.0);
+    return Ok(None);
   };
 
   let (eta_score, log_alpha_score) = match law {
@@ -639,22 +921,41 @@ pub fn count_point_pmf_standard_error(
     });
     gradient_signs.push(score.signum());
   }
-  count_delta_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "PMF")
+  count_delta_log_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "PMF")
 }
 
-/// Pointwise delta-method SE for a current-row CDF, conditional on its design
-/// and fixed offset/exposure. `design` and covariance use beta order, including
-/// an intercept when fitted; NB2 appends lnalpha. A zero mean uses the installed
-/// point-mass limit and returns zero. Invalid laws, means, counts, covariance
-/// dimensions, nonfinite inputs, unrepresentable gradients or a materially
+/// Pointwise delta-method SE for a current-row PMF, conditional on its design
+/// and fixed offset/exposure. `design` and the square `covariance` use fitted
+/// beta order, including an intercept when fitted; NB2 appends lnalpha. A zero
+/// mean uses the installed point-mass limit and returns zero. Invalid laws,
+/// means, counts, covariance dimensions, nonfinite inputs, or a materially
 /// negative delta variance return an error.
-pub fn count_point_cdf_standard_error(
+pub fn count_point_pmf_standard_error(
   law: CountProbabilityLaw,
   mean: f64,
   count: usize,
   design: &[f64],
   covariance: &[Vec<f64>],
 ) -> Result<f64, StatsError> {
+  let Some(log_standard_error) =
+    count_point_pmf_log_standard_error(law, mean, count, design, covariance)?
+  else {
+    return Ok(0.0);
+  };
+  let standard_error = log_standard_error.exp();
+  if !standard_error.is_finite() {
+    return Err(failed_for("PMF", "delta standard error is not finite"));
+  }
+  Ok(standard_error)
+}
+
+fn count_point_cdf_log_standard_error(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+) -> Result<Option<f64>, StatsError> {
   if design.is_empty() {
     return Err(invalid(
       "CDF design must contain at least one fitted coefficient",
@@ -681,7 +982,7 @@ pub fn count_point_cdf_standard_error(
   }
 
   let Some(log_probability) = count_log_point_probability(law, mean, count)? else {
-    return Ok(0.0);
+    return Ok(None);
   };
   let log_mean = mean.ln();
   let (log_eta_gradient, log_alpha_gradient) = match law {
@@ -722,7 +1023,97 @@ pub fn count_point_cdf_standard_error(
     log_gradient_magnitudes.push(None);
     gradient_signs.push(0.0);
   }
-  count_delta_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "CDF")
+  count_delta_log_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "CDF")
+}
+
+/// Pointwise delta-method SE for a current-row CDF, conditional on its design
+/// and fixed offset/exposure. `design` and covariance use beta order, including
+/// an intercept when fitted; NB2 appends lnalpha. A zero mean uses the installed
+/// point-mass limit and returns zero. Invalid laws, means, counts, covariance
+/// dimensions, nonfinite inputs, unrepresentable gradients or a materially
+/// negative delta variance return an error.
+pub fn count_point_cdf_standard_error(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+) -> Result<f64, StatsError> {
+  let Some(log_standard_error) =
+    count_point_cdf_log_standard_error(law, mean, count, design, covariance)?
+  else {
+    return Ok(0.0);
+  };
+  let standard_error = log_standard_error.exp();
+  if !standard_error.is_finite() {
+    return Err(failed_for("CDF", "delta standard error is not finite"));
+  }
+  Ok(standard_error)
+}
+
+fn count_point_probability_interval(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+  level: f64,
+  cdf: bool,
+) -> Result<CountPointProbabilityInterval, StatsError> {
+  validate_count_interval_level(level)?;
+  let (pmf, cumulative) = count_point_probabilities(law, mean, count)?;
+  let estimate = if cdf { cumulative } else { pmf };
+  let log_standard_error = if cdf {
+    count_point_cdf_log_standard_error(law, mean, count, design, covariance)?
+  } else {
+    count_point_pmf_log_standard_error(law, mean, count, design, covariance)?
+  };
+  if mean == 0.0 || log_standard_error.is_none() {
+    return Ok(CountPointProbabilityInterval {
+      estimate,
+      lower: estimate,
+      upper: estimate,
+    });
+  }
+  let (log_probability, log_complement) = count_log_probability_pair(law, mean, count, cdf)?;
+  count_probability_interval_from_logs(
+    estimate,
+    log_probability,
+    log_complement,
+    log_standard_error,
+    level,
+    if cdf { "CDF" } else { "PMF" },
+  )
+}
+
+/// Pointwise two-sided logit-Wald interval for a current-row PMF. The interval
+/// uses asymptotic normal critical values, the selected covariance, fixed
+/// predictors/offsets/exposure, and NB2's joint beta/lnalpha block. Zero means
+/// and zero delta variance return the point estimate at both endpoints. The
+/// level must be finite and strictly between 0 and 100.
+pub fn count_point_pmf_interval(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+  level: f64,
+) -> Result<CountPointProbabilityInterval, StatsError> {
+  count_point_probability_interval(law, mean, count, design, covariance, level, false)
+}
+
+/// Pointwise two-sided logit-Wald interval for a current-row CDF, using the
+/// selected covariance and asymptotic normal critical values. The endpoints
+/// remain in [0,1]; levels and zero-variance limits match the PMF interval.
+pub fn count_point_cdf_interval(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+  level: f64,
+) -> Result<CountPointProbabilityInterval, StatsError> {
+  count_point_probability_interval(law, mean, count, design, covariance, level, true)
 }
 
 /// Descriptive frequencies: average each individual's conditional probability,

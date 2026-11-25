@@ -774,7 +774,7 @@ fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | cdf(k) | cdf(k) se]"
+    "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval]"
   );
   assert_eq!(
     envelope["data"]["options"],
@@ -791,7 +791,9 @@ fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit
       {"name": "n", "required": false},
       {"name": "pmf", "required": false},
       {"name": "se", "required": false},
-      {"name": "cdf", "required": false}
+      {"name": "cdf", "required": false},
+      {"name": "interval", "required": false},
+      {"name": "level", "required": false}
     ])
   );
   let output = tabdat_bin()
@@ -807,7 +809,7 @@ fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit
   assert!(topic.contains("Explicit Heckman two-step: xb (latent X beta)"));
   assert!(topic.contains("Poisson: n (conditional mean exp(xb))"));
   assert!(topic.contains("Bare predict remains xb"));
-  assert!(topic.contains("Not installed: binary/Poisson residuals"));
+  assert!(topic.contains("Not installed for the other families: binary/Poisson residuals"));
   assert!(topic.contains("`probabilities` is not an accepted option spelling"));
   for source in [
     "predict fitted",

@@ -70,6 +70,104 @@ impl DuckDbBackend {
     }
     result
   }
+
+  /// Append an estimate and its two interval bounds in one staged publication.
+  pub fn add_numeric_prediction_interval_columns(
+    &mut self,
+    dataset: &DatasetInfo,
+    targets: [&str; 3],
+    values: [&[Option<f64>]; 3],
+  ) -> Result<DatasetInfo, DataError> {
+    let [target, lower_target, upper_target] = targets;
+    let [estimates, lower, upper] = values;
+    if targets.iter().enumerate().any(|(i, name)| {
+      targets[..i]
+        .iter()
+        .any(|prior| name.eq_ignore_ascii_case(prior))
+    }) || dataset.columns.iter().any(|column| {
+      targets
+        .iter()
+        .any(|name| column.name.eq_ignore_ascii_case(name))
+    }) || estimates.len() != usize::try_from(dataset.row_count).unwrap_or(usize::MAX)
+      || lower.len() != estimates.len()
+      || upper.len() != estimates.len()
+      || estimates
+        .iter()
+        .chain(lower)
+        .chain(upper)
+        .flatten()
+        .any(|value| !value.is_finite())
+      || self.table_row_count(ACTIVE_TABLE)? != dataset.row_count
+    {
+      return Err(DataError);
+    }
+    self.drop_staging();
+    let result = (|| {
+      self
+        .connection
+        .execute_batch(&format!(
+          "DROP TABLE IF EXISTS {PREDICTIONS_TABLE}; CREATE TEMP TABLE {PREDICTIONS_TABLE}(estimate DOUBLE, lower_bound DOUBLE, upper_bound DOUBLE)"
+        ))
+        .map_err(|_| DataError)?;
+      {
+        let mut appender = self
+          .connection
+          .appender(PREDICTIONS_TABLE)
+          .map_err(|_| DataError)?;
+        for row in 0..estimates.len() {
+          appender
+            .append_row(params![&estimates[row], &lower[row], &upper[row]])
+            .map_err(|_| DataError)?;
+        }
+        appender.flush().map_err(|_| DataError)?;
+      }
+      self
+        .connection
+        .execute_batch(&format!(
+          "CREATE TEMP TABLE {STAGING_TABLE} AS SELECT source.*, predictions.estimate AS {}, predictions.lower_bound AS {}, predictions.upper_bound AS {} FROM {ACTIVE_TABLE} AS source POSITIONAL JOIN {PREDICTIONS_TABLE} AS predictions",
+          quote_identifier(target),
+          quote_identifier(lower_target),
+          quote_identifier(upper_target),
+        ))
+        .map_err(|_| DataError)?;
+      let columns = self.staged_columns()?;
+      let expected_names = dataset
+        .columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .chain(targets.iter().copied());
+      if columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .ne(expected_names)
+        || columns.len() < 3
+        || columns[columns.len() - 3..]
+          .iter()
+          .any(|column| column.data_type != "DOUBLE")
+      {
+        return Err(DataError);
+      }
+      let row_count = self.staged_row_count()?;
+      if row_count != dataset.row_count {
+        return Err(DataError);
+      }
+      self.publish_staging()?;
+      Ok(DatasetInfo {
+        source: dataset.source.clone(),
+        row_count,
+        columns,
+        execution_mode: dataset.execution_mode,
+        lazy_engine: dataset.lazy_engine,
+      })
+    })();
+    let _ = self
+      .connection
+      .execute_batch(&format!("DROP TABLE IF EXISTS {PREDICTIONS_TABLE}"));
+    if result.is_err() {
+      self.drop_staging();
+    }
+    result
+  }
 }
 
 #[cfg(test)]
@@ -163,5 +261,126 @@ mod tests {
       .unwrap();
     assert_eq!(next.row_count, 0);
     assert_eq!(next.columns.last().unwrap().data_type, "DOUBLE");
+  }
+
+  #[test]
+  fn interval_columns_publish_together_and_preserve_order_and_nulls() {
+    let mut backend = DuckDbBackend::new().unwrap();
+    backend
+      .connection
+      .execute_batch(&format!(
+        "CREATE TEMP TABLE {ACTIVE_TABLE}(id UBIGINT, x DOUBLE); INSERT INTO {ACTIVE_TABLE} VALUES (9,1.0),(3,NULL),(7,2.0)"
+      ))
+      .unwrap();
+    let dataset = metadata(&backend);
+    let original = backend
+      .run_sql(&format!("SELECT * FROM {ACTIVE_TABLE}"))
+      .unwrap();
+    let mut stale = dataset.clone();
+    stale.row_count += 1;
+    for (target, lower, upper, estimates, lowers, uppers, metadata) in [
+      (
+        "x",
+        "lower",
+        "upper",
+        vec![Some(1.0); 3],
+        vec![Some(0.5); 3],
+        vec![Some(1.5); 3],
+        dataset.clone(),
+      ),
+      (
+        "p",
+        "P",
+        "p_upper",
+        vec![Some(1.0); 3],
+        vec![Some(0.5); 3],
+        vec![Some(1.5); 3],
+        dataset.clone(),
+      ),
+      (
+        "p",
+        "p_lower",
+        "p_upper",
+        vec![Some(1.0); 3],
+        vec![Some(0.5); 3],
+        vec![Some(1.5); 3],
+        stale.clone(),
+      ),
+      (
+        "p",
+        "p_lower",
+        "p_upper",
+        vec![Some(1.0); 3],
+        vec![Some(f64::INFINITY); 3],
+        vec![Some(1.5); 3],
+        dataset.clone(),
+      ),
+    ] {
+      assert!(
+        backend
+          .add_numeric_prediction_interval_columns(
+            &metadata,
+            [target, lower, upper],
+            [&estimates, &lowers, &uppers],
+          )
+          .is_err()
+      );
+      assert_eq!(
+        backend
+          .run_sql(&format!("SELECT * FROM {ACTIVE_TABLE}"))
+          .unwrap(),
+        original
+      );
+    }
+    let added = backend
+      .add_numeric_prediction_interval_columns(
+        &dataset,
+        ["p", "p_lower", "p_upper"],
+        [
+          &[Some(0.7), None, Some(0.9)],
+          &[Some(0.4), None, Some(0.8)],
+          &[Some(0.9), None, Some(0.95)],
+        ],
+      )
+      .unwrap();
+    assert_eq!(added.row_count, 3);
+    assert_eq!(
+      added
+        .columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .collect::<Vec<_>>(),
+      ["id", "x", "p", "p_lower", "p_upper"]
+    );
+    let (columns, rows) = backend
+      .run_sql(&format!("SELECT * FROM {ACTIVE_TABLE}"))
+      .unwrap();
+    assert_eq!(columns, ["id", "x", "p", "p_lower", "p_upper"]);
+    assert_eq!(
+      rows,
+      vec![
+        vec![
+          CellValue::UnsignedInteger(9),
+          CellValue::Float(1.0),
+          CellValue::Float(0.7),
+          CellValue::Float(0.4),
+          CellValue::Float(0.9),
+        ],
+        vec![
+          CellValue::UnsignedInteger(3),
+          CellValue::Null,
+          CellValue::Null,
+          CellValue::Null,
+          CellValue::Null,
+        ],
+        vec![
+          CellValue::UnsignedInteger(7),
+          CellValue::Float(2.0),
+          CellValue::Float(0.9),
+          CellValue::Float(0.8),
+          CellValue::Float(0.95),
+        ],
+      ]
+    );
   }
 }

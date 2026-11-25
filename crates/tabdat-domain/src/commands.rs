@@ -1138,7 +1138,7 @@ pub struct PredictCommand {
   pub count_cutoff_variable: Option<String>,
   /// Whether interval bounds are requested.
   pub interval: bool,
-  /// Credible interval level, retained as string spelling.
+  /// Confidence/credible interval level, retained as string spelling.
   pub level: String,
   /// Whether standard deviation of posterior predictive draws is requested.
   pub std: bool,
