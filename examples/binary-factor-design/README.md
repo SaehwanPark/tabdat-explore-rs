@@ -30,6 +30,24 @@ Requests for unsupported factor margins must fail clearly; existing continuous
 binary margins remain available for continuous-only fits. This synthetic method
 fixture does not claim a textbook illustration replication.
 
+## Planned factor probability contrasts
+
+`estat margins, factor(region)` will report one retained-sample average
+probability contrast for each non-baseline level of the selected factor. With an
+intercept, the baseline is the fit-time omitted reference; with `noconstant`, it
+is the first sorted retained level. Other continuous and factor terms stay at
+their observed values in each retained row. The average is over the original
+estimation sample, not current data or a covariate-mean profile.
+
+For level `l` against baseline `b`, the estimand is
+`N^-1 sum_i [F(x_i, l) - F(x_i, b)]`. Its gradient is the corresponding average
+difference in link-density-weighted design rows. The full retained model-based,
+robust or one-way clustered covariance supplies a delta-method SE, two-sided
+normal z test and 95% interval. These are conditional-on-observed-X
+probability contrasts, not causal effects or interaction effects. Missing or
+unseen factor levels, factors absent from the retained fit, weighted/multiway
+inference and simultaneous intervals remain outside this slice.
+
 ## Independent validation
 
 `Rscript reference.R` uses R 4.6.2 and seed 84523 to generate
