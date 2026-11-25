@@ -68,6 +68,18 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
       Some("cutoff"),
       "80",
     ),
+    (
+      "predict future_count, n interval",
+      PredictKind::MeanCount,
+      None,
+      "95.0",
+    ),
+    (
+      "predict future_count, n interval level(90)",
+      PredictKind::MeanCount,
+      None,
+      "90",
+    ),
   ] {
     let Command::Predict { command } = parse_command(text).unwrap() else {
       panic!("predict")
@@ -93,6 +105,8 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     "pmf(0) level(95)",
     "cdf(0) interval level(NaN)",
     "cdf(0) interval level(100)",
+    "n interval level(100)",
+    "xb interval",
     "pmf(0) std",
     "cdf(0) saving(out)",
     "se",

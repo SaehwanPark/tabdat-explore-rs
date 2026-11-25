@@ -144,13 +144,19 @@ fn poisson_exposure_matches_equivalent_offset_and_uses_current_exposure_only_for
 
   run(&mut session, "predict original_mean, n");
   run(&mut session, "predict original_xb, xb");
+  run(&mut session, "predict original_interval, n interval");
   let predicted = rows(&mut session);
   for (index, row) in predicted.iter().take(36).enumerate() {
     close(number(&row[8]), exposure_fit.fitted_means[index]);
     close(number(&row[9]), number(&row[8]).ln());
+    close(number(&row[10]), number(&row[8]));
+    assert!(number(&row[11]).fract() == 0.0 && number(&row[12]).fract() == 0.0);
   }
   assert_eq!(predicted[36][8], CellValue::Null);
   assert_eq!(predicted[37][8], CellValue::Null);
+  assert_eq!(predicted[36][10], CellValue::Null);
+  assert_eq!(predicted[36][11], CellValue::Null);
+  assert_eq!(predicted[36][12], CellValue::Null);
   assert!(number(&predicted[38][8]).is_finite());
   assert!(number(&predicted[39][8]).is_finite());
 
@@ -158,7 +164,7 @@ fn poisson_exposure_matches_equivalent_offset_and_uses_current_exposure_only_for
   run(&mut session, "predict doubled_mean, n");
   let changed = rows(&mut session);
   for row in changed.iter().take(36) {
-    close(number(&row[10]), number(&row[8]) * 2.0);
+    close(number(&row[13]), number(&row[8]) * 2.0);
   }
   assert_eq!(run(&mut session, "estat margins"), retained_effects);
 
@@ -244,15 +250,18 @@ fn nb2_exposure_preserves_joint_inference_and_rejects_unsupported_countgof() {
   let retained_effects = run(&mut session, "estat margins");
   run(&mut session, "predict original_mean, n");
   run(&mut session, "predict original_xb, xb");
+  run(&mut session, "predict original_interval, n interval");
   let original = rows(&mut session);
   for (index, row) in original.iter().enumerate() {
     close(number(&row[8]), exposure_fit.fitted_means[index]);
     close(number(&row[9]), number(&row[8]).ln());
+    close(number(&row[10]), number(&row[8]));
+    assert!(number(&row[11]).fract() == 0.0 && number(&row[12]).fract() == 0.0);
   }
   run(&mut session, "replace exposure = exposure * 2");
   run(&mut session, "predict doubled_mean, n");
   for row in rows(&mut session) {
-    close(number(&row[10]), number(&row[8]) * 2.0);
+    close(number(&row[13]), number(&row[8]) * 2.0);
   }
   assert_eq!(run(&mut session, "estat margins"), retained_effects);
 }

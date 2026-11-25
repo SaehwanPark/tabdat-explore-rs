@@ -5,6 +5,7 @@ generate cutoff = id - 1
 predict poisson_p0, pmf(0)
 predict poisson_p0_se, pmf(0) se
 predict poisson_p0_interval, pmf(0) interval
+predict poisson_future, n interval level(90)
 predict poisson_cdf2, cdf(2)
 predict poisson_cdf2_se, cdf(2) se
 predict poisson_cdf2_interval, cdf(2) interval level(90)
@@ -25,6 +26,7 @@ predict nb2_p0, pmf(0)
 predict nb2_p2, pmf(2)
 predict nb2_p2_se, pmf(2) se
 predict nb2_p2_interval, pmf(2) interval
+predict nb2_future, n interval
 predict nb2_cdf2, cdf(2)
 predict nb2_cdf2_se, cdf(2) se
 predict nb2_cdf2_interval, cdf(2) interval

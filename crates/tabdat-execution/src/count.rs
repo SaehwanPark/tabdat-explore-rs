@@ -334,7 +334,7 @@ impl Session {
         | PredictKind::CountCdf(_)
         | PredictKind::CountPmfVariable
         | PredictKind::CountCdfVariable
-    );
+    ) || command.kind == PredictKind::MeanCount;
     if !matches!(
       command.kind,
       PredictKind::Xb
@@ -398,11 +398,21 @@ impl Session {
       if !level.is_finite() || !(0.0..100.0).contains(&level) {
         return Err(family.error("predict interval level must be between 0 and 100"));
       }
-      let upper_probability = 0.5 + level / 200.0;
-      if upper_probability <= 0.5 || upper_probability >= 1.0 {
-        return Err(family.error(
-          "predict interval level is too close to 0 or 100 to represent a finite normal critical value",
-        ));
+      if command.kind == PredictKind::MeanCount {
+        let tail_probability = (100.0 - level) / 200.0;
+        if tail_probability <= 0.0 || tail_probability >= 0.5 {
+          return Err(
+            family
+              .error("predict interval level is too close to 0 or 100 to represent equal tails"),
+          );
+        }
+      } else {
+        let upper_probability = 0.5 + level / 200.0;
+        if upper_probability <= 0.5 || upper_probability >= 1.0 {
+          return Err(family.error(
+            "predict interval level is too close to 0 or 100 to represent a finite normal critical value",
+          ));
+        }
       }
       level
     } else {
@@ -671,6 +681,97 @@ impl Session {
         backend.add_numeric_prediction_column(&dataset, &command.target_variable, &estimates)
       }
       .map_err(|_| RuntimeError::PredictFailed)?;
+      let next = self.sync_active_dataset(added)?;
+      return Ok(ExecutionResult::Prediction(PredictionResult {
+        dataset: next,
+      }));
+    }
+    if command.kind == PredictKind::MeanCount && command.interval {
+      let columns = if selected_columns.is_empty() {
+        "1".to_owned()
+      } else {
+        selected_columns
+          .iter()
+          .map(|name| quote_identifier(name))
+          .collect::<Vec<_>>()
+          .join(", ")
+      };
+      let mut predictive_work = 0usize;
+      let mut values = Vec::new();
+      self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::PredictFailed)?
+        .visit_rows(
+          &format!("SELECT {columns} FROM {ACTIVE_TABLE}"),
+          |row| {
+            let mut xb = prediction.intercept.unwrap_or(0.0);
+            for (index, coefficient) in coefficients.iter().enumerate() {
+              let Some(value) = cell_to_f64(
+                row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read predictor"))?,
+              )
+              .filter(|value| value.is_finite()) else {
+                values.push((None, None, None));
+                return Ok(());
+              };
+              xb += coefficient * value;
+            }
+            if let Some(index) = exposure_index {
+              let exposure = cell_to_f64(
+                row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read exposure"))?,
+              )
+              .filter(|value| value.is_finite() && *value > 0.0);
+              let Some(exposure) = exposure else {
+                values.push((None, None, None));
+                return Ok(());
+              };
+              xb += exposure.ln();
+            }
+            let mean = xb.exp();
+            if !xb.is_finite() || !mean.is_finite() {
+              values.push((None, None, None));
+              return Ok(());
+            }
+            let interval = tabdat_stats::count_point_predictive_interval(law, mean, interval_level)
+              .map_err(|error| family.error(error.to_string()))?;
+            predictive_work = predictive_work
+              .checked_add(interval.work_terms)
+              .ok_or_else(|| family.error("predictive count interval work overflowed"))?;
+            if predictive_work > MAX_COUNT_POINT_EXPANSION_WORK {
+              return Err(family.error(format!(
+                "predictive count interval work exceeds {MAX_COUNT_POINT_EXPANSION_WORK} CDF-prefix terms; reduce the current row count or fitted means"
+              )));
+            }
+            values.push((
+              Some(mean),
+              Some(interval.lower as f64),
+              Some(interval.upper as f64),
+            ));
+            Ok(())
+          },
+          |message| family.error(message),
+        )?;
+      let estimates: Vec<_> = values.iter().map(|row| row.0).collect();
+      let lower: Vec<_> = values.iter().map(|row| row.1).collect();
+      let upper: Vec<_> = values.iter().map(|row| row.2).collect();
+      let added = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::PredictFailed)?
+        .add_numeric_prediction_interval_columns(
+          &dataset,
+          [
+            command.target_variable.as_str(),
+            lower_target.as_str(),
+            upper_target.as_str(),
+          ],
+          [&estimates, &lower, &upper],
+        )
+        .map_err(|_| RuntimeError::PredictFailed)?;
       let next = self.sync_active_dataset(added)?;
       return Ok(ExecutionResult::Prediction(PredictionResult {
         dataset: next,

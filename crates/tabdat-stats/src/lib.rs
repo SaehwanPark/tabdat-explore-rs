@@ -121,10 +121,11 @@ pub use count_goodness_of_fit::{
   MAX_NB2_COUNT_GOF_TAIL, nb2_count_goodness_of_fit,
 };
 pub use count_probabilities::{
-  CountPointProbabilityInterval, CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable,
-  MAX_COUNT_POINT_CUTOFF, MAX_COUNT_PROBABILITY_TAIL, count_bin_probabilities,
-  count_point_cdf_interval, count_point_cdf_standard_error, count_point_pmf_interval,
-  count_point_pmf_standard_error, count_point_probabilities, count_probability_table,
+  CountPointProbabilityInterval, CountPredictiveInterval, CountProbabilityBin, CountProbabilityLaw,
+  CountProbabilityTable, MAX_COUNT_POINT_CUTOFF, MAX_COUNT_PROBABILITY_TAIL,
+  count_bin_probabilities, count_point_cdf_interval, count_point_cdf_standard_error,
+  count_point_pmf_interval, count_point_pmf_standard_error, count_point_predictive_interval,
+  count_point_probabilities, count_probability_table,
 };
 pub use diagnostics::variance_inflation_factors;
 pub use distributions::{normal_cdf, normal_pdf, normal_quantile};
