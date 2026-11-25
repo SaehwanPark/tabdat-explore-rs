@@ -23,9 +23,11 @@ Acceptance cases:
  stages beside its output and publishes only after complete validation.
 
 No estimator/refit or production R/Python dependency, general panel declaration,
-`xtsum`, wide-schema summaries, historical float32/DTA/label restoration, named
-comparison or chapter completion is claimed. Those inventory portions remain
-required. Full years1970..1979 deliberately replace source two-digit70..79;
+wide-schema summaries, historical float32/DTA/label restoration, named
+comparison or chapter completion is claimed. The separate bounded
+[P-XTSUM workflow](xtsum.md) consumes the full-decade export; it does not add a
+general `xtsum` command. Those inventory portions remain required. Full
+years1970..1979 deliberately replace source two-digit70..79;
 LPAT uses LN(0.5) only at zero PAT; RANDD uses DOUBLE EXP(LOGR); lagging requires
 complete unique ten-year keys so calendar and row offsets coincide.
 
@@ -89,5 +91,6 @@ converter branch does not alter existing output semantics.
 Scoped `cargo fmt -p tabdat-explore-rs -- --check`,
 `cargo clippy --locked -p tabdat-explore-rs --test mma23_decade_preparation_workflow -- -D warnings`,
 `git diff --check` and the final author review pass. SPEC, roadmap, coverage
-ledger and the Chapter23 inventory link this bounded evidence without claiming
-`xtsum`, historical DTA/labels, named reports or chapter completion.
+ledger and the Chapter23 inventory link this bounded evidence and the separate
+source-specific `xtsum` audit without claiming historical DTA/labels, named
+reports or chapter completion.
