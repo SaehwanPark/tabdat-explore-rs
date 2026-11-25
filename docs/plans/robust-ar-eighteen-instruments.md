@@ -29,7 +29,16 @@ q>=19 and other endogenous/covariance dimensions remain unsupported.
 
 - [x] Scope and verification plan recorded.
 - [x] Open draft PR before substantive implementation.
-- [ ] Implement q=18 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Implement q=18 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
 - [ ] Final PR review and merge.
+
+Verification note: the two generated data files and Base R reference CSV match
+the checked-in fixtures byte-for-byte. The q=18 statistics reference test passes
+all four design/covariance combinations; the 36-root/19-component boundary,
+runtime retained-fit, q=19 rejection, and CLI/JSON/text workflows pass. The
+statistics, execution, reporting and runtime package suites pass; 59 affected
+root integration tests pass. Strict Clippy passes for the affected packages,
+binary and CLI targets. `cargo fmt --all --check` and `git diff --check` pass.
+One existing manual source probe remains intentionally ignored.
