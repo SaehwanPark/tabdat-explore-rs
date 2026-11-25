@@ -149,6 +149,8 @@ pub enum Command {
   XtData { command: XtDataCommand },
   /// Report overall, between-panel, and within-panel descriptive statistics.
   XtSum { command: XtSumCommand },
+  /// Describe explicit-key panel structure and participation patterns.
+  XtDes { command: XtDesCommand },
   /// Fit a bounded instrumental-variables model (2SLS is executable).
   IvRegress { command: IvRegressCommand },
   /// Read-only seeded IID or whole-cluster pairs-bootstrap OLS report on current complete cases.
@@ -536,6 +538,17 @@ pub struct XtSumCommand {
   pub variables: Vec<String>,
   /// The numeric or string panel identifier.
   pub id_variable: String,
+}
+
+/// A bounded explicit panel/time structure request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XtDesCommand {
+  /// Numeric or string panel identifier.
+  pub id_variable: String,
+  /// Numeric ordered time key.
+  pub time_variable: String,
+  /// Maximum number of common patterns returned.
+  pub patterns: usize,
 }
 
 /// The estimator forms accepted by the parser-only `regress` command.

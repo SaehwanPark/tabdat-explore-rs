@@ -65,7 +65,7 @@ session context, exports, or files on success or failure.
 ## Result and acceptance evidence
 
 Emit a stable `XtDesResult` containing the key names, observation/panel/period
-counts, typed minimum and maximum time values, duplicate and missing-period
+counts, typed minimum and maximum panel and time values, duplicate and missing-period
 counts, balance flag, the two panel-size distributions, the full sorted period
 vector, total distinct-pattern count, requested/omitted pattern counts, and up
 to the requested number of pattern rows. Each pattern row includes its count
@@ -75,7 +75,10 @@ counts are integers. Text output names the key variables and reports the same
 counts, distributions and ordered pattern rows.
 
 Before release, compare all returned fields on a small uneven synthetic panel
-against an independent Base R reference. Include a numeric and string panel ID,
+against the independent Base R control in
+[`reference.R`](../../tests/fixtures/xtdes/reference.R) on the
+[uneven fixture](../../tests/fixtures/xtdes/uneven.csv). Include numeric and
+string panel IDs,
 numeric nonconsecutive time values, an absent global-grid cell, duplicate
 panel-time rows, tied pattern frequencies, truncation, an empty dataset, and
 invalid/missing/nonfinite keys. Compare Chapter 21's complete checksum-pinned

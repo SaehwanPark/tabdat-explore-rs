@@ -51,6 +51,8 @@ const CORE_COMMANDS: &[&str] = &[
   "test",
   "ttest",
   "use",
+  "xtdes",
+  "xtdescribe",
   "xtsum",
 ];
 
@@ -288,6 +290,8 @@ impl Completer for ShellHelper {
       }
       if [
         "summarize",
+        "xtdes",
+        "xtdescribe",
         "xtsum",
         "codebook",
         "missing",

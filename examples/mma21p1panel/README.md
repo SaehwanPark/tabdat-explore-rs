@@ -149,7 +149,9 @@ it stops if the cohort or ten-year balance changes. The ten generated year
 indicators are numeric `TINYINT` 0/1 columns, with the original `source_row`
 removed from the author-style inventory after the provenance check.
 
-The `xtsum` rows use pooled sample moments for overall, sample moments of
+The reusable `xtdes` result reports the balanced structure and all-one
+ten-period pattern. It uses observed time keys and makes no calendar-step
+inference. The `xtsum` rows use pooled sample moments for overall, sample moments of
 person means for between, and `x_it - xbar_i + overall_mean` for within. Thus
 the within min/max remain on the outcome scale. The Base R reference reports
 the native raw-double calculations and a separate float32-rounded path for
@@ -175,9 +177,9 @@ python3 examples/mma21p1panel/check_data_summary.py \
   "$work/mma21p1panfeandre.do" "$work/mma21p1panfeandre.txt"
 ```
 
-This is a source-specific workflow, not persistent panel state, a general
-`xtdes` command, Stata DTA type/label parity, or the author's `save mom.dta`
-behavior.
+This is a source-specific workflow layered on reusable, read-only `xtdes` and
+`xtsum` commands. It does not establish persistent panel state, Stata DTA
+type/label parity, or the author's `save mom.dta` behavior.
 
 ## POLS/FD inference and interpretation
 

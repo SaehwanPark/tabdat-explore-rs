@@ -7,8 +7,8 @@ program (lines 80–96): year frequencies, the 18-variable inventory and summary
 the balanced panel structure, and overall/between/within summaries for
 `lnhr lnwg kids ageh agesq disab`. This adds an executable source workflow; it
 uses the reusable [`xtsum` command](../../docs/commands/xtsum.md) for those six
-variables, but does not add persistent panel state or claim a general `xtdes`
-command.
+variables and the explicit-key [`xtdes` command](../../docs/commands/xtdes.md)
+for panel structure. Neither command adds persistent panel state.
 
 ## Input contract
 
@@ -26,9 +26,10 @@ summaries, not literal DTA metadata or `save mom.dta` behavior.
 
 ## Acceptance evidence
 
-- Compare all year counts, source and generated-variable summaries, panel count,
-  time span, per-person observation-count distribution and six `xtsum` rows
-  against a Base R reference from the pinned original source.
+- Compare all year counts, source and generated-variable summaries, `xtdes`
+  panel/time ranges, duplicate/missing-period counts, balance, type-7 panel-size
+  distributions, participation patterns and six `xtsum` rows against a Base R
+  reference from the pinned original source.
 - Require the native rows to use the stable `XtSumResult` fields and preserve
   the requested six-variable order; compare N/n/T and every reported moment or
   extremum against Base R, then compare the float32 path with the author log.
@@ -38,6 +39,9 @@ summaries, not literal DTA metadata or `save mom.dta` behavior.
 - Exercise the actual script on the complete source and small fixtures for
   duplicate keys, missing years, extra years, nonfinite analysis fields and
   wrong row counts. Fail before exporting partial summary artifacts.
+- Test the general `xtdes` runtime on uneven numeric/string panels, duplicates,
+  nonconsecutive times, pattern ties/truncation, empty data and invalid keys;
+  verify text/JSON output and failure-state preservation.
 - Preserve the existing panel preparation and model scripts unchanged.
 
 Independent source hashes and current inventory status are in

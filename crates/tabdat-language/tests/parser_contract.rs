@@ -7,8 +7,8 @@ use tabdat_language::{
   LogitCommand, LowessCommand, PanelAction, PanelCommand, ProbitCommand, RecodeInput,
   RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
   ReshapeCommand, ReshapeDirection, RowLimit, ScatterCommand, SettingName, SortKey,
-  TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand,
-  XtRegCommand, XtRegEstimator, XtSumCommand, parse_command,
+  TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtDesCommand,
+  XtLogitCommand, XtRegCommand, XtRegEstimator, XtSumCommand, parse_command,
 };
 
 #[test]
@@ -446,6 +446,87 @@ fn xtsum_rejects_missing_or_ambiguous_panel_options_and_filters() {
     (
       "xtsum wage if year > 2000, i(id)",
       "xtsum expects syntax: xtsum [varlist], i(panelvar)",
+    ),
+  ];
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtdes_parses_explicit_keys_options_and_alias() {
+  assert_eq!(
+    parse_command("xtdes, i(firm) t(year)").unwrap(),
+    Command::XtDes {
+      command: XtDesCommand {
+        id_variable: "firm".to_owned(),
+        time_variable: "year".to_owned(),
+        patterns: 9,
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtdescribe, i(`firm id`) t(period) patterns(12)").unwrap(),
+    Command::XtDes {
+      command: XtDesCommand {
+        id_variable: "firm id".to_owned(),
+        time_variable: "period".to_owned(),
+        patterns: 12,
+      },
+    }
+  );
+}
+
+#[test]
+fn xtdes_rejects_missing_or_ambiguous_keys_and_unbounded_options() {
+  let cases = [
+    (
+      "xtdes",
+      "xtdes expects syntax: xtdes, i(panelvar) t(timevar) [patterns(#)]",
+    ),
+    (
+      "xtdes, t(year)",
+      "xtdes expects exactly one i(panelvar) option",
+    ),
+    (
+      "xtdes, i(id)",
+      "xtdes expects exactly one t(timevar) option",
+    ),
+    (
+      "xtdes, i(id group) t(year)",
+      "xtdes expects exactly one i(panelvar) option",
+    ),
+    (
+      "xtdes, i(id) i(group) t(year)",
+      "xtdes option i may only be supplied once",
+    ),
+    (
+      "xtdes, i(id) t(year) t(month)",
+      "xtdes option t may only be supplied once",
+    ),
+    (
+      "xtdes, i(id) t(year) patterns(101)",
+      "xtdes patterns() must be an integer from 1 through 100",
+    ),
+    (
+      "xtdes, i(id) t(year) patterns(9.0)",
+      "xtdes patterns() must be an integer from 1 through 100",
+    ),
+    (
+      "xtdes, i(id) t(year) patterns(2) patterns(3)",
+      "xtdes option patterns may only be supplied once",
+    ),
+    (
+      "xtdes if keep == 1, i(id) t(year)",
+      "xtdes expects syntax: xtdes, i(panelvar) t(timevar) [patterns(#)]",
+    ),
+    (
+      "xtdes, i(id) t(year) width",
+      "xtdes unsupported option: width",
     ),
   ];
   for (input, expected) in cases {

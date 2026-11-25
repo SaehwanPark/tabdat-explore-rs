@@ -183,6 +183,26 @@ pub enum RuntimeError {
   XtSumNoNumericColumns,
   /// DuckDB could not produce or own one panel summary row.
   XtSumFailed { variable: String },
+  /// The panel structure request names an absent panel identifier.
+  XtDesUnknownPanelVariable { variable: String },
+  /// The panel identifier is not numeric or string data.
+  XtDesPanelIdentifierType { variable: String },
+  /// The panel identifier contains a missing or nonfinite value.
+  XtDesInvalidPanelIdentifier { variable: String },
+  /// The panel structure request names an absent time key.
+  XtDesUnknownTimeVariable { variable: String },
+  /// The time key is not numeric data.
+  XtDesTimeVariableType { variable: String },
+  /// The time key contains a missing or nonfinite value.
+  XtDesInvalidTimeValue { variable: String },
+  /// DuckDB could not validate the panel or time key.
+  XtDesKeyCheckFailed,
+  /// The observed time grid exceeds the bounded result limit.
+  XtDesTooManyPeriods { limit: usize },
+  /// The requested number of participation patterns is outside the public bound.
+  XtDesInvalidPatternLimit,
+  /// DuckDB could not produce the panel structure result.
+  XtDesFailed,
   /// The codebook request named variables absent from the active schema.
   CodebookUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce or own one codebook row.
@@ -757,6 +777,32 @@ impl fmt::Display for RuntimeError {
       }
       Self::XtSumNoNumericColumns => formatter.write_str("xtsum found no numeric columns"),
       Self::XtSumFailed { variable } => write!(formatter, "xtsum failed for variable: {variable}"),
+      Self::XtDesUnknownPanelVariable { variable } => {
+        write!(formatter, "xtdes unknown panel variable: {variable}")
+      }
+      Self::XtDesPanelIdentifierType { variable } => {
+        write!(formatter, "xtdes panel identifier must be numeric or string: {variable}")
+      }
+      Self::XtDesInvalidPanelIdentifier { variable } => {
+        write!(formatter, "xtdes panel identifier contains missing or nonfinite values: {variable}")
+      }
+      Self::XtDesUnknownTimeVariable { variable } => {
+        write!(formatter, "xtdes unknown time variable: {variable}")
+      }
+      Self::XtDesTimeVariableType { variable } => {
+        write!(formatter, "xtdes time variable must be numeric: {variable}")
+      }
+      Self::XtDesInvalidTimeValue { variable } => {
+        write!(formatter, "xtdes time variable contains missing or nonfinite values: {variable}")
+      }
+      Self::XtDesKeyCheckFailed => formatter.write_str("xtdes failed to validate panel/time keys"),
+      Self::XtDesTooManyPeriods { limit } => {
+        write!(formatter, "xtdes supports at most {limit} observed time values")
+      }
+      Self::XtDesInvalidPatternLimit => {
+        formatter.write_str("xtdes patterns must be an integer from 1 through 100")
+      }
+      Self::XtDesFailed => formatter.write_str("xtdes failed to describe panel structure"),
       Self::CodebookUnknownVariable { variables } => {
         write!(
           formatter,

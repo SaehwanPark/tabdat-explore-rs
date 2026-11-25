@@ -43,6 +43,7 @@ mod streg;
 mod tobit;
 mod transforms;
 mod truncreg;
+mod xtdes;
 
 struct AffineCombination {
   offset: f64,
@@ -158,6 +159,7 @@ impl Session {
         self.execute_fixed_effects(&command)
       }
       Command::XtSum { command } => self.execute_xtsum(command),
+      Command::XtDes { command } => self.execute_xtdes(command),
       Command::XtReg { command } if command.id_variable.is_some() => {
         self.execute_random_effects(&command)
       }

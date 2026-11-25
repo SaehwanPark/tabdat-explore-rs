@@ -42,20 +42,41 @@ write.csv(summary_table(d_author),file.path(out,"author_float32_summary.csv"),ro
 
 ids <- sort(unique(d$id))
 years <- sort(unique(d$year))
-people <- data.frame(id=ids,observations=integer(length(ids)),first_year=integer(length(ids)),
-                     last_year=integer(length(ids)),pattern=character(length(ids)))
+pair_counts <- table(factor(d$id,levels=ids),factor(d$year,levels=years))
+row_counts <- rowSums(pair_counts)
+period_counts <- rowSums(pair_counts>0)
+people <- data.frame(id=ids,observations=as.integer(row_counts),periods=as.integer(period_counts),
+                     first_year=integer(length(ids)),last_year=integer(length(ids)),
+                     pattern=character(length(ids)))
 for (j in seq_along(ids)) {
   y <- sort(d$year[d$id==ids[[j]]])
-  people$observations[[j]] <- length(y)
   people$first_year[[j]] <- min(y)
   people$last_year[[j]] <- max(y)
-  people$pattern[[j]] <- paste(ifelse(years %in% y,"1","0"),collapse="")
+  people$pattern[[j]] <- paste(as.integer(pair_counts[j,]),collapse=",")
 }
 delta <- unlist(lapply(split(d$year,d$id),function(x) diff(sort(x))),use.names=FALSE)
+probabilities <- c(.05,.25,.50,.75,.95)
+observation_quantiles <- quantile(people$observations,probabilities,type=7,names=FALSE)
+period_quantiles <- quantile(people$periods,probabilities,type=7,names=FALSE)
 structure <- data.frame(observations=nrow(d),people=length(ids),first_id=min(ids),last_id=max(ids),
                         first_year=min(d$year),last_year=max(d$year),min_T=min(people$observations),
                         mean_T=mean(people$observations),max_T=max(people$observations),
-                        min_delta=min(delta),max_delta=max(delta))
+                        min_periods=min(people$periods),max_periods=max(people$periods),
+                        min_delta=min(delta),max_delta=max(delta),
+                        observation_count=nrow(d),panel_count=length(ids),panel_min=min(ids),
+                        panel_max=max(ids),period_count=length(years),time_min=min(years),
+                        time_max=max(years),duplicate_key_pairs=sum(pair_counts>1),
+                        extra_pair_observations=sum(pmax(pair_counts-1,0)),
+                        missing_panel_periods=sum(length(years)-period_counts),
+                        balanced=all(pair_counts==1),
+                        observations_p5=observation_quantiles[[1]],
+                        observations_p25=observation_quantiles[[2]],
+                        observations_p50=observation_quantiles[[3]],
+                        observations_p75=observation_quantiles[[4]],
+                        observations_p95=observation_quantiles[[5]],
+                        periods_p5=period_quantiles[[1]],periods_p25=period_quantiles[[2]],
+                        periods_p50=period_quantiles[[3]],periods_p75=period_quantiles[[4]],
+                        periods_p95=period_quantiles[[5]])
 write.csv(structure,file.path(out,"panel_structure.csv"),row.names=FALSE)
 
 freq <- aggregate(id~observations+pattern,people,length)

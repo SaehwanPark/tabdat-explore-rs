@@ -21,6 +21,24 @@ pub struct TabulateCount {
   pub count: u64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct XtDesKeySummary {
+  pub observation_count: u64,
+  pub panel_count: u64,
+  pub panel_min: Option<CellValue>,
+  pub panel_max: Option<CellValue>,
+  pub duplicate_key_pairs: u64,
+  pub extra_pair_observations: u64,
+  pub time_values: Vec<CellValue>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct XtDesPairCount {
+  pub panel_index: u64,
+  pub period_index: u64,
+  pub observations: u64,
+}
+
 pub struct LinearPrediction<'a> {
   pub target_variable: &'a str,
   pub predictor_names: &'a [String],

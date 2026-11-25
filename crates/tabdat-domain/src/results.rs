@@ -158,6 +158,55 @@ pub struct XtSumResult {
   pub rows: Vec<XtSumRow>,
 }
 
+/// Type-7 distribution of per-panel row or period counts.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XtDesCountDistribution {
+  pub minimum: Option<u64>,
+  pub p5: Option<f64>,
+  pub p25: Option<f64>,
+  pub p50: Option<f64>,
+  pub p75: Option<f64>,
+  pub p95: Option<f64>,
+  pub maximum: Option<u64>,
+}
+
+/// One observed panel participation pattern over the global observed time grid.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XtDesPatternRow {
+  /// Row multiplicity at each returned `time_values` element; zero means absent.
+  pub counts_by_period: Vec<u64>,
+  pub panel_count: u64,
+  pub percent: f64,
+  pub cumulative_percent: f64,
+  pub periods_observed: u64,
+  pub observations_per_panel: u64,
+}
+
+/// Read-only explicit-key panel structure and common participation patterns.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XtDesResult {
+  pub id_variable: String,
+  pub time_variable: String,
+  pub observation_count: u64,
+  pub panel_count: u64,
+  pub panel_min: Option<CellValue>,
+  pub panel_max: Option<CellValue>,
+  pub period_count: u64,
+  pub time_min: Option<CellValue>,
+  pub time_max: Option<CellValue>,
+  pub duplicate_key_pairs: u64,
+  pub extra_pair_observations: u64,
+  pub missing_panel_periods: u64,
+  pub balanced: Option<bool>,
+  pub observations_per_panel: XtDesCountDistribution,
+  pub periods_per_panel: XtDesCountDistribution,
+  pub time_values: Vec<CellValue>,
+  pub distinct_pattern_count: u64,
+  pub requested_patterns: usize,
+  pub omitted_pattern_count: u64,
+  pub patterns: Vec<XtDesPatternRow>,
+}
+
 /// Fixed percentiles reported by the bounded finite-sample detail workflow.
 pub const SUMMARY_PERCENTILES: [u8; 9] = [1, 5, 10, 25, 50, 75, 90, 95, 99];
 
@@ -779,6 +828,8 @@ pub enum ExecutionResult {
   SummarizeDetail(SummarizeDetailResult),
   /// Overall, between-panel, and within-panel descriptive statistics.
   XtSum(XtSumResult),
+  /// Explicit-key panel structure and participation pattern counts.
+  XtDes(XtDesResult),
   /// Profiles selected columns in the active dataset.
   Codebook(CodebookResult),
   /// Reports SQL-NULL missingness for selected columns.

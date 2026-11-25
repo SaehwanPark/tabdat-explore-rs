@@ -652,7 +652,28 @@ fn data_summary_script_reports_complete_panel_and_rejects_changed_cohorts() {
     .filter(|event| event["result_type"] == "TableResult")
     .map(|event| &event["data"])
     .collect();
-  assert_eq!(tables.len(), 3);
+  assert_eq!(tables.len(), 1);
+  let xtdes = events
+    .iter()
+    .find(|event| event["result_type"] == "XtDesResult")
+    .unwrap();
+  assert_eq!(xtdes["data"]["observation_count"], 5320);
+  assert_eq!(xtdes["data"]["panel_count"], 532);
+  assert_eq!(xtdes["data"]["period_count"], 10);
+  assert_eq!(xtdes["data"]["panel_min"], 1);
+  assert_eq!(xtdes["data"]["panel_max"], 532);
+  assert_eq!(xtdes["data"]["time_min"], 1979);
+  assert_eq!(xtdes["data"]["time_max"], 1988);
+  assert_eq!(xtdes["data"]["balanced"], true);
+  assert_eq!(xtdes["data"]["distinct_pattern_count"], 1);
+  assert_eq!(xtdes["data"]["patterns"][0]["panel_count"], 532);
+  assert_eq!(
+    xtdes["data"]["patterns"][0]["counts_by_period"]
+      .as_array()
+      .unwrap()
+      .len(),
+    10
+  );
   let xtsum = events
     .iter()
     .find(|event| event["result_type"] == "XtSumResult")
@@ -664,15 +685,6 @@ fn data_summary_script_reports_complete_panel_and_rejects_changed_cohorts() {
   assert_eq!(xtsum["data"]["rows"][0]["between_n"], 532);
   assert_eq!(xtsum["data"]["rows"][0]["within_n"], 5320);
   assert_eq!(xtsum["data"]["rows"][0]["mean_t"], 10.0);
-  let structure = tables
-    .iter()
-    .find(|table| table["headers"][0] == "observations")
-    .unwrap();
-  assert_eq!(structure["rows"][0][0], 5320);
-  assert_eq!(structure["rows"][0][1], 532);
-  assert_eq!(structure["rows"][0][6], 10);
-  assert_eq!(structure["rows"][0][9], 1.0);
-  assert_eq!(structure["rows"][0][10], 1.0);
   assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), csv);
 
   let mut variants = Vec::new();

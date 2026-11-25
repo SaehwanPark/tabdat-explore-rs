@@ -133,6 +133,7 @@ impl Command {
       | Self::Reshape { .. }
       | Self::XtData { .. }
       | Self::XtSum { .. }
+      | Self::XtDes { .. }
       | Self::Collapse { .. }
       | Self::Rename { .. }
       | Self::Count

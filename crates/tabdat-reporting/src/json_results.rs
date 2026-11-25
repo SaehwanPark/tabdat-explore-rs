@@ -46,7 +46,7 @@ fn add_count_cluster_metadata(
 /// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
   match command {
-    Command::XtSum { .. } => true,
+    Command::XtSum { .. } | Command::XtDes { .. } => true,
     Command::Heckman { command } => command.twostep,
     Command::TabulateQuery {
       command,
@@ -622,6 +622,38 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         })).collect::<Vec<_>>()
       }),
       "XtSumResult",
+    ),
+    ExecutionResult::XtDes(result) => (
+      json!({
+        "id_variable": result.id_variable,
+        "time_variable": result.time_variable,
+        "observation_count": result.observation_count,
+        "panel_count": result.panel_count,
+        "panel_min": result.panel_min.as_ref().map(cell_value_data).unwrap_or(Value::Null),
+        "panel_max": result.panel_max.as_ref().map(cell_value_data).unwrap_or(Value::Null),
+        "period_count": result.period_count,
+        "time_min": result.time_min.as_ref().map(cell_value_data).unwrap_or(Value::Null),
+        "time_max": result.time_max.as_ref().map(cell_value_data).unwrap_or(Value::Null),
+        "duplicate_key_pairs": result.duplicate_key_pairs,
+        "extra_pair_observations": result.extra_pair_observations,
+        "missing_panel_periods": result.missing_panel_periods,
+        "balanced": result.balanced,
+        "observations_per_panel": result.observations_per_panel,
+        "periods_per_panel": result.periods_per_panel,
+        "time_values": result.time_values.iter().map(cell_value_data).collect::<Vec<_>>(),
+        "distinct_pattern_count": result.distinct_pattern_count,
+        "requested_patterns": result.requested_patterns,
+        "omitted_pattern_count": result.omitted_pattern_count,
+        "patterns": result.patterns.iter().map(|pattern| json!({
+          "counts_by_period": pattern.counts_by_period,
+          "panel_count": pattern.panel_count,
+          "percent": pattern.percent,
+          "cumulative_percent": pattern.cumulative_percent,
+          "periods_observed": pattern.periods_observed,
+          "observations_per_panel": pattern.observations_per_panel,
+        })).collect::<Vec<_>>(),
+      }),
+      "XtDesResult",
     ),
     ExecutionResult::SummarizeDetail(result) => (
       json!({
@@ -1980,6 +2012,69 @@ mod tests {
     assert_eq!(value["data"]["rows"][0]["within_n"], 2);
     assert_eq!(value["data"]["rows"][0]["between_sd"], Value::Null);
     assert_eq!(value["data"]["rows"][0]["mean_t"], 2.0);
+  }
+
+  #[test]
+  fn xtdes_json_envelope_preserves_key_types_patterns_and_empty_fields() {
+    let result = ExecutionResult::XtDes(tabdat_domain::XtDesResult {
+      id_variable: "firm".into(),
+      time_variable: "year".into(),
+      observation_count: 3,
+      panel_count: 2,
+      panel_min: Some(CellValue::Text("A".to_owned())),
+      panel_max: Some(CellValue::Text("B".to_owned())),
+      period_count: 2,
+      time_min: Some(CellValue::SignedInteger(2000)),
+      time_max: Some(CellValue::SignedInteger(2002)),
+      duplicate_key_pairs: 1,
+      extra_pair_observations: 1,
+      missing_panel_periods: 1,
+      balanced: Some(false),
+      observations_per_panel: tabdat_domain::XtDesCountDistribution {
+        minimum: Some(1),
+        p5: Some(1.05),
+        p25: Some(1.25),
+        p50: Some(1.5),
+        p75: Some(1.75),
+        p95: Some(1.95),
+        maximum: Some(2),
+      },
+      periods_per_panel: tabdat_domain::XtDesCountDistribution {
+        minimum: Some(1),
+        p5: Some(1.0),
+        p25: Some(1.0),
+        p50: Some(1.0),
+        p75: Some(1.0),
+        p95: Some(1.0),
+        maximum: Some(1),
+      },
+      time_values: vec![
+        CellValue::SignedInteger(2000),
+        CellValue::SignedInteger(2002),
+      ],
+      distinct_pattern_count: 2,
+      requested_patterns: 9,
+      omitted_pattern_count: 0,
+      patterns: vec![tabdat_domain::XtDesPatternRow {
+        counts_by_period: vec![2, 0],
+        panel_count: 1,
+        percent: 50.0,
+        cumulative_percent: 50.0,
+        periods_observed: 1,
+        observations_per_panel: 2,
+      }],
+    });
+    let value: Value = serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(value["result_type"], "XtDesResult");
+    assert_eq!(value["data"]["time_values"], json!([2000, 2002]));
+    assert_eq!(value["data"]["balanced"], false);
+    assert_eq!(
+      value["data"]["patterns"][0]["counts_by_period"],
+      json!([2, 0])
+    );
+    assert_eq!(value["data"]["time_min"], 2000);
+    assert_eq!(value["data"]["panel_min"], "A");
+    assert_eq!(value["data"]["periods_per_panel"]["p50"], 1.0);
   }
 
   #[test]
