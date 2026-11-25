@@ -90,12 +90,14 @@ Convergence and supported limits:
   exact 0/1 values and both levels, including in mixed designs; expanded factor
   dummy columns are not selectable. See `help estat` for effect estimands and
   inference.
-- Only one-way clustering is supported. Weighted/survey logit, prediction
-  intervals and `lincom` are not installed. `test` supports general linear
-  restrictions on retained logit coefficients with an asymptotic Wald
-  chi-square reference; see `help test`. Normal coefficient inference and (for
-  model-based fits only) the overall LR test are reported directly by `logit`;
-  do not substitute linear t/F inference.
+- Only one-way clustering is supported. Weighted/survey logit and prediction
+  intervals are not installed. `lincom` combines retained linear-index
+  coefficients with the selected covariance and asymptotic normal inference;
+  it does not report odds ratios or probability effects. `test` supports
+  general linear restrictions on retained logit coefficients with an
+  asymptotic Wald chi-square reference; see `help test`. Normal coefficient
+  inference and, for model-based fits only, the overall LR test are reported
+  directly by `logit`; do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryLogitResult`; continuous `estat margins` returns
   `LogitMarginalEffectsResult`, `discrete()` returns

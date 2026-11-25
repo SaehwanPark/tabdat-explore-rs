@@ -1285,7 +1285,15 @@ panel likelihood is supplied.
   8e-12 in W and 4e-12 relative in the upper-tail probability. See the
   [runnable test and evidence](../../examples/mma14p1binary/wald-test.md).
   Runtime checks cover retained-fit reuse after data edits and state-preserving
-  unknown/singular failures. General binary `lincom`, finite-sample or few-cluster
+  unknown/singular failures. General binary `lincom` evaluates affine
+  combinations of retained linear-index coefficients with the selected
+  covariance and asymptotic normal inference. On the synthetic 240-row factor
+  fixture (237 complete cases), an independent Base R 4.6.2 reference covers
+  slope/offset, factor-dummy and intercept/slope combinations for both links
+  under model-based, row-robust and one-way cluster covariance (18 comparisons).
+  Runtime/CLI contracts cover retained factor names, state-preserving failures
+  and null residual degrees of freedom. This is linear-index inference, not
+  odds-ratio or probability-scale inference. Finite-sample or few-cluster
   inference and other specification tests remain unsupported. Grouped
   Hosmer–Lemeshow calibration is separately bounded to unweighted model-based
   logit/probit fits, with exact-probability ties kept together, actual-group

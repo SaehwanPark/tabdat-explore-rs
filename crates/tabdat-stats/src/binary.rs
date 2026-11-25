@@ -197,6 +197,41 @@ pub fn binary_wald_test(
   crate::post_estimation::wald_chi_square_test(&parameters, &result.covariance, r_matrix, r_vector)
 }
 
+/// Evaluate an affine combination of retained logit or probit coefficients.
+///
+/// Uses the selected model-based, row-robust or one-way clustered covariance
+/// and an asymptotic standard-normal reference. Factor dummy coefficients are
+/// ordinary retained mean coefficients and may be named directly.
+pub fn binary_linear_combination(
+  result: &BinaryMleResult,
+  weights: &[f64],
+  offset: f64,
+  confidence_level: f64,
+) -> Result<crate::NormalLinearCombinationInferenceResult, StatsError> {
+  let coefficient_names = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.name.clone())
+    .collect::<Vec<_>>();
+  crate::post_estimation::validate_mean_coefficient_names(
+    &coefficient_names,
+    &result.predictor_names,
+    result.include_intercept,
+  )?;
+  let parameters = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  crate::post_estimation::linear_combination_normal_inference(
+    &parameters,
+    &result.covariance,
+    weights,
+    offset,
+    confidence_level,
+  )
+}
+
 /// Test grouped calibration on the retained model-based binary estimation sample.
 ///
 /// The requested quantiles are formed over ordered fitted probabilities. Rows

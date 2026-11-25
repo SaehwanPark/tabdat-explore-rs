@@ -92,7 +92,8 @@ default text-factor design.
 
 `Rscript reference.R` uses R 4.6.2 and seed 84523 to generate
 `binary_factor_data.csv` plus independent fit, covariance, prediction, summary,
-factor-contrast, continuous-marginal-effect and discrete-change references.
+factor-contrast, continuous-marginal-effect, discrete-change and
+binary-linear-combination references.
 The fixture has 240 rows; IDs 5, 12 and 18 are excluded from fitting for
 missing region, x and y respectively, leaving N=237 with 110 events.
 Current-row prediction does not require y, so ID 18 still receives a
@@ -118,6 +119,15 @@ to score norm below 1e-13. Probit covariance is independently computed as
 inverse observed information with R's `pnorm`, `dnorm` and matrix operations;
 Base R `vcov(glm)` uses Fisher/IRLS information instead.
 
+The `lincom` reference compares slope-plus-offset, factor-dummy and
+intercept-plus-slope combinations for both links under model-based, row-robust
+and one-way cluster covariance. Its inference uses the selected coefficient
+covariance and an asymptotic normal reference with no residual degrees of
+freedom. Estimates, SEs, z statistics and intervals use 2e-8 absolute
+tolerance; p-values use 1e-8 relative tolerance. The commands refer to the
+fitted linear index; probability-scale effects remain separate `estat margins`
+estimands.
+
 Coefficient, standard-error, covariance, likelihood and prediction comparisons
 use absolute tolerance 2e-8. The runtime and CLI contracts also cover missing
 factor/continuous/outcome rows, complete-row nonbinary outcomes, default and
@@ -125,14 +135,16 @@ explicit references, `noconstant`, robust/cluster fits, unseen current-data
 levels returning NULL, prediction after data edits, retained Wald/GOF use,
 factor metadata in named estimates, JSON/text script execution, continuous
 marginal effects and discrete changes in mixed designs, average factor
-probability contrasts, factor-dummy rejection and results retained across
-current-data edits. A complete row with y outside {0,1}, an absent
-explicit reference and a factor-margin request for an absent term fail clearly;
+probability contrasts, factor-dummy `lincom`, selected-covariance linear
+combinations, state-preserving unknown/nonlinear `lincom` failures, zero-SE
+behavior and results retained across current-data edits. A complete row with y
+outside {0,1}, an absent explicit reference and a factor-margin request for an
+absent term fail clearly;
 failed fits clear stale estimation state. Interactions remain unsupported.
 
 Run the executable workflows from this directory with
 `tabdat-explore-rs --json -f logit.td` or `tabdat-explore-rs --json -f probit.td`;
 use `--text` for terminal reports. The scripts include grouped GOF, continuous
-and factor probability effects, current-row `xb`/`pr` predictions and named
-estimate reports. These synthetic method contracts do not claim a
-Cameron–Trivedi illustration replication.
+and factor probability effects, affine linear-index combinations, current-row
+`xb`/`pr` predictions and named estimate reports. These synthetic method
+contracts do not claim a Cameron–Trivedi illustration replication.

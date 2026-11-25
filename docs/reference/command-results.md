@@ -448,8 +448,10 @@ inference fields as coefficients, excluding the intercept). It averages
 covariance through the delta gradient, **not** sampling uncertainty in the
 covariate distribution. Current-data changes do not redefine the estimand or
 rescan/refit the model. These are not discrete changes or interaction chain
-rules. `lincom` after logit remains unsupported. `test` uses the binary Wald
-chi-square contract above rather than linear Student-t/F inference.
+rules. `lincom` uses the retained binary covariance for affine combinations on
+the linear index, with normal z inference and no residual degrees of freedom;
+it does not produce odds ratios or probability effects. `test` uses the binary
+Wald chi-square contract above rather than linear Student-t/F inference.
 
 After an additive factor design, the result includes only original continuous
 predictor terms; expanded factor dummy columns are not reported as derivatives.

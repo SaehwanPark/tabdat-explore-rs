@@ -16,7 +16,7 @@ impl Fixture {
     .unwrap();
     fs::write(
       dir.path().join("analysis.td"),
-      "use binary_factor_data.csv\nlogit y x i.region\nestat margins\nestat gof, group(10)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
+      "use binary_factor_data.csv\nlogit y x i.region\nlincom x + region_North - region_West + 0.5\nestat margins\nestat gof, group(10)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
     )
     .unwrap();
     Self(dir)
@@ -53,6 +53,32 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   assert_eq!(fit["data"]["event_count"], 110);
   assert_eq!(fit["data"]["predictors"][1], "region_North");
   assert_eq!(fit["data"]["predictors"][2], "region_West");
+
+  let lincom = rows
+    .iter()
+    .find(|row| row["result_type"] == "LincomResult")
+    .expect("binary linear combination");
+  assert_eq!(lincom["data"]["df_residual"], Value::Null);
+  assert_eq!(lincom["data"]["ci_level"], 95.0);
+  assert!(
+    lincom["data"]["label"]
+      .as_str()
+      .unwrap()
+      .contains("region_North")
+  );
+  assert!(
+    lincom["data"]["label"]
+      .as_str()
+      .unwrap()
+      .contains("region_West")
+  );
+  assert!(
+    lincom["data"]["standard_error"]
+      .as_f64()
+      .unwrap()
+      .is_finite()
+  );
+  assert!(lincom["data"]["statistic"].as_f64().unwrap().is_finite());
 
   let gof = rows
     .iter()
@@ -109,6 +135,8 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   assert!(text.contains("Logit average factor probability contrasts"));
   assert!(text.contains("region: North vs East"));
   assert!(text.contains("Hosmer-Lemeshow grouped goodness-of-fit test"));
+  assert!(text.contains("Linear combination:"));
+  assert!(text.contains("asymptotic standard-normal reference; residual df = NA"));
 }
 
 #[test]
