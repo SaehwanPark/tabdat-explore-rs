@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 use tabdat_stats::{
-  EstimationProblem, EstimationSample, fit_nb2, fit_nb2_with_offset, nb2_average_marginal_effects,
+  EstimationProblem, EstimationSample, fit_nb2, fit_nb2_with_exposure, fit_nb2_with_offset,
+  nb2_average_marginal_effects,
 };
 
 fn problem(design: &str, clustered: bool) -> EstimationProblem {
@@ -37,8 +38,8 @@ fn offsets() -> Vec<f64> {
 }
 
 #[test]
-fn joint_offset_ml_covariance_null_dispersion_and_effects_match_independent_r() {
-  // R4.6.1/MASS7.3.65, joint observed information verified by differentiation
+fn joint_offset_and_exposure_ml_covariance_null_and_effects_match_independent_r() {
+  // R4.6.2/MASS7.3.66, joint observed information verified by differentiation
   // of dnbinom and its analytic score. Absolute 1e-9 for parameter quantities
   // and accumulated totals; relative 1e-9 for probability tails.
   let rows: Vec<Vec<_>> = include_str!("fixtures/nb2_offset_reference.csv")
@@ -46,81 +47,109 @@ fn joint_offset_ml_covariance_null_dispersion_and_effects_match_independent_r() 
     .skip(1)
     .map(|line| line.split(',').collect())
     .collect();
-  assert_eq!(rows.len(), 1094);
+  assert_eq!(rows.len(), 2188);
   let offsets = offsets();
-  for design in ["multiple", "noconstant", "intercept"] {
-    for covariance in ["model", "robust", "cluster"] {
-      let p = problem(design, covariance == "cluster");
-      let fit = fit_nb2_with_offset(
-        &p,
-        &offsets,
-        Some("log_time"),
-        covariance == "robust",
-        (covariance == "cluster").then_some("person"),
-      )
-      .unwrap();
-      assert_eq!(fit.offset_variable.as_deref(), Some("log_time"));
-      assert!(fit.max_abs_scaled_score <= 1e-10 && fit.max_abs_scaled_newton_step <= 1e-10);
-      assert_eq!(fit.df_residual, 36 - p.parameter_count() - 1);
-      let effects = nb2_average_marginal_effects(&p, &fit).unwrap();
-      assert_eq!(effects.offset_variable, fit.offset_variable);
-      let j = serde_json::to_value(&fit).unwrap();
-      let e = serde_json::to_value(&effects).unwrap();
-      let case = format!("{design}_{covariance}");
-      for row in rows.iter().filter(|r| r[0] == case) {
-        let (quantity, i, k) = (
-          row[1],
-          row[2].parse::<usize>().unwrap(),
-          row[3].parse::<usize>().unwrap(),
-        );
-        let actual: Value = if let Some(field) = quantity.strip_prefix("coefficient_") {
-          j["coefficients"][i][field].clone()
-        } else if let Some(field) = quantity.strip_prefix("effect_") {
-          e["effects"][i][field].clone()
-        } else if let Some(field) = quantity.strip_prefix("dispersion_test_") {
-          j["dispersion_test"][field].clone()
-        } else if j["dispersion"].get(quantity).is_some() {
-          j["dispersion"][quantity].clone()
+  let exposures = offsets
+    .iter()
+    .map(|offset| offset.exp())
+    .collect::<Vec<_>>();
+  for source in ["offset", "exposure"] {
+    for design in ["multiple", "noconstant", "intercept"] {
+      for covariance in ["model", "robust", "cluster"] {
+        let p = problem(design, covariance == "cluster");
+        let fit = if source == "exposure" {
+          fit_nb2_with_exposure(
+            &p,
+            &exposures,
+            "time",
+            covariance == "robust",
+            (covariance == "cluster").then_some("person"),
+          )
         } else {
-          match quantity {
-            "covariance" => j["covariance"][i][k].clone(),
-            "wald_statistic" => j["omnibus_wald"]["statistic"].clone(),
-            "wald_p_value" => j["omnibus_wald"]["p_value"].clone(),
-            "mean" => j["fitted_means"][i].clone(),
-            "xb" => {
-              let shift = usize::from(p.include_intercept);
-              json!(
-                offsets[i]
-                  + p.design_matrix[i]
+          fit_nb2_with_offset(
+            &p,
+            &offsets,
+            Some("log_time"),
+            covariance == "robust",
+            (covariance == "cluster").then_some("person"),
+          )
+        }
+        .unwrap();
+        assert_eq!(fit.offset_variable.is_some(), source == "offset");
+        assert_eq!(
+          fit.exposure_variable.as_deref(),
+          (source == "exposure").then_some("time")
+        );
+        assert!(fit.max_abs_scaled_score <= 1e-10 && fit.max_abs_scaled_newton_step <= 1e-10);
+        assert_eq!(fit.df_residual, 36 - p.parameter_count() - 1);
+        let effects = nb2_average_marginal_effects(&p, &fit).unwrap();
+        assert_eq!(effects.offset_variable, fit.offset_variable);
+        assert_eq!(effects.exposure_variable, fit.exposure_variable);
+        let j = serde_json::to_value(&fit).unwrap();
+        let e = serde_json::to_value(&effects).unwrap();
+        let case = if source == "exposure" {
+          format!("{design}_exposure_{covariance}")
+        } else {
+          format!("{design}_{covariance}")
+        };
+        for row in rows.iter().filter(|r| r[0] == case) {
+          let (quantity, i, k) = (
+            row[1],
+            row[2].parse::<usize>().unwrap(),
+            row[3].parse::<usize>().unwrap(),
+          );
+          let actual: Value = if let Some(field) = quantity.strip_prefix("coefficient_") {
+            j["coefficients"][i][field].clone()
+          } else if let Some(field) = quantity.strip_prefix("effect_") {
+            e["effects"][i][field].clone()
+          } else if let Some(field) = quantity.strip_prefix("dispersion_test_") {
+            j["dispersion_test"][field].clone()
+          } else if j["dispersion"].get(quantity).is_some() {
+            j["dispersion"][quantity].clone()
+          } else {
+            match quantity {
+              "covariance" => j["covariance"][i][k].clone(),
+              "wald_statistic" => j["omnibus_wald"]["statistic"].clone(),
+              "wald_p_value" => j["omnibus_wald"]["p_value"].clone(),
+              "mean" => j["fitted_means"][i].clone(),
+              "xb" => {
+                let shift = usize::from(p.include_intercept);
+                json!(
+                  (if source == "exposure" {
+                    exposures[i].ln()
+                  } else {
+                    offsets[i]
+                  }) + p.design_matrix[i]
                     .iter()
                     .zip(&fit.coefficients[shift..])
                     .map(|(x, b)| x * b.value)
                     .sum::<f64>()
-                  + if shift == 1 {
-                    fit.coefficients[0].value
-                  } else {
-                    0.
-                  }
-              )
+                    + if shift == 1 {
+                      fit.coefficients[0].value
+                    } else {
+                      0.
+                    }
+                )
+              }
+              _ => j[quantity].clone(),
             }
-            _ => j[quantity].clone(),
+          };
+          if row[4] == "NA" {
+            assert!(actual.is_null(), "{row:?}");
+            continue;
           }
-        };
-        if row[4] == "NA" {
-          assert!(actual.is_null(), "{row:?}");
-          continue;
+          let expected: f64 = row[4].parse().unwrap();
+          let actual = actual.as_f64().unwrap();
+          let tolerance = if quantity.ends_with("p_value") {
+            1e-9 * expected.abs()
+          } else {
+            1e-9
+          };
+          assert!(
+            actual.is_finite() && (actual - expected).abs() <= tolerance,
+            "{row:?}: {actual:.17e} != {expected:.17e}, tolerance={tolerance}"
+          );
         }
-        let expected: f64 = row[4].parse().unwrap();
-        let actual = actual.as_f64().unwrap();
-        let tolerance = if quantity.ends_with("p_value") {
-          1e-9 * expected.abs()
-        } else {
-          1e-9
-        };
-        assert!(
-          actual.is_finite() && (actual - expected).abs() <= tolerance,
-          "{row:?}: {actual:.17e} != {expected:.17e}, tolerance={tolerance}"
-        );
       }
     }
   }
@@ -152,4 +181,24 @@ fn zero_offsets_shift_invariance_and_invalid_offset_provenance_are_explicit() {
     assert!(fit_nb2_with_offset(&p, &offsets, Some("log_time"), false, None).is_err());
   }
   assert!(fit_nb2_with_offset(&p, &offsets(), Some("log_time"), true, Some("person")).is_err());
+  let exposure_fit = fit_nb2_with_exposure(&p, &[1.; 36], "time", true, None).unwrap();
+  assert!(exposure_fit.offset_variable.is_none());
+  assert_eq!(exposure_fit.exposure_variable.as_deref(), Some("time"));
+  assert_eq!(
+    exposure_fit.coefficients,
+    fit_nb2(&p, true).unwrap().coefficients
+  );
+  assert_eq!(
+    exposure_fit.covariance,
+    fit_nb2(&p, true).unwrap().covariance
+  );
+  for invalid in [
+    vec![],
+    vec![1.; 35],
+    vec![0.; 36],
+    vec![-1.; 36],
+    vec![f64::NAN; 36],
+  ] {
+    assert!(fit_nb2_with_exposure(&p, &invalid, "time", false, None).is_err());
+  }
 }

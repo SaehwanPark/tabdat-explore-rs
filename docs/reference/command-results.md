@@ -96,7 +96,7 @@ CLI-v1 adds three result types, with the existing envelope version/shapes unchan
   `inference_degrees_of_freedom`, `log_likelihood`/`log_likelihood_convention`,
   OLS `r_squared`/`root_mse`/`df_residual`, and binary `mcfadden_r_squared`.
   Inapplicable/undefined/nonfinite optional quantities are null, not zero.
-  NB2 additionally adds an optional `nb2` block with offset identity, selected
+  NB2 additionally adds an optional `nb2` block with fixed-term offset/exposure identity, selected
   covariance correction, zero/count sum, refitted-dispersion null metadata,
   alpha/SE/interval, McFadden pseudo-R² and the retained boundary-LR object.
   Its `covariance_parameter_names` and full covariance end with `lnalpha`, which
@@ -747,7 +747,7 @@ this author-program extension is not a whole-Chapter16 completion claim.
 
 ## Bounded Poisson ML / independent-row robust QMLE
 
-`poisson y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link regression.
+`poisson y [xvars] [, offset(var) exposure(var) robust cluster(var) noconstant]` executes unweighted log-link regression.
 The joint complete-finite estimation sample preserves fit-time positions;
 missing/nonfinite model cells are excluded before outcome-domain rejection.
 Loaded outcome values must be exact nonnegative integers <=2^53-1, with DECIMAL
@@ -756,15 +756,16 @@ of digits a loader already rounded to DOUBLE. N>K/full rank and bounded numerica
 convergence are required. Weights are not installed; one-way cluster selection
 and inference are specified below.
 
-`offset(var)` adds a numeric fixed log-mean term: eta=X beta+offset and mu=exp(eta).
-Offset missing/nonfinite cells join the model/group exclusions BEFORE count-domain
-validation. It is not a parameter or weight and does not increase K or LR DF.
-The nested null retains the same offsets: with an intercept,
-mu0_i=exp(offset_i)*sum(y)/sum(exp(offset)); without it, mu0_i=exp(offset_i).
-A guarded log-sum-exp evaluates the intercept-only starting/null model. Extreme
-finite offset designs can still fail the existing representability/convergence
-policy. Exposure shorthand is not installed; NB2 fixed offsets have the distinct
-joint-dispersion null contract below.
+`offset(var)` adds a numeric fixed log-mean term: eta=X beta+offset.
+`exposure(var)` adds ln(var) with coefficient one: eta=X beta+ln(exposure).
+The options are mutually exclusive. Missing/nonfinite fixed-term cells join the
+model/group exclusions before count-domain validation; finite nonpositive exposure
+on an otherwise complete row is an error. Neither term is a parameter or weight,
+nor increases K or LR DF. The nested null retains the same fixed term: with an
+intercept, mu0_i=exp(fixed_i)*sum(y)/sum(exp(fixed)); without it,
+mu0_i=exp(fixed_i). A guarded log-sum-exp evaluates the intercept-only
+starting/null model. Extreme finite designs can still fail the existing
+representability/convergence policy.
 
 CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
 
@@ -785,7 +786,11 @@ CLI-v1 adds **PoissonResult** (`estimator: "poisson"`):
   Offset fits additionally report `offset_variable`, `offset_coefficient: 1.0`,
   `linear_index: "x_beta_plus_offset"` and use `null_model` values
   `intercept_only_with_same_fixed_offset` or
-  `all_coefficients_zero_with_same_fixed_offset`. No-offset shapes are unchanged.
+  `all_coefficients_zero_with_same_fixed_offset`. Exposure fits report
+  `exposure_variable`, `exposure_coefficient: 1.0`,
+  `linear_index: "x_beta_plus_log_exposure"` and null-model values
+  `intercept_only_with_same_fixed_log_exposure` or
+  `all_coefficients_zero_with_same_fixed_log_exposure`. No-fixed-term shapes are unchanged.
 - `likelihood_ratio`, `likelihood_ratio_df`, nullable `likelihood_ratio_p_value`
   and nullable `likelihood_ratio_reference_distribution`. Only a model-based
   positive-DF LR has chi-square reference/tail; robust LR remains descriptive.
@@ -813,17 +818,18 @@ normal reference, fixed confidence level, retained N and `effects` in predictor
 order with the same nullable inference fields. The continuous effect is
 βj*mean(μ), full gradient βj*mean(μX)+ej*mean(μ), conditional on retained X. This
 is not a discrete change, original-variable chain rule or random-X uncertainty.
-Offset fits hold retained offset values fixed in both derivatives and delta
-uncertainty, including if the same variable is also a predictor: no chain rule
-through that offset is implied. Their effects additionally report `offset_variable`
-and `offset_treatment: "fixed_at_retained_values_in_derivatives_and_delta_uncertainty"`.
-Changing current offsets does not change retained effects/count-frequency reports.
+Offset and exposure fits hold the retained fixed term constant in both derivatives
+and delta uncertainty, including if its source is also a predictor: no chain rule
+through that source is implied. Their effects report the corresponding source
+field and fixed-term treatment. Changing current fixed terms does not change
+retained effects/count-frequency reports.
 
 `predict newvar, n` appends exp(xb) on current predictor rows; explicit/bare xb
-remains the index. For offset fits BOTH xb and n use the CURRENT named offset
-alongside current predictors; xb includes the offset, not just X beta. No outcome
-or cluster ID is needed. Missing/nonnumeric offset columns fail without publishing
-a target or clearing the retained fit. Nonfinite/unrepresentable indices and
+remains the index. For fixed-term fits BOTH xb and n use the CURRENT named offset
+or positive exposure alongside current predictors; xb includes the offset or log
+exposure, not just X beta. No outcome or cluster ID is needed. Missing/nonnumeric
+source columns fail without publishing a target or clearing the retained fit.
+Nonfinite/unrepresentable indices and
 overflowing means become NULL, finite negative exponential underflow is zero.
 Means are not probabilities and are not clipped at one. Prediction publication
 preserves labels/order/fit and fails atomically on invalid schema/existing targets.
@@ -838,8 +844,9 @@ not data/labels/order. No fit restoration/persistence is added. Poisson and NB2
 fits support immutable named reports; see [named fit reports](#named-fit-reports-and-comparison).
 See [exact source/R workflow](../../examples/mma20p1count/README.md)
 and MIG-0017; bounded NB2 has its distinct contract below. The synthetic
-[fixed-offset workflow](../../examples/poisson-offset/README.md) is independent
-method evidence, not a textbook replication. Remaining exposure workflows,
+[fixed-offset workflow](../../examples/poisson-offset/README.md) and [exposure
+workflow](../../examples/mma20p1count/exposure.md) are independent method
+evidence, not textbook replications. Exposure integrations outside Poisson/NB2,
 multiway clustering, weighted/survey inference, factors/discrete changes and
 other formal count specification tests remain required work. The bounded
 current-row PMF/CDF prediction contract is documented separately below.
@@ -881,13 +888,13 @@ uses its distinct full-joint clustered law below.
 `estat overdispersion` is available only after a retained Poisson fit. It tests
 `H0: alpha=0` (Poisson conditional variance) against `alpha>0` in
 `Var(Y|X)=mu+alpha*mu^2`, using
-`u_i=0.5*((y_i-mu_i)^2-y_i)` at the retained fitted means. Fixed offsets remain
-in `mu_i`; no NB2 fit is performed. CLI-v1 adds
+`u_i=0.5*((y_i-mu_i)^2-y_i)` at the retained fitted means. Fixed offsets or log
+exposure remain in `mu_i`; no NB2 fit is performed. CLI-v1 adds
 `PoissonOverdispersionScoreTestResult` with `estimator`, `effect`, `sample`,
 `uncertainty`, `independent_unit`, `method`, both hypotheses, `score`,
 `score_variance`, signed `statistic`, one-sided `p_value`, selected `covariance`,
 `covariance_correction`, `reference_distribution`, retained N, optional
-`offset_variable` and optional cluster metadata.
+`offset_variable`/`exposure_variable` and optional cluster metadata.
 
 Model variance is `0.5*sum(mu_i^2)` (`poisson_information_nb2_score`); robust
 row variance is `N/(N-1)*sum(u_i^2)`; clustered variance aggregates row scores
@@ -901,7 +908,7 @@ retained score.
 
 ## Bounded jointly estimated NB2
 
-`nbreg y [xvars] [, offset(var) robust cluster(var) noconstant]` executes unweighted log-link NB2:
+`nbreg y [xvars] [, offset(var) exposure(var) robust cluster(var) noconstant]` executes unweighted log-link NB2:
 mean mu=exp(X beta), variance mu+alpha*mu², alpha=exp(lnalpha), size=1/alpha.
 It shares Poisson's exact loaded-integer/joint complete-finite sample semantics,
 but bounds counts to **0..100000** to cap integer gamma-ratio/derivative cache
@@ -910,14 +917,16 @@ lnalpha strictly **(-12,12)**. These are supported numerical limits, not clippin
 or an existence classifier. Boundary/Poisson-limit or nonrepresentable variance
 fails rather than substituting Poisson. `lnalpha` is a reserved parameter name.
 
-`offset(var)` adds a finite numeric fixed coefficient-one log-mean term, with
-joint model/offset/group exclusions before finite count validation. It does not
-increase K or LR DF. BOTH full and restricted NB likelihoods retain the same
-offsets. The restricted model reestimates intercept AND dispersion when an
-intercept exists; otherwise mu=exp(offset), with dispersion still reestimated.
-A same-offset Poisson fit supplies starting values only: it does not replace
+`offset(var)` adds a finite numeric fixed coefficient-one log-mean term.
+`exposure(var)` adds ln(var) with coefficient one; the options are mutually
+exclusive. Missing/nonfinite fixed-term values join model/group exclusions before
+finite count validation; finite nonpositive exposure on a complete row errors.
+Neither increases K or LR DF. BOTH full and restricted NB likelihoods retain the
+same fixed term. The restricted model reestimates intercept AND dispersion when
+an intercept exists; otherwise mu=exp(fixed term), with dispersion still
+reestimated. A same-fixed-term Poisson fit supplies starting values only: it does not replace
 the restricted NB likelihood, its nuisance alpha or the full joint covariance.
-No-offset fitting entry points and structured shapes remain unchanged.
+No-offset entry points and no-fixed-term result shapes remain unchanged.
 
 CLI-v1 adds **NbregResult**, `estimator: "nb2"`. Common outcome/predictor/sample,
 count, coefficient/normal95, likelihood/LR/Wald and descriptive diagnostic fields
@@ -944,7 +953,7 @@ follow the Poisson contracts above, with these explicit NB2 differences:
   `unavailable_reason` is `"robust_covariance_selected"`; for clustered fits it
   is `"clustered_likelihood_not_independent"`. The test compares the
   NB2 and Poisson likelihoods on the same retained sample, design and fixed
-  offset; it assumes the specified likelihood and is not a robust/cluster test.
+  offset or log exposure; it assumes the specified likelihood and is not a robust/cluster test.
 - `log_likelihood_convention: "nb2_count_pmf"`; `null_model` is
   `intercept_only_mean_and_dispersion_reestimated` or
   `unit_mean_dispersion_reestimated`. `null_alpha` records the restricted NB
@@ -954,7 +963,10 @@ follow the Poisson contracts above, with these explicit NB2 differences:
   Offset fits additionally report `offset_variable`, `offset_coefficient: 1.0`,
   `linear_index: "x_beta_plus_offset"`, with `null_model` values
   `intercept_and_dispersion_reestimated_with_same_fixed_offset` or
-  `all_beta_zero_dispersion_reestimated_with_same_fixed_offset`.
+  `all_beta_zero_dispersion_reestimated_with_same_fixed_offset`. Exposure fits
+  report `exposure_variable`, `exposure_coefficient: 1.0`,
+  `linear_index: "x_beta_plus_log_exposure"` and corresponding
+  `*_with_same_fixed_log_exposure` null-model values.
 - Residual NB deviance is evaluated at fitted alpha. Pearson uses NB2 variance;
   `df_residual`=N-K-1 and `pearson_dispersion`=Pearson/(N-K-1), descriptive only,
   not a Student-t reference, formal test or covariance multiplier.
@@ -971,16 +983,18 @@ follow the Poisson contracts above, with these explicit NB2 differences:
 continuous derivative/conditional-design normal95 fields as Poisson.
 `covariance_role: "beta_block_of_full_joint_beta_lnalpha_covariance"` is explicit:
 the joint gradient is `[beta_j*mean(mu*X)+e_j*mean(mu),0]`, not a reason to
-replace joint V with fixed-alpha conditional covariance. Offset fits additionally
-report `offset_variable` and the same fixed-retained-offset `offset_treatment`
-string as Poisson effects. Offsets are fixed in derivatives/uncertainty, not a
-chain rule through the offset even if its variable is also a predictor.
+replace joint V with fixed-alpha conditional covariance. Fixed-term fits report
+their `offset_variable` or `exposure_variable` and corresponding fixed-term
+treatment as Poisson effects. Offsets/log exposure are fixed in
+derivatives/uncertainty, not a chain rule through the source even if it is also
+a predictor.
 
 Current-row `predict ..., n`/xb uses the common atomic exponential/finite-index
 path, no outcome required; means are not probabilities. BOTH xb and n include
-the CURRENT named offset when specified (xb=X beta+offset); missing/nonnumeric
-offset columns fail without clearing the retained fit or publishing a target.
-Retained effects/count bins keep original fitted means/offsets/alpha despite
+the CURRENT named offset or positive exposure when specified (xb=X beta+offset
+or X beta+ln(exposure)); missing/nonnumeric fixed-term columns fail without
+clearing the retained fit or publishing a target. Retained effects/count bins keep
+original fitted means/fixed terms/alpha despite
 current-data edits. Bare predict stays xb.
 Noncount fits reject n; NB2 rejects pr/residual/auxiliary forms. The existing
 `PredictMeanCountRequiresPoisson` error identity is retained with wording extended
@@ -993,15 +1007,17 @@ the name of a current numeric cutoff variable, with exact values0..100000.
 Missing cutoffs yield NULL; negative, fractional, or greater-than100000 values
 fail before publishing a column. For cutoffs above99, one request may add at most
 10,000,000 cutoff increments across rows with usable model inputs. Exceeding that
-work bound fails before publication. These use current predictors/offsets and
+work bound fails before publication. These use current predictors/offsets/exposure
+and
 retained NB2 alpha, and assume the fitted full conditional law; robust covariance
 does not establish distributional calibration. The separate `estat countprob`
 table retains its tail cutoff1..100.
 
 See [source/R workflow](../../examples/mma20p1count/README.md) and MIG-0018;
-[synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) validates
-full joint inference/nulls without claiming a new textbook illustration.
-FE/RE/panel-family inference, weights/remaining exposure workflows, richer count
+[synthetic fixed-offset evidence](../../examples/nb2-offset/README.md) and
+[exposure evidence](../../examples/mma20p1count/exposure.md) validate these
+methods without claiming a new textbook illustration. FE/RE/panel-family
+inference, weights/exposure integrations outside Poisson/NB2, richer count
 specifications, other formal specification tests, discrete
 changes and other general nonlinear restrictions remain
 required, as do full illustration outputs. Independent-row robust is not panel-robust.
@@ -1043,7 +1059,7 @@ person/year/design/mean/xb records/G5908, with numerical grouped-log-PMF score
 and joint curvature checks. Not a printed Table20.5 cluster column, complete
 RAND household/site/randomization correction, causal or full count/panel/book
 workflow. No author data redistribution/production R/Python/native DTA dependency.
-See MIG-0020. Remaining multiway/survey/few-cluster, exposure workflows/weights,
+See MIG-0020. Remaining multiway/survey/few-cluster, exposure integrations beyond Poisson/NB2, weights,
 other formal tests and richer count requirements are not removed; current-row
 probability prediction has its own bounded contract below.
 
@@ -1105,7 +1121,7 @@ See MIG-0021.
 ## Retained NB2 grouped goodness-of-fit reports
 
 `estat countgof [, max(10)]` is read-only after a retained, unclustered,
-unweighted model-based NB2 fit without a fixed offset. It uses the original
+unweighted model-based NB2 fit without a fixed offset or exposure. It uses the original
 retained outcomes, fitted means, sample and individual beta/lnalpha likelihood
 scores, without refitting. The default partition is exact counts0..9 and >=10;
 `max(m)` accepts an integer1..10. It reports the Andrews statistic `N*R²_u`
@@ -1113,7 +1129,7 @@ from a no-intercept auxiliary regression of one on the first `J-1` cell residual
 and all NB2 scores, with the `chi-square(J-1)` reference. For the default 11
 cells this means df10. No cluster-robust reference is installed; the reference
 assumes independent observations and a correctly specified conditional NB2 law.
-Robust/clustered, weighted and fixed-offset fits are rejected.
+Robust/clustered, weighted, fixed-offset and exposure fits are rejected.
 
 CLI-v1 adds **CountGoodnessOfFitResult** with `estimator:
 "nb2_grouped_probability_gof"`, `method:

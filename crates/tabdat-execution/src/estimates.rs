@@ -121,6 +121,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -184,6 +186,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -274,13 +278,23 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: result.offset_variable.clone(),
         poisson_offset_coefficient: result.offset_variable.as_ref().map(|_| 1.0),
+        poisson_exposure_variable: result.exposure_variable.clone(),
+        poisson_exposure_coefficient: result.exposure_variable.as_ref().map(|_| 1.0),
         poisson_null_log_likelihood: Some(result.null_log_likelihood),
         poisson_null_model: Some(
-          match (result.offset_variable.is_some(), result.include_intercept) {
-            (true, true) => "intercept_only_with_same_fixed_offset",
-            (true, false) => "all_coefficients_zero_with_same_fixed_offset",
-            (false, true) => "intercept_only_estimated_mean",
-            (false, false) => "unit_mean_all_coefficients_zero",
+          if result.exposure_variable.is_some() {
+            if result.include_intercept {
+              "intercept_only_with_same_fixed_log_exposure"
+            } else {
+              "all_coefficients_zero_with_same_fixed_log_exposure"
+            }
+          } else {
+            match (result.offset_variable.is_some(), result.include_intercept) {
+              (true, true) => "intercept_only_with_same_fixed_offset",
+              (true, false) => "all_coefficients_zero_with_same_fixed_offset",
+              (false, true) => "intercept_only_estimated_mean",
+              (false, false) => "unit_mean_all_coefficients_zero",
+            }
           }
           .into(),
         ),
@@ -417,6 +431,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -425,14 +441,23 @@ fn snapshot(
         poisson_count_sum: None,
         nb2: Some(Nb2EstimateDetails {
           offset_variable: result.offset_variable.clone(),
+          exposure_variable: result.exposure_variable.clone(),
           covariance_correction: correction,
           zero_count: result.zero_count,
           count_sum: result.count_sum,
-          null_model: match (result.offset_variable.is_some(), result.include_intercept) {
-            (true, true) => "intercept_only_with_same_fixed_offset_refit_alpha",
-            (true, false) => "unit_mean_with_same_fixed_offset_refit_alpha",
-            (false, true) => "intercept_only_estimated_mean_refit_alpha",
-            (false, false) => "unit_mean_all_coefficients_zero_refit_alpha",
+          null_model: if result.exposure_variable.is_some() {
+            if result.include_intercept {
+              "intercept_only_with_same_fixed_log_exposure_refit_alpha"
+            } else {
+              "unit_mean_with_same_fixed_log_exposure_refit_alpha"
+            }
+          } else {
+            match (result.offset_variable.is_some(), result.include_intercept) {
+              (true, true) => "intercept_only_with_same_fixed_offset_refit_alpha",
+              (true, false) => "unit_mean_with_same_fixed_offset_refit_alpha",
+              (false, true) => "intercept_only_estimated_mean_refit_alpha",
+              (false, false) => "unit_mean_all_coefficients_zero_refit_alpha",
+            }
           }
           .into(),
           null_log_likelihood: result.null_log_likelihood,
@@ -523,6 +548,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -596,6 +623,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -683,6 +712,8 @@ fn snapshot(
         nls_covariance_correction: None,
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,
@@ -723,6 +754,8 @@ fn snapshot(
         nls_covariance_correction: Some(result.covariance_correction),
         poisson_offset_variable: None,
         poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
         poisson_null_log_likelihood: None,
         poisson_null_model: None,
         poisson_covariance_correction: None,

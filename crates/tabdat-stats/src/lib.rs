@@ -172,8 +172,8 @@ pub use multinomial::{
 };
 pub use nb2::{
   MAX_NB2_COUNT, Nb2Cluster, Nb2Dispersion, Nb2DispersionTest, Nb2Estimate, Nb2MarginalEffects,
-  Nb2Options, Nb2Result, fit_nb2, fit_nb2_clustered, fit_nb2_with_offset, fit_nb2_with_options,
-  nb2_average_marginal_effects, nb2_linear_combination, nb2_wald_test,
+  Nb2Options, Nb2Result, fit_nb2, fit_nb2_clustered, fit_nb2_with_exposure, fit_nb2_with_offset,
+  fit_nb2_with_options, nb2_average_marginal_effects, nb2_linear_combination, nb2_wald_test,
 };
 pub use nested_logit::{
   NestedChoiceProblem, NestedLogitOptions, NestedScaleEstimate, NonNormalizedNestedLogitProblem,
@@ -191,8 +191,8 @@ pub use normalized_common_nested_logit::{
 pub use poisson::{
   MAX_POISSON_COUNT, PoissonCluster, PoissonEstimate, PoissonMarginalEffects, PoissonOmnibusWald,
   PoissonOptions, PoissonOverdispersionScoreTest, PoissonResult, fit_poisson,
-  fit_poisson_clustered, fit_poisson_with_offset, fit_poisson_with_options,
-  poisson_average_marginal_effects, poisson_linear_combination,
+  fit_poisson_clustered, fit_poisson_with_exposure, fit_poisson_with_offset,
+  fit_poisson_with_options, poisson_average_marginal_effects, poisson_linear_combination,
   poisson_nb2_overdispersion_score_test, poisson_wald_test,
 };
 pub use poisson_bootstrap::{ClusterBootstrapPoissonResult, bootstrap_poisson_clustered};

@@ -114,6 +114,20 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
         "NA".into()
       }
     });
+    row(
+      &mut output,
+      "Poisson exposure (coefficient 1)",
+      models,
+      |m| {
+        if m.estimator == "poisson" {
+          m.poisson_exposure_variable
+            .clone()
+            .unwrap_or_else(|| "none".into())
+        } else {
+          "NA".into()
+        }
+      },
+    );
     row(&mut output, "Poisson null model", models, |m| {
       m.poisson_null_model.clone().unwrap_or_else(|| "NA".into())
     });
@@ -128,6 +142,14 @@ pub fn render_estimate_table(table: &EstimateTableResult) -> String {
     row(&mut output, "NB2 offset (coefficient 1)", models, |m| {
       m.nb2.as_ref().map_or("NA".into(), |nb2| {
         nb2.offset_variable.clone().unwrap_or_else(|| "none".into())
+      })
+    });
+    row(&mut output, "NB2 exposure (coefficient 1)", models, |m| {
+      m.nb2.as_ref().map_or("NA".into(), |nb2| {
+        nb2
+          .exposure_variable
+          .clone()
+          .unwrap_or_else(|| "none".into())
       })
     });
     row(&mut output, "NB2 null model", models, |m| {

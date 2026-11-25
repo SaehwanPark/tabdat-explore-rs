@@ -10,19 +10,22 @@ rows <- list()
 emit <- function(case,quantity,i=0L,j=0L,value) {
   rows[[length(rows)+1L]] <<- data.frame(case,quantity,i,j,value=unname(value))
 }
-for (design in c('multiple','noconstant','intercept')) {
+exposure <- exp(o)
+for (source in c('offset','exposure')) {
+  offset_values <- if (source=='exposure') log(exposure) else o
+  for (design in c('multiple','noconstant','intercept')) {
   formula <- switch(design,multiple=y~x+z,noconstant=y~x+z-1,intercept=y~1)
-  fit <- glm(formula,family=poisson(),offset=o,control=glm.control(epsilon=1e-13,maxit=100))
-  fit <- glm(formula,family=poisson(),offset=o,start=coef(fit),control=glm.control(epsilon=1e-13,maxit=100))
+  fit <- glm(formula,family=poisson(),offset=offset_values,control=glm.control(epsilon=1e-13,maxit=100))
+  fit <- glm(formula,family=poisson(),offset=offset_values,start=coef(fit),control=glm.control(epsilon=1e-13,maxit=100))
   stopifnot(fit$converged)
   X <- model.matrix(fit); b <- coef(fit); mu <- fitted(fit)
   n <- length(y); k <- length(b); intercept <- design!='noconstant'; q <- k-as.integer(intercept)
   bread <- solve(crossprod(X,X*mu)); score <- X*(y-mu)
-  null <- if (intercept) glm(y~1,family=poisson(),offset=o,control=glm.control(epsilon=1e-13)) else NULL
-  null_mu <- if (intercept) fitted(null) else exp(o)
+  null <- if (intercept) glm(y~1,family=poisson(),offset=offset_values,control=glm.control(epsilon=1e-13)) else NULL
+  null_mu <- if (intercept) fitted(null) else exp(offset_values)
   ll <- sum(dpois(y,mu,log=TRUE)); null_ll <- sum(dpois(y,null_mu,log=TRUE))
   for (covariance in c('model','robust','cluster')) {
-    case <- paste(design,covariance,sep='_')
+    case <- paste(c(design,if(source=='exposure') 'exposure',covariance),collapse='_')
     V <- switch(covariance,model=bread,
       robust=n/(n-1)*bread%*%crossprod(score)%*%bread,
       cluster=6/5*bread%*%crossprod(rowsum(score,groups))%*%bread)
@@ -58,6 +61,7 @@ for (design in c('multiple','noconstant','intercept')) {
       emit(case,'mean',i-1L,value=mu[i]); emit(case,'xb',i-1L,value=predict(fit)[i])
     }
   }
+}
 }
 write.csv(do.call(rbind,rows),'crates/tabdat-stats/tests/fixtures/poisson_offset_reference.csv',
   row.names=FALSE,quote=FALSE,na='NA')

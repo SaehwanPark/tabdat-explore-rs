@@ -10,6 +10,33 @@ pub(crate) enum CountFamily {
   GammaPoisson,
   NormalPoisson,
 }
+
+#[derive(Clone, Copy)]
+pub(crate) enum CountFixedTerm<'a> {
+  Offset(&'a str),
+  Exposure(&'a str),
+}
+
+impl<'a> CountFixedTerm<'a> {
+  pub(crate) fn from_options(
+    family: CountFamily,
+    offset_variable: Option<&'a str>,
+    exposure_variable: Option<&'a str>,
+  ) -> Result<Option<Self>, RuntimeError> {
+    match (offset_variable, exposure_variable) {
+      (Some(_), Some(_)) => Err(family.error("cannot combine offset and exposure")),
+      (Some(variable), None) => Ok(Some(Self::Offset(variable))),
+      (None, Some(variable)) => Ok(Some(Self::Exposure(variable))),
+      (None, None) => Ok(None),
+    }
+  }
+
+  fn variable(self) -> &'a str {
+    match self {
+      Self::Offset(variable) | Self::Exposure(variable) => variable,
+    }
+  }
+}
 impl CountFamily {
   fn command(self) -> &'static str {
     match self {
@@ -91,7 +118,7 @@ impl Session {
     predictors: &[String],
     include_intercept: bool,
     cluster_variable: Option<&str>,
-    offset_variable: Option<&str>,
+    fixed_term: Option<CountFixedTerm<'_>>,
   ) -> Result<(tabdat_stats::EstimationProblem, Vec<f64>), RuntimeError> {
     let dataset = self
       .active_dataset
@@ -101,7 +128,7 @@ impl Session {
       })?;
     let variables: Vec<&str> = std::iter::once(outcome)
       .chain(predictors.iter().map(String::as_str))
-      .chain(offset_variable)
+      .chain(fixed_term.map(CountFixedTerm::variable))
       .collect();
     for name in &variables {
       let column = dataset
@@ -181,11 +208,20 @@ impl Session {
           retained.push(index);
           response.push(count);
           design.push(values[1..1 + predictors.len()].to_vec());
-          offsets.push(if offset_variable.is_some() {
-            *values.last().unwrap()
-          } else {
-            0.0
-          });
+          let offset = match fixed_term {
+            Some(CountFixedTerm::Offset(_)) => *values.last().unwrap(),
+            Some(CountFixedTerm::Exposure(_)) => {
+              let exposure = *values.last().unwrap();
+              if exposure <= 0.0 {
+                return Err(
+                  family.error("exposure must be positive on complete finite estimation rows"),
+                );
+              }
+              exposure
+            }
+            None => 0.0,
+          };
+          offsets.push(offset);
           if let Some(group) = group {
             cluster_groups.push(group);
           }
@@ -327,10 +363,19 @@ impl Session {
       Some(EstimationState::NegativeBinomialFit(state)) => state.result.offset_variable.as_ref(),
       _ => None,
     };
+    let exposure_variable = match &self.estimation {
+      Some(EstimationState::PoissonFit(state)) => state.result.exposure_variable.as_ref(),
+      Some(EstimationState::NegativeBinomialFit(state)) => state.result.exposure_variable.as_ref(),
+      _ => None,
+    };
     if let Some(name) = offset_variable {
       predictors.push(name.clone());
     }
-    let missing: Vec<_> = predictors
+    let mut required_variables = predictors.clone();
+    if let Some(name) = exposure_variable {
+      required_variables.push(name.clone());
+    }
+    let missing: Vec<_> = required_variables
       .iter()
       .filter(|name| !dataset.columns.iter().any(|c| c.name == **name))
       .cloned()
@@ -346,6 +391,11 @@ impl Session {
       });
     }
     let mut selected_columns = predictors.clone();
+    let exposure_index = exposure_variable.map(|name| {
+      let index = selected_columns.len();
+      selected_columns.push(name.clone());
+      index
+    });
     let cutoff_index = command.count_cutoff_variable.as_ref().map(|name| {
       let index = selected_columns.len();
       selected_columns.push(name.clone());
@@ -369,6 +419,7 @@ impl Session {
       target_variable: &command.target_variable,
       predictor_names: &predictors,
       predictor_coefficients: &coefficients,
+      exposure_variable: exposure_variable.map(String::as_str),
       intercept: problem.include_intercept.then(|| estimates[0].value),
       outcome_variable: &problem.outcome,
       residuals: false,
@@ -454,6 +505,19 @@ impl Session {
                 return Ok(());
               };
               xb += coefficient * x;
+            }
+            if let Some(index) = exposure_index {
+              let exposure = cell_to_f64(
+                row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read exposure"))?,
+              )
+              .filter(|value| value.is_finite() && *value > 0.0);
+              let Some(exposure) = exposure else {
+                values.push(None);
+                return Ok(());
+              };
+              xb += exposure.ln();
             }
             let mean = xb.exp();
             if !xb.is_finite() || !mean.is_finite() {

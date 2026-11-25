@@ -676,6 +676,8 @@ pub struct PoissonCommand {
   pub predictors: Vec<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   /// Independent-row score sandwich, corrected by N/(N-1).
   pub robust: bool,
   pub cluster_variable: Option<String>,
@@ -690,6 +692,8 @@ pub struct NbregCommand {
   pub predictors: Vec<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   /// Full joint observed-information score sandwich with N/(N-1).
   pub robust: bool,
   pub cluster_variable: Option<String>,

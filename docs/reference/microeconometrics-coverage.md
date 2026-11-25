@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; Poisson NB2-direction score test with model/row/cluster score variance; model-based unclustered and one-way cluster-robust score-adjusted NB2 grouped goodness-of-fit tests; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Remaining exposure workflows (fixed Poisson/NB2 offsets have synthetic method evidence below), household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, fixed offsets and bounded `exposure(var)`, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; Poisson NB2-direction score test with model/row/cluster score variance; model-based unclustered and one-way cluster-robust score-adjusted NB2 grouped goodness-of-fit tests; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Exposure integrations beyond unweighted Poisson/NB2, household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Bounded legacy-convention Gaussian PA SQL composition with working/uncorrected unit-sandwich normal95 and independently validated source predictions, native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow and normalized-level-intercept pairs bootstrap (raw-copy R QR evidence, full coefficient covariance/type7 intervals, retained original FE state), the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Bounded clustered two-step linear IV GMM and source-specific first-difference panel workflow; Chapter 23 full-decade patents preparation with pre-restriction lags/summaries, log-patents pooled/FE/RE linear panels, pooled Poisson with a whole-firm bootstrap, native one-slope conditional-FE Poisson source replay and a separate SQL whole-firm bootstrap, exponential-mean NLS with auxiliary firm sandwich and a whole-firm bootstrap, bounded native balanced exchangeable Poisson GEE with owned marginal predictions and a separate SQL distinct-copy whole-firm bootstrap, a bounded shared-gamma random-effects Poisson composition with a distinct-copy whole-firm bootstrap, and a bounded normal random-intercept Poisson composition | General dynamic GMM, broader conditional-FE inference and broader native normal random-effects count panels, general GEE and other nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | Bounded household OLS/FE/RE/GEE and individual Poisson workflows with one-way cluster covariance and audited whole-cluster bootstrap compositions; no design-based survey estimator | Probability weights, strata/PSUs, finite-population corrections and design-based workflows |
@@ -1656,7 +1656,7 @@ output-collision and JSON/text/piped regression coverage. Repeated person-years
 require clustered inference for dependence: these two reproduced columns are
 **not panel-robust**. The ASCII omits original person IDs; the native Poisson
 extensions below recover audited DTA IDs separately. Household/site/multiway,
-Remaining exposure workflows (Poisson/NB2 fixed offsets are separately validated method evidence), unresolved printed Table20.6 NB2 row,
+Exposure integrations outside unweighted Poisson/NB2, unresolved printed Table20.6 NB2 row,
 other formal NB specification tests and robust/clustered NB boundary-LR reference,
 complete Tables20.3–20.6 and other
 count illustrations remain required. `estimates store` supports Poisson and NB2
@@ -1926,23 +1926,34 @@ The [synthetic offset workflow](../../examples/poisson-offset/README.md) deliver
 `poisson ..., offset(var)` with fixed coefficient one, joint finite sampling,
 same-offset nulls, unchanged model-based/N/(N-1)/G/(G-1) covariance conventions,
 current-data means/indices including offset, and retained effects/count bins.
-Base R4.6.1 `glm` plus independent sandwich algebra validates 950 scalar quantities
+Base R4.6.2 `glm` plus independent sandwich algebra validates 950 scalar quantities
 across three designs and three covariance choices, including all means/indices,
 full coefficient/covariance/normal inference, LR/Wald/diagnostics and continuous
 delta effects. Native tests pin retained indices, zero-offset/shift invariance,
 current-versus-retained behavior, atomic failures and JSON/text/script output.
 The separate [NB2 offset workflow](../../examples/nb2-offset/README.md) validates
-1,076 R4.6.1/MASS7.3.65 quantities across three designs/three covariance choices:
+1,094 R4.6.2/MASS7.3.66 quantities across three designs/three covariance choices:
 full beta/lnalpha observed information/grouped joint scores, all means/indices,
 coefficient/dispersion/normal inference, NB null alpha/likelihood refitted with
 the SAME offsets, LR/Wald/diagnostics and continuous delta effects. Base R numerical
 score/curvature checks distinguish this from conditional GLM/Fisher covariance.
 Native tests protect exact samples, offset/intercept shifts, provenance and
 current-versus-retained/state/file contracts through the actual JSON/text script.
-Exposure workflows may use equivalent explicit log-offset preparation rather than
-requiring an `exposure()` alias. Neither synthetic method extension changes the
-no-offset Table20.5 design, validates another book illustration or resolves the
-printed Table20.6 discrepancy.
+## Additional fixed count exposure evidence (not a textbook replication)
+
+The [`exposure(var)` contract and runnable workflow](../../examples/mma20p1count/exposure.md)
+install positive finite raw exposures for Poisson and NB2, separate exposure
+provenance from raw offsets, preserve the existing model/covariance/retained-fit
+contracts, and return NULL for invalid current-row exposure predictions. Base R
+4.6.2 `glm` and MASS 7.3.66 plus independently calculated row/cluster covariance
+validate 1,900 Poisson and 2,188 joint NB2 quantities across three designs and
+three covariance choices. The joint NB2 score and curvature are numerically
+checked at and near its optimum. Runtime/CLI tests cover exact samples,
+missing/nonfinite and nonpositive exposure behavior, mean/index/PMF/CDF
+predictions, retained margins, named reports and JSON/text output. This is
+synthetic method evidence; it does not change the no-exposure Table20.5 design,
+validate a new book illustration, cover exposure in random-effects/panel/weighted
+commands, or resolve the printed Table20.6 discrepancy.
 
 ## Additional IV method evidence (not a textbook replication)
 

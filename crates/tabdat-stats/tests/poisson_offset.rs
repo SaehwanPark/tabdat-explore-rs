@@ -1,7 +1,7 @@
 use serde_json::{Value, json};
 use tabdat_stats::{
-  EstimationProblem, EstimationSample, fit_poisson, fit_poisson_with_offset,
-  poisson_average_marginal_effects,
+  EstimationProblem, EstimationSample, fit_poisson, fit_poisson_with_exposure,
+  fit_poisson_with_offset, poisson_average_marginal_effects,
 };
 
 fn problem(design: &str, clustered: bool) -> EstimationProblem {
@@ -38,8 +38,8 @@ fn offsets() -> Vec<f64> {
 }
 
 #[test]
-fn fixed_offset_fits_and_inference_match_base_r() {
-  // R 4.6.1 glm; independent score/bread sandwich algebra. Conditional-X
+fn fixed_offset_and_exposure_fits_match_base_r() {
+  // R 4.6.2 glm with an explicit offset(log(exposure)); independent score/bread sandwich algebra. Conditional-X
   // effects hold offsets fixed. Absolute 1e-9 for fit totals and parameter
   // quantities; relative 1e-9 for tails (never an absolute small-p shortcut).
   let rows: Vec<Vec<_>> = include_str!("fixtures/poisson_offset_reference.csv")
@@ -47,75 +47,103 @@ fn fixed_offset_fits_and_inference_match_base_r() {
     .skip(1)
     .map(|line| line.split(',').collect())
     .collect();
-  assert_eq!(rows.len(), 950);
+  assert_eq!(rows.len(), 1900);
   let offsets = offsets();
-  for design in ["multiple", "noconstant", "intercept"] {
-    for covariance in ["model", "robust", "cluster"] {
-      let p = problem(design, covariance == "cluster");
-      let fit = fit_poisson_with_offset(
-        &p,
-        &offsets,
-        Some("log_time"),
-        covariance == "robust",
-        (covariance == "cluster").then_some("person"),
-      )
-      .unwrap();
-      assert_eq!(fit.offset_variable.as_deref(), Some("log_time"));
-      let effects = poisson_average_marginal_effects(&p, &fit).unwrap();
-      assert_eq!(effects.offset_variable, fit.offset_variable);
-      let j = serde_json::to_value(&fit).unwrap();
-      let e = serde_json::to_value(&effects).unwrap();
-      let case = format!("{design}_{covariance}");
-      for row in rows.iter().filter(|r| r[0] == case) {
-        let (quantity, i, k) = (
-          row[1],
-          row[2].parse::<usize>().unwrap(),
-          row[3].parse::<usize>().unwrap(),
-        );
-        let actual: Value = if let Some(field) = quantity.strip_prefix("coefficient_") {
-          j["coefficients"][i][field].clone()
-        } else if let Some(field) = quantity.strip_prefix("effect_") {
-          e["effects"][i][field].clone()
+  let exposures = offsets
+    .iter()
+    .map(|offset| offset.exp())
+    .collect::<Vec<_>>();
+  for source in ["offset", "exposure"] {
+    for design in ["multiple", "noconstant", "intercept"] {
+      for covariance in ["model", "robust", "cluster"] {
+        let p = problem(design, covariance == "cluster");
+        let fit = if source == "exposure" {
+          fit_poisson_with_exposure(
+            &p,
+            &exposures,
+            "time",
+            covariance == "robust",
+            (covariance == "cluster").then_some("person"),
+          )
         } else {
-          match quantity {
-            "covariance" => j["covariance"][i][k].clone(),
-            "wald_statistic" => j["omnibus_wald"]["statistic"].clone(),
-            "wald_p_value" => j["omnibus_wald"]["p_value"].clone(),
-            "mean" => j["fitted_means"][i].clone(),
-            "xb" => {
-              let shift = usize::from(p.include_intercept);
-              json!(
-                offsets[i]
-                  + p.design_matrix[i]
+          fit_poisson_with_offset(
+            &p,
+            &offsets,
+            Some("log_time"),
+            covariance == "robust",
+            (covariance == "cluster").then_some("person"),
+          )
+        }
+        .unwrap();
+        assert_eq!(fit.offset_variable.is_some(), source == "offset");
+        assert_eq!(
+          fit.exposure_variable.as_deref(),
+          (source == "exposure").then_some("time")
+        );
+        let effects = poisson_average_marginal_effects(&p, &fit).unwrap();
+        assert_eq!(effects.offset_variable, fit.offset_variable);
+        assert_eq!(effects.exposure_variable, fit.exposure_variable);
+        let j = serde_json::to_value(&fit).unwrap();
+        let e = serde_json::to_value(&effects).unwrap();
+        let case = if source == "exposure" {
+          format!("{design}_exposure_{covariance}")
+        } else {
+          format!("{design}_{covariance}")
+        };
+        for row in rows.iter().filter(|r| r[0] == case) {
+          let (quantity, i, k) = (
+            row[1],
+            row[2].parse::<usize>().unwrap(),
+            row[3].parse::<usize>().unwrap(),
+          );
+          let actual: Value = if let Some(field) = quantity.strip_prefix("coefficient_") {
+            j["coefficients"][i][field].clone()
+          } else if let Some(field) = quantity.strip_prefix("effect_") {
+            e["effects"][i][field].clone()
+          } else {
+            match quantity {
+              "covariance" => j["covariance"][i][k].clone(),
+              "wald_statistic" => j["omnibus_wald"]["statistic"].clone(),
+              "wald_p_value" => j["omnibus_wald"]["p_value"].clone(),
+              "mean" => j["fitted_means"][i].clone(),
+              "xb" => {
+                let shift = usize::from(p.include_intercept);
+                json!(
+                  (if source == "exposure" {
+                    exposures[i].ln()
+                  } else {
+                    offsets[i]
+                  }) + p.design_matrix[i]
                     .iter()
                     .zip(&fit.coefficients[shift..])
                     .map(|(x, b)| x * b.value)
                     .sum::<f64>()
-                  + if shift == 1 {
-                    fit.coefficients[0].value
-                  } else {
-                    0.
-                  }
-              )
+                    + if shift == 1 {
+                      fit.coefficients[0].value
+                    } else {
+                      0.
+                    }
+                )
+              }
+              _ => j[quantity].clone(),
             }
-            _ => j[quantity].clone(),
+          };
+          if row[4] == "NA" {
+            assert!(actual.is_null(), "{row:?}");
+            continue;
           }
-        };
-        if row[4] == "NA" {
-          assert!(actual.is_null(), "{row:?}");
-          continue;
+          let expected: f64 = row[4].parse().unwrap();
+          let actual = actual.as_f64().unwrap();
+          let tolerance = if quantity.ends_with("p_value") {
+            1e-9 * expected.abs()
+          } else {
+            1e-9
+          };
+          assert!(
+            actual.is_finite() && (actual - expected).abs() <= tolerance,
+            "{row:?}: {actual:.17e} != {expected:.17e}, tolerance={tolerance}"
+          );
         }
-        let expected: f64 = row[4].parse().unwrap();
-        let actual = actual.as_f64().unwrap();
-        let tolerance = if quantity.ends_with("p_value") {
-          1e-9 * expected.abs()
-        } else {
-          1e-9
-        };
-        assert!(
-          actual.is_finite() && (actual - expected).abs() <= tolerance,
-          "{row:?}: {actual:.17e} != {expected:.17e}, tolerance={tolerance}"
-        );
       }
     }
   }
@@ -146,4 +174,18 @@ fn zero_offsets_equivalence_fixed_shift_and_invalid_alignment() {
     assert!(fit_poisson_with_offset(&p, &offsets, Some("log_time"), false, None).is_err());
   }
   assert!(fit_poisson_with_offset(&p, &[0.; 36], None, true, Some("g")).is_err());
+  let exposure_fit = fit_poisson_with_exposure(&p, &[1.; 36], "time", true, None).unwrap();
+  assert!(exposure_fit.offset_variable.is_none());
+  assert_eq!(exposure_fit.exposure_variable.as_deref(), Some("time"));
+  assert_eq!(exposure_fit.coefficients, plain.coefficients);
+  assert_eq!(exposure_fit.covariance, plain.covariance);
+  for invalid in [
+    vec![],
+    vec![1.; 35],
+    vec![0.; 36],
+    vec![-1.; 36],
+    vec![f64::NAN; 36],
+  ] {
+    assert!(fit_poisson_with_exposure(&p, &invalid, "time", false, None).is_err());
+  }
 }

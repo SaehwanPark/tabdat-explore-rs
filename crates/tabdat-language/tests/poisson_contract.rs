@@ -33,7 +33,12 @@ fn count_native_extensions_are_explicit_without_changing_bare_predict_default() 
     panic!("poisson")
   };
   assert_eq!(command.offset_variable.as_deref(), Some("log_exposure"));
-  assert!(parse_command("poisson y x, exposure(time)").is_err());
+  let Command::Poisson { command } = parse_command("poisson y x, exposure(time)").unwrap() else {
+    panic!("Poisson exposure option")
+  };
+  assert_eq!(command.exposure_variable.as_deref(), Some("time"));
+  assert_eq!(command.offset_variable, None);
+  assert!(parse_command("poisson y x, offset(log_time) exposure(time)").is_err());
   // The old count parser surface remains accepted; execution owns the explicit rejection.
   assert!(matches!(
     parse_command("poisson y x, cluster(id)").unwrap(),

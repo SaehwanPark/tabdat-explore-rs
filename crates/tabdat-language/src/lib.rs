@@ -3314,7 +3314,8 @@ fn parse_binary_or_count_response_command(
     .iter()
     .filter(|option| {
       !matches!(option.name.as_str(), "robust" | "cluster" | "noconstant")
-        && !(matches!(command_name, "poisson" | "nbreg") && option.name == "offset")
+        && !(matches!(command_name, "poisson" | "nbreg")
+          && matches!(option.name.as_str(), "offset" | "exposure"))
     })
     .map(|option| option.name.as_str())
     .collect::<Vec<_>>();
@@ -3401,6 +3402,32 @@ fn parse_binary_or_count_response_command(
     None => None,
   };
 
+  let exposure_matches: Vec<_> = options
+    .iter()
+    .filter(|option| option.name == "exposure")
+    .collect();
+  if exposure_matches.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option exposure may only be supplied once"
+    )));
+  }
+  let exposure_variable = match exposure_matches.first() {
+    Some(option) => match &option.value {
+      UseOptionValue::Identifiers(values) if values.len() == 1 => Some(values[0].clone()),
+      _ => {
+        return Err(ParseError::new(format!(
+          "{command_name} option exposure expects one variable"
+        )));
+      }
+    },
+    None => None,
+  };
+  if offset_variable.is_some() && exposure_variable.is_some() {
+    return Err(ParseError::new(format!(
+      "{command_name} cannot combine offset and exposure"
+    )));
+  }
+
   match command_name {
     "logit" => Ok(Command::Logit {
       command: LogitCommand {
@@ -3425,6 +3452,7 @@ fn parse_binary_or_count_response_command(
         outcome,
         predictors,
         offset_variable,
+        exposure_variable,
         robust,
         cluster_variable: cluster_values,
         include_intercept,
@@ -3435,6 +3463,7 @@ fn parse_binary_or_count_response_command(
         outcome,
         predictors,
         offset_variable,
+        exposure_variable,
         robust,
         cluster_variable: cluster_values,
         include_intercept,
@@ -12799,6 +12828,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned(), "x2".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: true,
@@ -12812,6 +12842,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: true,
           cluster_variable: None,
           include_intercept: true,
@@ -12825,6 +12856,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: Some("group_id".to_owned()),
           include_intercept: true,
@@ -12838,6 +12870,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: false,
@@ -12851,12 +12884,20 @@ mod tests {
           outcome: "y var".to_owned(),
           predictors: vec!["x var".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: Some("firm id".to_owned()),
           include_intercept: true,
         },
       }
     );
+    let Command::Poisson { command } =
+      parse_command("poisson y x, exposure(`person time`) cluster(person)").unwrap()
+    else {
+      panic!("Poisson exposure option")
+    };
+    assert_eq!(command.exposure_variable.as_deref(), Some("person time"));
+    assert_eq!(command.offset_variable, None);
 
     assert_eq!(
       parse_command("nbreg outcome x1 x2").unwrap(),
@@ -12865,6 +12906,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned(), "x2".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: true,
@@ -12878,6 +12920,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: true,
           cluster_variable: None,
           include_intercept: true,
@@ -12891,6 +12934,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: Some("group_id".to_owned()),
           include_intercept: true,
@@ -12904,6 +12948,7 @@ mod tests {
           outcome: "outcome".to_owned(),
           predictors: vec!["x1".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: None,
           include_intercept: false,
@@ -12917,12 +12962,19 @@ mod tests {
           outcome: "y var".to_owned(),
           predictors: vec!["x var".to_owned()],
           offset_variable: None,
+          exposure_variable: None,
           robust: false,
           cluster_variable: Some("firm id".to_owned()),
           include_intercept: true,
         },
       }
     );
+    let Command::Nbreg { command } = parse_command("nbreg y x, exposure(time) robust").unwrap()
+    else {
+      panic!("NB2 exposure option")
+    };
+    assert_eq!(command.exposure_variable.as_deref(), Some("time"));
+    assert_eq!(command.offset_variable, None);
   }
 
   #[test]
@@ -12952,6 +13004,18 @@ mod tests {
       (
         "poisson y x, cluster(a) cluster(b)",
         "poisson option cluster may only be supplied once",
+      ),
+      (
+        "poisson y x, exposure(a) exposure(b)",
+        "poisson option exposure may only be supplied once",
+      ),
+      (
+        "poisson y x, exposure(a b)",
+        "poisson option exposure expects one variable",
+      ),
+      (
+        "poisson y x, offset(log_time) exposure(time)",
+        "poisson cannot combine offset and exposure",
       ),
       (
         "poisson y x, robust=true",
@@ -12997,6 +13061,18 @@ mod tests {
       (
         "nbreg y x, cluster(a) cluster(b)",
         "nbreg option cluster may only be supplied once",
+      ),
+      (
+        "nbreg y x, exposure(a) exposure(b)",
+        "nbreg option exposure may only be supplied once",
+      ),
+      (
+        "nbreg y x, exposure(a b)",
+        "nbreg option exposure expects one variable",
+      ),
+      (
+        "nbreg y x, offset(log_time) exposure(time)",
+        "nbreg cannot combine offset and exposure",
       ),
       (
         "nbreg y x, robust=true",

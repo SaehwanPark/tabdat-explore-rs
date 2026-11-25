@@ -80,6 +80,8 @@ pub struct PanelEstimateProvenance {
 pub struct Nb2EstimateDetails {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   /// Applied joint-score covariance multiplier: 1, N/(N-1), or G/(G-1).
   pub covariance_correction: f64,
   pub zero_count: usize,
@@ -121,6 +123,12 @@ pub struct EstimateSnapshot {
   /// Fixed offset coefficient, present only when an offset is supplied.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub poisson_offset_coefficient: Option<f64>,
+  /// Fixed coefficient-one log exposure for Poisson, when supplied.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub poisson_exposure_variable: Option<String>,
+  /// Fixed exposure coefficient, present only when an exposure is supplied.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub poisson_exposure_coefficient: Option<f64>,
   /// Null-model count likelihood and the offset/intercept convention.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub poisson_null_log_likelihood: Option<f64>,
