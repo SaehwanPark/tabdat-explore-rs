@@ -89,9 +89,9 @@ pub struct PoissonResult {
   pub sample: Option<EstimationSample>,
 }
 
-/// One-sided score test of Poisson equidispersion in the NB2 variance direction.
+/// One-sided score test of Poisson equidispersion in an NB variance direction.
 /// Robust score variance supports independent rows or independent clusters;
-/// it does not validate the Poisson mean or the full NB2 distribution.
+/// it does not validate the Poisson mean or a complete alternative distribution.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoissonOverdispersionScoreTest {
   pub method: String,
@@ -189,6 +189,18 @@ pub struct PoissonMarginalEffects {
   pub effects: Vec<PoissonEstimate>,
 }
 
+/// Test the Poisson boundary against the linear NB1 variance direction using
+/// the retained Poisson fit. The score at alpha=0 is
+/// `((y-mu)^2-y)/(2*mu)`, with mu including the fit's fixed offset. This is a
+/// variance-direction score test; it does not fit a complete NB1 distribution.
+/// The retained fit must align with the problem and have strictly positive means.
+pub fn poisson_nb1_overdispersion_score_test(
+  problem: &EstimationProblem,
+  result: &PoissonResult,
+) -> Result<PoissonOverdispersionScoreTest, StatsError> {
+  poisson_overdispersion_score_test(problem, result, true)
+}
+
 /// Test the Poisson boundary against excess conditional variation in the NB2
 /// direction using the retained Poisson fit. The score at alpha=0 is
 /// `0.5*((y-mu)^2-y)`, with mu including the fit's fixed offset.
@@ -196,7 +208,16 @@ pub fn poisson_nb2_overdispersion_score_test(
   problem: &EstimationProblem,
   result: &PoissonResult,
 ) -> Result<PoissonOverdispersionScoreTest, StatsError> {
+  poisson_overdispersion_score_test(problem, result, false)
+}
+
+fn poisson_overdispersion_score_test(
+  problem: &EstimationProblem,
+  result: &PoissonResult,
+  nb1_direction: bool,
+) -> Result<PoissonOverdispersionScoreTest, StatsError> {
   problem.validate()?;
+  let direction_name = if nb1_direction { "NB1" } else { "NB2" };
   let n = problem.observation_count();
   let parameter_names = problem.parameter_names();
   if problem.weights.is_some()
@@ -217,21 +238,26 @@ pub fn poisson_nb2_overdispersion_score_test(
       != parameter_names
     || result.fitted_means.len() != n
   {
-    return Err(invalid(
-      "NB2 overdispersion score test requires aligned Poisson fit and sample metadata",
-    ));
+    return Err(invalid(&format!(
+      "{direction_name} overdispersion score test requires aligned Poisson fit and sample metadata"
+    )));
   }
   if result
     .fitted_means
     .iter()
-    .any(|mean| !mean.is_finite() || *mean < 0.0)
+    .any(|mean| !mean.is_finite() || *mean < 0.0 || (nb1_direction && *mean == 0.0))
     || problem.response.iter().any(|count| {
       !count.is_finite() || *count < 0.0 || count.fract() != 0.0 || *count > MAX_POISSON_COUNT
     })
   {
-    return Err(failed(
-      "NB2 overdispersion score test requires finite Poisson means and exact nonnegative counts",
-    ));
+    let mean_requirement = if nb1_direction {
+      "finite positive Poisson means"
+    } else {
+      "finite nonnegative Poisson means"
+    };
+    return Err(failed(&format!(
+      "{direction_name} overdispersion score test requires {mean_requirement} and exact nonnegative counts"
+    )));
   }
 
   let groups = if let Some(cluster) = &result.cluster {
@@ -272,7 +298,12 @@ pub fn poisson_nb2_overdispersion_score_test(
     .zip(&result.fitted_means)
     .map(|(outcome, mean)| {
       let residual = outcome - mean;
-      0.5 * (residual * residual - outcome)
+      let centered_square = residual * residual - outcome;
+      if nb1_direction {
+        centered_square / (2.0 * mean)
+      } else {
+        0.5 * centered_square
+      }
     })
     .collect::<Vec<_>>();
   let mut score = 0.0;
@@ -301,11 +332,12 @@ pub fn poisson_nb2_overdispersion_score_test(
         (sum, error)
       })
       .0;
-    (
-      correction * meat,
-      "cluster_nb2_score_g_over_g_minus_1",
-      correction,
-    )
+    let covariance = if nb1_direction {
+      "cluster_nb1_score_g_over_g_minus_1"
+    } else {
+      "cluster_nb2_score_g_over_g_minus_1"
+    };
+    (correction * meat, covariance, correction)
   } else if result.robust {
     if n < 2 {
       return Err(invalid(
@@ -321,23 +353,29 @@ pub fn poisson_nb2_overdispersion_score_test(
         (sum, error)
       })
       .0;
-    (
-      correction * meat,
-      "robust_row_nb2_score_n_over_n_minus_1",
-      correction,
-    )
+    let covariance = if nb1_direction {
+      "robust_row_nb1_score_n_over_n_minus_1"
+    } else {
+      "robust_row_nb2_score_n_over_n_minus_1"
+    };
+    (correction * meat, covariance, correction)
   } else {
-    let information = 0.5
-      * result
-        .fitted_means
-        .iter()
-        .map(|mean| mean * mean)
-        .fold((0.0, 0.0), |(mut sum, mut error), value| {
-          add_compensated(&mut sum, &mut error, value);
-          (sum, error)
-        })
-        .0;
-    (information, "poisson_information_nb2_score", 1.0)
+    let (information, covariance) = if nb1_direction {
+      (0.5 * n as f64, "poisson_information_nb1_score")
+    } else {
+      let information = 0.5
+        * result
+          .fitted_means
+          .iter()
+          .map(|mean| mean * mean)
+          .fold((0.0, 0.0), |(mut sum, mut error), value| {
+            add_compensated(&mut sum, &mut error, value);
+            (sum, error)
+          })
+          .0;
+      (information, "poisson_information_nb2_score")
+    };
+    (information, covariance, 1.0)
   };
   let statistic = score / score_variance.sqrt();
   let p_value = normal_cdf(-statistic);
@@ -347,14 +385,24 @@ pub fn poisson_nb2_overdispersion_score_test(
     || !statistic.is_finite()
     || !p_value.is_finite()
   {
-    return Err(failed(
-      "NB2 overdispersion score statistic or variance is non-finite",
-    ));
+    return Err(failed(&format!(
+      "{direction_name} overdispersion score statistic or variance is non-finite"
+    )));
   }
   Ok(PoissonOverdispersionScoreTest {
-    method: "one_sided_nb2_variance_score".into(),
+    method: if nb1_direction {
+      "one_sided_nb1_variance_score"
+    } else {
+      "one_sided_nb2_variance_score"
+    }
+    .into(),
     null_hypothesis: "alpha = 0 (Poisson conditional variance)".into(),
-    alternative_hypothesis: "alpha > 0 in Var(Y|X) = mu + alpha*mu^2".into(),
+    alternative_hypothesis: if nb1_direction {
+      "alpha > 0 in Var(Y|X) = mu + alpha*mu"
+    } else {
+      "alpha > 0 in Var(Y|X) = mu + alpha*mu^2"
+    }
+    .into(),
     statistic,
     p_value,
     score,

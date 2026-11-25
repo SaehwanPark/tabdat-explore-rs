@@ -7425,6 +7425,22 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
       },
     });
   }
+  if !argument.backtick_quoted && normalized_subcommand == "overdispersion" && parts.has_options {
+    let options = first_unquoted_comma(body)
+      .map(|index| parse_use_options(&body[index + 1..]))
+      .transpose()?
+      .unwrap_or_default();
+    if matches!(
+      options.as_slice(),
+      [option] if option.name == "nb1" && option.value == UseOptionValue::Flag
+    ) {
+      return Ok(Command::Estat {
+        command: EstatCommand {
+          subcommand: EstatSubcommand::OverdispersionNb1,
+        },
+      });
+    }
+  }
   let subcommand = match (normalized_subcommand.as_str(), argument.backtick_quoted) {
     ("residuals", false) => EstatSubcommand::Residuals,
     ("ovtest", false) => EstatSubcommand::Ovtest,

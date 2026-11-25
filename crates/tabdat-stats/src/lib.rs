@@ -205,7 +205,7 @@ pub use poisson::{
   PoissonOptions, PoissonOverdispersionScoreTest, PoissonResult, fit_poisson,
   fit_poisson_clustered, fit_poisson_with_exposure, fit_poisson_with_offset,
   fit_poisson_with_options, poisson_average_marginal_effects, poisson_linear_combination,
-  poisson_nb2_overdispersion_score_test, poisson_wald_test,
+  poisson_nb1_overdispersion_score_test, poisson_nb2_overdispersion_score_test, poisson_wald_test,
 };
 pub use poisson_bootstrap::{ClusterBootstrapPoissonResult, bootstrap_poisson_clustered};
 pub use post_estimation::{

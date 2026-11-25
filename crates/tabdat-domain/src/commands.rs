@@ -1491,6 +1491,8 @@ pub enum EstatSubcommand {
   Margins,
   /// One-sided Poisson score test of excess variation in the NB2 direction.
   Overdispersion,
+  /// One-sided Poisson score test of excess variation in the NB1 direction.
+  OverdispersionNb1,
   /// Average binary response probability change for a retained 0/1 predictor.
   DiscreteMargins {
     variable: String,

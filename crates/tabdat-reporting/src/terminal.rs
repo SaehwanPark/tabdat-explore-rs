@@ -3162,7 +3162,12 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ),
     ExecutionResult::Poisson(result) => poisson_report(result),
     ExecutionResult::PoissonOverdispersionScoreTest(result) => format!(
-      "Poisson one-sided NB2 overdispersion score test\nH0: {}; H1: {}\nRetained N = {}; score = {}; score variance = {}; Z = {}; one-sided p = {}\nCovariance: {}; correction = {}; {}; reference = asymptotic standard normal.\nCorrect Poisson conditional means are required. Robust score variance does not validate a complete NB2 law.{}",
+      "Poisson one-sided {} overdispersion score test\nH0: {}; H1: {}\nRetained N = {}; score = {}; score variance = {}; Z = {}; one-sided p = {}\nCovariance: {}; correction = {}; {}; reference = asymptotic standard normal.\nCorrect Poisson conditional means are required. Robust score variance does not validate a complete {} law.{}",
+      if result.method == "one_sided_nb1_variance_score" {
+        "NB1"
+      } else {
+        "NB2"
+      },
       result.null_hypothesis,
       result.alternative_hypothesis,
       result.observation_count,
@@ -3177,10 +3182,15 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
           "independent clusters, G = {}; many-group approximation only, no few-cluster guarantee",
           cluster.group_count
         )
-      } else if result.covariance == "robust_row_nb2_score_n_over_n_minus_1" {
+      } else if result.covariance.starts_with("robust_row_") {
         "independent rows".to_owned()
       } else {
         "model-based Poisson information".to_owned()
+      },
+      if result.method == "one_sided_nb1_variance_score" {
+        "NB1"
+      } else {
+        "NB2"
       },
       result
         .offset_variable

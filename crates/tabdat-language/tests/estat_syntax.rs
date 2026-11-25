@@ -69,3 +69,25 @@ fn binary_factor_margins_parse_only_one_named_factor() {
     );
   }
 }
+
+#[test]
+fn overdispersion_accepts_only_the_nb1_direction_option() {
+  let command = parse_command("estat overdispersion, nb1").unwrap();
+  let value = serde_json::to_value(command).unwrap();
+  assert_eq!(
+    value["payload"]["command"]["subcommand"],
+    "overdispersion_nb1"
+  );
+
+  for invalid in [
+    "estat overdispersion, nb2",
+    "estat overdispersion, nb1 nb1",
+    "estat overdispersion, nb1(2)",
+    "estat overdispersion, robust",
+  ] {
+    assert!(
+      parse_command(invalid).is_err(),
+      "unexpectedly parsed {invalid}"
+    );
+  }
+}

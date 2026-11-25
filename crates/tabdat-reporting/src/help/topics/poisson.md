@@ -23,6 +23,7 @@ Example workflow:
 - `summarize visits`
 - `poisson visits age income, robust`
 - `estat overdispersion` — one-sided score test in the NB2 variance direction
+- `estat overdispersion, nb1` — one-sided score test in the linear NB1 variance direction
 - `estat margins`
 - `predict mean_visits, n`
 - `predict response_residual, residuals`
@@ -110,13 +111,16 @@ law, which robust/cluster QMLE covariance does NOT guarantee. No uncertainty or
 formal goodness-of-fit test is supplied; see `help estat`.
 
 `estat overdispersion` evaluates the Poisson score for the one-sided NB2
-variance alternative `Var(Y|X)=mu+alpha*mu^2`, `alpha>0`, on the retained fit;
-fixed offsets or log exposure remain in its fitted means. The selected model-based, independent-
-row N/(N-1), or one-way cluster G/(G-1) score variance gives a signed asymptotic-
+variance alternative `Var(Y|X)=mu+alpha*mu^2`, `alpha>0`, on the retained fit.
+`estat overdispersion, nb1` instead tests the linear variance direction
+`Var(Y|X)=mu+alpha*mu`, `alpha>0`; it requires positive retained fitted means.
+Both keep fixed offsets or log exposure in fitted means. Model-based, row-robust
+N/(N-1), or one-way cluster G/(G-1) score variance gives a signed asymptotic-
 normal Z and one-sided p-value. Robust inference requires a correct conditional
 mean; clustered inference additionally assumes independent groups and does not
-guarantee reliable few-cluster inference. It does not fit NB2 or supply a
-cluster-robust NB2 likelihood-ratio reference. See
+guarantee reliable few-cluster inference. The NB1 direction is a regression-
+based variance test, not NB1 maximum-likelihood estimation. The NB2 test does
+not supply a cluster-robust NB2 likelihood-ratio reference. See
 `examples/nb2-overdispersion-score/README.md`.
 
 Not installed for Poisson: weights/survey, multiway clustering,

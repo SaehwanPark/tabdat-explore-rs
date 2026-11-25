@@ -955,7 +955,7 @@ pub enum ExecutionResult {
   HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
-  /// Retained-Poisson one-sided NB2 overdispersion score test.
+  /// Retained-Poisson one-sided NB1 or NB2 variance-direction score test.
   PoissonOverdispersionScoreTest(Box<PoissonOverdispersionScoreTest>),
   /// Model-based conditional Poisson FE, including explicit zero-total exclusions.
   ConditionalPoisson(Box<tabdat_stats::ConditionalPoissonResult>),
