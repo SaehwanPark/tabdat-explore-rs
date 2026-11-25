@@ -137,6 +137,14 @@ printf '%s\n' '8364cf9e53e32c794bcf0313a1590adcedf4e0526ba792884c7978cde169a628 
 Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.dta
 ```
 
+Run the standalone [year-2 hypothesis investigation](investigate_table206_year2.R)
+against the same checksum-verified DTA to reproduce the filtered sample, NB2
+fit, and first three averaged count probabilities:
+
+```sh
+Rscript "$repo/examples/mma20p1count/investigate_table206_year2.R" randdata.dta
+```
+
 ## Statistical and state contract
 
 - Exact nonnegative integer **loaded values** ≤2^53−1, joint finite complete
@@ -597,6 +605,27 @@ No parameters, samples or tolerances are tuned to manufacture printed agreement.
 This workflow validates the specified native/author-program design/laws, **not
 literal whole Table20.6 reproduction**; the printed NB2 row remains visible
 unresolved required coverage. Source book/program/data are not redistributed.
+
+The stale year-2 comment is not evidence of an applied year-2 filter. The
+authors' official [October 24, 2005 program bundle](https://cameron.econ.ucdavis.edu/mmabook/mma10252005.zip)
+(SHA-256 `22f62b083ce1e9a287c20814c9cad5c18173b9a4088e3276a4ce3f504eb37734`)
+contains a May 20, 2005 `mma20p1count.do` (SHA-256
+`0992963d42923affdfe992c0e89f93a54e429d4e7fe5bf3ed07fc5862a8b017e`). It
+retains the stale year-2 comment, then explicitly says the analysis uses all
+years; the only sample deletion is missing `educdec`. Its accompanying log fits
+NB2 on 20,186 observations (`alpha=1.182251`, log likelihood `-42777.611`),
+but predates the Table20.6 probability calculations added in November 2006.
+
+The simpler hypothesis that the printed row came from a year-2-only NB2 fit
+also fails. On the checksum-verified original DTA, filtering to year 2 and
+excluding missing `educdec` leaves 5,574 rows. A converged independent
+`MASS::glm.nb` fit with the documented 17 regressors gives average NB2
+probabilities for counts 0, 1, and 2 of **33.528317%, 19.016655%, and
+12.441741%**. This calculation used R 4.6.2 and MASS 7.3.66 and is far from
+the printed **30.9%, 19.6%, and 13.6%**. It rules out that sample-filter
+explanation; it does not explain the printed row. Preserve the book and
+executable values and leave the conflict as an explicit coverage gap pending
+new primary-source evidence.
 
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
 uncertainty for current-row probabilities, other formal specification tests,
