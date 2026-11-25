@@ -51,6 +51,7 @@ const CORE_COMMANDS: &[&str] = &[
   "test",
   "ttest",
   "use",
+  "xtsum",
 ];
 
 fn complete_path(
@@ -287,6 +288,7 @@ impl Completer for ShellHelper {
       }
       if [
         "summarize",
+        "xtsum",
         "codebook",
         "missing",
         "tabulate",

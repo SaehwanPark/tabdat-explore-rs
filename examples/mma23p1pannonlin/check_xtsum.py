@@ -17,9 +17,9 @@ FIELDS = [
   "logrl5", "dyear2", "dyear3", "dyear4", "dyear5",
 ]
 XT_FIELDS = [
-  "overall_N", "overall_mean", "overall_sd", "overall_min", "overall_max",
-  "between_n", "between_sd", "between_min", "between_max", "within_N",
-  "within_sd", "within_min", "within_max", "mean_T",
+  "overall_n", "overall_mean", "overall_sd", "overall_min", "overall_max",
+  "between_n", "between_sd", "between_min", "between_max", "within_n",
+  "within_sd", "within_min", "within_max", "mean_t",
 ]
 XT_VARIABLES = FIELDS
 
@@ -84,7 +84,7 @@ def author_xtsum(lines):
   return values
 
 
-def check(native_dir, reference_dir, raw_path, author_do, author_log):
+def check(native_dir, reference_dir, raw_path, author_do, author_log, control_json=None):
   for path, expected in [
     (raw_path, DATA_SHA256), (author_do, DO_SHA256), (author_log, LOG_SHA256),
   ]:
@@ -114,7 +114,7 @@ def check(native_dir, reference_dir, raw_path, author_do, author_log):
     events = [json.loads(line) for line in stream if line.strip()]
   require(
     [event.get("result_type") for event in events]
-    == ["LoadResult", "IsidResult", "DescribeResult", "TableResult", "TableResult"],
+    == ["LoadResult", "IsidResult", "DescribeResult", "TableResult", "XtSumResult"],
     "xtsum event sequence changed",
   )
   require(all(event.get("schema_version") == 1 and "error" not in event for event in events), "native xtsum script failed")
@@ -123,35 +123,35 @@ def check(native_dir, reference_dir, raw_path, author_do, author_log):
   require(events[3]["data"]["headers"] == ["validated_rows"], "source guard schema changed")
   require(events[3]["data"]["rows"] == [[3460]], "source guard did not validate all rows")
   table = events[4]["data"]
-  require(table["headers"] == ["variable", *XT_FIELDS], "native xtsum output schema changed")
+  require(table["id_variable"] == "id", "native xtsum panel identifier changed")
   require(len(table["rows"]) == len(reference) == 21, "native xtsum must return all 21 variables")
 
   max_error = 0.0
   for actual, expected in zip(table["rows"], reference):
-    require(actual[0] == expected["variable"], "native xtsum order differs from Base R")
-    for index, field in enumerate(XT_FIELDS, 1):
-      if field in ("overall_N", "between_n", "within_N"):
-        require(int(actual[index]) == int(expected[field]), f"{actual[0]} {field} differs from R")
+    require(actual["variable"] == expected["variable"], "native xtsum order differs from Base R")
+    for field in XT_FIELDS:
+      if field in ("overall_n", "between_n", "within_n"):
+        require(int(actual[field]) == int(expected[field]), f"{actual['variable']} {field} differs from R")
       else:
-        error = abs(float(actual[index]) - float(expected[field]))
+        error = abs(float(actual[field]) - float(expected[field]))
         max_error = max(max_error, error)
-        close(actual[index], expected[field], f"{actual[0]} {field}")
-    require(int(actual[1]) == int(actual[10]), f"{actual[0]} overall/within counts differ")
+        close(actual[field], expected[field], f"{actual['variable']} {field}")
+    require(int(actual["overall_n"]) == int(actual["within_n"]), f"{actual['variable']} overall/within counts differ")
 
   expected_counts = {"ardssic": (3360, 336, 10)}
   expected_counts.update({f"logrl{j}": (346 * (10 - j), 346, 10 - j) for j in range(1, 6)})
   for row in table["rows"]:
-    variable = row[0]
+    variable = row["variable"]
     expected_n, expected_panels, expected_t = expected_counts.get(variable, (3460, 346, 10))
-    require((int(row[1]), int(row[6]), int(row[14])) == (expected_n, expected_panels, expected_t), f"{variable}: expected source N/n/T")
+    require((int(row["overall_n"]), int(row["between_n"]), int(row["mean_t"])) == (expected_n, expected_panels, expected_t), f"{variable}: expected source N/n/T")
 
   log_lines = Path(author_log).read_text(encoding="utf-8", errors="strict").splitlines()
   logged = author_xtsum(log_lines)
   for expected in author_reference:
     author = logged[expected["variable"]]
-    require(int(expected["overall_N"]) == author["overall_N"], f"{expected['variable']}: author N")
+    require(int(expected["overall_n"]) == author["overall_N"], f"{expected['variable']}: author N")
     require(int(expected["between_n"]) == author["between_n"], f"{expected['variable']}: author n")
-    require(int(expected["mean_T"]) == author["mean_T"], f"{expected['variable']}: author T")
+    require(int(expected["mean_t"]) == author["mean_T"], f"{expected['variable']}: author T")
     for token, field in zip(author["overall"], ["overall_mean", "overall_sd", "overall_min", "overall_max"]):
       printed_close(expected[field], token, f"author overall {expected['variable']} {field}")
     for token, field in zip(author["between"], ["between_sd", "between_min", "between_max"]):
@@ -159,16 +159,37 @@ def check(native_dir, reference_dir, raw_path, author_do, author_log):
     for token, field in zip(author["within"], ["within_sd", "within_min", "within_max"]):
       printed_close(expected[field], token, f"author within {expected['variable']} {field}")
 
+  if control_json:
+    control_reference = read_csv(reference_dir / "xtsum_unbalanced.csv")
+    with open(control_json, encoding="utf-8") as stream:
+      control_events = [json.loads(line) for line in stream if line.strip()]
+    require(
+      [event.get("result_type") for event in control_events] == ["LoadResult", "XtSumResult"],
+      "unbalanced control event sequence changed",
+    )
+    require(all(event.get("schema_version") == 1 and "error" not in event for event in control_events), "unbalanced control failed")
+    control = control_events[-1]["data"]
+    require(control["id_variable"] == "firm", "unbalanced control panel identifier changed")
+    require([row["variable"] for row in control["rows"]] == [row["variable"] for row in control_reference], "unbalanced control variable order changed")
+    for actual, expected in zip(control["rows"], control_reference):
+      for field in XT_FIELDS:
+        if field in ("overall_n", "between_n", "within_n"):
+          require(int(actual[field]) == int(expected[field]), f"unbalanced {actual['variable']} {field} differs from Base R")
+        else:
+          close(actual[field], expected[field], f"unbalanced {actual['variable']} {field}")
+
   print(
     "Matched checksum-pinned full-decade patents source, all 21 variable-specific "
     "overall/between/within rows against raw-token Base R and the author log; "
     f"max native/R error={max_error:.3g}."
   )
+  if control_json:
+    print("Matched every overall/between/within field for the uneven two-variable control against Base R.")
 
 
 if __name__ == "__main__":
-  if len(sys.argv) != 6:
-    raise SystemExit("usage: check_xtsum.py native_dir reference_dir patr7079.asc author.do author.txt")
+  if len(sys.argv) not in (6, 7):
+    raise SystemExit("usage: check_xtsum.py native_dir reference_dir patr7079.asc author.do author.txt [control.jsonl]")
   try:
     check(*sys.argv[1:])
   except (AssertionError, OSError, StopIteration, ValueError, KeyError, IndexError) as error:

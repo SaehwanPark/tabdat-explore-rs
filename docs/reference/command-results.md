@@ -1164,6 +1164,17 @@ lists, configurable percentiles, grouped detail or other option combinations are
 installed. Native finite-arithmetic limits remain. See `help summarize` and the
 independent NumPy fixture `tests/fixtures/summary-detail-reference.json`.
 
+`xtsum [varlist], i(panelvar)` returns `result_type: "XtSumResult"` with the
+explicit `data.id_variable` and ordered `data.rows`. Each row contains
+`variable`, `overall_n`, `overall_mean`, `overall_sd`, `overall_min`,
+`overall_max`, `between_n`, `between_sd`, `between_min`, `between_max`,
+`within_n`, `within_sd`, `within_min`, `within_max`, and `mean_t`. Counts are
+JSON integers; defined moments and extrema are JSON numbers; undefined values
+are `null`. Each variable uses its own finite non-NULL sample. Between moments
+use equally weighted contributing panel means, and within values are shifted by
+the pooled mean. This is read-only descriptive output with no retained panel
+declaration or time-key check. See the [full command contract](../commands/xtsum.md).
+
 ## Frequencies and conditional cohorts
 
 Bounded one/two-way `tabulate` uses `result_type: "TabulateResult"` with

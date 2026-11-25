@@ -73,11 +73,13 @@ layout.
 ## Result and acceptance evidence
 
 Emit a stable JSON `XtSumResult` with rows in requested/schema order and fields:
-`variable`, `overall_N`, `overall_mean`, `overall_sd`, `overall_min`,
+`variable`, `overall_n`, `overall_mean`, `overall_sd`, `overall_min`,
 `overall_max`, `between_n`, `between_sd`, `between_min`, `between_max`,
-`within_N`, `within_sd`, `within_min`, `within_max`, and `mean_T`. Undefined
-numeric fields are JSON `null`. Text output names the overall, between, and
-within rows and their corresponding counts.
+`within_n`, `within_sd`, `within_min`, `within_max`, and `mean_t`. Undefined
+moment and extrema fields are JSON `null`; observation and panel counts are
+integers, while defined moments/extrema and `mean_t` are JSON numbers. Text
+output names the overall, between, and within rows and their corresponding
+counts.
 
 Before release, compare the command on the checksum-pinned patents source with
 the existing raw-token Base R reference and author log. Independently calculate

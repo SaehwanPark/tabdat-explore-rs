@@ -409,6 +409,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "reshape" => parse_reshape_command(body),
     "panel" => parse_panel_command(body),
     "xtdata" => parse_xtdata_command(body),
+    "xtsum" => parse_xtsum_command(body),
     "ivregress" => parse_ivregress_command(body),
     "xtreg" => parse_xtreg_command(body),
     "xtabond" => parse_xtabond_command(body),
@@ -2479,6 +2480,61 @@ fn parse_xtdata_command(body: &str) -> Result<Command, ParseError> {
         .map(|argument| argument.text)
         .collect(),
       transform,
+    },
+  })
+}
+
+fn parse_xtsum_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "xtsum expects syntax: xtsum [varlist], i(panelvar)";
+  let (variable_body, option_body) = match first_unquoted_comma(body) {
+    Some(index) => (&body[..index], Some(&body[index + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(variable_body, false)?;
+  if parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  let mut unsupported = options
+    .iter()
+    .filter(|option| option.name != "i")
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "xtsum unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let id_variables = parse_identifier_option("xtsum", &options, "i")?;
+  let Some(id_variables) = id_variables.filter(|variables| variables.len() == 1) else {
+    return Err(ParseError::new(
+      "xtsum expects exactly one i(panelvar) option",
+    ));
+  };
+  let id_variable = id_variables
+    .into_iter()
+    .next()
+    .expect("panel identifier arity checked before extraction");
+  Ok(Command::XtSum {
+    command: XtSumCommand {
+      variables: parts
+        .arguments
+        .into_iter()
+        .map(|argument| argument.text)
+        .collect(),
+      id_variable,
     },
   })
 }
