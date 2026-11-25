@@ -27,8 +27,13 @@ q>=17 and other endogenous/covariance dimensions remain unsupported.
 ## Progress
 
 - [x] Scope and verification plan recorded.
-- [ ] Open draft PR before substantive implementation.
-- [ ] Implement q=16 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Open draft PR before substantive implementation (#502).
+- [x] Implement q=16 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
+
+Verification note: all affected package and CLI suites pass. Strict Clippy
+passes for affected packages and changed CLI targets. A workspace-wide
+`-D warnings` attempt also surfaced one pre-existing warning in the unrelated
+`tests/cli_json_count_exposure_contract.rs` target.
 - [ ] Final PR review and merge.

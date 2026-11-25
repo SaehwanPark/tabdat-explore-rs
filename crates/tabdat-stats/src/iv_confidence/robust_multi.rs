@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// fifteen excluded instruments. The joint-null degrees of freedom
+/// sixteen excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -942,9 +942,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 30 {
+  if roots_in_scale.len() > 32 {
     return Err(invalid(
-      "robust AR boundary has more than thirty real roots",
+      "robust AR boundary has more than thirty-two real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -1006,9 +1006,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 16 {
+  if intervals.len() > 17 {
     return Err(invalid(
-      "robust AR confidence set has more than sixteen components",
+      "robust AR confidence set has more than seventeen components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1237,7 +1237,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through fifteen excluded instruments. The confidence boundary has degree
+/// and two through sixteen excluded instruments. The confidence boundary has degree
 /// at most twice the instrument count; every real root is
 /// isolated by recursive derivative partitioning, without evaluating a finite
 /// beta grid.
@@ -1254,9 +1254,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=15).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=16).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to fifteen excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to sixteen excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2666,6 +2666,42 @@ mod tests {
         interval(Some(11.0), Some(12.0)),
         interval(Some(13.0), Some(14.0)),
         interval(Some(15.0), None),
+      ],
+      3e-8,
+    );
+  }
+
+  #[test]
+  fn degree_thirty_two_boundary_supports_thirty_two_roots_and_seventeen_components() {
+    let roots = [
+      -0.5, -0.46875, -0.4375, -0.40625, -0.375, -0.34375, -0.3125, -0.28125, -0.25, -0.21875,
+      -0.1875, -0.15625, -0.125, -0.09375, -0.0625, -0.03125, 0.03125, 0.0625, 0.09375, 0.125,
+      0.15625, 0.1875, 0.21875, 0.25, 0.28125, 0.3125, 0.34375, 0.375, 0.40625, 0.4375, 0.46875,
+      0.5,
+    ];
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    assert_intervals_close_with_tolerance(
+      &intervals,
+      &[
+        interval(None, Some(-0.5)),
+        interval(Some(-0.46875), Some(-0.4375)),
+        interval(Some(-0.40625), Some(-0.375)),
+        interval(Some(-0.34375), Some(-0.3125)),
+        interval(Some(-0.28125), Some(-0.25)),
+        interval(Some(-0.21875), Some(-0.1875)),
+        interval(Some(-0.15625), Some(-0.125)),
+        interval(Some(-0.09375), Some(-0.0625)),
+        interval(Some(-0.03125), Some(0.03125)),
+        interval(Some(0.0625), Some(0.09375)),
+        interval(Some(0.125), Some(0.15625)),
+        interval(Some(0.1875), Some(0.21875)),
+        interval(Some(0.25), Some(0.28125)),
+        interval(Some(0.3125), Some(0.34375)),
+        interval(Some(0.375), Some(0.40625)),
+        interval(Some(0.4375), Some(0.46875)),
+        interval(Some(0.5), None),
       ],
       3e-8,
     );
