@@ -1387,19 +1387,35 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       let mut data =
         serde_json::to_value(&result.test).expect("finite NB2 count goodness-of-fit result");
       data["estimator"] = json!("nb2_grouped_probability_gof");
-      data["method"] = json!("andrews_score_adjusted_grouped_chi_square");
+      data["method"] = json!(if result.test.cluster.is_some() {
+        "cluster_adjusted_score_influence_chi_square"
+      } else {
+        "andrews_score_adjusted_grouped_chi_square"
+      });
       data["outcome"] = json!(result.outcome);
       data["sample"] = json!(result.sample);
       data["sample_role"] = json!("retained_estimation_sample");
-      data["null_hypothesis"] = json!("conditional_NB2_distribution_is_correctly_specified");
+      data["null_hypothesis"] = json!(if result.test.cluster.is_some() {
+        "conditional_NB2_marginal_distribution_is_correctly_specified"
+      } else {
+        "conditional_NB2_distribution_is_correctly_specified"
+      });
       data["reference_distribution"] = json!({
         "family": "chi_square",
         "degrees_of_freedom": result.test.degrees_of_freedom,
       });
-      data["assumptions"] = json!([
-        "independent_observations",
-        "correctly_specified_conditional_NB2_distribution",
-      ]);
+      data["assumptions"] = if result.test.cluster.is_some() {
+        json!([
+          "independent_clusters",
+          "correctly_specified_conditional_NB2_marginal_distribution",
+          "many_independent_clusters_no_few_cluster_guarantee",
+        ])
+      } else {
+        json!([
+          "independent_observations",
+          "correctly_specified_conditional_NB2_distribution",
+        ])
+      };
       (data, "CountGoodnessOfFitResult")
     }
     ExecutionResult::Nbreg(result) => {

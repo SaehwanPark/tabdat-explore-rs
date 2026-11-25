@@ -21,11 +21,23 @@ of `J` cells is dropped, giving `J-1` degrees of freedom, so this workflow will
 use 10 for the default 11-cell partition and preserve the author-code mismatch
 as an explicit source discrepancy.
 
-The reference law assumes independent observations and a correctly specified
-NB2 conditional distribution. It does not provide a cluster-robust goodness-of-
-fit reference. The source doctor-visit data contain repeated person-years and
-the author program itself notes that clustering is needed; source-sample output
-is therefore reported as method reproduction, not dependable panel inference.
+For an unweighted, one-way clustered NB2 fit without an offset, the same command
+uses the cluster-summed M-test influence function documented in
+[`cluster_count_gof.md`](cluster_count_gof.md). It retains the joint beta/lnalpha
+score, uses the model-based observed-information bread, applies `G/(G-1)` to the
+uncentered cluster moment covariance, and reports an asymptotic chi-square test
+only when that covariance is full rank. Its `J-1` degrees of freedom are
+therefore available only when all first-cell moments are identified. The
+reference assumes independent clusters, a correctly specified conditional NB2
+marginal distribution and many independent clusters. The multiplier is not a
+few-cluster correction. Row-robust fits, weights, offsets and multiway clusters
+remain unsupported.
+
+The independent-row reference assumes independent observations and a correctly
+specified NB2 conditional distribution. The source doctor-visit data contain
+repeated person-years and the author program itself notes that clustering is
+needed. The prepared author ASCII omits person identifiers, so its exact-sample
+result remains method reproduction rather than panel-robust inference.
 
 ## Verification
 
@@ -51,7 +63,23 @@ The independently polished fit also matches Rust across 20 retained quantities
 `2.11003e-10`. Base R's maximum absolute likelihood score is `2.54e-11`; the
 Rust fit reports scaled score `7.98e-15` and scaled Newton step `2.19e-14`.
 
+For the clustered extension, `cluster_count_gof_reference.R` creates a
+deterministic Base R fixture with 480 rows in 96 independent clusters. A shared
+Gamma effect makes the row outcomes dependent within each cluster while
+preserving their NB2 marginals. The independent R fit, analytic observed
+information, score adjustment, cluster covariance and chi-square result match
+Rust; R also checks the cell-probability derivative against finite differences.
+The reported test is `3.72571408404506`, df=4, p=`0.444397009701926` for the
+synthetic fixture cutoff 4. The original person key is added only after
+`prepare_person.R` audits the exact ASCII order against the external DTA. On
+that retained `N=20,186`, `G=5,908` source sample, an independent Base R
+reference and the native `cluster_count_gof.td` workflow match 149 quantities;
+the result is `M=62.0783423878654`, df=10,
+`p=1.46222048715161e-9`. The author program does not print a clustered GOF
+statistic; this remains a native method extension, not author-output parity.
+
 Runtime tests cover retained-row use, read-only behavior after current-data
-edits, unsupported fit families, clustered/robust/offset-fit rejection and
-state-preserving failures. Language, JSON CLI and terminal output contracts are
-also checked. The fixed QR work bound prevents oversized auxiliary regressions.
+edits, clustered covariance and rank failures, unsupported row-robust/offset
+fits, and state-preserving failures. Language, JSON CLI and terminal output
+contracts cover the independent-row and clustered reports. The fixed QR work
+bound prevents oversized independent-row auxiliary regressions.

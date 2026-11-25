@@ -12,7 +12,8 @@ How to invoke:
 `estat margins, discrete(variable)` (after logit or probit)
 `estat overdispersion` (after Poisson)
 `estat countprob [, max(10)]` (after Poisson or NB2)
-`estat countgof [, max(10)]` (after an unclustered model-based NB2 fit)
+`estat countgof [, max(10)]` (after a model-based unclustered or one-way
+clustered NB2 fit)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -133,18 +134,30 @@ and every NB2 maximum-likelihood score, including `lnalpha`. The reported
 statistic is N times the uncentered R-squared, with asymptotic chi-square(J-1)
 reference. The result includes observed/fitted frequencies for every cell.
 
-The independent-row and correctly specified conditional NB2 assumptions are
-required. No robust or cluster-adjusted reference is installed. In particular,
-the RAND doctor-visit example has repeated person-years; the authors say
-clustering is needed, while their §20.7 goodness-of-fit code does not cluster.
-Its p-value is therefore method reproduction, not panel-robust inference.
+The unclustered reference requires independent rows and a correctly specified
+conditional NB2 distribution. A one-way clustered NB2 fit without weights or an
+offset instead uses the cluster-summed score-adjusted influence function and
+`G/(G-1)` moment-covariance multiplier. It retains all beta/`lnalpha` scores and
+the model-based observed-information bread. The covariance must have full rank
+for the chi-square test to be reported. Its reference requires independent
+clusters, correctly specified conditional NB2 marginals, and many clusters;
+the multiplier does not give a few-cluster guarantee. Row-robust fits, weights,
+offsets, and multiway clusters remain unsupported.
+
+In particular, the RAND doctor-visit example has repeated person-years; the
+authors say clustering is needed, while their §20.7 goodness-of-fit code does
+not cluster. The unclustered p-value is therefore method reproduction, not
+panel-robust inference. The cluster extension is validated on a synthetic
+dependent-within-cluster NB2 reference, not the source panel; the prepared
+author ASCII omits person identifiers.
 
 For the default 11-cell partition the book's J-1 rule gives df=10. The November
 2006 author program passes df=9 to its p-value calculation; this command follows
 the book's rule and keeps the program discrepancy explicit. The diagnostic uses
 the retained NB2 sample and does not refit or mutate model/data state. See
 `examples/mma20p1count/count_gof.md` for the independent Base R reference and
-source comparison.
+source comparison, and `examples/mma20p1count/cluster_count_gof.md` for the
+cluster influence-function derivation and independent reference.
 
 ## Binary continuous average partial effects
 

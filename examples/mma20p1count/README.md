@@ -511,13 +511,46 @@ statistic. For the default 11 cells it uses `chi-square(10)`, following the
 book's `J-1` rule. The 2006 author program passes 9 degrees of freedom; the
 discrepancy is retained in the report rather than copied into the test.
 
-The test requires a retained, unclustered, unweighted model-based NB2 fit with
-no offset. It uses that fit's original sample, fitted means and individual beta/
-lnalpha scores without refitting or changing state. Its reference assumes
-independent observations and a correctly specified conditional NB2 distribution.
-RAND records are repeated person-years, so the output is method reproduction,
-not panel-robust inference. No cluster-robust grouped-test reference is
-installed.
+The command supports a retained model-based unclustered NB2 fit or a one-way
+clustered NB2 fit, both unweighted and without an offset. It uses that fit's
+original sample, fitted means and individual beta/lnalpha scores without
+refitting or changing state. The clustered form uses a cluster-summed
+score-adjusted moment covariance with `G/(G-1)` correction and an asymptotic
+chi-square reference when the covariance is full rank. It assumes independent
+clusters and many clusters; there is no few-cluster guarantee. Row-robust fits,
+weights, offsets and multiway clusters are not supported.
+
+RAND records are repeated person-years, so use the audited
+[`cluster_count_gof.td`](cluster_count_gof.td) workflow when the original person
+key is available. The prepared ASCII alone omits those IDs. The clustered test
+has both a synthetic Base R reference and an independent fit of the audited
+20,186 person-years / 5,908 people. It returns `M=62.0783423878654`, df=10,
+`p=1.46222048715161e-9`; the original author program does not print this test.
+Person independence remains an assumption and does not establish household/site
+or other panel inference.
+
+The derivation, synthetic reference and conditions are described in
+[`cluster_count_gof.md`](cluster_count_gof.md). The unchanged independent-row
+reference and the cluster extension details are collected in
+[`count_gof.md`](count_gof.md).
+
+After preparing the checksum-verified person CSV with `prepare_person.R`, use a
+fresh directory containing `mma20p1count_person.csv` to run and compare the
+clustered source workflow:
+
+```sh
+"$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma20p1count/cluster_count_gof.td" > cluster_count_gof_native.jsonl
+Rscript "$repo/examples/mma20p1count/cluster_count_gof_author_reference.R" \
+  mma20p1count_person.csv cluster_count_gof_reference.csv
+python3 "$repo/examples/mma20p1count/check_cluster_count_gof_author_reference.py" \
+  cluster_count_gof_reference.csv cluster_count_gof_native.jsonl
+```
+
+The independent R reference also verifies its analytic cell-probability
+derivative against finite differences. It compares149 retained quantities,
+including the full 10-by-10 moment covariance; the maximum absolute difference
+is `2.11003e-10` in log likelihood.
 
 In a fresh directory containing `mma20p1count.csv`, the same audited input used
 above, run:

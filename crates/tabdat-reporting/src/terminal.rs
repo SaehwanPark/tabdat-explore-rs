@@ -2822,8 +2822,13 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text
     }
     ExecutionResult::CountGoodnessOfFit(result) => {
+      let method = if result.test.cluster.is_some() {
+        "Cluster-adjusted score-influence CGF"
+      } else {
+        "Andrews score-adjusted CGF"
+      };
       let mut text = format!(
-        "NB2 grouped count goodness-of-fit test\nOutcome: {}; retained estimation N = {}\nAndrews score-adjusted CGF = {}; chi-square({}) p = {}\nCount\tObserved N\tObserved fraction\tFitted fraction\tExpected N\n",
+        "NB2 grouped count goodness-of-fit test\nOutcome: {}; retained estimation N = {}\n{method} = {}; chi-square({}) p = {}\nCount\tObserved N\tObserved fraction\tFitted fraction\tExpected N\n",
         result.outcome.escape_debug(),
         result.test.observation_count,
         result.test.statistic,
@@ -2843,8 +2848,19 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         )
         .unwrap();
       }
-      text.push_str("Method: N times the uncentered R-squared from a no-intercept regression of one on the retained cell residuals and all NB2 likelihood scores, including lnalpha. The reference assumes independent observations and a correctly specified conditional NB2 distribution; no cluster-robust reference is installed.\n");
-      if result.test.tail_from == 10 {
+      if let Some(cluster) = &result.test.cluster {
+        writeln!(
+          text,
+          "Method: Sum the score-adjusted first-cell influence contributions within independent clusters, then estimate their covariance with G/(G-1)/N. Cluster variable {}; G = {}; covariance multiplier = {}. The asymptotic chi-square reference requires a correctly specified conditional NB2 marginal distribution and many independent clusters; there is no few-cluster guarantee.",
+          cluster.variable.escape_debug(),
+          cluster.group_count,
+          cluster.covariance_correction
+        )
+        .unwrap();
+      } else {
+        text.push_str("Method: N times the uncentered R-squared from a no-intercept regression of one on the retained cell residuals and all NB2 likelihood scores, including lnalpha. The reference assumes independent observations and a correctly specified conditional NB2 distribution; no cluster-robust reference is installed.\n");
+      }
+      if result.test.cluster.is_none() && result.test.tail_from == 10 {
         text.push_str("Source note: the 2006 author program reports df=9 for these 11 cells; this result uses df=10 from the book's J-1 rule.\n");
       }
       text

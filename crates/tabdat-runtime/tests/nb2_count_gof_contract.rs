@@ -117,8 +117,8 @@ fn countgof_rejects_missing_or_unsupported_fits_without_changing_state() {
   for fit in [
     "poisson y x z",
     "nbreg y x z, robust",
-    "nbreg y x z, cluster(person)",
     "nbreg y x z, offset(offset)",
+    "nbreg y x z, offset(offset) cluster(person)",
   ] {
     let mut session = fixture.session();
     run(&mut session, fit);
@@ -133,4 +133,23 @@ fn countgof_rejects_missing_or_unsupported_fits_without_changing_state() {
     );
     assert_eq!(session.state(), state_before, "fit={fit}");
   }
+}
+
+#[test]
+fn countgof_uses_cluster_adjustment_and_preserves_session_state() {
+  let fixture = Fixture::new();
+  let mut session = fixture.session();
+  run(&mut session, "nbreg y x z, cluster(person)");
+  let state_before = session.state();
+  let ExecutionResult::CountGoodnessOfFit(result) = run(&mut session, "estat countgof, max(2)")
+  else {
+    panic!("clustered count goodness of fit")
+  };
+  let cluster = result.test.cluster.as_ref().unwrap();
+  assert_eq!(cluster.variable, "person");
+  assert_eq!(cluster.group_count, 6);
+  assert_eq!(cluster.covariance_correction, 1.2);
+  assert_eq!(result.test.degrees_of_freedom, 2);
+  assert_eq!(result.test.moment_covariance.as_ref().unwrap().len(), 2);
+  assert_eq!(session.state(), state_before);
 }
