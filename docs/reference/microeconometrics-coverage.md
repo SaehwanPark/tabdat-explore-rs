@@ -1619,7 +1619,7 @@ panel likelihood is supplied.
   [0.848220516944529, 1.52707474910469]. Rust compares endpoints and direct
   Wald probes within 3e-8, checks the degree-twelve boundary, twelve-root/
   seven-component polynomial, rescaling, retained state, text/JSON and upper-bound
-  rejection. Fifteen or more excluded instruments, multiple endogenous
+  rejection. Sixteen or more excluded instruments, multiple endogenous
   regressors outside the bounded
   projected
   two-by-two slice, robust projection outside that slice, HAC/survey covariance
@@ -1647,8 +1647,8 @@ panel likelihood is supplied.
   [1.01318139921973, 1.37571882762637]. Rust compares all endpoints and six
   direct Wald probes per design/covariance within 3e-8, along with corrections,
   metadata, rescaling, retained state and text/JSON output. The degree-sixteen
-  solver is tested with sixteen real roots and nine accepted components. Ten or
-  more excluded instruments remain unsupported.
+  solver is tested with sixteen real roots and nine accepted components. The
+  later entries extend support through q=15.
 - **Nine-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
   the Base R 4.6.2 references use two 216-row designs, one included control,
   K_aux=11 and residual DF=205. The 95% chi-square(9) critical value is
@@ -1661,8 +1661,8 @@ panel likelihood is supplied.
   Rust compares all endpoints and six direct Wald probes per design and
   covariance within 3e-8, plus corrections, metadata, rescaling, retained state
   and JSON/text. The degree-eighteen boundary test covers all eighteen real
-  roots and ten accepted components. Robust scalar AR sets now support q=2..14;
-  q15+ and other covariance/design extensions remain unsupported.
+  roots and ten accepted components. Robust scalar AR sets now support q=2..15;
+  q16+ and other covariance/design extensions remain unsupported.
 - **Ten-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
   the independent Base R 4.6.2 reference uses two 240-row designs, one included
   control, K_aux=12 and residual DF=228. The 95% critical chi-square(10) value
@@ -1674,9 +1674,9 @@ panel likelihood is supplied.
   determinant coefficients at 21 Chebyshev nodes, then checks endpoints and six
   direct Wald probes per design/covariance. Rust compares endpoints within
   3e-8 and checks metadata, corrections, rescaling, retained state, JSON/text,
-  and q=15 rejection. The polynomial boundary test covers twenty real roots
-  and eleven accepted components. Robust scalar AR sets now support q=2..14;
-  q15+ and other covariance/design extensions remain unsupported. This is
+  and q=16 rejection. The polynomial boundary test covers twenty real roots
+  and eleven accepted components. Robust scalar AR sets now support q=2..15;
+  q16+ and other covariance/design extensions remain unsupported. This is
   synthetic method evidence, not a Cameron–Trivedi illustration.
 - **Eleven-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
   the independent Base R 4.6.2 reference uses two 240-row designs, one included
@@ -1689,9 +1689,9 @@ panel likelihood is supplied.
   coefficients at 23 Chebyshev nodes before root extraction and compares
   endpoints and six direct Wald probes per design/covariance. Rust compares
   endpoints within 3e-8, corrections, metadata, retained state, rescaling,
-  JSON/text, and q=15 rejection. The degree-22 boundary test covers all 22
+  JSON/text, and q=16 rejection. The degree-22 boundary test covers all 22
   simple real roots and twelve accepted components. Robust scalar AR sets now
-  support q=2..14; q15+ and other covariance/design extensions remain
+  support q=2..15; q16+ and other covariance/design extensions remain
   unsupported. This is synthetic method evidence, not a Cameron–Trivedi
   illustration.
 - **Twelve-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
@@ -1704,9 +1704,9 @@ panel likelihood is supplied.
   degree-24 determinant coefficients at 25 Chebyshev nodes, `polyroot` endpoints
   and six direct Wald probes per design/covariance. Rust compares endpoints
   within 3e-8, corrections, metadata, retained state, rescaling, JSON/text and
-  q=15 rejection. The degree-24 boundary test covers all 24 simple real roots
-  and thirteen accepted components. Robust scalar AR sets support q=2..14;
-  q15+ and other covariance/design extensions remain unsupported. This is
+  q=16 rejection. The degree-24 boundary test covers all 24 simple real roots
+  and thirteen accepted components. Robust scalar AR sets support q=2..15;
+  q16+ and other covariance/design extensions remain unsupported. This is
   synthetic method evidence, not a Cameron–Trivedi illustration.
 - **Thirteen-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
   the independent Base R 4.6.2 reference uses two 312-row designs, one included
@@ -1718,9 +1718,9 @@ panel likelihood is supplied.
   are empty. The reference checks degree-26 determinant coefficients at 27
   Chebyshev nodes, `polyroot` endpoints and six direct Wald probes per design
   and covariance. Rust compares endpoints within 3e-8 and checks corrections,
-  metadata, retained state, rescaling, JSON/text and q=15 rejection. The
+  metadata, retained state, rescaling, JSON/text and q=16 rejection. The
   degree-26 boundary test covers all 26 simple real roots and fourteen accepted
-  components. Robust scalar AR sets support q=2..14; q15+ and other
+  components. Robust scalar AR sets support q=2..15; q16+ and other
   covariance/design extensions remain unsupported. This is synthetic method
   evidence, not a Cameron–Trivedi illustration.
 - **Fourteen-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
@@ -1734,11 +1734,27 @@ panel likelihood is supplied.
   reference checks degree-28 determinant coefficients at 29 Chebyshev nodes,
   `polyroot` endpoints and six direct Wald probes per design/covariance. Rust
   compares endpoints within 3e-8 and checks corrections, metadata, retained
-  state, rescaling, JSON/text and q=15 rejection. The degree-28 boundary test
+  state, rescaling, JSON/text and q=16 rejection. The degree-28 boundary test
   covers all 28 simple real roots and fifteen accepted components. Robust scalar
-  AR sets support q=2..14; q15+ and other covariance/design extensions remain
+  AR sets support q=2..15; q16+ and other covariance/design extensions remain
   unsupported. This is synthetic method evidence, not a Cameron–Trivedi
   illustration.
+- **Fifteen-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
+  the independent Base R 4.6.2 reference uses two 360-row designs, one included
+  control, K_aux=17 and residual DF=343. The 95% critical chi-square(15) value
+  is 24.9957901397286; corrections are 1.04956268221574 for HC1 and
+  1.09215363163899 for CR1 with 24 groups. The primary HC1/CR1 sets are
+  [1.09021173848078, 1.27421949335487] /
+  [1.18150148333289, 1.27347361322705]. The secondary sets are
+  [1.10032473852914, 1.28538623900457] /
+  [1.1515371520644, 1.2281531524211]. The reference checks degree-30
+  determinant coefficients at 31 Chebyshev nodes, `polyroot` endpoints and six
+  direct Wald probes per design/covariance. Rust compares endpoints within
+  3e-8 and checks corrections, metadata, retained state, rescaling, JSON/text
+  and q=16 rejection. The degree-30 boundary test covers all 30 simple real
+  roots and sixteen accepted components. Robust scalar AR sets support q=2..15;
+  q16+ and other covariance/design extensions remain unsupported. This is
+  synthetic method evidence, not a Cameron–Trivedi illustration.
 - **Bounded projected scalar AR method:** after a nonrobust multi-endogenous 2SLS
   fit, `estat ar, ci coefficient(name) [level(95)]` profiles all other endogenous
   coefficients out of the homoskedastic joint AR region and reports the scalar
