@@ -175,7 +175,13 @@ fn current_row_probability_and_index_predictions_preserve_order_labels_and_fit()
     assert_eq!(s.state(), before);
     same_rows(&preview(&mut s), &rows);
   }
-  assert!(parse_command("predict unused, pr interval").is_err());
+  let tabdat_domain::Command::Predict { command } =
+    parse_command("predict unused, pr interval").unwrap()
+  else {
+    unreachable!()
+  };
+  assert!(command.interval);
+  assert_eq!(command.kind, tabdat_domain::PredictKind::Pr);
   for flag in 0..3 {
     let tabdat_domain::Command::Predict { mut command } =
       parse_command("predict unused, pr").unwrap()
@@ -183,7 +189,10 @@ fn current_row_probability_and_index_predictions_preserve_order_labels_and_fit()
       unreachable!()
     };
     match flag {
-      0 => command.interval = true,
+      0 => {
+        command.kind = tabdat_domain::PredictKind::Xb;
+        command.interval = true;
+      }
       1 => command.std = true,
       _ => command.saving = Some("unused.csv".into()),
     }

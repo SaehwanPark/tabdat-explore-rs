@@ -5607,6 +5607,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       Some(PredictKind::CountPmfVariable) => PredictKind::CountPmfVariableStandardError,
       Some(PredictKind::CountCdf(count)) => PredictKind::CountCdfStandardError(count),
       Some(PredictKind::CountCdfVariable) => PredictKind::CountCdfVariableStandardError,
+      _ if options.iter().any(|option| option.name == "pr") => PredictKind::PrStandardError,
       _ => return Err(ParseError::new("predict option se requires pmf() or cdf()")),
     });
   }
@@ -5751,18 +5752,25 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       | PredictKind::CountPmfVariableStandardError
       | PredictKind::CountCdfVariableStandardError
   );
+  let binary_probability_se = kind == PredictKind::PrStandardError;
   if interval && count_probability_se {
     return Err(ParseError::new(
       "predict count probability intervals cannot be combined with se",
+    ));
+  }
+  if interval && binary_probability_se {
+    return Err(ParseError::new(
+      "predict binary probability intervals cannot be combined with se",
     ));
   }
   if interval
     && kind != PredictKind::PosteriorPredictive
     && !count_probability_kind
     && !count_mean_kind
+    && kind != PredictKind::Pr
   {
     return Err(ParseError::new(
-      "predict interval options require posterior_predictive, n, pmf() or cdf()",
+      "predict interval options require posterior_predictive, n, pr, pmf() or cdf()",
     ));
   }
 
@@ -16350,6 +16358,46 @@ mod tests {
         expected,
         "{input:?}"
       );
+    }
+  }
+
+  #[test]
+  fn parses_binary_probability_uncertainty_requests() {
+    assert_eq!(
+      parse_command("predict probability_se, pr se").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "probability_se".into(),
+          kind: PredictKind::PrStandardError,
+          count_cutoff_variable: None,
+          interval: false,
+          level: "95.0".into(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+    assert_eq!(
+      parse_command("predict probability, pr interval level(90)").unwrap(),
+      Command::Predict {
+        command: PredictCommand {
+          target_variable: "probability".into(),
+          kind: PredictKind::Pr,
+          count_cutoff_variable: None,
+          interval: true,
+          level: "90".into(),
+          std: false,
+          saving: None,
+        },
+      }
+    );
+    for command in [
+      "predict unused, pr se interval",
+      "predict unused, pr se level(90)",
+      "predict unused, interval level(90)",
+      "predict unused, se",
+    ] {
+      assert!(parse_command(command).is_err(), "{command:?}");
     }
   }
 

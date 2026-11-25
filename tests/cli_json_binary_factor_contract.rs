@@ -16,7 +16,7 @@ impl Fixture {
     .unwrap();
     fs::write(
       dir.path().join("analysis.td"),
-      "use binary_factor_data.csv\nlogit y x i.region\nlincom x + region_North - region_West + 0.5\nestat margins\nestat gof, group(10)\nestat classification\nestat classification, cutoff(.35)\nestat classification, cutoff(1)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
+      "use binary_factor_data.csv\nlogit y x i.region\nlincom x + region_North - region_West + 0.5\nestat margins\nestat gof, group(10)\nestat classification\nestat classification, cutoff(.35)\nestat classification, cutoff(1)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\npredict probability_se, pr se\npredict probability_interval, pr interval\nhead 1\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
     )
     .unwrap();
     Self(dir)
@@ -138,6 +138,46 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   assert_eq!(contrasts["data"]["contrasts"].as_array().unwrap().len(), 2);
   assert_eq!(contrasts["data"]["contrasts"][0]["level"], "North");
 
+  let prediction_preview = rows
+    .iter()
+    .find(|row| {
+      row["result_type"] == "PreviewResult"
+        && row["data"]["columns"].as_array().is_some_and(|columns| {
+          columns
+            .iter()
+            .any(|column| column == "probability_interval_lower")
+        })
+    })
+    .expect("preview includes binary probability uncertainty columns");
+  let columns = prediction_preview["data"]["columns"].as_array().unwrap();
+  let values = prediction_preview["data"]["rows"][0].as_array().unwrap();
+  assert_eq!(values.len(), columns.len());
+  assert!(columns.iter().any(|column| column == "probability_se"));
+  assert!(
+    columns
+      .iter()
+      .any(|column| column == "probability_interval_upper")
+  );
+  let probability = values[columns
+    .iter()
+    .position(|column| column == "probability_interval")
+    .unwrap()]
+  .as_f64()
+  .unwrap();
+  let lower = values[columns
+    .iter()
+    .position(|column| column == "probability_interval_lower")
+    .unwrap()]
+  .as_f64()
+  .unwrap();
+  let upper = values[columns
+    .iter()
+    .position(|column| column == "probability_interval_upper")
+    .unwrap()]
+  .as_f64()
+  .unwrap();
+  assert!(0.0 <= lower && lower <= probability && probability <= upper && upper <= 1.0);
+
   let table = rows
     .iter()
     .find(|row| row["result_type"] == "EstimateTableResult")
@@ -154,8 +194,9 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   assert_eq!(predictions.lines().count(), 241);
   let header = predictions.lines().next().unwrap();
   assert!(header.contains("index") && header.contains("probability"));
-  assert!(predictions.lines().nth(5).unwrap().ends_with(",,"));
-  assert!(predictions.lines().nth(12).unwrap().ends_with(",,"));
+  assert!(header.contains("probability_se") && header.contains("probability_interval_lower"));
+  assert!(predictions.lines().nth(5).unwrap().ends_with(",,,,,,"));
+  assert!(predictions.lines().nth(12).unwrap().ends_with(",,,,,,"));
 
   let text = fixture.run("--text");
   assert!(text.status.success(), "{text:?}");

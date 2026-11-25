@@ -136,6 +136,7 @@ continuous_marginal_effect_rows <- list()
 discrete_change_rows <- list()
 binary_lincom_rows <- list()
 binary_classification_rows <- list()
+binary_probability_prediction_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -185,6 +186,41 @@ append_classification <- function(model, fit, estimates, family, cutoff) {
       false_negative_rate_given_negative = percent(fn, tn + fn),
       correctly_classified = percent(tp + tn, length(actual))
     )
+}
+append_probability_predictions <- function(model, fit, estimates, covariance_type,
+                                           covariance, family, design_name,
+                                           requires_region) {
+  for (row in seq_len(nrow(data))) {
+    if (is.na(data$x[row]) || (requires_region && is.na(data$region[row]))) {
+      eta <- probability <- standard_error <- NA_real_
+      lower <- upper <- rep(NA_real_, 2L)
+    } else {
+      design <- model.matrix(delete.response(terms(fit)), data = data[row, , drop = FALSE],
+                             contrasts.arg = fit$contrasts)
+      eta <- drop(design %*% estimates)
+      probability <- family$linkinv(eta)
+      standard_error_eta <- sqrt(drop(design %*% covariance %*% t(design)))
+      standard_error <- family$mu.eta(eta) * standard_error_eta
+      levels <- c(95, 90)
+      lower <- family$linkinv(eta - qnorm(0.5 + levels / 200) * standard_error_eta)
+      upper <- family$linkinv(eta + qnorm(0.5 + levels / 200) * standard_error_eta)
+    }
+    for (level_index in seq_along(c(95, 90))) {
+      level <- c(95, 90)[level_index]
+      binary_probability_prediction_rows[[length(binary_probability_prediction_rows) + 1L]] <<-
+        data.frame(
+          model = model,
+          design = design_name,
+          covariance_type = covariance_type,
+          id = id[row],
+          level = level,
+          estimate = probability,
+          standard_error = standard_error,
+          lower = lower[level_index],
+          upper = upper[level_index]
+        )
+    }
+  }
 }
 set_factor_level <- function(data, variable, values, levels) {
   if (variable == "region") {
@@ -396,6 +432,8 @@ for (model in c("logit", "probit")) {
     }
     append_covariance(model, design, "model_based", covariance)
     if (design == "default") {
+      append_probability_predictions(model, fit, estimates, "model_based",
+                                     covariance, family, "default", TRUE)
       append_binary_lincom(model, "model_based", estimates, covariance)
       X <- model.matrix(fit)
       eta_sample <- drop(X %*% estimates)
@@ -410,6 +448,8 @@ for (model in c("logit", "probit")) {
       robust_covariance <- covariance %*% crossprod(score_matrix) %*% covariance *
         nrow(X) / (nrow(X) - 1L)
       append_covariance(model, design, "robust", robust_covariance)
+      append_probability_predictions(model, fit, estimates, "robust",
+                                     robust_covariance, family, "default", TRUE)
       append_binary_lincom(model, "robust", estimates, robust_covariance)
       append_factor_contrasts(model, design, "robust", fit, robust_covariance,
                               estimates, family, factor_variable, factor_levels,
@@ -426,6 +466,8 @@ for (model in c("logit", "probit")) {
       cluster_covariance <- covariance %*% crossprod(cluster_scores) %*% covariance *
         cluster_count / (cluster_count - 1L)
       append_covariance(model, design, "cluster", cluster_covariance)
+      append_probability_predictions(model, fit, estimates, "cluster",
+                                     cluster_covariance, family, "default", TRUE)
       append_binary_lincom(model, "cluster", estimates, cluster_covariance)
       append_factor_contrasts(model, design, "cluster", fit, cluster_covariance,
                               estimates, family, factor_variable, factor_levels,
@@ -453,6 +495,43 @@ for (model in c("logit", "probit")) {
       log_likelihood = as.numeric(logLik(fit))
     )
   }
+}
+
+# A continuous-only model exercises the prediction path that has no retained
+# factor design terms. The factor column is intentionally irrelevant here.
+for (model in c("logit", "probit")) {
+  family <- binomial(link = model)
+  fit <- glm(y ~ x, data = data, family = family, na.action = na.exclude,
+             control = glm.control(epsilon = 1e-13, maxit = 100L))
+  reference <- if (model == "probit") {
+    probit_observed_reference(fit)
+  } else {
+    logit_polished_reference(fit)
+  }
+  estimates <- reference$beta
+  covariance <- reference$covariance
+  append_probability_predictions(model, fit, estimates, "model_based", covariance,
+                                 family, "continuous", FALSE)
+  X <- model.matrix(fit)
+  eta_sample <- drop(X %*% estimates)
+  probability_sample <- family$linkinv(eta_sample)
+  score_multiplier <- if (model == "logit") {
+    fit$y - probability_sample
+  } else {
+    (fit$y - probability_sample) * dnorm(eta_sample) /
+      (probability_sample * (1 - probability_sample))
+  }
+  score_matrix <- X * score_multiplier
+  robust_covariance <- covariance %*% crossprod(score_matrix) %*% covariance *
+    nrow(X) / (nrow(X) - 1L)
+  append_probability_predictions(model, fit, estimates, "robust", robust_covariance,
+                                 family, "continuous", FALSE)
+  retained_rows <- as.integer(rownames(model.frame(fit)))
+  cluster_scores <- rowsum(score_matrix, data$cluster[retained_rows], reorder = FALSE)
+  cluster_covariance <- covariance %*% crossprod(cluster_scores) %*% covariance *
+    nrow(cluster_scores) / (nrow(cluster_scores) - 1L)
+  append_probability_predictions(model, fit, estimates, "cluster", cluster_covariance,
+                                 family, "continuous", FALSE)
 }
 
 discrete_data <- transform(data, treated = as.integer(x > 0))
@@ -518,3 +597,6 @@ write.csv(do.call(rbind, binary_lincom_rows),
           "binary_factor_lincom_reference.csv", row.names = FALSE)
 write.csv(do.call(rbind, binary_classification_rows),
           "binary_factor_classification_reference.csv", row.names = FALSE)
+write.csv(do.call(rbind, binary_probability_prediction_rows),
+          "binary_factor_probability_inference_reference.csv",
+          row.names = FALSE, na = "")

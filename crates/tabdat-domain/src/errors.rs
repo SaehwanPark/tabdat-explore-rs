@@ -507,11 +507,11 @@ pub enum RuntimeError {
   EstatOverdispersionRequiresPriorPoisson,
   /// A retained-Poisson overdispersion score calculation failed.
   EstatOverdispersionFailed { message: String },
-  /// Only explicit pr/xb predictions without auxiliary interval options are supported.
+  /// Unsupported logit prediction kind or auxiliary option.
   PredictLogitUnsupported,
   /// Invalid/unsupported binary probit specification or a failed finite-MLE fit.
   ProbitFailed { message: String },
-  /// Only explicit pr/xb probit predictions without auxiliary interval options are supported.
+  /// Unsupported probit prediction kind or auxiliary option.
   PredictBinaryUnsupported,
   /// Invalid/unsupported Gaussian Tobit request or failed regular numerical fit.
   TobitFailed(String),
@@ -1242,7 +1242,7 @@ impl fmt::Display for RuntimeError {
       Self::EstatOverdispersionRequiresPriorPoisson => formatter.write_str("estat overdispersion requires a prior Poisson fit"),
       Self::EstatOverdispersionFailed { message } => write!(formatter, "estat overdispersion: {message}"),
       Self::PredictLogitUnsupported => formatter.write_str(
-        "logit prediction supports only pr or xb, without interval, std or saving options",
+        "logit prediction supports xb, pr, pr se, and pr interval [level()]",
       ),
       Self::ProbitFailed { message } => write!(formatter, "probit: {message}"),
       Self::MlogitFailed { message } => write!(formatter, "mlogit: {message}"),
@@ -1250,7 +1250,7 @@ impl fmt::Display for RuntimeError {
       Self::NlogitFailed { message } => write!(formatter, "nlogit nonnormalized: {message}"),
       Self::NlogitCommonFailed(message) => write!(formatter, "nlogit normalized common: {message}"),
       Self::PredictBinaryUnsupported => formatter.write_str(
-        "probit prediction supports only pr or xb, without interval, std or saving options",
+        "probit prediction supports xb, pr, pr se, and pr interval [level()]",
       ),
       Self::TobitFailed(message) => write!(formatter, "tobit: {message}"),
       Self::StregFailed(message) => write!(formatter, "streg: {message}"),

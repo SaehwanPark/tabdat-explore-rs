@@ -10,6 +10,8 @@ estat margins, discrete(treated)
 estat margins, factor(region)
 predict index, xb
 predict probability, pr
+predict probability_se, pr se
+predict probability_interval, pr interval
 estimates store logit_factor
 estimates table logit_factor
 export logit_factor_predictions.csv, replace
