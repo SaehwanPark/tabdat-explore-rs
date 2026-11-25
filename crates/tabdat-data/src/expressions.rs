@@ -144,16 +144,12 @@ pub fn generate_expression_to_assert(
         GenerateBinaryOperator::Subtract => AssertBinaryOperator::Subtract,
         GenerateBinaryOperator::Multiply => AssertBinaryOperator::Multiply,
         GenerateBinaryOperator::Divide => AssertBinaryOperator::Divide,
-        GenerateBinaryOperator::Equal
-        | GenerateBinaryOperator::NotEqual
-        | GenerateBinaryOperator::Less
-        | GenerateBinaryOperator::LessOrEqual
-        | GenerateBinaryOperator::Greater
-        | GenerateBinaryOperator::GreaterOrEqual => {
-          return Err(RuntimeError::GenerateUnsupportedExpression {
-            message: "generate does not support comparison expressions".to_owned(),
-          });
-        }
+        GenerateBinaryOperator::Equal => AssertBinaryOperator::Equal,
+        GenerateBinaryOperator::NotEqual => AssertBinaryOperator::NotEqual,
+        GenerateBinaryOperator::Less => AssertBinaryOperator::Less,
+        GenerateBinaryOperator::LessOrEqual => AssertBinaryOperator::LessOrEqual,
+        GenerateBinaryOperator::Greater => AssertBinaryOperator::Greater,
+        GenerateBinaryOperator::GreaterOrEqual => AssertBinaryOperator::GreaterOrEqual,
       };
       Ok(AssertExpression::Binary {
         left: Box::new(generate_expression_to_assert(left)?),
@@ -415,6 +411,34 @@ pub fn compile_assert_expression_operand(
   } else {
     compile_assert_expression_raw(expression, dataset)
   }
+}
+
+pub fn compile_generate_expression(
+  expression: &AssertExpression,
+  dataset: &DatasetInfo,
+) -> Result<String, DataError> {
+  let AssertExpression::Binary {
+    left,
+    operator,
+    right,
+  } = expression
+  else {
+    return compile_assert_expression(expression, dataset);
+  };
+  if !operator.is_comparison()
+    || expression_domain(left, dataset).ok() != Some(ExpressionDomain::Numeric)
+    || expression_domain(right, dataset).ok() != Some(ExpressionDomain::Numeric)
+  {
+    return compile_assert_expression(expression, dataset);
+  }
+
+  // DuckDB orders NaN in comparisons; generated numeric indicators treat it as missing.
+  let left_sql = safe_numeric_sql(&compile_assert_expression_raw(left, dataset)?);
+  let right_sql = safe_numeric_sql(&compile_assert_expression_raw(right, dataset)?);
+  Ok(format!(
+    "({left_sql} {} {right_sql})",
+    assert_operator_sql_symbol(*operator)
+  ))
 }
 
 pub fn compile_assert_expression_raw(

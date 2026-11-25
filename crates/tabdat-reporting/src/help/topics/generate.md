@@ -12,8 +12,8 @@ Examples:
 - ``generate `age value` = age + 1``
 
 Notes:
-- Requires an active dataset and a new target name. Supported expressions are numeric columns/literals, unary minus, parentheses and arithmetic `+`, `-`, `*`, `/`.
-- String/explicit NULL expressions, comparisons and function calls (including `log`) may parse but are not installed for generate. Unknown columns and type mismatches fail without changing prior data/session state.
+- Requires an active dataset and a new target name. Supported expressions are numeric columns/literals, unary minus, parentheses, arithmetic `+`, `-`, `*`, `/`, and comparisons between numeric expressions.
+- A comparison generates a numeric `TINYINT` indicator: `1` when true and `0` when false. NULL or nonfinite numeric operands produce NULL. String/explicit NULL expressions and function calls (including `log`) may parse but are not installed for generate. Unknown columns and type mismatches fail without changing prior data/session state.
 - Subtraction involving unsigned columns and unary minus of unsigned expressions remain rejected rather than implicitly widened or wrapped.
 - NULL input values propagate through arithmetic; output uses the existing numerical-safety/compiler and native-type policies. No new precision, overflow-count or function-family support is implied.
 - CLI-v1 JSON returns `GenerateResult` with `data.dataset` in the existing metadata shape: source path, total relation row count and current ordered native schema. The new column is appended. This is metadata, not cell values, affected-row counts or overflow diagnostics; use `head`/`tail` to inspect values. Label/panel fields remain null placeholders.

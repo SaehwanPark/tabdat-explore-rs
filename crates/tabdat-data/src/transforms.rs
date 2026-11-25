@@ -486,7 +486,15 @@ impl DuckDbBackend {
     expression: &AssertExpression,
   ) -> Result<DatasetInfo, DataError> {
     self.drop_staging();
-    let expression_sql = compile_assert_expression(expression, dataset)?;
+    let expression_sql = compile_generate_expression(expression, dataset)?;
+    let expression_sql = match expression_domain(expression, dataset).map_err(|_| DataError)? {
+      ExpressionDomain::Numeric => expression_sql,
+      ExpressionDomain::Boolean => {
+        // Comparison indicators are numeric 0/1 columns; casting preserves SQL NULL.
+        format!("CAST(({expression_sql}) AS TINYINT)")
+      }
+      _ => return Err(DataError),
+    };
     let target_sql = quote_identifier(variable);
     if self
       .connection
