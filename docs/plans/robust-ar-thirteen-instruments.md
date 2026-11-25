@@ -30,4 +30,4 @@ unsupported.
   and updated specifications and examples.
 - [x] Verify the q=13 reference byte-for-byte; focused and affected package
   suites, scoped Clippy, formatting and diff checks pass.
-- [ ] Final PR review and merge.
+- [x] PR #499 reviewed and merged to `main` as `3244dbf`.
