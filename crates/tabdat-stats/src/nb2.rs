@@ -79,6 +79,8 @@ pub struct Nb2Result {
   pub include_intercept: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<Nb2Cluster>,
@@ -214,6 +216,8 @@ pub fn nb2_linear_combination(
 pub struct Nb2MarginalEffects {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<Nb2Cluster>,
@@ -770,6 +774,37 @@ pub fn fit_nb2_with_offset(
   )
 }
 
+/// Fit NB2 with a positive finite exposure whose natural log is a fixed
+/// coefficient-one term in the linear predictor.
+pub fn fit_nb2_with_exposure(
+  problem: &EstimationProblem,
+  exposures: &[f64],
+  exposure_variable: &str,
+  robust: bool,
+  cluster_variable: Option<&str>,
+) -> Result<Nb2Result, StatsError> {
+  if exposures.len() != problem.observation_count()
+    || exposures
+      .iter()
+      .any(|value| !value.is_finite() || *value <= 0.0)
+  {
+    return Err(invalid(
+      "exposures must be positive, finite, and align with the estimation sample",
+    ));
+  }
+  let offsets = exposures.iter().map(|value| value.ln()).collect::<Vec<_>>();
+  let mut result = fit_nb2_with_offset(
+    problem,
+    &offsets,
+    Some(exposure_variable),
+    robust,
+    cluster_variable,
+  )?;
+  result.offset_variable = None;
+  result.exposure_variable = Some(exposure_variable.to_owned());
+  Ok(result)
+}
+
 /// Full joint beta/lnalpha group-score sandwich with G/(G-1), normal inference
 /// and no LR reference. Explicit groups must align with retained sample rows.
 pub fn fit_nb2_clustered(
@@ -1018,6 +1053,7 @@ fn fit_nb2_covariance(
     predictor_names: problem.predictor_names.clone(),
     include_intercept: problem.include_intercept,
     offset_variable: offset_variable.map(str::to_owned),
+    exposure_variable: None,
     robust,
     cluster,
     observation_count: n,
@@ -1124,6 +1160,7 @@ pub fn nb2_average_marginal_effects(
   }
   Ok(Nb2MarginalEffects {
     offset_variable: result.offset_variable.clone(),
+    exposure_variable: result.exposure_variable.clone(),
     robust: result.robust,
     cluster: result.cluster.clone(),
     observation_count: n,

@@ -13,6 +13,22 @@ This is a syntax and model-state extension to the existing Poisson/NB2
 estimators. It does not change the estimators, covariance choices, or the
 separate conditional, gamma, and normal random-effects Poisson commands.
 
+## Evidence state
+
+The bounded `poisson` and `nbreg` options are implemented. The runnable
+[`exposure.td`](../poisson-offset/exposure.td) workflow checks JSON and terminal
+fit/effect/prediction/named-report output. Independent Base R 4.6.2 and MASS
+7.3.66 fixtures validate exposure fits on the same varying positive synthetic
+design used for the fixed-offset method references. The stats tests compare
+1,900 Poisson and 2,188 NB2 quantities across three designs and model-based,
+independent-row robust, and one-way clustered covariance; NB2 also checks joint
+score and observed-curvature derivatives at and near the optimum. Runtime
+contracts cover sample positions, current-row mean/index/PMF/CDF behavior,
+invalid current exposure, retained effects, the Poisson overdispersion score,
+named-report provenance, option conflicts, and failed-fit state. These are
+synthetic method references, not a new textbook illustration or an exposure
+analysis of the RAND data.
+
 ## Bounded syntax
 
 ```text
@@ -74,7 +90,7 @@ and a fixed log-exposure component.
 ## Independent validation
 
 Use a small deterministic design with varying positive exposures. Compare
-Poisson `glm(..., offset(log(exposure)))` and an independently polished joint
+Poisson `glm(..., offset=log(exposure))` and an independently polished joint
 NB2 reference using `MASS::glm.nb(..., offset(log(exposure)))`, then calculate
 row and cluster score sandwiches independently. Compare exact retained row
 indices, coefficients, complete covariance matrices, standard errors,

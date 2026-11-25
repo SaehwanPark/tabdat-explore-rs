@@ -43,6 +43,7 @@ pub struct LinearPrediction<'a> {
   pub target_variable: &'a str,
   pub predictor_names: &'a [String],
   pub predictor_coefficients: &'a [f64],
+  pub exposure_variable: Option<&'a str>,
   pub intercept: Option<f64>,
   pub outcome_variable: &'a str,
   pub residuals: bool,

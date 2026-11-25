@@ -1739,6 +1739,7 @@ impl Session {
       target_variable: &command.target_variable,
       predictor_names: &predictors,
       predictor_coefficients: &coefficients,
+      exposure_variable: None,
       intercept,
       outcome_variable: &outcome,
       residuals: command.kind == PredictKind::Residuals,

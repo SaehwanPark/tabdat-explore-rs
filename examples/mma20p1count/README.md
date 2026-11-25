@@ -176,9 +176,10 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   book columns. Current edits do not change the retained effects. A failed new
   runtime fit clears stale inference without changing data/labels/order.
 
-Still required: broader exposure workflows; the bounded Poisson/NB2
-`exposure(var)` contract is recorded in [exposure.md](exposure.md). Household,
-site, multiway, survey inference and weights remain, as do the unresolved
+The bounded Poisson/NB2 `exposure(var)` option is implemented and validated as
+synthetic method evidence in [exposure.md](exposure.md); it adds no new RAND or
+Table20.5 illustration. Exposure integrations beyond these two estimators,
+household/site/multiway/survey inference and weights remain, as do the unresolved
 printed Table20.6 NB2 row, other formal NB specification tests,
 factors/discrete changes, and remaining Tables20.3–20.6 workflows. Immutable
 Poisson/NB2 named reports are
@@ -292,7 +293,7 @@ historical lagged/stopped estimates into the independently converged result.
 No original IDs occur in the ASCII: the two `nb2.td` fits are unclustered;
 independent-row robust NB2 is **not panel-robust**. The separate person extension
 below attaches audited DTA identities and uses full joint grouped scores.
-Broader exposure workflows, household/site/multiway/survey methods, weights,
+Exposure integrations beyond Poisson/NB2, household/site/multiway/survey methods, weights,
 the unresolved printed Table20.6 NB2 row, other formal NB specification tests
 and other required count analyses remain open.
 Joint named NB2 reports are available but do not complete the count family or book.
@@ -366,7 +367,7 @@ need only mean predictors, not outcomes/IDs. JSON adds optional cluster metadata
 ONLY for clustered results; old noncluster shapes/owned-state reads are preserved.
 JSON/text/piped native runs publish identical ordered CSVs without replacing targets.
 
-Household/site/multiway/survey/few-cluster methods, broader exposure workflows,
+Household/site/multiway/survey/few-cluster methods, exposure integrations beyond Poisson/NB2,
 the unresolved printed Table20.6 NB2 row, other formal tests, broader
 count-family workflows and remaining required count/book analyses remain open. This is not
 whole count-family/panel/chapter/book/goal completion. No author data/program
@@ -433,7 +434,7 @@ only. Failed new runtime fits clear stale inference only; unsupported prediction
 postestimation and output collisions preserve state/targets. Cluster metadata is
 conditional, preserving noncluster JSON/old owned reads, not fit restoration.
 
-This does not remove required weights/broader exposure workflows, appropriate
+This does not remove required weights or exposure integrations beyond Poisson/NB2, appropriate
 household/site/multiway/survey/few-cluster methods, FE/RE/panels, other formal
 boundary/specification tests, native DTA,
 richer counts or remaining book analyses. No source data/program is redistributed;
@@ -597,7 +598,7 @@ This workflow validates the specified native/author-program design/laws, **not
 literal whole Table20.6 reproduction**; the printed NB2 row remains visible
 unresolved required coverage. Source book/program/data are not redistributed.
 
-Broader exposure/weight workflows, appropriate survey/multiway/panel methods,
+Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
 uncertainty for current-row probabilities, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 

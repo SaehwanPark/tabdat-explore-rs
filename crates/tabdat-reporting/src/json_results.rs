@@ -1388,6 +1388,16 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
           "all_coefficients_zero_with_same_fixed_offset"
         });
       }
+      if let Some(variable) = &result.exposure_variable {
+        data["exposure_variable"] = json!(variable);
+        data["exposure_coefficient"] = json!(1.0);
+        data["linear_index"] = json!("x_beta_plus_log_exposure");
+        data["null_model"] = json!(if result.include_intercept {
+          "intercept_only_with_same_fixed_log_exposure"
+        } else {
+          "all_coefficients_zero_with_same_fixed_log_exposure"
+        });
+      }
       (data, "PoissonResult")
     }
     ExecutionResult::PoissonOverdispersionScoreTest(result) => {
@@ -1419,6 +1429,12 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       if let Some(variable) = &result.offset_variable {
         data["offset_variable"] = json!(variable);
         data["offset_treatment"] =
+          json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
+      }
+      if let Some(variable) = &result.exposure_variable {
+        data["exposure_variable"] = json!(variable);
+        data["exposure_coefficient"] = json!(1.0);
+        data["exposure_treatment"] =
           json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
       }
       (data, "PoissonMarginalEffectsResult")
@@ -1529,6 +1545,16 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
           "all_beta_zero_dispersion_reestimated_with_same_fixed_offset"
         });
       }
+      if let Some(variable) = &result.exposure_variable {
+        data["exposure_variable"] = json!(variable);
+        data["exposure_coefficient"] = json!(1.0);
+        data["linear_index"] = json!("x_beta_plus_log_exposure");
+        data["null_model"] = json!(if result.include_intercept {
+          "intercept_and_dispersion_reestimated_with_same_fixed_log_exposure"
+        } else {
+          "all_beta_zero_dispersion_reestimated_with_same_fixed_log_exposure"
+        });
+      }
       (data, "NbregResult")
     }
     ExecutionResult::NbregMarginalEffects(result) => {
@@ -1548,6 +1574,12 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       if let Some(variable) = &result.offset_variable {
         data["offset_variable"] = json!(variable);
         data["offset_treatment"] =
+          json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
+      }
+      if let Some(variable) = &result.exposure_variable {
+        data["exposure_variable"] = json!(variable);
+        data["exposure_coefficient"] = json!(1.0);
+        data["exposure_treatment"] =
           json!("fixed_at_retained_values_in_derivatives_and_delta_uncertainty");
       }
       (data, "NbregMarginalEffectsResult")

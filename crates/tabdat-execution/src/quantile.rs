@@ -82,6 +82,7 @@ impl Session {
       target_variable: &command.target_variable,
       predictor_names: &fit.predictors,
       predictor_coefficients: &coefficients,
+      exposure_variable: None,
       intercept: fit.include_intercept.then(|| fit.coefficients[0].value),
       outcome_variable: &fit.outcome,
       residuals: command.kind == PredictKind::Residuals,

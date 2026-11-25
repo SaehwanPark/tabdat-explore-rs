@@ -96,7 +96,7 @@ the next outcome without repeating the ledger's detailed delivery records.
 | Choice | MNL, balanced conditional logit and restricted normalized/non-normalized nested-choice workflows with source audits | Broader availability and choice sets, ordered/richer models, effects uncertainty, IIA diagnostics and remaining illustrations |
 | Censoring and selection | Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step workflows with declared inference/effects | Richer truncation/censoring, two-part and selection workflows, default ML and remaining illustrations |
 | Survival | KM/NA compositions plus bounded exponential, Weibull, Gompertz and Cox/Breslow source workflows | General declarations, delayed entry, time-varying covariates, clustered inference, competing-risk incidence and richer diagnostics |
-| Counts | Poisson/NB2, fixed-offset compositions, effects, probability bins, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
+| Counts | Poisson/NB2, fixed offsets and a bounded `exposure(var)` option, effects, probability bins, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
 | Linear and nonlinear panels | Explicit-key linear panels, IV/GMM composition, Gaussian GEE and selected Poisson FE/RE/GEE workflows | Persistent declarations, dynamic-panel methods, broader GEE/FE/RE inference, model comparisons and instrument-control diagnostics |
 | Treatment and clustered samples | NSW/PSID comparisons, DID, overlap diagnostics, IPW, kernel and descriptive matching compositions; household/individual clustered workflows | General estimands, matching uncertainty, survey weights/strata/PSUs, design-based variance and remaining treatment/Chapter 24 analyses |
 | Nonparametric and missing data | Bounded KDE/LOWESS source adaptations and complete-case/single-fill/Rubin-summary comparisons | General smoothing/uncertainty, tied-curve parity, imputation generation/diagnostics and finite-complete-DF multiple-imputation inference |
@@ -140,13 +140,12 @@ Select one of these outcomes with an exact ledger-defined contract, then add its
 evidence beside the workflow. Keep the choice responsive to correctness defects
 and demonstrated dependencies rather than treating the list as phase gates.
 
-1. Add [`exposure(var)`](../examples/mma20p1count/exposure.md) to Poisson and
-   NB2 as a bounded convenience form for a fixed log-exposure offset. Preserve
-   the established complete-case, prediction,
-   covariance, and retained-fit contracts; independently compare both fits and
-   predictions with Base R on a documented count design, and cover zero, missing,
-   and nonfinite exposure failures. The [native count workflows](../examples/mma20p1count/README.md)
-   currently document this shorthand as not installed.
+1. Investigate the remaining printed Table 20.6 NB2 frequency discrepancy using
+   the pinned author program, independent count-law calculations and the already
+   audited native fit. Preserve both the printed row and executable result until
+   evidence identifies a reproducible explanation; do not tune estimates or
+   tolerances to force agreement. Record whether the source conflict is resolved
+   or remains an explicit coverage gap in the [count ledger](reference/microeconometrics-coverage.md).
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.

@@ -334,7 +334,7 @@ fn packaged_nbreg_examples_execute_and_discovery_exposes_bounds_and_joint_covari
     .lines()
     .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`')))
     .collect();
-  assert_eq!(examples.len(), 8);
+  assert_eq!(examples.len(), 10);
   success(&f.batch(&examples));
   assert!(f.0.join("nb_visits_predictions.csv").is_file());
   let out = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
@@ -345,7 +345,7 @@ fn packaged_nbreg_examples_execute_and_discovery_exposes_bounds_and_joint_covari
   let r: Value = serde_json::from_slice(&out.stdout).unwrap();
   assert_eq!(
     r["data"]["syntax"],
-    "nbreg y [x1 x2] [, offset(var) robust cluster(var) noconstant]"
+    "nbreg y [x1 x2] [, offset(var) exposure(var) robust cluster(var) noconstant]"
   );
   for phrase in [
     "NB2",

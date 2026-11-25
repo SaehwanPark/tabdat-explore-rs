@@ -1,20 +1,22 @@
 # poisson
 
 Installed syntax:
-`poisson y [x1 x2 ...] [, offset(var) robust cluster(var) noconstant]`
+`poisson y [x1 x2 ...] [, offset(var) exposure(var) robust cluster(var) noconstant]`
 
 Fit unweighted log-link count regression, E[y|X]=exp(X beta), using model-based
 Poisson ML, independent-row robust QMLE or one-way clustered QMLE. `robust` and
 `cluster(var)` are mutually exclusive. An intercept is default; no predictors
 gives an intercept-only fit. `noconstant` requires predictors.
 
-`offset(log_time)` adds the named numeric variable with fixed coefficient one:
-mu=exp(X beta+log_time). It is not a weight or estimated parameter. Construct
-log exposure explicitly when needed (for positive time, via prepared input or
-an explicit SQL transformation; `generate` function calls are not installed).
-Nonfinite/missing offsets exclude rows jointly with model/group cells before finite
-count validation. `exposure()` shorthand is not installed; NB2 fixed offsets are
-separately installed by `nbreg`, with a joint dispersion-refitted null. See `examples/poisson-offset/workflow.td` for a runnable example.
+`offset(var)` adds the named numeric variable with fixed coefficient one:
+mu=exp(X beta+var). `exposure(var)` instead adds its natural logarithm with fixed
+coefficient one: mu=exp(X beta+ln(var)). The options are mutually exclusive,
+neither is a weight or estimated parameter, and neither increases K or changes
+covariance corrections. Missing/nonfinite values exclude rows jointly with
+model/group cells; finite nonpositive exposure on an otherwise complete row is
+an error. Predictions use current positive exposure values, while retained
+effects hold the fitted log exposure fixed. See `examples/poisson-offset/workflow.td`
+and the exposure contract in `examples/mma20p1count/exposure.md`.
 
 Example workflow:
 - `use visits.csv`
@@ -34,8 +36,9 @@ preparation and executable `examples/mma20p1count/poisson_clustered.td`.
 Person clustering does not address household/site or other cross-person dependence.
 
 Sample and failure rules:
-- Numeric outcome/predictors/optional offset; joint finite complete cases, N>K,
-  full rank. Offset does not increase K or change the covariance correction.
+- Numeric outcome/predictors/optional offset or exposure; joint finite complete
+  cases, N>K, full rank. A fixed term does not increase K or change the
+  covariance correction.
 - Outcome must be an exact nonnegative integer loaded value <=2^53-1. DECIMAL
   and wide integers are checked before DOUBLE conversion, not after rounding.
   Digits already rounded by a loader cannot be recovered. Invalid finite counts
@@ -68,10 +71,10 @@ Inference and interpretation:
   z inference and a 95% normal confidence interval. Residual DF is not supplied.
 - Coefficient intervals are fixed normal 95%, not Student t. Zero selected
   variance yields unavailable z/p/CI, not exact significance or point intervals.
-- Without offsets, the intercept null is the estimated overall mean and the
-  no-intercept null is all beta=0,mean=1. With offsets, BOTH nulls retain the same
-  offset: intercept-only mu0_i=exp(offset_i)*sum(y)/sum(exp(offset)); without an
-  intercept mu0_i=exp(offset_i). Robust/clustered LR p/reference are unavailable;
+- Without fixed terms, the intercept null is the estimated overall mean and the
+  no-intercept null is all beta=0,mean=1. With fixed terms, BOTH nulls retain the same
+  offset or log exposure: intercept-only mu0_i=exp(fixed_i)*sum(y)/sum(exp(fixed)); without an
+  intercept mu0_i=exp(fixed_i). Robust/clustered LR p/reference are unavailable;
   likelihood/McFadden are descriptive. Robust/clustered zero-slope Wald uses
   selected covariance/chi-square with explicit rank/unavailability guards. With
   q slopes and G clusters, q>=G is unavailable, not a reduced-q test.
@@ -82,10 +85,11 @@ Inference and interpretation:
   Bare predict remains xb. `estat margins` reports retained-X continuous column
   derivatives with full selected-covariance conditional-X delta normal inference,
   not discrete changes. Current predictions need mean predictors only, not the
-  outcome or cluster ID; offset fits also need the CURRENT numeric offset column.
-  BOTH xb and n include it (xb=X beta+offset). Retained margins hold original
-  offsets/groups fixed despite data edits; derivatives do not apply a chain rule
-  through the offset even if its variable is also a predictor.
+  outcome or cluster ID; fixed-term fits also need the CURRENT numeric offset or
+  positive exposure column. BOTH xb and n include it (xb=X beta+offset or
+  X beta+ln(exposure)). Retained margins hold original fixed terms/groups fixed
+  despite data edits; derivatives do not apply a chain rule through the fixed
+  term even if its source variable is also a predictor.
 
 `estat countprob [, max(10)]` compares observed and fitted count frequencies on
 retained y/means (exact0..9 plus >=10 by default). It assumes the full Poisson
@@ -94,7 +98,7 @@ formal goodness-of-fit test is supplied; see `help estat`.
 
 `estat overdispersion` evaluates the Poisson score for the one-sided NB2
 variance alternative `Var(Y|X)=mu+alpha*mu^2`, `alpha>0`, on the retained fit;
-fixed offsets remain in its fitted means. The selected model-based, independent-
+fixed offsets or log exposure remain in its fitted means. The selected model-based, independent-
 row N/(N-1), or one-way cluster G/(G-1) score variance gives a signed asymptotic-
 normal Z and one-sided p-value. Robust inference requires a correct conditional
 mean; clustered inference additionally assumes independent groups and does not
@@ -102,7 +106,7 @@ guarantee reliable few-cluster inference. It does not fit NB2 or supply a
 cluster-robust NB2 likelihood-ratio reference. See
 `examples/nb2-overdispersion-score/README.md`.
 
-Not installed for Poisson: weights/survey, multiway clustering, exposure shorthand,
+Not installed for Poisson: weights/survey, multiway clustering,
 cutoff-variable values above99, factors/discrete changes,
 interval prediction or few-cluster bootstrap. Immutable `estimates store/table`
 reports are supported; they cannot restore fits or establish current-data identity.

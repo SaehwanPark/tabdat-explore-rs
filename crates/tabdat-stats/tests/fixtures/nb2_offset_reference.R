@@ -10,9 +10,10 @@ rows <- list()
 emit <- function(case,quantity,i=0L,j=0L,value) {
   rows[[length(rows)+1L]] <<- data.frame(case,quantity,i,j,value=unname(value))
 }
+exposure <- exp(o)
 # Full joint beta/lnalpha observed information, not MASS's conditional vcov.
-evaluate <- function(par,X,y) {
-  k <- ncol(X); r <- exp(-par[k+1L]); eta <- drop(X%*%par[seq_len(k)])+o
+evaluate <- function(par,X,y,offset_values) {
+  k <- ncol(X); r <- exp(-par[k+1L]); eta <- drop(X%*%par[seq_len(k)])+offset_values
   mu <- exp(eta)
   sr <- digamma(y+r)-digamma(r)+log(r/(r+mu))+1-(r+y)/(r+mu)
   scores <- cbind(X*(r*(y-mu)/(r+mu)),lnalpha=-r*sr)
@@ -22,35 +23,37 @@ evaluate <- function(par,X,y) {
   list(ll=sum(dnbinom(y,size=r,mu=mu,log=TRUE)),score=colSums(scores),
     information=information,scores=scores,mu=mu,eta=eta)
 }
-polish <- function(par,X,y) {
+polish <- function(par,X,y,offset_values) {
   for (iteration in 1:50) {
-    e <- evaluate(par,X,y); step <- solve(e$information,e$score)
+    e <- evaluate(par,X,y,offset_values); step <- solve(e$information,e$score)
     if (max(abs(step))<1e-14) return(list(par=unname(par),e=e))
     par <- unname(par+step)
   }
   stop('joint reference did not converge')
 }
-for (design in c('multiple','noconstant','intercept')) {
-  formula <- switch(design,multiple=y~x+z+offset(o),noconstant=y~x+z+offset(o)-1,intercept=y~1+offset(o))
+for (source in c('offset','exposure')) {
+  offset_values <- if (source=='exposure') log(exposure) else o
+  for (design in c('multiple','noconstant','intercept')) {
+  formula <- switch(design,multiple=y~x+z+offset(offset_values),noconstant=y~x+z+offset(offset_values)-1,intercept=y~1+offset(offset_values))
   initial <- MASS::glm.nb(formula,control=glm.control(epsilon=1e-13,maxit=100))
   stopifnot(initial$converged)
   X <- model.matrix(initial); n <- length(y); k <- ncol(X); p <- k+1L
   intercept <- design!='noconstant'; q <- k-as.integer(intercept)
-  fitted <- polish(c(unname(coef(initial)),-log(initial$theta)),X,y)
+  fitted <- polish(c(unname(coef(initial)),-log(initial$theta)),X,y,offset_values)
   par <- fitted$par; e <- fitted$e; alpha <- exp(par[p]); r <- 1/alpha
   B <- solve(e$information)
   stopifnot(min(eigen(e$information,symmetric=TRUE,only.values=TRUE)$values)>0)
   if (intercept) {
-    restricted <- MASS::glm.nb(y~1+offset(o),control=glm.control(epsilon=1e-13,maxit=100))
-    null <- polish(c(unname(coef(restricted)),-log(restricted$theta)),matrix(1,n,1),y)
+    restricted <- MASS::glm.nb(y~1+offset(offset_values),control=glm.control(epsilon=1e-13,maxit=100))
+    null <- polish(c(unname(coef(restricted)),-log(restricted$theta)),matrix(1,n,1),y,offset_values)
   } else {
     null_X <- matrix(numeric(0),n,0)
-    optimum <- optimize(function(a)sum(dnbinom(y,size=exp(-a),mu=exp(o),log=TRUE)),
+    optimum <- optimize(function(a)sum(dnbinom(y,size=exp(-a),mu=exp(offset_values),log=TRUE)),
       c(-12,12),maximum=TRUE,tol=1e-12)
-    null <- polish(optimum$maximum,null_X,y)
+    null <- polish(optimum$maximum,null_X,y,offset_values)
   }
   null_ll <- null$e$ll; lr <- max(0,2*(e$ll-null_ll))
-  poisson_fit <- glm.fit(X,y,family=poisson(),offset=o)
+  poisson_fit <- glm.fit(X,y,family=poisson(),offset=offset_values)
   poisson_ll <- sum(dpois(y,poisson_fit$fitted.values,log=TRUE))
   dispersion_lr_raw <- 2*(e$ll-poisson_ll)
   stopifnot(dispersion_lr_raw >= -1e-8)
@@ -60,14 +63,14 @@ for (design in c('multiple','noconstant','intercept')) {
   # coordinates, both at the optimum and at a nearby nonzero-score point.
   scales <- c(sqrt(colSums(X^2)),sqrt(n)); h <- 1e-4
   for (t in list(par*scales,par*scales+seq_len(p)*.03)) {
-    at <- evaluate(t/scales,X,y)
+      at <- evaluate(t/scales,X,y,offset_values)
     numeric_score <- sapply(seq_len(p),function(j) {
       up <- down <- t; up[j]<-up[j]+h; down[j]<-down[j]-h
-      (evaluate(up/scales,X,y)$ll-evaluate(down/scales,X,y)$ll)/(2*h)
+      (evaluate(up/scales,X,y,offset_values)$ll-evaluate(down/scales,X,y,offset_values)$ll)/(2*h)
     })
     numeric_I <- -sapply(seq_len(p),function(j) {
       up <- down <- t; up[j]<-up[j]+h; down[j]<-down[j]-h
-      (evaluate(up/scales,X,y)$score/scales-evaluate(down/scales,X,y)$score/scales)/(2*h)
+      (evaluate(up/scales,X,y,offset_values)$score/scales-evaluate(down/scales,X,y,offset_values)$score/scales)/(2*h)
     })
     stopifnot(max(abs(numeric_score-at$score/scales))<1e-7,
       max(abs(numeric_I-at$information/outer(scales,scales)))<1e-7)
@@ -75,7 +78,7 @@ for (design in c('multiple','noconstant','intercept')) {
   deviance <- sum(2*(ifelse(y==0,0,y*log(ifelse(y==0,1,y)/e$mu))-(y+r)*log((y+r)/(e$mu+r))))
   pearson <- sum((y-e$mu)^2/(e$mu+alpha*e$mu^2))
   for (covariance in c('model','robust','cluster')) {
-    case <- paste(design,covariance,sep='_')
+    case <- paste(c(design,if(source=='exposure') 'exposure',covariance),collapse='_')
     V <- switch(covariance,model=B,robust=n/(n-1)*B%*%crossprod(e$scores)%*%B,
       cluster=6/5*B%*%crossprod(rowsum(e$scores,groups))%*%B)
     se_a <- sqrt(V[p,p])
@@ -111,6 +114,7 @@ for (design in c('multiple','noconstant','intercept')) {
       emit(case,'mean',i-1L,value=e$mu[i]);emit(case,'xb',i-1L,value=e$eta[i])
     }
   }
+}
 }
 write.csv(do.call(rbind,rows),'crates/tabdat-stats/tests/fixtures/nb2_offset_reference.csv',
   row.names=FALSE,quote=FALSE,na='NA')

@@ -58,12 +58,13 @@ cargo test --locked -p tabdat-runtime --test nb2_offset_contract
 cargo test --locked --test cli_json_nb2_offset_contract
 ```
 
-R4.6.1/MASS7.3.65 supplies starting fits polished to the full joint fixed point.
+R4.6.2/MASS7.3.66 supplies starting fits polished to the full joint fixed point.
 Base R dnbinom/digamma/trigamma independently supplies the likelihood, joint scores
 and observed curvature; numerical differentiation checks score and curvature at
-the optimum and a nearby nonzero-score point. **1,076 scalar references** span
+the optimum and a nearby nonzero-score point. **2,188 scalar references** span
 intercept/two-predictor, no-intercept/two-predictor and intercept-only designs,
-each with three covariance choices. They cover full coefficient/dispersion
+for both fixed offsets and `offset(log(exposure))`, each with three covariance
+choices. They cover full coefficient/dispersion
 inference and covariance, all means/indices, refitted null alpha/likelihood/LR,
 Wald where applicable, deviance/Pearson/DF/pseudo-R2 and full delta effects.
 Absolute tolerance is 1e-9 for parameter quantities/totals; tails use relative
@@ -71,9 +72,10 @@ Absolute tolerance is 1e-9 for parameter quantities/totals; tails use relative
 zero-offset equivalence, +1000 offset/intercept shifts, source-name provenance,
 state/failure invariants and actual JSON/text script exports against R.
 
-No exposure alias, weights/survey/multiway/few-cluster methods, factor/discrete
+Weights/survey/multiway/few-cluster methods, factor/discrete
 changes or other formal specification tests are added. Named NB2 reports are a
-separate reporting capability, not evidence for this offset slice.
-Equivalent log-exposure preparation may use input/explicit SQL; `generate`
-function calls remain unsupported. Extreme finite designs may still fail the
+separate reporting capability, not evidence for this offset slice. The separate
+[`exposure.td`](../poisson-offset/exposure.td) workflow validates the exposure
+alias for both Poisson and NB2. `generate` function calls remain unsupported.
+Extreme finite designs may still fail the
 bounded numerical policy. Remaining count/panel/textbook requirements stay open.

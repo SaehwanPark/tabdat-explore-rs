@@ -87,9 +87,9 @@ fn validate_fit(problem: &EstimationProblem, result: &Nb2Result) -> Result<(), S
   {
     return Err(invalid("weighted fits are not supported"));
   }
-  if result.offset_variable.is_some() {
+  if result.offset_variable.is_some() || result.exposure_variable.is_some() {
     return Err(invalid(
-      "fixed-offset fits are not supported in this workflow",
+      "fixed-offset or exposure fits are not supported in this workflow",
     ));
   }
   let sample_groups = problem

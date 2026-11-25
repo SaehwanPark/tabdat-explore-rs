@@ -178,7 +178,7 @@ fn nb2_offset_discovery_is_explicit_and_unknown_offset_stops_before_export() {
   let d = &r[0]["data"];
   assert_eq!(
     d["syntax"],
-    "nbreg y [x1 x2] [, offset(var) robust cluster(var) noconstant]"
+    "nbreg y [x1 x2] [, offset(var) exposure(var) robust cluster(var) noconstant]"
   );
   assert!(
     d["options"]
@@ -187,6 +187,13 @@ fn nb2_offset_discovery_is_explicit_and_unknown_offset_stops_before_export() {
       .iter()
       .any(|o| o["name"] == "offset")
   );
+  assert!(
+    d["options"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .any(|o| o["name"] == "exposure")
+  );
   let out = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
     .args(["--json", "--help-topic", "nbreg"])
     .output()
@@ -194,8 +201,9 @@ fn nb2_offset_discovery_is_explicit_and_unknown_offset_stops_before_export() {
   assert!(out.status.success());
   let r = envelopes(&out);
   let help = r[0]["data"]["text"].as_str().unwrap();
-  assert!(help.contains("offset(log_time)"));
-  assert!(help.contains("same fixed offset"));
+  assert!(help.contains("offset(var)"));
+  assert!(help.contains("exposure(var)"));
+  assert!(help.contains("fixed term and reestimate dispersion"));
   fs::write(
     f.0.join("bad.td"),
     "use nb2_offset.csv\nnbreg y x, offset(absent)\nexport should_not_exist.csv\n",

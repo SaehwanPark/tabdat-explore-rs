@@ -31,6 +31,7 @@ fn result(clustered: bool) -> ExecutionResult {
     reference_distribution: "asymptotic_standard_normal".into(),
     observation_count: 180,
     offset_variable: Some("log_exposure".into()),
+    exposure_variable: None,
     cluster: clustered.then(|| PoissonCluster {
       variable: "group".into(),
       group_count: 30,

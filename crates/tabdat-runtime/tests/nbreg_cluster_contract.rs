@@ -135,14 +135,19 @@ fn retained_joint_effects_survive_edits_and_predictions_need_neither_outcome_nor
     "predict x, n",
     "predict bad, pr",
     "predict bad, residuals",
-    "lincom x",
-    "test x",
     "estat vif",
   ] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
     assert_eq!(rows(&mut s), old);
   }
+  assert!(matches!(
+    run(&mut s, "lincom x"),
+    ExecutionResult::Lincom(_)
+  ));
+  assert!(matches!(run(&mut s, "test x"), ExecutionResult::Test(_)));
+  assert_eq!(s.state(), before);
+  assert_eq!(rows(&mut s), old);
 }
 #[test]
 fn wide_exact_and_boolean_text_cluster_partitions_preserve_rank_and_data() {
@@ -224,6 +229,7 @@ fn failed_new_group_fits_clear_stale_inference_only_and_bad_manual_options_fail(
       outcome: "y".into(),
       predictors: vec!["x".into(), "z".into()],
       offset_variable: None,
+      exposure_variable: None,
       robust: true,
       cluster_variable: Some("person".into()),
       include_intercept: true,

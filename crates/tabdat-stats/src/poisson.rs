@@ -61,6 +61,8 @@ pub struct PoissonResult {
   pub include_intercept: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<PoissonCluster>,
@@ -105,7 +107,10 @@ pub struct PoissonOverdispersionScoreTest {
   pub covariance_correction: f64,
   pub reference_distribution: String,
   pub observation_count: usize,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   pub cluster: Option<PoissonCluster>,
 }
 
@@ -175,6 +180,8 @@ pub fn poisson_linear_combination(
 pub struct PoissonMarginalEffects {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset_variable: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exposure_variable: Option<String>,
   pub robust: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub cluster: Option<PoissonCluster>,
@@ -357,6 +364,7 @@ pub fn poisson_nb2_overdispersion_score_test(
     reference_distribution: "asymptotic_standard_normal".into(),
     observation_count: n,
     offset_variable: result.offset_variable.clone(),
+    exposure_variable: result.exposure_variable.clone(),
     cluster: result.cluster.clone(),
   })
 }
@@ -588,6 +596,37 @@ pub fn fit_poisson_with_offset(
     offsets,
   )?;
   result.offset_variable = offset_variable.map(str::to_owned);
+  Ok(result)
+}
+
+/// Fit with a positive finite exposure whose natural log is a fixed
+/// coefficient-one term in the linear predictor.
+pub fn fit_poisson_with_exposure(
+  problem: &EstimationProblem,
+  exposures: &[f64],
+  exposure_variable: &str,
+  robust: bool,
+  cluster_variable: Option<&str>,
+) -> Result<PoissonResult, StatsError> {
+  if exposures.len() != problem.observation_count()
+    || exposures
+      .iter()
+      .any(|value| !value.is_finite() || *value <= 0.0)
+  {
+    return Err(invalid(
+      "exposures must be positive, finite, and align with the estimation sample",
+    ));
+  }
+  let offsets = exposures.iter().map(|value| value.ln()).collect::<Vec<_>>();
+  let mut result = fit_poisson_with_offset(
+    problem,
+    &offsets,
+    Some(exposure_variable),
+    robust,
+    cluster_variable,
+  )?;
+  result.offset_variable = None;
+  result.exposure_variable = Some(exposure_variable.to_owned());
   Ok(result)
 }
 
@@ -830,6 +869,7 @@ fn fit_poisson_covariance(
         predictor_names: problem.predictor_names.clone(),
         include_intercept: problem.include_intercept,
         offset_variable: None,
+        exposure_variable: None,
         robust,
         cluster,
         observation_count: n,
@@ -945,6 +985,7 @@ pub fn poisson_average_marginal_effects(
   }
   Ok(PoissonMarginalEffects {
     offset_variable: result.offset_variable.clone(),
+    exposure_variable: result.exposure_variable.clone(),
     robust: result.robust,
     cluster: result.cluster.clone(),
     observation_count: n,

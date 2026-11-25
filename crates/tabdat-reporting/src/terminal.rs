@@ -227,7 +227,13 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
     "Log likelihood = {}; null log likelihood = {}; null model: {}",
     r.log_likelihood,
     r.null_log_likelihood,
-    if r.offset_variable.is_some() {
+    if r.exposure_variable.is_some() {
+      if r.include_intercept {
+        "intercept-only with same fixed log exposure"
+      } else {
+        "all coefficients zero with same fixed log exposure"
+      }
+    } else if r.offset_variable.is_some() {
       if r.include_intercept {
         "intercept-only with same fixed offset"
       } else {
@@ -279,6 +285,9 @@ fn poisson_report(r: &tabdat_domain::PoissonResult) -> String {
   if let Some(variable) = &r.offset_variable {
     writeln!(output, "Fixed offset: {} (coefficient 1, not estimated); xb = X beta + offset. Predictions use current offset values; effects hold retained offsets fixed.", variable.escape_debug()).unwrap();
   }
+  if let Some(variable) = &r.exposure_variable {
+    writeln!(output, "Fixed exposure: {} (log coefficient 1, not estimated); xb = X beta + ln(exposure). Predictions use current positive exposure values; effects hold retained log exposure fixed.", variable.escape_debug()).unwrap();
+  }
   output.push_str(&poisson_estimates(&r.coefficients));
   output
 }
@@ -320,7 +329,13 @@ fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
   writeln!(
     output,
     "Null: {}, with nuisance dispersion reestimated",
-    if r.offset_variable.is_some() {
+    if r.exposure_variable.is_some() {
+      if r.include_intercept {
+        "intercept-only with same fixed log exposure"
+      } else {
+        "all beta zero with same fixed log exposure"
+      }
+    } else if r.offset_variable.is_some() {
       if r.include_intercept {
         "intercept-only with same fixed offset"
       } else {
@@ -371,6 +386,9 @@ fn nb2_report(r: &tabdat_domain::Nb2Result) -> String {
   }
   if let Some(variable) = &r.offset_variable {
     writeln!(output, "Fixed offset: {} (coefficient 1, not estimated); xb = X beta + offset. Predictions use current offset values; effects hold retained offsets fixed.", variable.escape_debug()).unwrap();
+  }
+  if let Some(variable) = &r.exposure_variable {
+    writeln!(output, "Fixed exposure: {} (log coefficient 1, not estimated); xb = X beta + ln(exposure). Predictions use current positive exposure values; effects hold retained log exposure fixed.", variable.escape_debug()).unwrap();
   }
   output.push_str(&poisson_estimates(&r.coefficients));
   let d = &r.dispersion;

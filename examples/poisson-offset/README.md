@@ -57,10 +57,11 @@ cargo test --locked -p tabdat-runtime --test poisson_offset_contract
 cargo test --locked --test cli_json_poisson_offset_contract
 ```
 
-Base R 4.6.1 `glm(..., family=poisson(), offset=...)`, polished at its fixed point,
-plus independent score/bread sandwich algebra validates **950 scalar quantities**
+Base R 4.6.2 `glm(..., family=poisson(), offset=...)`, polished at its fixed point,
+plus independent score/bread sandwich algebra validates **1,900 scalar quantities**
 across intercept/two-predictor, no-intercept/two-predictor and intercept-only
-models, each with model-based, N/(N-1) robust and G/(G-1) clustered covariance.
+models for both fixed offsets and `offset(log(exposure))`, each with
+model-based, N/(N-1) robust and G/(G-1) clustered covariance.
 References include coefficients/full covariance/normal inference, all 36 means
 and indices per fit, likelihood/same-offset-null/LR, Wald where applicable,
 deviance/Pearson/DF/pseudo-R2, and continuous effects/full delta uncertainty.
@@ -73,13 +74,14 @@ identical exported data.
 
 ## Limits
 
-Exposure shorthand, weights/survey, multiway/few-cluster inference,
+Weights/survey, multiway/few-cluster inference,
 factor/discrete-change effects and other formal count specification tests
 remain unimplemented. Named Poisson/NB2 reports are
 available through `estimates store/table/drop`, outside this method slice. NB2 offsets have a separate
 [joint-inference workflow](../nb2-offset/README.md); they are not supplied by the
-Poisson script. Supply a precomputed log exposure from input or explicit
-SQL when appropriate; `generate` function calls are not installed. Extreme finite
+Poisson script. The separate [`exposure.td`](exposure.td) workflow covers
+`exposure(var)` for both fitted families; `generate` function calls remain
+uninstalled. Extreme finite
 offset designs can fail the bounded representability/convergence policy. This
 method extension does not resolve the printed Table20.6 NB2 discrepancy or advance
 any textbook illustration to validated status.

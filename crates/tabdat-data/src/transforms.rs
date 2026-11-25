@@ -637,6 +637,12 @@ impl DuckDbBackend {
         quote_identifier(predictor),
       ));
     }
+    if let Some(exposure) = prediction.exposure_variable {
+      let exposure = quote_identifier(exposure);
+      terms.push(format!(
+        "CASE WHEN isfinite(CAST({exposure} AS DOUBLE)) AND CAST({exposure} AS DOUBLE) > 0.0 THEN ln(CAST({exposure} AS DOUBLE)) ELSE NULL END"
+      ));
+    }
     let prediction_sql = if terms.is_empty() {
       "0.0".to_owned()
     } else {

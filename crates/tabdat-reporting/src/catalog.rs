@@ -1347,6 +1347,10 @@ fn get_command_schema(
           required: false,
         },
         OptionDescriptor {
+          name: "exposure".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
           name: "robust".to_string(),
           required: false,
         },
@@ -1359,7 +1363,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "nbreg y [x1 x2] [, offset(var) robust cluster(var) noconstant]".to_string(),
+      syntax: "nbreg y [x1 x2] [, offset(var) exposure(var) robust cluster(var) noconstant]".to_string(),
     }),
     "nl" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {
@@ -1417,6 +1421,10 @@ fn get_command_schema(
           required: false,
         },
         OptionDescriptor {
+          name: "exposure".to_string(),
+          required: false,
+        },
+        OptionDescriptor {
           name: "robust".to_string(),
           required: false,
         },
@@ -1429,7 +1437,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "poisson y [x1 x2] [, offset(var) robust cluster(var) noconstant]".to_string(),
+      syntax: "poisson y [x1 x2] [, offset(var) exposure(var) robust cluster(var) noconstant]".to_string(),
     }),
     "postlasso" => Ok(CommandSchemaResult {
       arguments: vec![
@@ -2385,6 +2393,20 @@ mod tests {
         format!("{name}, i(panelvar) t(timevar) [patterns(#)]")
       );
       assert_eq!(schema.options.len(), 3);
+    }
+  }
+
+  #[test]
+  fn poisson_and_nbreg_schemas_advertise_exposure() {
+    for command in ["poisson", "nbreg"] {
+      let schema = describe_command_result(command).unwrap();
+      assert!(schema.syntax.contains("exposure(var)"));
+      assert!(
+        schema
+          .options
+          .iter()
+          .any(|option| option.name == "exposure" && !option.required)
+      );
     }
   }
 
