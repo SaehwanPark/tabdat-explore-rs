@@ -652,11 +652,20 @@ The separate `predict target, n interval [level(95)]` command returns discrete
 equal-tail future-count bounds conditional on the fitted mean and NB2 alpha,
 with current predictors and offsets/exposure fixed. Its integer endpoints are
 stored as DOUBLEs and do not include parameter uncertainty from the covariance.
+`predict residual, residuals` separately returns the raw current response
+residual `y - exp(xb)` for native Poisson/NB2, including current predictor and
+fixed offset/exposure values. It requires a current numeric outcome; missing or
+nonfinite outcomes/model inputs return NULL, and finite outcomes must be exact
+counts in Poisson `0..2^53-1` or NB2 `0..100000`. These are not Pearson,
+deviance or standardized residuals and do not use covariance uncertainty.
 Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
-cluster IDs are not required; fitted offsets are. Independent base-R checks
+cluster IDs are not required for PMF/CDF and n-interval predictions; fitted
+offsets are. Independent base-R checks
 cover direct probabilities, changed-current-row predictions, finite-difference
 PMF/CDF SEs, 44 logit-Wald interval endpoints and independent Poisson/NB2
-future-count quantile/coverage references. Runtime/CLI checks cover
+future-count quantile/coverage references. A separate 36-row fixed-offset
+Poisson/NB2 fixture compares changed-current-row residuals against base R
+`glm`/MASS `glm.nb`. Runtime/CLI checks cover
 offsets, sample/fit reuse, atomic failures and export.

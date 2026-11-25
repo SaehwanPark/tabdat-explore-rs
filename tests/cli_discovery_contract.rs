@@ -809,7 +809,9 @@ fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit
   assert!(topic.contains("Explicit Heckman two-step: xb (latent X beta)"));
   assert!(topic.contains("Poisson: n (conditional mean exp(xb))"));
   assert!(topic.contains("Bare predict remains xb"));
-  assert!(topic.contains("Not installed for the other families: binary/Poisson residuals"));
+  assert!(topic.contains("Not installed for the other families: binary residuals, spatial_lag"));
+  assert!(topic.contains("Count response residuals:"));
+  assert!(topic.contains("response residual `y - exp(xb)`"));
   assert!(topic.contains("`probabilities` is not an accepted option spelling"));
   for source in [
     "predict fitted",

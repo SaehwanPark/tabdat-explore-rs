@@ -67,8 +67,10 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   missing/nonfinite inputs yield NULL. Baseline reference is all retained
   predictor means, including dummy means. No baseline/prediction uncertainty,
   count/binary/mean/residual meanings or auxiliaries. See help stcox.
-- Poisson: n (conditional mean exp(xb)) or xb (log conditional mean).
-- NB2: n (conditional mean exp(xb)) or xb (log conditional mean), using mean-model coefficients, not lnalpha as a predictor.
+- Poisson: n (conditional mean exp(xb)), xb (log conditional mean), or
+  residuals (current outcome minus the current conditional mean).
+- NB2: n (conditional mean exp(xb)), xb (log conditional mean), or raw response
+  residuals, using mean-model coefficients and not lnalpha as a predictor.
 
 **Bare predict remains xb for every installed family.** Request probabilities
 with `, pr` or count means with `, n` explicitly. Count means are not probabilities
@@ -86,6 +88,7 @@ Example (after loading numeric x/y):
 Count example:
 - `poisson visits age income, robust`
 - `predict expected_visits, n`
+- `predict response_residual, residuals`
 - `predict log_mean, xb`
 - `predict p0, pmf(0)`
 - `predict p0_se, pmf(0) se`
@@ -98,7 +101,8 @@ Count example:
 Data and model notes:
 - No refitting or estimation-sample filtering: excluded rows can receive
   predictions if their current predictors are available. Outcome values do not
-  matter except for linear residuals. Weight/cluster columns are not needed,
+  matter except for residuals. Poisson/NB2 response residuals use the current
+  outcome and fitted conditional mean. Weight/cluster columns are not needed,
   except the fitted unit identifier for FE conditional predictions.
 - xb requires the original predictor names. Renaming/dropping a required column
   does not rewrite the model: restore it or deliberately refit. Retained-X
@@ -123,12 +127,23 @@ Data and model notes:
 - Terminal/--text confirms dataset dimensions. CLI-v1 `PredictionResult` contains
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
-Not installed for the other families: binary/Poisson residuals, NB2 residuals,
-spatial_lag, posterior_predictive, general std/interval/level()/saving()
+Not installed for the other families: binary residuals, spatial_lag,
+posterior_predictive, general std/interval/level()/saving()
 prediction, or count cutoffs beyond the bounded integer 0..100000. Count
 PMF/CDF and `n` intervals are the bounded exceptions described below.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
+
+Count response residuals:
+- After native Poisson/NB2, `predict residual, residuals` writes the raw current-row
+  response residual `y - exp(xb)`. It uses the retained mean coefficients and
+  current predictors plus the fitted offset/exposure. It does not use covariance
+  or dispersion uncertainty and is not a Pearson, deviance or standardized
+  residual.
+- The current outcome column must be present and numeric. Missing/nonfinite
+  outcomes or model inputs produce NULL. Finite outcomes must be exact counts in
+  the family domain (Poisson 0..2^53-1; NB2 0..100000); other finite values fail
+  atomically. Predictions cover current rows, including rows excluded at fit.
 
 Count distributional probabilities:
 - After Poisson/NB2, `predict p, pmf(k)` means P(Y=k); `cdf(k)` means P(Y<=k),

@@ -317,7 +317,7 @@ fn packaged_count_help_examples_execute_on_their_advertised_columns() {
     .lines()
     .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`')))
     .collect();
-  assert_eq!(examples.len(), 8);
+  assert_eq!(examples.len(), 9);
   let out = f.batch(&examples);
   success(&out);
   assert!(f.0.join("visits_predictions.csv").is_file());
@@ -335,7 +335,7 @@ fn packaged_count_help_examples_execute_on_their_advertised_columns() {
       .lines()
       .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`'))),
   );
-  assert_eq!(examples.len(), 11);
+  assert_eq!(examples.len(), 12);
   success(&f.batch(&examples));
 }
 
@@ -374,6 +374,130 @@ fn no_constant_and_zero_variance_json_never_claim_unavailable_inference() {
     "no_non_intercept_coefficients"
   );
   assert_eq!(r[3]["data"]["effects"], serde_json::json!([]));
+}
+
+#[test]
+fn count_response_residuals_render_current_values_in_json_and_text() {
+  let source = sample();
+  for family in ["poisson", "nbreg"] {
+    let commands = [
+      "use mma20p1count.csv".to_owned(),
+      "generate log_time = .05 * LC".to_owned(),
+      format!("{family} MDU LC IDP, offset(log_time)"),
+      "replace MDU = MDU + 1".to_owned(),
+      "replace MDU = NULL if prepared_row == 8".to_owned(),
+      "predict current_mean, n".to_owned(),
+      "predict response_residual, residuals".to_owned(),
+      "head 10".to_owned(),
+    ];
+    let commands: Vec<_> = commands.iter().map(String::as_str).collect();
+
+    let json = Fixture::new(&source);
+    let output = json.batch(&commands);
+    success(&output);
+    let results = envelopes(&output);
+    assert_eq!(results.len(), commands.len());
+    assert_eq!(results[2]["data"]["observation_count"], 80);
+    let prediction = &results[6]["data"]["dataset"]["columns"];
+    assert_eq!(
+      prediction[prediction.as_array().unwrap().len() - 1]["name"],
+      "response_residual"
+    );
+    assert_eq!(
+      prediction[prediction.as_array().unwrap().len() - 1]["data_type"],
+      "DOUBLE"
+    );
+    let table = &results[7]["data"];
+    let columns = table["columns"].as_array().unwrap();
+    assert_eq!(
+      columns
+        .iter()
+        .rev()
+        .take(2)
+        .rev()
+        .map(|column| column.as_str().unwrap())
+        .collect::<Vec<_>>(),
+      ["current_mean", "response_residual"]
+    );
+    let index = |name: &str| {
+      columns
+        .iter()
+        .position(|column| column.as_str() == Some(name))
+        .unwrap()
+    };
+    let (id, y, mean, residual) = (
+      index("prepared_row"),
+      index("MDU"),
+      index("current_mean"),
+      index("response_residual"),
+    );
+    let rows = table["rows"].as_array().unwrap();
+    let missing = rows.iter().find(|row| row[id].as_i64() == Some(8)).unwrap();
+    assert!(missing[y].is_null());
+    assert!(missing[mean].as_f64().unwrap().is_finite());
+    assert!(missing[residual].is_null());
+    for row in rows.iter().filter(|row| row[id].as_i64() != Some(8)) {
+      let actual_y = row[y]
+        .as_f64()
+        .or_else(|| row[y].as_str().and_then(|value| value.parse().ok()))
+        .unwrap();
+      let actual_mean = row[mean].as_f64().unwrap();
+      let actual_residual = row[residual].as_f64().unwrap();
+      assert!((actual_residual - (actual_y - actual_mean)).abs() < 1e-12);
+    }
+
+    let text = Fixture::new(&source);
+    let output = text.batch_with_flag("--text", &commands);
+    success(&output);
+    let rendered = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<_> = rendered.lines().collect();
+    let header = lines
+      .iter()
+      .find(|line| line.split('\t').any(|column| column == "response_residual"))
+      .unwrap();
+    let columns: Vec<_> = header.split('\t').collect();
+    let index = |name: &str| columns.iter().position(|column| *column == name).unwrap();
+    let missing = lines
+      .iter()
+      .find(|line| line.starts_with("8\t"))
+      .unwrap()
+      .split('\t')
+      .collect::<Vec<_>>();
+    assert_eq!(missing[index("MDU")], "NA");
+    assert_eq!(missing[index("response_residual")], "NA");
+    for phrase in ["current_mean", "response_residual"] {
+      assert!(rendered.contains(phrase), "{phrase}");
+    }
+  }
+}
+
+#[test]
+fn invalid_current_count_residuals_fail_without_changing_cli_data() {
+  let source = sample();
+  for (family, bad_outcome) in [("poisson", "0.5"), ("nbreg", "100001")] {
+    let fixture = Fixture::new(&source);
+    let input = format!(
+      "use mma20p1count.csv\ngenerate log_time = .05 * LC\n{family} MDU LC IDP, offset(log_time)\nreplace MDU = {bad_outcome} if prepared_row == 8\nhead 1\npredict invalid_residual, residuals\nhead 1\nexit\n"
+    );
+    let output = fixture.interactive(&input);
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+      stderr.contains("current outcome must be an exact nonnegative integer"),
+      "{stderr}"
+    );
+    assert!(!stdout.contains("invalid_residual"));
+    let lines: Vec<_> = stdout.lines().collect();
+    let headers: Vec<_> = lines
+      .iter()
+      .enumerate()
+      .filter(|(_, line)| line.split('\t').next() == Some("prepared_row"))
+      .collect();
+    assert_eq!(headers.len(), 2, "{stdout}");
+    assert_eq!(headers[0].1, headers[1].1);
+    assert_eq!(lines[headers[0].0 + 1], lines[headers[1].0 + 1]);
+  }
 }
 
 #[test]
