@@ -580,9 +580,14 @@ score `7.98e-15` and scaled Newton step `2.19e-14`.
 ### Printed Table20.6 discrepancy remains unresolved
 
 The [2005 book Table20.6, printed p674](https://openeclass.panteion.gr/modules/document/file.php/PMS152/Textbooks/Cameron%20A.C.%2C%20Trivedi%20P.K.%20Microeconometrics%20Methods%20and%20Applications.pdf)
-NB2 row starts30.9%,19.6%,13.6%. The authors' November2006 program instead gives
-approximately31.8268%,19.07193%,12.75572%, and explicitly acknowledges the
-unknown discrepancy. Independent native/reference zero shares are Poisson
+NB2 row starts30.9%,19.6%,13.6%. The [authors' November2006 program revision](https://cameron.econ.ucdavis.edu/mmabook/mma20p1count.do),
+which says it adds Table20.6, instead gives approximately31.8268%,19.07193%,
+12.75572%. Its NB2 code fits `nbreg`, obtains the fitted conditional mean and
+`1/e(alpha)`, and applies the negative-binomial probability recurrence; its
+comment after the reported probabilities says the result differs from the table
+for an unknown reason (source lines235–236). The audited source bytes have
+SHA-256 `e433604d496293bc58119f7984ca009266870adadeb0eaf580e48b3fb5b700c7`.
+Independent native/reference zero shares are Poisson
 10.6764074201% and NB2 **31.8267999426%**; the latter differs from the printed
 30.9% by **0.9267999426 percentage points**, not a stopping/rounding tolerance.
 No parameters, samples or tolerances are tuned to manufacture printed agreement.
