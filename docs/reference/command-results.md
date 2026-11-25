@@ -1909,7 +1909,7 @@ Linear JSON results reuse the supplied statistics without recalculation:
   `joint_ar_postestimation_available` (true for classical/HC1/one-way-cluster fits;
   actual null-specific auxiliary rank/variance checks still apply),
   `scalar_ar_confidence_set_available` (true for nonrobust single-endogenous fits,
-  and robust/cluster fits with one endogenous regressor and at most nine excluded
+  and robust/cluster fits with one endogenous regressor and at most ten excluded
   instruments; numerical/rank/variance validation can still fail),
   `coefficient_inference = "conventional_t_not_weak_iv_robust"`, and ordered
   `rows` with endogenous name,
@@ -2081,28 +2081,27 @@ Linear JSON results reuse the supplied statistics without recalculation:
   as `AndersonRubinConfidenceSet`. HC1 assumes independent rows; CR1 assumes
   independent groups with many-group asymptotics. Neither has a finite-sample or
   few-cluster guarantee. Multiple excluded instruments use the distinct result
-  below; more than six instruments, multiple endogenous regressors, robust
-  projection and HAC/survey covariance are unsupported.
+  below; multiple endogenous regressors, robust projection and HAC/survey
+  covariance are unsupported for this one-instrument result.
   Degenerate auxiliary-score covariance, rank, DF, cluster or numerical-range
   failures are errors. The retained sample/design/groups are used without
   refits, current-column reads or state mutation.
 - `RobustMultipleInstrumentAndersonRubinConfidenceSet`
   (`estat ar, ci [level(95)]` after an HC1 or one-way clustered fit): robust
-  nonrejection set for exactly one endogenous regressor and two through nine
+  nonrejection set for exactly one endogenous regressor and two through ten
   excluded instruments, with included exogenous coefficients unrestricted. It reports
   `test: "anderson_rubin_multiple_instrument_robust_confidence_set"`, selected
   covariance, `reference_distribution: "asymptotic_chi_square"`,
   `weak_iv_robust: true`, endogenous/instrument names, level, N, auxiliary K and
   residual DF, correction, optional cluster count, and degrees of freedom equal
-  to the excluded-instrument count (two through nine), critical chi-square,
+  to the excluded-instrument count (two through ten), critical chi-square,
   `shape` and ordered `intervals`. Shapes include `multiple` for three through
-  ten components; null bounds mean negative or positive infinity. The boundary
-  has degree at most four, six, eight, ten, twelve, fourteen, sixteen or eighteen,
-  respectively, and is isolated through its derivative roots without a finite
-  search grid. Repeated/ambiguous roots, singular or ill-conditioned score
+  eleven components; null bounds mean negative or positive infinity. The boundary
+  has degree at most 2q (up to degree twenty for ten instruments), and is
+  isolated through derivative roots without a finite search grid. Repeated/ambiguous roots, singular or ill-conditioned score
   covariance, rank, DF, cluster and numerical-range failures are errors. HC1
   assumes independent rows; CR1 assumes independent groups and many-group
-  asymptotics, with no finite-sample or few-cluster guarantee. More than nine
+  asymptotics, with no finite-sample or few-cluster guarantee. More than ten
   instruments are unsupported by this result type. It remains a scalar result
   for one endogenous regressor; the separate robust projected result below is
   bounded to exactly two endogenous regressors and two excluded instruments.
