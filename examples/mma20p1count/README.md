@@ -176,10 +176,12 @@ Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.d
   book columns. Current edits do not change the retained effects. A failed new
   runtime fit clears stale inference without changing data/labels/order.
 
-Still required: broader exposure workflows, household/site/multiway/survey
-inference, weights, the unresolved printed Table20.6 NB2 row, other formal NB
-specification tests, factors/discrete changes, and remaining Tables20.3–20.6
-workflows. Immutable Poisson/NB2 named reports are
+Still required: broader exposure workflows; the bounded Poisson/NB2
+`exposure(var)` contract is recorded in [exposure.md](exposure.md). Household,
+site, multiway, survey inference and weights remain, as do the unresolved
+printed Table20.6 NB2 row, other formal NB specification tests,
+factors/discrete changes, and remaining Tables20.3–20.6 workflows. Immutable
+Poisson/NB2 named reports are
 available through `estimates store/table/drop`; they do not restore or persist
 fits.
 

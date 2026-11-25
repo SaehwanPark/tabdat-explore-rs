@@ -140,8 +140,9 @@ Select one of these outcomes with an exact ledger-defined contract, then add its
 evidence beside the workflow. Keep the choice responsive to correctness defects
 and demonstrated dependencies rather than treating the list as phase gates.
 
-1. Add `exposure(var)` to Poisson and NB2 as a bounded convenience form for a
-   fixed log-exposure offset. Preserve the established complete-case, prediction,
+1. Add [`exposure(var)`](../examples/mma20p1count/exposure.md) to Poisson and
+   NB2 as a bounded convenience form for a fixed log-exposure offset. Preserve
+   the established complete-case, prediction,
    covariance, and retained-fit contracts; independently compare both fits and
    predictions with Base R on a documented count design, and cover zero, missing,
    and nonfinite exposure failures. The [native count workflows](../examples/mma20p1count/README.md)
