@@ -39,6 +39,21 @@ fn result(clustered: bool) -> ExecutionResult {
   }))
 }
 
+fn nb1_result(clustered: bool) -> ExecutionResult {
+  let mut result = result(clustered);
+  let ExecutionResult::PoissonOverdispersionScoreTest(test) = &mut result else {
+    unreachable!()
+  };
+  test.method = "one_sided_nb1_variance_score".into();
+  test.alternative_hypothesis = "alpha > 0 in Var(Y|X) = mu + alpha*mu".into();
+  test.covariance = if clustered {
+    "cluster_nb1_score_g_over_g_minus_1".into()
+  } else {
+    "robust_row_nb1_score_n_over_n_minus_1".into()
+  };
+  result
+}
+
 #[test]
 fn json_and_terminal_contract_name_score_direction_covariance_and_assumptions() {
   let execution = result(true);
@@ -102,5 +117,36 @@ fn overdispersion_is_admitted_for_cli_batch_and_scripts_and_discovered() {
     }
   ));
   let schema = describe_command_result("estat").unwrap();
-  assert!(schema.syntax.contains("estat overdispersion"));
+  assert!(schema.syntax.contains("estat overdispersion [, nb1]"));
+
+  let nb1_command = parse_command("estat overdispersion, nb1").unwrap();
+  assert!(supports_batch_command(&nb1_command));
+  assert!(supports_script_command(&nb1_command));
+  assert!(matches!(
+    nb1_command,
+    tabdat_domain::Command::Estat {
+      command: tabdat_domain::EstatCommand {
+        subcommand: EstatSubcommand::OverdispersionNb1
+      }
+    }
+  ));
+}
+
+#[test]
+fn nb1_direction_is_named_in_json_and_terminal_results() {
+  let execution = nb1_result(true);
+  let wire = serialize_execution_result(&execution).unwrap();
+  let envelope: Value = serde_json::from_str(&wire).unwrap();
+  let data = &envelope["data"];
+  assert_eq!(data["estimator"], "poisson_nb1_overdispersion_score");
+  assert_eq!(data["method"], "one_sided_nb1_variance_score");
+  assert_eq!(
+    data["alternative_hypothesis"],
+    "alpha > 0 in Var(Y|X) = mu + alpha*mu"
+  );
+  assert_eq!(data["covariance"], "cluster_nb1_score_g_over_g_minus_1");
+
+  let text = render_execution_result(&execution);
+  assert!(text.contains("Poisson one-sided NB1 overdispersion score test"));
+  assert!(text.contains("Robust score variance does not validate a complete NB1 law"));
 }

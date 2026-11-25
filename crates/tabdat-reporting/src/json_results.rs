@@ -152,6 +152,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::Endogenous
             | EstatSubcommand::Margins
             | EstatSubcommand::Overdispersion
+            | EstatSubcommand::OverdispersionNb1
             | EstatSubcommand::DiscreteMargins { .. }
             | EstatSubcommand::FactorMargins { .. }
             | EstatSubcommand::CountProbabilities { .. }
@@ -1423,7 +1424,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     }
     ExecutionResult::PoissonOverdispersionScoreTest(result) => {
       let mut data = serde_json::to_value(result).expect("finite overdispersion score test");
-      data["estimator"] = json!("poisson_nb2_overdispersion_score");
+      data["estimator"] = json!(if result.method == "one_sided_nb1_variance_score" {
+        "poisson_nb1_overdispersion_score"
+      } else {
+        "poisson_nb2_overdispersion_score"
+      });
       data["effect"] = json!("one_sided_test_alpha_greater_than_zero");
       data["sample"] = json!("retained_estimation_design");
       data["uncertainty"] = json!("selected_score_variance_conditional_on_retained_fit");

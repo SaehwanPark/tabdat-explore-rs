@@ -12,6 +12,7 @@ How to invoke:
 `estat margins, discrete(variable)` (after logit or probit)
 `estat margins, factor(variable)` (after logit or probit with a factor term)
 `estat overdispersion` (after Poisson)
+`estat overdispersion, nb1` (after Poisson; linear NB1 variance direction)
 `estat countprob [, max(10)]` (after Poisson or NB2)
 `estat countgof [, max(10)]` (after a model-based unclustered or one-way
 clustered NB2 fit)
@@ -36,7 +37,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete changes and retained-factor probability contrasts, grouped binary `gof`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Bare `estat gof` remains outside this slice, as do other binary specification tests. Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete changes and retained-factor probability contrasts, grouped binary `gof`, the Poisson NB2-direction score test `overdispersion`, its explicit NB1 variance-direction option, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Bare `estat gof` remains outside this slice, as do other binary specification tests. Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Classical panel FE–RE Hausman comparison
 
@@ -105,7 +106,7 @@ See `examples/mma20p1count/count_probabilities.td`; the printed Table20.6 NB2 ro
 differs materially from the authors'2006 program and remains unresolved, not
 forced into a tolerance or claimed as a literal replication.
 
-## Poisson overdispersion score test in the NB2 direction
+## Poisson overdispersion score tests
 
 After a successful Poisson fit, `estat overdispersion` tests
 `H0: Var(Y|X)=mu` against the one-sided NB2 variance alternative
@@ -114,16 +115,24 @@ After a successful Poisson fit, `estat overdispersion` tests
 fixed offset. It does not fit NB2 and does not establish the full negative-
 binomial distribution.
 
-The model-based score variance is the Poisson information
-`0.5*sum(mu_i^2)`. Robust fits use the row-score sandwich with N/(N-1), and
-`cluster(group)` uses grouped scores with G/(G-1). The signed Z statistic has a
-one-sided asymptotic-normal p-value. Robust/cluster score variance allows the
-selected independent unit to differ from the Poisson likelihood's working
-independence variance; it still requires a correctly specified conditional mean.
-Cluster inference assumes independent groups and many-group asymptotics, with no
-few-cluster guarantee. The score is separate from NB2's model-based boundary
-likelihood-ratio result. See
-`examples/nb2-overdispersion-score/README.md` for Base R evidence and limits.
+Use `estat overdispersion, nb1` for the linear variance direction
+`Var(Y|X)=mu+alpha*mu`, `alpha>0`, with row score
+`u_i = ((y_i-mu_i)^2-y_i)/(2*mu_i)`. NB1-direction testing requires strictly
+positive retained fitted means. This is a regression-based variance test, not
+NB1 maximum-likelihood estimation or a claim that the full count distribution
+is negative binomial.
+
+For NB2, model-based score variance is the Poisson information
+`0.5*sum(mu_i^2)`; for NB1 it is `N/2`. Either direction can use row-score
+variance with N/(N-1) after `robust`, or grouped scores with G/(G-1) after
+`cluster(group)`. The signed Z statistic has a one-sided asymptotic-normal
+p-value. Robust/cluster score variance allows the selected independent unit to
+differ from the Poisson likelihood's working independence variance; it still
+requires a correctly specified conditional mean. Cluster inference assumes
+independent groups and many-group asymptotics, with no few-cluster guarantee.
+The NB2 score remains separate from NB2's model-based boundary likelihood-ratio
+result. See `examples/nb2-overdispersion-score/README.md` for Base R evidence
+and limits.
 
 ## NB2 grouped count goodness of fit
 

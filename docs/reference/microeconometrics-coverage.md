@@ -33,7 +33,7 @@ not by implementing every estimator mentioned in a chapter.
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
-| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, fixed offsets and bounded `exposure(var)`, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; Poisson NB2-direction score test with model/row/cluster score variance; model-based unclustered and one-way cluster-robust score-adjusted NB2 grouped goodness-of-fit tests; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Exposure integrations beyond unweighted Poisson/NB2, household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
+| 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, fixed offsets and bounded `exposure(var)`, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; Poisson NB1- and NB2-direction score tests with model/row/cluster score variance; model-based unclustered and one-way cluster-robust score-adjusted NB2 grouped goodness-of-fit tests; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Exposure integrations beyond unweighted Poisson/NB2, household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Bounded legacy-convention Gaussian PA SQL composition with working/uncorrected unit-sandwich normal95 and independently validated source predictions, native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow and normalized-level-intercept pairs bootstrap (raw-copy R QR evidence, full coefficient covariance/type7 intervals, retained original FE state), the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
 | 22–23: Extended/nonlinear panels | Bounded clustered two-step linear IV GMM and source-specific first-difference panel workflow; Chapter 23 full-decade patents preparation with pre-restriction lags/summaries, log-patents pooled/FE/RE linear panels, pooled Poisson with a whole-firm bootstrap, native one-slope conditional-FE Poisson source replay and a separate SQL whole-firm bootstrap, exponential-mean NLS with auxiliary firm sandwich and a whole-firm bootstrap, bounded native balanced exchangeable Poisson GEE with owned marginal predictions and a separate SQL distinct-copy whole-firm bootstrap, a bounded shared-gamma random-effects Poisson composition with a distinct-copy whole-firm bootstrap, and a bounded normal random-intercept Poisson composition | General dynamic GMM, broader conditional-FE inference and broader native normal random-effects count panels, general GEE and other nonlinear panels with instrument controls and appropriate inference |
 | 24: Stratified/clustered samples | Bounded household OLS/FE/RE/GEE and individual Poisson workflows with one-way cluster covariance and audited whole-cluster bootstrap compositions; no design-based survey estimator | Probability weights, strata/PSUs, finite-population corrections and design-based workflows |
@@ -1948,7 +1948,7 @@ rows. The source LR is 34,620.0220788; its float64 p-value underflows to zero,
 not an exact probability. This method extension does not reconcile the authors'
 unresolved printed Table20.6 NB2 row or complete the count chapter.
 
-### Poisson NB2-direction overdispersion score evidence
+### Poisson NB1/NB2-direction overdispersion score evidence
 
 `estat overdispersion` is a retained-Poisson score test of equidispersion,
 `H0: Var(Y|X)=mu`, against the one-sided NB2 variance direction
@@ -1963,10 +1963,17 @@ few-cluster reliability. The test neither fits NB2 nor validates its full
 conditional distribution, and it is distinct from the boundary likelihood-
 ratio result above.
 
+`estat overdispersion, nb1` selects the linear variance direction
+`Var(Y|X)=mu+alpha*mu`, with score
+`u_i=((y_i-mu_i)^2-y_i)/(2*mu_i)` and model information `N/2`. It requires
+strictly positive retained means. This is a mean-variance regression test, not
+NB1 maximum-likelihood estimation or a claim about the full NB1 distribution.
+
 The independent [Base R reference and runnable example](../../examples/nb2-overdispersion-score/README.md)
 fits the Poisson mean on 180 synthetic observations with an offset, then checks
-model-based and row-robust scores on independent gamma-Poisson rows and a
-group-score variance on shared-gamma groups (30 groups). Native/R score,
+both variance directions using model-based and row-robust scores on independent
+gamma-Poisson rows and group-score variances on shared-gamma groups (30 groups).
+Native/R score,
 variance, Z and upper-tail p-values are compared in the stats fixture with
 absolute tolerances `1e-8` for score/Z and `2e-7` for variance, and `2e-8`
 relative tolerance for the tail. Runtime/CLI checks cover missing or wrong-family

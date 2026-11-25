@@ -1,6 +1,7 @@
 args <- commandArgs(trailingOnly = TRUE)
 data_path <- if (length(args) >= 1) args[[1]] else "examples/nb2-overdispersion-score/score_reference.csv"
 reference_path <- if (length(args) >= 2) args[[2]] else "crates/tabdat-stats/tests/fixtures/poisson_nb2_score_reference.csv"
+nb1_reference_path <- if (length(args) >= 3) args[[3]] else "crates/tabdat-stats/tests/fixtures/poisson_nb1_score_reference.csv"
 
 set.seed(20261124)
 n <- 180L
@@ -24,13 +25,21 @@ data <- data.frame(
 )
 write.csv(data, data_path, row.names = FALSE, quote = FALSE)
 
-reference <- function(y, model, covariance, groups = NULL) {
-  fit <- glm(y ~ x + offset(log_exposure), family = poisson(), data = data)
+reference <- function(y, model, covariance, groups = NULL, direction = "nb2") {
+  control <- if (direction == "nb1") {
+    # The NB1 score divides by the fitted mean, so tighten GLM convergence to
+    # keep coefficient stopping error below the score-reference tolerance.
+    glm.control(epsilon = 1e-14, maxit = 100L)
+  } else {
+    glm.control()
+  }
+  fit <- glm(y ~ x + offset(log_exposure), family = poisson(), data = data, control = control)
   fitted_mean <- fitted(fit)
-  score <- 0.5 * ((y - fitted_mean)^2 - y)
+  centered_square <- (y - fitted_mean)^2 - y
+  score <- if (direction == "nb1") centered_square / (2 * fitted_mean) else 0.5 * centered_square
   if (covariance == "model") {
     correction <- 1
-    score_variance <- 0.5 * sum(fitted_mean^2)
+    score_variance <- if (direction == "nb1") length(y) / 2 else 0.5 * sum(fitted_mean^2)
   } else if (covariance == "robust") {
     correction <- length(score) / (length(score) - 1)
     score_variance <- correction * sum(score^2)
@@ -60,3 +69,10 @@ results <- rbind(
   reference(data$y_clustered, "poisson", "cluster", data$group)
 )
 write.csv(results, reference_path, row.names = FALSE, quote = FALSE)
+
+nb1_results <- rbind(
+  reference(data$y_independent, "poisson", "model", direction = "nb1"),
+  reference(data$y_independent, "poisson", "robust", direction = "nb1"),
+  reference(data$y_clustered, "poisson", "cluster", data$group, direction = "nb1")
+)
+write.csv(nb1_results, nb1_reference_path, row.names = FALSE, quote = FALSE)

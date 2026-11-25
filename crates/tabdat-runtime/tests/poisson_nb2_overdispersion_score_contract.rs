@@ -47,20 +47,23 @@ fn run(session: &mut Session, command: &str) -> ExecutionResult {
 #[test]
 fn retained_poisson_score_uses_fit_time_outcomes_offsets_and_groups() {
   let fixture = Fixture::new();
-  for (fit, expected_covariance, expected_cluster) in [
+  for (fit, expected_covariance, expected_nb1_covariance, expected_cluster) in [
     (
       "poisson y_independent x, offset(log_exposure)",
       "poisson_information_nb2_score",
+      "poisson_information_nb1_score",
       false,
     ),
     (
       "poisson y_independent x, offset(log_exposure) robust",
       "robust_row_nb2_score_n_over_n_minus_1",
+      "robust_row_nb1_score_n_over_n_minus_1",
       false,
     ),
     (
       "poisson y_clustered x, offset(log_exposure) cluster(group)",
       "cluster_nb2_score_g_over_g_minus_1",
+      "cluster_nb1_score_g_over_g_minus_1",
       true,
     ),
   ] {
@@ -78,6 +81,19 @@ fn retained_poisson_score_uses_fit_time_outcomes_offsets_and_groups() {
     if expected_cluster {
       assert_eq!(test.cluster.as_ref().unwrap().group_count, 30);
     }
+    let nb1_result = run(&mut session, "estat overdispersion, nb1");
+    let ExecutionResult::PoissonOverdispersionScoreTest(nb1_test) = nb1_result.clone() else {
+      panic!("unexpected result: {nb1_result:?}")
+    };
+    assert_eq!(nb1_test.method, "one_sided_nb1_variance_score");
+    assert_eq!(nb1_test.covariance, expected_nb1_covariance);
+    assert_eq!(nb1_test.observation_count, 180);
+    assert_eq!(nb1_test.offset_variable.as_deref(), Some("log_exposure"));
+    assert_eq!(nb1_test.cluster.is_some(), expected_cluster);
+    assert_eq!(
+      nb1_test.alternative_hypothesis,
+      "alpha > 0 in Var(Y|X) = mu + alpha*mu"
+    );
 
     // Current values and the named source columns are no longer consulted.
     run(&mut session, "replace x = x + 1");
@@ -86,6 +102,7 @@ fn retained_poisson_score_uses_fit_time_outcomes_offsets_and_groups() {
     run(&mut session, "replace y_clustered = y_clustered + 10");
     run(&mut session, "replace group = group + 1000");
     assert_eq!(run(&mut session, "estat overdispersion"), result);
+    assert_eq!(run(&mut session, "estat overdispersion, nb1"), nb1_result);
   }
 }
 
@@ -100,6 +117,12 @@ fn requires_a_retained_poisson_fit_and_preserves_state_on_failure() {
       .unwrap_err(),
     RuntimeError::EstatOverdispersionRequiresPriorPoisson
   );
+  assert_eq!(
+    empty
+      .execute(parse_command("estat overdispersion, nb1").unwrap())
+      .unwrap_err(),
+    RuntimeError::EstatOverdispersionRequiresPriorPoisson
+  );
   assert_eq!(empty.state(), before);
 
   let mut session = fixture.session();
@@ -108,6 +131,12 @@ fn requires_a_retained_poisson_fit_and_preserves_state_on_failure() {
   assert_eq!(
     session
       .execute(parse_command("estat overdispersion").unwrap())
+      .unwrap_err(),
+    RuntimeError::EstatOverdispersionRequiresPriorPoisson
+  );
+  assert_eq!(
+    session
+      .execute(parse_command("estat overdispersion, nb1").unwrap())
       .unwrap_err(),
     RuntimeError::EstatOverdispersionRequiresPriorPoisson
   );
@@ -126,6 +155,12 @@ fn requires_a_retained_poisson_fit_and_preserves_state_on_failure() {
       .unwrap_err(),
     RuntimeError::EstatOverdispersionRequiresPriorPoisson
   );
+  assert_eq!(
+    session
+      .execute(parse_command("estat overdispersion, nb1").unwrap())
+      .unwrap_err(),
+    RuntimeError::EstatOverdispersionRequiresPriorPoisson
+  );
   assert_eq!(session.state(), before);
 
   run(
@@ -134,6 +169,10 @@ fn requires_a_retained_poisson_fit_and_preserves_state_on_failure() {
   );
   assert!(matches!(
     run(&mut session, "estat overdispersion"),
+    ExecutionResult::PoissonOverdispersionScoreTest(_)
+  ));
+  assert!(matches!(
+    run(&mut session, "estat overdispersion, nb1"),
     ExecutionResult::PoissonOverdispersionScoreTest(_)
   ));
   assert_ne!(previous, run(&mut session, "estat overdispersion"));

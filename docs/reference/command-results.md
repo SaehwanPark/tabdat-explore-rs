@@ -940,7 +940,7 @@ are validated. This is not a printed Table20.5 column, household/site/multiway
 correction, survey or FE/RE/panel-family implementation. See MIG-0019. NB2
 uses its distinct full-joint clustered law below.
 
-### Retained Poisson NB2-direction overdispersion score test
+### Retained Poisson NB1/NB2-direction overdispersion score tests
 
 `estat overdispersion` is available only after a retained Poisson fit. It tests
 `H0: alpha=0` (Poisson conditional variance) against `alpha>0` in
@@ -952,16 +952,28 @@ exposure remain in `mu_i`; no NB2 fit is performed. CLI-v1 adds
 `score_variance`, signed `statistic`, one-sided `p_value`, selected `covariance`,
 `covariance_correction`, `reference_distribution`, retained N, optional
 `offset_variable`/`exposure_variable` and optional cluster metadata.
+The default estimator label is `poisson_nb2_overdispersion_score`.
 
-Model variance is `0.5*sum(mu_i^2)` (`poisson_information_nb2_score`); robust
-row variance is `N/(N-1)*sum(u_i^2)`; clustered variance aggregates row scores
-first and uses `G/(G-1)*sum_g(sum_i u_i)^2`. The statistic is compared with the
-upper tail of the standard normal. Robust inference assumes a correctly
-specified Poisson conditional mean. Cluster inference also assumes independent
-groups and many-group asymptotics; no few-cluster guarantee is supplied. This
-score test is not the NB2 boundary likelihood-ratio test and does not validate
-the complete NB2 distribution. Current-data edits do not refit or alter its
-retained score.
+`estat overdispersion, nb1` selects the linear variance direction
+`Var(Y|X)=mu+alpha*mu`, with score
+`u_i=((y_i-mu_i)^2-y_i)/(2*mu_i)`. It requires every retained fitted mean to
+be positive. The model-based null information is `N/2`; row-robust and
+cluster-robust variances use the same finite-sample corrections and independent
+unit assumptions described below. The result uses the same CLI-v1 type and
+fields, with estimator `poisson_nb1_overdispersion_score` and method, alternative
+and covariance labels identifying NB1. This is a regression-based mean-variance
+test, not an NB1 likelihood fit or a claim about the complete conditional count
+distribution.
+
+For NB2, model variance is `0.5*sum(mu_i^2)` (`poisson_information_nb2_score`);
+for NB1 it is `N/2` (`poisson_information_nb1_score`). Robust row variance is
+`N/(N-1)*sum(u_i^2)`; clustered variance aggregates row scores first and uses
+`G/(G-1)*sum_g(sum_i u_i)^2`. The statistic is compared with the upper tail of
+the standard normal. Robust inference assumes a correctly specified Poisson
+conditional mean. Cluster inference also assumes independent groups and
+many-group asymptotics; no few-cluster guarantee is supplied. The NB2 score is
+not its boundary likelihood-ratio test and does not validate the complete NB2
+distribution. Current-data edits do not refit or alter either retained score.
 
 ## Bounded jointly estimated NB2
 

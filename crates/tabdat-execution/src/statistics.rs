@@ -1299,11 +1299,19 @@ impl Session {
     if let EstatSubcommand::FactorMargins { variable } = &command.subcommand {
       return self.execute_binary_factor_margins(variable);
     }
-    if command.subcommand == EstatSubcommand::Overdispersion {
+    if matches!(
+      command.subcommand,
+      EstatSubcommand::Overdispersion | EstatSubcommand::OverdispersionNb1
+    ) {
       let Some(EstimationState::PoissonFit(state)) = &self.estimation else {
         return Err(RuntimeError::EstatOverdispersionRequiresPriorPoisson);
       };
-      return tabdat_stats::poisson_nb2_overdispersion_score_test(&state.problem, &state.result)
+      let result = if command.subcommand == EstatSubcommand::OverdispersionNb1 {
+        tabdat_stats::poisson_nb1_overdispersion_score_test(&state.problem, &state.result)
+      } else {
+        tabdat_stats::poisson_nb2_overdispersion_score_test(&state.problem, &state.result)
+      };
+      return result
         .map(|result| ExecutionResult::PoissonOverdispersionScoreTest(Box::new(result)))
         .map_err(|error| RuntimeError::EstatOverdispersionFailed {
           message: error.to_string(),

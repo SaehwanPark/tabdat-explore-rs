@@ -1,6 +1,6 @@
 use tabdat_stats::{
   EstimationProblem, EstimationSample, fit_poisson_with_offset,
-  poisson_nb2_overdispersion_score_test,
+  poisson_nb1_overdispersion_score_test, poisson_nb2_overdispersion_score_test,
 };
 
 fn data() -> Vec<Vec<String>> {
@@ -104,6 +104,69 @@ fn model_row_robust_and_cluster_score_variances_match_independent_base_r() {
     close(result.statistic, row[7], false);
     close(result.p_value, row[8], true);
   }
+}
+
+#[test]
+fn nb1_direction_score_and_covariance_match_independent_base_r() {
+  let rows = data();
+  let reference: Vec<Vec<_>> = include_str!("fixtures/poisson_nb1_score_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|line| line.split(',').collect())
+    .collect();
+  assert_eq!(reference.len(), 3);
+
+  for row in reference {
+    let (outcome_index, clustered) = match row[1] {
+      "model" | "robust" => (1, false),
+      "cluster" => (2, true),
+      other => panic!("unexpected covariance {other}"),
+    };
+    let (problem, offsets) = problem(&rows, outcome_index, clustered);
+    let fit = fit_poisson_with_offset(
+      &problem,
+      &offsets,
+      Some("log_exposure"),
+      row[1] == "robust",
+      clustered.then_some("group"),
+    )
+    .unwrap();
+    let result = poisson_nb1_overdispersion_score_test(&problem, &fit).unwrap();
+
+    assert_eq!(result.method, "one_sided_nb1_variance_score");
+    assert_eq!(result.observation_count.to_string(), row[2]);
+    assert_eq!(result.reference_distribution, "asymptotic_standard_normal");
+    assert_eq!(
+      result.covariance,
+      match row[1] {
+        "model" => "poisson_information_nb1_score",
+        "robust" => "robust_row_nb1_score_n_over_n_minus_1",
+        "cluster" => "cluster_nb1_score_g_over_g_minus_1",
+        _ => unreachable!(),
+      }
+    );
+    close(result.covariance_correction, row[4], false);
+    assert_eq!(result.offset_variable.as_deref(), Some("log_exposure"));
+    assert_eq!(
+      result
+        .cluster
+        .as_ref()
+        .map(|cluster| cluster.group_count.to_string()),
+      (row[3] != "NA").then(|| row[3].to_owned())
+    );
+    close(result.score, row[5], false);
+    close_with_tolerance(result.score_variance, row[6].parse().unwrap(), 2e-7);
+    close(result.statistic, row[7], false);
+    close(result.p_value, row[8], true);
+  }
+}
+
+#[test]
+fn nb1_direction_requires_positive_means() {
+  let problem = EstimationProblem::new("y", vec![], vec![0.0, 1.0], vec![vec![], vec![]]).unwrap();
+  let mut fit = fit_poisson_with_offset(&problem, &[0.0, 0.0], None, false, None).unwrap();
+  fit.fitted_means[0] = 0.0;
+  assert!(poisson_nb1_overdispersion_score_test(&problem, &fit).is_err());
 }
 
 #[test]
