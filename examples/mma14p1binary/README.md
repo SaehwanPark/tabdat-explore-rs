@@ -612,9 +612,11 @@ cluster covariance for both families; see the
 [`wald-test.md` method evidence](wald-test.md). No R/Python production dependency
 is introduced.
 
-Weighted/survey forms, categorical/factor/interactions, discrete changes with
-uncertainty, prediction intervals and graphics beyond the bounded SVG
-scatter/line workflow remain open. General binary `lincom`, few-cluster
-inference, other specification tests and the rest of the textbook are not
-claimed. The grouped calibration diagnostic is a separate synthetic method
-fixture, not an additional §14.2 textbook replication.
+This replication follows the supplied unweighted numeric fishing designs; it
+does not exercise categorical terms, interactions, discrete changes or
+prediction intervals. Separate synthetic references cover the installed
+factor main effects, continuous products, discrete changes and probability
+intervals. Survey estimators, few-cluster inference, broader specification
+tests, graphics beyond the bounded SVG scatter/line workflow and the rest of the
+textbook remain outside this illustration. The grouped calibration diagnostic
+is a separate synthetic method fixture, not an additional §14.2 replication.

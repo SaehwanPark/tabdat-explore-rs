@@ -30,9 +30,11 @@ factor. Bare `estat margins` reports average effects for original continuous
 predictor terms, including after additive factor terms. `estat margins,
 discrete(var)` accepts an original continuous numeric predictor with exact 0/1
 values and both levels in the retained sample, including in additive factor
-designs. Expanded factor dummy columns cannot be selected. Interactions remain
-outside this slice. This synthetic method fixture does not claim a textbook
-illustration replication.
+designs. Expanded factor dummy columns cannot be selected. Discrete changes
+reject interaction models; continuous product-term AMEs have separate
+[method evidence](../continuous-interaction/README.md), while factor
+interactions remain unsupported. This synthetic method fixture does not claim
+a textbook illustration replication.
 
 ## Factor probability contrasts
 
