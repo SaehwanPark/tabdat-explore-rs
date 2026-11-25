@@ -16,7 +16,7 @@ impl Fixture {
     .unwrap();
     fs::write(
       dir.path().join("analysis.td"),
-      "use binary_factor_data.csv\nlogit y x i.region\nestat gof, group(10)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
+      "use binary_factor_data.csv\nlogit y x i.region\nestat gof, group(10)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
     )
     .unwrap();
     Self(dir)
@@ -60,6 +60,17 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
     .expect("grouped binary diagnostic");
   assert_eq!(gof["data"]["group_count"], 10);
 
+  let contrasts = rows
+    .iter()
+    .find(|row| row["result_type"] == "BinaryFactorContrastsResult")
+    .expect("binary factor probability contrasts");
+  assert_eq!(contrasts["data"]["factor_variable"], "region");
+  assert_eq!(contrasts["data"]["baseline_level"], "East");
+  assert_eq!(contrasts["data"]["observation_count"], 237);
+  assert_eq!(contrasts["data"]["causal_interpretation"], false);
+  assert_eq!(contrasts["data"]["contrasts"].as_array().unwrap().len(), 2);
+  assert_eq!(contrasts["data"]["contrasts"][0]["level"], "North");
+
   let table = rows
     .iter()
     .find(|row| row["result_type"] == "EstimateTableResult")
@@ -85,5 +96,7 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   let text = String::from_utf8_lossy(&text.stdout);
   assert!(text.contains("region_North"));
   assert!(text.contains("East"));
+  assert!(text.contains("Logit average factor probability contrasts"));
+  assert!(text.contains("region: North vs East"));
   assert!(text.contains("Hosmer-Lemeshow grouped goodness-of-fit test"));
 }

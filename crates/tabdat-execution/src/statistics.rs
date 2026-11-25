@@ -1240,6 +1240,9 @@ impl Session {
     if let EstatSubcommand::DiscreteMargins { variable } = &command.subcommand {
       return self.execute_binary_discrete_margins(variable);
     }
+    if let EstatSubcommand::FactorMargins { variable } = &command.subcommand {
+      return self.execute_binary_factor_margins(variable);
+    }
     if command.subcommand == EstatSubcommand::Overdispersion {
       let Some(EstimationState::PoissonFit(state)) = &self.estimation else {
         return Err(RuntimeError::EstatOverdispersionRequiresPriorPoisson);

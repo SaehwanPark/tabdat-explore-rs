@@ -32,6 +32,7 @@ fn batch_and_script_share_bounded_command_admission() {
     ("tabulate x if x > 0", true),
     ("tabulate x g if x > 0", true),
     ("estat vif", true),
+    ("estat margins, factor(region)", true),
     ("estat residuals", false),
     ("help", false),
     ("logit y x", true),

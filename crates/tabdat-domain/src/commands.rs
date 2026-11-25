@@ -1489,6 +1489,10 @@ pub enum EstatSubcommand {
   DiscreteMargins {
     variable: String,
   },
+  /// Retained-sample probability contrasts for every level of one binary-fit factor.
+  FactorMargins {
+    variable: String,
+  },
   /// Descriptive observed/fitted retained-count bins, ending in >= tail_from.
   CountProbabilities {
     tail_from: usize,

@@ -46,6 +46,7 @@ categorical columns):
 - `probit insured age ib(West).region`
 - `estat margins` — continuous average predictor-column derivatives and delta SE/95% intervals
 - `estat margins, discrete(treated)` — average probability change for a numeric 0/1 predictor
+- `estat margins, factor(region)` — average probability contrasts of retained levels versus the fit-time reference
 - `predict probability, pr`
 - `predict index_b, xb`
 - `head 8`
@@ -82,11 +83,11 @@ Convergence and supported limits:
   singularity/nonconvergence cannot publish a fit merely because likelihood
   looks flat. This is not an analytic separation classifier; extreme finite
   designs may also fail numerical-resolution bounds.
-- Additive one-way factor main effects are supported; interactions and
-  factor-specific margins/probability contrasts are not. `estat margins` is
-  available only after continuous-only designs. The bounded discrete-change
-  command accepts one numeric predictor with exact 0/1 values and both levels
-  in the retained sample; see `help estat`.
+- Additive one-way factor main effects and `estat margins, factor(var)` are
+  supported; interactions remain unsupported. Bare `estat margins` is
+  available only after continuous-only designs. The bounded `discrete(var)`
+  form accepts one numeric predictor with exact 0/1 values and both levels in
+  the retained sample; see `help estat` for contrast estimands and inference.
 - Only one-way clustering is supported. Weighted/survey probit, prediction
   intervals and `lincom` are not installed. `test` supports general linear
   restrictions on retained probit coefficients with an asymptotic Wald
@@ -95,8 +96,9 @@ Convergence and supported limits:
   do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryProbitResult`; continuous `estat margins` returns
-  `ProbitMarginalEffectsResult`, while `discrete()` returns
-  `BinaryDiscreteChangeResult`. Prediction retains metadata-only `PredictionResult`.
+  `ProbitMarginalEffectsResult`, `discrete()` returns
+  `BinaryDiscreteChangeResult`, and `factor()` returns
+  `BinaryFactorContrastsResult`. Prediction retains metadata-only `PredictionResult`.
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
 §14.2 fishing-mode binary illustration, independent R validation).

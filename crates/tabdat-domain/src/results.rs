@@ -918,6 +918,8 @@ pub enum ExecutionResult {
   LogitMarginalEffects(tabdat_stats::LogitMarginalEffects),
   /// Average fitted probability change for a retained 0/1 predictor.
   BinaryDiscreteChange(Box<tabdat_stats::BinaryDiscreteChange>),
+  /// Retained-sample probability contrasts for one fitted categorical term.
+  BinaryFactorContrasts(Box<tabdat_stats::BinaryFactorContrasts>),
   /// Converged model-based binary probit maximum likelihood fit.
   Probit(Box<tabdat_stats::BinaryMleResult>),
   /// Probit conditional-on-retained-X average partial effects and delta inference.

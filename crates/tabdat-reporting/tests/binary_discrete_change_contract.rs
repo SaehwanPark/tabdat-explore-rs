@@ -113,3 +113,21 @@ fn discrete_margins_is_admitted_for_json_and_scripts_without_changing_bare_margi
       .any(|option| option.name == "discrete")
   );
 }
+
+#[test]
+fn factor_margins_is_admitted_for_json_and_scripts_without_changing_bare_margins() {
+  let command = parse_command("estat margins, factor(region)").unwrap();
+  assert!(supports_batch_command(&command));
+  assert!(supports_script_command(&command));
+  assert_eq!(
+    parse_command("estat margins").unwrap(),
+    tabdat_domain::Command::Estat {
+      command: tabdat_domain::EstatCommand {
+        subcommand: EstatSubcommand::Margins,
+      },
+    }
+  );
+  let schema = describe_command_result("estat").unwrap();
+  assert!(schema.syntax.contains("estat margins, factor(variable)"));
+  assert!(schema.options.iter().any(|option| option.name == "factor"));
+}

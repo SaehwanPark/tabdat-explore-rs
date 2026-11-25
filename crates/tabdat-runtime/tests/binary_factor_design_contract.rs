@@ -139,6 +139,21 @@ fn summary_reference(model: &str, design: &str) -> Vec<Vec<&'static str>> {
   .collect()
 }
 
+fn factor_contrast_reference(
+  model: &str,
+  design: &str,
+  covariance_type: &str,
+) -> Vec<Vec<&'static str>> {
+  rows(include_str!(
+    "../../../examples/binary-factor-design/binary_factor_contrast_reference.csv"
+  ))
+  .into_iter()
+  .filter(|row| {
+    field(row, 0) == model && field(row, 1) == design && field(row, 2) == covariance_type
+  })
+  .collect()
+}
+
 fn retained_result(session: &Session) -> tabdat_stats::BinaryMleResult {
   match session.state().estimation.unwrap() {
     EstimationState::Logit(state) | EstimationState::Probit(state) => state.result,
@@ -409,6 +424,146 @@ fn factor_fits_keep_binary_diagnostics_tests_and_estimate_report_metadata() {
   };
   assert_eq!(table.models.len(), 1);
   assert_eq!(table.models[0].linear_design_terms, design_terms);
+}
+
+#[test]
+fn factor_probability_contrasts_match_base_r_and_use_only_the_retained_design() {
+  let fixture = Fixture::new();
+  for model in ["logit", "probit"] {
+    for (design, covariance, variable, fit) in [
+      (
+        "default",
+        "model_based",
+        "region",
+        format!("{model} y x i.region"),
+      ),
+      (
+        "default",
+        "robust",
+        "region",
+        format!("{model} y x i.region, robust"),
+      ),
+      (
+        "default",
+        "cluster",
+        "region",
+        format!("{model} y x i.region, cluster(cluster)"),
+      ),
+      (
+        "west_reference",
+        "model_based",
+        "region",
+        format!("{model} y x ib(West).region"),
+      ),
+      (
+        "noconstant",
+        "model_based",
+        "region",
+        format!("{model} y x i.region, noconstant"),
+      ),
+      (
+        "numeric_factor",
+        "model_based",
+        "group_code",
+        format!("{model} y x i.group_code"),
+      ),
+      (
+        "boolean_factor",
+        "model_based",
+        "is_west",
+        format!("{model} y x i.is_west"),
+      ),
+    ] {
+      let mut session = fixture.load();
+      run(&mut session, &fit);
+      let before = session.state().estimation;
+      let ExecutionResult::BinaryFactorContrasts(actual) =
+        run(&mut session, &format!("estat margins, factor({variable})"))
+      else {
+        panic!("expected factor probability contrasts for {fit}")
+      };
+      let reference = factor_contrast_reference(model, design, covariance);
+      assert_eq!(
+        actual.model,
+        if model == "logit" {
+          BinaryModel::Logit
+        } else {
+          BinaryModel::Probit
+        }
+      );
+      assert_eq!(actual.factor_variable, variable);
+      assert_eq!(actual.baseline_level, field(&reference[0], 4));
+      assert_eq!(actual.observation_count, 237);
+      assert_eq!(actual.robust, covariance != "model_based");
+      assert_eq!(actual.cluster.is_some(), covariance == "cluster");
+      assert_eq!(actual.contrasts.len(), reference.len(), "{fit}");
+      for (contrast, expected) in actual.contrasts.iter().zip(&reference) {
+        assert_eq!(contrast.level, field(expected, 5), "{fit}");
+        close_named(
+          contrast.effect.value,
+          field(expected, 6).parse().unwrap(),
+          &format!("{fit} contrast {} estimate", contrast.level),
+        );
+        close_named(
+          contrast.effect.standard_error,
+          field(expected, 7).parse().unwrap(),
+          &format!("{fit} contrast {} standard error", contrast.level),
+        );
+        close_named(
+          contrast.effect.statistic,
+          field(expected, 8).parse().unwrap(),
+          &format!("{fit} contrast {} statistic", contrast.level),
+        );
+        close_named(
+          contrast.effect.p_value,
+          field(expected, 9).parse().unwrap(),
+          &format!("{fit} contrast {} p-value", contrast.level),
+        );
+        close_named(
+          contrast.effect.confidence_lower,
+          field(expected, 10).parse().unwrap(),
+          &format!("{fit} contrast {} lower interval", contrast.level),
+        );
+        close_named(
+          contrast.effect.confidence_upper,
+          field(expected, 11).parse().unwrap(),
+          &format!("{fit} contrast {} upper interval", contrast.level),
+        );
+      }
+      assert_eq!(session.state().estimation, before);
+      if design == "default" && covariance == "model_based" {
+        run(&mut session, "replace region = 'Unused' if id == 1");
+        let ExecutionResult::BinaryFactorContrasts(after_edit) =
+          run(&mut session, &format!("estat margins, factor({variable})"))
+        else {
+          panic!("expected factor probability contrasts after data edit")
+        };
+        assert_eq!(*after_edit, *actual);
+      }
+    }
+  }
+}
+
+#[test]
+fn factor_probability_contrasts_require_a_retained_factor_and_preserve_fit_state() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  assert!(matches!(
+    fail(&mut session, "estat margins, factor(region)"),
+    RuntimeError::EstatMarginsFailed { .. }
+  ));
+  run(&mut session, "logit y x");
+  let before = session.state().estimation;
+  assert!(matches!(
+    fail(&mut session, "estat margins, factor(region)"),
+    RuntimeError::EstatMarginsFailed { .. }
+  ));
+  assert_eq!(session.state().estimation, before);
+  assert!(matches!(
+    fail(&mut session, "estat margins, factor(x)"),
+    RuntimeError::EstatMarginsFailed { .. }
+  ));
+  assert_eq!(session.state().estimation, before);
 }
 
 #[test]
