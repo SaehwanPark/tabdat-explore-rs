@@ -66,6 +66,21 @@ predictor to differentiate. Numeric `discrete(var)` remains limited to
 continuous-only designs. Interactions, weights, multiway clustering and
 simultaneous intervals remain unsupported.
 
+## Planned discrete changes in mixed designs
+
+The next slice will allow `estat margins, discrete(var)` when `var` is an
+original retained numeric predictor with exactly 0 and 1 represented, even if
+the model also contains additive factor terms. It will change only `var` on
+each retained row, leaving factor indicators and all other continuous values
+unchanged. The full gradient will include every model coefficient and use the
+selected model-based, row-robust or one-way clustered covariance for
+asymptotic-normal inference and the fixed 95% interval.
+
+Expanded factor dummy columns will not qualify as the selected numeric
+predictor. Models with interactions, weights, multiway clustering or
+simultaneous intervals remain unsupported. Independent Base R references will
+cover both links, factor references, `noconstant` and selected covariance modes.
+
 ## Independent validation
 
 `Rscript reference.R` uses R 4.6.2 and seed 84523 to generate
