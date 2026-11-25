@@ -1832,7 +1832,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         )
         .unwrap();
       }
-      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous regressor and two through twelve excluded instruments are supported.\n");
+      output.push_str("\nAssumes valid instruments and a correctly specified linear model; HC1 requires independent rows, while CR1 requires independent groups and many-group asymptotics. No finite-sample or few-cluster guarantee.\nIncluded exogenous coefficients are unrestricted nuisance parameters. Exactly one endogenous regressor and two through thirteen excluded instruments are supported.\n");
       output
     }
     ExecutionResult::ProjectedAndersonRubinConfidenceSet(result) => {

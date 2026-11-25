@@ -26,4 +26,4 @@ unsupported.
 - [x] Scope and verification plan recorded.
 - [x] q=12 implementation, independent Base R fixtures, runtime/CLI coverage and docs.
 - [x] Final verification: affected crate suites, CLI contracts, Clippy, formatting, diff checks and byte-for-byte R fixture regeneration.
-- [ ] PR review and merge.
+- [x] PR #498 reviewed and merged to `main` as `f2932fc`.
