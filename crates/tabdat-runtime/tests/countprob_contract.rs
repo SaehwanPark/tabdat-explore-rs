@@ -116,6 +116,148 @@ fn covariance_selection_does_not_change_distributional_plugin_bins_or_mutate_sta
 }
 
 #[test]
+fn future_count_intervals_use_current_mean_and_publish_atomically() {
+  let fixture = Fixture::new(true);
+  for family in ["poisson", "nbreg"] {
+    let mut covariance_results = Vec::new();
+    for covariance_option in ["", " robust", " cluster(person)"] {
+      let mut session = fixture.session();
+      run(&mut session, "drop if id == 38");
+      run(&mut session, "generate log_time = .2 * x");
+      run(
+        &mut session,
+        &format!("{family} y x z, offset(log_time){covariance_option}"),
+      );
+      let retained = session.state().estimation;
+      run(&mut session, "drop y person");
+      run(&mut session, "replace x = x + .2");
+      run(&mut session, "replace log_time = log_time - .3");
+      run(&mut session, "predict future, n interval level(90)");
+      run(&mut session, "predict conditional_mean, n");
+      let ExecutionResult::Head(table) = run(&mut session, "head 100") else {
+        panic!("head")
+      };
+      let index = |name: &str| {
+        table
+          .columns
+          .iter()
+          .position(|column| column == name)
+          .unwrap()
+      };
+      let (mean_index, point_index, lower_index, upper_index) = (
+        index("conditional_mean"),
+        index("future"),
+        index("future_lower"),
+        index("future_upper"),
+      );
+      let mut rows = Vec::new();
+      for row in &table.rows {
+        let mean = &row[mean_index];
+        let (point, lower, upper) = (&row[point_index], &row[lower_index], &row[upper_index]);
+        match (point, mean) {
+          (tabdat_domain::CellValue::Float(point), tabdat_domain::CellValue::Float(mean)) => {
+            assert!((point - mean).abs() < 1e-12)
+          }
+          (tabdat_domain::CellValue::Null, tabdat_domain::CellValue::Null) => {}
+          other => panic!("mean and interval point do not share missingness: {other:?}"),
+        }
+        match (point, lower, upper) {
+          (
+            tabdat_domain::CellValue::Float(mean),
+            tabdat_domain::CellValue::Float(lower),
+            tabdat_domain::CellValue::Float(upper),
+          ) => {
+            assert!(mean.is_finite() && *lower >= 0.0 && lower.fract() == 0.0);
+            assert!(lower <= upper && *upper <= 100000.0 && upper.fract() == 0.0);
+          }
+          (
+            tabdat_domain::CellValue::Null,
+            tabdat_domain::CellValue::Null,
+            tabdat_domain::CellValue::Null,
+          ) => {}
+          other => panic!("expected an atomic mean/count interval, got {other:?}"),
+        }
+        rows.push((point.clone(), lower.clone(), upper.clone()));
+      }
+      assert!(matches!(
+        table.rows[37].get(lower_index),
+        Some(tabdat_domain::CellValue::Null)
+      ));
+      assert_eq!(session.state().estimation, retained);
+      covariance_results.push(rows);
+
+      run(&mut session, "generate collision_lower = 1");
+      let before = session.state();
+      assert!(
+        session
+          .execute(parse_command("predict collision, n interval").unwrap())
+          .is_err()
+      );
+      assert_eq!(session.state(), before);
+      assert!(
+        session
+          .execute(
+            parse_command("predict invalid_level, n interval level(0.000000000000001)").unwrap()
+          )
+          .is_err()
+      );
+      assert_eq!(session.state(), before);
+    }
+    assert_eq!(covariance_results[0], covariance_results[1]);
+    assert_eq!(covariance_results[0], covariance_results[2]);
+  }
+
+  let mut empty = fixture.session();
+  run(&mut empty, "drop if id == 38");
+  run(&mut empty, "generate log_time = .2 * x");
+  run(&mut empty, "poisson y x z, offset(log_time)");
+  run(&mut empty, "drop if id >= 0");
+  run(&mut empty, "predict empty_future, n interval");
+  assert_eq!(empty.state().active_dataset.as_ref().unwrap().row_count, 0);
+  assert!(
+    empty
+      .state()
+      .active_dataset
+      .unwrap()
+      .columns
+      .iter()
+      .any(|column| column.name == "empty_future_upper")
+  );
+
+  let mut work_limited = fixture.session();
+  run(&mut work_limited, "drop if id == 38");
+  run(&mut work_limited, "generate log_time = .2 * x");
+  run(&mut work_limited, "poisson y x z, offset(log_time)");
+  run(&mut work_limited, "replace log_time = 10");
+  let before = work_limited.state();
+  let error = work_limited
+    .execute(parse_command("predict too_wide, n interval").unwrap())
+    .unwrap_err();
+  assert!(
+    error
+      .to_string()
+      .contains("predictive count interval work exceeds")
+  );
+  assert_eq!(work_limited.state(), before);
+
+  let mut unsupported = fixture.session();
+  run(&mut unsupported, "drop if id == 38");
+  run(&mut unsupported, "generate log_time = .2 * x");
+  run(&mut unsupported, "poisson y x z, offset(log_time)");
+  run(&mut unsupported, "replace log_time = 12");
+  let before = unsupported.state();
+  let error = unsupported
+    .execute(parse_command("predict beyond_support, n interval").unwrap())
+    .unwrap_err();
+  assert!(
+    error
+      .to_string()
+      .contains("count endpoint exceeds the supported cutoff")
+  );
+  assert_eq!(unsupported.state(), before);
+}
+
+#[test]
 fn exact_original_joint_sample_and_outcomes_survive_current_data_edits_and_drop() {
   let f = Fixture::new(true);
   for family in ["poisson", "nbreg"] {

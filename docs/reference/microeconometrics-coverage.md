@@ -2151,10 +2151,11 @@ choices. Raw state/sample/labels, missing/overflow/zero-mean limits and atomic
 failures, including the expanded-work guard, are covered; no distributional
 guarantee follows from robust covariance. Pointwise current-row PMF/CDF delta SEs
 and logit-Wald intervals use the covariance selected by the retained fit
-(including joint beta/lnalpha for NB2); base-R finite differences and runtime
-covariance/offset/exposure controls are recorded in the
-[workflow](../../examples/count-probability/README.md). Future-count uncertainty,
-formal calibration, and printed
+(including joint beta/lnalpha for NB2); discrete equal-tail future-count
+intervals condition on the fitted mean and NB2 alpha without parameter
+uncertainty. Base-R finite differences, R quantile/coverage references and
+runtime covariance/offset/exposure controls are recorded in the
+[workflow](../../examples/count-probability/README.md). Formal calibration and printed
 Table20.6 NB2 reconciliation remain unresolved. Underlying count-fit contracts
 are preserved.
 

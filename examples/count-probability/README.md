@@ -11,6 +11,16 @@ passes. Interval requests charge up to seven passes for NB2 CDFs. Exceeding the
 limit fails before publication. A robust/cluster covariance does not justify a
 Poisson or NB2 law; NB2 uses retained alpha with variance mu+alpha*mu².
 
+For future-count variation, use `predict future, n interval [level(95)]` after
+Poisson/NB2. The command appends the current conditional mean and the smallest
+integer endpoints whose fitted-law lower CDF and upper survival reach the two
+equal tails. Discreteness gives at least nominal coverage. The fitted mean and
+NB2 alpha are fixed, and the current predictors and offset/exposure are held
+fixed; the retained covariance does not widen this interval. Bounds are 0..100000,
+stored as DOUBLEs, and cumulative CDF-prefix search is limited to 10,000,000
+terms across usable rows. A row whose fitted inputs are missing/nonfinite gets
+NULL in all three outputs.
+
 For a current-row PMF or CDF, add `se` to write its pointwise delta-method
 standard error instead of the probability, for example `predict p2_se, pmf(2) se`,
 `predict cdf2_se, cdf(2) se`, or the corresponding current-cutoff forms. Run the
@@ -44,7 +54,7 @@ cp "$root/examples/nb2-offset/nb2_offset.csv" .
 
 This synthetic method extension demonstrates both laws, fixed offsets, changed
 current rows, scalar and row-specific cutoffs, PMF/CDF parameter standard errors
-and intervals, and CSV export. The corresponding
+and intervals, future-count intervals, and CSV export. The corresponding
 RAND Table20.5 mean models are a target application, but this example adds no
 published table row or resolution of the printed Table20.6 NB2 discrepancy.
 Exports refuse existing files; earlier successful script effects are not rolled back
@@ -57,8 +67,8 @@ finite index whose exponential underflows to zero uses the limiting point mass
 at zero. Empty data is supported. Bounds, missing/nonnumeric required columns,
 existing targets, unsupported estimator/mode/options or probability convergence
 failure fail before publication, preserving data/labels/fit. Bare predict remains
-xb; `n` remains the mean and binary `pr` keeps its meaning. Future-count
-prediction intervals remain unsupported.
+xb; `n` remains the mean and binary `pr` keeps its meaning. The `n interval`
+form is supported only after native Poisson/NB2 fits.
 
 Independent base R 4.6.1 `dpois`/`ppois`/`dnbinom`/`pnbinom` validate 308 PMF/CDF
 quantities over tiny/large/zero means, extreme supported alpha and k=0, 1, 9,
@@ -81,6 +91,8 @@ Rscript crates/tabdat-stats/tests/fixtures/count_cdf_se_reference.R \
   crates/tabdat-stats/tests/fixtures/count_cdf_se_reference.csv
 Rscript crates/tabdat-stats/tests/fixtures/count_probability_interval_reference.R \
   crates/tabdat-stats/tests/fixtures/count_probability_interval_reference.csv
+Rscript crates/tabdat-stats/tests/fixtures/count_predictive_interval_reference.R \
+  crates/tabdat-stats/tests/fixtures/count_predictive_interval_reference.csv
 ```
 
 The PMF SE kernel matches independent base-R central differences
@@ -99,5 +111,11 @@ near-one CDFs, the maximum cutoff, tiny means and both NB2 alpha-domain ends.
 Estimate tolerances are relative1e-10 plus1e-14; endpoint tolerances are
 relative1e-7 plus2e-13. The fixture differentiates `log(p)-log(1-p)` with
 `dpois`/`dnbinom`/`ppois`/`pnbinom` and uses `plogis` for endpoints.
+
+The future-count interval matches 87 exact base-R `qpois`/`qnbinom` endpoint
+cases across five levels, zero/tiny and large means, both NB2 alpha-domain ends,
+and tail probabilities near one. The fixture also records each endpoint's
+neighboring CDF/survival and attained coverage, which is at least nominal for
+the discrete equal-tail convention.
 
 No production Python/R dependency is used.

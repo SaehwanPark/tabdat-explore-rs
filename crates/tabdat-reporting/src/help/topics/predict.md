@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -93,6 +93,7 @@ Count example:
 - `predict at_most_two, cdf(2)`
 - `predict at_most_two_se, cdf(2) se`
 - `predict at_most_two_interval, cdf(2) interval level(90)`
+- `predict future_count, n interval level(90)`
 
 Data and model notes:
 - No refitting or estimation-sample filtering: excluded rows can receive
@@ -124,8 +125,8 @@ Data and model notes:
 
 Not installed for the other families: binary/Poisson residuals, NB2 residuals,
 spatial_lag, posterior_predictive, general std/interval/level()/saving()
-  prediction, or count cutoffs beyond the bounded integer 0..100000. Count PMF/CDF
-intervals are the bounded exception described above.
+prediction, or count cutoffs beyond the bounded integer 0..100000. Count
+PMF/CDF and `n` intervals are the bounded exceptions described below.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
 
@@ -155,6 +156,19 @@ Count distributional probabilities:
   Zero means and zero transformed variance return the point estimate at both
   endpoints. Name collisions among the point/lower/upper columns fail before
   any of them are published.
+- Add `interval [level(95)]` to `n` after Poisson/NB2 to append the conditional
+  mean and `<target>_lower`/`<target>_upper` columns atomically. Bounds are the
+  discrete equal-tail quantiles under the fitted Poisson/NB2 law, with mean and
+  NB2 alpha fixed and current predictors plus offsets/exposure held fixed. The
+  lower endpoint is the first count whose CDF reaches `(100-level)/200`; the
+  upper endpoint is the first count whose survival above it is at most that
+  tail. Discreteness makes attained coverage at least nominal. This interval
+  describes future-count variation and does not include parameter uncertainty
+  from the retained covariance. Count bounds are integers stored as DOUBLEs;
+  they are limited to 0..100000, and requests beyond that support fail before
+  publication. Missing/nonfinite current model inputs give NULL in all three
+  columns. Search work is capped at 10,000,000 CDF-prefix terms across current
+  rows. Levels must represent two distinct equal tails.
 - For cutoffs above 99, a single prediction may add at most 10,000,000 cutoff
   increments across rows with usable model inputs. SE requests count recurrence
   and gradient work; NB2 CDF SEs can charge up to four cutoff passes. Intervals
@@ -171,7 +185,8 @@ Count distributional probabilities:
   Missing/nonfinite or overflowing indices/means produce NULL. Exponential
   underflow to zero uses a point mass at zero. Probability or gradient numerical
   failure aborts before publication, leaving data/labels/fit unchanged. Empty data works.
-- Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`,
+- Example: `poisson visits age, offset(log_time)` then
+  `predict future_count, n interval`, `predict p0, pmf(0)`,
   `predict p0_se, pmf(0) se`, or `predict p0_interval, pmf(0) interval`.
   Also try `predict at_most_two, cdf(2)` and
   `predict at_most_two_interval, cdf(2) interval level(90)`. For current

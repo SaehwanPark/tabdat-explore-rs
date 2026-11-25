@@ -42,6 +42,14 @@ pub struct CountPointProbabilityInterval {
   pub upper: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct CountPredictiveInterval {
+  pub lower: usize,
+  pub upper: usize,
+  /// CDF-prefix terms used by the bounded quantile search.
+  pub work_terms: usize,
+}
+
 fn invalid(message: &str) -> StatsError {
   StatsError::InvalidEstimation(format!("count probabilities: {message}"))
 }
@@ -60,6 +68,10 @@ fn validate(
   if !(1..=maximum_tail).contains(&tail_from) {
     return Err(invalid(cutoff_error));
   }
+  validate_law(law)
+}
+
+fn validate_law(law: CountProbabilityLaw) -> Result<(), StatsError> {
   if let CountProbabilityLaw::Nb2 { alpha } = law
     && (!alpha.is_finite() || alpha <= 0.0 || alpha.ln().abs() >= 12.0)
   {
@@ -377,6 +389,11 @@ fn count_log_probability_pair(
     return Ok((log_probability, log_complement));
   }
 
+  if matches!(law, CountProbabilityLaw::Poisson) && mean < (count + 1) as f64 + 1.0 {
+    let log_survival = poisson_log_small_tail(mean, count + 1)?;
+    return Ok((log_one_minus_exp(log_survival)?, log_survival));
+  }
+
   let log_cdf = count_log_prefix_probability(law, mean, count)?;
   if log_cdf <= -std::f64::consts::LN_2 {
     return Ok((log_cdf, log_one_minus_exp(log_cdf)?));
@@ -389,6 +406,118 @@ fn count_log_probability_pair(
     return Err(failed("count CDF survival log probability is invalid"));
   }
   Ok((log_one_minus_exp(log_survival)?, log_survival))
+}
+
+fn count_predictive_tail_probability(level: f64) -> Result<f64, StatsError> {
+  if !level.is_finite() || !(0.0..100.0).contains(&level) {
+    return Err(invalid(
+      "predictive interval level must be finite and strictly between 0 and 100",
+    ));
+  }
+  let tail = (100.0 - level) / 200.0;
+  if !tail.is_finite() || tail <= 0.0 || tail >= 0.5 {
+    return Err(invalid(
+      "predictive interval level is too close to 0 or 100 to represent equal tails",
+    ));
+  }
+  Ok(tail)
+}
+
+fn count_predictive_cdf_pair(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  work_terms: &mut usize,
+) -> Result<(f64, f64), StatsError> {
+  *work_terms = work_terms
+    .checked_add(count + 1)
+    .ok_or_else(|| failed("predictive interval work count overflowed"))?;
+  count_log_probability_pair(law, mean, count, true)
+}
+
+fn count_predictive_quantile(
+  law: CountProbabilityLaw,
+  mean: f64,
+  log_tail: f64,
+  find_upper: bool,
+  work_terms: &mut usize,
+) -> Result<usize, StatsError> {
+  let reached = |log_cdf: f64, log_survival: f64| {
+    if find_upper {
+      log_survival <= log_tail
+    } else {
+      log_cdf >= log_tail
+    }
+  };
+  let (log_cdf_zero, log_survival_zero) = count_predictive_cdf_pair(law, mean, 0, work_terms)?;
+  if reached(log_cdf_zero, log_survival_zero) {
+    return Ok(0);
+  }
+
+  let mut lower = 0usize;
+  let mut high = 1usize;
+  loop {
+    let (log_cdf, log_survival) = count_predictive_cdf_pair(law, mean, high, work_terms)?;
+    if reached(log_cdf, log_survival) {
+      break;
+    }
+    lower = high;
+    if high == MAX_COUNT_POINT_CUTOFF {
+      return Err(failed_for(
+        "predictive interval",
+        "count endpoint exceeds the supported cutoff 100000",
+      ));
+    }
+    high = high.saturating_mul(2).min(MAX_COUNT_POINT_CUTOFF);
+  }
+
+  while lower + 1 < high {
+    let middle = lower + (high - lower) / 2;
+    let (log_cdf, log_survival) = count_predictive_cdf_pair(law, mean, middle, work_terms)?;
+    if reached(log_cdf, log_survival) {
+      high = middle;
+    } else {
+      lower = middle;
+    }
+  }
+  Ok(high)
+}
+
+/// Equal-tail predictive interval for a future count at a fixed current-row
+/// Poisson/NB2 mean. Model parameters are treated as fixed; `level` controls
+/// only count-outcome variation. Bounds are the first integer quantiles whose
+/// lower CDF and upper survival satisfy the two tail probabilities. Quantile
+/// search is bounded to 0..100000 and reports its CDF-prefix work for runtime
+/// accounting. A zero mean returns the point mass [0, 0].
+pub fn count_point_predictive_interval(
+  law: CountProbabilityLaw,
+  mean: f64,
+  level: f64,
+) -> Result<CountPredictiveInterval, StatsError> {
+  validate_law(law)?;
+  let tail = count_predictive_tail_probability(level)?;
+  if !mean.is_finite() || mean < 0.0 {
+    return Err(invalid("conditional means must be finite and nonnegative"));
+  }
+  if mean == 0.0 {
+    return Ok(CountPredictiveInterval {
+      lower: 0,
+      upper: 0,
+      work_terms: 0,
+    });
+  }
+  let log_tail = tail.ln();
+  let mut work_terms = 0usize;
+  let lower = count_predictive_quantile(law, mean, log_tail, false, &mut work_terms)?;
+  let upper = count_predictive_quantile(law, mean, log_tail, true, &mut work_terms)?;
+  if lower > upper {
+    return Err(failed("predictive interval endpoints are not ordered"));
+  }
+  Ok(CountPredictiveInterval {
+    lower,
+    upper,
+    work_terms,
+  })
 }
 
 fn inverse_logit(value: f64) -> f64 {

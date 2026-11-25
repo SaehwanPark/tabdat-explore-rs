@@ -1114,10 +1114,11 @@ The printed Table20.6 NB2 row differs materially from the authors' November2006
 program/reference (zero share30.9% vs31.82679994%); it remains UNRESOLVED, not
 forced into a tolerance or declared literal whole-table replication. No book/data/
 program redistribution. Pointwise current-row PMF/CDF delta-method SEs and
-logit-Wald intervals use the selected retained covariance; future-count
-prediction intervals, other formal tests and remaining count/core/book scope
-remain open. Current-row PMF/CDF `predict` and named count reports have separate
-bounded contracts above.
+logit-Wald probability intervals use the selected retained covariance; discrete
+equal-tail future-count intervals condition on fitted means and the selected
+Poisson/NB2 law without parameter uncertainty. Other formal tests and remaining
+count/core/book scope remain open. Current-row PMF/CDF `predict`, future-count
+`n interval` and named count reports have separate bounded contracts above.
 See MIG-0021.
 
 ## Retained NB2 grouped goodness-of-fit reports

@@ -1508,7 +1508,7 @@ fn get_command_schema(
         OptionDescriptor { name: "interval".to_string(), required: false },
         OptionDescriptor { name: "level".to_string(), required: false },
       ],
-      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | n interval | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![

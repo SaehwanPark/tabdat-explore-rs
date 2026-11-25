@@ -5725,6 +5725,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       | PredictKind::CountPmfVariable
       | PredictKind::CountCdfVariable
   );
+  let count_mean_kind = kind == PredictKind::MeanCount;
   let count_probability_se = matches!(
     kind,
     PredictKind::CountPmfStandardError(_)
@@ -5737,9 +5738,13 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       "predict count probability intervals cannot be combined with se",
     ));
   }
-  if interval && kind != PredictKind::PosteriorPredictive && !count_probability_kind {
+  if interval
+    && kind != PredictKind::PosteriorPredictive
+    && !count_probability_kind
+    && !count_mean_kind
+  {
     return Err(ParseError::new(
-      "predict interval options require posterior_predictive or pmf()/cdf()",
+      "predict interval options require posterior_predictive, n, pmf() or cdf()",
     ));
   }
 

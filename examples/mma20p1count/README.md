@@ -628,7 +628,7 @@ executable values and leave the conflict as an explicit coverage gap pending
 new primary-source evidence.
 
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
-future-count prediction intervals, other formal specification tests,
+other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 
 ### Current-row count probability prediction extension
@@ -648,10 +648,15 @@ parameter-uncertainty intervals, not future-count prediction intervals or
 simultaneous bands; separate PMF intervals need not sum to one and CDF intervals
 need not be monotone. Covariance selection does not establish either
 distributional law.
+The separate `predict target, n interval [level(95)]` command returns discrete
+equal-tail future-count bounds conditional on the fitted mean and NB2 alpha,
+with current predictors and offsets/exposure fixed. Its integer endpoints are
+stored as DOUBLEs and do not include parameter uncertainty from the covariance.
 Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
 cluster IDs are not required; fitted offsets are. Independent base-R checks
 cover direct probabilities, changed-current-row predictions, finite-difference
-PMF/CDF SEs and 44 logit-Wald interval endpoints. Runtime/CLI checks cover
+PMF/CDF SEs, 44 logit-Wald interval endpoints and independent Poisson/NB2
+future-count quantile/coverage references. Runtime/CLI checks cover
 offsets, sample/fit reuse, atomic failures and export.
